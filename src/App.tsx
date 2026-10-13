@@ -7,6 +7,7 @@ function App() {
       <main>
         <h1>SyncR</h1>
         <p>Hello! The app is running.</p>
+        <p className="version">v{__APP_VERSION__}</p>
       </main>
     </>
   )

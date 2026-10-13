@@ -16,3 +16,8 @@ main {
   padding: 8px 24px;
   background: #2d4f7c;
 }
+
+.version {
+  color: #888;
+  font-size: 0.85em;
+}
