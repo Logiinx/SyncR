@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-13
+
+### Fixed
+- Window buttons (minimize, maximize, close) now share the same slightly thicker line weight. The maximize square is no longer clipped and has softly rounded corners like Windows 11.
+
 ## [0.3.0] - 2026-10-13
 
 ### Changed

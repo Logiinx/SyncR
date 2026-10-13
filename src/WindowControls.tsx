@@ -3,6 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
 // Minimize / maximize / close, drawn by us because the Windows title bar is hidden.
+// Icons: 10×10, same line weight, drawn fully inside the box so nothing gets clipped.
 // Only in the desktop app; the browser/phone version shows nothing.
 function WindowControls() {
   const [maximized, setMaximized] = useState(false)
@@ -31,18 +32,19 @@ function WindowControls() {
       <button onClick={() => win.toggleMaximize()} title={maximized ? 'Restore' : 'Maximize'}>
         {maximized ? (
           <svg viewBox="0 0 10 10">
-            <path d="M2 2V0h8v8H8M0 2h8v8H0z" />
+            <rect x="0.625" y="2.625" width="6.75" height="6.75" rx="1" />
+            <path d="M2.625 2.625V1.625a1 1 0 0 1 1-1h4.75a1 1 0 0 1 1 1v4.75a1 1 0 0 1-1 1H7.375" />
           </svg>
         ) : (
           <svg viewBox="0 0 10 10">
-            <path d="M0 0h10v10H0z" />
+            <rect x="0.625" y="0.625" width="8.75" height="8.75" rx="1" />
           </svg>
         )}
       </button>
       {/* TODO (sync step): final sync before closing */}
       <button className="close" onClick={() => win.close()} title="Close">
         <svg viewBox="0 0 10 10">
-          <path d="M0 0l10 10M10 0L0 10" />
+          <path d="M0.75 0.75l8.5 8.5M9.25 0.75l-8.5 8.5" />
         </svg>
       </button>
     </div>

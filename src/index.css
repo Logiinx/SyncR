@@ -67,7 +67,8 @@ button {
   height: 10px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1;
+  stroke-width: 1.25;
+  overflow: visible;
 }
 
 .window-controls button:hover {
