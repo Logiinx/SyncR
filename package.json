@@ -11,9 +11,12 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@tauri-apps/api": "^2.12.3",
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-updater": "^2.13.3",
+    "@tiptap/extension-details": "^3.31.4",
+    "@tiptap/extensions": "^3.31.4",
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",

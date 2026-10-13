@@ -222,6 +222,95 @@ button {
   margin: 0;
 }
 
+/* ---------- Collapsible sections ---------- */
+
+.tiptap [data-type='details'] {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tiptap [data-type='details'] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The ▶ arrow; turns to point down when open */
+.tiptap [data-type='details'] > button {
+  flex-shrink: 0;
+  width: 22px;
+  height: 25.6px; /* one line */
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.tiptap [data-type='details'] > button:hover {
+  color: var(--text);
+}
+
+.tiptap [data-type='details'].is-open > button {
+  transform: rotate(90deg);
+}
+
+/* The title (a <summary> element; hide the browser's own arrow) */
+.tiptap [data-type='details'] summary {
+  display: block;
+  list-style: none;
+  font-weight: 600;
+}
+
+.tiptap [data-type='details'] summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Content is indented under the title, with a faint guide line */
+.tiptap [data-type='detailsContent'] {
+  margin-left: -13px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.tiptap [data-type='detailsContent'][hidden] {
+  display: none;
+}
+
+/* "Section title" hint in empty titles */
+.tiptap .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* ---------- Selection menu ---------- */
+
+.selection-menu {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+}
+
+.selection-menu button {
+  padding: 4px 10px;
+  border-radius: 5px;
+}
+
+.selection-menu button:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.selection-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------- Update banner ---------- */
 
 .update-banner {
