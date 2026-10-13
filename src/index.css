@@ -217,6 +217,11 @@ button {
   outline: none;
 }
 
+/* No automatic gap between lines: Enter = next line. Leave an empty line yourself for spacing. */
+.editor .tiptap p {
+  margin: 0;
+}
+
 /* ---------- Update banner ---------- */
 
 .update-banner {
