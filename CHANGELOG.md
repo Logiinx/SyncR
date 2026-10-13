@@ -4,7 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
 ### Changed
+- New SyncR icon: a note page between two arrows, white on dark.
 - Custom title bar in the Windows app, merged with the tabs: drag empty space to move the window, double-click it to maximize. The minimize, maximize and close buttons match the app colors.
 - The update banner now appears below the bar.
 
