@@ -311,6 +311,117 @@ button {
   cursor: default;
 }
 
+/* ---------- Right-click menu ---------- */
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.context-menu {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+}
+
+.context-menu button {
+  padding: 6px 10px;
+  border-radius: 5px;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: var(--border);
+}
+
+/* ---------- Dialog (rename / delete) ---------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 50%);
+  z-index: 30;
+}
+
+.dialog {
+  width: min(420px, 100%);
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-raised);
+}
+
+.dialog h2 {
+  margin: 0 0 12px;
+  font-size: 1.1em;
+}
+
+.dialog p {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+}
+
+.dialog input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.dialog input:focus {
+  outline: 1px solid var(--accent);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-buttons button {
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+
+.dialog-buttons button:hover {
+  background: var(--border);
+}
+
+.dialog-buttons .primary,
+.dialog-buttons .primary:hover {
+  background: var(--accent);
+}
+
+.dialog-buttons .danger,
+.dialog-buttons .danger:hover {
+  background: #5c2626;
+}
+
+.dialog-buttons .primary:hover,
+.dialog-buttons .danger:hover {
+  filter: brightness(1.2);
+}
+
+.context-menu .danger {
+  color: #ff8080;
+}
+
 /* ---------- Update banner ---------- */
 
 .update-banner {

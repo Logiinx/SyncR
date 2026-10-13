@@ -6,10 +6,12 @@ interface Props {
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onNew: () => void
+  onMenu: (id: string, x: number, y: number) => void
+  onRename: (id: string) => void
 }
 
-// The row of open notes at the top. Middle-click also closes a tab.
-function TabBar({ notes, activeId, onSelect, onClose, onNew }: Props) {
+// The row of open notes at the top. Middle-click closes, double-click renames, right-click opens a menu.
+function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename }: Props) {
   return (
     <nav className="tabs">
       {notes.map((note) => (
@@ -18,6 +20,11 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew }: Props) {
           className={note.id === activeId ? 'tab active' : 'tab'}
           onClick={() => onSelect(note.id)}
           onAuxClick={(e) => e.button === 1 && onClose(note.id)}
+          onDoubleClick={() => onRename(note.id)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            onMenu(note.id, e.clientX, e.clientY)
+          }}
           title={noteTitle(note)}
         >
           <span className="tab-title">{noteTitle(note)}</span>

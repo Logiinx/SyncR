@@ -6,11 +6,12 @@ interface Props {
   onOpen: (id: string) => void
   onNew: () => void
   onClose: () => void
+  onMenu: (id: string, x: number, y: number) => void
 }
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onNew, onClose }: Props) {
+function Sidebar({ activeId, onOpen, onNew, onClose, onMenu }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
 
@@ -27,6 +28,10 @@ function Sidebar({ activeId, onOpen, onNew, onClose }: Props) {
               <button
                 className={note.id === activeId ? 'active' : ''}
                 onClick={() => onOpen(note.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  onMenu(note.id, e.clientX, e.clientY)
+                }}
               >
                 {noteTitle(note)}
               </button>

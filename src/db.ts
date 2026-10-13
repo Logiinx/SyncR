@@ -10,13 +10,24 @@ export interface Note {
   updatedAt: number
 }
 
+// Marker left behind when a note is deleted, so sync can delete it on the other device too.
+export interface Deletion {
+  id: string // the deleted note's id
+  deletedAt: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
+  deletions: EntityTable<Deletion, 'id'>
 }
 
 db.version(1).stores({
   notes: 'id, updatedAt', // fields we can look up / sort by
+})
+
+db.version(2).stores({
+  deletions: 'id',
 })
 
 export async function createNote(): Promise<string> {
@@ -28,6 +39,18 @@ export async function createNote(): Promise<string> {
 
 export async function saveNoteContent(id: string, content: JSONContent, text: string) {
   await db.notes.update(id, { content, text, updatedAt: Date.now() })
+}
+
+// Empty title = go back to the automatic title (first line).
+export async function renameNote(id: string, title: string) {
+  await db.notes.update(id, { title: title.trim() || null, updatedAt: Date.now() })
+}
+
+export async function deleteNote(id: string) {
+  await db.transaction('rw', db.notes, db.deletions, async () => {
+    await db.notes.delete(id)
+    await db.deletions.put({ id, deletedAt: Date.now() })
+  })
 }
 
 // Custom title if set, otherwise the first non-empty line of the text.

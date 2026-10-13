@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { createNote, db, type Note } from './db'
+import ContextMenu from './ContextMenu'
+import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
+import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
 import NoteView from './NoteView'
 import Sidebar from './Sidebar'
@@ -16,6 +18,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   // Only a brand-new note gets the cursor automatically
   const [newNoteId, setNewNoteId] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ noteId: string; x: number; y: number } | null>(null)
+  const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
   // `ids` lets us check the result matches the current tabs (it can lag one render behind)
   const tabsResult = useLiveQuery(
@@ -58,6 +62,33 @@ function App() {
     openNote(id)
   }
 
+  async function askRename(id: string) {
+    const note = await db.notes.get(id)
+    if (!note) return
+    setDialog({
+      title: 'Rename note',
+      input: { initial: note.title ?? '', placeholder: `Leave empty to use the first line ("${noteTitle({ ...note, title: null })}")` },
+      confirmLabel: 'Rename',
+      onConfirm: (title) => renameNote(id, title),
+    })
+  }
+
+  async function askDelete(id: string) {
+    const note = await db.notes.get(id)
+    if (!note) return
+    setDialog({
+      title: 'Delete note?',
+      message: `"${noteTitle(note)}" will be deleted. This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        closeTab(id)
+        forgetScroll(id)
+        deleteNote(id)
+      },
+    })
+  }
+
   const showNote = activeNote && openTabs.includes(activeNote.id)
 
   return (
@@ -73,6 +104,8 @@ function App() {
           onSelect={openNote}
           onClose={closeTab}
           onNew={newNote}
+          onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
+          onRename={askRename}
         />
       </header>
 
@@ -83,6 +116,7 @@ function App() {
             onOpen={openNote}
             onNew={newNote}
             onClose={() => setSidebarOpen(false)}
+            onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
           />
         )}
         {showNote ? (
@@ -94,6 +128,19 @@ function App() {
           </main>
         )}
       </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: 'Rename', onClick: () => askRename(menu.noteId) },
+            { label: 'Delete', danger: true, onClick: () => askDelete(menu.noteId) },
+          ]}
+        />
+      )}
+      {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </div>
   )
 }
