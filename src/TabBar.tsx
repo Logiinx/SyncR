@@ -13,7 +13,7 @@ interface Props {
 // The row of open notes at the top. Middle-click closes, double-click renames, right-click opens a menu.
 function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename }: Props) {
   return (
-    <nav className="tabs">
+    <nav className="tabs" data-tauri-drag-region>
       {notes.map((note) => (
         <div
           key={note.id}

@@ -8,6 +8,7 @@ import NoteView from './NoteView'
 import Sidebar from './Sidebar'
 import TabBar from './TabBar'
 import UpdateBanner from './UpdateBanner'
+import WindowControls from './WindowControls'
 
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
@@ -93,8 +94,8 @@ function App() {
 
   return (
     <div className="app">
-      <UpdateBanner />
-      <header className="topbar">
+      {/* Also the window title bar: empty areas marked data-tauri-drag-region move the window */}
+      <header className="topbar" data-tauri-drag-region>
         <button className="menu-button" onClick={() => setSidebarOpen(!sidebarOpen)} title="Notes">
           ☰
         </button>
@@ -107,7 +108,10 @@ function App() {
           onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
           onRename={askRename}
         />
+        <div className="drag-space" data-tauri-drag-region />
+        <WindowControls />
       </header>
+      <UpdateBanner />
 
       <div className="body">
         {sidebarOpen && (

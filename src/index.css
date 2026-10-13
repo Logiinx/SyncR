@@ -35,9 +35,49 @@ button {
   align-items: center;
   gap: 4px;
   height: 40px;
-  padding: 0 8px;
+  padding: 0 0 0 8px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  user-select: none;
+}
+
+/* Empty part of the bar: drag it to move the window (desktop app) */
+.drag-space {
+  flex: 1;
+  align-self: stretch;
+}
+
+/* ---------- Window buttons (desktop app only) ---------- */
+
+.window-controls {
+  display: flex;
+  align-self: stretch;
+}
+
+.window-controls button {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.window-controls svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.window-controls button:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.window-controls .close:hover {
+  background: #c94141;
+  color: #fff;
 }
 
 .menu-button {
