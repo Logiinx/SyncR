@@ -30,6 +30,28 @@ jobs:
 
       - run: npm ci
 
+      # Takes this version's section from CHANGELOG.md (e.g. "## [0.2.0] ...") for the release page
+      - name: Read release notes from CHANGELOG.md
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes=$(awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && index($0, "## [") == 1 { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            echo "::error::No section for $version in CHANGELOG.md"
+            exit 1
+          fi
+          {
+            echo 'body<<END_OF_NOTES'
+            echo "$notes"
+            echo 'END_OF_NOTES'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and create draft release
         if: startsWith(github.ref, 'refs/tags/')
         uses: tauri-apps/tauri-action@v0
@@ -40,6 +62,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: SyncR ${{ github.ref_name }}
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
 
       - name: Build only

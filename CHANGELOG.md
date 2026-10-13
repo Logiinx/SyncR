@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to SyncR. Newest version first.
+
+## [Unreleased]
+
+## [0.2.0] - 2026-10-13
+
+### Added
+- Notes, saved automatically on your device.
+- Hidden sidebar (☰) with the note list, newest edits first, and a "New note" button. It pushes the note aside, or slides over it on narrow screens.
+- Tabs at the top: open several notes, switch between them, close one with × or a middle-click, and create a note with "+".
+- Open tabs, the active tab and each note's scroll position are restored after a restart. A note left at the bottom reopens at the bottom.
+- Collapsible sections: select lines, then click "Section". Click the ▶ arrow or the title to open or close. Sections can be nested and are closed whenever a note opens. "Unwrap" removes a section and keeps its text.
+- Rename a note: right-click a tab or sidebar note, or double-click a tab. Leave the name empty to use the first line again.
+- Delete a note: right-click, then confirm.
+
+### Changed
+- Note text starts on the left and uses the full width.
+- Pressing Enter goes to the next line with no extra gap.
+
+## [0.1.1] - 2026-10-13
+
+### Added
+- The version number is shown in the app.
+
+## [0.1.0] - 2026-10-13
+
+### Added
+- First Windows release: installer and automatic updates from GitHub Releases.
