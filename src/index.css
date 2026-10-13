@@ -8,3 +8,11 @@ body {
 main {
   padding: 24px;
 }
+
+.update-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 24px;
+  background: #2d4f7c;
+}

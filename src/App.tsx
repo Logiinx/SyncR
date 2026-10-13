@@ -1,9 +1,14 @@
+import UpdateBanner from './UpdateBanner'
+
 function App() {
   return (
-    <main>
-      <h1>SyncR</h1>
-      <p>Hello! The app is running.</p>
-    </main>
+    <>
+      <UpdateBanner />
+      <main>
+        <h1>SyncR</h1>
+        <p>Hello! The app is running.</p>
+      </main>
+    </>
   )
 }
 
