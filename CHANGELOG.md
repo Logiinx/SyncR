@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-13
+
+### Changed
+- Darker, near-black icon background for better contrast on the taskbar.
+
 ## [0.3.1] - 2026-10-13
 
 ### Fixed

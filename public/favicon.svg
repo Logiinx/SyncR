@@ -2,8 +2,8 @@
   <!-- SyncR icon: a note page; the corner brackets are arrows passing it between devices -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2a2a2a" />
-      <stop offset="1" stop-color="#161616" />
+      <stop offset="0" stop-color="#141414" />
+      <stop offset="1" stop-color="#000" />
     </linearGradient>
   </defs>
   <rect width="100" height="100" rx="22" fill="url(#bg)" />
