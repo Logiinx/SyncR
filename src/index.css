@@ -28,12 +28,12 @@ button {
   height: 100vh;
 }
 
-/* ---------- Top bar ---------- */
+/* ---------- Top bar: ☰ + tabs ---------- */
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   height: 40px;
   padding: 0 8px;
   border-bottom: 1px solid var(--border);
@@ -41,6 +41,7 @@ button {
 }
 
 .menu-button {
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -53,33 +54,110 @@ button {
   color: var(--text);
 }
 
-.current-title {
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
   color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background: var(--bg-raised);
+}
+
+.tab.active {
+  background: var(--border);
+  color: var(--text);
+}
+
+.tab-title {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* ---------- Sidebar (slides over the page) ---------- */
+.tab-close {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  line-height: 1;
+  color: var(--text-dim);
+}
 
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(0 0 0 / 40%);
-  z-index: 10;
+.tab-close:hover {
+  background: rgb(255 255 255 / 10%);
+  color: var(--text);
+}
+
+.tab-new {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 18px;
+  color: var(--text-dim);
+}
+
+.tab-new:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* ---------- Below the top bar: sidebar + page ---------- */
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: min(300px, 85vw);
   display: flex;
   flex-direction: column;
+  width: 260px;
+  flex-shrink: 0;
   background: var(--bg-raised);
   border-right: 1px solid var(--border);
-  z-index: 11;
+}
+
+.backdrop {
+  display: none;
+}
+
+/* Narrow screens (phone): the sidebar slides over the note instead of pushing it */
+@media (max-width: 699px) {
+  .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 85vw);
+    z-index: 11;
+  }
+
+  .backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 40%);
+    z-index: 10;
+  }
 }
 
 .new-note {
@@ -122,6 +200,7 @@ button {
 
 .page {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
 }
 
@@ -132,10 +211,8 @@ button {
 }
 
 .editor .tiptap {
-  max-width: 760px;
-  min-height: calc(100vh - 140px);
-  margin: 0 auto;
-  padding: 32px 24px;
+  min-height: calc(100vh - 100px);
+  padding: 24px 32px;
   line-height: 1.6;
   outline: none;
 }

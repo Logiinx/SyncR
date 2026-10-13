@@ -8,7 +8,8 @@ interface Props {
   onClose: () => void
 }
 
-// The note list. Slides over the page; clicking outside closes it.
+// The note list. Pushes the note aside; on narrow screens it slides over it
+// instead, and the dark backdrop (only shown there) closes it.
 function Sidebar({ activeId, onOpen, onNew, onClose }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])

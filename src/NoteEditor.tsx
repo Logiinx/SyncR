@@ -6,13 +6,13 @@ import { saveNoteContent, type Note } from './db'
 const SAVE_DELAY_MS = 500
 
 // Edits one note and saves it automatically shortly after you stop typing.
-function NoteEditor({ note }: { note: Note }) {
+function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const saveTimer = useRef<number | undefined>(undefined)
 
   const editor = useEditor({
     extensions: [StarterKit],
     content: note.content,
-    autofocus: 'end',
+    autofocus: autoFocus ? 'end' : false,
     onUpdate: ({ editor }) => {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(() => {
