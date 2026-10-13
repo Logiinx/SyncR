@@ -5,6 +5,7 @@ import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-detai
 import { Placeholder } from '@tiptap/extensions'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
+import { ClickTitleToToggle } from './clickTitleToToggle'
 
 const SAVE_DELAY_MS = 500
 
@@ -20,6 +21,7 @@ const extensions = [
   }),
   DetailsSummary,
   DetailsContent,
+  ClickTitleToToggle,
   Placeholder.configure({
     includeChildren: true,
     placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? 'Section title' : ''),
