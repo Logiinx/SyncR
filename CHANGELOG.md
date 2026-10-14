@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Windows app: the window appears directly in its saved place, instead of first showing in the center and then jumping there.
+
 ## [0.6.6] - 2026-10-14
 
 ### Fixed

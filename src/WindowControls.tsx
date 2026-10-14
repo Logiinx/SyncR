@@ -12,6 +12,9 @@ function WindowControls() {
   useEffect(() => {
     if (!isTauri()) return
     const win = getCurrentWindow()
+    // The window starts hidden and was already moved to its saved place (lib.rs):
+    // show it now that the app has drawn its first screen, so it appears in one go
+    win.show().then(() => win.setFocus())
     const refresh = () => win.isMaximized().then(setMaximized)
     refresh()
     const stopResize = win.onResized(refresh)
