@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { finalSync } from './autoSync'
 
 // Minimize / maximize / close, drawn by us because the Windows title bar is hidden.
 // Icons: 10×10, same line weight, drawn fully inside the box so nothing gets clipped.
@@ -13,9 +14,13 @@ function WindowControls() {
     const win = getCurrentWindow()
     const refresh = () => win.isMaximized().then(setMaximized)
     refresh()
-    const stop = win.onResized(refresh)
+    const stopResize = win.onResized(refresh)
+    // Every way of closing (✕, Alt+F4, taskbar): last sync first (max 5 s).
+    // Tauri keeps the window open until this finishes, then closes it.
+    const stopClose = win.onCloseRequested(() => finalSync())
     return () => {
-      stop.then((unlisten) => unlisten())
+      stopResize.then((unlisten) => unlisten())
+      stopClose.then((unlisten) => unlisten())
     }
   }, [])
 
@@ -41,7 +46,6 @@ function WindowControls() {
           </svg>
         )}
       </button>
-      {/* TODO (sync step): final sync before closing */}
       <button className="close" onClick={() => win.close()} title="Close">
         <svg viewBox="0 0 10 10">
           <path d="M0.75 0.75l8.5 8.5M9.25 0.75l-8.5 8.5" />

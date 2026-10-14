@@ -5,6 +5,9 @@ const APP_KEY = '5600l0im00ni2so'
 const AUTH_KEY = 'syncr.dropbox'
 const VERIFIER_KEY = 'syncr.dropbox.verifier'
 
+// A request that hangs longer than this fails, so it can't block sync forever
+const REQUEST_TIMEOUT_MS = 30_000
+
 interface Auth {
   refreshToken: string
   accessToken?: string
@@ -89,6 +92,7 @@ export async function finishConnect(): Promise<string | null> {
 
   const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code: code!,
@@ -136,6 +140,7 @@ async function accessToken() {
   }
   const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: auth.refreshToken,
@@ -157,6 +162,7 @@ async function accessToken() {
 export async function api(endpoint: string, args?: unknown) {
   const res = await fetch(`https://api.dropboxapi.com/2/${endpoint}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
       ...(args !== undefined && { 'Content-Type': 'application/json' }),
@@ -174,6 +180,7 @@ export async function api(endpoint: string, args?: unknown) {
 export async function download(path: string): Promise<Uint8Array | null> {
   const res = await fetch('https://content.dropboxapi.com/2/files/download', {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
       'Dropbox-API-Arg': JSON.stringify({ path }),
@@ -195,6 +202,7 @@ export async function upload(
   const dropboxMode = typeof mode === 'string' ? mode : { '.tag': 'update', update: mode.update }
   const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
       'Content-Type': 'application/octet-stream',
@@ -233,7 +241,8 @@ export async function waitForChanges(cursor: string, signal: AbortSignal) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cursor, timeout: 480 }),
-    signal,
+    // Dropbox answers within 8 minutes (+ up to 90 s random delay); fail if it doesn't
+    signal: AbortSignal.any([signal, AbortSignal.timeout(600_000)]),
   })
   if (!res.ok) throw new Error(`Dropbox longpoll failed (${res.status})`)
   const data = await res.json()

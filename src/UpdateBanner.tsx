@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '@tauri-apps/plugin-updater'
+import { finalSync } from './autoSync'
 import { registerServiceWorker } from './pwa'
 import { findUpdate, installUpdate } from './updater'
 
@@ -21,8 +22,9 @@ function UpdateBanner() {
       <div className="update-banner">
         A new version of SyncR is available.
         <button
-          onClick={() => {
+          onClick={async () => {
             setInstalling(true)
+            await finalSync() // max 5 s, then reload anyway
             applyWebUpdate()
           }}
           disabled={installing}

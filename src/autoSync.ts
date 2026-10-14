@@ -86,7 +86,12 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     poll()
     return result
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
+    const message =
+      e instanceof DOMException && e.name === 'TimeoutError'
+        ? 'Dropbox is not answering'
+        : e instanceof Error
+          ? e.message
+          : String(e)
     if (e instanceof RetrySoonError && quickRetries < MAX_QUICK_RETRIES) {
       quickRetries++
       setStatus('pending')
@@ -135,6 +140,33 @@ export function syncSoon() {
 // The user clicked the cloud. Returns undefined if it failed or a sync was already running.
 export function syncByUser() {
   return run(true)
+}
+
+// ---------- Last sync before closing or updating ----------
+
+const FINAL_SYNC_TIMEOUT_MS = 5000
+
+// Editors register a "save now" function here, so finalSync() can include an edit
+// that's still waiting for its autosave.
+const flushers = new Set<() => Promise<void>>()
+
+export function registerFlush(flush: () => Promise<void>) {
+  flushers.add(flush)
+  return () => {
+    flushers.delete(flush)
+  }
+}
+
+// Saves waiting edits and sends everything that's waiting to Dropbox. Gives up after
+// 5 seconds (e.g. offline): the changes stay safe on this device and sync next time.
+export async function finalSync() {
+  const work = async () => {
+    await Promise.all([...flushers].map((flush) => flush()))
+    if (!enabled) return
+    while (running) await sleep(50) // let a running sync finish first
+    if (status !== 'synced') await run()
+  }
+  await Promise.race([work().catch(() => {}), sleep(FINAL_SYNC_TIMEOUT_MS)])
 }
 
 // ---------- Hearing about changes on the other device (longpoll) ----------
