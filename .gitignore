@@ -26,5 +26,6 @@ dist-ssr
 # Claude Code local settings
 .claude/
 
-# Personal decision log (kept local only)
+# Personal files for development with Claude Code (kept local only)
 DECISIONS.md
+CLAUDE.md
