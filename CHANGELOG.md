@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-10-14
+
 ### Fixed
 - Windows app: the window now really reopens with the size and position you left it in, also on a second monitor (this didn't work in 0.6.5).
 
