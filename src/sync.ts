@@ -76,14 +76,18 @@ async function runSync(): Promise<SyncResult> {
     return JSON.parse(new TextDecoder().decode(await decrypt(key!, raw)))
   }
 
-  // Saves a downloaded note locally without changing its dates
+  // Saves a downloaded note locally without changing its dates.
+  // Skipped if the user deleted the note while this sync was running: the deletion wins,
+  // and the next sync sends it to Dropbox.
   async function storeNote(remote: RemoteNote, rev: string) {
     const { device: _, ...note } = remote
-    await db.transaction('rw', db.notes, db.synced, async () => {
+    const stored = await db.transaction('rw', db.notes, db.synced, db.deletions, async () => {
+      if (await db.deletions.get(note.id)) return false
       await db.notes.put(note)
       await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
+      return true
     })
-    result.downloaded++
+    if (stored) result.downloaded++
   }
 
   // Keeps a version that lost a conflict, as a new note
@@ -120,6 +124,7 @@ async function runSync(): Promise<SyncResult> {
     const last = synced.get(id)
     if (remoteRev && last && remoteRev !== last.rev) {
       // Edited on the other device after our last sync: the edit wins, the note comes back
+      await db.deletions.delete(id) // otherwise storeNote() would skip it
       const remote = await downloadNote(id)
       if (remote) await storeNote(remote, remoteRev)
     } else if (remoteRev || last) {
