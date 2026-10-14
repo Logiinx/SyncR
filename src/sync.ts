@@ -89,12 +89,14 @@ async function runSync(): Promise<SyncResult> {
   }
 
   // Saves a downloaded note locally without changing its dates.
-  // Skipped if the user deleted the note while this sync was running: the deletion wins,
-  // and the next sync sends it to Dropbox.
-  async function storeNote(remote: RemoteNote, rev: string) {
+  // localUpdatedAt = the local version this sync compared against (undefined: no local note).
+  // Skipped if the user deleted or edited the note while this sync was running, so their
+  // change is never overwritten: the next sync sends the deletion, or makes a conflict copy.
+  async function storeNote(remote: RemoteNote, rev: string, localUpdatedAt: number | undefined) {
     const { device: _, ...note } = remote
     const stored = await db.transaction('rw', db.notes, db.synced, db.deletions, async () => {
       if (await db.deletions.get(note.id)) return false
+      if ((await db.notes.get(note.id))?.updatedAt !== localUpdatedAt) return false
       await db.notes.put(note)
       await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
       return true
@@ -155,7 +157,7 @@ async function runSync(): Promise<SyncResult> {
       // Edited on the other device after our last sync: the edit wins, the note comes back
       await db.deletions.delete(id) // otherwise storeNote() would skip it
       const remote = await downloadNote(id)
-      if (remote) await storeNote(remote, remoteRev)
+      if (remote) await storeNote(remote, remoteRev, undefined)
     } else if (remoteRev || last) {
       // Was in Dropbox: leave a marker for other devices, then remove the note file
       if (!remoteDeleted.has(id)) {
@@ -204,7 +206,7 @@ async function runSync(): Promise<SyncResult> {
     if (!local) {
       // New from the other device
       const remote = await downloadNote(id)
-      if (remote) await storeNote(remote, remoteRev)
+      if (remote) await storeNote(remote, remoteRev, undefined)
       continue
     }
 
@@ -219,7 +221,7 @@ async function runSync(): Promise<SyncResult> {
     const remote = await downloadNote(id)
     if (!remote) continue
     if (!changedHere || remote.updatedAt === local.updatedAt) {
-      await storeNote(remote, remoteRev)
+      await storeNote(remote, remoteRev, local.updatedAt)
       continue
     }
 
@@ -230,7 +232,7 @@ async function runSync(): Promise<SyncResult> {
       await uploadNote(local, { update: remoteRev })
     } else {
       await saveConflictCopy(local, deviceName())
-      await storeNote(remote, remoteRev)
+      await storeNote(remote, remoteRev, local.updatedAt)
     }
   }
 
