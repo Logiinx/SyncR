@@ -54,6 +54,8 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     extensions,
     content: note.content,
     autofocus: autoFocus ? 'end' : false,
+    // No red spelling lines under words
+    editorProps: { attributes: { spellcheck: 'false' } },
     onUpdate: ({ editor }) => {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(() => {

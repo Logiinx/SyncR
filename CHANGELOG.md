@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- No more red spelling lines under words in your notes.
+
 ## [0.6.0] - 2026-10-14
 
 ### Added
