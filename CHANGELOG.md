@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Images in notes: paste a screenshot or picture (Ctrl+V) anywhere in a note, also inside sections. Large images are made smaller to save space; screenshots stay sharp.
+
 ## [0.4.0] - 2026-10-14
 
 ### Added

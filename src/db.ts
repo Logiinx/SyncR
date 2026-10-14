@@ -30,12 +30,21 @@ export interface SyncedNote {
   updatedAt: number
 }
 
+// An image in a note. The note only stores the id; the image data lives here.
+// Never changes once added (a new image gets a new id).
+export interface Attachment {
+  id: string
+  blob: Blob // the image file (PNG, JPEG, …)
+  createdAt: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
   deletions: EntityTable<Deletion, 'id'>
   keys: EntityTable<StoredKey, 'name'>
   synced: EntityTable<SyncedNote, 'id'>
+  attachments: EntityTable<Attachment, 'id'>
 }
 
 db.version(1).stores({
@@ -52,6 +61,10 @@ db.version(3).stores({
 
 db.version(4).stores({
   synced: 'id',
+})
+
+db.version(5).stores({
+  attachments: 'id',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

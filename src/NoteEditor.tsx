@@ -7,6 +7,7 @@ import { registerFlush, syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
 import { ClickTitleToToggle } from './clickTitleToToggle'
+import { Image } from './image'
 
 const SAVE_DELAY_MS = 500
 
@@ -23,6 +24,7 @@ const extensions = [
   DetailsSummary,
   DetailsContent,
   ClickTitleToToggle,
+  Image,
   Placeholder.configure({
     includeChildren: true,
     placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? 'Section title' : ''),
