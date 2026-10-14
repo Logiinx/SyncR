@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-10-14
+
 ### Changed
 - Sync recovers by itself when Dropbox ends a session early, instead of showing an error for up to a few hours.
 - Sync cleans up after itself: the small "this note was deleted" records in Dropbox are removed after 90 days.
