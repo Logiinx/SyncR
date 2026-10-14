@@ -54,20 +54,29 @@ db.version(4).stores({
   synced: 'id',
 })
 
+// Tells auto-sync (autoSync.ts) that the user changed something on this device.
+// Sync's own writes don't call this, so they don't start another sync.
+function changed() {
+  window.dispatchEvent(new Event('notes-changed'))
+}
+
 export async function createNote(): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()
   await db.notes.add({ id, title: null, content: null, text: '', createdAt: now, updatedAt: now })
+  changed()
   return id
 }
 
 export async function saveNoteContent(id: string, content: JSONContent, text: string) {
   await db.notes.update(id, { content, text, updatedAt: Date.now() })
+  changed()
 }
 
 // Empty title = go back to the automatic title (first line).
 export async function renameNote(id: string, title: string) {
   await db.notes.update(id, { title: title.trim() || null, updatedAt: Date.now() })
+  changed()
 }
 
 export async function deleteNote(id: string) {
@@ -75,6 +84,7 @@ export async function deleteNote(id: string) {
     await db.notes.delete(id)
     await db.deletions.put({ id, deletedAt: Date.now() })
   })
+  changed()
 }
 
 // Custom title if set, otherwise the first non-empty line of the text.

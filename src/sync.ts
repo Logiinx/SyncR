@@ -27,7 +27,11 @@ export interface SyncResult {
   downloaded: number
   deleted: number
   conflicts: number
+  cursor: string // Dropbox's "bookmark" for this sync, to wait for later changes
 }
+
+// Something changed in Dropbox during the sync. Trying again a bit later fixes it.
+export class RetrySoonError extends Error {}
 
 export function deviceName() {
   if (isTauri()) return 'PC'
@@ -53,7 +57,7 @@ export async function syncNow(): Promise<SyncResult> {
 async function runSync(): Promise<SyncResult> {
   const key = await getKey()
   if (!key) throw new Error('Enter your passphrase first.')
-  const result: SyncResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0 }
+  const result: SyncResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, cursor: '' }
 
   // ---------- Encrypted read / write ----------
 
@@ -61,7 +65,7 @@ async function runSync(): Promise<SyncResult> {
     const data: RemoteNote = { ...note, device: deviceName() }
     const encrypted = await encrypt(key!, new TextEncoder().encode(JSON.stringify(data)))
     const rev = await upload(notePath(note.id), encrypted, mode)
-    if (!rev) throw new Error('A note changed in Dropbox during sync. Please sync again.')
+    if (!rev) throw new RetrySoonError('A note changed in Dropbox during sync.')
     await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
     result.uploaded++
   }
@@ -97,7 +101,9 @@ async function runSync(): Promise<SyncResult> {
 
   const remoteNotes = new Map<string, string>() // id -> rev
   const remoteDeleted = new Set<string>()
-  for (const file of await listFiles()) {
+  const { files, cursor } = await listFiles()
+  result.cursor = cursor
+  for (const file of files) {
     const [, folder, id] = file.path.split('/')
     if (folder === 'notes') remoteNotes.set(id, file.rev)
     if (folder === 'deleted') remoteDeleted.add(id)

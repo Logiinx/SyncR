@@ -212,17 +212,32 @@ export interface FileInfo {
   rev: string
 }
 
-// All files in the app folder, including subfolders.
-export async function listFiles(): Promise<FileInfo[]> {
+// All files in the app folder, including subfolders. The cursor marks this moment,
+// for waitForChanges().
+export async function listFiles(): Promise<{ files: FileInfo[]; cursor: string }> {
   const files: FileInfo[] = []
   let page = await api('files/list_folder', { path: '', recursive: true })
   for (;;) {
     for (const entry of page.entries) {
       if (entry['.tag'] === 'file') files.push({ path: entry.path_lower, rev: entry.rev })
     }
-    if (!page.has_more) return files
+    if (!page.has_more) return { files, cursor: page.cursor }
     page = await api('files/list_folder/continue', { cursor: page.cursor })
   }
+}
+
+// Waits (up to 8 minutes) until something changes in the app folder after the cursor.
+// Returns true if something changed. "backoff": seconds to wait before calling again.
+export async function waitForChanges(cursor: string, signal: AbortSignal) {
+  const res = await fetch('https://notify.dropboxapi.com/2/files/list_folder/longpoll', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cursor, timeout: 480 }),
+    signal,
+  })
+  if (!res.ok) throw new Error(`Dropbox longpoll failed (${res.status})`)
+  const data = await res.json()
+  return { changes: data.changes as boolean, backoff: (data.backoff as number | undefined) ?? 0 }
 }
 
 // Deleting a file that's already gone is fine.
