@@ -18,7 +18,8 @@ function serviceWorker(): Plugin {
       // index.html is written after this step, so it's added by hand
       const files = [...new Set(['index.html', ...Object.keys(bundle), ...publicFiles])].sort()
       const template = readFileSync('src/sw.js', 'utf8')
-      const hash = createHash('sha256').update(template)
+      // index.html isn't in the bundle yet, so its source counts instead
+      const hash = createHash('sha256').update(template).update(readFileSync('index.html'))
       for (const file of publicFiles) hash.update(file).update(readFileSync(`public/${file}`))
       hash.update(files.join('\n')).update(version)
       const source = template
