@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { Link } from '@tiptap/extension-link'
 import { registerFlush, syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
@@ -12,11 +13,16 @@ import ImageViewer from './ImageViewer'
 import ContextMenu from './ContextMenu'
 import { ClickTitleToToggle } from './clickTitleToToggle'
 import { Image } from './image'
+import { OpenLinksOnClick } from './links'
 
 const SAVE_DELAY_MS = 500
 
 const extensions = [
-  StarterKit,
+  StarterKit.configure({ link: false }),
+  // Links: pasting an address makes a link (also over selected text). Clicks: see links.ts.
+  // Not "inclusive": text typed right after a link doesn't become part of it.
+  Link.extend({ inclusive: () => false }).configure({ openOnClick: false }),
+  OpenLinksOnClick,
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({
     persist: false,

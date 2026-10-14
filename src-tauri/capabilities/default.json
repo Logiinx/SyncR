@@ -9,6 +9,7 @@
     "core:default",
     "updater:default",
     "process:allow-restart",
+    "opener:default",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-internal-toggle-maximize",

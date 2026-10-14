@@ -5,6 +5,7 @@
   --text: #e4e4e4;
   --text-dim: #808080;
   --accent: #2d4f7c;
+  --link: #7aa7e0; /* links in notes: the accent is too dark to read as text */
 }
 
 body {
@@ -397,6 +398,16 @@ button {
 /* No automatic gap between lines: Enter = next line. Leave an empty line yourself for spacing. */
 .editor .tiptap p {
   margin: 0;
+}
+
+/* ---------- Links ---------- */
+
+/* A click opens the link (links.ts) */
+.tiptap a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 /* ---------- Checklists ---------- */
