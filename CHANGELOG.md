@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-14
+
 ### Added
 - Right-click an image (long press on the phone) → "Delete image".
 
