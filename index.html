@@ -8,6 +8,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#1e1e1e" />
+    <!-- Dark from the very first moment, before the app's CSS loads (no white flash).
+         Same color as --bg in src/index.css. -->
+    <meta name="color-scheme" content="dark" />
+    <style>
+      html,
+      body {
+        background: #1e1e1e;
+      }
+    </style>
     <title>SyncR</title>
   </head>
   <body>
