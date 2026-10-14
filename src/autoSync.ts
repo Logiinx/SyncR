@@ -2,13 +2,13 @@ import { waitForChanges } from './dropbox'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
-// Syncs: when started (app open + unlocked), ~3 s after the user stops editing, when the
+// Syncs: when started (app open + unlocked), ~1.5 s after the user stops editing, when the
 // window gets focus again, when the connection comes back, when the app goes to the
 // background with changes waiting, and when Dropbox reports a change (longpoll).
 
 export type SyncStatus = 'off' | 'synced' | 'syncing' | 'pending' | 'offline' | 'error'
 
-const EDIT_DELAY_MS = 3000
+const EDIT_DELAY_MS = 1500
 const RETRY_SOON_MS = 3000
 const RETRY_LATER_MS = 60_000
 const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this recent
