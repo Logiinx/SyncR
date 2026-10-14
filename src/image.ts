@@ -1,6 +1,7 @@
 import { Node, type Editor } from '@tiptap/react'
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { db } from './db'
+import { openImageViewer } from './ImageViewer'
 
 const MAX_WIDTH = 2000 // wider images are scaled down
 const JPEG_QUALITY = 0.85
@@ -96,6 +97,10 @@ export const Image = Node.create({
       if (node.attrs.height) img.height = node.attrs.height
       attachmentUrl(node.attrs.id).then((url) => {
         if (url) img.src = url
+      })
+      // Click / tap = full-screen view (dragging the image doesn't count as a click)
+      img.addEventListener('click', () => {
+        if (img.src) openImageViewer(img.src)
       })
       return { dom: img }
     }
