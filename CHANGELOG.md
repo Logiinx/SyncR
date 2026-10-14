@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-14
+
 ### Added
 - Toolbar buttons: Undo, Redo, Bold, Italic, Underline and Strikethrough. A button lights up when the cursor is in that kind of text. On a narrow phone screen, swipe the toolbar sideways to see all buttons.
 - Checklists: use the checklist button, or type "[ ] " at the start of a line. Ticked items are dimmed but stay readable. Press Tab to indent an item under another.
