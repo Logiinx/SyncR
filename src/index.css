@@ -342,10 +342,14 @@ button {
   align-items: center;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  /* Too many buttons for the screen (phone): swipe the bar sideways, no visible scrollbar */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .toolbar button {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 28px;
@@ -357,9 +361,30 @@ button {
   cursor: pointer;
 }
 
-.toolbar button:hover {
+.toolbar button:hover:not(:disabled) {
   background: var(--bg-raised);
   color: var(--text);
+}
+
+/* The cursor is in bold / italic / … text */
+.toolbar button.active {
+  background: var(--accent);
+  color: var(--text);
+}
+
+/* Nothing to undo / redo */
+.toolbar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Thin line between groups of buttons */
+.toolbar-separator {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin: 0 6px;
+  background: var(--border);
 }
 
 .editor .tiptap {

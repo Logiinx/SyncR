@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Toolbar buttons: Undo, Redo, Bold, Italic, Underline and Strikethrough. A button lights up when the cursor is in that kind of text. On a narrow phone screen, swipe the toolbar sideways to see all buttons.
+
 ## [0.5.2] - 2026-10-14
 
 ### Fixed
