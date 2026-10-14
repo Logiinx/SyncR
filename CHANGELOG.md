@@ -4,7 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- "Check for updates" at the bottom of the note list (☰): looks for a new version right away, on the PC and on the phone.
+
 ### Fixed
+- If installing an update fails, the bar now says why and offers "Try again".
 - Sync: if you edited a note at the very moment a newer version of it arrived from your other device, your edit could be replaced. Now it's kept, and the other version is saved as a conflict copy.
 - Right-click menus open exactly at the mouse again when the app scaling isn't 100 %.
 - Windows app: the window appears directly in its saved place, instead of first showing in the center and then jumping there.

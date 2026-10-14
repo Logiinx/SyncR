@@ -3,12 +3,17 @@ import { check, type Update } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { finalSync } from './autoSync'
 
-// Asks GitHub Releases if a newer version exists.
-// Returns null in the browser/phone version, or if the check fails (e.g. offline).
-export async function findUpdate(): Promise<Update | null> {
+// Asks GitHub Releases if a newer version exists (desktop app only).
+// Throws if the check fails (e.g. offline). Returns null if there's nothing new.
+export async function checkDesktopUpdate(): Promise<Update | null> {
   if (!isTauri()) return null
+  return check()
+}
+
+// Same, but quietly: used at startup, where a failed check doesn't need a message.
+export async function findUpdate(): Promise<Update | null> {
   try {
-    return await check()
+    return await checkDesktopUpdate()
   } catch (error) {
     console.warn('Update check failed:', error)
     return null

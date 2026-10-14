@@ -1,5 +1,14 @@
 import { isTauri } from '@tauri-apps/api/core'
 
+// "Check for updates" (phone / browser): asks the server for a new version now.
+// Returns true if one was found; it then downloads, and onUpdate() offers "Reload" when ready.
+export async function checkWebUpdate(): Promise<boolean> {
+  const registration = await navigator.serviceWorker?.getRegistration()
+  if (!registration) return false // dev server or not installed: nothing to update
+  await registration.update()
+  return Boolean(registration.installing || registration.waiting)
+}
+
 // Phone / browser version only (the desktop app has its own updater, see updater.ts).
 // Registers the service worker (src/sw.js) and calls onUpdate when a new version is ready.
 // The new version starts only when apply() is called (the user taps "Reload").

@@ -312,27 +312,26 @@ button {
 
 .sidebar-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   margin: 4px 8px 8px;
 }
 
-.settings-button {
+.footer-button {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.settings-button:hover {
+.footer-button:hover {
   background: rgb(255 255 255 / 6%);
   color: var(--text);
 }
 
 .version {
-  margin-right: 8px;
+  margin: 4px 8px 0;
   color: var(--text-dim);
   font-size: 0.85em;
 }
