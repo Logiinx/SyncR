@@ -184,18 +184,52 @@ export async function download(path: string): Promise<Uint8Array | null> {
   return new Uint8Array(await res.arrayBuffer())
 }
 
-// mode "add": fails if the file exists (returns false). mode "overwrite": replaces it.
-export async function upload(path: string, data: Uint8Array<ArrayBuffer>, mode: 'add' | 'overwrite'): Promise<boolean> {
+// Returns the new version ("rev") of the file, or null if Dropbox refused because of the mode:
+// "add" = only if the file doesn't exist yet, { update: rev } = only if it's still at that version,
+// "overwrite" = always.
+export async function upload(
+  path: string,
+  data: Uint8Array<ArrayBuffer>,
+  mode: 'add' | 'overwrite' | { update: string },
+): Promise<string | null> {
+  const dropboxMode = typeof mode === 'string' ? mode : { '.tag': 'update', update: mode.update }
   const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
       'Content-Type': 'application/octet-stream',
-      'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename: false, mute: true }),
+      'Dropbox-API-Arg': JSON.stringify({ path, mode: dropboxMode, autorename: false, mute: true }),
     },
     body: data,
   })
-  if (res.status === 409 && mode === 'add' && (await res.text()).includes('conflict')) return false
+  if (res.status === 409 && mode !== 'overwrite' && (await res.text()).includes('conflict')) return null
   if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
-  return true
+  return (await res.json()).rev
+}
+
+export interface FileInfo {
+  path: string // lower case, e.g. "/notes/1234-…"
+  rev: string
+}
+
+// All files in the app folder, including subfolders.
+export async function listFiles(): Promise<FileInfo[]> {
+  const files: FileInfo[] = []
+  let page = await api('files/list_folder', { path: '', recursive: true })
+  for (;;) {
+    for (const entry of page.entries) {
+      if (entry['.tag'] === 'file') files.push({ path: entry.path_lower, rev: entry.rev })
+    }
+    if (!page.has_more) return files
+    page = await api('files/list_folder/continue', { cursor: page.cursor })
+  }
+}
+
+// Deleting a file that's already gone is fine.
+export async function deleteFile(path: string) {
+  try {
+    await api('files/delete_v2', { path })
+  } catch (e) {
+    if (!String(e).includes('not_found')) throw e
+  }
 }

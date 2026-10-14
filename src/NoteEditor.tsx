@@ -46,6 +46,15 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     },
   })
 
+  // The note was changed from outside (sync downloaded a newer version): show it.
+  // Skipped while a save is waiting, because then this device's edit is the newest.
+  useEffect(() => {
+    if (!editor || !note.content || saveTimer.current !== undefined) return
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(note.content)) {
+      editor.commands.setContent(note.content, { emitUpdate: false })
+    }
+  }, [editor, note.content])
+
   // Save right away if the note is closed while a save is still waiting.
   useEffect(() => {
     return () => {

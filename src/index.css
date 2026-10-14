@@ -119,6 +119,34 @@ button {
   color: #e0a040;
 }
 
+.sync-button.syncing svg {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* Short message under the cloud button after a sync, e.g. "Synced. 2 sent." */
+.sync-message {
+  position: fixed;
+  top: 44px;
+  right: 8px;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  z-index: 20;
+}
+
+.sync-message.error {
+  color: #e0a040;
+}
+
 .menu-button {
   flex-shrink: 0;
   width: 32px;

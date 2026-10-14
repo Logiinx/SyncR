@@ -3,6 +3,18 @@ import ContextMenu from './ContextMenu'
 import { forgetKey, getKey } from './crypto'
 import { connect, connectedName, disconnect, finishConnect, isConnected } from './dropbox'
 import PassphraseDialog from './PassphraseDialog'
+import { syncNow, type SyncResult } from './sync'
+
+// "Synced. 2 sent, 1 received, 1 conflict copy created."
+function describe(r: SyncResult) {
+  const parts = [
+    r.uploaded && `${r.uploaded} sent`,
+    r.downloaded && `${r.downloaded} received`,
+    r.deleted && `${r.deleted} deleted`,
+    r.conflicts && `${r.conflicts} conflict ${r.conflicts === 1 ? 'copy' : 'copies'} created`,
+  ].filter(Boolean)
+  return parts.length ? `Synced. ${parts.join(', ')}.` : 'Synced. Nothing changed.'
+}
 
 // Cloud button in the title bar, left of the window controls.
 // Not connected: click to connect Dropbox. Connected but locked (no passphrase on this
@@ -14,6 +26,15 @@ function SyncButton() {
   const [error, setError] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [askPassphrase, setAskPassphrase] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  // Messages disappear after a few seconds
+  useEffect(() => {
+    if (!message) return
+    const timer = window.setTimeout(() => setMessage(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [message])
 
   useEffect(() => {
     const refreshConnected = () => setConnected(isConnected())
@@ -51,6 +72,20 @@ function SyncButton() {
     setMenu({ x: rect.right - 170, y: rect.bottom })
   }
 
+  async function onSync() {
+    setSyncing(true)
+    setError(null)
+    try {
+      setMessage(describe(await syncNow()))
+    } catch (e) {
+      const text = e instanceof Error ? e.message : String(e)
+      setError(text)
+      setMessage(text)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   async function onDisconnect() {
     await disconnect()
     await forgetKey()
@@ -60,7 +95,9 @@ function SyncButton() {
   const locked = connected && !unlocked
   const title =
     error ??
-    (!connected
+    (syncing
+      ? 'Syncing…'
+      : !connected
       ? 'Connect Dropbox'
       : locked
         ? 'Enter your passphrase to sync'
@@ -69,7 +106,7 @@ function SyncButton() {
   return (
     <>
       <button
-        className={`sync-button${connected ? ' connected' : ''}${error ? ' error' : ''}`}
+        className={`sync-button${connected ? ' connected' : ''}${error ? ' error' : ''}${syncing ? ' syncing' : ''}`}
         onClick={onClick}
         title={title}
       >
@@ -88,9 +125,13 @@ function SyncButton() {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={[{ label: 'Disconnect Dropbox', danger: true, onClick: onDisconnect }]}
+          items={[
+            { label: 'Sync now', onClick: onSync },
+            { label: 'Disconnect Dropbox', danger: true, onClick: onDisconnect },
+          ]}
         />
       )}
+      {message && <div className={`sync-message${error ? ' error' : ''}`}>{message}</div>}
       {askPassphrase && unlocked === false && connected && (
         <PassphraseDialog onClose={() => setAskPassphrase(false)} />
       )}

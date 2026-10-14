@@ -22,11 +22,20 @@ export interface StoredKey {
   key: CryptoKey
 }
 
+// What a note looked like at the last sync (see sync.ts). A note whose updatedAt differs
+// from this has local changes. "rev" is Dropbox's version of the file.
+export interface SyncedNote {
+  id: string
+  rev: string
+  updatedAt: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
   deletions: EntityTable<Deletion, 'id'>
   keys: EntityTable<StoredKey, 'name'>
+  synced: EntityTable<SyncedNote, 'id'>
 }
 
 db.version(1).stores({
@@ -39,6 +48,10 @@ db.version(2).stores({
 
 db.version(3).stores({
   keys: 'name',
+})
+
+db.version(4).stores({
+  synced: 'id',
 })
 
 export async function createNote(): Promise<string> {
