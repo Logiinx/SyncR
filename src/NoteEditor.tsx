@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -8,6 +8,7 @@ import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
 import Toolbar from './Toolbar'
 import ImageViewer from './ImageViewer'
+import ContextMenu from './ContextMenu'
 import { ClickTitleToToggle } from './clickTitleToToggle'
 import { Image } from './image'
 
@@ -37,6 +38,7 @@ const extensions = [
 function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
+  const [imageMenu, setImageMenu] = useState<{ pos: number; x: number; y: number } | null>(null)
 
   const editor = useEditor({
     extensions,
@@ -91,12 +93,35 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     }
   }, [editor, note.id])
 
+  // Right-click (long press on a phone) on an image: menu with "Delete image".
+  // Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
+  function onContextMenu(e: React.MouseEvent) {
+    const box = (e.target as HTMLElement).closest('.note-image')
+    if (!box) return
+    e.preventDefault()
+    setImageMenu({ pos: editor.view.posAtDOM(box, 0), x: e.clientX, y: e.clientY })
+  }
+
+  function deleteImage(pos: number) {
+    const node = editor.state.doc.nodeAt(pos)
+    if (node?.type.name !== 'image') return // the note changed meanwhile (e.g. sync)
+    editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run()
+  }
+
   return (
     <>
       <Toolbar editor={editor} />
       <ImageViewer />
       <SelectionMenu editor={editor} />
-      <EditorContent editor={editor} className="editor" />
+      <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
+      {imageMenu && (
+        <ContextMenu
+          x={imageMenu.x}
+          y={imageMenu.y}
+          onClose={() => setImageMenu(null)}
+          items={[{ label: 'Delete image', danger: true, onClick: () => deleteImage(imageMenu.pos) }]}
+        />
+      )}
     </>
   )
 }

@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Right-click an image (long press on the phone) → "Delete image".
+
+### Changed
+- Sync starts 1 second after you stop typing instead of 1.5 seconds, so changes reach your other devices a bit faster.
+
 ## [0.5.0] - 2026-10-14
 
 ### Added

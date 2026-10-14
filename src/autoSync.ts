@@ -8,7 +8,7 @@ import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 export type SyncStatus = 'off' | 'synced' | 'syncing' | 'pending' | 'offline' | 'error'
 
-const EDIT_DELAY_MS = 1500
+const EDIT_DELAY_MS = 1000
 const RETRY_SOON_MS = 3000
 const RETRY_LATER_MS = 60_000
 const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this recent
