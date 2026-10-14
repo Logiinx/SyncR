@@ -8,9 +8,26 @@ const FILES = __FILES__
 const CACHE = `syncr-${VERSION}`
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)))
+  event.waitUntil(saveFiles())
   // No skipWaiting() here: a new version waits until the user taps "Reload" (see pwa.ts)
 })
+
+async function saveFiles() {
+  const cache = await caches.open(CACHE)
+  // cache: 'reload' = straight from the server. Without it, the browser may hand over its own
+  // copy (GitHub Pages lets it keep files 10 minutes), e.g. the previous version's index.html
+  // pointing to code files that no longer exist (black screen, v0.5.1).
+  await cache.addAll(FILES.map((file) => new Request(file, { cache: 'reload' })))
+  // Safety check: every file the saved index.html loads must belong to this version.
+  // If not, the update fails and the browser tries again later; the current version keeps running.
+  const index = await (await cache.match('index.html')).text()
+  for (const [, file] of index.matchAll(/(?:src|href)="(?:[^"]*\/)?(assets\/[^"]+)"/g)) {
+    if (!FILES.includes(file)) {
+      await caches.delete(CACHE)
+      throw new Error(`index.html needs ${file}, which isn't part of this version`)
+    }
+  }
+}
 
 self.addEventListener('activate', (event) => {
   // Remove the files of older versions
