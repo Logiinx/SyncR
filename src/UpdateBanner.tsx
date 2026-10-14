@@ -1,15 +1,37 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '@tauri-apps/plugin-updater'
+import { registerServiceWorker } from './pwa'
 import { findUpdate, installUpdate } from './updater'
 
 // Shows a bar at the top when a new version of SyncR is available.
+// Desktop app: downloads and installs it. Phone / browser: reloads into the new version.
 function UpdateBanner() {
   const [update, setUpdate] = useState<Update | null>(null)
+  const [applyWebUpdate, setApplyWebUpdate] = useState<(() => void) | null>(null)
   const [installing, setInstalling] = useState(false)
 
   useEffect(() => {
     findUpdate().then(setUpdate)
+    // A function in state must be wrapped, or React would call it
+    registerServiceWorker((apply) => setApplyWebUpdate(() => apply))
   }, [])
+
+  if (applyWebUpdate) {
+    return (
+      <div className="update-banner">
+        A new version of SyncR is available.
+        <button
+          onClick={() => {
+            setInstalling(true)
+            applyWebUpdate()
+          }}
+          disabled={installing}
+        >
+          {installing ? 'Reloading…' : 'Reload'}
+        </button>
+      </div>
+    )
+  }
 
   if (!update) return null
 
