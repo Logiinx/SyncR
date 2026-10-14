@@ -6,6 +6,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
 import NoteView from './NoteView'
 import Sidebar from './Sidebar'
+import SettingsDialog from './SettingsDialog'
 import TabBar from './TabBar'
 import UpdateBanner from './UpdateBanner'
 import SyncButton from './SyncButton'
@@ -22,6 +23,7 @@ function App() {
   const [newNoteId, setNewNoteId] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // `ids` lets us check the result matches the current tabs (it can lag one render behind)
   const tabsResult = useLiveQuery(
@@ -123,6 +125,7 @@ function App() {
             onNew={newNote}
             onClose={() => setSidebarOpen(false)}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
+            onSettings={() => setSettingsOpen(true)}
           />
         )}
         {showNote ? (
@@ -147,6 +150,7 @@ function App() {
         />
       )}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

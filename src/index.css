@@ -26,7 +26,8 @@ button {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* Divided by the app scaling (appearance.ts), otherwise taller than the window */
+  height: calc(100vh / var(--zoom, 1));
 }
 
 /* ---------- Top bar: ☰ + tabs ---------- */
@@ -309,8 +310,29 @@ button {
   background: var(--border);
 }
 
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 8px 8px;
+}
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.settings-button:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--text);
+}
+
 .version {
-  margin: 8px 16px;
+  margin-right: 8px;
   color: var(--text-dim);
   font-size: 0.85em;
 }
@@ -324,7 +346,7 @@ button {
 }
 
 .empty {
-  margin-top: 30vh;
+  margin-top: calc(30vh / var(--zoom, 1));
   text-align: center;
   color: var(--text-dim);
 }
@@ -389,7 +411,7 @@ button {
 }
 
 .editor .tiptap {
-  min-height: calc(100vh - 133px);
+  min-height: calc(100vh / var(--zoom, 1) - 133px);
   padding: 24px 32px;
   line-height: 1.6;
   outline: none;
@@ -697,6 +719,39 @@ button {
 
 .dialog input:focus {
   outline: 1px solid var(--accent);
+}
+
+/* ---------- Settings dialog ---------- */
+
+.dialog .settings-note {
+  font-size: 0.9em;
+}
+
+.setting {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.setting-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.setting-value {
+  color: var(--text-dim);
+}
+
+.dialog .setting input[type='range'] {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--link);
+}
+
+.dialog .setting input[type='range']:focus {
+  outline: none;
 }
 
 .passphrase-field {

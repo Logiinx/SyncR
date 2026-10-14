@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 // Per-device settings (open tabs, sidebar, scroll) kept in localStorage.
 // Never synced. If storage is unavailable, the app still works and just forgets.
 
-function read<T>(key: string, fallback: T): T {
+export function read<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
     return raw ? (JSON.parse(raw) as T) : fallback
@@ -12,7 +12,7 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write(key: string, value: unknown) {
+export function write(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch {

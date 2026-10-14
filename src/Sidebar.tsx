@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Settings } from 'lucide-react'
 import { db, noteTitle } from './db'
 
 interface Props {
@@ -7,11 +8,12 @@ interface Props {
   onNew: () => void
   onClose: () => void
   onMenu: (id: string, x: number, y: number) => void
+  onSettings: () => void
 }
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onNew, onClose, onMenu }: Props) {
+function Sidebar({ activeId, onOpen, onNew, onClose, onMenu, onSettings }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
 
@@ -38,7 +40,12 @@ function Sidebar({ activeId, onOpen, onNew, onClose, onMenu }: Props) {
             </li>
           ))}
         </ul>
-        <p className="version">v{__APP_VERSION__}</p>
+        <div className="sidebar-footer">
+          <button className="settings-button" onClick={onSettings}>
+            <Settings size={15} /> Settings
+          </button>
+          <span className="version">v{__APP_VERSION__}</span>
+        </div>
       </aside>
     </>
   )
