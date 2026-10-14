@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
+import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
 import { forgetKey, getKey } from './crypto'
 import { connect, connectedName, disconnect, finishConnect, isConnected } from './dropbox'
@@ -83,7 +84,8 @@ function SyncButton() {
     e.preventDefault()
     if (!connected) return
     const rect = e.currentTarget.getBoundingClientRect()
-    setMenu({ x: rect.right - 170, y: rect.bottom })
+    // Right-aligned under the button. 170 = menu width in page pixels, × zoom for screen pixels
+    setMenu({ x: rect.right - 170 * currentZoom(), y: rect.bottom })
   }
 
   async function onDisconnect() {

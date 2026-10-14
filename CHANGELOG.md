@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Fixed
+- Right-click menus open exactly at the mouse again when the app scaling isn't 100 %.
 - Windows app: the window appears directly in its saved place, instead of first showing in the center and then jumping there.
 
 ## [0.6.6] - 2026-10-14

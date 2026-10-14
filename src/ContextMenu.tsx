@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { currentZoom } from './appearance'
 
 export interface MenuItem {
   label: string
@@ -21,9 +22,11 @@ function ContextMenu({ x, y, items, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Keep the menu inside the window
-  const left = Math.min(x, window.innerWidth - 170)
-  const top = Math.min(y, window.innerHeight - 20 - items.length * 34)
+  // x / y are screen pixels (mouse position): convert to the zoomed page (app scaling),
+  // and keep the menu inside the window
+  const zoom = currentZoom()
+  const left = Math.min(x / zoom, window.innerWidth / zoom - 170)
+  const top = Math.min(y / zoom, window.innerHeight / zoom - 20 - items.length * 34)
 
   return (
     <div

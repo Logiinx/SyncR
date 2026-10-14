@@ -39,6 +39,12 @@ export function saveAppearance(appearance: Appearance) {
   applyAppearance(appearance)
 }
 
+// The current app scaling as a factor (1.1 = 110 %). Mouse positions (clientX, …) are in
+// screen pixels; divide them by this to place something at that spot in the zoomed page.
+export function currentZoom() {
+  return Number(document.documentElement.style.getPropertyValue('--zoom')) || 1
+}
+
 export function applyAppearance({ scale, font, fontSize }: Appearance) {
   const root = document.documentElement
   // Scaling: CSS zoom on the whole page. --zoom lets heights based on the window (100vh)
