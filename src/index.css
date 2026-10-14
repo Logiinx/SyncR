@@ -415,6 +415,9 @@ button {
   padding: 24px 32px;
   line-height: 1.6;
   outline: none;
+  /* Settings → Font / Text size (appearance.ts) */
+  font-family: var(--note-font, system-ui, sans-serif);
+  font-size: var(--note-size, 16px);
 }
 
 /* No automatic gap between lines: Enter = next line. Leave an empty line yourself for spacing. */
@@ -688,7 +691,11 @@ button {
 }
 
 .dialog {
+  box-sizing: border-box;
   width: min(420px, 100%);
+  /* Taller than the window (small window, high scaling): scroll inside the dialog */
+  max-height: 100%;
+  overflow-y: auto;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -740,6 +747,33 @@ button {
 
 .setting-value {
   color: var(--text-dim);
+}
+
+/* Font picker: two columns of buttons, each in its own font */
+.font-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.font-choices button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-choices button:hover {
+  border-color: var(--text-dim);
+}
+
+.font-choices button.selected {
+  border-color: var(--link);
+  background: var(--accent);
 }
 
 .dialog .setting input[type='range'] {

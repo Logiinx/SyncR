@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
-- Settings (bottom of the note list ☰): app scaling from 80 % to 150 %, to make everything bigger or smaller. Each device keeps its own settings.
+- Settings (bottom of the note list ☰): choose the font of your notes (System default, Sans-serif, Inter, Google Sans Flex, Literata or JetBrains Mono), the text size (12–24 px), and the app scaling (80–150 %) to make everything bigger or smaller. Each device keeps its own settings.
 
 ### Changed
 - No more red spelling lines under words in your notes.
