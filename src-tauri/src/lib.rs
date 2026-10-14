@@ -7,6 +7,10 @@ pub fn run() {
     .setup(|app| {
       #[cfg(desktop)]
       app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+      // Remembers the window's size, position (also on another monitor) and maximized state,
+      // saved when the app closes and restored at the next start
+      #[cfg(desktop)]
+      app.handle().plugin(tauri_plugin_window_state::Builder::default().build())?;
 
       if cfg!(debug_assertions) {
         app.handle().plugin(

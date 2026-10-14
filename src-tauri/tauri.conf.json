@@ -15,6 +15,7 @@
         "title": "SyncR",
         "width": 1100,
         "height": 750,
+        "center": true,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,

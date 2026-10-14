@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
+- Windows app: the window opens with the same size and position as when you closed it, also on a second monitor, and maximized if it was. If that monitor isn't connected anymore, it opens on the main one.
 - Settings (bottom of the note list ☰): choose the font of your notes (System default, Sans-serif, Inter, Google Sans Flex, Literata or JetBrains Mono), the text size (12–24 px), and the app scaling (80–150 %) to make everything bigger or smaller. Each device keeps its own settings.
 
 ### Changed
