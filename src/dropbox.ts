@@ -158,17 +158,30 @@ async function accessToken() {
   return data.access_token as string
 }
 
+// A POST to Dropbox with the sign-in. If Dropbox rejects the access token (it can end a
+// session before the token's expiry), gets a fresh one and tries once more.
+async function authorizedPost(url: string, headers: Record<string, string>, body?: BodyInit) {
+  const send = async () =>
+    fetch(url, {
+      method: 'POST',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: { ...headers, Authorization: `Bearer ${await accessToken()}` },
+      body,
+    })
+  const res = await send()
+  if (res.status !== 401) return res
+  const auth = loadAuth()
+  if (auth) saveAuth({ refreshToken: auth.refreshToken, name: auth.name }) // forget the access token
+  return send()
+}
+
 // Calls a Dropbox API endpoint (JSON in, JSON out), e.g. api('users/get_current_account').
 export async function api(endpoint: string, args?: unknown) {
-  const res = await fetch(`https://api.dropboxapi.com/2/${endpoint}`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${await accessToken()}`,
-      ...(args !== undefined && { 'Content-Type': 'application/json' }),
-    },
-    body: args !== undefined ? JSON.stringify(args) : undefined,
-  })
+  const res = await authorizedPost(
+    `https://api.dropboxapi.com/2/${endpoint}`,
+    args !== undefined ? { 'Content-Type': 'application/json' } : {},
+    args !== undefined ? JSON.stringify(args) : undefined,
+  )
   if (!res.ok) throw new Error(`Dropbox ${endpoint} failed (${res.status}): ${await res.text()}`)
   const text = await res.text()
   return text ? JSON.parse(text) : null
@@ -178,13 +191,8 @@ export async function api(endpoint: string, args?: unknown) {
 
 // Returns the file's bytes, or null if it doesn't exist.
 export async function download(path: string): Promise<Uint8Array | null> {
-  const res = await fetch('https://content.dropboxapi.com/2/files/download', {
-    method: 'POST',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${await accessToken()}`,
-      'Dropbox-API-Arg': JSON.stringify({ path }),
-    },
+  const res = await authorizedPost('https://content.dropboxapi.com/2/files/download', {
+    'Dropbox-API-Arg': JSON.stringify({ path }),
   })
   if (res.status === 409 && (await res.text()).includes('not_found')) return null
   if (!res.ok) throw new Error(`Dropbox download failed (${res.status})`)
@@ -200,16 +208,14 @@ export async function upload(
   mode: 'add' | 'overwrite' | { update: string },
 ): Promise<string | null> {
   const dropboxMode = typeof mode === 'string' ? mode : { '.tag': 'update', update: mode.update }
-  const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
-    method: 'POST',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${await accessToken()}`,
+  const res = await authorizedPost(
+    'https://content.dropboxapi.com/2/files/upload',
+    {
       'Content-Type': 'application/octet-stream',
       'Dropbox-API-Arg': JSON.stringify({ path, mode: dropboxMode, autorename: false, mute: true }),
     },
-    body: data,
-  })
+    data,
+  )
   if (res.status === 409 && mode !== 'overwrite' && (await res.text()).includes('conflict')) return null
   if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
   return (await res.json()).rev
