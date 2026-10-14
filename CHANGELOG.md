@@ -12,6 +12,9 @@ All notable changes to SyncR. Newest version first.
 - If a note changed on both devices, the newest version keeps the note and the other one is saved as a separate "(conflict, …)" note, so nothing is lost. A note deleted on one device but edited on the other comes back.
 - Phone version: open https://logiinx.github.io/SyncR/ and install it to your home screen (Samsung Internet: Menu → Add page to → Home screen). It works without internet, and shows "A new version of SyncR is available" with a Reload button after each release.
 
+### Fixed
+- No more white flash when the app starts: the window is dark from the first moment.
+
 ## [0.3.2] - 2026-10-13
 
 ### Changed
