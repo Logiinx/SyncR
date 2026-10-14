@@ -243,8 +243,11 @@ async function runSync(): Promise<SyncResult> {
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
   // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
+  // `used` is shared with step 6 (this step doesn't change notes). An edit made meanwhile
+  // only affects the unused mark, and the next sync corrects it.
 
-  for (const id of await imagesUsedHere()) {
+  const used = await imagesUsedHere()
+  for (const id of used) {
     if (localAttachments.has(id) || !remoteAttachments.has(id)) continue
     const raw = await download(attachmentPath(id))
     if (!raw) continue
@@ -260,7 +263,6 @@ async function runSync(): Promise<SyncResult> {
   // The wait keeps Undo working and gives other devices time to sync. If another device
   // still uses the image, it uploads it again (step 0).
 
-  const used = await imagesUsedHere()
   const now = Date.now()
   for (const attachment of await db.attachments.toArray()) {
     const { id, unusedSince } = attachment
