@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Placeholder } from '@tiptap/extensions'
+import { syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
 import { ClickTitleToToggle } from './clickTitleToToggle'
@@ -54,6 +55,29 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       editor.commands.setContent(note.content, { emitUpdate: false })
     }
   }, [editor, note.content])
+
+  // Leaving the editor (tap elsewhere, phone keyboard closed) or the app (back button,
+  // switching apps): save now if a save is waiting, then sync right away.
+  useEffect(() => {
+    if (!editor) return
+    const saveAndSync = async () => {
+      if (saveTimer.current !== undefined) {
+        window.clearTimeout(saveTimer.current)
+        saveTimer.current = undefined
+        await saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+      }
+      syncSoon()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') saveAndSync()
+    }
+    editor.on('blur', saveAndSync)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      editor.off('blur', saveAndSync)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [editor, note.id])
 
   // Save right away if the note is closed while a save is still waiting.
   useEffect(() => {

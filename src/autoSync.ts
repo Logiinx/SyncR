@@ -22,6 +22,7 @@ const listeners = new Set<() => void>()
 let enabled = false
 let running = false
 let changedDuringSync = false
+let urgentAfterSync = false // syncSoon() was called during a sync: go again right away
 let quickRetries = 0
 let failing = false // the last sync ended with an error (already reported)
 let lastSyncAt = 0
@@ -104,8 +105,31 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     }
   } finally {
     running = false
-    if (changedDuringSync && enabled) schedule(EDIT_DELAY_MS)
+    if (changedDuringSync && enabled) syncAfter(urgentAfterSync ? 0 : EDIT_DELAY_MS)
+    urgentAfterSync = false
   }
+}
+
+// Like schedule(), but when the app is in the background, starts right away: Android
+// pauses timers in hidden apps, so a timer might only fire when the app is opened again.
+function syncAfter(delay: number) {
+  if (document.visibilityState === 'hidden' || delay === 0) {
+    window.clearTimeout(timer)
+    run().catch(() => {})
+  } else {
+    schedule(delay)
+  }
+}
+
+// The user is done editing for now (left the editor or the app): sync waiting changes
+// right away instead of after the usual delay.
+export function syncSoon() {
+  if (!enabled) return
+  if (running) {
+    if (changedDuringSync) urgentAfterSync = true
+    return
+  }
+  if (status === 'pending') syncAfter(0)
 }
 
 // The user clicked the cloud. Returns undefined if it failed or a sync was already running.
@@ -144,14 +168,14 @@ async function poll() {
 function onLocalChange() {
   if (!running) setStatus('pending')
   else changedDuringSync = true
-  schedule(EDIT_DELAY_MS)
+  syncAfter(EDIT_DELAY_MS)
 }
 
 function onVisible() {
   if (document.visibilityState === 'hidden') {
     pollAbort?.abort()
-    // Going to the background (e.g. switching apps on the phone): send waiting changes now
-    if (status === 'pending') schedule(0)
+    // Going to the background (back button, switching apps): send waiting changes now
+    if (status === 'pending') syncAfter(0)
     return
   }
   onFocus()
