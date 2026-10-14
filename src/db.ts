@@ -100,6 +100,17 @@ export async function deleteNote(id: string) {
   changed()
 }
 
+// The ids of the images (attachments) used in a note
+export function imageIds(content: JSONContent | null): string[] {
+  const ids: string[] = []
+  const walk = (node: JSONContent) => {
+    if (node.type === 'image' && node.attrs?.id) ids.push(node.attrs.id)
+    node.content?.forEach(walk)
+  }
+  if (content) walk(content)
+  return ids
+}
+
 // Custom title if set, otherwise the first non-empty line of the text.
 export function noteTitle(note: Note): string {
   if (note.title) return note.title

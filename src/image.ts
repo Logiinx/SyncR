@@ -91,18 +91,36 @@ export const Image = Node.create({
 
   addNodeView() {
     return ({ node }) => {
+      const { id, width, height } = node.attrs
+      // A box around the image. While the image isn't on this device yet (sync is still
+      // downloading it), the box shows "Image loading…" at the image's size.
+      const box = document.createElement('div')
+      box.className = 'note-image'
+      if (width && height) {
+        box.style.width = `${width}px`
+        box.style.aspectRatio = `${width} / ${height}`
+      }
       const img = document.createElement('img')
-      img.className = 'note-image'
-      if (node.attrs.width) img.width = node.attrs.width
-      if (node.attrs.height) img.height = node.attrs.height
-      attachmentUrl(node.attrs.id).then((url) => {
-        if (url) img.src = url
-      })
+      box.append(img)
+
+      const load = async () => {
+        const url = await attachmentUrl(id)
+        box.classList.toggle('missing', !url)
+        if (url) {
+          img.src = url
+          window.removeEventListener('attachments-changed', load)
+        }
+      }
+      // Sync downloaded images: try again
+      window.addEventListener('attachments-changed', load)
+      load()
+
       // Click / tap = full-screen view (dragging the image doesn't count as a click)
-      img.addEventListener('click', () => {
-        if (img.src) openImageViewer(img.src)
-      })
-      return { dom: img }
+      img.addEventListener('click', () => openImageViewer(img.src))
+      return {
+        dom: box,
+        destroy: () => window.removeEventListener('attachments-changed', load),
+      }
     }
   },
 

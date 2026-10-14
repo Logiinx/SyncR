@@ -377,20 +377,40 @@ button {
 /* ---------- Images ---------- */
 
 /* Fit the note width; smaller images keep their real size */
+/* The box has the image's size and proportions (set in image.ts), shrunk to the note width */
 .tiptap .note-image {
-  display: block;
   max-width: 100%;
-  height: auto;
   margin: 4px 0;
   border-radius: 4px;
+  overflow: hidden;
+}
+
+.tiptap .note-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
 }
 
 .tiptap .note-image.ProseMirror-selectednode {
   outline: 2px solid var(--accent);
 }
 
-.tiptap .note-image {
-  cursor: zoom-in;
+/* Not on this device yet: sync is downloading it */
+.tiptap .note-image.missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+}
+
+.tiptap .note-image.missing img {
+  display: none;
+}
+
+.tiptap .note-image.missing::after {
+  content: 'Image loading…';
 }
 
 /* Full-screen view: image fitted to the screen, or at real size (scroll to move around) */

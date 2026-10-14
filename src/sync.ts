@@ -1,11 +1,12 @@
 import { isTauri } from '@tauri-apps/api/core'
-import { db, noteTitle, type Note } from './db'
+import { db, imageIds, noteTitle, type Note } from './db'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
-//   /notes/<id>    one file per note
-//   /deleted/<id>  marker left when a note is deleted, so other devices delete it too
+//   /notes/<id>        one file per note
+//   /deleted/<id>      marker left when a note is deleted, so other devices delete it too
+//   /attachments/<id>  one file per image (never changes, so no conflicts)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
@@ -41,6 +42,16 @@ export function deviceName() {
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
+const attachmentPath = (id: string) => `/attachments/${id}`
+
+// Images are stored without their file type; the first bytes tell which format it is
+function imageType(bytes: Uint8Array) {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png'
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg'
+  if (bytes[0] === 0x47 && bytes[1] === 0x49) return 'image/gif'
+  if (bytes[8] === 0x57 && bytes[9] === 0x45) return 'image/webp' // "RIFF....WEBP"
+  return ''
+}
 
 let running = false
 
@@ -105,16 +116,33 @@ async function runSync(): Promise<SyncResult> {
 
   const remoteNotes = new Map<string, string>() // id -> rev
   const remoteDeleted = new Set<string>()
+  const remoteAttachments = new Set<string>()
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
     const [, folder, id] = file.path.split('/')
     if (folder === 'notes') remoteNotes.set(id, file.rev)
     if (folder === 'deleted') remoteDeleted.add(id)
+    if (folder === 'attachments') remoteAttachments.add(id)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
   const done = new Set<string>() // notes fully handled by an earlier step
+  const imagesUsedHere = async () => new Set((await db.notes.toArray()).flatMap((n) => imageIds(n.content)))
+  const localAttachments = new Set(await db.attachments.toCollection().primaryKeys())
+
+  // ---------- 0. Images used on this device that Dropbox doesn't have yet ----------
+  // Before the notes, so a note in Dropbox never points to a missing image.
+  // Images no note uses (e.g. pasted, then undone) aren't uploaded.
+
+  for (const id of await imagesUsedHere()) {
+    if (remoteAttachments.has(id) || !localAttachments.has(id)) continue
+    const attachment = await db.attachments.get(id)
+    if (!attachment) continue
+    const encrypted = await encrypt(key, new Uint8Array(await attachment.blob.arrayBuffer()))
+    await upload(attachmentPath(id), encrypted, 'add') // already there (null) is fine too
+    remoteAttachments.add(id)
+  }
 
   // ---------- 1. Notes deleted on this device ----------
 
@@ -210,6 +238,20 @@ async function runSync(): Promise<SyncResult> {
   for (const note of await db.notes.toArray()) {
     // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
     if (!done.has(note.id)) await uploadNote(note, 'add')
+  }
+
+  // ---------- 5. Images used in notes that this device doesn't have yet ----------
+  // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
+
+  for (const id of await imagesUsedHere()) {
+    if (localAttachments.has(id) || !remoteAttachments.has(id)) continue
+    const raw = await download(attachmentPath(id))
+    if (!raw) continue
+    const bytes = await decrypt(key, raw)
+    await db.attachments.put({ id, blob: new Blob([bytes], { type: imageType(bytes) }), createdAt: Date.now() })
+    localAttachments.add(id)
+    // Open notes show it right away (see image.ts)
+    window.dispatchEvent(new Event('attachments-changed'))
   }
 
   return result
