@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Placeholder } from '@tiptap/extensions'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { registerFlush, syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
@@ -28,6 +29,9 @@ const extensions = [
   DetailsContent,
   ClickTitleToToggle,
   Image,
+  // Checklists. Typing "[ ] " at the start of a line also makes one; Tab indents an item.
+  TaskList,
+  TaskItem.configure({ nested: true }),
   Placeholder.configure({
     includeChildren: true,
     placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? 'Section title' : ''),

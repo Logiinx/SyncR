@@ -399,6 +399,50 @@ button {
   margin: 0;
 }
 
+/* ---------- Checklists ---------- */
+
+.tiptap ul[data-type='taskList'] {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+/* Nested items (Tab) are indented */
+.tiptap ul[data-type='taskList'] ul[data-type='taskList'] {
+  padding-left: 24px;
+}
+
+.tiptap ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tiptap ul[data-type='taskList'] li > label {
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tiptap ul[data-type='taskList'] li > label input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  /* Center the box on the first line of text (line height 1.6) */
+  transform: translateY(0.3em);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.tiptap ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ticked: dimmed, not crossed out, so it stays readable. Only its own text, not nested items. */
+.tiptap ul[data-type='taskList'] li[data-checked='true'] > div > :not(ul) {
+  color: var(--text-dim);
+}
+
 /* ---------- Images ---------- */
 
 /* Fit the note width; smaller images keep their real size */
