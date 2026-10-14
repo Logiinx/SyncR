@@ -43,6 +43,7 @@ export function deviceName() {
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
+const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 // Images are stored without their file type; the first bytes tell which format it is
 function imageType(bytes: Uint8Array) {
@@ -252,6 +253,25 @@ async function runSync(): Promise<SyncResult> {
     localAttachments.add(id)
     // Open notes show it right away (see image.ts)
     window.dispatchEvent(new Event('attachments-changed'))
+  }
+
+  // ---------- 6. Clean up images no note uses anymore ----------
+  // Deleted here and in Dropbox once no note on this device has used them for a week.
+  // The wait keeps Undo working and gives other devices time to sync. If another device
+  // still uses the image, it uploads it again (step 0).
+
+  const used = await imagesUsedHere()
+  const now = Date.now()
+  for (const attachment of await db.attachments.toArray()) {
+    const { id, unusedSince } = attachment
+    if (used.has(id)) {
+      if (unusedSince) await db.attachments.update(id, { unusedSince: undefined })
+    } else if (!unusedSince) {
+      await db.attachments.update(id, { unusedSince: now })
+    } else if (now - unusedSince > UNUSED_IMAGE_MS) {
+      if (remoteAttachments.has(id)) await deleteFile(attachmentPath(id))
+      await db.attachments.delete(id)
+    }
   }
 
   return result

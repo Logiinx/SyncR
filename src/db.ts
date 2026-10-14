@@ -36,6 +36,7 @@ export interface Attachment {
   id: string
   blob: Blob // the image file (PNG, JPEG, …)
   createdAt: number
+  unusedSince?: number // set when sync first finds no note using it (see sync.ts, step 6)
 }
 
 // The local database, stored in the browser/app (IndexedDB).

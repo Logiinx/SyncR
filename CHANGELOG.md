@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
-- Images in notes: paste a screenshot or picture (Ctrl+V), drag an image file into a note, or use the new image button in the slim toolbar above the note (on the phone it lets you pick from your gallery or take a photo). Works anywhere in a note, also inside sections. Large images are made smaller to save space; screenshots stay sharp. Click or tap an image to see it full screen; click it again for its real size. Images sync to your other devices, encrypted like your notes; until an image has arrived, the note shows "Image loading…".
+- Images in notes: paste a screenshot or picture (Ctrl+V), drag an image file into a note, or use the new image button in the slim toolbar above the note (on the phone it lets you pick from your gallery or take a photo). Works anywhere in a note, also inside sections. Large images are made smaller to save space; screenshots stay sharp. Click or tap an image to see it full screen; click it again for its real size. Images sync to your other devices, encrypted like your notes; until an image has arrived, the note shows "Image loading…". Images you remove from your notes are deleted automatically after a week.
 
 ### Changed
 - Darker colors: the background and grays are a bit darker for a calmer, higher-contrast look.
