@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Added
 - Cloud button in the title bar to connect (or disconnect) your Dropbox account. Syncing itself comes in a later version.
+- Passphrase to encrypt your notes before they go to Dropbox. You create it on the first device and enter it once on each other device. A lock on the cloud button means this device still needs it.
 
 ## [0.3.2] - 2026-10-13
 

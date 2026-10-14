@@ -16,10 +16,17 @@ export interface Deletion {
   deletedAt: number
 }
 
+// The sync encryption key, remembered on this device (see crypto.ts). Never synced.
+export interface StoredKey {
+  name: string // always 'sync' for now
+  key: CryptoKey
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
   deletions: EntityTable<Deletion, 'id'>
+  keys: EntityTable<StoredKey, 'name'>
 }
 
 db.version(1).stores({
@@ -28,6 +35,10 @@ db.version(1).stores({
 
 db.version(2).stores({
   deletions: 'id',
+})
+
+db.version(3).stores({
+  keys: 'name',
 })
 
 export async function createNote(): Promise<string> {

@@ -111,6 +111,10 @@ button {
   color: var(--text);
 }
 
+.sync-button .lock {
+  fill: var(--bg);
+}
+
 .sync-button.error {
   color: #e0a040;
 }
@@ -461,6 +465,50 @@ button {
 
 .dialog input:focus {
   outline: 1px solid var(--accent);
+}
+
+.passphrase-field {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.dialog .passphrase-field input {
+  margin-bottom: 0;
+  padding-right: 36px;
+}
+
+/* Stretches over the full height of the field, so the icon is centered */
+.passphrase-field .eye {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.passphrase-field .eye:hover {
+  color: var(--text);
+}
+
+.passphrase-field svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+
+.dialog .dialog-error {
+  color: #ff8080;
+}
+
+.dialog-buttons button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .dialog-buttons {

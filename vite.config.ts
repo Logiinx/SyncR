@@ -11,4 +11,9 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
+  // Dev server only: check files for changes regularly. The normal file watcher
+  // sometimes missed edits on Windows and served old code.
+  server: {
+    watch: { usePolling: true, interval: 300 },
+  },
 })

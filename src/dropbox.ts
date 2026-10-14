@@ -167,3 +167,35 @@ export async function api(endpoint: string, args?: unknown) {
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }
+
+// ---------- Files (paths are inside the app folder, e.g. "/crypto.json") ----------
+
+// Returns the file's bytes, or null if it doesn't exist.
+export async function download(path: string): Promise<Uint8Array | null> {
+  const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await accessToken()}`,
+      'Dropbox-API-Arg': JSON.stringify({ path }),
+    },
+  })
+  if (res.status === 409 && (await res.text()).includes('not_found')) return null
+  if (!res.ok) throw new Error(`Dropbox download failed (${res.status})`)
+  return new Uint8Array(await res.arrayBuffer())
+}
+
+// mode "add": fails if the file exists (returns false). mode "overwrite": replaces it.
+export async function upload(path: string, data: Uint8Array<ArrayBuffer>, mode: 'add' | 'overwrite'): Promise<boolean> {
+  const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await accessToken()}`,
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename: false, mute: true }),
+    },
+    body: data,
+  })
+  if (res.status === 409 && mode === 'add' && (await res.text()).includes('conflict')) return false
+  if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
+  return true
+}
