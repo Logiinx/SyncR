@@ -1,4 +1,4 @@
-import { Node } from '@tiptap/react'
+import { Node, type Editor } from '@tiptap/react'
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { db } from './db'
 
@@ -101,28 +101,26 @@ export const Image = Node.create({
     }
   },
 
-  // Pasted image files (e.g. from the snipping tool) are stored and inserted where the cursor is
+  // Pasted image files (e.g. from the snipping tool) go where the cursor is,
+  // dropped image files go where they're dropped
   addProseMirrorPlugins() {
     const editor = this.editor
     return [
       new Plugin({
         props: {
           handlePaste: (_view, event) => {
-            const files = Array.from(event.clipboardData?.files ?? []).filter((f) =>
-              f.type.startsWith('image/'),
-            )
+            const files = imageFiles(event.clipboardData?.files)
             if (files.length === 0) return false
-            ;(async () => {
-              for (const file of files) {
-                try {
-                  const attrs = await addAttachment(file)
-                  editor.chain().focus().insertContent({ type: 'image', attrs }).command(cursorBelow).run()
-                } catch (error) {
-                  console.error(error)
-                  window.alert('This image could not be added. Its format may not be supported.')
-                }
-              }
-            })()
+            insertImages(editor, files)
+            return true
+          },
+          handleDrop: (view, event, _slice, moved) => {
+            const files = imageFiles(event.dataTransfer?.files)
+            // moved = an image dragged within the note: let the editor move it
+            if (moved || files.length === 0) return false
+            const target = view.posAtCoords({ left: event.clientX, top: event.clientY })
+            if (target) editor.commands.setTextSelection(target.pos)
+            insertImages(editor, files)
             return true
           },
         },
@@ -130,3 +128,20 @@ export const Image = Node.create({
     ]
   },
 })
+
+function imageFiles(files: FileList | undefined): File[] {
+  return Array.from(files ?? []).filter((f) => f.type.startsWith('image/'))
+}
+
+// Stores the images and inserts them at the cursor, one after the other
+export async function insertImages(editor: Editor, files: File[]) {
+  for (const file of files) {
+    try {
+      const attrs = await addAttachment(file)
+      editor.chain().focus().insertContent({ type: 'image', attrs }).command(cursorBelow).run()
+    } catch (error) {
+      console.error(error)
+      window.alert('This image could not be added. Its format may not be supported.')
+    }
+  }
+}

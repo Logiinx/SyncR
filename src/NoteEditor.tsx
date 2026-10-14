@@ -6,6 +6,7 @@ import { Placeholder } from '@tiptap/extensions'
 import { registerFlush, syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
+import Toolbar from './Toolbar'
 import { ClickTitleToToggle } from './clickTitleToToggle'
 import { Image } from './image'
 
@@ -91,6 +92,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
 
   return (
     <>
+      <Toolbar editor={editor} />
       <SelectionMenu editor={editor} />
       <EditorContent editor={editor} className="editor" />
     </>

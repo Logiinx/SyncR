@@ -19,6 +19,7 @@
         "fullscreen": false,
         "decorations": false,
         "useHttpsScheme": true,
+        "dragDropEnabled": false,
         "backgroundColor": "#1e1e1e"
       }
     ],
