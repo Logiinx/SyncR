@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Cloud button in the title bar to connect (or disconnect) your Dropbox account. Syncing itself comes in a later version.
+
 ## [0.3.2] - 2026-10-13
 
 ### Changed

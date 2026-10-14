@@ -8,6 +8,7 @@ import NoteView from './NoteView'
 import Sidebar from './Sidebar'
 import TabBar from './TabBar'
 import UpdateBanner from './UpdateBanner'
+import SyncButton from './SyncButton'
 import WindowControls from './WindowControls'
 
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
@@ -109,6 +110,7 @@ function App() {
           onRename={askRename}
         />
         <div className="drag-space" data-tauri-drag-region />
+        <SyncButton />
         <WindowControls />
       </header>
       <UpdateBanner />
