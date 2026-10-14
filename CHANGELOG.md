@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Sync cleans up after itself: the small "this note was deleted" records in Dropbox are removed after 90 days.
+
 ### Added
 - "Check for updates" at the bottom of the note list (☰): looks for a new version right away, on the PC and on the phone.
 

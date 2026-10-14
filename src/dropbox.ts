@@ -218,6 +218,7 @@ export async function upload(
 export interface FileInfo {
   path: string // lower case, e.g. "/notes/1234-…"
   rev: string
+  modified: number // when it was last written to Dropbox, ms since epoch
 }
 
 // All files in the app folder, including subfolders. The cursor marks this moment,
@@ -227,7 +228,9 @@ export async function listFiles(): Promise<{ files: FileInfo[]; cursor: string }
   let page = await api('files/list_folder', { path: '', recursive: true })
   for (;;) {
     for (const entry of page.entries) {
-      if (entry['.tag'] === 'file') files.push({ path: entry.path_lower, rev: entry.rev })
+      if (entry['.tag'] === 'file') {
+        files.push({ path: entry.path_lower, rev: entry.rev, modified: Date.parse(entry.server_modified) })
+      }
     }
     if (!page.has_more) return { files, cursor: page.cursor }
     page = await api('files/list_folder/continue', { cursor: page.cursor })

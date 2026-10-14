@@ -44,6 +44,7 @@ const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
 // Images are stored without their file type; the first bytes tell which format it is
 function imageType(bytes: Uint8Array) {
@@ -118,14 +119,14 @@ async function runSync(): Promise<SyncResult> {
   // ---------- What's where ----------
 
   const remoteNotes = new Map<string, string>() // id -> rev
-  const remoteDeleted = new Set<string>()
+  const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
     const [, folder, id] = file.path.split('/')
     if (folder === 'notes') remoteNotes.set(id, file.rev)
-    if (folder === 'deleted') remoteDeleted.add(id)
+    if (folder === 'deleted') remoteDeleted.set(id, file.modified)
     if (folder === 'attachments') remoteAttachments.add(id)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
@@ -177,7 +178,7 @@ async function runSync(): Promise<SyncResult> {
 
   // ---------- 2. Notes deleted on the other device ----------
 
-  for (const id of remoteDeleted) {
+  for (const id of remoteDeleted.keys()) {
     const note = await db.notes.get(id)
     if (!note) continue
     if (isChangedLocally(note)) {
@@ -193,6 +194,12 @@ async function runSync(): Promise<SyncResult> {
       result.deleted++
     }
     done.add(id)
+  }
+
+  // Markers older than 90 days are removed: every device that synced since then has deleted
+  // the note. (A device offline for longer would bring it back, as a normal note.)
+  for (const [id, writtenAt] of remoteDeleted) {
+    if (Date.now() - writtenAt > OLD_MARKER_MS) await deleteFile(deletedPath(id))
   }
 
   // ---------- 3. Notes in Dropbox ----------
