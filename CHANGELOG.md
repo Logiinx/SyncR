@@ -8,7 +8,7 @@ All notable changes to SyncR. Newest version first.
 - Sync between your devices through your own Dropbox: connect it with the new cloud button in the title bar.
 - Passphrase to encrypt your notes before they go to Dropbox. You create it on the first device and enter it once on each other device. A lock on the cloud button means this device still needs it.
 - Automatic sync: your notes sync by themselves when the app opens, a few seconds after you stop typing, when you come back to the window, and within seconds when your other device changes something. Your notes are encrypted before they go to Dropbox.
-- The cloud button shows the sync status: ✓ synced, a dot for changes waiting (or offline), and ! for an error (hover for details). Click it to sync right away; right-click (long press on a phone) for "Sync now" and "Disconnect Dropbox".
+- The cloud button shows the sync status: ✓ synced, ↑ changes waiting to be sent, a crossed-out cloud when offline, and ! for an error (hover for details). Click it to sync right away; right-click (long press on a phone) for "Sync now" and "Disconnect Dropbox".
 - If a note changed on both devices, the newest version keeps the note and the other one is saved as a separate "(conflict, …)" note, so nothing is lost. A note deleted on one device but edited on the other comes back.
 
 ## [0.3.2] - 2026-10-13

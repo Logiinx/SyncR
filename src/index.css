@@ -86,6 +86,7 @@ button {
   width: 32px;
   height: 32px;
   margin-right: 4px;
+  padding: 0;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -94,11 +95,11 @@ button {
 }
 
 .sync-button svg {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.25;
+  stroke-width: 1.05;
   stroke-linejoin: round;
 }
 
@@ -116,7 +117,7 @@ button {
 }
 
 .sync-button .mark {
-  stroke-width: 1.4;
+  stroke-width: 1.35;
   stroke-linecap: round;
 }
 
@@ -125,8 +126,8 @@ button {
   stroke: none;
 }
 
-.sync-button.offline .dot {
-  opacity: 0.5;
+.sync-button.offline {
+  color: var(--text-dim);
 }
 
 .sync-button.error {

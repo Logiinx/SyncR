@@ -125,15 +125,14 @@ function SyncButton() {
               <path d="M10.75 10.5V9.25a1.5 1.5 0 0 1 3 0v1.25" />
             </g>
           )}
-          {/* Small mark inside the cloud: ✓ synced, ● waiting/offline, ! error */}
-          {!locked && connected && status === 'synced' && <path className="mark" d="M6.1 9.4l1.3 1.3 2.5-2.6" />}
-          {!locked && connected && (status === 'pending' || status === 'offline') && (
-            <circle className="dot" cx="8" cy="9.5" r="1.1" />
-          )}
+          {/* Mark inside the cloud: ✓ synced, ↑ changes waiting, slash = offline, ! error */}
+          {!locked && connected && status === 'synced' && <path className="mark" d="M5.7 9.4l1.6 1.6 3-3.1" />}
+          {!locked && connected && status === 'pending' && <path className="mark" d="M8 11.2V7.6M6.5 9.1L8 7.6l1.5 1.5" />}
+          {!locked && connected && status === 'offline' && <path className="mark" d="M2 2.5l12 11" />}
           {!locked && connected && status === 'error' && (
             <g className="mark">
-              <path d="M8 7.6v1.9" />
-              <circle className="dot" cx="8" cy="11" r="0.4" />
+              <path d="M8 7.3v2.1" />
+              <circle className="dot" cx="8" cy="11.1" r="0.55" />
             </g>
           )}
         </svg>
