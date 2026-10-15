@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Changed
 - The program file is now called SyncR.exe instead of syncr.exe.
+- Updates are built about twice as fast (around 3 minutes instead of 6), so new versions arrive sooner.
 
 ## [0.8.1] - 2026-10-15
 
