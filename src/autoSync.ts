@@ -1,4 +1,5 @@
 import { waitForChanges } from './dropbox'
+import { read, write } from './localState'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
@@ -16,7 +17,13 @@ const MAX_QUICK_RETRIES = 3
 
 let status: SyncStatus = 'off'
 // Same object until the status changes (React's useSyncExternalStore needs that)
-let snapshot: { status: SyncStatus; errorMessage: string | null } = { status, errorMessage: null }
+// When the last sync finished without an error (shown on hover). Saved, so it's known after a restart.
+let lastSuccessAt = read<number | null>('syncr.lastSyncedAt', null)
+let snapshot: { status: SyncStatus; errorMessage: string | null; lastSuccessAt: number | null } = {
+  status,
+  errorMessage: null,
+  lastSuccessAt,
+}
 const listeners = new Set<() => void>()
 
 let enabled = false
@@ -45,7 +52,7 @@ export function subscribe(listener: () => void) {
 
 function setStatus(next: SyncStatus, message: string | null = null) {
   status = next
-  snapshot = { status: next, errorMessage: message }
+  snapshot = { status: next, errorMessage: message, lastSuccessAt }
   listeners.forEach((listener) => listener())
 }
 
@@ -77,6 +84,8 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     const result = await syncNow()
     cursor = result.cursor
     lastSyncAt = Date.now()
+    lastSuccessAt = lastSyncAt
+    write('syncr.lastSyncedAt', lastSuccessAt)
     quickRetries = 0
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')

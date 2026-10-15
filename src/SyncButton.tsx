@@ -1,9 +1,9 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
 import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
 import { forgetKey, getKey } from './crypto'
-import { connect, connectedName, disconnect, finishConnect, isConnected } from './dropbox'
+import { connect, disconnect, finishConnect, isConnected } from './dropbox'
 import PassphraseDialog from './PassphraseDialog'
 import type { SyncResult } from './sync'
 
@@ -22,6 +22,20 @@ function describe(r: SyncResult) {
 // Not connected: click to connect Dropbox. Connected but locked (no passphrase on this
 // device yet): shows a lock, click to enter the passphrase. Unlocked: click = sync now,
 // right-click (long press on a phone) = menu.
+// "just now", "5 min ago", "3 h ago", "yesterday", otherwise "14-10-2026"
+function timeAgo(time: number) {
+  const minutes = Math.floor((Date.now() - time) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`
+  const date = new Date(time)
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) return 'yesterday'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`
+}
+
 // Drawn twice: a thicker copy in the background color first, so a gap separates it from the cloud
 const padlock = (
   <>
@@ -37,7 +51,32 @@ function SyncButton() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [askPassphrase, setAskPassphrase] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const { status, errorMessage } = useSyncExternalStore(subscribe, getStatus)
+  const { status, errorMessage, lastSuccessAt } = useSyncExternalStore(subscribe, getStatus)
+  // Hover info under the button (mouse only: phones can't hover)
+  const [hover, setHover] = useState<{ right: number; top: number } | null>(null)
+  const hoverTimer = useRef<number | undefined>(undefined)
+  const [, setTick] = useState(0)
+
+  // While the hover info is open, "2 min ago" keeps counting
+  useEffect(() => {
+    if (!hover) return
+    const timer = window.setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => window.clearInterval(timer)
+  }, [hover])
+
+  function onMouseEnter(e: React.MouseEvent) {
+    if (!matchMedia('(hover: hover)').matches) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const zoom = currentZoom()
+    // Right-aligned under the button (screen pixels ÷ zoom = page pixels)
+    const place = { right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 6 }
+    hoverTimer.current = window.setTimeout(() => setHover(place), 400)
+  }
+
+  function hideHover() {
+    window.clearTimeout(hoverTimer.current)
+    setHover(null)
+  }
 
   // Messages disappear after a few seconds
   useEffect(() => {
@@ -79,6 +118,7 @@ function SyncButton() {
   }, [connected, unlocked])
 
   async function onClick() {
+    hideHover()
     setSignInError(null)
     if (!connected) connect()
     else if (!unlocked) setAskPassphrase(true)
@@ -90,6 +130,7 @@ function SyncButton() {
 
   function onRightClick(e: React.MouseEvent) {
     e.preventDefault()
+    hideHover()
     if (!connected) return
     const rect = e.currentTarget.getBoundingClientRect()
     // Right-aligned under the button. 170 = menu width in page pixels, × zoom for screen pixels
@@ -101,22 +142,25 @@ function SyncButton() {
     await forgetKey()
   }
 
-  const name = connectedName()
   const locked = connected && !unlocked
-  const title =
-    signInError ??
-    (!connected
-      ? 'Connect Dropbox'
+  const ago = lastSuccessAt ? timeAgo(lastSuccessAt) : null
+  // Hover info: what's going on, then a dim hint about what a click does
+  const [info, hint] = signInError
+    ? [`Dropbox sign-in failed: ${signInError}`, 'Click to try again']
+    : !connected
+      ? ['Dropbox not connected', 'Click to connect']
       : locked
-        ? 'Enter your passphrase to sync'
-        : {
-            off: 'Dropbox connected',
-            synced: `Synced${name ? ` with ${name}` : ''}. Click to sync now, right-click for more.`,
-            syncing: 'Syncing…',
-            pending: 'Changes waiting to sync',
-            offline: "Offline. Changes will sync when you're back online.",
-            error: `Sync error: ${errorMessage}. Retrying every minute. Click to try now.`,
-          }[status])
+        ? ['Passphrase needed', 'Click to enter it']
+        : (
+            {
+              off: ['Dropbox connected', ''],
+              synced: [`Synced${ago ? ` · ${ago}` : ''}`, ''],
+              syncing: ['Syncing…', ''],
+              pending: ['Changes waiting to sync', ''],
+              offline: [`Offline${ago ? ` · last synced ${ago}` : ''}`, "Changes will sync when you're back online"],
+              error: [`Sync error: ${errorMessage}`, 'Retrying every minute. Click to try now.'],
+            } as const
+          )[status]
 
   return (
     <>
@@ -125,7 +169,9 @@ function SyncButton() {
         className={`sync-button${connected ? ' connected' : ''} ${status}`}
         onClick={onClick}
         onContextMenu={onRightClick}
-        title={title}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={hideHover}
+        aria-label={info}
       >
         <svg viewBox="0 0 24 24">
           <path className="cloud" d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
@@ -149,6 +195,12 @@ function SyncButton() {
           )}
         </svg>
       </button>
+      {hover && !menu && !message && (
+        <div className="sync-info" style={hover}>
+          <div>{info}</div>
+          <div className="sync-info-hint">{hint || 'Click to sync · right-click for more'}</div>
+        </div>
+      )}
       {menu && (
         <ContextMenu
           x={menu.x}
