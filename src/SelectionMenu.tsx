@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, FoldVertical, Italic, Palette, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
+import { Bold, Check, FoldVertical, Italic, Link, Palette, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
 import ColorPicker from './ColorPicker'
 import { codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
+import { copyLinkToBlock } from './noteLinks'
 import { BubbleMenu } from '@tiptap/react/menus'
 
 const ICON_SIZE = 16
 
 // Small menu that appears under selected text, with the most used buttons of the toolbar.
 // Hidden otherwise, so the window stays clean.
-function SelectionMenu({ editor }: { editor: Editor }) {
+function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
   // Re-checked every time the selection changes
   const state = useEditorState({
     editor,
@@ -26,6 +27,15 @@ function SelectionMenu({ editor }: { editor: Editor }) {
   // The color button opens the palette inside the menu
   const [showColors, setShowColors] = useState(false)
   const chain = () => editor.chain().focus()
+
+  // "Copy link": shows a check mark for a moment once the link is on the clipboard
+  const [copied, setCopied] = useState(false)
+  function copyLink() {
+    copyLinkToBlock(editor, noteId).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    })
+  }
 
   return (
     <BubbleMenu
@@ -77,6 +87,12 @@ function SelectionMenu({ editor }: { editor: Editor }) {
         onClick={() => (state.inCodeBlock ? codeBlockToParagraphs(editor) : selectionToCodeBlock(editor))}
       >
         <SquareCode size={ICON_SIZE} />
+      </MenuButton>
+
+      <span className="menu-divider" />
+
+      <MenuButton title="Copy a link to this spot (paste it in any note)" onClick={copyLink}>
+        {copied ? <Check size={ICON_SIZE} /> : <Link size={ICON_SIZE} />}
       </MenuButton>
 
       {showColors && <ColorPicker editor={editor} onPicked={() => setShowColors(false)} />}

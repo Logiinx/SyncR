@@ -778,6 +778,30 @@ button {
   background: rgb(255 255 255 / 15%);
 }
 
+/* ---------- Links between notes (noteLinks.ts) ---------- */
+
+/* The note or the linked part was deleted (the decoration is a <span> inside the <a>) */
+.tiptap a .broken-link {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+/* The linked block after jumping to it */
+.tiptap .link-flash {
+  animation: link-flash 1.6s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes link-flash {
+  0%,
+  30% {
+    background: var(--hl-blue);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 /* ---------- Code blocks (codeBlock.tsx) ---------- */
 
 .tiptap .code-block {

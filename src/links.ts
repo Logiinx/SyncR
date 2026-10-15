@@ -2,6 +2,7 @@ import { Extension } from '@tiptap/react'
 import { Plugin } from '@tiptap/pm/state'
 import { isTauri } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { followNoteLink, linkTargetTitle, parseNoteLink } from './noteLinks'
 
 // Only web and e-mail links are opened (not e.g. "javascript:" or local files)
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:']
@@ -44,9 +45,11 @@ function linkTooltip() {
   const show = (link: HTMLElement) => {
     const href = link.getAttribute('href')!
     if (simplify(href) === simplify(link.textContent ?? '')) return
+    // Links to notes: the note's title instead of the syncr:note/… address
+    const text = parseNoteLink(href) ? `→ ${linkTargetTitle(href) ?? 'Note not found'}` : href
     clearTimeout(timer)
     timer = window.setTimeout(() => {
-      tooltip.textContent = href
+      tooltip.textContent = text
       const box = link.getBoundingClientRect()
       tooltip.style.left = `${Math.max(4, Math.min(box.left, window.innerWidth - tooltip.offsetWidth - 4))}px`
       tooltip.style.top = `${box.bottom + 6}px`
@@ -89,7 +92,9 @@ export const OpenLinksOnClick = Extension.create({
             const link = (event.target as HTMLElement).closest('a[href]')
             if (!link) return false
             event.preventDefault()
-            openLink(link.getAttribute('href')!)
+            const href = link.getAttribute('href')!
+            if (parseNoteLink(href)) followNoteLink(href)
+            else openLink(href)
             return true
           },
         },

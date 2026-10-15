@@ -23,6 +23,7 @@ import { SmartTypography } from './typography'
 import { CodeBlock } from './codeBlock'
 import { DragSections } from './dragSections'
 import { SlashMenu } from './slashMenu'
+import { jumpToBlock, NoteLinks, PROTOCOL, takePendingJump } from './noteLinks'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
@@ -33,7 +34,12 @@ const extensions = [
   CodeBlock,
   // Links: pasting an address makes a link (also over selected text). Clicks: see links.ts.
   // Not "inclusive": text typed right after a link doesn't become part of it.
-  Link.extend({ inclusive: () => false }).configure({ openOnClick: false }),
+  // syncr:note/… links point to another note (noteLinks.ts)
+  Link.extend({ inclusive: () => false }).configure({
+    openOnClick: false,
+    protocols: [{ scheme: PROTOCOL, optionalSlashes: true }],
+  }),
+  NoteLinks,
   OpenLinksOnClick,
   // Text color and highlighter, from a fixed palette (ColorPicker.tsx)
   TextStyle,
@@ -128,6 +134,19 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     }
   }, [editor, note.id])
 
+  // A link to this note was followed: jump to the linked block. Waits a moment, so it comes
+  // after NoteView has restored the scroll position.
+  useEffect(() => {
+    if (!editor) return
+    const jump = () => {
+      const target = takePendingJump(note.id)
+      if (target?.blockId) setTimeout(() => jumpToBlock(editor, target.blockId!))
+    }
+    jump()
+    window.addEventListener('syncr-jump', jump)
+    return () => window.removeEventListener('syncr-jump', jump)
+  }, [editor, note.id])
+
   // Right-click (long press on a phone) on an image: menu with "Delete image". In a table:
   // the table menu. Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
   function onContextMenu(e: React.MouseEvent) {
@@ -158,7 +177,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     <>
       <Toolbar editor={editor} />
       <ImageViewer />
-      <SelectionMenu editor={editor} />
+      <SelectionMenu editor={editor} noteId={note.id} />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
       {tableMenu && <TableMenu editor={editor} x={tableMenu.x} y={tableMenu.y} onClose={() => setTableMenu(null)} />}
       {imageMenu && (

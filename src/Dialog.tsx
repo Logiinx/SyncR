@@ -6,6 +6,7 @@ export interface DialogRequest {
   input?: { initial: string; placeholder: string } // shows a text field (for rename)
   confirmLabel: string
   danger?: boolean // red confirm button (for delete)
+  noCancel?: boolean // just a message with an OK button
   onConfirm: (value: string) => void
 }
 
@@ -51,9 +52,11 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
           />
         )}
         <div className="dialog-buttons">
-          <button ref={cancelRef} onClick={onClose}>
-            Cancel
-          </button>
+          {!request.noCancel && (
+            <button ref={cancelRef} onClick={onClose}>
+              Cancel
+            </button>
+          )}
           <button ref={confirmRef} className={request.danger ? 'danger' : 'primary'} onClick={confirm}>
             {request.confirmLabel}
           </button>

@@ -5,6 +5,7 @@ import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
+import { onFollowLink } from './noteLinks'
 import NoteView from './NoteView'
 import Sidebar from './Sidebar'
 import SettingsDialog from './SettingsDialog'
@@ -47,6 +48,13 @@ function App() {
     setOpenTabs(remaining)
     if (activeId && missing.includes(activeId)) setActiveId(remaining.at(-1) ?? null)
   }, [tabsResult, openTabs, activeId, setOpenTabs, setActiveId])
+
+  // Clicking a link to a note (noteLinks.ts) opens it here, or says the target is gone
+  useEffect(() => {
+    onFollowLink(openNote, (message) =>
+      setDialog({ title: 'Link', message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} }),
+    )
+  })
 
   function openNote(id: string) {
     if (!openTabs.includes(id)) setOpenTabs([...openTabs, id])
