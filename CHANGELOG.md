@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-15
+
 ### Fixed
 - The reminder pop-up on the PC was empty (no text, no buttons, no sound). It was opened from a different internal address than the main window (`http://` instead of `https://tauri.localhost`), and since each address gets its own local database, it found no reminders. It now uses the same address, so it shows the reminders.
 
