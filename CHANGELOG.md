@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Links in notes are underlined only when the mouse is over them (on the phone they stay underlined).
+- Hovering a link shows its address in a small popup, when the link text is something else.
+
 ## [0.6.7] - 2026-10-14
 
 ### Changed

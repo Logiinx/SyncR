@@ -432,6 +432,40 @@ button {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  transition: text-decoration-color 0.15s;
+}
+
+/* With a mouse, the underline only shows on hover (phones keep it, they can't hover) */
+@media (hover: hover) {
+  .tiptap a {
+    text-decoration-color: transparent;
+  }
+  .tiptap a:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Shows where a link goes, when its text doesn't already say it (links.ts) */
+.link-tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 400px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.link-tooltip.visible {
+  opacity: 1;
 }
 
 /* ---------- Checklists ---------- */
