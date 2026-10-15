@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-15
+
 ### Added
 - Reminder pop-up on the PC: when a reminder is due, a small window appears in the bottom-right corner of the screen, on top of other windows, even when SyncR is minimized or hidden in the tray. It doesn't take the keyboard away from what you're typing. Buttons: Done, Snooze (10 min / 1 hour / tomorrow at the same time) and Open SyncR. It stays until you click Done or Snooze, and grows to fit several reminders.
 - A short chime when a reminder comes due (pop-up on the PC, card in the browser / on the phone). Settings → Reminders → "Sound when a reminder is due" turns it off; turning it on plays it once as a preview.
