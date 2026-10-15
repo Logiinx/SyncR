@@ -91,6 +91,15 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
 
+        <label className="setting setting-toggle">
+          <span>Show dates in the note list</span>
+          <input
+            type="checkbox"
+            checked={appearance.showDates}
+            onChange={(e) => update({ showDates: e.target.checked })}
+          />
+        </label>
+
         <div className="dialog-buttons">
           <button className="primary" onClick={onClose} autoFocus>
             Done

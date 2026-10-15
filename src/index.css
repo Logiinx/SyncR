@@ -349,6 +349,11 @@ button {
   display: none;
 }
 
+/* Settings: "Show dates in the note list" off (appearance.ts) */
+.hide-note-dates .note-date {
+  display: none;
+}
+
 .sidebar-footer {
   display: flex;
   flex-direction: column;
@@ -819,6 +824,22 @@ button {
 
 .setting-value {
   color: var(--text-dim);
+}
+
+/* A checkbox setting: text on the left, box on the right */
+.setting-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.setting-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--link);
+  cursor: pointer;
 }
 
 /* Font picker: two columns of buttons, each in its own font */
