@@ -1,11 +1,15 @@
 # Builds the Windows installer for SyncR.
 # - Push a tag like v0.1.0  -> builds and creates a DRAFT GitHub release with the installer.
 # - "Run workflow" button   -> builds only; the installer is downloadable from the run page.
+# - Push to main that changes src-tauri/ -> builds only, to keep the Rust cache fresh.
+#   (A tag build can only reuse caches saved by main, not by earlier tags.)
 name: Build desktop app
 
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['src-tauri/**', '.github/workflows/build-desktop.yml']
   workflow_dispatch:
 
 permissions:
@@ -22,11 +26,16 @@ jobs:
           node-version: 24
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned: a new Rust version makes the whole cache useless. Bump it now and then.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # Only main saves the cache (tag caches can't be reused by the next tag).
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - run: npm ci
 
