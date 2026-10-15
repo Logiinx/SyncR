@@ -11,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 - Settings are grouped into sections (Appearance, Note list, Notes, About), each saying whether it applies to this device or all devices. The version and "Check for updates" moved from the bottom of the note list into Settings → About.
 - The text size and app scaling sliders have a slim bar as handle and a ruler underneath showing every value you can pick, with a longer mark at the default (16 px, 100 %).
 
+### Fixed
+- Opening the note list while at the bottom of a long note no longer moves the end of the note out of view.
+
 ## [0.8.0] - 2026-10-15
 
 ### Added
