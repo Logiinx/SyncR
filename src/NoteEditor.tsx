@@ -18,6 +18,7 @@ import { Image } from './image'
 import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
+import { ListEnter } from './lists'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
@@ -34,6 +35,7 @@ const extensions = [
   Color,
   Highlight.configure({ multicolor: true }),
   ColorRules,
+  ListEnter,
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({
     persist: false,
