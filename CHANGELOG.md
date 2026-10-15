@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Settings → Typing → "Smart typography" (off by default, per device): while typing, `--` becomes —, `->` becomes →, `...` becomes …, `1/2` becomes ½, `(c)` becomes ©, and straight quotes become curly quotes. Not applied inside code. Backspace right after a replacement undoes it.
+
 ### Changed
 - One way to create a note: the big "+ New note" button in the sidebar is gone, the "+" after the tabs is now an icon and sits outside the scrolling tab strip, so it stays visible when many tabs are open. When no note is open, the page shows a "New note" button.
 

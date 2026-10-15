@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { checkForUpdates } from './UpdateBanner'
+import { loadEditing, saveEditing, type Editing } from './editing'
 import {
   DEFAULTS,
   FONT_SIZE_MAX,
@@ -24,6 +25,13 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     const next = { ...loadAppearance(), ...change }
     setAppearance(next)
     saveAppearance(next)
+  }
+
+  const [editing, setEditing] = useState(loadEditing)
+  function updateEditing(change: Partial<Editing>) {
+    const next = { ...loadEditing(), ...change }
+    setEditing(next)
+    saveEditing(next)
   }
 
   // The slider shows the new value while dragging; the app is scaled when it's released
@@ -115,6 +123,18 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             type="checkbox"
             checked={appearance.showDates}
             onChange={(e) => update({ showDates: e.target.checked })}
+          />
+        </label>
+
+        <SectionTitle title="Typing" scope="this device" />
+        <label className="setting setting-toggle">
+          <span>
+            Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={editing.smartTypography}
+            onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
           />
         </label>
 
