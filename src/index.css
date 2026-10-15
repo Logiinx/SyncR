@@ -927,6 +927,91 @@ button {
   border-radius: 4px;
 }
 
+/* ---------- Tables (tables.ts, TableMenu.tsx) ---------- */
+
+/* Wider than the note (phone): the table scrolls sideways */
+.tiptap .tableWrapper {
+  margin: 12px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tiptap td,
+.tiptap th {
+  position: relative;
+  min-width: 60px;
+  padding: 6px 10px;
+  border: 1px solid #3a3a3a;
+  vertical-align: top;
+  text-align: left;
+}
+
+.tiptap td > *,
+.tiptap th > * {
+  margin: 0;
+}
+
+/* Header row: bold, on a slightly lighter background */
+.tiptap th {
+  background: var(--bg-raised);
+  font-weight: 600;
+}
+
+/* Selected cells (drag across cells) */
+.tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(122 167 224 / 20%);
+  pointer-events: none;
+}
+
+/* Drag the line between two columns to resize them */
+.tiptap .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  background: var(--link);
+  pointer-events: none;
+}
+
+.tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+.table-menu {
+  width: 230px;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
+.menu-label {
+  padding: 6px 10px 2px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.table-menu .color-picker {
+  padding: 0 4px 2px;
+}
+
+.table-menu .color-picker .swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
 /* ---------- Right-click menu ---------- */
 
 .menu-backdrop {

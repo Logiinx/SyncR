@@ -16,6 +16,9 @@ import ContextMenu from './ContextMenu'
 import { ClickTitleToToggle } from './clickTitleToToggle'
 import { Image } from './image'
 import { OpenLinksOnClick } from './links'
+import { tableExtensions } from './tables'
+import TableMenu from './TableMenu'
+import { CellSelection } from '@tiptap/pm/tables'
 
 const SAVE_DELAY_MS = 500
 
@@ -44,6 +47,7 @@ const extensions = [
   // Checklists. Typing "[ ] " at the start of a line also makes one; Tab indents an item.
   TaskList,
   TaskItem.configure({ nested: true }),
+  ...tableExtensions,
   Placeholder.configure({
     includeChildren: true,
     placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? 'Section title' : ''),
@@ -55,6 +59,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
   const [imageMenu, setImageMenu] = useState<{ pos: number; x: number; y: number } | null>(null)
+  const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
 
   const editor = useEditor({
     extensions,
@@ -111,10 +116,21 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     }
   }, [editor, note.id])
 
-  // Right-click (long press on a phone) on an image: menu with "Delete image".
-  // Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
+  // Right-click (long press on a phone) on an image: menu with "Delete image". In a table:
+  // the table menu. Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
   function onContextMenu(e: React.MouseEvent) {
-    const box = (e.target as HTMLElement).closest('.note-image')
+    const target = e.target as HTMLElement
+    if (target.closest('td, th')) {
+      e.preventDefault()
+      // The menu works on the cell under the mouse, unless several cells are selected
+      if (!(editor.state.selection instanceof CellSelection)) {
+        const pos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY })
+        if (pos) editor.chain().focus().setTextSelection(pos.pos).run()
+      }
+      setTableMenu({ x: e.clientX, y: e.clientY })
+      return
+    }
+    const box = target.closest('.note-image')
     if (!box) return
     e.preventDefault()
     setImageMenu({ pos: editor.view.posAtDOM(box, 0), x: e.clientX, y: e.clientY })
@@ -132,6 +148,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       <ImageViewer />
       <SelectionMenu editor={editor} />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
+      {tableMenu && <TableMenu editor={editor} x={tableMenu.x} y={tableMenu.y} onClose={() => setTableMenu(null)} />}
       {imageMenu && (
         <ContextMenu
           x={imageMenu.x}

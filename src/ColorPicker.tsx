@@ -14,7 +14,7 @@ export const COLORS = [
   { id: 'gray', name: 'Gray' },
 ]
 const textColor = (id: string) => `var(--text-${id})`
-const highlightColor = (id: string) => `var(--hl-${id})`
+export const highlightColor = (id: string) => `var(--hl-${id})`
 
 // Two rows of swatches: text color, then highlighter. The first swatch of each row removes it.
 function ColorPicker({ editor, onPicked }: { editor: Editor; onPicked: () => void }) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Baseline, Bold, ImageIcon, Italic, ListTodo, Redo2, Strikethrough, Underline, Undo2 } from 'lucide-react'
+import { Baseline, Bold, ImageIcon, Italic, ListTodo, Redo2, Strikethrough, Table, Underline, Undo2 } from 'lucide-react'
 import { currentZoom } from './appearance'
 import ColorPicker from './ColorPicker'
 import { insertImages } from './image'
@@ -100,6 +100,12 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <ToolButton title="Checklist" active={state.checklist} onClick={() => chain().toggleTaskList().run()}>
         <ListTodo size={ICON_SIZE} />
+      </ToolButton>
+      <ToolButton
+        title="Insert table"
+        onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+      >
+        <Table size={ICON_SIZE} />
       </ToolButton>
       <ToolButton title="Insert image" onClick={() => fileInput.current?.click()}>
         <ImageIcon size={ICON_SIZE} />
