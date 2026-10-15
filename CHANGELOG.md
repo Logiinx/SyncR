@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Added
 - Settings: "Show dates in the note list" lets you hide the dates.
+- Drag tabs to change their order. On the phone: hold a tab, then drag (hold and let go still opens its menu).
 
 ## [0.6.7] - 2026-10-14
 

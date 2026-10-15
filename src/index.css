@@ -205,6 +205,29 @@ button {
   color: var(--text);
 }
 
+/* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
+.tab {
+  -webkit-touch-callout: none;
+}
+
+.tabs.dragging .tab {
+  transition: transform 0.15s;
+}
+
+.tabs.dragging .tab.drag-source {
+  position: relative;
+  z-index: 1;
+  transition: none;
+  cursor: grabbing;
+}
+
+.tab.drag-source,
+.tab.lifted {
+  background: var(--border);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+}
+
 .tab-title {
   overflow: hidden;
   white-space: nowrap;

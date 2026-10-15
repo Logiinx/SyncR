@@ -110,6 +110,7 @@ function App() {
           onNew={newNote}
           onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
           onRename={askRename}
+          onReorder={setOpenTabs}
         />
         <div className="drag-space" data-tauri-drag-region />
         <SyncButton />
