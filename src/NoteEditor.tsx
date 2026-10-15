@@ -20,13 +20,15 @@ import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
 import { ListEnter } from './lists'
 import { SmartTypography } from './typography'
+import { CodeBlock } from './codeBlock'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
 const SAVE_DELAY_MS = 500
 
 const extensions = [
-  StarterKit.configure({ link: false }),
+  StarterKit.configure({ link: false, codeBlock: false }),
+  CodeBlock,
   // Links: pasting an address makes a link (also over selected text). Clicks: see links.ts.
   // Not "inclusive": text typed right after a link doesn't become part of it.
   Link.extend({ inclusive: () => false }).configure({ openOnClick: false }),

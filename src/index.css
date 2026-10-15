@@ -778,6 +778,136 @@ button {
   background: rgb(255 255 255 / 15%);
 }
 
+/* ---------- Code blocks (codeBlock.tsx) ---------- */
+
+.tiptap .code-block {
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-raised);
+}
+
+/* Header: ▶ like a section, then the language */
+.tiptap .code-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.tiptap .code-block.is-open .code-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.tiptap .code-toggle {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.tiptap .code-toggle:hover {
+  color: var(--text);
+}
+
+.tiptap .code-block.is-open .code-toggle {
+  transform: rotate(90deg);
+}
+
+.tiptap .code-language {
+  padding: 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tiptap .code-language:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.tiptap .code-language option {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.tiptap .code-block pre {
+  margin: 0;
+  padding: 8px 12px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono Variable', monospace;
+  font-size: 0.875em;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+.tiptap .code-block pre[hidden] {
+  display: none;
+}
+
+/* Syntax colors (highlight.js class names), from the text color palette */
+.tiptap .hljs-comment,
+.tiptap .hljs-quote {
+  color: var(--text-gray);
+  font-style: italic;
+}
+.tiptap .hljs-keyword,
+.tiptap .hljs-selector-tag,
+.tiptap .hljs-literal,
+.tiptap .hljs-doctag {
+  color: var(--text-purple);
+}
+.tiptap .hljs-string,
+.tiptap .hljs-regexp,
+.tiptap .hljs-addition,
+.tiptap .hljs-template-tag {
+  color: var(--text-green);
+}
+.tiptap .hljs-number,
+.tiptap .hljs-symbol,
+.tiptap .hljs-bullet {
+  color: var(--text-orange);
+}
+.tiptap .hljs-title,
+.tiptap .hljs-section {
+  color: var(--text-blue);
+}
+.tiptap .hljs-type,
+.tiptap .hljs-built_in,
+.tiptap .hljs-class .hljs-title,
+.tiptap .hljs-selector-class {
+  color: var(--text-yellow);
+}
+.tiptap .hljs-attr,
+.tiptap .hljs-attribute,
+.tiptap .hljs-variable,
+.tiptap .hljs-template-variable,
+.tiptap .hljs-property {
+  color: var(--link);
+}
+.tiptap .hljs-tag,
+.tiptap .hljs-name,
+.tiptap .hljs-meta {
+  color: var(--text-pink);
+}
+.tiptap .hljs-deletion {
+  color: var(--text-red);
+}
+.tiptap .hljs-emphasis {
+  font-style: italic;
+}
+.tiptap .hljs-strong {
+  font-weight: 600;
+}
+
 /* ---------- Collapsible sections ---------- */
 
 .tiptap [data-type='details'] {

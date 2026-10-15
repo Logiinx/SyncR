@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, FoldVertical, Italic, Palette, UnfoldVertical, Underline } from 'lucide-react'
+import { Bold, FoldVertical, Italic, Palette, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
 import ColorPicker from './ColorPicker'
+import { codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
 import { BubbleMenu } from '@tiptap/react/menus'
 
 const ICON_SIZE = 16
@@ -18,6 +19,7 @@ function SelectionMenu({ editor }: { editor: Editor }) {
       underline: editor.isActive('underline'),
       canMakeSection: editor.can().setDetails(),
       inSection: editor.isActive('details'),
+      inCodeBlock: editor.isActive('codeBlock'),
     }),
   })
 
@@ -68,6 +70,14 @@ function SelectionMenu({ editor }: { editor: Editor }) {
           <UnfoldVertical size={ICON_SIZE} />
         </MenuButton>
       )}
+
+      <MenuButton
+        title={state.inCodeBlock ? 'Turn the code block back into normal text' : 'Make the selected lines a code block'}
+        active={state.inCodeBlock}
+        onClick={() => (state.inCodeBlock ? codeBlockToParagraphs(editor) : selectionToCodeBlock(editor))}
+      >
+        <SquareCode size={ICON_SIZE} />
+      </MenuButton>
 
       {showColors && <ColorPicker editor={editor} onPicked={() => setShowColors(false)} />}
     </BubbleMenu>
