@@ -27,7 +27,7 @@ export const FONT_SIZE_MIN = 12
 export const FONT_SIZE_MAX = 24
 
 const KEY = 'syncr.appearance'
-const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true }
+export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true }
 
 export function loadAppearance(): Appearance {
   const saved = { ...DEFAULTS, ...read<Partial<Appearance>>(KEY, {}) }

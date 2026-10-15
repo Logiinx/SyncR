@@ -8,6 +8,8 @@ All notable changes to SyncR. Newest version first.
 - Bullet and numbered lists line up with the text: the bullet stays where you typed the "-" instead of moving inward.
 - Pressing Enter on the first, still empty item of a list adds a second item instead of removing the list. Further down, Enter on an empty item still ends the list.
 - Typing "1." or "-" and pressing Enter makes the list and goes straight to the next item (before, Enter only made the list). Shift+Enter works the same way here.
+- Settings are grouped into sections (Appearance, Note list, Notes, About), each saying whether it applies to this device or all devices. The version and "Check for updates" moved from the bottom of the note list into Settings → About.
+- The text size and app scaling sliders have a slim bar as handle and a ruler underneath showing every value you can pick, with a longer mark at the default (16 px, 100 %).
 
 ## [0.8.0] - 2026-10-15
 

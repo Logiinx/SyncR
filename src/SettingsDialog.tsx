@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
+import { checkForUpdates } from './UpdateBanner'
 import {
+  DEFAULTS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   FONTS,
@@ -54,8 +56,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <h2>Settings</h2>
-        <p className="settings-note">Font, text size, scaling and dates are for this device only.</p>
 
+        <SectionTitle title="Appearance" scope="this device" />
         <div className="setting">
           <span className="setting-label">Font</span>
           {/* Each choice is shown in its own font */}
@@ -79,11 +81,11 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <span className="setting-label">
             Text size <span className="setting-value">{appearance.fontSize} px</span>
           </span>
-          <input
-            type="range"
+          <RulerSlider
             min={FONT_SIZE_MIN}
             max={FONT_SIZE_MAX}
             step={1}
+            mark={DEFAULTS.fontSize}
             value={appearance.fontSize}
             onChange={(e) => update({ fontSize: Number(e.target.value) })}
           />
@@ -93,11 +95,11 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <span className="setting-label">
             App scaling <span className="setting-value">{scale} %</span>
           </span>
-          <input
-            type="range"
+          <RulerSlider
             min={SCALE_MIN}
             max={SCALE_MAX}
             step={5}
+            mark={DEFAULTS.scale}
             value={scale}
             onChange={(e) => setScale(Number(e.target.value))}
             onPointerUp={applyScale}
@@ -106,8 +108,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
 
+        <SectionTitle title="Note list" scope="this device" />
         <label className="setting setting-toggle">
-          <span>Show dates in the note list</span>
+          <span>Show dates</span>
           <input
             type="checkbox"
             checked={appearance.showDates}
@@ -115,12 +118,30 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
 
+        <SectionTitle title="Notes" scope="all devices" />
         <div className="setting setting-toggle">
           <span>
             Color rules <span className="setting-value">{rulesSummary}</span>
           </span>
           <button className="setting-button" onClick={() => setShowRules(true)}>
             Edit…
+          </button>
+        </div>
+
+        <SectionTitle title="About" />
+        <div className="setting setting-toggle">
+          <span>
+            SyncR <span className="setting-value">v{__APP_VERSION__}</span>
+          </span>
+          {/* The result shows at the top of the window, so Settings closes first */}
+          <button
+            className="setting-button"
+            onClick={() => {
+              onClose()
+              checkForUpdates()
+            }}
+          >
+            Check for updates
           </button>
         </div>
 
@@ -131,6 +152,42 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// A slider with a ruler under it: one tick per value you can pick, a longer one at the
+// default value. The handle is a vertical bar.
+type RulerSliderProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+  min: number
+  max: number
+  step: number
+  value: number
+  mark: number
+}
+
+function RulerSlider({ min, max, step, value, mark, ...input }: RulerSliderProps) {
+  const ticks: number[] = []
+  for (let v = min; v <= max; v += step) ticks.push(v)
+  const fill = `${((value - min) / (max - min)) * 100}%`
+  return (
+    <div className="ruler" style={{ '--fill': fill } as React.CSSProperties}>
+      <input type="range" min={min} max={max} step={step} value={value} {...input} />
+      <div className="ruler-ticks" aria-hidden="true">
+        {ticks.map((v) => (
+          <span key={v} className={v === mark ? 'major' : undefined} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// A group of settings: small title, and whether it applies to this device or all of them
+function SectionTitle({ title, scope }: { title: string; scope?: string }) {
+  return (
+    <h3 className="settings-section">
+      {title}
+      {scope && <span className="settings-scope"> · {scope}</span>}
+    </h3>
   )
 }
 

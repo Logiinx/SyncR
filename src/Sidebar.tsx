@@ -1,7 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { RefreshCw, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
-import { checkForUpdates } from './UpdateBanner'
 
 interface Props {
   activeId: string | null
@@ -68,10 +67,6 @@ function Sidebar({ activeId, onOpen, onNew, onClose, onMenu, onSettings }: Props
           <button className="footer-button" onClick={onSettings}>
             <Settings size={15} /> Settings
           </button>
-          <button className="footer-button" onClick={checkForUpdates}>
-            <RefreshCw size={15} /> Check for updates
-          </button>
-          <span className="version">v{__APP_VERSION__}</span>
         </div>
       </aside>
     </>

@@ -5,7 +5,7 @@ import { finalSync } from './autoSync'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
 
-// Asks the bar to check for a new version now (the "Check for updates" button in the sidebar)
+// Asks the bar to check for a new version now (the "Check for updates" button in Settings)
 export function checkForUpdates() {
   window.dispatchEvent(new Event('check-for-updates'))
 }
