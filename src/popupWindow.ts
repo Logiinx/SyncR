@@ -84,6 +84,9 @@ async function openPopup(onError: () => void) {
     minimizable: false,
     focus: false, // don't take the keyboard away from what the user is doing
     backgroundColor: '#202020',
+    // Same origin as the main window (https://tauri.localhost, tauri.conf.json), so the pop-up
+    // sees the same database. Without it, it loaded from http://… and found no reminders.
+    useHttpsScheme: true,
   })
   popup.once('tauri://created', () => (opening = false))
   popup.once('tauri://error', (error) => {
