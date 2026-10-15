@@ -962,6 +962,56 @@ button {
   display: none;
 }
 
+/* ⋮⋮ grip to drag a section (dragSections.ts): left of the ▶ arrow, one line high */
+.has-section-grips {
+  position: relative;
+}
+
+.section-grip {
+  position: absolute;
+  width: 18px;
+  height: 25.6px;
+  margin-left: -20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: -1px;
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: grab;
+  touch-action: none; /* a finger on the grip drags instead of scrolling */
+  user-select: none;
+}
+
+.section-grip:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.section-grip[hidden] {
+  display: none;
+}
+
+.dragging-section,
+.dragging-section * {
+  cursor: grabbing !important;
+}
+
+/* Where the dragged section will land */
+.section-drop-line {
+  position: absolute;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: var(--link);
+  pointer-events: none;
+}
+
+.section-drop-line[hidden] {
+  display: none;
+}
+
 /* "Section title" hint in empty titles */
 .tiptap .is-empty::before {
   content: attr(data-placeholder);

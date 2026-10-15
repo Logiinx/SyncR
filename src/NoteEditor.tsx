@@ -21,6 +21,7 @@ import { ColorRules } from './colorRules'
 import { ListEnter } from './lists'
 import { SmartTypography } from './typography'
 import { CodeBlock } from './codeBlock'
+import { DragSections } from './dragSections'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
@@ -51,6 +52,7 @@ const extensions = [
   DetailsSummary,
   DetailsContent,
   ClickTitleToToggle,
+  DragSections,
   Image,
   // Checklists. Typing "[ ] " at the start of a line also makes one; Tab indents an item.
   TaskList,
