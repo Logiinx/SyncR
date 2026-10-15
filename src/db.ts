@@ -51,6 +51,24 @@ export interface Setting {
   syncedUpdatedAt?: number
 }
 
+// A reminder (see reminders.ts). Separate from notes, synced like a setting: changed on both
+// sides means the newest wins. A deleted reminder stays as a row with deleted = true for a
+// while, so the deletion syncs like any other change (see sync.ts, step 4c).
+// syncedRev / syncedUpdatedAt: what it looked like at the last sync.
+export interface Reminder {
+  id: string
+  text: string
+  note: string // optional longer text ('' = none)
+  dueAt: number // when to remind (ms since 1970); snoozing moves it
+  phone: boolean // also added to Google Calendar
+  doneAt: number | null // null = still waiting
+  deleted: boolean
+  createdAt: number
+  updatedAt: number
+  syncedRev?: string
+  syncedUpdatedAt?: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -59,6 +77,7 @@ export const db = new Dexie('syncr') as Dexie & {
   synced: EntityTable<SyncedNote, 'id'>
   attachments: EntityTable<Attachment, 'id'>
   settings: EntityTable<Setting, 'name'>
+  reminders: EntityTable<Reminder, 'id'>
 }
 
 db.version(1).stores({
@@ -83,6 +102,10 @@ db.version(5).stores({
 
 db.version(6).stores({
   settings: 'name',
+})
+
+db.version(7).stores({
+  reminders: 'id',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

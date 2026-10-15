@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
-import { db, imageIds, noteTitle, type Note, type Setting } from './db'
+import { db, imageIds, noteTitle, type Note, type Reminder, type Setting } from './db'
+import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
 
@@ -8,11 +9,12 @@ import { deleteFile, download, listFiles, upload } from './dropbox'
 //   /deleted/<id>      marker left when a note is deleted, so other devices delete it too
 //   /attachments/<id>  one file per image (never changes, so no conflicts)
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
+//   /reminders/<id>    one file per reminder (a deleted one stays as a row with deleted = true)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
-// - Settings changed on both sides: the newest wins (no conflict copy).
+// - Settings and reminders changed on both sides: the newest wins (no conflict copy).
 
 // What's stored in /notes/<id> (before encryption)
 interface RemoteNote {
@@ -46,6 +48,7 @@ const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
 const settingPath = (name: string) => `/settings/${name}`
+const reminderPath = (id: string) => `/reminders/${id}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
@@ -125,6 +128,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
   const remoteSettings = new Map<string, string>() // name -> rev
+  const remoteReminders = new Map<string, string>() // id -> rev
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
@@ -133,6 +137,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'deleted') remoteDeleted.set(id, file.modified)
     if (folder === 'attachments') remoteAttachments.add(id)
     if (folder === 'settings') remoteSettings.set(id, file.rev)
+    if (folder === 'reminders') remoteReminders.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -286,6 +291,58 @@ async function runSync(): Promise<SyncResult> {
       const stored = await db.transaction('rw', db.settings, async () => {
         if ((await db.settings.get(name))?.updatedAt !== local?.updatedAt) return false
         await db.settings.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
+        return true
+      })
+      if (stored) result.downloaded++
+    }
+  }
+
+  // ---------- 4c. Reminders ----------
+  // Like settings: changed on both sides means the newest wins. A deletion is a change too
+  // (deleted = true), so "deleted here, edited there" also goes to the newest.
+
+  // Deleted reminders older than 90 days disappear here and from Dropbox
+  for (const id of await removeOldDeleted()) {
+    if (remoteReminders.delete(id)) await deleteFile(reminderPath(id))
+  }
+
+  const localReminders = await db.reminders.toArray()
+  const reminderIds = new Set([...remoteReminders.keys(), ...localReminders.map((r) => r.id)])
+  for (const id of reminderIds) {
+    const local = localReminders.find((r) => r.id === id)
+    const remoteRev = remoteReminders.get(id)
+    const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
+    const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
+
+    // Not in Dropbox, and deleted here, or synced before and unchanged (another device removed
+    // an old deleted one): remove it here too. Otherwise it's new (or edited): uploaded below.
+    if (local && !remoteRev && (local.deleted || (local.syncedRev && !changedHere))) {
+      await db.transaction('rw', db.reminders, async () => {
+        if ((await db.reminders.get(id))?.updatedAt === local.updatedAt) await db.reminders.delete(id)
+      })
+      continue
+    }
+    if (!changedHere && !changedThere) continue
+
+    let remote: Reminder | null = null
+    if (changedThere) {
+      const raw = await download(reminderPath(id))
+      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+    }
+
+    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
+      // Send this device's version
+      const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
+      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
+      const rev = await upload(reminderPath(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
+      if (!rev) throw new RetrySoonError('A reminder changed in Dropbox during sync.')
+      await db.reminders.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt })
+      result.uploaded++
+    } else if (remote && remoteRev) {
+      // Take the other device's version, unless it was changed here while this sync ran
+      const stored = await db.transaction('rw', db.reminders, async () => {
+        if ((await db.reminders.get(id))?.updatedAt !== local?.updatedAt) return false
+        await db.reminders.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
         return true
       })
       if (stored) result.downloaded++
