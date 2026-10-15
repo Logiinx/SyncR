@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-15
+
 ### Added
 - Settings → Typing → "Smart typography" (off by default, per device): while typing, `--` becomes —, `->` becomes →, `...` becomes …, `1/2` becomes ½, `(c)` becomes ©, and straight quotes become curly quotes. Not applied inside code. Backspace right after a replacement undoes it.
 - Code blocks with syntax highlighting. Each has a header like a section: ▶ folds it (showing the number of lines), and a menu picks the language (Bash, C, C++, C#, CSS, Go, HTML/XML, Java, JavaScript, JSON, Markdown, PowerShell, Python, Rust, SQL, TypeScript, YAML, or plain text). New code button in the selection menu: turns the selected lines into one code block (only plain text and lists, so images, tables or sections are never flattened), or a code block back into normal lines. Inside code, the selection menu hides bold/italic/underline/color, which don't apply there. Tab indents by 2 spaces inside code. Typing ``` and a space still creates one.
