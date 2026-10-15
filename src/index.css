@@ -1321,6 +1321,55 @@ button {
   background: var(--border);
 }
 
+/* [[ note picker (notePicker.tsx): rows of the "/" menu, plus a › button to show a note's parts */
+.note-picker {
+  min-width: 240px;
+  max-width: min(360px, 90vw);
+}
+
+.note-picker .picker-row {
+  display: flex;
+  border-radius: 5px;
+}
+
+.note-picker .picker-row.selected {
+  background: var(--border);
+}
+
+.note-picker .picker-row button {
+  border-radius: 5px;
+}
+
+.note-picker .picker-row > button:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-picker .picker-row.selected button {
+  background: transparent;
+}
+
+.note-picker .picker-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.note-picker .picker-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.note-picker .picker-into {
+  flex-shrink: 0;
+  padding: 6px;
+}
+
+.note-picker .picker-into:hover svg {
+  color: var(--text);
+}
+
 /* ---------- Dialog (rename / delete) ---------- */
 
 /* Settings: a button on the right of a setting ("Edit…") */

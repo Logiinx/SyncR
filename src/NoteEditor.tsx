@@ -24,6 +24,7 @@ import { CodeBlock } from './codeBlock'
 import { DragSections } from './dragSections'
 import { SlashMenu } from './slashMenu'
 import { jumpToBlock, NoteLinks, PROTOCOL, takePendingJump } from './noteLinks'
+import { NotePicker } from './notePicker'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
@@ -40,6 +41,7 @@ const extensions = [
     protocols: [{ scheme: PROTOCOL, optionalSlashes: true }],
   }),
   NoteLinks,
+  NotePicker,
   OpenLinksOnClick,
   // Text color and highlighter, from a fixed palette (ColorPicker.tsx)
   TextStyle,
@@ -138,6 +140,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   // after NoteView has restored the scroll position.
   useEffect(() => {
     if (!editor) return
+    editor.storage.notePicker.noteId = note.id // the [[ picker marks "this note"
     const jump = () => {
       const target = takePendingJump(note.id)
       if (target?.blockId) setTimeout(() => jumpToBlock(editor, target.blockId!))
