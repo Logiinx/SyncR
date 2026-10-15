@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
 import { Bold, Check, FoldVertical, Italic, Link, Palette, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
 import ColorPicker from './ColorPicker'
-import { codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
+import { canMakeCodeBlock, codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
 import { copyLinkToBlock } from './noteLinks'
 import { BubbleMenu } from '@tiptap/react/menus'
 
@@ -10,7 +10,7 @@ const ICON_SIZE = 16
 
 // Small menu that appears under selected text, with the most used buttons of the toolbar.
 // Hidden otherwise, so the window stays clean.
-function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
+function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: string; title: string }) {
   // Re-checked every time the selection changes
   const state = useEditorState({
     editor,
@@ -21,6 +21,7 @@ function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
       canMakeSection: editor.can().setDetails(),
       inSection: editor.isActive('details'),
       inCodeBlock: editor.isActive('codeBlock'),
+      canMakeCodeBlock: canMakeCodeBlock(editor),
     }),
   })
 
@@ -31,7 +32,7 @@ function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
   // "Copy link": shows a check mark for a moment once the link is on the clipboard
   const [copied, setCopied] = useState(false)
   function copyLink() {
-    copyLinkToBlock(editor, noteId).then(() => {
+    copyLinkToBlock(editor, noteId, title).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1200)
     })
@@ -50,20 +51,24 @@ function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
         onHide: () => setShowColors(false),
       }}
     >
-      <MenuButton title="Bold (Ctrl+B)" active={state.bold} onClick={() => chain().toggleBold().run()}>
-        <Bold size={ICON_SIZE} />
-      </MenuButton>
-      <MenuButton title="Italic (Ctrl+I)" active={state.italic} onClick={() => chain().toggleItalic().run()}>
-        <Italic size={ICON_SIZE} />
-      </MenuButton>
-      <MenuButton title="Underline (Ctrl+U)" active={state.underline} onClick={() => chain().toggleUnderline().run()}>
-        <Underline size={ICON_SIZE} />
-      </MenuButton>
-      <MenuButton title="Text color and highlight" active={showColors} onClick={() => setShowColors(!showColors)}>
-        <Palette size={ICON_SIZE} />
-      </MenuButton>
-
-      <span className="menu-divider" />
+      {/* Code has no formatting: these would do nothing there */}
+      {!state.inCodeBlock && (
+        <>
+          <MenuButton title="Bold (Ctrl+B)" active={state.bold} onClick={() => chain().toggleBold().run()}>
+            <Bold size={ICON_SIZE} />
+          </MenuButton>
+          <MenuButton title="Italic (Ctrl+I)" active={state.italic} onClick={() => chain().toggleItalic().run()}>
+            <Italic size={ICON_SIZE} />
+          </MenuButton>
+          <MenuButton title="Underline (Ctrl+U)" active={state.underline} onClick={() => chain().toggleUnderline().run()}>
+            <Underline size={ICON_SIZE} />
+          </MenuButton>
+          <MenuButton title="Text color and highlight" active={showColors} onClick={() => setShowColors(!showColors)}>
+            <Palette size={ICON_SIZE} />
+          </MenuButton>
+          <span className="menu-divider" />
+        </>
+      )}
 
       <MenuButton
         title="Fold the selected lines into a section"
@@ -84,6 +89,7 @@ function SelectionMenu({ editor, noteId }: { editor: Editor; noteId: string }) {
       <MenuButton
         title={state.inCodeBlock ? 'Turn the code block back into normal text' : 'Make the selected lines a code block'}
         active={state.inCodeBlock}
+        disabled={!state.inCodeBlock && !state.canMakeCodeBlock}
         onClick={() => (state.inCodeBlock ? codeBlockToParagraphs(editor) : selectionToCodeBlock(editor))}
       >
         <SquareCode size={ICON_SIZE} />

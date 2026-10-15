@@ -11,6 +11,7 @@ import { currentZoom } from './appearance'
 const MOUSE_DRAG_DISTANCE = 5 // px before a press on the grip becomes a drag
 const SCROLL_EDGE = 40 // px from the top/bottom of the page where dragging scrolls it
 const SCROLL_STEP = 12 // px scrolled per pointer move near an edge
+const GRIP_REACH = 24 // px: the grip sits this far left of its section
 
 // Where sections can be: in the note itself or inside another section
 const CONTAINERS = new Set(['doc', 'detailsContent'])
@@ -66,8 +67,11 @@ class SectionDragger {
   onHover = (e: MouseEvent) => {
     if (this.drag) return
     if (this.grip.contains(e.target as Node)) return
-    const section = (e.target as HTMLElement).closest<HTMLElement>('.tiptap [data-type="details"]')
-    this.showGrip(section)
+    // Look a bit to the right of the pointer first: on the way from a section's title to its
+    // grip, the pointer crosses the margin (or, for a nested section, the outer one)
+    const find = (element: Element | null) => element?.closest<HTMLElement>('.tiptap [data-type="details"]') ?? null
+    const reach = GRIP_REACH * currentZoom()
+    this.showGrip(find(document.elementFromPoint(e.clientX + reach, e.clientY)) ?? find(e.target as Element))
   }
 
   onLeave = () => {

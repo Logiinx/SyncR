@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
-import { Extension, ReactRenderer, type ChainedCommands } from '@tiptap/react'
+import { Extension, ReactRenderer, type ChainedCommands, type Editor } from '@tiptap/react'
 import { PluginKey } from '@tiptap/pm/state'
 import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
 import {
@@ -46,9 +46,13 @@ const ITEMS: SlashItem[] = [
   { title: 'Divider', keywords: 'horizontal rule line separator hr', icon: Minus, run: (c) => c.setHorizontalRule() },
 ]
 
-function filterItems(query: string) {
+// Only what fits at the cursor (e.g. no Quote inside a list item): editor.can() tries the
+// command without changing anything
+function filterItems(query: string, editor: Editor) {
   const q = query.toLowerCase()
-  return ITEMS.filter((item) => `${item.title} ${item.keywords}`.toLowerCase().includes(q))
+  return ITEMS.filter(
+    (item) => `${item.title} ${item.keywords}`.toLowerCase().includes(q) && item.run(editor.can().chain()).run(),
+  )
 }
 
 export const SlashMenu = Extension.create({
@@ -64,7 +68,7 @@ export const SlashMenu = Extension.create({
         allowedPrefixes: [' '],
         allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
         placement: 'bottom-start',
-        items: ({ query }) => filterItems(query),
+        items: ({ query, editor }) => filterItems(query, editor),
         // Remove the typed "/query", then insert the block
         command: ({ editor, range, props }) => {
           props.run(editor.chain().focus().deleteRange(range)).run()

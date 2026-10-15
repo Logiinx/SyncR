@@ -206,8 +206,9 @@ function blockAtCursor(editor: Editor): { pos: number; node: PMNode } | null {
 const EXCERPT_LENGTH = 40
 
 // Puts a link to the block at the cursor on the clipboard: as a ready link (pasting it into a
-// note shows "Note title › start of the block") and as the plain address.
-export async function copyLinkToBlock(editor: Editor, noteId: string) {
+// note shows "Note title › start of the block") and as the plain address. Nothing is awaited
+// before writing: browsers only allow it right after the click.
+export async function copyLinkToBlock(editor: Editor, noteId: string, title: string) {
   const block = blockAtCursor(editor)
   let blockId: string | null = null
   if (block) {
@@ -221,8 +222,6 @@ export async function copyLinkToBlock(editor: Editor, noteId: string) {
     }
   }
 
-  const note = await db.notes.get(noteId)
-  const title = note ? noteTitle(note) : 'Note'
   const blockText =
     block?.node.type.name === 'details' ? block.node.firstChild?.textContent : block?.node.textContent
   const excerpt = blockText?.trim().slice(0, EXCERPT_LENGTH) ?? ''

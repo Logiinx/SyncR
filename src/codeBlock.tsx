@@ -7,7 +7,7 @@ import {
   type ReactNodeViewProps,
 } from '@tiptap/react'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
-import { Selection } from '@tiptap/pm/state'
+import { Selection, type EditorState } from '@tiptap/pm/state'
 import { createLowlight } from 'lowlight'
 import bash from 'highlight.js/lib/languages/bash'
 import c from 'highlight.js/lib/languages/c'
@@ -122,20 +122,41 @@ function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeView
   )
 }
 
+// The blocks the selected lines are in, if they can become one code block: only text (also
+// in lists and quotes). Images, tables, sections, … would be lost as plain text, so no.
+const TEXT_CONTAINERS = ['bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote']
+
+function codeBlockRange(state: EditorState) {
+  const type = state.schema.nodes.codeBlock
+  const { $from, $to } = state.selection
+  // Inside a list item it takes the whole list, since a list item must start with a paragraph
+  const range = $from.blockRange($to, (parent) => parent.type.contentMatch.matchType(type) !== null)
+  if (!range) return null
+  let onlyText = true
+  state.doc.nodesBetween(range.start, range.end, (node) => {
+    if (node.isText || (node.isTextblock && !node.type.spec.code) || TEXT_CONTAINERS.includes(node.type.name)) return
+    onlyText = false
+    return false
+  })
+  return onlyText ? range : null
+}
+
+export function canMakeCodeBlock(editor: Editor) {
+  return codeBlockRange(editor.state) !== null
+}
+
 // For the selection menu: the selected lines become one code block (setCodeBlock would make
-// one block per paragraph). Inside a list item it takes the whole list, since a list item
-// must start with a paragraph.
+// one block per paragraph)
 export function selectionToCodeBlock(editor: Editor) {
   return editor
     .chain()
     .focus()
     .command(({ state, tr }) => {
-      const type = state.schema.nodes.codeBlock
-      const { $from, $to } = state.selection
-      const range = $from.blockRange($to, (parent) => parent.type.contentMatch.matchType(type) !== null)
+      const range = codeBlockRange(state)
       if (!range) return false
       const text = state.doc.textBetween(range.start, range.end, '\n')
-      tr.replaceRangeWith(range.start, range.end, type.create(null, text ? state.schema.text(text) : null))
+      const node = state.schema.nodes.codeBlock.create(null, text ? state.schema.text(text) : null)
+      tr.replaceRangeWith(range.start, range.end, node)
       return true
     })
     .run()

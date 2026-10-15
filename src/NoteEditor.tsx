@@ -8,7 +8,7 @@ import { Link } from '@tiptap/extension-link'
 import { Color, TextStyle } from '@tiptap/extension-text-style'
 import { Highlight } from '@tiptap/extension-highlight'
 import { registerFlush, syncSoon } from './autoSync'
-import { saveNoteContent, type Note } from './db'
+import { noteTitle, saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
 import Toolbar from './Toolbar'
 import ImageViewer from './ImageViewer'
@@ -180,7 +180,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     <>
       <Toolbar editor={editor} />
       <ImageViewer />
-      <SelectionMenu editor={editor} noteId={note.id} />
+      <SelectionMenu editor={editor} noteId={note.id} title={noteTitle(note)} />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
       {tableMenu && <TableMenu editor={editor} x={tableMenu.x} y={tableMenu.y} onClose={() => setTableMenu(null)} />}
       {imageMenu && (

@@ -113,7 +113,8 @@ function ensureBlockId(item: PickItem, editor: Editor): string | null {
       const content = structuredClone(note.content)
       let node: JSONContent | undefined = content
       for (const index of item.path) node = node?.content?.[index]
-      if (!node) return
+      // The note may have changed since the list was shown (e.g. sync): check it's still that part
+      if (node?.type !== (item.kind === 'heading' ? 'heading' : 'details')) return
       node.attrs = { ...node.attrs, blockId }
       return saveNoteContent(note.id, content, note.text)
     })
