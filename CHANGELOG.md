@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 ### Changed
 - Links in notes are underlined only when the mouse is over them (on the phone they stay underlined).
 - Hovering a link shows its address in a small popup, when the link text is something else.
+- The note list shows each note's last edit date ("Today, 14:32", "Yesterday", …), its title in bold and the start of its text. The open note is marked with a blue bar.
 
 ## [0.6.7] - 2026-10-14
 

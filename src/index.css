@@ -295,19 +295,58 @@ button {
   overflow-y: auto;
 }
 
+/* Each note: date, bold title, up to 2 lines of preview (Sidebar.tsx) */
 .note-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   width: 100%;
-  padding: 8px;
+  margin-bottom: 2px;
+  padding: 10px 10px 10px 12px;
+  border-left: 3px solid transparent;
   border-radius: 6px;
   text-align: left;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .note-list button:hover,
 .note-list button.active {
   background: var(--border);
+}
+
+/* The open note gets a blue bar on the left */
+.note-list button.active {
+  border-left-color: var(--link);
+  border-radius: 0 6px 6px 0;
+}
+
+.note-date {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.note-title,
+.note-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-title {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.note-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  opacity: 0.75;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.note-preview:empty {
+  display: none;
 }
 
 .sidebar-footer {
