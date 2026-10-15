@@ -8,7 +8,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Changed
 - The program file is now called SyncR.exe instead of syncr.exe.
-- Updates are built about twice as fast (around 3 minutes instead of 6), so new versions arrive sooner.
+- Faster desktop builds (~6 min → ~3 min): the Rust build cache is now saved on `main` (tag builds could only restore a stale `main` cache, so ~90 crates were recompiled each release), and the Rust toolchain is pinned to 1.99.0 so new stable releases no longer invalidate the cache.
 
 ## [0.8.1] - 2026-10-15
 
