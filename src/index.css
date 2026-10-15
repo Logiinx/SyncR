@@ -643,6 +643,18 @@ button {
   opacity: 1;
 }
 
+/* ---------- Bullet and numbered lists ---------- */
+
+/* The bullet / number sits at the left edge of the text, like the "-" you typed
+   (browsers indent lists by 40px). Nested lists step in by the same amount. */
+.tiptap ul:not([data-type='taskList']) {
+  padding-left: 1.1em;
+}
+
+.tiptap ol {
+  padding-left: 1.3em;
+}
+
 /* ---------- Checklists ---------- */
 
 .tiptap ul[data-type='taskList'] {
