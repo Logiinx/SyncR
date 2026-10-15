@@ -39,6 +39,14 @@ export interface Attachment {
   unusedSince?: number // set when sync first finds no note using it (see sync.ts, step 6)
 }
 
+// App-wide data that syncs like a note (e.g. the color rules, see colorRules.ts).
+// One row per kind, found by name.
+export interface Setting {
+  name: string
+  value: unknown
+  updatedAt: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -46,6 +54,7 @@ export const db = new Dexie('syncr') as Dexie & {
   keys: EntityTable<StoredKey, 'name'>
   synced: EntityTable<SyncedNote, 'id'>
   attachments: EntityTable<Attachment, 'id'>
+  settings: EntityTable<Setting, 'name'>
 }
 
 db.version(1).stores({
@@ -66,6 +75,10 @@ db.version(4).stores({
 
 db.version(5).stores({
   attachments: 'id',
+})
+
+db.version(6).stores({
+  settings: 'name',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

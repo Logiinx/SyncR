@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { loadRuleGroups } from './colorRules'
+import ColorRulesDialog from './ColorRulesDialog'
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -29,6 +31,19 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     if (scale !== appearance.scale) update({ scale })
   }
 
+  // Color rules open in their own window (more room); back here when it closes
+  const [showRules, setShowRules] = useState(false)
+  const [rulesSummary, setRulesSummary] = useState('')
+  useEffect(() => {
+    if (showRules) return
+    loadRuleGroups().then((groups) => {
+      const on = groups.filter((g) => g.enabled).flatMap((g) => g.rules.filter((r) => r.enabled && r.words.trim()))
+      setRulesSummary(groups.length === 0 ? 'None yet' : `${on.length} on`)
+    })
+  }, [showRules])
+
+  if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
+
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
@@ -39,7 +54,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <h2>Settings</h2>
-        <p className="settings-note">These settings are for this device only.</p>
+        <p className="settings-note">Font, text size, scaling and dates are for this device only.</p>
 
         <div className="setting">
           <span className="setting-label">Font</span>
@@ -99,6 +114,15 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onChange={(e) => update({ showDates: e.target.checked })}
           />
         </label>
+
+        <div className="setting setting-toggle">
+          <span>
+            Color rules <span className="setting-value">{rulesSummary}</span>
+          </span>
+          <button className="setting-button" onClick={() => setShowRules(true)}>
+            Edit…
+          </button>
+        </div>
 
         <div className="dialog-buttons">
           <button className="primary" onClick={onClose} autoFocus>

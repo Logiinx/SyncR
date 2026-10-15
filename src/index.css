@@ -1044,6 +1044,142 @@ button {
 
 /* ---------- Dialog (rename / delete) ---------- */
 
+/* Settings: a button on the right of a setting ("Edit…") */
+.setting-button {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.setting-button:hover {
+  border-color: var(--text-dim);
+}
+
+/* ---------- Color rules dialog (ColorRulesDialog.tsx) ---------- */
+
+.dialog.color-rules {
+  width: min(480px, 100%);
+}
+
+.rule-group {
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rule-group-head,
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-group-head {
+  margin-bottom: 6px;
+}
+
+.rule-group input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--link);
+  cursor: pointer;
+}
+
+.rule-group-name,
+.rule-words {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.rule-group-name {
+  font-weight: 600;
+}
+
+.rule-words {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.rule-group-name:hover,
+.rule-group-name:focus,
+.rule-words:focus {
+  border-color: var(--text-dim);
+  outline: none;
+}
+
+.rule-row {
+  padding: 2px 0;
+}
+
+/* Switched off: dimmed */
+.rule-group.off .rule,
+.rule.off {
+  opacity: 0.45;
+}
+
+.rule-color {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+}
+
+.rule-color.selected {
+  border-color: var(--text);
+}
+
+.rule-palette {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0 6px 24px;
+}
+
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 5px;
+  color: var(--text-dim);
+}
+
+.icon-button:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.icon-button.confirm {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.add-button {
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.add-button:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;
