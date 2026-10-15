@@ -6,22 +6,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
 import type { Reminder } from './db'
 import { useLocalState } from './localState'
-import { addToGoogleCalendar, clearDone, deleteReminder, listReminders, markDone, markNotDone } from './reminders'
-
-// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00"
-function formatDue(time: number) {
-  const date = new Date(time)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`
-  const day = new Date(time).setHours(0, 0, 0, 0)
-  const ref = new Date()
-  ref.setHours(0, 0, 0, 0)
-  const dayFromToday = (offset: number) => new Date(ref).setDate(ref.getDate() + offset)
-  if (day === dayFromToday(0)) return `Today, ${clock}`
-  if (day === dayFromToday(1)) return `Tomorrow, ${clock}`
-  if (day === dayFromToday(-1)) return `Yesterday, ${clock}`
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}, ${clock}`
-}
+import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
 
 // The reminders list at the bottom of the sidebar: waiting reminders (soonest first), then a
 // collapsed "Done" group. Click = edit, right-click = menu. Open/closed is remembered per device.

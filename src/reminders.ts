@@ -84,3 +84,18 @@ export async function removeOldDeleted(): Promise<string[]> {
   await db.reminders.bulkDelete(old.map((r) => r.id))
   return old.map((r) => r.id)
 }
+
+// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00"
+export function formatDue(time: number) {
+  const date = new Date(time)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  const day = new Date(time).setHours(0, 0, 0, 0)
+  const ref = new Date()
+  ref.setHours(0, 0, 0, 0)
+  const dayFromToday = (offset: number) => new Date(ref).setDate(ref.getDate() + offset)
+  if (day === dayFromToday(0)) return `Today, ${clock}`
+  if (day === dayFromToday(1)) return `Tomorrow, ${clock}`
+  if (day === dayFromToday(-1)) return `Yesterday, ${clock}`
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}, ${clock}`
+}

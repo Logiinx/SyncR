@@ -7,6 +7,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
 import { onFollowLink } from './noteLinks'
 import NoteView from './NoteView'
+import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import SettingsDialog from './SettingsDialog'
 import TabBar from './TabBar'
@@ -163,6 +164,7 @@ function App() {
           ]}
         />
       )}
+      <ReminderAlerts />
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </div>
