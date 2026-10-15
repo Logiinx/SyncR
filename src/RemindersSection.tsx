@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
 import type { Reminder } from './db'
 import { useLocalState } from './localState'
-import { clearDone, deleteReminder, listReminders, markDone, markNotDone } from './reminders'
+import { addToGoogleCalendar, clearDone, deleteReminder, listReminders, markDone, markNotDone } from './reminders'
 
 // "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00"
 function formatDue(time: number) {
@@ -76,7 +76,10 @@ function RemindersSection() {
         }}
       >
         <span className="reminder-text">{reminder.text}</span>
-        <span className="reminder-due">{formatDue(reminder.dueAt)}</span>
+        <span className="reminder-due">
+          {formatDue(reminder.dueAt)}
+          {reminder.phone && <Smartphone size={11} aria-label="Also in Google Calendar" />}
+        </span>
       </button>
     </li>
   )
@@ -124,6 +127,10 @@ function RemindersSection() {
             menu.reminder.doneAt === null
               ? { label: 'Done', onClick: () => markDone(menu.reminder.id) }
               : { label: 'Not done', onClick: () => markNotDone(menu.reminder.id) },
+            // Opens Calendar again (e.g. the event wasn't saved there, or was deleted)
+            ...(menu.reminder.doneAt === null
+              ? [{ label: 'Add to Google Calendar', onClick: () => addToGoogleCalendar(menu.reminder) }]
+              : []),
             { label: 'Delete', danger: true, onClick: () => askDelete(menu.reminder) },
           ]}
         />

@@ -601,6 +601,33 @@ button {
   outline: 1px solid var(--accent);
 }
 
+.reminder-phone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.dialog .reminder-phone input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--link);
+  cursor: pointer;
+}
+
+.dialog .reminder-phone-hint {
+  margin: -8px 0 16px;
+  font-size: 0.9em;
+}
+
+/* Small phone icon after the time: also in Google Calendar */
+.reminder-due svg {
+  margin-left: 5px;
+  vertical-align: -1px;
+}
+
 .sidebar-footer {
   display: flex;
   flex-direction: column;

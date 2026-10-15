@@ -1,4 +1,5 @@
 import { changed, db, type Reminder } from './db'
+import { openLink } from './links'
 
 // Reminders: their own list, separate from notes (see DECISIONS.md, "Reminders").
 // Every change sets updatedAt, so sync sends it to the other devices (sync.ts, step 4c).
@@ -54,6 +55,24 @@ export const deleteReminder = (id: string) => update(id, { deleted: true, text: 
 export async function clearDone() {
   const done = (await listReminders()).filter((r) => r.doneAt !== null)
   for (const r of done) await deleteReminder(r.id)
+}
+
+// ---------- Google Calendar (the phone's notification, see DECISIONS.md) ----------
+
+// "20261015T160000Z": the time in UTC, as Google Calendar links want it
+const calendarTime = (time: number) => new Date(time).toISOString().replace(/[-:]|\.\d{3}/g, '')
+
+// Opens Google Calendar with the event filled in; the user taps Save there. One way only:
+// later changes in SyncR don't reach the event. Opened in the browser (desktop app) or a
+// new tab, so it must be called right after a click (otherwise the browser may block it).
+export function addToGoogleCalendar(reminder: Pick<Reminder, 'text' | 'note' | 'dueAt'>) {
+  const url = new URL('https://calendar.google.com/calendar/render')
+  url.searchParams.set('action', 'TEMPLATE')
+  url.searchParams.set('text', reminder.text)
+  // A 15-minute event starting at the reminder's time
+  url.searchParams.set('dates', `${calendarTime(reminder.dueAt)}/${calendarTime(reminder.dueAt + 15 * 60 * 1000)}`)
+  if (reminder.note) url.searchParams.set('details', reminder.note)
+  openLink(url.href)
 }
 
 // Deleted rows older than 90 days: every device that synced since then has them too.
