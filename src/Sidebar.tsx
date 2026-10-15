@@ -5,7 +5,6 @@ import { db, noteTitle, type Note } from './db'
 interface Props {
   activeId: string | null
   onOpen: (id: string) => void
-  onNew: () => void
   onClose: () => void
   onMenu: (id: string, x: number, y: number) => void
   onSettings: () => void
@@ -34,7 +33,7 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onNew, onClose, onMenu, onSettings }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
 
@@ -42,9 +41,6 @@ function Sidebar({ activeId, onOpen, onNew, onClose, onMenu, onSettings }: Props
     <>
       <div className="backdrop" onClick={onClose} />
       <aside className="sidebar">
-        <button className="new-note" onClick={onNew}>
-          + New note
-        </button>
         <ul className="note-list">
           {notes?.map((note) => (
             <li key={note.id}>

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- One way to create a note: the big "+ New note" button in the sidebar is gone, the "+" after the tabs is now an icon and sits outside the scrolling tab strip, so it stays visible when many tabs are open. When no note is open, the page shows a "New note" button.
+
 ## [0.8.2] - 2026-10-15
 
 ### Changed

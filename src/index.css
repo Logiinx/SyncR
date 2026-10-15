@@ -356,6 +356,9 @@ button {
 }
 
 .tab-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 28px;
   height: 28px;
@@ -411,17 +414,10 @@ button {
   }
 }
 
-.new-note {
-  margin: 12px;
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--accent);
-}
-
 .note-list {
   flex: 1;
   margin: 0;
-  padding: 0 8px;
+  padding: 8px;
   list-style: none;
   overflow-y: auto;
 }
@@ -517,6 +513,16 @@ button {
   margin-top: calc(30vh / var(--zoom, 1));
   text-align: center;
   color: var(--text-dim);
+}
+
+.empty-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--text);
 }
 
 /* ---------- Toolbar (above the note) ---------- */

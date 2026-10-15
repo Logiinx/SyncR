@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { currentZoom } from './appearance'
 import { noteTitle, type Note } from './db'
@@ -159,56 +160,59 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, o
   }
 
   return (
-    <nav className={drag ? 'tabs dragging' : 'tabs'} data-tauri-drag-region ref={navRef}>
-      {notes.map((note, index) => {
-        const isDragged = drag?.id === note.id
-        // Measured in screen pixels; the page is scaled by the app scaling setting
-        const offset = (drag ? (isDragged ? drag.dx : drag.shifts[index]) : 0) / currentZoom()
-        let className = note.id === activeId ? 'tab active' : 'tab'
-        if (isDragged) className += ' drag-source'
-        if (lifted === note.id) className += ' lifted'
-        return (
-          <div
-            key={note.id}
-            ref={(el) => {
-              if (el) tabRefs.current.set(note.id, el)
-              else tabRefs.current.delete(note.id)
-            }}
-            className={className}
-            style={offset ? { transform: `translateX(${offset}px)` } : undefined}
-            onPointerDown={(e) => onPointerDown(e, note.id, index)}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
-            onClick={() => !suppressClick.current && onSelect(note.id)}
-            onAuxClick={(e) => e.button === 1 && onClose(note.id)}
-            onDoubleClick={() => onRename(note.id)}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              // Phone: the menu opens on release instead (see onPointerUp), so holding can drag
-              if (gesture.current?.pointerType === 'touch') return
-              onMenu(note.id, e.clientX, e.clientY)
-            }}
-            title={noteTitle(note)}
-          >
-            <span className="tab-title">{noteTitle(note)}</span>
-            <button
-              className="tab-close"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClose(note.id)
+    <>
+      <nav className={drag ? 'tabs dragging' : 'tabs'} data-tauri-drag-region ref={navRef}>
+        {notes.map((note, index) => {
+          const isDragged = drag?.id === note.id
+          // Measured in screen pixels; the page is scaled by the app scaling setting
+          const offset = (drag ? (isDragged ? drag.dx : drag.shifts[index]) : 0) / currentZoom()
+          let className = note.id === activeId ? 'tab active' : 'tab'
+          if (isDragged) className += ' drag-source'
+          if (lifted === note.id) className += ' lifted'
+          return (
+            <div
+              key={note.id}
+              ref={(el) => {
+                if (el) tabRefs.current.set(note.id, el)
+                else tabRefs.current.delete(note.id)
               }}
-              title="Close tab"
+              className={className}
+              style={offset ? { transform: `translateX(${offset}px)` } : undefined}
+              onPointerDown={(e) => onPointerDown(e, note.id, index)}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerCancel}
+              onClick={() => !suppressClick.current && onSelect(note.id)}
+              onAuxClick={(e) => e.button === 1 && onClose(note.id)}
+              onDoubleClick={() => onRename(note.id)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                // Phone: the menu opens on release instead (see onPointerUp), so holding can drag
+                if (gesture.current?.pointerType === 'touch') return
+                onMenu(note.id, e.clientX, e.clientY)
+              }}
+              title={noteTitle(note)}
             >
-              ×
-            </button>
-          </div>
-        )
-      })}
+              <span className="tab-title">{noteTitle(note)}</span>
+              <button
+                className="tab-close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose(note.id)
+                }}
+                title="Close tab"
+              >
+                ×
+              </button>
+            </div>
+          )
+        })}
+      </nav>
+      {/* Outside the scrolling strip, so it stays visible when there are many tabs */}
       <button className="tab-new" onClick={onNew} title="New note">
-        +
+        <Plus size={18} />
       </button>
-    </nav>
+    </>
   )
 }
 

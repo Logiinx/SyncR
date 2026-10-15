@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
@@ -123,7 +124,6 @@ function App() {
           <Sidebar
             activeId={activeId}
             onOpen={openNote}
-            onNew={newNote}
             onClose={() => setSidebarOpen(false)}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
             onSettings={() => setSettingsOpen(true)}
@@ -134,7 +134,12 @@ function App() {
           <NoteView key={activeNote.id} note={activeNote} autoFocus={activeNote.id === newNoteId} />
         ) : (
           <main className="page">
-            <p className="empty">Open a note with ☰, or create one with +.</p>
+            <div className="empty">
+              <button className="empty-new" onClick={newNote}>
+                <Plus size={16} /> New note
+              </button>
+              <p>or open one with ☰</p>
+            </div>
           </main>
         )}
       </div>
