@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SyncR",
+  "mainBinaryName": "SyncR",
   "version": "../package.json",
   "identifier": "com.logiinx.syncr",
   "build": {

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- The program file is now called SyncR.exe instead of syncr.exe.
+
 ## [0.8.1] - 2026-10-15
 
 ### Changed
