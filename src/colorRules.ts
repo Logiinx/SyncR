@@ -3,7 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node } from '@tiptap/pm/model'
 import { liveQuery } from 'dexie'
-import { db } from './db'
+import { changed, db } from './db'
 
 // Color rules: words like "Fire" get a color automatically, everywhere in every note.
 // Only on screen: the notes themselves don't change, so switching a rule off removes its
@@ -23,14 +23,17 @@ export interface RuleGroup {
   rules: ColorRule[]
 }
 
-const SETTING = 'colorRules'
+const SETTING = 'color-rules' // lower case: Dropbox lists file names in lower case
 
 export function loadRuleGroups() {
   return db.settings.get(SETTING).then((row) => (row?.value as RuleGroup[] | undefined) ?? [])
 }
 
+// Keeps what sync knows about the last synced version (syncedRev, …)
 export async function saveRuleGroups(groups: RuleGroup[]) {
-  await db.settings.put({ name: SETTING, value: groups, updatedAt: Date.now() })
+  const change = { value: groups, updatedAt: Date.now() }
+  if (!(await db.settings.update(SETTING, change))) await db.settings.put({ name: SETTING, ...change })
+  changed()
 }
 
 // ---------- Matching ----------

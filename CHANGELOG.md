@@ -7,7 +7,7 @@ All notable changes to SyncR. Newest version first.
 ### Added
 - Text colors and a highlighter (8 colors each). Select text and use the new color button in the menu above it, or the color button in the toolbar.
 - Tables. Insert one with the new table button in the toolbar (the first row is a header). Right-click a cell (long press on the phone) to add or delete rows and columns, switch the header row on or off, color the cell or delete the table. Tab jumps to the next cell, and adds a row at the end. Drag the line between two columns to resize them.
-- Color rules (Settings → Color rules): words like "Fire" get a color automatically in all your notes. Rules are kept in groups that you can switch on and off, and switching off removes the colors right away. Words you colored by hand keep their color.
+- Color rules (Settings → Color rules): words like "Fire" get a color automatically in all your notes. Rules are kept in groups that you can switch on and off, and switching off removes the colors right away. Words you colored by hand keep their color. Rules sync between your devices.
 
 ### Fixed
 - The menu above selected text is no longer hidden behind the toolbar when the selection is on the first line.

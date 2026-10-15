@@ -1,5 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core'
-import { db, imageIds, noteTitle, type Note } from './db'
+import { db, imageIds, noteTitle, type Note, type Setting } from './db'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
 
@@ -7,10 +7,12 @@ import { deleteFile, download, listFiles, upload } from './dropbox'
 //   /notes/<id>        one file per note
 //   /deleted/<id>      marker left when a note is deleted, so other devices delete it too
 //   /attachments/<id>  one file per image (never changes, so no conflicts)
+//   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
+// - Settings changed on both sides: the newest wins (no conflict copy).
 
 // What's stored in /notes/<id> (before encryption)
 interface RemoteNote {
@@ -43,6 +45,7 @@ export function deviceName() {
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
+const settingPath = (name: string) => `/settings/${name}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
@@ -121,6 +124,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteNotes = new Map<string, string>() // id -> rev
   const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
+  const remoteSettings = new Map<string, string>() // name -> rev
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
@@ -128,6 +132,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'notes') remoteNotes.set(id, file.rev)
     if (folder === 'deleted') remoteDeleted.set(id, file.modified)
     if (folder === 'attachments') remoteAttachments.add(id)
+    if (folder === 'settings') remoteSettings.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -248,6 +253,43 @@ async function runSync(): Promise<SyncResult> {
   for (const note of await db.notes.toArray()) {
     // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
     if (!done.has(note.id)) await uploadNote(note, 'add')
+  }
+
+  // ---------- 4b. Settings (color rules, …) ----------
+  // Like a note, but changed on both sides means the newest wins.
+
+  const localSettings = await db.settings.toArray()
+  const settingNames = new Set([...remoteSettings.keys(), ...localSettings.map((s) => s.name)])
+  for (const name of settingNames) {
+    const local = localSettings.find((s) => s.name === name)
+    const remoteRev = remoteSettings.get(name)
+    const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
+    const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
+    if (!changedHere && !changedThere) continue
+
+    let remote: Setting | null = null
+    if (changedThere) {
+      const raw = await download(settingPath(name))
+      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+    }
+
+    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
+      // Send this device's version
+      const data: Setting = { name, value: local.value, updatedAt: local.updatedAt }
+      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
+      const rev = await upload(settingPath(name), encrypted, remoteRev ? { update: remoteRev } : 'add')
+      if (!rev) throw new RetrySoonError('A setting changed in Dropbox during sync.')
+      await db.settings.update(name, { syncedRev: rev, syncedUpdatedAt: local.updatedAt })
+      result.uploaded++
+    } else if (remote && remoteRev) {
+      // Take the other device's version, unless it was changed here while this sync ran
+      const stored = await db.transaction('rw', db.settings, async () => {
+        if ((await db.settings.get(name))?.updatedAt !== local?.updatedAt) return false
+        await db.settings.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
+        return true
+      })
+      if (stored) result.downloaded++
+    }
   }
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------

@@ -40,11 +40,15 @@ export interface Attachment {
 }
 
 // App-wide data that syncs like a note (e.g. the color rules, see colorRules.ts).
-// One row per kind, found by name.
+// One row per kind, found by name (lower case only: it's also the file name in Dropbox,
+// which lists names in lower case). syncedRev / syncedUpdatedAt: what it looked like at the
+// last sync (like SyncedNote for notes).
 export interface Setting {
   name: string
   value: unknown
   updatedAt: number
+  syncedRev?: string
+  syncedUpdatedAt?: number
 }
 
 // The local database, stored in the browser/app (IndexedDB).
@@ -83,7 +87,7 @@ db.version(6).stores({
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.
 // Sync's own writes don't call this, so they don't start another sync.
-function changed() {
+export function changed() {
   window.dispatchEvent(new Event('notes-changed'))
 }
 
