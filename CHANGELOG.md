@@ -4,17 +4,19 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-15
+
 ### Changed
 - Links in notes are underlined only when the mouse is over them (on the phone they stay underlined).
 - Hovering a link shows its address in a small popup, when the link text is something else.
 - The note list shows each note's last edit date ("Today, 14:32", "Yesterday", …), its title in bold and the start of its text. The open note is marked with a blue bar.
+- New sync button design: a plain cloud with a small status dot in the corner. Green: synced. Blue: changes waiting. A turning blue ring: syncing. Red: error. Empty gray dot: offline. Orange padlock: enter your passphrase.
+- Hovering the sync button shows its status and when the last sync was ("Synced · 2 min ago"), in a small box instead of the plain tooltip.
+- The message after clicking the sync button is shorter ("✓ 2 sent · 1 received", "✓ Up to date"), sits right under the button and fades in and out after 3 seconds.
 
 ### Added
 - Settings: "Show dates in the note list" lets you hide the dates.
 - Drag tabs to change their order. On the phone: hold a tab, then drag (hold and let go still opens its menu).
-- New sync button design: a plain cloud with a small status dot in the corner. Green: synced. Blue: changes waiting. A turning blue ring: syncing. Red: error. Empty gray dot: offline. Orange padlock: enter your passphrase.
-- Hovering the sync button shows its status and when the last sync was ("Synced · 2 min ago"), in a small box instead of the plain tooltip.
-- The message after clicking the sync button is shorter ("✓ 2 sent · 1 received", "✓ Up to date"), sits right under the button and fades in and out after 3 seconds.
 
 ## [0.6.7] - 2026-10-14
 
