@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-15
+
 ### Changed
 - Bullet and numbered lists line up with the text: the bullet stays where you typed the "-" instead of moving inward.
 - Pressing Enter on the first, still empty item of a list adds a second item instead of removing the list. Further down, Enter on an empty item still ends the list.
