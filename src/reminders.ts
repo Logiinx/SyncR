@@ -27,7 +27,8 @@ async function update(id: string, changes: Partial<Reminder>) {
   changed()
 }
 
-export const editReminder = (id: string, fields: ReminderFields) => update(id, fields)
+// doneAt: null makes a done reminder wait again (e.g. when it was moved to a new time)
+export const editReminder = (id: string, fields: ReminderFields & { doneAt?: null }) => update(id, fields)
 export const markDone = (id: string) => update(id, { doneAt: Date.now() })
 export const markNotDone = (id: string) => update(id, { doneAt: null })
 

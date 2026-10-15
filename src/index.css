@@ -481,6 +481,126 @@ button {
   display: none;
 }
 
+/* ---------- Reminders, at the bottom of the sidebar (RemindersSection.tsx) ---------- */
+
+.reminders {
+  display: flex;
+  flex-direction: column;
+  /* Never pushes the note list away: scrolls by itself when long */
+  max-height: 40%;
+  margin: 0 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.reminders-header {
+  display: flex;
+  align-items: center;
+}
+
+.reminders-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: left;
+}
+
+.reminders-toggle:hover,
+.reminders-add:hover,
+.reminders-clear:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--text);
+}
+
+.reminders-count {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--border);
+  font-size: 11px;
+}
+
+.reminders-add,
+.reminders-clear {
+  display: flex;
+  padding: 5px 7px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.reminders-clear {
+  font-size: 12px;
+}
+
+.done-toggle {
+  font-size: 12px;
+}
+
+.reminders-body {
+  overflow-y: auto;
+}
+
+.reminder-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reminder-list button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 5px 8px 5px 28px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.reminder-list button:hover {
+  background: var(--border);
+}
+
+.reminder-text {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-due {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.reminder-list button.overdue .reminder-due {
+  color: var(--text-red);
+}
+
+.reminder-list.done .reminder-text {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.dialog textarea:focus {
+  outline: 1px solid var(--accent);
+}
+
 .sidebar-footer {
   display: flex;
   flex-direction: column;

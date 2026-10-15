@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Settings } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
+import RemindersSection from './RemindersSection'
 
 interface Props {
   activeId: string | null
@@ -59,6 +60,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings }: Props) {
             </li>
           ))}
         </ul>
+        <RemindersSection />
         <div className="sidebar-footer">
           <button className="footer-button" onClick={onSettings}>
             <Settings size={15} /> Settings

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Reminders: a small "Reminders" section at the bottom of the note list (click the header to fold it). The + button adds one: what to remember, a date and time, and an optional note (shown when hovering over the reminder). Reminders are listed soonest first; overdue ones show their time in red. Click a reminder to edit it; right-click for Done / Not done and Delete. Done reminders move into a folded "Done" group with a Clear button. Reminders sync between devices, end-to-end encrypted like notes. (Pop-ups at the reminder's time come in a later update.)
+
 ## [0.9.0] - 2026-10-15
 
 ### Added
