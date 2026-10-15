@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Baseline, Bold, ImageIcon, Italic, ListTodo, Redo2, Strikethrough, Table, Underline, Undo2 } from 'lucide-react'
+import { Bold, ImageIcon, Italic, ListTodo, Palette, Redo2, Strikethrough, Table, Underline, Undo2 } from 'lucide-react'
 import { currentZoom } from './appearance'
 import ColorPicker from './ColorPicker'
 import { insertImages } from './image'
@@ -88,7 +88,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         active={!!colors}
         onClick={(e) => toggleColors(e.currentTarget)}
       >
-        <Baseline size={ICON_SIZE} />
+        <Palette size={ICON_SIZE} />
       </ToolButton>
       {colors && (
         <div className="color-popover" ref={colorPanel} style={colors}>

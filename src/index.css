@@ -849,13 +849,39 @@ button {
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
+.selection-menu {
+  align-items: center;
+}
+
+/* Same buttons as the toolbar */
 .selection-menu button {
-  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
   border-radius: 5px;
+  color: var(--text-dim);
 }
 
 .selection-menu button:hover:not(:disabled) {
   background: var(--border);
+  color: var(--text);
+}
+
+/* The selected text is bold / italic / … */
+.selection-menu button.active {
+  background: var(--accent);
+  color: var(--text);
+}
+
+/* Thin line between formatting and the section buttons */
+.menu-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: #353535;
 }
 
 .selection-menu button:disabled {

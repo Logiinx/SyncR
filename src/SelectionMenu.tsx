@@ -1,15 +1,21 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Baseline } from 'lucide-react'
+import { Bold, FoldVertical, Italic, Palette, UnfoldVertical, Underline } from 'lucide-react'
 import ColorPicker from './ColorPicker'
 import { BubbleMenu } from '@tiptap/react/menus'
 
-// Small menu that appears above selected text. Hidden otherwise, so the window stays clean.
+const ICON_SIZE = 16
+
+// Small menu that appears under selected text, with the most used buttons of the toolbar.
+// Hidden otherwise, so the window stays clean.
 function SelectionMenu({ editor }: { editor: Editor }) {
   // Re-checked every time the selection changes
-  const { canMakeSection, inSection } = useEditorState({
+  const state = useEditorState({
     editor,
     selector: ({ editor }) => ({
+      bold: editor.isActive('bold'),
+      italic: editor.isActive('italic'),
+      underline: editor.isActive('underline'),
       canMakeSection: editor.can().setDetails(),
       inSection: editor.isActive('details'),
     }),
@@ -17,6 +23,7 @@ function SelectionMenu({ editor }: { editor: Editor }) {
 
   // The color button opens the palette inside the menu
   const [showColors, setShowColors] = useState(false)
+  const chain = () => editor.chain().focus()
 
   return (
     <BubbleMenu
@@ -31,32 +38,64 @@ function SelectionMenu({ editor }: { editor: Editor }) {
         onHide: () => setShowColors(false),
       }}
     >
-      <button
-        className={showColors ? 'active' : ''}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setShowColors(!showColors)}
-        title="Text color and highlight"
-        aria-label="Text color and highlight"
-      >
-        <Baseline size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().setDetails().run()}
-        disabled={!canMakeSection}
+      <MenuButton title="Bold (Ctrl+B)" active={state.bold} onClick={() => chain().toggleBold().run()}>
+        <Bold size={ICON_SIZE} />
+      </MenuButton>
+      <MenuButton title="Italic (Ctrl+I)" active={state.italic} onClick={() => chain().toggleItalic().run()}>
+        <Italic size={ICON_SIZE} />
+      </MenuButton>
+      <MenuButton title="Underline (Ctrl+U)" active={state.underline} onClick={() => chain().toggleUnderline().run()}>
+        <Underline size={ICON_SIZE} />
+      </MenuButton>
+      <MenuButton title="Text color and highlight" active={showColors} onClick={() => setShowColors(!showColors)}>
+        <Palette size={ICON_SIZE} />
+      </MenuButton>
+
+      <span className="menu-divider" />
+
+      <MenuButton
         title="Fold the selected lines into a section"
+        disabled={!state.canMakeSection}
+        onClick={() => chain().setDetails().run()}
       >
-        Section
-      </button>
-      {inSection && (
-        <button
-          onClick={() => editor.chain().focus().unsetDetails().run()}
+        <FoldVertical size={ICON_SIZE} />
+      </MenuButton>
+      {state.inSection && (
+        <MenuButton
           title="Remove the section around the cursor, keep its text"
+          onClick={() => chain().unsetDetails().run()}
         >
-          Unwrap
-        </button>
+          <UnfoldVertical size={ICON_SIZE} />
+        </MenuButton>
       )}
+
       {showColors && <ColorPicker editor={editor} onPicked={() => setShowColors(false)} />}
     </BubbleMenu>
+  )
+}
+
+interface MenuButtonProps {
+  title: string
+  active?: boolean
+  disabled?: boolean
+  onClick: () => void
+  children: ReactNode
+}
+
+function MenuButton({ title, active, disabled, onClick, children }: MenuButtonProps) {
+  return (
+    <button
+      className={active ? 'active' : ''}
+      title={title}
+      aria-label={title}
+      aria-pressed={active}
+      disabled={disabled}
+      // Keep the selection (and the phone keyboard) in the note
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   )
 }
 
