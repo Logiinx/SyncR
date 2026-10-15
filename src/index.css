@@ -6,6 +6,9 @@
   --text-dim: #808080;
   --accent: #2d4f7c;
   --link: #7aa7e0; /* links in notes: the accent is too dark to read as text */
+  --ok: #6cc28a; /* sync: done */
+  --warn: #e0a040; /* sync: action needed (passphrase) */
+  --error: #e5534b; /* sync: error */
 }
 
 body {
@@ -101,11 +104,18 @@ button {
   height: 24px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.05;
+  stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+/* --gap: the thin dark edge that separates the status from the cloud; it matches what's
+   behind the button (also on hover) */
+.sync-button {
+  --gap: var(--bg);
+}
+
 .sync-button:hover {
+  --gap: var(--bg-raised);
   background: var(--bg-raised);
   color: var(--text);
 }
@@ -114,35 +124,74 @@ button {
   color: var(--text);
 }
 
-.sync-button .lock {
-  fill: var(--bg);
-}
-
-.sync-button .mark {
-  stroke-width: 1.35;
-  stroke-linecap: round;
-}
-
-.sync-button .dot {
-  fill: currentColor;
-  stroke: none;
+.sync-button .cloud {
+  stroke-width: 1.5;
 }
 
 .sync-button.offline {
   color: var(--text-dim);
 }
 
-.sync-button.error {
-  color: #e0a040;
+.sync-button .badge {
+  stroke: var(--gap);
+  stroke-width: 2;
 }
 
-.sync-button.syncing svg {
-  animation: pulse 1s ease-in-out infinite alternate;
+.sync-button .badge.synced {
+  fill: var(--ok);
 }
 
-@keyframes pulse {
+.sync-button .badge.pending {
+  fill: var(--link);
+}
+
+.sync-button .badge.error {
+  fill: var(--error);
+}
+
+/* Offline: an empty gray dot */
+.sync-button .badge.offline {
+  fill: var(--gap);
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+}
+
+/* Locked (passphrase needed): an orange padlock */
+.sync-button .lock {
+  fill: var(--warn);
+  stroke: var(--warn);
+  stroke-width: 1.6;
+}
+
+.sync-button .lock-gap {
+  fill: var(--gap);
+  stroke: var(--gap);
+  stroke-width: 4;
+}
+
+.sync-button .lock path,
+.sync-button .lock-gap path {
+  fill: none;
+}
+
+/* Syncing: a turning ring in the corner */
+.sync-button .ring-gap {
+  fill: var(--gap);
+  stroke: none;
+}
+
+.sync-button .ring {
+  stroke: var(--link);
+  stroke-width: 1.5;
+  stroke-dasharray: 10 7;
+  transform-box: view-box;
+  transform-origin: 19px 18px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
   to {
-    opacity: 0.3;
+    transform: rotate(360deg);
   }
 }
 

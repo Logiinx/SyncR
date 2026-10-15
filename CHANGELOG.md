@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 ### Added
 - Settings: "Show dates in the note list" lets you hide the dates.
 - Drag tabs to change their order. On the phone: hold a tab, then drag (hold and let go still opens its menu).
+- New sync button design: a plain cloud with a small status dot in the corner. Green: synced. Blue: changes waiting. A turning blue ring: syncing. Red: error. Empty gray dot: offline. Orange padlock: enter your passphrase.
 
 ## [0.6.7] - 2026-10-14
 
