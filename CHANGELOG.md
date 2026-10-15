@@ -14,6 +14,7 @@ All notable changes to SyncR. Newest version first.
 - Drag tabs to change their order. On the phone: hold a tab, then drag (hold and let go still opens its menu).
 - New sync button design: a plain cloud with a small status dot in the corner. Green: synced. Blue: changes waiting. A turning blue ring: syncing. Red: error. Empty gray dot: offline. Orange padlock: enter your passphrase.
 - Hovering the sync button shows its status and when the last sync was ("Synced · 2 min ago"), in a small box instead of the plain tooltip.
+- The message after clicking the sync button is shorter ("✓ 2 sent · 1 received", "✓ Up to date"), sits right under the button and fades in and out after 3 seconds.
 
 ## [0.6.7] - 2026-10-14
 

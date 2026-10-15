@@ -221,18 +221,34 @@ button {
   }
 }
 
-/* Short message under the cloud button after a sync, e.g. "Synced. 2 sent." */
+/* Short message under the cloud button, e.g. "✓ 2 sent · 1 received". Fades in and out. */
 .sync-message {
   position: fixed;
-  top: 44px;
-  right: 8px;
-  max-width: min(360px, calc(100vw - 16px));
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-raised);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
   z-index: 20;
+  display: flex;
+  gap: 6px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  font-size: 13px;
+  animation: fade-in 0.2s;
+}
+
+.sync-message.leaving {
+  animation: fade-out 0.3s forwards;
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.sync-message-ok {
+  color: var(--ok);
 }
 
 .menu-button {

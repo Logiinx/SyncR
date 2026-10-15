@@ -7,15 +7,30 @@ import { connect, disconnect, finishConnect, isConnected } from './dropbox'
 import PassphraseDialog from './PassphraseDialog'
 import type { SyncResult } from './sync'
 
-// "Synced. 2 sent, 1 received, 1 conflict copy created."
+// "2 sent · 1 received · 1 conflict copy" (shown after a ✓)
 function describe(r: SyncResult) {
   const parts = [
     r.uploaded && `${r.uploaded} sent`,
     r.downloaded && `${r.downloaded} received`,
     r.deleted && `${r.deleted} deleted`,
-    r.conflicts && `${r.conflicts} conflict ${r.conflicts === 1 ? 'copy' : 'copies'} created`,
+    r.conflicts && `${r.conflicts} conflict ${r.conflicts === 1 ? 'copy' : 'copies'}`,
   ].filter(Boolean)
-  return parts.length ? `Synced. ${parts.join(', ')}.` : 'Synced. Nothing changed.'
+  return parts.length ? parts.join(' · ') : 'Up to date'
+}
+
+// A short message under the button. `ok`: the result of a sync the user started (gets a ✓).
+interface Message {
+  text: string
+  ok: boolean
+  place: { right: number; top: number }
+  leaving: boolean // fading out
+}
+
+// Right-aligned under the button (screen pixels ÷ zoom = page pixels)
+function placeUnder(button: HTMLElement) {
+  const rect = button.getBoundingClientRect()
+  const zoom = currentZoom()
+  return { right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 6 }
 }
 
 // Cloud button in the title bar, left of the window controls. Also the sync indicator.
@@ -50,7 +65,8 @@ function SyncButton() {
   const [signInError, setSignInError] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [askPassphrase, setAskPassphrase] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<Message | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const { status, errorMessage, lastSuccessAt } = useSyncExternalStore(subscribe, getStatus)
   // Hover info under the button (mouse only: phones can't hover)
   const [hover, setHover] = useState<{ right: number; top: number } | null>(null)
@@ -66,10 +82,7 @@ function SyncButton() {
 
   function onMouseEnter(e: React.MouseEvent) {
     if (!matchMedia('(hover: hover)').matches) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const zoom = currentZoom()
-    // Right-aligned under the button (screen pixels ÷ zoom = page pixels)
-    const place = { right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 6 }
+    const place = placeUnder(e.currentTarget as HTMLElement)
     hoverTimer.current = window.setTimeout(() => setHover(place), 400)
   }
 
@@ -78,17 +91,25 @@ function SyncButton() {
     setHover(null)
   }
 
-  // Messages disappear after a few seconds
+  function showMessage(text: string, ok = false) {
+    if (buttonRef.current) setMessage({ text, ok, place: placeUnder(buttonRef.current), leaving: false })
+  }
+
+  // Messages fade out after 3 s (other messages, e.g. errors, are longer to read: 5 s)
+  const messageKey = message && !message.leaving ? message : null
   useEffect(() => {
-    if (!message) return
-    const timer = window.setTimeout(() => setMessage(null), 5000)
-    return () => window.clearTimeout(timer)
-  }, [message])
+    if (!messageKey) return
+    const fadeOut = window.setTimeout(
+      () => setMessage((m) => m && { ...m, leaving: true }),
+      messageKey.ok ? 3000 : 5000,
+    )
+    return () => window.clearTimeout(fadeOut)
+  }, [messageKey])
 
   useEffect(() => {
     const refreshConnected = () => setConnected(isConnected())
     const refreshKey = () => getKey().then((key) => setUnlocked(key !== undefined))
-    const onNotice = (e: Event) => setMessage((e as CustomEvent<string>).detail)
+    const onNotice = (e: Event) => showMessage((e as CustomEvent<string>).detail)
     window.addEventListener('dropbox-change', refreshConnected)
     window.addEventListener('sync-key-change', refreshKey)
     window.addEventListener('sync-notice', onNotice)
@@ -124,7 +145,7 @@ function SyncButton() {
     else if (!unlocked) setAskPassphrase(true)
     else {
       const result = await syncByUser()
-      if (result) setMessage(describe(result))
+      if (result) showMessage(describe(result), true)
     }
   }
 
@@ -165,6 +186,7 @@ function SyncButton() {
   return (
     <>
       <button
+        ref={buttonRef}
         // The status ("synced", "error", …) is also a class, for the colors
         className={`sync-button${connected ? ' connected' : ''} ${status}`}
         onClick={onClick}
@@ -212,7 +234,16 @@ function SyncButton() {
           ]}
         />
       )}
-      {message && <div className="sync-message">{message}</div>}
+      {message && (
+        <div
+          className={message.leaving ? 'sync-message leaving' : 'sync-message'}
+          style={message.place}
+          onAnimationEnd={() => message.leaving && setMessage(null)}
+        >
+          {message.ok && <span className="sync-message-ok">✓</span>}
+          {message.text}
+        </div>
+      )}
       {askPassphrase && !unlocked && connected && <PassphraseDialog onClose={() => setAskPassphrase(false)} />}
     </>
   )
