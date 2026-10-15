@@ -1,6 +1,8 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, ImageIcon, Italic, ListTodo, Redo2, Strikethrough, Underline, Undo2 } from 'lucide-react'
+import { Baseline, Bold, ImageIcon, Italic, ListTodo, Redo2, Strikethrough, Underline, Undo2 } from 'lucide-react'
+import { currentZoom } from './appearance'
+import ColorPicker from './ColorPicker'
 import { insertImages } from './image'
 
 const ICON_SIZE = 16
@@ -9,6 +11,32 @@ const ICON_SIZE = 16
 // buttons don't fit (phone).
 function Toolbar({ editor }: { editor: Editor }) {
   const fileInput = useRef<HTMLInputElement>(null)
+  // Color picker under the color button (fixed: the toolbar itself may scroll sideways)
+  const [colors, setColors] = useState<{ left: number; top: number } | null>(null)
+  const colorPanel = useRef<HTMLDivElement>(null)
+
+  // Closes on a click elsewhere or Escape
+  useEffect(() => {
+    if (!colors) return
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (!colorPanel.current?.contains(target) && !target.closest('.color-button')) setColors(null)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setColors(null)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [colors])
+
+  function toggleColors(button: HTMLElement) {
+    if (colors) return setColors(null)
+    const rect = button.getBoundingClientRect()
+    const zoom = currentZoom()
+    setColors({ left: rect.left / zoom, top: rect.bottom / zoom + 4 })
+  }
 
   // Re-checked whenever the cursor or the note changes: which buttons light up
   const state = useEditorState({
@@ -54,6 +82,20 @@ function Toolbar({ editor }: { editor: Editor }) {
         <Strikethrough size={ICON_SIZE} />
       </ToolButton>
 
+      <ToolButton
+        title="Text color and highlight"
+        className="color-button"
+        active={!!colors}
+        onClick={(e) => toggleColors(e.currentTarget)}
+      >
+        <Baseline size={ICON_SIZE} />
+      </ToolButton>
+      {colors && (
+        <div className="color-popover" ref={colorPanel} style={colors}>
+          <ColorPicker editor={editor} onPicked={() => setColors(null)} />
+        </div>
+      )}
+
       <span className="toolbar-separator" />
 
       <ToolButton title="Checklist" active={state.checklist} onClick={() => chain().toggleTaskList().run()}>
@@ -80,16 +122,17 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 interface ToolButtonProps {
   title: string
+  className?: string
   active?: boolean
   disabled?: boolean
-  onClick: () => void
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
   children: ReactNode
 }
 
-function ToolButton({ title, active, disabled, onClick, children }: ToolButtonProps) {
+function ToolButton({ title, className, active, disabled, onClick, children }: ToolButtonProps) {
   return (
     <button
-      className={active ? 'active' : ''}
+      className={[className, active && 'active'].filter(Boolean).join(' ')}
       title={title}
       aria-label={title}
       aria-pressed={active}

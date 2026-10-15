@@ -5,6 +5,8 @@ import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-detai
 import { Placeholder } from '@tiptap/extensions'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Link } from '@tiptap/extension-link'
+import { Color, TextStyle } from '@tiptap/extension-text-style'
+import { Highlight } from '@tiptap/extension-highlight'
 import { registerFlush, syncSoon } from './autoSync'
 import { saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
@@ -23,6 +25,10 @@ const extensions = [
   // Not "inclusive": text typed right after a link doesn't become part of it.
   Link.extend({ inclusive: () => false }).configure({ openOnClick: false }),
   OpenLinksOnClick,
+  // Text color and highlighter, from a fixed palette (ColorPicker.tsx)
+  TextStyle,
+  Color,
+  Highlight.configure({ multicolor: true }),
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({
     persist: false,

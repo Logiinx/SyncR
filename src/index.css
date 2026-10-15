@@ -9,6 +9,23 @@
   --ok: #6cc28a; /* sync: done */
   --warn: #e0a040; /* sync: action needed (passphrase) */
   --error: #e5534b; /* sync: error */
+  /* Text colors and highlighter in notes (ColorPicker.tsx). Notes refer to these names. */
+  --text-red: #f0716b;
+  --text-orange: #f0a052;
+  --text-yellow: #f2d064;
+  --text-green: #7ccb8c;
+  --text-blue: #6fa9f2;
+  --text-purple: #b590f2;
+  --text-pink: #f28ec4;
+  --text-gray: #9a9a9a;
+  --hl-red: rgb(240 113 107 / 30%);
+  --hl-orange: rgb(240 160 82 / 30%);
+  --hl-yellow: rgb(242 208 100 / 30%);
+  --hl-green: rgb(124 203 140 / 30%);
+  --hl-blue: rgb(111 169 242 / 30%);
+  --hl-purple: rgb(181 144 242 / 30%);
+  --hl-pink: rgb(242 142 196 / 30%);
+  --hl-gray: rgb(154 154 154 / 30%);
 }
 
 body {
@@ -815,6 +832,8 @@ button {
 /* ---------- Selection menu ---------- */
 
 .selection-menu {
+  /* In front of the toolbar when the selection is on the first lines */
+  z-index: 10;
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -836,6 +855,76 @@ button {
 .selection-menu button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* With the palette open, the menu gets a second part below the buttons */
+.selection-menu.with-colors {
+  flex-wrap: wrap;
+  max-width: 300px;
+}
+
+.selection-menu .color-picker {
+  flex-basis: 100%;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Text color and highlight (ColorPicker.tsx) ---------- */
+
+/* Selected text keeps its own color (the system style turns it white), so a new color
+   shows right away */
+.tiptap ::selection {
+  background: rgb(122 167 224 / 30%);
+}
+
+.tiptap mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  color: inherit;
+}
+
+/* Toolbar: the palette opens under the color button */
+.color-popover {
+  position: fixed;
+  z-index: 20;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+}
+
+.color-row {
+  display: flex;
+  gap: 2px;
+}
+
+.color-picker .swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.color-picker .swatch:hover {
+  background: var(--border);
+}
+
+.color-picker .swatch.selected {
+  border-color: var(--text-dim);
+}
+
+.highlight-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
 }
 
 /* ---------- Right-click menu ---------- */

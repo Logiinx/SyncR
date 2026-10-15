@@ -4,6 +4,16 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Text colors and a highlighter (8 colors each). Select text and use the new color button in the menu above it, or the color button in the toolbar.
+
+### Fixed
+- The menu above selected text is no longer hidden behind the toolbar when the selection is on the first line.
+
+### Changed
+- The menu for selected text now appears below the selection, so it doesn't cover the text.
+- Selected text keeps its color (it used to turn white), so a new color shows right away.
+
 ## [0.7.0] - 2026-10-15
 
 ### Changed
