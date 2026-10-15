@@ -3,6 +3,15 @@ import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { checkForUpdates } from './UpdateBanner'
 import { loadEditing, saveEditing, type Editing } from './editing'
+import { isTauri } from '@tauri-apps/api/core'
+import { playChime } from './chime'
+import {
+  loadBackground,
+  saveBackground,
+  setStartWithWindows,
+  startsWithWindows,
+  type Background,
+} from './desktop'
 import {
   DEFAULTS,
   FONT_SIZE_MAX,
@@ -32,6 +41,26 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     const next = { ...loadEditing(), ...change }
     setEditing(next)
     saveEditing(next)
+  }
+
+  const [background, setBackground] = useState(loadBackground)
+  function updateBackground(change: Partial<Background>) {
+    const next = { ...loadBackground(), ...change }
+    setBackground(next)
+    saveBackground(next)
+  }
+
+  // Read from Windows (null = not known yet). If changing it fails, show the real state again.
+  const [autostart, setAutostart] = useState<boolean | null>(null)
+  useEffect(() => {
+    startsWithWindows().then(setAutostart, () => setAutostart(false))
+  }, [])
+  function toggleAutostart(on: boolean) {
+    setAutostart(on)
+    setStartWithWindows(on).catch((error) => {
+      console.error(error)
+      startsWithWindows().then(setAutostart)
+    })
   }
 
   // The slider shows the new value while dragging; the app is scaled when it's released
@@ -137,6 +166,47 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
           />
         </label>
+
+        <SectionTitle title="Reminders" scope="this device" />
+        <label className="setting setting-toggle">
+          <span>Sound when a reminder is due</span>
+          <input
+            type="checkbox"
+            checked={background.reminderSound}
+            onChange={(e) => {
+              updateBackground({ reminderSound: e.target.checked })
+              if (e.target.checked) playChime() // a preview
+            }}
+          />
+        </label>
+
+        {isTauri() && (
+          <>
+            <SectionTitle title="Window" scope="this device" />
+            <label className="setting setting-toggle">
+              <span>
+                ✕ hides SyncR in the tray{' '}
+                <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={background.closeToTray}
+                onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+              />
+            </label>
+            <label className="setting setting-toggle">
+              <span>
+                Start with Windows <span className="setting-value">hidden in the tray</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={autostart ?? false}
+                disabled={autostart === null}
+                onChange={(e) => toggleAutostart(e.target.checked)}
+              />
+            </label>
+          </>
+        )}
 
         <SectionTitle title="Notes" scope="all devices" />
         <div className="setting setting-toggle">

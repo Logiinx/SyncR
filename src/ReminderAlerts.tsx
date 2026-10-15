@@ -1,54 +1,60 @@
-import { useEffect, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { isTauri } from '@tauri-apps/api/core'
 import { Bell } from 'lucide-react'
-import { formatDue, listReminders, markDone, snooze, snoozeTomorrow } from './reminders'
+import type { Reminder } from './db'
+import { runAction, useChime, useDueReminders, type ReminderAction } from './dueReminders'
+import { useReminderPopup } from './popupWindow'
+import { formatDue } from './reminders'
 
-const MINUTE_MS = 60 * 1000
+// One due reminder: text, time, note, and the buttons. "Open SyncR" only in the pop-up.
+export function ReminderCard({ reminder, onAction, withOpen }: {
+  reminder: Reminder
+  onAction: (action: ReminderAction) => void
+  withOpen?: boolean
+}) {
+  return (
+    <div className="reminder-alert">
+      <div className="reminder-alert-head">
+        <Bell size={14} />
+        <span className="reminder-alert-text">{reminder.text}</span>
+      </div>
+      <div className="reminder-alert-due">{formatDue(reminder.dueAt)}</div>
+      {reminder.note && <div className="reminder-alert-note">{reminder.note}</div>}
+      <div className="reminder-alert-buttons">
+        <button className="primary" onClick={() => onAction('done')}>
+          Done
+        </button>
+        <span className="reminder-alert-label">Snooze:</span>
+        <button onClick={() => onAction('snooze10')}>10 min</button>
+        <button onClick={() => onAction('snooze60')}>1 hour</button>
+        <button onClick={() => onAction('tomorrow')}>Tomorrow</button>
+      </div>
+      {withOpen && (
+        <button className="reminder-alert-open" onClick={() => onAction('open')}>
+          Open SyncR
+        </button>
+      )}
+    </div>
+  )
+}
 
-// Cards in the bottom-right corner for every reminder that is due and not done.
-// No "already shown" bookkeeping: a card stays until Done or Snooze (on any device, since the
-// status syncs), and reminders missed while the app was closed simply show up at the start.
+// Due reminders in the main window. On the PC they go to the pop-up window instead
+// (popupWindow.ts), which shows even while SyncR is hidden; the cards here are the
+// fallback if the pop-up can't open. In the browser / on the phone: cards, bottom-right.
 function ReminderAlerts() {
-  const reminders = useLiveQuery(listReminders, [])
-  const [now, setNow] = useState(Date.now())
+  const due = useDueReminders()
+  const popupFailed = useReminderPopup(due)
+  const showCards = !isTauri() || popupFailed
+  useChime(showCards ? due : undefined)
 
-  // Wake up exactly when the next reminder is due (and at least every minute, in case the
-  // clock or the sleep of the computer shifts things), and when the app comes back into view
-  const nextDue = reminders?.find((r) => r.doneAt === null && r.dueAt > now)?.dueAt
-  useEffect(() => {
-    const wait = nextDue ? Math.min(nextDue - Date.now(), MINUTE_MS) : MINUTE_MS
-    const timer = setTimeout(() => setNow(Date.now()), Math.max(wait, 0) + 50)
-    const onVisible = () => document.visibilityState === 'visible' && setNow(Date.now())
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [nextDue, now])
-
-  const due = reminders?.filter((r) => r.doneAt === null && r.dueAt <= now) ?? []
-  if (due.length === 0) return null
-
+  if (!showCards || !due?.length) return null
   return (
     <div className="reminder-alerts" role="alert">
       {due.map((reminder) => (
-        <div key={reminder.id} className="reminder-alert">
-          <div className="reminder-alert-head">
-            <Bell size={14} />
-            <span className="reminder-alert-text">{reminder.text}</span>
-          </div>
-          <div className="reminder-alert-due">{formatDue(reminder.dueAt)}</div>
-          {reminder.note && <div className="reminder-alert-note">{reminder.note}</div>}
-          <div className="reminder-alert-buttons">
-            <button className="primary" onClick={() => markDone(reminder.id)}>
-              Done
-            </button>
-            <span className="reminder-alert-label">Snooze:</span>
-            <button onClick={() => snooze(reminder.id, 10)}>10 min</button>
-            <button onClick={() => snooze(reminder.id, 60)}>1 hour</button>
-            <button onClick={() => snoozeTomorrow(reminder.id)}>Tomorrow</button>
-          </div>
-        </div>
+        <ReminderCard
+          key={reminder.id}
+          reminder={reminder}
+          onAction={(action) => action !== 'open' && runAction(reminder.id, action)}
+        />
       ))}
     </div>
   )

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { finalSync } from './autoSync'
+import { loadBackground, startedHidden } from './desktop'
 
 // Minimize / maximize / close, drawn by us because the Windows title bar is hidden.
 // Icons: 10×10, same line weight, drawn fully inside the box so nothing gets clipped.
@@ -13,14 +14,26 @@ function WindowControls() {
     if (!isTauri()) return
     const win = getCurrentWindow()
     // The window starts hidden and was already moved to its saved place (lib.rs):
-    // show it now that the app has drawn its first screen, so it appears in one go
-    win.show().then(() => win.setFocus())
+    // show it now that the app has drawn its first screen, so it appears in one go.
+    // Started by Windows at sign-in ("Start with Windows"): stay hidden in the tray.
+    startedHidden().then((hidden) => {
+      if (!hidden) win.show().then(() => win.setFocus())
+    })
     const refresh = () => win.isMaximized().then(setMaximized)
     refresh()
     const stopResize = win.onResized(refresh)
-    // Every way of closing (✕, Alt+F4, taskbar): last sync first (max 5 s).
-    // Tauri keeps the window open until this finishes, then closes it.
-    const stopClose = win.onCloseRequested(() => finalSync())
+    // Every way of closing (✕, Alt+F4, taskbar):
+    // - "✕ hides SyncR in the tray" on: hide instead; SyncR keeps running (sync, reminders).
+    //   Quit is in the tray icon's menu.
+    // - otherwise: last sync first (max 5 s). Tauri keeps the window open until this
+    //   finishes, then closes it, and the app ends (lib.rs).
+    const stopClose = win.onCloseRequested((event) => {
+      if (loadBackground().closeToTray) {
+        event.preventDefault()
+        return win.hide()
+      }
+      return finalSync()
+    })
     return () => {
       stopResize.then((unlisten) => unlisten())
       stopClose.then((unlisten) => unlisten())

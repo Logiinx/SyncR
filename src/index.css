@@ -711,6 +711,37 @@ button {
   font-size: 12px;
 }
 
+/* "Open SyncR", only in the desktop pop-up */
+.reminder-alert-open {
+  margin: 8px 0 0 22px;
+  padding: 0;
+  color: var(--link);
+  font-size: 13px;
+}
+
+.reminder-alert-open:hover {
+  text-decoration: underline;
+}
+
+/* The desktop pop-up window (ReminderPopup.tsx): the cards fill the window edge to edge,
+   the window itself has the shadow and border (Windows draws them) */
+.popup-page body {
+  overflow-y: auto;
+  background: var(--bg-raised);
+  user-select: none;
+}
+
+.reminder-popup .reminder-alert {
+  border: none;
+  border-left: 3px solid var(--link);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.reminder-popup .reminder-alert + .reminder-alert {
+  border-top: 1px solid var(--border);
+}
+
 /* Small phone icon after the time: also in Google Calendar */
 .reminder-due svg {
   margin-left: 5px;
