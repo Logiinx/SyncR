@@ -406,7 +406,7 @@ button {
   flex-direction: column;
   width: 260px;
   flex-shrink: 0;
-  background: var(--bg-raised);
+  background: var(--bg);
   border-right: 1px solid var(--border);
 }
 
@@ -470,7 +470,7 @@ button {
   flex-direction: column;
   width: var(--board-width, 280px);
   flex-shrink: 0;
-  background: var(--bg-raised);
+  background: var(--bg);
   border-left: 1px solid var(--border);
   animation: board-in 0.15s ease-out;
 }
@@ -540,12 +540,12 @@ button {
 .card {
   position: relative;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--text) 4%, var(--bg-raised));
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
   border-radius: 8px;
 }
 
 .card:focus-within {
-  background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
 }
 
 /* Mouse over a card that isn't being edited: it can be dragged. Same look as a section
@@ -553,12 +553,12 @@ button {
    a grab hand. Not while a card is being dragged. */
 @media (hover: hover) {
   .board-cards:not(.dragging) > .card:not(.editing):hover {
-    background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
+    background: color-mix(in srgb, var(--text) 6%, var(--bg));
     cursor: grab;
   }
 
   .board-cards:not(.dragging) > .card.priority:not(.editing):hover {
-    background: color-mix(in srgb, var(--text-blue) 15%, var(--bg-raised));
+    background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
   }
 
   .board-cards:not(.dragging) > .card:not(.editing):hover::before,
@@ -592,11 +592,11 @@ button {
 
 /* Priority: a light blue tint and a small blue dot before the first line */
 .card.priority {
-  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg-raised));
+  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
 }
 
 .card.priority:focus-within {
-  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg-raised));
+  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
 }
 
 /* (On the text area, not the card: the card's ::before/::after draw the hover brackets) */
@@ -704,7 +704,7 @@ button {
 }
 
 .board-add:hover {
-  background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
   color: var(--text);
 }
 
@@ -761,7 +761,7 @@ button {
   margin: 0 12px 12px;
   padding: 6px 6px 6px 12px;
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
   font-size: 13px;
   color: var(--text-dim);
@@ -775,7 +775,7 @@ button {
 }
 
 .board-undo button:hover {
-  background: var(--bg-raised);
+  background: var(--border);
 }
 
 /* Narrow screens (phone): the sidebar slides over the note instead of pushing it */
