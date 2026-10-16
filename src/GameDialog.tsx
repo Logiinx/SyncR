@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarPlus, Heart, Sparkles } from 'lucide-react'
-import { db, setGameStatus, updateGame, type Game, type Reminder } from './db'
-import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, STATUSES } from './games'
+import { CalendarPlus, Gamepad2, Heart, Pin, PinOff, Sparkles, Trash2, X } from 'lucide-react'
+import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type Reminder } from './db'
+import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, shortPlatforms, STATUSES } from './games'
 import { addToGoogleCalendar } from './reminders'
 import { coverUrl } from './igdb'
 
-// A game's details (click a game in the Games tab): status, priority, note, and for games you've
-// finished or dropped: stars, heart and review. Changes save right away; Close closes.
+// A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
+// cover with the actions under it on the left; title, status, rating, review and note on the
+// right. Phone: stacked (CSS). Rating and review only for finished or dropped games.
+// Changes save right away; ✕, Escape or a click outside closes it.
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
@@ -23,6 +25,11 @@ function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => vo
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
   const played = game.status === 'done' || game.status === 'dropped'
+  const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
+  const upcoming = game.status === 'waiting' && !!game.releaseDate && !isReleased(game)
+  // Focused when it opens (so Escape works), without scrolling
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
@@ -30,110 +37,130 @@ function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => vo
         className="dialog game-dialog"
         role="dialog"
         aria-label={game.name}
+        ref={dialogRef}
+        tabIndex={-1}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <div className="game-dialog-head">
-          {game.coverId && <img className="game-dialog-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
-          <div>
-            <h2>{game.name}</h2>
-            <p className="game-dialog-info">
-              {formatRelease(game.releaseDate, game.releaseLabel)}
-              {game.platforms.length > 0 && ` · ${game.platforms.join(', ')}`}
-            </p>
-            {reminder && !reminder.deleted && (
-              <p className="game-dialog-info">
-                Reminder: {reminderTime(reminder.dueAt)}
-                {reminder.doneAt !== null && ' (done)'}
-              </p>
-            )}
-            <div className="game-dialog-actions">
+        {/* Left (PC): the cover and the actions. Phone: the cover beside the title, actions as icons */}
+        <div className="gd-side">
+          {game.coverId ? (
+            <img className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />
+          ) : (
+            <span className="gd-cover gd-cover-none">
+              <Gamepad2 size={28} />
+            </span>
+          )}
+          <div className="gd-actions">
+            <button
+              className={game.priority ? 'gd-action on' : 'gd-action'}
+              onClick={() => updateGame(game.id, { priority: !game.priority })}
+              title={game.priority ? 'Remove priority' : 'Mark as priority'}
+              aria-pressed={game.priority}
+            >
+              <Sparkles size={15} /> <span>Priority</span>
+            </button>
+            <button
+              className="gd-action"
+              onClick={async () => {
+                if (pinned) return unpinGameFromBoard(game.id)
+                await pinGameToBoard(game)
+                window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
+              }}
+              title={pinned ? 'Unpin from Board' : 'Pin to Board'}
+            >
+              {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? 'Unpin from Board' : 'Pin to Board'}</span>
+            </button>
+            {/* The release reminder's time and text, as a Google Calendar event (for the phone) */}
+            {upcoming && (
               <button
-                className={game.priority ? 'game-dialog-flag on' : 'game-dialog-flag'}
-                onClick={() => updateGame(game.id, { priority: !game.priority })}
+                className="gd-action"
+                title="Add the release reminder to Google Calendar (2 days before, 10:00)"
+                onClick={() =>
+                  addToGoogleCalendar({ text: releaseReminderText(game), note: '', dueAt: releaseReminderTime(game.releaseDate!) })
+                }
               >
-                <Sparkles size={14} /> Priority
+                <CalendarPlus size={15} /> <span>Google Calendar</span>
               </button>
-              {/* The release reminder's time and text, as a Google Calendar event (for the phone) */}
-              {game.status === 'waiting' && game.releaseDate && !isReleased(game) && (
-                <button
-                  className="game-dialog-flag"
-                  title="Add the release reminder to Google Calendar (2 days before, 10:00)"
-                  onClick={() =>
-                    addToGoogleCalendar({
-                      text: releaseReminderText(game),
-                      note: '',
-                      dueAt: releaseReminderTime(game.releaseDate!),
-                    })
-                  }
-                >
-                  <CalendarPlus size={14} /> Google Calendar
-                </button>
-              )}
-            </div>
+            )}
+            <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
+              <Trash2 size={15} /> <span>Remove from list</span>
+            </button>
           </div>
         </div>
 
-        <div className="game-status-choices">
-          {STATUSES.map(({ status, label }) => (
-            <button
-              key={status}
-              className={status === game.status ? 'active' : ''}
-              onClick={() => status !== game.status && setGameStatus(game.id, status)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <label className="setting">
-          <span className="setting-label">Note</span>
-          <textarea
-            rows={2}
-            value={note}
-            placeholder="Optional"
-            onChange={(e) => {
-              setNote(e.target.value)
-              updateGame(game.id, { note: e.target.value })
-            }}
-          />
-        </label>
-
-        {played && (
-          <>
-            <div className="game-rating">
-              <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
-              <button
-                className={game.liked ? 'game-heart on' : 'game-heart'}
-                onClick={() => updateGame(game.id, { liked: !game.liked })}
-                title={game.liked ? 'Liked' : 'Like'}
-                aria-pressed={game.liked}
-              >
-                <Heart size={20} />
-              </button>
+        <div className="gd-main">
+          <div className="gd-head">
+            <div className="gd-title">
+              <h2>{game.name}</h2>
+              <p>
+                {formatRelease(game.releaseDate, game.releaseLabel)}
+                {game.platforms.length > 0 && ` · ${shortPlatforms(game.platforms)}`}
+              </p>
+              {reminder && !reminder.deleted && (
+                <p>
+                  Reminder: {reminderTime(reminder.dueAt)}
+                  {reminder.doneAt !== null && ' (done)'}
+                </p>
+              )}
             </div>
-            <label className="setting">
-              <span className="setting-label">Review</span>
-              <textarea
-                rows={3}
-                value={review}
-                placeholder="Optional"
-                onChange={(e) => {
-                  setReview(e.target.value)
-                  updateGame(game.id, { review: e.target.value })
-                }}
-              />
-            </label>
-          </>
-        )}
+            <button className="gd-close" onClick={onClose} title="Close">
+              <X size={18} />
+            </button>
+          </div>
 
-        <div className="dialog-buttons game-dialog-buttons">
-          <button className="game-remove" onClick={onRemove}>
-            Remove from list
-          </button>
-          <button className="primary" onClick={onClose} autoFocus>
-            Close
-          </button>
+          <div className="gd-status" role="group" aria-label="Status">
+            {STATUSES.map(({ status, label }) => (
+              <button
+                key={status}
+                className={status === game.status ? 'active' : ''}
+                onClick={() => status !== game.status && setGameStatus(game.id, status)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {played && (
+            <>
+              <div className="game-rating">
+                <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
+                <button
+                  className={game.liked ? 'game-heart on' : 'game-heart'}
+                  onClick={() => updateGame(game.id, { liked: !game.liked })}
+                  title={game.liked ? 'Liked' : 'Like'}
+                  aria-pressed={game.liked}
+                >
+                  <Heart size={20} />
+                </button>
+              </div>
+              <label className="gd-field">
+                <span>Review</span>
+                <textarea
+                  rows={3}
+                  value={review}
+                  placeholder="What did you think?"
+                  onChange={(e) => {
+                    setReview(e.target.value)
+                    updateGame(game.id, { review: e.target.value })
+                  }}
+                />
+              </label>
+            </>
+          )}
+
+          <label className="gd-field">
+            <span>Note</span>
+            <textarea
+              rows={2}
+              value={note}
+              placeholder="Optional"
+              onChange={(e) => {
+                setNote(e.target.value)
+                updateGame(game.id, { note: e.target.value })
+              }}
+            />
+          </label>
         </div>
       </div>
     </div>

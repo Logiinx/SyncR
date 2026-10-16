@@ -3364,78 +3364,211 @@ h3.games-group-title {
 
 /* ---------- Game details (GameDialog.tsx) ---------- */
 
-.game-dialog-head {
+/* PC: two columns, the cover and the actions on the left */
+.dialog.game-dialog {
   display: flex;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 20px;
+  width: min(600px, 100%);
 }
 
-.game-dialog-cover {
+.gd-side {
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
-  width: 72px;
-  height: 96px;
-  border-radius: 4px;
+  gap: 12px;
+  width: 150px;
+}
+
+.gd-cover {
+  width: 150px;
+  height: 200px;
+  border-radius: 8px;
   object-fit: cover;
   background: var(--bg);
 }
 
-.game-dialog-head h2 {
-  margin-bottom: 4px;
-}
-
-.dialog .game-dialog-info {
-  margin: 0 0 8px;
-  font-size: 0.85em;
-}
-
-.game-dialog-flag {
-  display: inline-flex;
+.gd-cover-none {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.gd-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 6px;
   color: var(--text-dim);
   font-size: 0.85em;
+  text-align: left;
+  white-space: nowrap;
 }
 
-.game-dialog-flag:hover {
+.gd-action:hover {
+  background: rgb(255 255 255 / 6%);
   color: var(--text);
 }
 
-.game-dialog-flag.on {
-  border-color: color-mix(in srgb, var(--text-blue) 50%, var(--border));
-  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg-raised));
+.gd-action.on {
   color: var(--text-blue);
 }
 
-/* Status: one button per status, the current one lit */
-.game-status-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 16px;
+/* Remove: set apart at the bottom, a quiet red that gets stronger on hover */
+.gd-action.gd-remove {
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--error) 60%, var(--text-dim));
 }
 
-.game-status-choices button {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
+.gd-action.gd-remove:hover {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error);
+}
+
+.gd-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.gd-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gd-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog .gd-title h2 {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.dialog .gd-title p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.gd-close {
+  display: flex;
+  flex-shrink: 0;
+  margin: -4px -6px 0 0;
+  padding: 5px;
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.game-status-choices button:hover {
+.gd-close:hover {
+  background: rgb(255 255 255 / 6%);
   color: var(--text);
 }
 
-.game-status-choices button.active {
-  border-color: var(--accent);
+/* Status: one joined bar */
+.gd-status {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.gd-status button {
+  flex: 1;
+  padding: 5px 2px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.gd-status button:hover {
+  color: var(--text);
+}
+
+.gd-status button.active {
   background: var(--accent);
   color: var(--text);
 }
 
-.game-dialog textarea {
-  margin-bottom: 0;
+/* Review and note: a small quiet label above the text box */
+.gd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-field > span {
+  color: var(--text-dim);
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dialog .gd-field textarea {
+  margin: 0;
+}
+
+/* Phone: stacked. The cover beside the title, the actions as a row of icons, then the rest */
+@media (max-width: 699px) {
+  .dialog.game-dialog {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .gd-side,
+  .gd-main {
+    display: contents;
+  }
+
+  .gd-cover {
+    grid-column: 1;
+    grid-row: 1;
+    width: 90px;
+    height: 120px;
+  }
+
+  .gd-head {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .gd-actions {
+    flex-direction: row;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .gd-action span {
+    display: none;
+  }
+
+  .gd-action,
+  .gd-action.gd-remove {
+    margin: 0;
+    padding: 8px 10px;
+  }
+
+  .gd-action.gd-remove {
+    margin-left: auto;
+  }
+
+  .gd-main > :not(.gd-head) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Stars: a grey star with a yellow one on top, cut to 0 / 50 / 100 %. Two invisible
@@ -3444,7 +3577,6 @@ h3.games-group-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .stars {
@@ -3504,26 +3636,6 @@ h3.games-group-title {
 
 .game-heart.on svg {
   fill: currentColor;
-}
-
-/* "Remove from list" on the left, "Done" on the right */
-.game-dialog-buttons {
-  justify-content: space-between;
-}
-
-.dialog-buttons .game-remove {
-  color: var(--text-dim);
-}
-
-.dialog-buttons .game-remove:hover {
-  color: var(--error);
-}
-
-/* Game details: Flag and Google Calendar side by side */
-.game-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 /* Reminders list: a Waiting game's small cover */
