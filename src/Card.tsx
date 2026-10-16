@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
-import { Flag, X } from 'lucide-react'
+import { Flag, GripVertical, X } from 'lucide-react'
 import { saveCardContent, setCardDeleted, setCardPriority, type Card as CardData } from './db'
 import { extensions } from './NoteEditor'
 import ContextMenu from './ContextMenu'
@@ -10,15 +10,18 @@ const SAVE_DELAY_MS = 500
 interface Props {
   card: CardData
   autoFocus: boolean
+  dragging: boolean // this card is being dragged (Board.tsx)
   onDelete: () => void
+  onDragStart: (event: React.PointerEvent) => void
 }
 
 // One card on the Board: the same editor as notes, saved shortly after you stop typing.
 // ✕ deletes it (the Board offers Undo for a few seconds). The flag (or right-click) marks it
 // as priority: it moves up with the other priority cards (Board.tsx) and gets an orange look.
+// The ⋮⋮ grip in the margin on its left drags it somewhere else (Board.tsx).
 // Left empty when clicking away: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
-function Card({ card, autoFocus, onDelete }: Props) {
+function Card({ card, autoFocus, dragging, onDelete, onDragStart }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
@@ -82,12 +85,16 @@ function Card({ card, autoFocus, onDelete }: Props) {
 
   return (
     <div
-      className={`card${card.priority ? ' priority' : ''}`}
+      className={`card${card.priority ? ' priority' : ''}${dragging ? ' dragging' : ''}`}
+      data-card-id={card.id}
       onContextMenu={(event) => {
         event.preventDefault()
         setMenu({ x: event.clientX, y: event.clientY })
       }}
     >
+      <div className="card-grip" onPointerDown={onDragStart} title="Drag to move">
+        <GripVertical size={12} />
+      </div>
       <EditorContent editor={editor} className="card-editor" />
       <div className="card-buttons">
         <button

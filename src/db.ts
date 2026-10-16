@@ -245,3 +245,9 @@ export async function removeOldDeletedCards(): Promise<string[]> {
   await db.cards.bulkDelete(old.map((card) => card.id))
   return old.map((card) => card.id)
 }
+
+// Dropped somewhere else on the Board (drag and drop): new part and position
+export async function moveCard(id: string, priority: boolean, order: number) {
+  await db.cards.update(id, { priority, order, updatedAt: Date.now() })
+  changed()
+}

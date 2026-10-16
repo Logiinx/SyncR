@@ -519,6 +519,7 @@ button {
 }
 
 .board-cards {
+  position: relative; /* for the drop line */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -651,6 +652,58 @@ button {
 .board-add:hover {
   background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
   color: var(--text);
+}
+
+/* ⋮⋮ grip in the margin left of a card: drag it to move the card (Board.tsx).
+   Shown on hover with a mouse; always (faintly) on the phone. */
+.card-grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px;
+  width: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none; /* a finger drag moves the card instead of scrolling */
+}
+
+.card:hover .card-grip {
+  opacity: 1;
+}
+
+.card-grip:hover {
+  color: var(--text);
+}
+
+@media (pointer: coarse) {
+  .card-grip {
+    opacity: 0.6;
+  }
+}
+
+/* While dragging: the card fades, a blue line shows where it will land */
+.card.dragging {
+  opacity: 0.4;
+}
+
+.board-cards.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.board-drop-line {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: var(--text-blue);
+  pointer-events: none;
 }
 
 /* "Card deleted · Undo" at the bottom of the Board, for a few seconds */

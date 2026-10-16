@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
-import { createCard, db, isEmptyCard, setCardDeleted } from './db'
+import { createCard, db, isEmptyCard, moveCard, setCardDeleted } from './db'
 import Card from './Card'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
@@ -30,6 +30,9 @@ function Board({ onClose }: Props) {
         .sort((a, b) => Number(b.priority) - Number(a.priority) || a.order - b.order),
     [],
   )
+  const listRef = useRef<HTMLDivElement>(null)
+  // While a card is dragged by its grip: which one, and where the blue drop line is
+  const [cardDrag, setCardDrag] = useState<{ id: string; lineTop: number | null } | null>(null)
   // The card just added gets the keyboard focus
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
@@ -56,6 +59,62 @@ function Board({ onClose }: Props) {
   function deleteCard(id: string) {
     setCardDeleted(id, true)
     setUndoId(id) // a newer delete replaces the offer (the older one stays deleted)
+  }
+
+  // Dragging a card by its ⋮⋮ grip. The drop spot is found from the pointer's height
+  // against the middle of the other cards. Above the separator = priority, below = normal.
+  function startDrag(id: string, event: React.PointerEvent) {
+    const list = listRef.current
+    const card = cards?.find((c) => c.id === id)
+    if (!list || !cards || !card || cards.length < 2) return
+    event.preventDefault()
+    const others = cards.filter((c) => c.id !== id)
+    const priorityCount = others.filter((c) => c.priority).length
+    let target: { priority: boolean; order: number } | null = null
+    setCardDrag({ id, lineTop: null })
+
+    const move = (e: PointerEvent) => {
+      const box = list.getBoundingClientRect()
+      // Near the top or bottom edge: scroll the list
+      if (e.clientY < box.top + 30) list.scrollTop -= 8
+      else if (e.clientY > box.bottom - 30) list.scrollTop += 8
+
+      const rects = others.map((c) =>
+        list.querySelector(`[data-card-id="${c.id}"]`)!.getBoundingClientRect(),
+      )
+      // k = how many of the other cards end up above it
+      let k = rects.findIndex((r) => e.clientY < r.top + r.height / 2)
+      if (k === -1) k = others.length
+      let priority: boolean
+      if (k < priorityCount) priority = true
+      else if (k > priorityCount) priority = false
+      else if (priorityCount > 0 && priorityCount < others.length) {
+        // Right between the two parts: the side of the gap (where the separator is) decides
+        priority = e.clientY < (rects[k - 1].bottom + rects[k].top) / 2
+      } else priority = card.priority // only one part: stays as it is
+
+      // New order: between its neighbours in the same part
+      const prev = others[k - 1]?.priority === priority ? others[k - 1] : undefined
+      const next = others[k]?.priority === priority ? others[k] : undefined
+      const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : card.order
+      target = { priority, order }
+
+      // Blue line: under the card above it if that's in the same part, else over the card below
+      const lineY = prev || !next ? rects[k - 1].bottom + 3 : rects[k].top - 3
+      setCardDrag({ id, lineTop: lineY - box.top + list.scrollTop })
+    }
+    const end = (e: PointerEvent) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      setCardDrag(null)
+      if (e.type === 'pointerup' && target && (target.priority !== card.priority || target.order !== card.order)) {
+        moveCard(id, target.priority, target.order)
+      }
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
   }
 
   function undo() {
@@ -100,7 +159,7 @@ function Board({ onClose }: Props) {
             <Plus size={16} />
           </button>
         </div>
-        <div className="board-cards">
+        <div className={`board-cards${cardDrag ? ' dragging' : ''}`} ref={listRef}>
           {cards?.map((card, index) => (
             <Fragment key={card.id}>
               {/* A thin line between the priority cards and the others (only when both exist) */}
@@ -108,10 +167,13 @@ function Board({ onClose }: Props) {
               <Card
                 card={card}
                 autoFocus={card.id === newCardId}
+                dragging={cardDrag?.id === card.id}
                 onDelete={() => deleteCard(card.id)}
+                onDragStart={(event) => startDrag(card.id, event)}
               />
             </Fragment>
           ))}
+          {cardDrag?.lineTop != null && <div className="board-drop-line" style={{ top: cardDrag.lineTop }} />}
         </div>
         {undoId && (
           <div className="board-undo">
