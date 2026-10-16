@@ -3174,13 +3174,6 @@ h2 + .settings-section {
   fill: currentColor;
 }
 
-.dialog input.game-date {
-  width: auto;
-  margin: 0;
-  padding: 4px 8px;
-  color-scheme: dark;
-}
-
 /* "Remove from list" on the left, "Done" on the right */
 .game-dialog-buttons {
   justify-content: space-between;

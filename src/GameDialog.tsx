@@ -6,7 +6,7 @@ import { formatRelease, STATUSES } from './games'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab): status, flag, note, and for games you've
-// finished or dropped: stars, heart, review and the date. Changes save right away; Done closes.
+// finished or dropped: stars, heart and review. Changes save right away; Done closes.
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
@@ -96,15 +96,6 @@ function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => v
                 }}
               />
             </label>
-            <label className="setting setting-toggle">
-              <span>{game.status === 'done' ? 'Finished on' : 'Dropped on'}</span>
-              <input
-                type="date"
-                className="game-date"
-                value={toDateInput(game.statusAt)}
-                onChange={(e) => e.target.value && updateGame(game.id, { statusAt: fromDateInput(e.target.value) })}
-              />
-            </label>
           </>
         )}
 
@@ -156,18 +147,6 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
 export function starText(rating?: number) {
   if (!rating) return ''
   return '★'.repeat(Math.floor(rating)) + (rating % 1 ? '½' : '')
-}
-
-// <input type="date"> works with "2026-10-16" in local time; noon avoids clock-change surprises
-function toDateInput(time: number) {
-  const d = new Date(time)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function fromDateInput(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  return new Date(year, month - 1, day, 12).getTime()
 }
 
 export default GameDialog

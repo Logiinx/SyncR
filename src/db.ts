@@ -101,7 +101,7 @@ export interface Game {
   releaseDate?: number // first release, ms; missing = not announced (TBA)
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
-  statusAt: number // when it got this status (sorts the groups; Done: the finish date)
+  statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
   priority: boolean // flag: top of its group
   note: string // any time, optional
   review: string // with the rating, optional

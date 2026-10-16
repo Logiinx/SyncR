@@ -110,18 +110,17 @@ function Cover({ coverId }: { coverId?: string }) {
   )
 }
 
-// One game: cover, name, then what matters for its status, and a preview of the review
-// (finished or dropped games) or the note. Stars and heart on the right.
+// One game: cover, name, release (full date while waiting, else the year), platforms, and a
+// preview of the review (finished or dropped games) or the note. Stars and heart on the right.
 function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const played = game.status === 'done' || game.status === 'dropped'
-  const when = played
-    ? `${game.status === 'done' ? 'Finished' : 'Dropped'} ${formatRelease(game.statusAt)}`
-    : game.status === 'waiting' || !game.releaseDate
+  const when =
+    game.status === 'waiting' || !game.releaseDate
       ? formatRelease(game.releaseDate)
       : String(new Date(game.releaseDate).getFullYear())
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
-  const details = [when, played ? '' : game.platforms.join(', '), preview].filter(Boolean).join(' · ')
+  const details = [when, game.platforms.join(', '), preview].filter(Boolean).join(' · ')
   return (
     <div
       className={game.priority ? 'game-row priority' : 'game-row'}
