@@ -133,9 +133,71 @@ export async function refreshGames(force = false) {
   write(REFRESHED_KEY, Date.now())
 }
 
-// Started once by the app. The refresh waits for a finished sync (when Dropbox is set up):
-// saving a game makes it the newest copy, which must not win over an edit made on the other
-// device that hasn't arrived yet.
+// ---------- Release reminders (shown in the Reminders tab) ----------
+
+const REMIND_DAYS_BEFORE = 2
+const REMIND_HOUR = 10
+
+// 10:00, two days before the release day
+export function releaseReminderTime(releaseDate: number) {
+  const time = new Date(releaseDate)
+  time.setDate(time.getDate() - REMIND_DAYS_BEFORE)
+  time.setHours(REMIND_HOUR, 0, 0, 0)
+  return time.getTime()
+}
+
+export const releaseReminderText = (game: Pick<Game, 'name' | 'releaseDate'>) =>
+  `${game.name} comes out on ${new Date(game.releaseDate!).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`
+
+// One reminder per Waiting game with an exact date that isn't out yet. Its id comes from the
+// game's id, so two devices make the same reminder, not two. gameRelease = the date it was
+// made for: a new date (delay) moves it and brings it back (even if done or deleted); the same
+// date leaves it alone (so a reminder you deleted stays deleted). When the game no longer
+// qualifies, an unfinished reminder is removed (gameRelease cleared, so pinning again makes a
+// new one). Only saves what changed.
+export async function syncReleaseReminders() {
+  const now = Date.now()
+  for (const game of await db.games.toArray()) {
+    const id = `release-${game.id}`
+    const existing = await db.reminders.get(id)
+    const wanted = !game.deleted && game.status === 'waiting' && !!game.releaseDate && !isReleased(game)
+    if (!wanted) {
+      if (existing && !existing.deleted && existing.doneAt === null) {
+        await db.reminders.update(id, { deleted: true, text: '', note: '', gameRelease: undefined, updatedAt: now })
+        changed()
+      }
+      continue
+    }
+    const text = releaseReminderText(game)
+    if (existing && existing.gameRelease === game.releaseDate) {
+      // Same date: only follow a new name
+      if (!existing.deleted && existing.text !== text) {
+        await db.reminders.update(id, { text, updatedAt: now })
+        changed()
+      }
+      continue
+    }
+    await db.reminders.put({
+      phone: false,
+      createdAt: now,
+      ...existing,
+      id,
+      text,
+      note: '',
+      dueAt: Math.max(releaseReminderTime(game.releaseDate!), now), // pinned less than 2 days before: now
+      gameId: game.id,
+      gameRelease: game.releaseDate,
+      doneAt: null,
+      deleted: false,
+      updatedAt: now,
+    })
+    changed()
+  }
+}
+
+// Started once by the app. The refresh and the release reminders wait for a finished sync (when
+// Dropbox is set up): saving makes a record the newest copy, which must not win over an edit
+// made on the other device that hasn't arrived yet (e.g. a reminder marked done on the phone).
 let started = false
 export function startGameChecks() {
   if (started) return
@@ -143,6 +205,7 @@ export function startGameChecks() {
   const check = async () => {
     try {
       await moveReleased()
+      if (!dropboxConnected()) await syncReleaseReminders() // with Dropbox: after each sync (refresh)
     } catch (e) {
       console.warn('Release day check failed', e)
     }
@@ -151,6 +214,7 @@ export function startGameChecks() {
     try {
       await refreshGames()
       await moveReleased() // a date may have moved to today
+      await syncReleaseReminders()
     } catch (e) {
       console.warn('Game refresh failed', e)
     }

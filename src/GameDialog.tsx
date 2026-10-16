@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Flag, Heart } from 'lucide-react'
+import { CalendarPlus, Flag, Heart } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game } from './db'
-import { formatRelease, STATUSES } from './games'
+import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, STATUSES } from './games'
+import { addToGoogleCalendar } from './reminders'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab): status, flag, note, and for games you've
@@ -37,12 +38,30 @@ function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => v
               {formatRelease(game.releaseDate, game.releaseLabel)}
               {game.platforms.length > 0 && ` · ${game.platforms.join(', ')}`}
             </p>
-            <button
-              className={game.priority ? 'game-dialog-flag on' : 'game-dialog-flag'}
-              onClick={() => updateGame(game.id, { priority: !game.priority })}
-            >
-              <Flag size={14} /> {game.priority ? 'Flagged' : 'Flag'}
-            </button>
+            <div className="game-dialog-actions">
+              <button
+                className={game.priority ? 'game-dialog-flag on' : 'game-dialog-flag'}
+                onClick={() => updateGame(game.id, { priority: !game.priority })}
+              >
+                <Flag size={14} /> {game.priority ? 'Flagged' : 'Flag'}
+              </button>
+              {/* The release reminder's time and text, as a Google Calendar event (for the phone) */}
+              {game.status === 'waiting' && game.releaseDate && !isReleased(game) && (
+                <button
+                  className="game-dialog-flag"
+                  title="Add the release reminder to Google Calendar (2 days before, 10:00)"
+                  onClick={() =>
+                    addToGoogleCalendar({
+                      text: releaseReminderText(game),
+                      note: '',
+                      dueAt: releaseReminderTime(game.releaseDate!),
+                    })
+                  }
+                >
+                  <CalendarPlus size={14} /> Google Calendar
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

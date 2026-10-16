@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, List, Plus, Smartphone } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, Gamepad2, List, Plus, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
@@ -96,7 +96,10 @@ function RemindersView() {
         }}
       >
         <span className="reminder-row-text">
-          <span className="reminder-text">{reminder.text}</span>
+          <span className="reminder-text">
+            {reminder.gameId && <Gamepad2 size={14} className="reminder-game" aria-label="Game release" />}
+            {reminder.text}
+          </span>
           {reminder.note && <span className="reminder-row-note">{reminder.note}</span>}
         </span>
         <span className="reminder-due">
@@ -232,7 +235,9 @@ function ReminderGrid(props: {
                 }}
                 title={reminder.note ? `${reminder.text}\n${reminder.note}` : reminder.text}
               >
-                <span className="calendar-reminder-time">{time(reminder.dueAt)}</span> {reminder.text}
+                <span className="calendar-reminder-time">{time(reminder.dueAt)}</span>{' '}
+                {reminder.gameId && <Gamepad2 size={12} className="reminder-game" aria-label="Game release" />}
+                {reminder.text}
               </button>
             )
           })}

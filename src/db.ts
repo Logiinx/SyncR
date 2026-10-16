@@ -62,6 +62,8 @@ export interface Reminder {
   note: string // optional longer text ('' = none)
   dueAt: number // when to remind (ms since 1970); snoozing moves it
   phone: boolean // also added to Google Calendar
+  gameId?: string // a game's release reminder (games.ts); its id is "release-<game id>"
+  gameRelease?: number // the release day it was made for (a new day = the game was delayed)
   doneAt: number | null // null = still waiting
   deleted: boolean
   createdAt: number
