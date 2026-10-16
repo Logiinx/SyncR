@@ -654,40 +654,18 @@ button {
   color: var(--text);
 }
 
-/* ⋮⋮ grip in the margin left of a card: drag it to move the card (Board.tsx).
-   Shown on hover with a mouse; always (faintly) on the phone. */
-.card-grip {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -12px;
-  width: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-  cursor: grab;
-  opacity: 0;
-  touch-action: none; /* a finger drag moves the card instead of scrolling */
+/* Not being edited: the card is moved by click and drag (Board.tsx), so no text selection
+   (and no long-press text menu on the phone). Double-click edits it. */
+.card:not(.editing) .tiptap {
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
-.card:hover .card-grip {
-  opacity: 1;
-}
-
-.card-grip:hover {
-  color: var(--text);
-}
-
-@media (pointer: coarse) {
-  .card-grip {
-    opacity: 0.6;
-  }
-}
-
-/* While dragging: the card fades, a blue line shows where it will land */
-.card.dragging {
-  opacity: 0.4;
+/* Dragging: the other cards (and the separator) slide out of the way; the dragged card is
+   lifted (slightly bigger, soft shadow) and follows the pointer without delay */
+.board-cards > .card,
+.board-cards > .board-separator {
+  transition: transform 0.15s ease;
 }
 
 .board-cards.dragging {
@@ -695,15 +673,15 @@ button {
   user-select: none;
 }
 
-.board-drop-line {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  height: 2px;
-  margin-top: -1px;
-  border-radius: 1px;
-  background: var(--text-blue);
-  pointer-events: none;
+.board-cards > .card.lifted {
+  z-index: 2;
+  transition: none;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
+}
+
+/* Just dropped: the cards are already in their new places, so no slide back */
+.board-cards.settling > * {
+  transition: none;
 }
 
 /* "Card deleted · Undo" at the bottom of the Board, for a few seconds */

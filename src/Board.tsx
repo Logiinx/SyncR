@@ -14,6 +14,8 @@ import Card from './Card'
 const MIN_WIDTH = 200
 const MAX_WIDTH = 600
 const UNDO_MS = 5000
+const HOLD_MS = 300 // touch screens: hold a card this long before it moves (a swipe scrolls)
+const GAP = 6 // px between cards (.board-cards gap)
 
 interface Props {
   onClose: () => void
@@ -31,8 +33,8 @@ function Board({ onClose }: Props) {
     [],
   )
   const listRef = useRef<HTMLDivElement>(null)
-  // While a card is dragged by its grip: which one, and where the blue drop line is
-  const [cardDrag, setCardDrag] = useState<{ id: string; lineTop: number | null } | null>(null)
+  // After dropping a card: puts the cards back in place once the new order is on screen
+  const settle = useRef<(() => void) | null>(null)
   // The card just added gets the keyboard focus
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
@@ -45,6 +47,8 @@ function Board({ onClose }: Props) {
       for (const card of all) if (!card.deleted && isEmptyCard(card)) setCardDeleted(card.id, true)
     })
   }, [])
+
+  useEffect(() => settle.current?.(), [cards])
 
   useEffect(() => {
     if (!undoId) return
@@ -61,60 +65,138 @@ function Board({ onClose }: Props) {
     setUndoId(id) // a newer delete replaces the offer (the older one stays deleted)
   }
 
-  // Dragging a card by its ⋮⋮ grip. The drop spot is found from the pointer's height
-  // against the middle of the other cards. Above the separator = priority, below = normal.
-  function startDrag(id: string, event: React.PointerEvent) {
+  // Moving a card: press on it and drag (on a touch screen, hold it a moment first, so a
+  // swipe still scrolls). The card follows the pointer and the others slide out of the way.
+  // Where it is when you let go decides the spot: above the separator = priority,
+  // below = normal. Moves are CSS transforms set directly, so React doesn't redraw on each move.
+  function pressCard(id: string, event: React.PointerEvent) {
     const list = listRef.current
     const card = cards?.find((c) => c.id === id)
-    if (!list || !cards || !card || cards.length < 2) return
-    event.preventDefault()
-    const others = cards.filter((c) => c.id !== id)
-    const priorityCount = others.filter((c) => c.priority).length
+    if (event.button !== 0 || !list || !cards || !card || cards.length < 2) return
+    const allCards = cards
+    const touch = event.pointerType === 'touch'
+    const start = { x: event.clientX, y: event.clientY }
+    let pointerY = event.clientY
+    let started = false
     let target: { priority: boolean; order: number } | null = null
-    setCardDrag({ id, lineTop: null })
+    // Measured when the drag starts
+    let items: HTMLElement[] = []
+    let dragged: HTMLElement | null = null
+    let others: HTMLElement[] = []
+    let index = 0
+    let shift = 0
+    let startY = 0
+    const contentY = (clientY: number) => clientY - list.getBoundingClientRect().top + list.scrollTop
+
+    function begin() {
+      items = [...list!.querySelectorAll<HTMLElement>(':scope > .card, :scope > .board-separator')]
+      dragged = items.find((el) => el.dataset.cardId === id) ?? null
+      if (!dragged) return
+      index = items.indexOf(dragged)
+      others = items.filter((el) => el !== dragged)
+      shift = dragged.offsetHeight + GAP
+      startY = contentY(start.y)
+      started = true
+      list!.classList.add('dragging')
+      dragged.classList.add('lifted')
+      update()
+    }
+
+    function update() {
+      if (!dragged) return
+      const dy = contentY(pointerY) - startY
+      dragged.style.transform = `translateY(${dy}px) scale(1.02)`
+      // The leading edge (top when moving up, bottom when moving down) passing another card's
+      // middle swaps them, so a tall card doesn't have to cover a short one first.
+      const edge = dragged.offsetTop + dy + (dy > 0 ? dragged.offsetHeight : 0)
+      // j = how many of the other cards (and the separator) end up above it
+      let j = others.findIndex((el) => edge < el.offsetTop + el.offsetHeight / 2)
+      if (j === -1) j = others.length
+      // Make room: the ones it passed slide one place towards where it came from
+      others.forEach((el, k) => {
+        const y = k >= j && k < index ? shift : k < j && k >= index ? -shift : 0
+        el.style.transform = y ? `translateY(${y}px)` : ''
+      })
+      const separator = others.findIndex((el) => el.classList.contains('board-separator'))
+      const priority = separator === -1 ? card!.priority : j <= separator // one part only: stays
+      // New order: between its neighbours (the separator is no neighbour)
+      const cardOf = (el?: HTMLElement) => allCards.find((c) => c.id === el?.dataset.cardId)
+      const prev = cardOf(others[j - 1])
+      const next = cardOf(others[j])
+      const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : card!.order
+      target = { priority, order }
+    }
+
+    const holdTimer = touch ? window.setTimeout(begin, HOLD_MS) : undefined
 
     const move = (e: PointerEvent) => {
-      const box = list.getBoundingClientRect()
+      pointerY = e.clientY
+      if (!started) {
+        const distance = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+        if (touch) {
+          if (distance > 8) end() // moved before the hold: it's a swipe, let the list scroll
+          return
+        }
+        if (distance < 4) return
+        begin()
+      }
       // Near the top or bottom edge: scroll the list
+      const box = list.getBoundingClientRect()
       if (e.clientY < box.top + 30) list.scrollTop -= 8
       else if (e.clientY > box.bottom - 30) list.scrollTop += 8
-
-      const rects = others.map((c) =>
-        list.querySelector(`[data-card-id="${c.id}"]`)!.getBoundingClientRect(),
-      )
-      // k = how many of the other cards end up above it
-      let k = rects.findIndex((r) => e.clientY < r.top + r.height / 2)
-      if (k === -1) k = others.length
-      let priority: boolean
-      if (k < priorityCount) priority = true
-      else if (k > priorityCount) priority = false
-      else if (priorityCount > 0 && priorityCount < others.length) {
-        // Right between the two parts: the side of the gap (where the separator is) decides
-        priority = e.clientY < (rects[k - 1].bottom + rects[k].top) / 2
-      } else priority = card.priority // only one part: stays as it is
-
-      // New order: between its neighbours in the same part
-      const prev = others[k - 1]?.priority === priority ? others[k - 1] : undefined
-      const next = others[k]?.priority === priority ? others[k] : undefined
-      const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : card.order
-      target = { priority, order }
-
-      // Blue line: under the card above it if that's in the same part, else over the card below
-      const lineY = prev || !next ? rects[k - 1].bottom + 3 : rects[k].top - 3
-      setCardDrag({ id, lineTop: lineY - box.top + list.scrollTop })
+      update()
     }
-    const end = (e: PointerEvent) => {
+    // Touch: once the card moves, the finger mustn't scroll the list or open the long-press menu
+    const blockScroll = (e: TouchEvent) => {
+      if (started) e.preventDefault()
+    }
+    const blockMenu = (e: Event) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    function end(e?: Event) {
+      window.clearTimeout(holdTimer)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
-      setCardDrag(null)
-      if (e.type === 'pointerup' && target && (target.priority !== card.priority || target.order !== card.order)) {
+      window.removeEventListener('touchmove', blockScroll)
+      window.removeEventListener('contextmenu', blockMenu, true)
+      if (!started || !dragged) return
+      const lifted = dragged
+      // The click that ends a drag mustn't also act (e.g. open a link)
+      const swallow = (c: Event) => c.stopPropagation()
+      window.addEventListener('click', swallow, { capture: true, once: true })
+      window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+
+      const putBack = () => {
+        for (const el of items) el.style.transform = ''
+        lifted.classList.remove('lifted')
+        list!.classList.remove('dragging')
+      }
+      const moved = e?.type === 'pointerup' && target && (target.priority !== card!.priority || target.order !== card!.order)
+      if (moved && target) {
+        // Once the new order is on screen, drop the transforms without animation
+        settle.current = () => {
+          settle.current = null
+          list!.classList.add('settling')
+          putBack()
+          requestAnimationFrame(() => list!.classList.remove('settling'))
+        }
         moveCard(id, target.priority, target.order)
+        window.setTimeout(() => settle.current?.(), 500) // in case the list didn't change
+      } else {
+        putBack() // not moved: everything slides back
       }
     }
+
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
     window.addEventListener('pointercancel', end)
+    if (touch) {
+      window.addEventListener('touchmove', blockScroll, { passive: false })
+      window.addEventListener('contextmenu', blockMenu, true)
+    }
   }
 
   function undo() {
@@ -159,7 +241,7 @@ function Board({ onClose }: Props) {
             <Plus size={16} />
           </button>
         </div>
-        <div className={`board-cards${cardDrag ? ' dragging' : ''}`} ref={listRef}>
+        <div className="board-cards" ref={listRef}>
           {cards?.map((card, index) => (
             <Fragment key={card.id}>
               {/* A thin line between the priority cards and the others (only when both exist) */}
@@ -167,13 +249,11 @@ function Board({ onClose }: Props) {
               <Card
                 card={card}
                 autoFocus={card.id === newCardId}
-                dragging={cardDrag?.id === card.id}
                 onDelete={() => deleteCard(card.id)}
-                onDragStart={(event) => startDrag(card.id, event)}
+                onPress={(event) => pressCard(card.id, event)}
               />
             </Fragment>
           ))}
-          {cardDrag?.lineTop != null && <div className="board-drop-line" style={{ top: cardDrag.lineTop }} />}
         </div>
         {undoId && (
           <div className="board-undo">
