@@ -2853,15 +2853,17 @@ h2 + .settings-section {
 
 /* Group title: like the Settings section titles, and it folds the group */
 .games-group {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
+/* Full width and 36px tall, so it's easy to tap on the phone (looks the same as a small title) */
 .games-group-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
-  padding: 2px 0;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
   color: var(--link);
   font-size: 0.75em;
   font-weight: 600;
