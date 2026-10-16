@@ -72,7 +72,8 @@ function Board({ onClose }: Props) {
   function pressCard(id: string, event: React.PointerEvent) {
     const list = listRef.current
     const card = cards?.find((c) => c.id === id)
-    if (event.button !== 0 || !list || !cards || !card || cards.length < 2) return
+    // Even a single card can be dragged: the "Priority" / "Normal" zone lets it change side
+    if (event.button !== 0 || !list || !cards || !card) return
     const allCards = cards
     const touch = event.pointerType === 'touch'
     const start = { x: event.clientX, y: event.clientY }
