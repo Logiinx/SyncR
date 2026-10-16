@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-16
+
 ### Fixed
 - Phone: holding a section title on its words now picks the section up. Before, Android's own long press selected the words and opened the keyboard, which cancelled the drag (only pressing beside the words worked). While your finger is down, the title is now briefly not editable or selectable; it is editable again as soon as you lift your finger.
 
