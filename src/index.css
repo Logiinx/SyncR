@@ -506,25 +506,44 @@ button {
   padding: 0 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
+/* A soft tile: no border, just a bit lighter than the panel (a bit more while editing) */
 .card {
   position: relative;
   flex-shrink: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 4%, var(--bg-raised));
   border-radius: 8px;
 }
 
 .card:focus-within {
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
 }
 
-/* Priority: orange left edge and a light orange tint */
+/* Priority: a light blue tint and a small blue dot before the first line */
 .card.priority {
-  background: color-mix(in srgb, var(--text-orange) 8%, var(--bg));
-  border-left: 3px solid var(--text-orange);
+  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg-raised));
+}
+
+.card.priority:focus-within {
+  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg-raised));
+}
+
+.card.priority::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: calc(8px + 0.75em - 3px); /* centered on the first line (padding + half a line) */
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-blue);
+  font-size: calc(var(--note-size, 16px) * 0.875);
+}
+
+.card.priority .card-editor .tiptap {
+  padding-left: 24px;
 }
 
 /* Thin line between the priority cards and the others */
@@ -583,10 +602,9 @@ button {
   color: var(--text);
 }
 
-/* A priority card's flag stays visible, in orange */
+/* A priority card's flag is blue (shown on hover like ✕; the dot already marks it) */
 .card.priority .card-flag {
-  opacity: 1;
-  color: var(--text-orange);
+  color: var(--text-blue);
 }
 
 @media (pointer: coarse) {
