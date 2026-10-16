@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-16
+
 ### Changed
 - Settings → Games: the game search proxy address and password are now saved for all your devices (synced and encrypted like the rest), so you only set them up once. The values already set on a device are kept. The Test button is gone: SyncR checks the connection by itself when Settings opens and shortly after you type, and shows a green "Connected", or what went wrong (e.g. "Wrong password for the game search proxy").
 
