@@ -2,12 +2,15 @@ import { useEffect, useRef } from 'react'
 import type { Note } from './db'
 import { getScroll, setScroll } from './localState'
 import NoteEditor from './NoteEditor'
+import { ConflictBanner } from './ConflictCompare'
 
 const SAVE_SCROLL_MS = 200
 
 const isAtBottom = (page: HTMLElement) => page.scrollHeight - page.scrollTop - page.clientHeight < 4
 
 // The scrollable page around the editor. Restores and remembers the scroll position.
+// A conflict copy gets a banner above the page (it stays in view while scrolling), with
+// "Compare" opening the comparison over the note (ConflictCompare.tsx).
 function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const pageRef = useRef<HTMLElement>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -49,9 +52,12 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   }
 
   return (
-    <main className="page" ref={pageRef} onScroll={onScroll}>
-      <NoteEditor note={note} autoFocus={autoFocus} />
-    </main>
+    <div className="note-column">
+      {note.conflictOf && <ConflictBanner note={note} />}
+      <main className="page" ref={pageRef} onScroll={onScroll}>
+        <NoteEditor note={note} autoFocus={autoFocus} />
+      </main>
+    </div>
   )
 }
 

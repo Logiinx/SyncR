@@ -1168,10 +1168,235 @@ button {
 
 /* ---------- Page and editor ---------- */
 
+/* An open note: the optional conflict banner, then the scrolling page (NoteView.tsx) */
+.note-column {
+  position: relative; /* for the comparison, which covers it */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .page {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+}
+
+/* ---------- Conflict copies (ConflictCompare.tsx) ---------- */
+
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 24px;
+  background: color-mix(in srgb, var(--warn) 14%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, var(--bg));
+  color: var(--text);
+  font-size: 13px;
+}
+
+.conflict-banner svg {
+  flex-shrink: 0;
+  color: var(--warn);
+}
+
+.conflict-banner button {
+  margin-left: auto;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warn) 25%, var(--bg));
+  font-weight: 600;
+}
+
+.conflict-banner button:hover {
+  background: color-mix(in srgb, var(--warn) 35%, var(--bg));
+}
+
+/* The comparison covers the note (banner included) */
+.compare {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.compare-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px 8px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-title {
+  font-weight: 600;
+}
+
+.compare-legend {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.compare-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.compare-close:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.compare-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 24px;
+  line-height: 1.6;
+  font-family: var(--note-font, system-ui, sans-serif);
+  font-size: var(--note-size, 16px);
+}
+
+/* PC: two columns, row by row (a line and its counterpart side by side) */
+.compare-body.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 12px;
+  align-content: start;
+}
+
+.compare-side-title {
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  padding: 6px 8px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmp-cell {
+  min-height: 1.6em;
+  padding-right: 8px;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* Whole lines: only in the original (red), only in the copy (green), changed (faint) */
+.cmp-line-removed {
+  background: color-mix(in srgb, var(--error) 14%, var(--bg));
+}
+
+.cmp-line-added {
+  background: color-mix(in srgb, var(--ok) 14%, var(--bg));
+}
+
+.cmp-line-changed {
+  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+
+.cmp-empty {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--text) 4%, transparent) 6px 8px);
+}
+
+/* Words inside a changed line */
+.cmp-removed {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--error) 35%, transparent);
+}
+
+.cmp-added {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ok) 35%, transparent);
+}
+
+.cmp-formatted {
+  border-radius: 3px;
+  text-decoration: underline dotted var(--warn);
+  text-underline-offset: 3px;
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+}
+
+.cmp-strike {
+  text-decoration: line-through;
+}
+
+.cmp-line-removed.cmp-strike .cmp-text {
+  text-decoration: line-through;
+}
+
+.cmp-marker {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: 4px;
+  color: var(--text-dim);
+}
+
+.cmp-kind-section .cmp-text,
+.cmp-kind-heading-1 .cmp-text,
+.cmp-kind-heading-2 .cmp-text,
+.cmp-kind-heading-3 .cmp-text {
+  font-weight: 600;
+}
+
+.cmp-kind-heading-1 {
+  font-size: 1.4em;
+}
+
+.cmp-kind-heading-2 {
+  font-size: 1.2em;
+}
+
+.cmp-kind-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+}
+
+.cmp-kind-quote {
+  border-left: 3px solid var(--border);
+}
+
+.cmp-kind-image .cmp-text {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.cmp-link {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+/* "⋯ 12 unchanged lines": click to show them */
+.compare-fold {
+  grid-column: 1 / -1;
+  margin: 4px 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.compare-fold:hover {
+  background: var(--bg-raised);
+  color: var(--text);
 }
 
 .empty {

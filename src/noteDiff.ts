@@ -17,6 +17,8 @@ export interface Token {
 export interface Line {
   kind: string // 'paragraph', 'heading-2', 'bullet', 'numbered', 'task', 'task-done', 'section', 'code', 'quote', 'row', 'image', 'rule'
   depth: number // nesting (lists, sections), for the indent
+  number?: string // numbered list: "3." (shown only, not compared, so inserting an item
+  // doesn't make every later item look changed)
   tokens: Token[]
   key: string // kind + depth + words + formatting: equal keys = unchanged line
 }
@@ -67,15 +69,15 @@ export function diffNotes(before: JSONContent | null, after: JSONContent | null)
 
 function toLines(doc: JSONContent | null): Line[] {
   const lines: Line[] = []
-  const add = (kind: string, depth: number, tokens: Token[]) =>
-    lines.push({ kind, depth, tokens, key: `${kind}|${depth}|${tokens.map((t) => t.text + '\u0001' + t.markKey).join('\u0002')}` })
+  const add = (kind: string, depth: number, tokens: Token[], number?: string) =>
+    lines.push({ kind, depth, tokens, number, key: `${kind}|${depth}|${tokens.map((t) => t.text + '\u0001' + t.markKey).join('\u0002')}` })
 
   // kind: what the first text line inside this node is (a list item's first paragraph is
   // the bullet; the rest of the item are plain lines under it)
-  const walk = (node: JSONContent, depth: number, kind: string) => {
+  const walk = (node: JSONContent, depth: number, kind: string, number?: string) => {
     switch (node.type) {
       case 'paragraph':
-        return add(kind, depth, tokenize(node.content))
+        return add(kind, depth, tokenize(node.content), number)
       case 'heading':
         return add(`heading-${node.attrs?.level ?? 1}`, depth, tokenize(node.content))
       case 'detailsSummary':
@@ -97,13 +99,13 @@ function toLines(doc: JSONContent | null): Line[] {
       case 'listItem':
       case 'taskItem': {
         const itemKind = node.type === 'taskItem' ? (node.attrs?.checked ? 'task-done' : 'task') : kind
-        ;(node.content ?? []).forEach((child, i) => walk(child, depth, i === 0 ? itemKind : 'paragraph'))
+        ;(node.content ?? []).forEach((child, i) => walk(child, depth, i === 0 ? itemKind : 'paragraph', i === 0 ? number : undefined))
         return
       }
       case 'bulletList':
         return node.content?.forEach((child) => walk(child, depth + 1, 'bullet'))
       case 'orderedList':
-        return node.content?.forEach((child) => walk(child, depth + 1, 'numbered'))
+        return node.content?.forEach((child, i) => walk(child, depth + 1, 'numbered', `${(node.attrs?.start ?? 1) + i}.`))
       case 'taskList':
         return node.content?.forEach((child) => walk(child, depth + 1, 'task'))
       case 'blockquote':
