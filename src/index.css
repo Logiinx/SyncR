@@ -491,6 +491,19 @@ button {
   left: -15px;
 }
 
+/* With a mouse, the tab is hidden until the mouse comes near it (boardTab.ts) */
+@media (hover: hover) and (pointer: fine) {
+  .board-toggle {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .board-toggle.near,
+  .board-toggle:focus-visible {
+    opacity: 1;
+  }
+}
+
 .board {
   position: relative;
   display: flex;
