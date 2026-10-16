@@ -7,6 +7,9 @@ import { currentZoom } from './appearance'
 // A quick click opens/closes the section (and puts the cursor in the title, so a second click
 // edits it). While the cursor is already in that title, it behaves like normal text
 // (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls.
+// Mouse over a title that isn't being edited: the section is framed (faint tint, two corner
+// brackets like the app icon) and the pointer is a grab hand, so moving it and editing the
+// title look different.
 // While dragging, a copy of the title follows the pointer and a blue line shows where the
 // section will land: between any two blocks, also inside another section.
 
@@ -50,6 +53,7 @@ class SectionDragger {
   line: HTMLElement
   ghost: HTMLElement | null = null // copy of the title that follows the pointer
   press: Press | null = null
+  hovered: HTMLElement | null = null // the framed section (mouse over its title)
 
   constructor(view: EditorView) {
     this.view = view
@@ -62,6 +66,38 @@ class SectionDragger {
     this.wrapper.append(this.line)
 
     view.dom.addEventListener('pointerdown', this.onPointerDown)
+    view.dom.addEventListener('pointermove', this.onHover)
+    view.dom.addEventListener('pointerleave', this.onLeave)
+  }
+
+  // ---------- Framing the section under the mouse ----------
+
+  // Is the cursor already in this title? Then it's being edited: plain text behaviour.
+  editingTitle(summary: HTMLElement) {
+    const { $from } = this.view.state.selection
+    return $from.parent.type.name === 'detailsSummary' && $from.start() === this.view.posAtDOM(summary, 0)
+  }
+
+  onHover = (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse' || this.press) return
+    const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
+    const section = summary?.closest<HTMLElement>('[data-type="details"]') ?? null
+    this.frame(summary && this.view.editable && !this.editingTitle(summary) ? section : null)
+  }
+
+  onLeave = () => this.frame(null)
+
+  frame(section: HTMLElement | null) {
+    if (section === this.hovered) return
+    this.hovered?.classList.remove('section-hover')
+    section?.classList.add('section-hover')
+    this.hovered = section
+  }
+
+  // Called by ProseMirror after every change: the cursor may have moved into the framed title
+  update() {
+    const summary = this.hovered?.querySelector<HTMLElement>('summary')
+    if (this.hovered && (!this.hovered.isConnected || !summary || this.editingTitle(summary))) this.frame(null)
   }
 
   // ---------- Pressing a title ----------
@@ -72,8 +108,7 @@ class SectionDragger {
     const section = summary?.closest<HTMLElement>('[data-type="details"]')
     if (!summary || !section || !this.view.dom.contains(section)) return
     // Already editing this title: normal text behaviour (place the cursor, select)
-    const { $from } = this.view.state.selection
-    if ($from.parent.type.name === 'detailsSummary' && $from.start() === this.view.posAtDOM(summary, 0)) return
+    if (this.editingTitle(summary)) return
 
     // No cursor or text selection yet: it's a click (open/close) or a drag, decided on release
     e.preventDefault()
@@ -141,6 +176,7 @@ class SectionDragger {
     if (press.from === null) return this.cancel()
     window.clearTimeout(press.holdTimer)
     this.wrapper.classList.add('dragging-section')
+    this.frame(null)
     press.section.classList.add('section-lifted')
 
     const zoom = currentZoom()
@@ -262,7 +298,10 @@ class SectionDragger {
   destroy() {
     this.cancel()
     this.line.remove()
+    this.frame(null)
     this.view.dom.removeEventListener('pointerdown', this.onPointerDown)
+    this.view.dom.removeEventListener('pointermove', this.onHover)
+    this.view.dom.removeEventListener('pointerleave', this.onLeave)
     this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }
 }

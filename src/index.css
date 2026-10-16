@@ -1605,6 +1605,42 @@ button {
   position: relative; /* for the drop line and the title copy */
 }
 
+/* Mouse over a title that isn't being edited: the section is framed like the app icon
+   (two gray corner brackets, top-left and bottom-right) with a faint tint, and the title
+   shows a grab hand. The tint reaches a bit past the text (shadow), without moving anything. */
+.tiptap [data-type='details'].section-hover {
+  position: relative;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+.tiptap [data-type='details'].section-hover::before,
+.tiptap [data-type='details'].section-hover::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 12px;
+  border: 0 solid var(--text-gray);
+  pointer-events: none;
+}
+
+.tiptap [data-type='details'].section-hover::before {
+  top: -6px;
+  left: -6px;
+  border-width: 2px 0 0 2px;
+}
+
+.tiptap [data-type='details'].section-hover::after {
+  bottom: -6px;
+  right: -6px;
+  border-width: 0 2px 2px 0;
+}
+
+.tiptap [data-type='details'].section-hover > div > summary {
+  cursor: grab;
+}
+
 /* The section being dragged fades; a copy of its title follows the pointer */
 .section-lifted {
   opacity: 0.4;
