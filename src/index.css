@@ -1969,6 +1969,9 @@ button {
 .dragging-section,
 .dragging-section * {
   cursor: grabbing !important;
+  /* Phone: a hold that started in a title being edited mustn't select text while dragging */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Where the dragged section will land */

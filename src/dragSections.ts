@@ -6,7 +6,10 @@ import { currentZoom } from './appearance'
 // Section titles: press and drag a title to move its section, with everything inside.
 // A quick click opens/closes the section (and puts the cursor in the title, so a second click
 // edits it). While the cursor is already in that title, it behaves like normal text
-// (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls.
+// (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls;
+// holding drags even while editing the title (a tap still places the cursor).
+// The browser's own drag of selected text is blocked when the selection touches a title:
+// dropping part of a title elsewhere made new, broken sections.
 // Mouse over a title that isn't being edited: the section is framed (faint tint, two corner
 // brackets like the app icon) and the pointer is a grab hand, so moving it and editing the
 // title look different.
@@ -30,6 +33,7 @@ interface Drop {
 interface Press {
   pointerId: number
   touch: boolean
+  editing: boolean // the cursor was already in this title (touch only: a tap places the cursor)
   x: number
   y: number
   summary: HTMLElement // the title that was pressed
@@ -43,9 +47,27 @@ export const DragSections = Extension.create({
   name: 'dragSections',
 
   addProseMirrorPlugins() {
-    return [new Plugin({ view: (view) => new SectionDragger(view) })]
+    return [
+      new Plugin({
+        view: (view) => new SectionDragger(view),
+        props: { handleDOMEvents: { dragstart: blockTitleDrag } },
+      }),
+    ]
   },
 })
+
+// Native drag of selected text that touches a section title: blocked
+function blockTitleDrag(view: EditorView, e: DragEvent) {
+  const { from, to } = view.state.selection
+  let touchesTitle = false
+  view.state.doc.nodesBetween(from, to, (node) => {
+    if (node.type.name === 'detailsSummary') touchesTitle = true
+    return !touchesTitle
+  })
+  if (!touchesTitle) return false
+  e.preventDefault()
+  return true
+}
 
 class SectionDragger {
   view: EditorView
@@ -110,13 +132,15 @@ class SectionDragger {
     const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
     const section = summary?.closest<HTMLElement>('[data-type="details"]')
     if (!summary || !section || !this.view.dom.contains(section)) return
-    // Already editing this title: normal text behaviour (place the cursor, select)
-    if (this.editingTitle(summary)) return
-
-    // No cursor or text selection yet: it's a click (open/close) or a drag, decided on release
-    e.preventDefault()
     const touch = e.pointerType === 'touch'
-    this.press = { pointerId: e.pointerId, touch, x: e.clientX, y: e.clientY, summary, section, from: null, drop: null }
+    const editing = this.editingTitle(summary)
+    // Mouse, already editing this title: normal text behaviour (place the cursor, select)
+    if (editing && !touch) return
+
+    // No cursor or text selection yet: it's a click (open/close) or a drag, decided on release.
+    // Touch while editing: a tap places the cursor as usual, a hold drags.
+    if (!editing) e.preventDefault()
+    this.press = { pointerId: e.pointerId, touch, editing, x: e.clientX, y: e.clientY, summary, section, from: null, drop: null }
     if (touch) this.press.holdTimer = window.setTimeout(() => this.startDrag(), HOLD_MS)
     window.addEventListener('pointermove', this.onPointerMove)
     window.addEventListener('pointerup', this.onPointerUp)
@@ -148,7 +172,7 @@ class SectionDragger {
     if (!press || e.pointerId !== press.pointerId) return
     if (press.from !== null) {
       if (press.drop) this.move(press.from, press.drop.pos, press.section.classList.contains('is-open'))
-    } else {
+    } else if (!press.editing) {
       this.clickTitle(press)
     }
     this.cancel()

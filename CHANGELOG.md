@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Phone: holding a section title now always moves the section, even right after tapping it (the tap put the cursor in the title, and a long press there selected the words instead). A tap still places the cursor in a title you are editing.
+- Dragging selected text that includes part of a section title is now blocked. Before, the browser's own text drag moved that piece, and the editor wrapped it in a new, broken "ghost" section and split the text around it. Dragging selected text elsewhere still works.
+
 ## [0.10.1] - 2026-10-16
 
 ### Fixed
