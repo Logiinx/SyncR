@@ -157,7 +157,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   const played = game.status === 'done' || game.status === 'dropped'
   const when =
     game.status === 'waiting' || !game.releaseDate
-      ? formatRelease(game.releaseDate)
+      ? formatRelease(game.releaseDate, game.releaseLabel)
       : String(new Date(game.releaseDate).getFullYear())
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
@@ -259,7 +259,7 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
                 <div className="game-text">
                   <div className="game-name">{found.name}</div>
                   <div className="game-details">
-                    {[formatRelease(found.releaseDate), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
+                    {[formatRelease(found.releaseDate, found.releaseLabel), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {status ? (

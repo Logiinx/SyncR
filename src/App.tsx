@@ -13,7 +13,7 @@ import Board from './Board'
 import SettingsDialog from './SettingsDialog'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
-import { GAMES_TAB } from './games'
+import { GAMES_TAB, startGameChecks } from './games'
 import UpdateBanner from './UpdateBanner'
 import SyncButton from './SyncButton'
 import WindowControls from './WindowControls'
@@ -26,6 +26,9 @@ function App() {
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
+
+  // Games: release day check and daily refresh from IGDB (games.ts)
+  useEffect(startGameChecks, [])
 
   // A conflict was resolved (ConflictCompare.tsx): show the note that was kept, close the copy
   useEffect(() => {

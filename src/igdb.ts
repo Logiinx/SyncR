@@ -52,15 +52,24 @@ export async function igdb<T>(endpoint: string, query: string, connection = load
   return response.json()
 }
 
-// ---------- Searching games ----------
+// ---------- Games and their release dates ----------
 
 // A game as found in IGDB, before it's in the list
 export interface FoundGame {
   igdbId: number
   name: string
   coverId?: string
-  releaseDate?: number // ms
+  releaseDate?: number // ms, exact day only (see trackedRelease)
+  releaseLabel?: string // a vague date instead, e.g. "Q1 2027"; neither = not announced (TBA)
   platforms: string[]
+}
+
+interface IgdbReleaseDate {
+  date?: number // seconds
+  date_format?: number // 0 = exact day, 1 = month, 2 = year, 3–6 = quarter, 7 = TBD
+  platform?: number
+  human?: string
+  status?: { name?: string }
 }
 
 interface IgdbGame {
@@ -69,22 +78,60 @@ interface IgdbGame {
   first_release_date?: number // seconds
   cover?: { image_id: string }
   platforms?: { name: string; abbreviation?: string }[]
+  release_dates?: IgdbReleaseDate[]
 }
+
+// Everything SyncR reads about a game, in one request
+const GAME_FIELDS =
+  'name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name'
 
 // IGDB game types: main game 0, standalone expansion 4, remake 8, remaster 9,
 // expanded game 10, port 11. Left out unless asked: DLC 1, expansion 2, bundle 3, mod 5,
 // episode 6, season 7, fork 12, pack 13, update 14. Editions ("Gold Edition") have a version_parent.
 const MAIN_GAME_TYPES = '(0,4,8,9,10,11)'
 
+const PC = 6 // IGDB platform ids
+const ANDROID = 34
+const PAGE = 500 // IGDB's maximum per request
+
+// IGDB also lists Alpha, Beta, Early Access, Advanced Access (early play for pre-orders),
+// Offline and Cancelled dates. Only the real release counts (most entries have no status).
+function isFullRelease(release: IgdbReleaseDate) {
+  return !release.status || release.status.name === 'Full Release'
+}
+
+// The release date SyncR follows: the PC release if the game comes to PC, else Android, else
+// the first release on any other platform (consoles). Full releases only. An exact day gives
+// releaseDate; a vague one ("Q1 2027") only a label, so it never counts as "out".
+function trackedRelease(game: IgdbGame): Pick<FoundGame, 'releaseDate' | 'releaseLabel'> {
+  const full = (game.release_dates ?? []).filter((r) => isFullRelease(r) && (r.date || r.human))
+  if (full.length === 0) {
+    return game.first_release_date ? { releaseDate: game.first_release_date * 1000 } : {}
+  }
+  const onPlatform = [PC, ANDROID].map((p) => full.filter((r) => r.platform === p)).find((list) => list.length > 0)
+  // Earliest first; entries without a date (TBD) last
+  const first = [...(onPlatform ?? full)].sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))[0]
+  if (first.date && !first.date_format) return { releaseDate: first.date * 1000 }
+  return first.human && first.human !== 'TBD' ? { releaseLabel: first.human } : {}
+}
+
 export async function searchGames(text: string, includeDlc: boolean): Promise<FoundGame[]> {
   const words = text.replace(/["\\]/g, ' ').trim()
   if (!words) return []
   const where = includeDlc ? '' : ` where game_type = ${MAIN_GAME_TYPES} & version_parent = null;`
-  const games = await igdb<IgdbGame>(
-    'games',
-    `search "${words}"; fields name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation;${where} limit 20;`,
-  )
+  const games = await igdb<IgdbGame>('games', `search "${words}"; fields ${GAME_FIELDS};${where} limit 20;`)
   return games.map(toFoundGame)
+}
+
+// Fresh data for games already in the list (the daily refresh, games.ts)
+export async function fetchGames(igdbIds: number[]): Promise<FoundGame[]> {
+  const found: FoundGame[] = []
+  for (let offset = 0; offset < igdbIds.length; offset += PAGE) {
+    const ids = igdbIds.slice(offset, offset + PAGE)
+    const games = await igdb<IgdbGame>('games', `fields ${GAME_FIELDS}; where id = (${ids.join(',')}); limit ${PAGE};`)
+    found.push(...games.map(toFoundGame))
+  }
+  return found
 }
 
 function toFoundGame(game: IgdbGame): FoundGame {
@@ -92,7 +139,7 @@ function toFoundGame(game: IgdbGame): FoundGame {
     igdbId: game.id,
     name: game.name,
     coverId: game.cover?.image_id,
-    releaseDate: game.first_release_date ? game.first_release_date * 1000 : undefined,
+    ...trackedRelease(game),
     platforms: (game.platforms ?? []).map((p) => p.abbreviation || p.name),
   }
 }
@@ -108,28 +155,9 @@ export interface UpcomingGame extends FoundGame {
   rank: number // place in Steam's most wishlisted upcoming games (1 = most wishlisted)
 }
 
-const PC = 6 // IGDB platform id of PC (Microsoft Windows)
 const MOST_WISHLISTED = 10 // IGDB popularity type: Steam's "Most Wishlisted Upcoming"
 export const POPULAR_MAX = 1000 // the calendar can show up to Steam's top 1000 wishlisted
 export const CALENDAR_MONTHS = 6
-
-interface IgdbReleaseDate {
-  date?: number // seconds
-  date_format?: number // 0 = exact day
-  platform?: number
-  human?: string
-  status?: { name?: string }
-}
-
-interface IgdbUpcoming extends IgdbGame {
-  release_dates?: IgdbReleaseDate[]
-}
-
-// IGDB also lists Alpha, Beta, Early Access, Advanced Access (early play for pre-orders),
-// Offline and Cancelled dates. Only the real release counts (most entries have no status).
-function isFullRelease(release: IgdbReleaseDate) {
-  return !release.status || release.status.name === 'Full Release'
-}
 
 // The calendar's range: from today (midnight) to 6 months later, in ms
 export function calendarRange() {
@@ -156,7 +184,6 @@ const byDate = (a: UpcomingGame, b: UpcomingGame) => a.pcDate - b.pcDate || a.na
 // top 100 / 300 / 500 / 1000 without asking again. Requests of 500 (IGDB's limit): the ranking,
 // then the games themselves. A vague date counts at its end: "2026" is 31 Dec 2026, "Q1 2027"
 // is 31 Mar 2027.
-const PAGE = 500
 
 export async function popularUpcoming(): Promise<UpcomingGame[]> {
   const ranking: { game_id: number }[] = []
@@ -173,9 +200,9 @@ export async function popularUpcoming(): Promise<UpcomingGame[]> {
   const upcoming: UpcomingGame[] = []
   for (let offset = 0; offset < ranking.length; offset += PAGE) {
     const ids = ranking.slice(offset, offset + PAGE).map((r) => r.game_id)
-    const games = await igdb<IgdbUpcoming>(
+    const games = await igdb<IgdbGame>(
       'games',
-      `fields name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name; where id = (${ids.join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit ${PAGE};`,
+      `fields ${GAME_FIELDS}; where id = (${ids.join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit ${PAGE};`,
     )
     for (const game of games) {
       const pc = (game.release_dates ?? [])

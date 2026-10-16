@@ -34,7 +34,7 @@ function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => v
           <div>
             <h2>{game.name}</h2>
             <p className="game-dialog-info">
-              {formatRelease(game.releaseDate)}
+              {formatRelease(game.releaseDate, game.releaseLabel)}
               {game.platforms.length > 0 && ` · ${game.platforms.join(', ')}`}
             </p>
             <button

@@ -1,7 +1,11 @@
-import { changed, db, type Game, type GameStatus } from './db'
-import type { FoundGame } from './igdb'
+import { changed, db, updateGame, setGameStatus, type Game, type GameStatus } from './db'
+import { fetchGames, isConnected as igdbConnected, type FoundGame } from './igdb'
+import { isConnected as dropboxConnected } from './dropbox'
+import { getStatus, subscribe } from './autoSync'
+import { read, write } from './localState'
 
-// The Games tab (GamesView.tsx): adding games and how the status groups are ordered.
+// The Games tab (GamesView.tsx): adding games, how the status groups are ordered, and the
+// background checks (release day, daily refresh from IGDB).
 
 export const GAMES_TAB = 'games' // its id among the open tabs (note ids never look like this)
 
@@ -15,7 +19,9 @@ export const STATUSES: { status: GameStatus; label: string }[] = [
 
 export const gameId = (igdbId: number) => `igdb-${igdbId}`
 
-export const isReleased = (game: { releaseDate?: number }) => !!game.releaseDate && game.releaseDate <= Date.now()
+// Out from the start of its release day (local time). Only an exact date counts.
+export const isReleased = (game: { releaseDate?: number }) =>
+  !!game.releaseDate && new Date(game.releaseDate).setHours(0, 0, 0, 0) <= Date.now()
 
 // Added from the search: Waiting if it isn't out yet, otherwise To play. The calendar's pin
 // always gives Waiting. A game removed earlier comes back with its note, review and rating.
@@ -81,8 +87,82 @@ export function releaseCountdown(time?: number) {
   return `in ${Math.round(days / 30.4)} months`
 }
 
-// "12 Mar 2027", or "TBA" when there's no date yet
-export function formatRelease(time?: number) {
-  if (!time) return 'TBA'
+// "12 Mar 2027", a vague date ("Q1 2027"), or "TBA" when there's no date yet
+export function formatRelease(time?: number, label?: string) {
+  if (!time) return label || 'TBA'
   return new Date(time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// ---------- Background checks ----------
+
+const CHECK_EVERY = 10 * 60 * 1000 // release day check, ms
+const REFRESH_EVERY = 24 * 60 * 60 * 1000
+const REFRESHED_KEY = 'syncr.gamesRefreshedAt' // per device
+
+// Release day: Waiting games whose (exact) day has come move to To play
+export async function moveReleased() {
+  const due = await db.games.filter((g) => !g.deleted && g.status === 'waiting' && isReleased(g)).toArray()
+  for (const game of due) await setGameStatus(game.id, 'toplay')
+}
+
+// Once a day: fresh names, covers, platforms and release dates from IGDB. Only changed games
+// are saved (so they sync). A later date for a Waiting game is a delay: delayedFrom keeps the
+// first date it had, for the banner in the Games tab.
+export async function refreshGames(force = false) {
+  if (!igdbConnected()) return
+  if (!force && Date.now() - read<number>(REFRESHED_KEY, 0) < REFRESH_EVERY) return
+  const games = await db.games.filter((g) => !g.deleted).toArray()
+  const fresh = new Map((await fetchGames(games.map((g) => g.igdbId))).map((f) => [f.igdbId, f]))
+  for (const game of games) {
+    const found = fresh.get(game.igdbId)
+    if (!found) continue
+    const change: Partial<Game> = {}
+    if (found.name !== game.name) change.name = found.name
+    if (found.coverId && found.coverId !== game.coverId) change.coverId = found.coverId
+    if (found.platforms.join() !== game.platforms.join()) change.platforms = found.platforms
+    if (found.releaseDate !== game.releaseDate || found.releaseLabel !== game.releaseLabel) {
+      change.releaseDate = found.releaseDate
+      change.releaseLabel = found.releaseLabel
+      const later = !found.releaseDate || found.releaseDate > game.releaseDate!
+      if (game.status === 'waiting' && game.releaseDate && later) change.delayedFrom = game.delayedFrom ?? game.releaseDate
+      // Moved back to (or before) its first date: no longer delayed
+      if (game.delayedFrom && found.releaseDate && found.releaseDate <= game.delayedFrom) change.delayedFrom = undefined
+    }
+    if (Object.keys(change).length > 0) await updateGame(game.id, change)
+  }
+  write(REFRESHED_KEY, Date.now())
+}
+
+// Started once by the app. The refresh waits for a finished sync (when Dropbox is set up):
+// saving a game makes it the newest copy, which must not win over an edit made on the other
+// device that hasn't arrived yet.
+let started = false
+export function startGameChecks() {
+  if (started) return
+  started = true
+  const check = async () => {
+    try {
+      await moveReleased()
+    } catch (e) {
+      console.warn('Release day check failed', e)
+    }
+  }
+  const refresh = async () => {
+    try {
+      await refreshGames()
+      await moveReleased() // a date may have moved to today
+    } catch (e) {
+      console.warn('Game refresh failed', e)
+    }
+  }
+  check()
+  window.setInterval(check, CHECK_EVERY)
+  if (!dropboxConnected()) refresh()
+  let lastSync = getStatus().lastSuccessAt
+  subscribe(() => {
+    const { lastSuccessAt } = getStatus()
+    if (lastSuccessAt === lastSync) return
+    lastSync = lastSuccessAt
+    refresh()
+  })
 }

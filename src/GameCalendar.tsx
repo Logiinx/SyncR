@@ -76,11 +76,11 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
 type ShowGame = (game: UpcomingGame) => void
 type StatusOf = (game: UpcomingGame) => GameStatus | undefined
 
-// Pin: add the game to Waiting. Only the list's own fields are saved (not rank etc.). The release
-// date is the PC one; a vague date ("2026") is left out, so it shows as TBA and sorts last.
+// Pin: add the game to Waiting. Only the list's own fields are saved (not rank etc.). Its release
+// date follows the usual rule (PC first); a vague date keeps its label ("Q1 2027") and sorts last.
 function pin(game: UpcomingGame) {
-  const { igdbId, name, coverId, platforms } = game
-  addGame({ igdbId, name, coverId, platforms, releaseDate: game.exact ? game.pcDate : undefined }, 'waiting')
+  const { igdbId, name, coverId, platforms, releaseDate, releaseLabel } = game
+  addGame({ igdbId, name, coverId, platforms, releaseDate, releaseLabel }, 'waiting')
 }
 
 // List: one group per month

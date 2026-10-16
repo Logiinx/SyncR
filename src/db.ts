@@ -98,7 +98,9 @@ export interface Game {
   igdbId: number
   name: string
   coverId?: string // IGDB image id (covers load from IGDB's image server, never stored)
-  releaseDate?: number // first release, ms; missing = not announced (TBA)
+  releaseDate?: number // release day, ms (PC, else Android, else consoles: igdb.ts trackedRelease)
+  releaseLabel?: string // only a vague date is known, e.g. "Q1 2027"; neither = not announced (TBA)
+  delayedFrom?: number // the earlier release day, when the refresh found a delay (banner until dismissed)
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
