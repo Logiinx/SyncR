@@ -35,6 +35,8 @@ function Board({ onClose }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
   // After dropping a card: puts the cards back in place once the new order is on screen
   const settle = useRef<(() => void) | null>(null)
+  // True while a card is being dragged (moved, not just pressed)
+  const cardMoving = useRef(false)
   // The card just added gets the keyboard focus
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
@@ -49,6 +51,17 @@ function Board({ onClose }: Props) {
   }, [])
 
   useEffect(() => settle.current?.(), [cards])
+
+  // Touch: once a card moves, the finger mustn't scroll the list. Added once, not at each press:
+  // Chrome decides when a touch starts whether a touchmove listener may block scrolling.
+  useEffect(() => {
+    const list = listRef.current!
+    const blockScroll = (e: TouchEvent) => {
+      if (cardMoving.current) e.preventDefault()
+    }
+    list.addEventListener('touchmove', blockScroll, { passive: false })
+    return () => list.removeEventListener('touchmove', blockScroll)
+  }, [])
 
   useEffect(() => {
     if (!undoId) return
@@ -111,6 +124,7 @@ function Board({ onClose }: Props) {
       // The zone pushed the cards down: keep the dragged one under the pointer
       startY = contentY(start.y) + (dragged.offsetTop - topBefore)
       started = true
+      cardMoving.current = true
       list!.classList.add('dragging')
       dragged.classList.add('lifted')
       update()
@@ -162,10 +176,7 @@ function Board({ onClose }: Props) {
       else if (e.clientY > box.bottom - 30) list.scrollTop += 8
       update()
     }
-    // Touch: once the card moves, the finger mustn't scroll the list or open the long-press menu
-    const blockScroll = (e: TouchEvent) => {
-      if (started) e.preventDefault()
-    }
+    // Touch: the long press mustn't open the menu
     const blockMenu = (e: Event) => {
       e.preventDefault()
       e.stopPropagation()
@@ -176,7 +187,7 @@ function Board({ onClose }: Props) {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
-      window.removeEventListener('touchmove', blockScroll)
+      cardMoving.current = false
       window.removeEventListener('contextmenu', blockMenu, true)
       if (!started || !dragged) return
       const lifted = dragged
@@ -211,10 +222,7 @@ function Board({ onClose }: Props) {
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
     window.addEventListener('pointercancel', end)
-    if (touch) {
-      window.addEventListener('touchmove', blockScroll, { passive: false })
-      window.addEventListener('contextmenu', blockMenu, true)
-    }
+    if (touch) window.addEventListener('contextmenu', blockMenu, true)
   }
 
   function undo() {

@@ -1,5 +1,5 @@
 import { Extension } from '@tiptap/react'
-import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { currentZoom } from './appearance'
 
@@ -68,6 +68,9 @@ class SectionDragger {
     view.dom.addEventListener('pointerdown', this.onPointerDown)
     view.dom.addEventListener('pointermove', this.onHover)
     view.dom.addEventListener('pointerleave', this.onLeave)
+    // Added once, not at each press: Chrome decides when a touch starts whether a touchmove
+    // listener may block scrolling. One added later only gets moves it can't cancel.
+    view.dom.addEventListener('touchmove', this.blockScroll, { passive: false })
   }
 
   // ---------- Framing the section under the mouse ----------
@@ -118,10 +121,7 @@ class SectionDragger {
     window.addEventListener('pointermove', this.onPointerMove)
     window.addEventListener('pointerup', this.onPointerUp)
     window.addEventListener('pointercancel', this.cancel)
-    if (touch) {
-      window.addEventListener('touchmove', this.blockScroll, { passive: false })
-      window.addEventListener('contextmenu', this.blockMenu, true)
-    }
+    if (touch) window.addEventListener('contextmenu', this.blockMenu, true)
   }
 
   onPointerMove = (e: PointerEvent) => {
@@ -147,7 +147,7 @@ class SectionDragger {
     const press = this.press
     if (!press || e.pointerId !== press.pointerId) return
     if (press.from !== null) {
-      if (press.drop) this.move(press.from, press.drop.pos)
+      if (press.drop) this.move(press.from, press.drop.pos, press.section.classList.contains('is-open'))
     } else {
       this.clickTitle(press)
     }
@@ -198,7 +198,7 @@ class SectionDragger {
 
   // Touch: once the section moves, the finger mustn't scroll the page or open the long-press menu
   blockScroll = (e: TouchEvent) => {
-    if (this.press?.from !== null) e.preventDefault()
+    if (this.press && this.press.from !== null) e.preventDefault()
   }
 
   blockMenu = (e: Event) => {
@@ -213,7 +213,6 @@ class SectionDragger {
     window.removeEventListener('pointermove', this.onPointerMove)
     window.removeEventListener('pointerup', this.onPointerUp)
     window.removeEventListener('pointercancel', this.cancel)
-    window.removeEventListener('touchmove', this.blockScroll)
     window.removeEventListener('contextmenu', this.blockMenu, true)
     press.section.classList.remove('section-lifted')
     this.ghost?.remove()
@@ -283,16 +282,30 @@ class SectionDragger {
     else if (y > rect.bottom - SCROLL_EDGE) page.scrollTop += SCROLL_STEP
   }
 
-  // One step, so one Ctrl+Z puts it back
-  move(from: number, to: number) {
-    const { state } = this.view
-    const node = state.doc.nodeAt(from)
+  // One step, so one Ctrl+Z puts it back. The cursor stays where it was before the drag
+  // (if it was inside the moved section, it moves with it). An open section stays open.
+  move(from: number, to: number, wasOpen: boolean) {
+    const { view } = this
+    const node = view.state.doc.nodeAt(from)
     if (!node) return
-    const tr = state.tr.delete(from, from + node.nodeSize)
+    const { anchor, head } = view.state.selection
+    const end = from + node.nodeSize
+    const cursorInside = anchor > from && anchor < end && head > from && head < end
+    // Outside the section, the transaction maps the cursor along
+    const tr = view.state.tr.delete(from, end)
     const insertAt = tr.mapping.map(to)
-    tr.insert(insertAt, node)
-    tr.setSelection(Selection.near(tr.doc.resolve(insertAt + 1)))
-    this.view.dispatch(tr.scrollIntoView())
+    view.dispatch(tr.insert(insertAt, node))
+
+    // Open/closed isn't part of the document, so the moved copy is drawn closed: reopen it
+    const dom = view.nodeDOM(insertAt)
+    const toggle = dom instanceof HTMLElement ? dom.querySelector(':scope > button') : null
+    if (wasOpen && toggle instanceof HTMLButtonElement) toggle.click()
+    // Then the cursor can go back inside (Details keeps it out of closed sections)
+    if (cursorInside) {
+      const shift = insertAt - from
+      const { doc } = view.state
+      view.dispatch(view.state.tr.setSelection(TextSelection.between(doc.resolve(anchor + shift), doc.resolve(head + shift))))
+    }
   }
 
   destroy() {
@@ -302,6 +315,7 @@ class SectionDragger {
     this.view.dom.removeEventListener('pointerdown', this.onPointerDown)
     this.view.dom.removeEventListener('pointermove', this.onHover)
     this.view.dom.removeEventListener('pointerleave', this.onLeave)
+    this.view.dom.removeEventListener('touchmove', this.blockScroll)
     this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }
 }

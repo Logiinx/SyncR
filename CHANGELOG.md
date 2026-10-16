@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Phone: sections and Board cards can now really be dragged after holding them. Before, the page scrolled instead and the drag stopped: the code that stops scrolling was attached only once the finger was already down, and Chrome on Android had by then decided the touch could not be held back (its scroll events can't be cancelled any more). It is now attached once, ahead of time, like for tabs.
+- PC: after moving a section, the cursor stays where it was before the drag, instead of jumping into the moved section's title (which also made the next click edit the title instead of opening the section). An open section stays open after moving.
+
 ## [0.10.0] - 2026-10-16
 
 ### Added
