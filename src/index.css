@@ -740,7 +740,7 @@ button {
   gap: 2px;
 }
 
-.card-flag,
+.card-priority,
 .card-delete {
   width: 20px;
   height: 20px;
@@ -753,24 +753,24 @@ button {
   opacity: 0;
 }
 
-.card:hover :is(.card-flag, .card-delete),
-:is(.card-flag, .card-delete):focus-visible {
+.card:hover :is(.card-priority, .card-delete),
+:is(.card-priority, .card-delete):focus-visible {
   opacity: 1;
 }
 
-.card-flag:hover,
+.card-priority:hover,
 .card-delete:hover {
   background: var(--bg-raised);
   color: var(--text);
 }
 
 /* A priority card's flag is blue (shown on hover like ✕; the dot already marks it) */
-.card.priority .card-flag {
+.card.priority .card-priority {
   color: var(--text-blue);
 }
 
 @media (pointer: coarse) {
-  .card-flag,
+  .card-priority,
   .card-delete {
     opacity: 1;
   }
@@ -3264,7 +3264,7 @@ h3.games-group-title {
   white-space: nowrap;
 }
 
-.game-flag {
+.game-priority-icon {
   flex-shrink: 0;
   color: var(--text-blue);
 }

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- "Flag" is now called "Priority" everywhere, with a sparkle icon instead of a flag: games (the icon on their row, "Mark as priority" in their menu, the details) and Board cards (the button and the menu). It works the same: a priority game or card stays at the top with a light blue tint.
+
 ### Fixed
 - Settings opens at the top again (it used to open scrolled to the bottom), and the "Connected" text no longer pushes the Done button out of view: the Done button is gone. Close Settings with Escape or a click outside it, as before.
 

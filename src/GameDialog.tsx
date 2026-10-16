@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarPlus, Flag, Heart } from 'lucide-react'
+import { CalendarPlus, Heart, Sparkles } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type Reminder } from './db'
 import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, STATUSES } from './games'
 import { addToGoogleCalendar } from './reminders'
 import { coverUrl } from './igdb'
 
-// A game's details (click a game in the Games tab): status, flag, note, and for games you've
+// A game's details (click a game in the Games tab): status, priority, note, and for games you've
 // finished or dropped: stars, heart and review. Changes save right away; Close closes.
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
@@ -52,7 +52,7 @@ function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => vo
                 className={game.priority ? 'game-dialog-flag on' : 'game-dialog-flag'}
                 onClick={() => updateGame(game.id, { priority: !game.priority })}
               >
-                <Flag size={14} /> {game.priority ? 'Flagged' : 'Flag'}
+                <Sparkles size={14} /> Priority
               </button>
               {/* The release reminder's time and text, as a Google Calendar event (for the phone) */}
               {game.status === 'waiting' && game.releaseDate && !isReleased(game) && (

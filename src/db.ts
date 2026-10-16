@@ -111,7 +111,7 @@ export interface Game {
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
-  priority: boolean // flag: top of its group
+  priority: boolean // "Priority" (sparkle): top of its group
   note: string // any time, optional
   review: string // with the rating, optional
   rating?: number // 0.5 to 5, in half stars
@@ -281,7 +281,7 @@ export function isEmptyCard(card: Card): boolean {
   return !blocks || (blocks.length === 1 && blocks[0].type === 'paragraph' && !blocks[0].content)
 }
 
-// Flag / unflag: the card moves to the bottom of its new part
+// Priority on / off: the card moves to the bottom of its new part
 export async function setCardPriority(id: string, priority: boolean) {
   await db.cards.update(id, { priority, order: await nextOrder(), updatedAt: Date.now() })
   changed()
@@ -325,8 +325,8 @@ export async function setGameStatus(id: string, status: GameStatus) {
 
 // ---------- Games on the Board ----------
 
-// "Pin to Board" (Games tab): a card for the game, at the bottom of its part. A flagged game
-// starts as a priority card; after that the card's priority and the game's flag are separate.
+// "Pin to Board" (Games tab): a card for the game, at the bottom of its part. A priority game
+// starts as a priority card; after that the card's priority and the game's are separate.
 // Already pinned: nothing.
 export async function pinGameToBoard(game: Game) {
   if (await pinnedCard(game.id)) return

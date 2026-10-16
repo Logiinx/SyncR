@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
+import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Gamepad2, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -63,7 +63,10 @@ function GamesView() {
         label: `Move to ${label}`,
         onClick: () => setGameStatus(game.id, status),
       })),
-      { label: game.priority ? 'Remove flag' : 'Flag', onClick: () => updateGame(game.id, { priority: !game.priority }) },
+      {
+        label: game.priority ? 'Remove priority' : 'Mark as priority',
+        onClick: () => updateGame(game.id, { priority: !game.priority }),
+      },
       pinned?.has(game.id)
         ? { label: 'Unpin from Board', onClick: () => unpinGameFromBoard(game.id) }
         : {
@@ -202,7 +205,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
           {game.liked && <span className="game-liked"> ♥</span>}
         </span>
       )}
-      {game.priority && <Flag size={14} className="game-flag" aria-label="Flagged" />}
+      {game.priority && <Sparkles size={14} className="game-priority-icon" aria-label="Priority" />}
     </div>
   )
 }

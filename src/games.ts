@@ -48,7 +48,7 @@ export async function addGame(found: FoundGame, status?: GameStatus) {
   changed()
 }
 
-// Flagged games first. Waiting: soonest release first, not announced (TBA) last.
+// Priority games first. Waiting: soonest release first, not announced (TBA) last.
 // The others: most recent first (Done: newest finish date first).
 export function sortGames(games: Game[]): Game[] {
   return [...games].sort(

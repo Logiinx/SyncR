@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Flag, X } from 'lucide-react'
+import { Sparkles, X } from 'lucide-react'
 import { changed, db, setCardPriority, type Card } from './db'
 import ContextMenu from './ContextMenu'
 import Cover from './GameCover'
@@ -12,8 +12,8 @@ interface Props {
   onOpen: (gameId: string) => void // the game's details
 }
 
-// A game pinned to the Board ("Pin to Board" in the Games tab): cover and name. Moves, flags
-// and deletes like any card (Card.tsx), but has no text to edit. Click: the game's details
+// A game pinned to the Board ("Pin to Board" in the Games tab): cover and name. Moves, gets
+// priority and is deleted like any card (Card.tsx), but has no text to edit. Click: the game's details
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
 function GameCard({ card, onDelete, onPress, onOpen }: Props) {
@@ -55,11 +55,11 @@ function GameCard({ card, onDelete, onPress, onOpen }: Props) {
       <span className="game-card-name">{name}</span>
       <div className="card-buttons">
         <button
-          className="card-flag"
+          className="card-priority"
           onClick={() => setCardPriority(card.id, !card.priority)}
           title={card.priority ? 'Remove priority' : 'Mark as priority'}
         >
-          <Flag size={12} />
+          <Sparkles size={12} />
         </button>
         <button className="card-delete" onClick={onDelete} title="Unpin from Board">
           <X size={13} />

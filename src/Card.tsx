@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
-import { Flag, X } from 'lucide-react'
+import { Sparkles, X } from 'lucide-react'
 import { saveCardContent, setCardDeleted, setCardPriority, type Card as CardData } from './db'
 import { extensions } from './NoteEditor'
 import ContextMenu from './ContextMenu'
@@ -18,7 +18,7 @@ interface Props {
 // One card on the Board: the same editor as notes, saved shortly after you stop typing.
 // Not editable until you double-click it (or right-click → Edit), so a click and drag moves it
 // (Board.tsx). Clicking out of it or Escape ends editing. Checkboxes can be ticked anytime.
-// ✕ deletes it (the Board offers Undo for a few seconds). The flag (or right-click) marks it
+// ✕ deletes it (the Board offers Undo for a few seconds). The sparkle (or right-click) marks it
 // as priority: it moves up with the other priority cards and gets a blue tint and dot.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
@@ -159,11 +159,11 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
       <EditorContent editor={editor} className="card-editor" />
       <div className="card-buttons">
         <button
-          className="card-flag"
+          className="card-priority"
           onClick={() => setCardPriority(card.id, !card.priority)}
           title={card.priority ? 'Remove priority' : 'Mark as priority'}
         >
-          <Flag size={12} />
+          <Sparkles size={12} />
         </button>
         <button className="card-delete" onClick={onDelete} title="Delete card">
           <X size={13} />
