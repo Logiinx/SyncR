@@ -86,16 +86,29 @@ function Board({ onClose }: Props) {
     let index = 0
     let shift = 0
     let startY = 0
+    let zone: HTMLElement | null = null
     const contentY = (clientY: number) => clientY - list.getBoundingClientRect().top + list.scrollTop
 
     function begin() {
+      const draggedEl = list!.querySelector<HTMLElement>(`:scope > [data-card-id="${id}"]`)
+      if (!draggedEl) return
+      const topBefore = draggedEl.offsetTop
+      // All cards on one side (no separator): a temporary zone takes its place, so the card
+      // can still change side. All normal: "Priority" at the top; all priority: "Normal" at the bottom.
+      if (!list!.querySelector(':scope > .board-separator')) {
+        zone = document.createElement('div')
+        zone.className = 'board-separator board-drop-zone'
+        zone.textContent = card!.priority ? 'Normal ↓' : 'Priority ↑'
+        if (card!.priority) list!.append(zone)
+        else list!.prepend(zone)
+      }
       items = [...list!.querySelectorAll<HTMLElement>(':scope > .card, :scope > .board-separator')]
-      dragged = items.find((el) => el.dataset.cardId === id) ?? null
-      if (!dragged) return
+      dragged = draggedEl
       index = items.indexOf(dragged)
       others = items.filter((el) => el !== dragged)
       shift = dragged.offsetHeight + GAP
-      startY = contentY(start.y)
+      // The zone pushed the cards down: keep the dragged one under the pointer
+      startY = contentY(start.y) + (dragged.offsetTop - topBefore)
       started = true
       list!.classList.add('dragging')
       dragged.classList.add('lifted')
@@ -118,7 +131,7 @@ function Board({ onClose }: Props) {
         el.style.transform = y ? `translateY(${y}px)` : ''
       })
       const separator = others.findIndex((el) => el.classList.contains('board-separator'))
-      const priority = separator === -1 ? card!.priority : j <= separator // one part only: stays
+      const priority = j <= separator // above the separator (or the "Priority" zone) = priority
       // New order: between its neighbours (the separator is no neighbour)
       const cardOf = (el?: HTMLElement) => allCards.find((c) => c.id === el?.dataset.cardId)
       const prev = cardOf(others[j - 1])
@@ -170,6 +183,7 @@ function Board({ onClose }: Props) {
       window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
 
       const putBack = () => {
+        zone?.remove()
         for (const el of items) el.style.transform = ''
         lifted.classList.remove('lifted')
         list!.classList.remove('dragging')
