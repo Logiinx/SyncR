@@ -24,12 +24,19 @@ export function isConnected() {
   return !!url && !!password
 }
 
+// The address as typed, made absolute: without "https://" the browser would treat it as a
+// path inside SyncR's own site (and get SyncR's page back instead of game data)
+function proxyUrl(typed: string) {
+  const url = typed.trim().replace(/\/+$/, '')
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 // One IGDB query, e.g. igdb('games', 'search "Guild Wars"; fields name; limit 5;')
 export async function igdb<T>(endpoint: string, query: string, connection = loadConnection()): Promise<T[]> {
   if (!connection.url || !connection.password) throw new Error('Game search is not set up (Settings → Games)')
   let response: Response
   try {
-    response = await fetch(`${connection.url.replace(/\/+$/, '')}/${endpoint}`, {
+    response = await fetch(`${proxyUrl(connection.url)}/${endpoint}`, {
       method: 'POST',
       headers: { 'X-SyncR-Password': connection.password },
       body: query,
@@ -39,5 +46,8 @@ export async function igdb<T>(endpoint: string, query: string, connection = load
   }
   if (response.status === 401) throw new Error('Wrong password for the game search proxy')
   if (!response.ok) throw new Error(`Game search failed (${response.status}): ${await response.text()}`)
+  if (!response.headers.get('Content-Type')?.includes('application/json')) {
+    throw new Error('The game search proxy address is wrong (it answered with a web page)')
+  }
   return response.json()
 }

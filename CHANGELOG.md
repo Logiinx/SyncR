@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Settings → Games: the proxy address works without "https://" in front. Before, the browser treated it as a page inside SyncR itself, and Test showed "Unexpected token '<'". A wrong address now gives a clear message.
+
 ## [0.10.7] - 2026-10-16
 
 ### Added
