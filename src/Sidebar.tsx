@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Settings } from 'lucide-react'
+import { Settings, TriangleAlert } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
 import RemindersSection from './RemindersSection'
 
@@ -54,7 +54,11 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings }: Props) {
                 }}
               >
                 <span className="note-date">{formatDate(note.updatedAt)}</span>
-                <span className="note-title">{noteTitle(note)}</span>
+                <span className="note-title">
+                  {/* A conflict copy made by sync: open it to compare it with the original */}
+                  {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
+                  {noteTitle(note)}
+                </span>
                 <span className="note-preview">{notePreview(note)}</span>
               </button>
             </li>

@@ -414,6 +414,13 @@ button {
   display: none;
 }
 
+/* Conflict copy marker in the notes list, before the title */
+.conflict-mark {
+  margin-right: 5px;
+  vertical-align: -1px;
+  color: var(--warn);
+}
+
 /* ---------- Board (right panel, Board.tsx) ---------- */
 
 /* Small tab in the middle of the right edge: ‹ opens the Board. While it's open, the same

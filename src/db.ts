@@ -8,6 +8,7 @@ export interface Note {
   text: string // plain-text copy, used for the title fallback and (later) search
   createdAt: number
   updatedAt: number
+  conflictOf?: string // a conflict copy (sync.ts): the id of the note it is a copy of
 }
 
 // Marker left behind when a note is deleted, so sync can delete it on the other device too.

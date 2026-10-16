@@ -119,6 +119,7 @@ async function runSync(): Promise<SyncResult> {
       ...note,
       id: crypto.randomUUID(),
       title: `${noteTitle(note)} (conflict, ${device}, ${when})`,
+      conflictOf: note.id, // for the comparison (ConflictCompare.tsx); syncs with the note
     })
     result.conflicts++
   }
