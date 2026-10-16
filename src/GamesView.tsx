@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, ChevronRight, Flag, Gamepad2, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, shortPlatforms, sortGames, STATUSES } from './games'
+import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { coverUrl, isConnected, searchGames, type FoundGame } from './igdb'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { starText } from './GameDialog'
@@ -110,7 +110,7 @@ function Cover({ coverId }: { coverId?: string }) {
   )
 }
 
-// One game: cover, name, release (full date while waiting, else the year) and a preview of the
+// One game: cover, name, release (full date + countdown while waiting, else the year) and a preview of the
 // review (finished or dropped games) or the note. Stars and heart on the right, only for finished or
 // dropped games (like in the details; the rating stays saved if the status changes back).
 // Platforms only show in the details (and in search results).
@@ -122,7 +122,8 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       : String(new Date(game.releaseDate).getFullYear())
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
-  const details = [when, preview].filter(Boolean).join(' · ')
+  const countdown = game.status === 'waiting' ? releaseCountdown(game.releaseDate) : ''
+  const details = [when, countdown, preview].filter(Boolean).join(' · ')
   return (
     <div
       className={game.priority ? 'game-row priority' : 'game-row'}

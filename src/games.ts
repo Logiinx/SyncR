@@ -67,6 +67,20 @@ export function shortPlatforms(platforms: string[]) {
   return more > 0 ? `${shown} +${more} more` : shown
 }
 
+// How long until a release: "today", "tomorrow", "in 34 days", "in 5 months", or "out now" once
+// it's past (a game stays in Waiting until it's moved). Counts calendar days, not 24h blocks.
+const DAY = 24 * 60 * 60 * 1000
+export function releaseCountdown(time?: number) {
+  if (!time) return ''
+  const midnight = (t: number) => new Date(t).setHours(0, 0, 0, 0)
+  const days = Math.round((midnight(time) - midnight(Date.now())) / DAY)
+  if (days < 0) return 'out now'
+  if (days === 0) return 'today'
+  if (days === 1) return 'tomorrow'
+  if (days < 60) return `in ${days} days`
+  return `in ${Math.round(days / 30.4)} months`
+}
+
 // "12 Mar 2027", or "TBA" when there's no date yet
 export function formatRelease(time?: number) {
   if (!time) return 'TBA'
