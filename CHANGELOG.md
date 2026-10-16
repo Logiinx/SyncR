@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Phone: typing near the bottom of a note no longer pushes the toolbar off the top of the screen. When the keyboard opens, the app now shrinks to the space above it instead of the whole page sliding up.
+
 ## [0.10.5] - 2026-10-16
 
 ### Changed
