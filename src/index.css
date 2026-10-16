@@ -441,6 +441,17 @@ button {
   color: var(--text);
 }
 
+/* With a mouse, the note's scroll bar (15px) takes the right edge: the closed tab sits just
+   left of it instead of on top of it, so it's easy to reach. Phones have overlay scroll bars
+   that take no space, so the tab stays against the edge there. */
+@media (pointer: fine) {
+  .body > .board-toggle {
+    right: 15px;
+    border-right: 1px solid var(--border);
+    border-radius: 6px;
+  }
+}
+
 .board .board-toggle {
   right: auto;
   left: -15px;
