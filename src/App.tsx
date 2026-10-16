@@ -25,6 +25,18 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
 
+  // A conflict was resolved (ConflictCompare.tsx): show the note that was kept, close the copy
+  useEffect(() => {
+    const onOpenNote = (e: Event) => {
+      const { id, close } = (e as CustomEvent<{ id: string; close?: string }>).detail
+      setOpenTabs((tabs) => [...tabs.filter((t) => t !== close && t !== id), id])
+      setActiveId(id)
+      if (close) forgetScroll(close)
+    }
+    window.addEventListener('open-note', onOpenNote)
+    return () => window.removeEventListener('open-note', onOpenNote)
+  }, [setOpenTabs, setActiveId])
+
   // "Pin" in the selection menu: show the Board so the new card is visible
   useEffect(() => {
     const open = () => {

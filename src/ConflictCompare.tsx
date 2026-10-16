@@ -1,12 +1,15 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { TriangleAlert, X } from 'lucide-react'
-import { db, noteTitle, type Note } from './db'
+import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
+import Dialog, { type DialogRequest } from './Dialog'
 import { diffNotes, type Line, type Row, type Segment, type Token } from './noteDiff'
 
 // A conflict copy (made by sync when a note changed on two devices, sync.ts) shows a banner
 // above it. "Compare" opens the comparison with its original: side by side on the PC,
 // one merged view on the phone. Long unchanged parts are folded so the differences stand out.
+// "Keep original" deletes the copy; "Keep this copy" puts the copy's text into the original
+// note (same note, so links and tabs to it keep working) and deletes the copy. Both ask first.
 
 const CONTEXT = 1 // unchanged lines kept visible around a change
 const FOLD_MIN = 3 // fold only runs of at least this many unchanged lines
@@ -56,12 +59,43 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
   // Folded runs of unchanged lines the user opened (by the index of their first row)
   const [opened, setOpened] = useState<Set<number>>(new Set())
   const changes = rows.filter((row) => row.op !== 'same').length
+  const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
+  // Done: the copy is deleted, the original opens in its place (App.tsx)
+  function finish() {
+    deleteNote(copy.id)
+    window.dispatchEvent(new CustomEvent('open-note', { detail: { id: original.id, close: copy.id } }))
+  }
+
+  function keepOriginal() {
+    setDialog({
+      title: 'Keep the original?',
+      message: `This conflict copy will be deleted; "${noteTitle(original)}" stays as it is. This can't be undone.`,
+      confirmLabel: 'Keep original',
+      danger: true,
+      onConfirm: finish,
+    })
+  }
+
+  function keepCopy() {
+    setDialog({
+      title: 'Keep this copy?',
+      message: `Its text replaces the text of "${noteTitle(original)}", and this copy is deleted. This can't be undone.`,
+      confirmLabel: 'Keep this copy',
+      danger: true,
+      onConfirm: async () => {
+        await saveNoteContent(original.id, copy.content!, copy.text)
+        finish()
+      },
+    })
+  }
+
+  // Escape closes (but while the confirmation is open, Escape is for that)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !dialog && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, dialog])
 
   // Which rows are shown: changes, plus a little context; the rest folds into one line
   const parts = useMemo(() => fold(rows, opened), [rows, opened])
@@ -79,6 +113,12 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
             <span className="cmp-formatted">formatting</span>
           </span>
         )}
+        <span className="compare-actions">
+          <button onClick={keepOriginal}>Keep original</button>
+          <button onClick={keepCopy} disabled={!copy.content}>
+            Keep this copy
+          </button>
+        </span>
         <button className="compare-close" onClick={onClose} title="Close (Esc)">
           <X size={16} />
         </button>
@@ -107,6 +147,7 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
           ),
         )}
       </div>
+      {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </div>
   )
 }
