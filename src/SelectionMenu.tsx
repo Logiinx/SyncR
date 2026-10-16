@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, Check, FoldVertical, Italic, Link, Palette, Pin, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
+import { Bold, Check, FoldVertical, Italic, Link, Palette, Pin, SquareCode, Underline, Ungroup } from 'lucide-react'
 import type { JSONContent } from '@tiptap/react'
 import { createCard } from './db'
 import ColorPicker from './ColorPicker'
@@ -109,7 +109,8 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
           title="Remove the section around the cursor, keep its text"
           onClick={() => chain().unsetDetails().run()}
         >
-          <UnfoldVertical size={ICON_SIZE} />
+          {/* Not UnfoldVertical: at this size it looks just like the fold icon above */}
+          <Ungroup size={ICON_SIZE} />
         </MenuButton>
       )}
 
