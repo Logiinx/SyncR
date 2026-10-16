@@ -1,10 +1,15 @@
 import { Plus } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { currentZoom } from './appearance'
-import { noteTitle, type Note } from './db'
+
+// An open tab: a note, or the Games tab
+export interface Tab {
+  id: string
+  title: string
+}
 
 interface Props {
-  notes: Note[]
+  tabs: Tab[]
   activeId: string | null
   onSelect: (id: string) => void
   onClose: (id: string) => void
@@ -42,7 +47,7 @@ interface Drag {
 
 // The row of open notes at the top. Middle-click closes, double-click renames, right-click opens a menu.
 // Drag a tab to move it (phone: hold, then drag; hold and release opens the menu).
-function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, onReorder }: Props) {
+function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, onReorder }: Props) {
   const tabRefs = useRef(new Map<string, HTMLDivElement>())
   const gesture = useRef<Gesture | null>(null)
   const suppressClick = useRef(false)
@@ -51,7 +56,7 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, o
 
   // After a drop, keep the tabs where they were dropped until the new order arrives
   // (it comes from the database a moment later), then remove the offsets in the same frame.
-  const order = notes.map((note) => note.id).join()
+  const order = tabs.map((tab) => tab.id).join()
   useLayoutEffect(() => {
     setDrag((current) => (current?.dropped ? null : current))
   }, [order])
@@ -75,7 +80,7 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, o
 
   function onPointerDown(e: React.PointerEvent, id: string, index: number) {
     if (e.button !== 0 || (e.target as HTMLElement).closest('.tab-close')) return
-    const rects = notes.map((note) => tabRefs.current.get(note.id)!.getBoundingClientRect())
+    const rects = tabs.map((tab) => tabRefs.current.get(tab.id)!.getBoundingClientRect())
     const g: Gesture = {
       id,
       pointerId: e.pointerId,
@@ -141,7 +146,7 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, o
       suppressClick.current = true
       setTimeout(() => (suppressClick.current = false))
       if (drag && drag.to !== g.index) {
-        const ids = notes.map((note) => note.id)
+        const ids = tabs.map((tab) => tab.id)
         ids.splice(drag.to, 0, ...ids.splice(g.index, 1))
         setDrag({ ...drag, dropped: true })
         onReorder(ids)
@@ -162,43 +167,43 @@ function TabBar({ notes, activeId, onSelect, onClose, onNew, onMenu, onRename, o
   return (
     <>
       <nav className={drag ? 'tabs dragging' : 'tabs'} data-tauri-drag-region ref={navRef}>
-        {notes.map((note, index) => {
-          const isDragged = drag?.id === note.id
+        {tabs.map((tab, index) => {
+          const isDragged = drag?.id === tab.id
           // Measured in screen pixels; the page is scaled by the app scaling setting
           const offset = (drag ? (isDragged ? drag.dx : drag.shifts[index]) : 0) / currentZoom()
-          let className = note.id === activeId ? 'tab active' : 'tab'
+          let className = tab.id === activeId ? 'tab active' : 'tab'
           if (isDragged) className += ' drag-source'
-          if (lifted === note.id) className += ' lifted'
+          if (lifted === tab.id) className += ' lifted'
           return (
             <div
-              key={note.id}
+              key={tab.id}
               ref={(el) => {
-                if (el) tabRefs.current.set(note.id, el)
-                else tabRefs.current.delete(note.id)
+                if (el) tabRefs.current.set(tab.id, el)
+                else tabRefs.current.delete(tab.id)
               }}
               className={className}
               style={offset ? { transform: `translateX(${offset}px)` } : undefined}
-              onPointerDown={(e) => onPointerDown(e, note.id, index)}
+              onPointerDown={(e) => onPointerDown(e, tab.id, index)}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerCancel}
-              onClick={() => !suppressClick.current && onSelect(note.id)}
-              onAuxClick={(e) => e.button === 1 && onClose(note.id)}
-              onDoubleClick={() => onRename(note.id)}
+              onClick={() => !suppressClick.current && onSelect(tab.id)}
+              onAuxClick={(e) => e.button === 1 && onClose(tab.id)}
+              onDoubleClick={() => onRename(tab.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
                 // Phone: the menu opens on release instead (see onPointerUp), so holding can drag
                 if (gesture.current?.pointerType === 'touch') return
-                onMenu(note.id, e.clientX, e.clientY)
+                onMenu(tab.id, e.clientX, e.clientY)
               }}
-              title={noteTitle(note)}
+              title={tab.title}
             >
-              <span className="tab-title">{noteTitle(note)}</span>
+              <span className="tab-title">{tab.title}</span>
               <button
                 className="tab-close"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onClose(note.id)
+                  onClose(tab.id)
                 }}
                 title="Close tab"
               >

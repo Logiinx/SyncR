@@ -51,3 +51,53 @@ export async function igdb<T>(endpoint: string, query: string, connection = load
   }
   return response.json()
 }
+
+// ---------- Searching games ----------
+
+// A game as found in IGDB, before it's in the list
+export interface FoundGame {
+  igdbId: number
+  name: string
+  coverId?: string
+  releaseDate?: number // ms
+  platforms: string[]
+}
+
+interface IgdbGame {
+  id: number
+  name: string
+  first_release_date?: number // seconds
+  cover?: { image_id: string }
+  platforms?: { name: string; abbreviation?: string }[]
+}
+
+// IGDB game types: main game 0, standalone expansion 4, remake 8, remaster 9,
+// expanded game 10, port 11. Left out unless asked: DLC 1, expansion 2, bundle 3, mod 5,
+// episode 6, season 7, fork 12, pack 13, update 14. Editions ("Gold Edition") have a version_parent.
+const MAIN_GAME_TYPES = '(0,4,8,9,10,11)'
+
+export async function searchGames(text: string, includeDlc: boolean): Promise<FoundGame[]> {
+  const words = text.replace(/["\\]/g, ' ').trim()
+  if (!words) return []
+  const where = includeDlc ? '' : ` where game_type = ${MAIN_GAME_TYPES} & version_parent = null;`
+  const games = await igdb<IgdbGame>(
+    'games',
+    `search "${words}"; fields name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation;${where} limit 20;`,
+  )
+  return games.map(toFoundGame)
+}
+
+function toFoundGame(game: IgdbGame): FoundGame {
+  return {
+    igdbId: game.id,
+    name: game.name,
+    coverId: game.cover?.image_id,
+    releaseDate: game.first_release_date ? game.first_release_date * 1000 : undefined,
+    platforms: (game.platforms ?? []).map((p) => p.abbreviation || p.name),
+  }
+}
+
+// Cover image from IGDB's image server. cover_small is 90 × 128 (the _2x version for sharp screens).
+export function coverUrl(coverId: string, size: 'cover_small' | 'cover_big' = 'cover_small') {
+  return `https://images.igdb.com/igdb/image/upload/t_${size}_2x/${coverId}.jpg`
+}

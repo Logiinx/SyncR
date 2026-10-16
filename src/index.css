@@ -2806,3 +2806,204 @@ h2 + .settings-section {
   border-radius: 4px;
   background: rgb(255 255 255 / 15%);
 }
+
+/* ---------- Games tab (GamesView.tsx) ---------- */
+
+/* The entry above the notes list (Sidebar.tsx) */
+.sidebar-games {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 8px 0;
+  padding: 8px 10px 8px 12px;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.sidebar-games:hover,
+.sidebar-games.active {
+  background: var(--border);
+  color: var(--text);
+}
+
+.sidebar-games.active {
+  border-left-color: var(--link);
+  border-radius: 0 6px 6px 0;
+}
+
+.games {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+.games-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+}
+
+/* Group title: like the Settings section titles, and it folds the group */
+.games-group {
+  margin-top: 20px;
+}
+
+.games-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 2px 0;
+  color: var(--link);
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.games-count {
+  color: var(--text-dim);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* One game: small cover, name, date · platforms. Flagged: the priority cards' blue tint. */
+.game-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.games-group .game-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+.game-row.priority {
+  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
+}
+
+.games-group .game-row.priority:hover {
+  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
+}
+
+.game-cover {
+  flex-shrink: 0;
+  width: 33px;
+  height: 44px;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--bg-raised);
+}
+
+.game-cover-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.game-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-details {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-flag {
+  flex-shrink: 0;
+  color: var(--text-blue);
+}
+
+/* Search: a field, the DLC checkbox, then the results */
+.game-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.game-search-bar:focus-within {
+  border-color: var(--accent);
+}
+
+.game-search-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+}
+
+.game-search-clear {
+  display: flex;
+  color: var(--text-dim);
+}
+
+.game-search-clear:hover {
+  color: var(--text);
+}
+
+.game-search-dlc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.game-search-dlc input {
+  margin: 0;
+  accent-color: var(--link);
+}
+
+.game-results {
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.game-search-message {
+  color: var(--text-dim);
+}
+
+.game-search-message.error {
+  color: var(--error);
+}
+
+.game-in-list {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+/* Phone: less space around the list */
+@media (max-width: 699px) {
+  .games {
+    padding: 16px 12px;
+  }
+}

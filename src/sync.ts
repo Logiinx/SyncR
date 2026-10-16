@@ -1,6 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
 import type { InsertType, Table, UpdateSpec } from 'dexie'
-import { db, imageIds, noteTitle, removeOldDeletedCards, type Note, type Setting } from './db'
+import { db, imageIds, noteTitle, removeOldDeletedCards, removeOldDeletedGames, type Note, type Setting } from './db'
 import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
@@ -12,11 +12,12 @@ import { deleteFile, download, listFiles, upload } from './dropbox'
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
 //   /reminders/<id>    one file per reminder (a deleted one stays as a row with deleted = true)
 //   /cards/<id>        one file per Board card (same as reminders)
+//   /games/<id>        one file per game in the Games tab (same as reminders)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
-// - Settings, reminders and cards changed on both sides: the newest wins (no conflict copy).
+// - Settings, reminders, cards and games changed on both sides: the newest wins (no conflict copy).
 
 // What's stored in /notes/<id> (before encryption)
 interface RemoteNote {
@@ -132,6 +133,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteSettings = new Map<string, string>() // name -> rev
   const remoteReminders = new Map<string, string>() // id -> rev
   const remoteCards = new Map<string, string>() // id -> rev
+  const remoteGames = new Map<string, string>() // id -> rev
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
@@ -142,6 +144,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'settings') remoteSettings.set(id, file.rev)
     if (folder === 'reminders') remoteReminders.set(id, file.rev)
     if (folder === 'cards') remoteCards.set(id, file.rev)
+    if (folder === 'games') remoteGames.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -301,7 +304,7 @@ async function runSync(): Promise<SyncResult> {
     }
   }
 
-  // ---------- 4c. Reminders and Board cards ----------
+  // ---------- 4c. Reminders, Board cards and games ----------
   // Like settings: changed on both sides means the newest wins. See syncRecords().
 
   // Deleted ones older than 90 days disappear here and from Dropbox
@@ -312,7 +315,11 @@ async function runSync(): Promise<SyncResult> {
     if (remoteCards.delete(id)) await deleteFile(`/cards/${id}`)
   }
   await syncRecords(db.reminders, 'reminders', remoteReminders, key, result)
+  for (const id of await removeOldDeletedGames()) {
+    if (remoteGames.delete(id)) await deleteFile(`/games/${id}`)
+  }
   await syncRecords(db.cards, 'cards', remoteCards, key, result)
+  await syncRecords(db.games, 'games', remoteGames, key, result)
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
   // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
@@ -354,7 +361,7 @@ async function runSync(): Promise<SyncResult> {
 
 // ---------- Reminders and cards (step 4c) ----------
 
-// What reminders and Board cards have in common: a deletion is a change like any other
+// What reminders, Board cards and games have in common: a deletion is a change like any other
 // (deleted = true), and syncedRev / syncedUpdatedAt remember what was synced last.
 interface SyncedRecord {
   id: string

@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Settings, TriangleAlert } from 'lucide-react'
+import { Gamepad2, Settings, TriangleAlert } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
 import RemindersSection from './RemindersSection'
+import { GAMES_TAB } from './games'
 
 interface Props {
   activeId: string | null
@@ -9,6 +10,7 @@ interface Props {
   onClose: () => void
   onMenu: (id: string, x: number, y: number) => void
   onSettings: () => void
+  onGames: () => void
 }
 
 // "Today, 14:32", "Yesterday, 09:10", otherwise "14-10-2026"
@@ -34,7 +36,7 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
 
@@ -42,6 +44,9 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings }: Props) {
     <>
       <div className="backdrop" onClick={onClose} />
       <aside className="sidebar">
+        <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
+          <Gamepad2 size={15} /> Games
+        </button>
         <ul className="note-list">
           {notes?.map((note) => (
             <li key={note.id}>

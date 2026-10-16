@@ -88,6 +88,32 @@ export interface Card {
   syncedUpdatedAt?: number
 }
 
+// A game in the Games tab (GamesView.tsx), with its data from IGDB (igdb.ts).
+// Synced like a card: one file per game, newest wins, a removed game stays as a row with
+// deleted = true for a while. The id comes from IGDB's, so a game can't be in the list twice.
+export type GameStatus = 'waiting' | 'toplay' | 'playing' | 'done' | 'dropped'
+
+export interface Game {
+  id: string // "igdb-<IGDB id>"
+  igdbId: number
+  name: string
+  coverId?: string // IGDB image id (covers load from IGDB's image server, never stored)
+  releaseDate?: number // first release, ms; missing = not announced (TBA)
+  platforms: string[] // short names, e.g. "PC", "Android"
+  status: GameStatus
+  statusAt: number // when it got this status (sorts the groups; Done: the finish date)
+  priority: boolean // flag: top of its group
+  note: string // any time, optional
+  review: string // with the rating, optional
+  rating?: number // 0.5 to 5, in half stars
+  liked: boolean // the heart
+  deleted: boolean
+  createdAt: number
+  updatedAt: number
+  syncedRev?: string
+  syncedUpdatedAt?: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -98,6 +124,7 @@ export const db = new Dexie('syncr') as Dexie & {
   settings: EntityTable<Setting, 'name'>
   reminders: EntityTable<Reminder, 'id'>
   cards: EntityTable<Card, 'id'>
+  games: EntityTable<Game, 'id'>
 }
 
 db.version(1).stores({
@@ -130,6 +157,10 @@ db.version(7).stores({
 
 db.version(8).stores({
   cards: 'id',
+})
+
+db.version(9).stores({
+  games: 'id',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.
@@ -255,4 +286,24 @@ export async function removeOldDeletedCards(): Promise<string[]> {
 export async function moveCard(id: string, priority: boolean, order: number) {
   await db.cards.update(id, { priority, order, updatedAt: Date.now() })
   changed()
+}
+
+// ---------- Games ----------
+
+// Removed games are kept for a while so the removal syncs; after 90 days they go for good.
+export async function removeOldDeletedGames(): Promise<string[]> {
+  const old = (await db.games.toArray()).filter(
+    (game) => game.deleted && Date.now() - game.updatedAt > OLD_DELETED_CARD_MS,
+  )
+  await db.games.bulkDelete(old.map((game) => game.id))
+  return old.map((game) => game.id)
+}
+
+export async function updateGame(id: string, change: Partial<Game>) {
+  await db.games.update(id, { ...change, updatedAt: Date.now() })
+  changed()
+}
+
+export async function setGameStatus(id: string, status: GameStatus) {
+  await updateGame(id, { status, statusAt: Date.now() })
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
-import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
+import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
 import { onFollowLink } from './noteLinks'
@@ -11,7 +11,9 @@ import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import Board from './Board'
 import SettingsDialog from './SettingsDialog'
-import TabBar from './TabBar'
+import TabBar, { type Tab } from './TabBar'
+import GamesView from './GamesView'
+import { GAMES_TAB } from './games'
 import UpdateBanner from './UpdateBanner'
 import SyncButton from './SyncButton'
 import WindowControls from './WindowControls'
@@ -57,7 +59,12 @@ function App() {
     async () => ({ ids: openTabs, notes: await db.notes.bulkGet(openTabs) }),
     [openTabs],
   )
-  const tabNotes = tabsResult?.notes.filter((n): n is Note => n !== undefined) ?? []
+  // The tabs that exist: notes found in the database, and the Games tab
+  const tabs: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
+    if (id === GAMES_TAB) return [{ id, title: 'Games' }]
+    const note = tabsResult?.notes[i]
+    return note ? [{ id, title: noteTitle(note) }] : []
+  })
   const activeNote = useLiveQuery(
     () => (activeId ? db.notes.get(activeId) : undefined),
     [activeId],
@@ -66,7 +73,7 @@ function App() {
   // Close tabs whose note no longer exists (e.g. deleted on the other device)
   useEffect(() => {
     if (!tabsResult || tabsResult.ids !== openTabs) return
-    const missing = openTabs.filter((_, i) => !tabsResult.notes[i])
+    const missing = openTabs.filter((id, i) => id !== GAMES_TAB && !tabsResult.notes[i])
     if (missing.length === 0) return
     missing.forEach(forgetScroll)
     const remaining = openTabs.filter((id) => !missing.includes(id))
@@ -145,12 +152,12 @@ function App() {
           ☰
         </button>
         <TabBar
-          notes={tabNotes}
+          tabs={tabs}
           activeId={activeId}
           onSelect={openNote}
           onClose={closeTab}
           onNew={newNote}
-          onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
+          onMenu={(noteId, x, y) => noteId !== GAMES_TAB && setMenu({ noteId, x, y })}
           onRename={askRename}
           onReorder={setOpenTabs}
         />
@@ -168,9 +175,12 @@ function App() {
             onClose={() => setSidebarOpen(false)}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
             onSettings={() => setSettingsOpen(true)}
+            onGames={() => openNote(GAMES_TAB)}
           />
         )}
-        {showNote ? (
+        {activeId === GAMES_TAB && openTabs.includes(GAMES_TAB) ? (
+          <GamesView />
+        ) : showNote ? (
           // key: a fresh view and editor for each note
           <NoteView key={activeNote.id} note={activeNote} autoFocus={activeNote.id === newNoteId} />
         ) : (
