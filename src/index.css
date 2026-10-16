@@ -3456,16 +3456,15 @@ h3.games-group-title {
   color: var(--error);
 }
 
-/* Release reminders (games.ts): a small gamepad before the text */
-.reminder-game {
-  margin-right: 5px;
-  color: var(--text-dim);
-  vertical-align: -2px;
-}
-
 /* Game details: Flag and Google Calendar side by side */
 .game-dialog-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Reminders list: a Waiting game's small cover */
+.reminder-row .game-cover {
+  width: 24px;
+  height: 32px;
 }

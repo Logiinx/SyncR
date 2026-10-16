@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, Gamepad2, List, Plus, Smartphone } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, List, Plus, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
@@ -9,6 +9,7 @@ import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
+import { formatRelease, releaseCountdown } from './games'
 import { db, updateGame, type Game, type Reminder } from './db'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
@@ -23,8 +24,9 @@ const MIN_MONTHS = 3 // the grid shows at least this month and the next two...
 const MAX_MONTHS = 12 // ...and at most a year, up to the last upcoming reminder or release
 
 function RemindersView() {
-  // Re-runs whenever a reminder changes (also from sync)
-  const reminders = useLiveQuery(listReminders, [])
+  // Re-runs whenever a reminder changes (also from sync). Release reminders (games.ts) are left
+  // out: their game shows instead (click it for its details, which show the reminder).
+  const reminders = useLiveQuery(async () => (await listReminders()).filter((r) => !r.gameId), [])
   const waitingGames = useLiveQuery(
     () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
     [],
@@ -46,6 +48,11 @@ function RemindersView() {
   }, [])
 
   const waiting = reminders?.filter((r) => r.doneAt === null) ?? []
+  // List: upcoming reminders and Waiting games (by release day) together, soonest first
+  const upcoming = [
+    ...waiting.map((reminder) => ({ time: reminder.dueAt, reminder })),
+    ...(waitingGames ?? []).map((game) => ({ time: game.releaseDate!, game })),
+  ].sort((a, b) => a.time - b.time)
   const done = (reminders?.filter((r) => r.doneAt !== null) ?? []).sort((a, b) => b.doneAt! - a.doneAt!)
 
   function askDelete(reminder: Reminder) {
@@ -96,10 +103,7 @@ function RemindersView() {
         }}
       >
         <span className="reminder-row-text">
-          <span className="reminder-text">
-            {reminder.gameId && <Gamepad2 size={14} className="reminder-game" aria-label="Game release" />}
-            {reminder.text}
-          </span>
+          <span className="reminder-text">{reminder.text}</span>
           {reminder.note && <span className="reminder-row-note">{reminder.note}</span>}
         </span>
         <span className="reminder-due">
@@ -109,6 +113,21 @@ function RemindersView() {
       </button>
     )
   }
+
+  // A Waiting game in the list: small cover, name, release day and countdown. Its release
+  // reminder (2 days before) is in its details.
+  const gameRow = (game: Game) => (
+    <button key={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
+      <Cover coverId={game.coverId} />
+      <span className="reminder-row-text">
+        <span className="reminder-text">{game.name}</span>
+        <span className="reminder-row-note">Comes out</span>
+      </span>
+      <span className="reminder-due">
+        {formatRelease(game.releaseDate)} · {releaseCountdown(game.releaseDate)}
+      </span>
+    </button>
+  )
 
   return (
     <main className="page games-page">
@@ -137,13 +156,15 @@ function RemindersView() {
             onGame={setOpenGame}
           />
         )}
-        {!grid && reminders && reminders.length === 0 && <p className="games-empty">No reminders yet.</p>}
-        {!grid && waiting.length > 0 && (
+        {!grid && reminders && waitingGames && reminders.length + waitingGames.length === 0 && (
+          <p className="games-empty">No reminders yet.</p>
+        )}
+        {!grid && upcoming.length > 0 && (
           <section className="games-group">
             <h3 className="games-group-title">
-              Upcoming <span className="games-count">{waiting.length}</span>
+              Upcoming <span className="games-count">{upcoming.length}</span>
             </h3>
-            {waiting.map(row)}
+            {upcoming.map((item) => ('reminder' in item ? row(item.reminder) : gameRow(item.game)))}
           </section>
         )}
         {!grid && done.length > 0 && (
@@ -236,7 +257,6 @@ function ReminderGrid(props: {
                 title={reminder.note ? `${reminder.text}\n${reminder.note}` : reminder.text}
               >
                 <span className="calendar-reminder-time">{time(reminder.dueAt)}</span>{' '}
-                {reminder.gameId && <Gamepad2 size={12} className="reminder-game" aria-label="Game release" />}
                 {reminder.text}
               </button>
             )

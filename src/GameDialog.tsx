@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarPlus, Flag, Heart } from 'lucide-react'
-import { db, setGameStatus, updateGame, type Game } from './db'
+import { db, setGameStatus, updateGame, type Game, type Reminder } from './db'
 import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, STATUSES } from './games'
 import { addToGoogleCalendar } from './reminders'
 import { coverUrl } from './igdb'
@@ -11,11 +11,14 @@ import { coverUrl } from './igdb'
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
+  // Its release reminder (games.ts), shown under the release date while it exists
+  const reminder = useLiveQuery(() => db.reminders.get(`release-${id}`), [id])
   if (!game) return null
-  return <GameDetails game={game} onClose={onClose} onRemove={onRemove} />
+  return <GameDetails game={game} reminder={reminder} onClose={onClose} onRemove={onRemove} />
 }
 
-function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => void; onRemove: () => void }) {
+function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => void; onRemove: () => void }) {
+  const { game, reminder, onClose, onRemove } = props
   // The texts are kept here while typing (the saved game comes back a moment later)
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
@@ -38,6 +41,12 @@ function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => v
               {formatRelease(game.releaseDate, game.releaseLabel)}
               {game.platforms.length > 0 && ` · ${game.platforms.join(', ')}`}
             </p>
+            {reminder && !reminder.deleted && (
+              <p className="game-dialog-info">
+                Reminder: {reminderTime(reminder.dueAt)}
+                {reminder.doneAt !== null && ' (done)'}
+              </p>
+            )}
             <div className="game-dialog-actions">
               <button
                 className={game.priority ? 'game-dialog-flag on' : 'game-dialog-flag'}
@@ -161,6 +170,10 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
     </div>
   )
 }
+
+// "Tue 27 Oct, 10:00"
+const reminderTime = (time: number) =>
+  new Date(time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 // "★★★½" for the rows in the list
 export function starText(rating?: number) {

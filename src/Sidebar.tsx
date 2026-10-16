@@ -40,7 +40,11 @@ function notePreview(note: Note) {
 function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
-  const upcoming = useLiveQuery(async () => (await listReminders()).filter((r) => r.doneAt === null).length, [])
+  // Upcoming reminders, without release reminders (hidden in the tab, see RemindersView.tsx)
+  const upcoming = useLiveQuery(
+    async () => (await listReminders()).filter((r) => r.doneAt === null && !r.gameId).length,
+    [],
+  )
 
   return (
     <>
