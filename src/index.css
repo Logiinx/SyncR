@@ -497,7 +497,7 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 12px 8px;
+  margin: 0 12px 4px;
   padding: 10px 0 8px 4px;
   border-bottom: 1px solid var(--border);
 }
@@ -523,7 +523,7 @@ button {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 12px 12px;
+  padding: 4px 12px 12px; /* top: room for the first card's hover bracket (else clipped) */
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -541,6 +541,42 @@ button {
   background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
 }
 
+/* Mouse over a card that isn't being edited: it can be dragged. Same look as a section
+   (dragSections.ts): two gray corner brackets like the app icon, a slightly lighter tile,
+   a grab hand. Not while a card is being dragged. */
+@media (hover: hover) {
+  .board-cards:not(.dragging) > .card:not(.editing):hover {
+    background: color-mix(in srgb, var(--text) 6%, var(--bg-raised));
+    cursor: grab;
+  }
+
+  .board-cards:not(.dragging) > .card.priority:not(.editing):hover {
+    background: color-mix(in srgb, var(--text-blue) 15%, var(--bg-raised));
+  }
+
+  .board-cards:not(.dragging) > .card:not(.editing):hover::before,
+  .board-cards:not(.dragging) > .card:not(.editing):hover::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 12px;
+    border: 0 solid var(--text-gray);
+    pointer-events: none;
+  }
+
+  .board-cards:not(.dragging) > .card:not(.editing):hover::before {
+    top: -3px;
+    left: -3px;
+    border-width: 2px 0 0 2px;
+  }
+
+  .board-cards:not(.dragging) > .card:not(.editing):hover::after {
+    bottom: -3px;
+    right: -3px;
+    border-width: 0 2px 2px 0;
+  }
+}
+
 /* Priority: a light blue tint and a small blue dot before the first line */
 .card.priority {
   background: color-mix(in srgb, var(--text-blue) 12%, var(--bg-raised));
@@ -550,7 +586,12 @@ button {
   background: color-mix(in srgb, var(--text-blue) 15%, var(--bg-raised));
 }
 
-.card.priority::before {
+/* (On the text area, not the card: the card's ::before/::after draw the hover brackets) */
+.card-editor {
+  position: relative;
+}
+
+.card.priority .card-editor::before {
   content: '';
   position: absolute;
   left: 10px;
