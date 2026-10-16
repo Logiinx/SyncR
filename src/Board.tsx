@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
 import { createCard, db, isEmptyCard, setCardDeleted } from './db'
 import Card from './Card'
@@ -91,7 +91,15 @@ function Board({ onClose }: Props) {
         <button className="board-toggle" onClick={onClose} title="Hide the Board">
           <ChevronRight size={14} />
         </button>
-        <div className="board-title">Board</div>
+        <div className="board-header">
+          <StickyNote size={15} className="board-icon" />
+          <span className="board-title">Board</span>
+          {!!cards?.length && <span className="board-count">{cards.length}</span>}
+          {/* New card: lands at the bottom of the normal cards, scrolled into view */}
+          <button className="board-add" onClick={addCard} title="New card">
+            <Plus size={16} />
+          </button>
+        </div>
         <div className="board-cards">
           {cards?.map((card, index) => (
             <Fragment key={card.id}>
@@ -104,9 +112,6 @@ function Board({ onClose }: Props) {
               />
             </Fragment>
           ))}
-          <button className="board-add" onClick={addCard} title="New card">
-            <Plus size={15} />
-          </button>
         </div>
         {undoId && (
           <div className="board-undo">
