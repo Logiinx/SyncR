@@ -1,8 +1,10 @@
 import { useRef } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useLocalState } from './localState'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
-// visible whatever note is open. Opened/closed with the button at the right of the tab bar.
+// visible whatever note is open. Opened with the small tab in the middle of the window's right
+// edge (App.tsx); while open, that tab sits on the panel's left edge and closes it.
 // PC: pushes the note aside, its left edge can be dragged to resize it (width kept per device).
 // Phone (narrow screen): slides over the note, like the notes sidebar; the backdrop closes it.
 
@@ -42,6 +44,9 @@ function Board({ onClose }: Props) {
           onPointerUp={() => (drag.current = null)}
           onPointerCancel={() => (drag.current = null)}
         />
+        <button className="board-toggle" onClick={onClose} title="Hide the Board">
+          <ChevronRight size={14} />
+        </button>
         <div className="board-title">Board</div>
         <div className="board-empty">No cards yet</div>
       </aside>

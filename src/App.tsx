@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, StickyNote } from 'lucide-react'
+import { ChevronLeft, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
@@ -133,16 +133,6 @@ function App() {
           onReorder={setOpenTabs}
         />
         <div className="drag-space" data-tauri-drag-region />
-        <button
-          className={`board-button${boardOpen ? ' open' : ''}`}
-          onClick={() => {
-            if (isNarrowScreen()) setSidebarOpen(false)
-            setBoardOpen(!boardOpen)
-          }}
-          title="Board"
-        >
-          <StickyNote size={17} />
-        </button>
         <SyncButton />
         <WindowControls />
       </header>
@@ -171,7 +161,22 @@ function App() {
             </div>
           </main>
         )}
-        {boardOpen && <Board onClose={() => setBoardOpen(false)} />}
+        {boardOpen ? (
+          <Board onClose={() => setBoardOpen(false)} />
+        ) : (
+          // Small tab in the middle of the right edge: opens the Board
+          <button
+            className="board-toggle"
+            onClick={() => {
+              // Phone: only one panel at a time, they both slide over the note
+              if (isNarrowScreen()) setSidebarOpen(false)
+              setBoardOpen(true)
+            }}
+            title="Board"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        )}
       </div>
 
       {menu && (

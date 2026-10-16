@@ -396,6 +396,9 @@ button {
   display: flex;
   flex: 1;
   min-height: 0;
+  /* Cuts off what sticks out sideways (the Board's slide-in starts past the right edge)
+     without becoming scrollable: no horizontal scroll bar flashing */
+  overflow-x: clip;
 }
 
 .sidebar {
@@ -413,23 +416,34 @@ button {
 
 /* ---------- Board (right panel, Board.tsx) ---------- */
 
-/* The button that opens it, left of the cloud button. Lit while the Board is open. */
-.board-button {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+/* Small tab in the middle of the right edge: ‹ opens the Board. While it's open, the same
+   tab sits just left of the panel with › to close it. */
+.board-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 40px;
   padding: 0;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
   color: var(--text-dim);
+  z-index: 2;
 }
 
-.board-button:hover,
-.board-button.open {
-  background: var(--bg-raised);
+.board-toggle:hover {
   color: var(--text);
+}
+
+.board .board-toggle {
+  right: auto;
+  left: -15px;
 }
 
 .board {
