@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { applyAppearance, loadAppearance } from './appearance'
 import { isPopupPage } from './popupWindow'
 import ReminderPopup from './ReminderPopup'
+import { setUpScrollbars } from './scrollbars'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -14,6 +15,7 @@ const isPopup = isPopupPage()
 // Not in the pop-up: it measures itself in plain pixels to size its window.
 if (!isPopup) applyAppearance(loadAppearance())
 else document.documentElement.classList.add('popup-page')
+setUpScrollbars()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,

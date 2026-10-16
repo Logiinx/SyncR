@@ -28,6 +28,33 @@
   --hl-gray: rgb(154 154 154 / 30%);
 }
 
+/* Scrollbars (mouse screens): thin, invisible until you scroll (scrollbars.ts sets
+   .scrollbar-visible), then fade out. Their space stays reserved, so text doesn't shift.
+   Not inside notes: tables and code blocks keep their normal scrollbars. */
+@property --thumb {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(:not(.tiptap *)) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--thumb) transparent;
+    transition: --thumb 0.3s;
+  }
+
+  .scrollbar-visible {
+    --thumb: #4a4a4a;
+  }
+
+  /* scrollbar-color is inherited: notes get the browser's normal scrollbars back */
+  .tiptap {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;

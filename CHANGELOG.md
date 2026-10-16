@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- PC: scrollbars (note, notes list, Board, dialogs) are now thin and invisible until you scroll; they fade out about a second after you stop. With the mouse over a scrollbar it stays visible, so you can still drag it. Their space stays reserved, so text doesn't shift when they appear. Tables and code blocks inside notes keep their normal scrollbars. The phone is unchanged (Android already shows scrollbars only while scrolling).
+
 ## [0.10.4] - 2026-10-16
 
 ### Changed
