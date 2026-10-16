@@ -913,12 +913,15 @@ button {
 /* ---------- Bullet and numbered lists ---------- */
 
 /* The bullet / number sits at the left edge of the text, like the "-" you typed
-   (browsers indent lists by 40px). Nested lists step in by the same amount. */
+   (browsers indent lists by 40px). Nested lists step in by the same amount.
+   No gap above or below (browsers add 1em), like lines that start with "-". */
 .tiptap ul:not([data-type='taskList']) {
+  margin: 0;
   padding-left: 1.1em;
 }
 
 .tiptap ol {
+  margin: 0;
   padding-left: 1.3em;
 }
 

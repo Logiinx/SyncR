@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Bullet and numbered lists no longer leave a gap above and below them. Browsers give lists a default margin of 1em (one line of text) at the top and bottom; it's now 0, so a list sits right against the lines around it, like lines that start with a plain "-".
+
 ## [0.9.3] - 2026-10-15
 
 ### Fixed
