@@ -5,6 +5,7 @@ import { checkForUpdates } from './UpdateBanner'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
 import { playChime } from './chime'
+import { igdb, loadConnection, saveConnection, type IgdbConnection } from './igdb'
 import {
   loadBackground,
   saveBackground,
@@ -230,6 +231,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
+        <GamesSettings />
+
         <SectionTitle title="About" />
         <div className="setting setting-toggle">
           <span>
@@ -254,6 +257,60 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Game search: the address and password of SyncR's IGDB proxy (igdb.ts), and a test search
+function GamesSettings() {
+  const [connection, setConnection] = useState(loadConnection)
+  const [test, setTest] = useState('')
+
+  function change(update: Partial<IgdbConnection>) {
+    const next = { ...connection, ...update }
+    setConnection(next)
+    saveConnection(next)
+    setTest('')
+  }
+
+  async function runTest() {
+    setTest('Testing…')
+    try {
+      const games = await igdb<{ name: string }>('games', 'search "Guild Wars"; fields name; limit 3;', connection)
+      setTest(games.length ? `Connected. Found: ${games.map((g) => g.name).join(', ')}` : 'Connected (no results)')
+    } catch (error) {
+      setTest(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  return (
+    <>
+      <SectionTitle title="Games" scope="this device" />
+      <label className="setting">
+        <span className="setting-label">Game search proxy address</span>
+        <input
+          type="url"
+          placeholder="https://….workers.dev"
+          value={connection.url}
+          onChange={(e) => change({ url: e.target.value.trim() })}
+          spellCheck={false}
+        />
+      </label>
+      <label className="setting">
+        <span className="setting-label">Proxy password</span>
+        <input
+          type="password"
+          value={connection.password}
+          onChange={(e) => change({ password: e.target.value })}
+          autoComplete="off"
+        />
+      </label>
+      <div className="setting setting-toggle">
+        <span className="setting-value">{test}</span>
+        <button className="setting-button" onClick={runTest} disabled={!connection.url || !connection.password}>
+          Test
+        </button>
+      </div>
+    </>
   )
 }
 

@@ -2604,6 +2604,12 @@ h2 + .settings-section {
   color: var(--text-dim);
 }
 
+/* Text fields in a setting: the setting already has the space below */
+.setting > input[type='url'],
+.setting > input[type='password'] {
+  margin-bottom: 0;
+}
+
 /* A checkbox setting: text on the left, box on the right */
 .setting-toggle {
   display: flex;

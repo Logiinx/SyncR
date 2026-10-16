@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Settings → Games: the address and password of your own game search proxy (a small Cloudflare Worker that talks to the IGDB game database), with a Test button. First step of the upcoming Games feature; the proxy's code is in `proxy/igdb-worker.js`.
+
 ## [0.10.6] - 2026-10-16
 
 ### Fixed
