@@ -66,6 +66,7 @@ export interface Reminder {
   gameRelease?: number // the release day it was made for (a new day = the game was delayed)
   doneAt: number | null // null = still waiting
   deleted: boolean
+  restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
   updatedAt: number
   syncedRev?: string
@@ -84,6 +85,7 @@ export interface Card {
   priority: boolean
   order: number
   deleted: boolean
+  restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
   updatedAt: number
   syncedRev?: string
@@ -112,6 +114,7 @@ export interface Game {
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
   deleted: boolean
+  restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
   updatedAt: number
   syncedRev?: string
@@ -260,7 +263,9 @@ export async function saveCardContent(id: string, content: JSONContent, text: st
 
 // Delete (deleted = true) or bring back (Undo)
 export async function setCardDeleted(id: string, deleted: boolean) {
-  await db.cards.update(id, { deleted, updatedAt: Date.now() })
+  const now = Date.now()
+  // Undo: a deliberate restore, so it beats the deletion if that already reached another device
+  await db.cards.update(id, { deleted, updatedAt: now, ...(!deleted && { restoredAt: now }) })
   changed()
 }
 

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Sync: a reminder, Board card or game deleted on one device no longer comes back when it was changed (e.g. a reminder marked done) on another device that hadn't received the deletion yet. Before, the newest change won, so the deletion was undone. Deliberately bringing something back still works: adding a removed game again, Undo on a Board card, or a release reminder returning with a new date.
+
 ## [0.11.0] - 2026-10-16
 
 ### Added

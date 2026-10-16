@@ -42,6 +42,7 @@ export async function addGame(found: FoundGame, status?: GameStatus) {
     status: status ?? (isReleased(found) ? 'toplay' : 'waiting'),
     statusAt: now,
     deleted: false,
+    ...(before && { restoredAt: now }), // added again after removing: beats the removal in sync
     updatedAt: now,
   })
   changed()
@@ -189,6 +190,7 @@ export async function syncReleaseReminders() {
       gameRelease: game.releaseDate,
       doneAt: null,
       deleted: false,
+      ...(existing?.deleted && { restoredAt: now }), // brought back by a new date: beats the deletion
       updatedAt: now,
     })
     changed()

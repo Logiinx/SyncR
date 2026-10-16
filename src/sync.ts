@@ -17,7 +17,8 @@ import { deleteFile, download, listFiles, upload } from './dropbox'
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
-// - Settings, reminders, cards and games changed on both sides: the newest wins (no conflict copy).
+// - Settings, reminders, cards and games changed on both sides: the newest wins (no conflict copy),
+//   except that a deletion beats an edit of a copy that hadn't seen it (see localWins).
 
 // What's stored in /notes/<id> (before encryption)
 interface RemoteNote {
@@ -367,8 +368,19 @@ interface SyncedRecord {
   id: string
   updatedAt: number
   deleted: boolean
+  restoredAt?: number // when a deleted record was deliberately brought back (re-added, Undo)
   syncedRev?: string
   syncedUpdatedAt?: number
+}
+
+// Changed on both sides: which one stays? The newest, except for deletions: a deletion wins
+// over an edit made on a device that hadn't received it yet (e.g. "Done" clicked on an old copy
+// of a reminder that was deleted elsewhere). Only a deliberate restore made after the deletion
+// (restoredAt, e.g. a removed game added again) beats it.
+export function localWins(local: SyncedRecord, remote: SyncedRecord) {
+  if (remote.deleted && !local.deleted) return (local.restoredAt ?? 0) > remote.updatedAt
+  if (local.deleted && !remote.deleted) return (remote.restoredAt ?? 0) <= local.updatedAt
+  return local.updatedAt >= remote.updatedAt
 }
 
 // Syncs one table with its Dropbox folder (one encrypted file per record).
@@ -405,7 +417,7 @@ async function syncRecords<T extends SyncedRecord>(
       if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
     }
 
-    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
+    if (local && changedHere && (!remote || localWins(local, remote))) {
       // Send this device's version
       const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
       const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
