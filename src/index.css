@@ -575,7 +575,7 @@ button {
 
 /* Same editor as notes, smaller and tighter. Paragraphs without gaps, like in notes. */
 .card-editor .tiptap {
-  padding: 8px 52px 8px 10px; /* room on the right for the flag and ✕ */
+  padding: 8px 54px 8px 10px; /* room on the right for the flag and ✕ */
   min-height: 1.5em;
   outline: none;
   line-height: 1.5;
@@ -591,8 +591,10 @@ button {
 /* Flag and ✕ in the top-right corner: shown on hover with a mouse, always on the phone */
 .card-buttons {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  /* Centered on the first line of text: padding (8px) + half a line (1.5em / 2) - half a button */
+  font-size: calc(var(--note-size, 16px) * 0.875);
+  top: calc(8px + 0.75em - 10px);
+  right: 8px; /* about the same space as above and below them on a one-line card */
   display: flex;
   gap: 2px;
 }
