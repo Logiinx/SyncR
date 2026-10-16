@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-10-16
+
 ### Changed
 - The notes list and the Board now have the same dark background as the note, separated by the thin edge line, so the window looks calmer. Board cards keep the same contrast against the darker panel; the "Card deleted · Undo" bar is now slightly lighter so it still stands out.
 
