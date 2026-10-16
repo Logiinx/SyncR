@@ -5,13 +5,18 @@ import type { GameStatus } from './db'
 import Cover from './GameCover'
 import { useNarrow } from './useNarrow'
 
-// The Games tab's Calendar view: popular upcoming PC games for the next 6 months.
+// The Games tab's Calendar view: popular upcoming PC games for the next 6 months (Steam's top
+// 100 / 300 / 500 / 1000 most wishlisted, chosen with buttons).
 // PC: a month grid (Monday first) or a list, with a switch (GamesView.tsx). Phone: always the list.
 // Grid: games with only a month ("Nov 2026") are listed under that month's grid. Games with only
 // a quarter or a year ("Q1 2027", "2026") come last, in "No exact date yet" (in the list, all
 // vague dates do). Click a game for a small popup.
 
 export type CalendarLayout = 'grid' | 'list'
+
+// How many of Steam's most wishlisted upcoming games to show (buttons in GamesView.tsx)
+export const TOP_LEVELS = [100, 300, 500, 1000]
+export const DEFAULT_TOP = 500
 
 // Loaded once per app start (switching views doesn't ask IGDB again)
 let cache: Promise<UpcomingGame[]> | null = null
@@ -21,8 +26,9 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const monthTitle = (date: Date) => date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 
-function GameCalendar({ inList, layout }: { inList: Map<string, GameStatus>; layout: CalendarLayout }) {
-  const [games, setGames] = useState<UpcomingGame[] | null>(null)
+function GameCalendar(props: { inList: Map<string, GameStatus>; layout: CalendarLayout; top: number }) {
+  const { inList, layout, top } = props
+  const [loaded, setLoaded] = useState<UpcomingGame[] | null>(null) // Steam's top 1000
   const [error, setError] = useState('')
   const [shown, setShown] = useState<UpcomingGame | null>(null) // the game in the popup
   const narrow = useNarrow()
@@ -31,7 +37,7 @@ function GameCalendar({ inList, layout }: { inList: Map<string, GameStatus>; lay
     let current = true
     cache ??= popularUpcoming()
     cache.then(
-      (found) => current && setGames(found),
+      (found) => current && setLoaded(found),
       (e) => {
         cache = null // try again next time
         if (current) setError(e instanceof Error ? e.message : String(e))
@@ -43,7 +49,8 @@ function GameCalendar({ inList, layout }: { inList: Map<string, GameStatus>; lay
   }, [])
 
   if (error) return <p className="game-search-message error">{error}</p>
-  if (!games) return <p className="game-search-message">Loading upcoming games…</p>
+  if (!loaded) return <p className="game-search-message">Loading upcoming games…</p>
+  const games = loaded.filter((g) => g.rank <= top) // the chosen level (top 100 / 300 / 500 / 1000)
   if (games.length === 0) return <p className="game-search-message">No upcoming games found.</p>
 
   const statusOf = (game: UpcomingGame) => inList.get(gameId(game.igdbId))

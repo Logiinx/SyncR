@@ -105,11 +105,12 @@ export interface UpcomingGame extends FoundGame {
   exact: boolean // false: only a month, quarter or year is known ("Q1 2027")
   monthOnly: boolean // only the month is known ("Nov 2026")
   vagueLabel: string // IGDB's text for a vague date, e.g. "Nov 2026", "Q1 2027", "2026"
+  rank: number // place in Steam's most wishlisted upcoming games (1 = most wishlisted)
 }
 
 const PC = 6 // IGDB platform id of PC (Microsoft Windows)
 const MOST_WISHLISTED = 10 // IGDB popularity type: Steam's "Most Wishlisted Upcoming"
-export const POPULAR_COUNT = 300 // "popular" = in Steam's top 300 wishlisted
+export const POPULAR_MAX = 1000 // the calendar can show up to Steam's top 1000 wishlisted
 export const CALENDAR_MONTHS = 6
 
 interface IgdbReleaseDate {
@@ -130,36 +131,60 @@ function isFullRelease(release: IgdbReleaseDate) {
   return !release.status || release.status.name === 'Full Release'
 }
 
-// Popular upcoming PC games: Steam's most wishlisted, keeping those with a PC release between
-// today and 6 months from now. Two requests: the ranking, then the games themselves.
-// A vague date counts at its end: "2026" is 31 Dec 2026, "Q1 2027" is 31 Mar 2027.
-export async function popularUpcoming(): Promise<UpcomingGame[]> {
-  const ranking = await igdb<{ game_id: number }>(
-    'popularity_primitives',
-    `fields game_id; where popularity_type = ${MOST_WISHLISTED}; sort value desc; limit ${POPULAR_COUNT};`,
-  )
-  if (ranking.length === 0) return []
-  const games = await igdb<IgdbUpcoming>(
-    'games',
-    `fields name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name; where id = (${ranking.map((r) => r.game_id).join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit 500;`,
-  )
+// The calendar's range: from today (midnight) to 6 months later, in ms
+export function calendarRange() {
   const start = new Date().setHours(0, 0, 0, 0)
   const end = new Date(start).setMonth(new Date(start).getMonth() + CALENDAR_MONTHS)
-  const upcoming: UpcomingGame[] = []
-  for (const game of games) {
-    const pc = (game.release_dates ?? [])
-      .filter((r) => r.platform === PC && isFullRelease(r) && r.date && r.date * 1000 >= start && r.date * 1000 < end)
-      .sort((a, b) => a.date! - b.date!)[0]
-    if (!pc) continue
-    upcoming.push({
-      ...toFoundGame(game),
-      pcDate: pc.date! * 1000,
-      exact: !pc.date_format, // 0 = exact day
-      monthOnly: pc.date_format === 1,
-      vagueLabel: pc.human ?? '',
-    })
+  return { start, end }
+}
+
+function toUpcoming(game: IgdbGame, pc: IgdbReleaseDate, rank: number): UpcomingGame {
+  return {
+    ...toFoundGame(game),
+    pcDate: pc.date! * 1000,
+    exact: !pc.date_format, // 0 = exact day
+    monthOnly: pc.date_format === 1,
+    vagueLabel: pc.human ?? '',
+    rank,
   }
-  return upcoming.sort((a, b) => a.pcDate - b.pcDate || a.name.localeCompare(b.name))
+}
+
+const byDate = (a: UpcomingGame, b: UpcomingGame) => a.pcDate - b.pcDate || a.name.localeCompare(b.name)
+
+// Popular upcoming PC games: Steam's top 1000 most wishlisted, keeping those with a PC release
+// between today and 6 months from now. Each game keeps its rank, so the calendar can show the
+// top 100 / 300 / 500 / 1000 without asking again. Requests of 500 (IGDB's limit): the ranking,
+// then the games themselves. A vague date counts at its end: "2026" is 31 Dec 2026, "Q1 2027"
+// is 31 Mar 2027.
+const PAGE = 500
+
+export async function popularUpcoming(): Promise<UpcomingGame[]> {
+  const ranking: { game_id: number }[] = []
+  for (let offset = 0; offset < POPULAR_MAX; offset += PAGE) {
+    ranking.push(
+      ...(await igdb<{ game_id: number }>(
+        'popularity_primitives',
+        `fields game_id; where popularity_type = ${MOST_WISHLISTED}; sort value desc; limit ${PAGE}; offset ${offset};`,
+      )),
+    )
+  }
+  const rank = new Map(ranking.map((r, i) => [r.game_id, i + 1]))
+  const { start, end } = calendarRange()
+  const upcoming: UpcomingGame[] = []
+  for (let offset = 0; offset < ranking.length; offset += PAGE) {
+    const ids = ranking.slice(offset, offset + PAGE).map((r) => r.game_id)
+    const games = await igdb<IgdbUpcoming>(
+      'games',
+      `fields name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name; where id = (${ids.join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit ${PAGE};`,
+    )
+    for (const game of games) {
+      const pc = (game.release_dates ?? [])
+        .filter((r) => r.platform === PC && isFullRelease(r) && r.date && r.date * 1000 >= start && r.date * 1000 < end)
+        .sort((a, b) => a.date! - b.date!)[0]
+      if (pc) upcoming.push(toUpcoming(game, pc, rank.get(game.id)!))
+    }
+  }
+  return upcoming.sort(byDate)
 }
 
 // Cover image from IGDB's image server. cover_small is 90 × 128 (the _2x version for sharp screens).

@@ -2880,6 +2880,7 @@ h3.games-group-title {
 /* "My games" | "Calendar" at the top of the Games tab */
 .games-views {
   display: flex;
+  flex-wrap: wrap; /* phone: the calendar buttons go to a second line if needed */
   gap: 4px;
   margin-bottom: 16px;
 }
@@ -2901,11 +2902,25 @@ h3.games-group-title {
   color: var(--text);
 }
 
-/* Grid / list switch on the right of the view buttons (PC only: the phone always shows the list) */
+/* Calendar: "Top 100 300 500 1000" on the right of the view buttons */
+.calendar-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.games-views .calendar-top button {
+  padding: 4px 8px;
+}
+
+/* Grid / list switch on the right (PC only: the phone always shows the list) */
 .calendar-layouts {
   display: flex;
   gap: 4px;
-  margin-left: auto;
+  margin-left: 8px;
 }
 
 .games-views .calendar-layouts button {
@@ -2915,6 +2930,10 @@ h3.games-group-title {
 }
 
 @media (max-width: 699px) {
+  .calendar-top {
+    margin-left: 0; /* on its own line under the view buttons */
+  }
+
   .calendar-layouts {
     display: none;
   }

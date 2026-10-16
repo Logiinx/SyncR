@@ -5,7 +5,7 @@ import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isConnected, searchGames, type FoundGame } from './igdb'
 import Cover from './GameCover'
-import GameCalendar, { type CalendarLayout } from './GameCalendar'
+import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { starText } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -31,6 +31,7 @@ function GamesView() {
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
+  const [top, setTop] = useLocalState('syncr.calendarTop', DEFAULT_TOP)
 
   function openMenu(game: Game, x: number, y: number) {
     setMenu({ game, x, y })
@@ -71,6 +72,16 @@ function GamesView() {
             </button>
           ))}
           {view === 'calendar' && (
+            <div className="calendar-top" title="How many of Steam's most wishlisted upcoming games to show">
+              Top
+              {TOP_LEVELS.map((level) => (
+                <button key={level} className={top === level ? 'active' : ''} onClick={() => setTop(level)}>
+                  {level}
+                </button>
+              ))}
+            </div>
+          )}
+          {view === 'calendar' && (
             <div className="calendar-layouts">
               <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
                 <CalendarDays size={15} />
@@ -83,7 +94,7 @@ function GamesView() {
         </div>
         {view === 'calendar' ? (
           isConnected() ? (
-            <GameCalendar inList={inList} layout={layout} />
+            <GameCalendar inList={inList} layout={layout} top={top} />
           ) : (
             <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
           )
