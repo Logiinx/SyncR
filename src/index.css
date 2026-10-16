@@ -521,9 +521,23 @@ button {
   border-color: var(--accent);
 }
 
+/* Priority: orange left edge and a light orange tint */
+.card.priority {
+  background: color-mix(in srgb, var(--text-orange) 8%, var(--bg));
+  border-left: 3px solid var(--text-orange);
+}
+
+/* Thin line between the priority cards and the others */
+.board-separator {
+  flex-shrink: 0;
+  height: 1px;
+  margin: 2px 8px;
+  background: var(--border);
+}
+
 /* Same editor as notes, smaller and tighter. Paragraphs without gaps, like in notes. */
 .card-editor .tiptap {
-  padding: 8px 28px 8px 10px; /* room on the right for ✕ */
+  padding: 8px 52px 8px 10px; /* room on the right for the flag and ✕ */
   min-height: 1.5em;
   outline: none;
   line-height: 1.5;
@@ -536,11 +550,17 @@ button {
   margin: 0;
 }
 
-/* ✕ in the top-right corner: shown on hover with a mouse, always on the phone */
-.card-delete {
+/* Flag and ✕ in the top-right corner: shown on hover with a mouse, always on the phone */
+.card-buttons {
   position: absolute;
   top: 6px;
   right: 6px;
+  display: flex;
+  gap: 2px;
+}
+
+.card-flag,
+.card-delete {
   width: 20px;
   height: 20px;
   padding: 0;
@@ -552,17 +572,25 @@ button {
   opacity: 0;
 }
 
-.card:hover .card-delete,
-.card-delete:focus-visible {
+.card:hover :is(.card-flag, .card-delete),
+:is(.card-flag, .card-delete):focus-visible {
   opacity: 1;
 }
 
+.card-flag:hover,
 .card-delete:hover {
   background: var(--bg-raised);
   color: var(--text);
 }
 
+/* A priority card's flag stays visible, in orange */
+.card.priority .card-flag {
+  opacity: 1;
+  color: var(--text-orange);
+}
+
 @media (pointer: coarse) {
+  .card-flag,
   .card-delete {
     opacity: 1;
   }

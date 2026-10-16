@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Plus } from 'lucide-react'
 import { useLocalState } from './localState'
-import { createCard, db, setCardDeleted } from './db'
+import { createCard, db, isEmptyCard, setCardDeleted } from './db'
 import Card from './Card'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
@@ -34,6 +34,14 @@ function Board({ onClose }: Props) {
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
   const [undoId, setUndoId] = useState<string | null>(null)
+
+  // Opening the Board: remove cards left empty last time (e.g. the Board was closed while
+  // a new card was still empty). Clicking away from an empty card removes it right away (Card.tsx).
+  useEffect(() => {
+    db.cards.toArray().then((all) => {
+      for (const card of all) if (!card.deleted && isEmptyCard(card)) setCardDeleted(card.id, true)
+    })
+  }, [])
 
   useEffect(() => {
     if (!undoId) return
@@ -85,13 +93,16 @@ function Board({ onClose }: Props) {
         </button>
         <div className="board-title">Board</div>
         <div className="board-cards">
-          {cards?.map((card) => (
-            <Card
-              key={card.id}
-              card={card}
-              autoFocus={card.id === newCardId}
-              onDelete={() => deleteCard(card.id)}
-            />
+          {cards?.map((card, index) => (
+            <Fragment key={card.id}>
+              {/* A thin line between the priority cards and the others (only when both exist) */}
+              {!card.priority && cards[index - 1]?.priority && <div className="board-separator" />}
+              <Card
+                card={card}
+                autoFocus={card.id === newCardId}
+                onDelete={() => deleteCard(card.id)}
+              />
+            </Fragment>
           ))}
           <button className="board-add" onClick={addCard} title="New card">
             <Plus size={15} />

@@ -185,12 +185,18 @@ export function noteTitle(note: Note): string {
 // ---------- Board cards ----------
 // Not synced yet (Board step 4), so these don't call changed() for now.
 
+// Higher than any card's order: a card given it lands at the bottom of its part.
+// Deleted cards count too, so Undo puts a card back in its place.
+async function nextOrder() {
+  const all = await db.cards.toArray()
+  return Math.max(0, ...all.map((card) => card.order)) + 1
+}
+
 // A new empty card at the bottom of the normal (non-priority) cards
 export async function createCard(): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()
-  const all = await db.cards.toArray() // deleted ones too, so Undo puts a card back in its place
-  const order = Math.max(0, ...all.map((card) => card.order)) + 1
+  const order = await nextOrder()
   await db.cards.add({
     id,
     content: null,
@@ -211,4 +217,15 @@ export async function saveCardContent(id: string, content: JSONContent, text: st
 // Delete (deleted = true) or bring back (Undo)
 export async function setCardDeleted(id: string, deleted: boolean) {
   await db.cards.update(id, { deleted, updatedAt: Date.now() })
+}
+
+// Nothing typed in it (a fresh card, or everything erased)
+export function isEmptyCard(card: Card): boolean {
+  const blocks = card.content?.content
+  return !blocks || (blocks.length === 1 && blocks[0].type === 'paragraph' && !blocks[0].content)
+}
+
+// Flag / unflag: the card moves to the bottom of its new part
+export async function setCardPriority(id: string, priority: boolean) {
+  await db.cards.update(id, { priority, order: await nextOrder(), updatedAt: Date.now() })
 }
