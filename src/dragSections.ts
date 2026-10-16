@@ -7,7 +7,9 @@ import { currentZoom } from './appearance'
 // A quick click opens/closes the section (and puts the cursor in the title, so a second click
 // edits it). While the cursor is already in that title, it behaves like normal text
 // (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls;
-// holding drags even while editing the title (a tap still places the cursor).
+// holding drags even while editing the title (a tap still places the cursor). While the
+// finger is down, the title is briefly not editable (CSS: not selectable), otherwise Android's
+// own long press selects its words and opens the keyboard, which cancels the drag.
 // The browser's own drag of selected text is blocked when the selection touches a title:
 // dropping part of a title elsewhere made new, broken sections.
 // Mouse over a title that isn't being edited: the section is framed (faint tint, two corner
@@ -145,7 +147,11 @@ class SectionDragger {
     window.addEventListener('pointermove', this.onPointerMove)
     window.addEventListener('pointerup', this.onPointerUp)
     window.addEventListener('pointercancel', this.cancel)
-    if (touch) window.addEventListener('contextmenu', this.blockMenu, true)
+    if (touch) {
+      // ProseMirror ignores changes to this attribute
+      summary.contentEditable = 'false'
+      window.addEventListener('contextmenu', this.blockMenu, true)
+    }
   }
 
   onPointerMove = (e: PointerEvent) => {
@@ -238,6 +244,7 @@ class SectionDragger {
     window.removeEventListener('pointerup', this.onPointerUp)
     window.removeEventListener('pointercancel', this.cancel)
     window.removeEventListener('contextmenu', this.blockMenu, true)
+    if (press.touch) press.summary.removeAttribute('contenteditable')
     press.section.classList.remove('section-lifted')
     this.ghost?.remove()
     this.ghost = null

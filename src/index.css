@@ -1974,6 +1974,13 @@ button {
   user-select: none;
 }
 
+/* Phone: a finger is on this title (dragSections.ts): Android's long press mustn't select it */
+.has-section-drag summary[contenteditable='false'] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Where the dragged section will land */
 .section-drop-line {
   position: absolute;
