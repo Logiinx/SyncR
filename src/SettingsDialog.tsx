@@ -100,159 +100,165 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       >
         <h2>Settings</h2>
 
-        <SectionTitle title="Appearance" scope="this device" />
-        <div className="setting">
-          <span className="setting-label">Font</span>
-          {/* Each choice is shown in its own font */}
-          <div className="font-choices">
-            {(Object.keys(FONTS) as FontId[]).map((id) => (
-              <button
-                key={id}
-                className={id === appearance.font ? 'selected' : ''}
-                style={{ fontFamily: FONTS[id].css }}
-                aria-pressed={id === appearance.font}
-                onClick={() => update({ font: id })}
-              >
-                {FONTS[id].name}
-              </button>
-            ))}
+        {/* Two columns on the PC, so everything shows without scrolling; one on the phone */}
+        <div className="settings-columns">
+          <div className="settings-column">
+            <SectionTitle title="Appearance" scope="this device" />
+            <div className="setting">
+              <span className="setting-label">Font</span>
+              {/* Each choice is shown in its own font */}
+              <div className="font-choices">
+                {(Object.keys(FONTS) as FontId[]).map((id) => (
+                  <button
+                    key={id}
+                    className={id === appearance.font ? 'selected' : ''}
+                    style={{ fontFamily: FONTS[id].css }}
+                    aria-pressed={id === appearance.font}
+                    onClick={() => update({ font: id })}
+                  >
+                    {FONTS[id].name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* The note behind the dialog changes while dragging */}
+            <label className="setting">
+              <span className="setting-label">
+                Text size <span className="setting-value">{appearance.fontSize} px</span>
+              </span>
+              <RulerSlider
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                step={1}
+                mark={DEFAULTS.fontSize}
+                value={appearance.fontSize}
+                onChange={(e) => update({ fontSize: Number(e.target.value) })}
+              />
+            </label>
+
+            <label className="setting">
+              <span className="setting-label">
+                App scaling <span className="setting-value">{scale} %</span>
+              </span>
+              <RulerSlider
+                min={SCALE_MIN}
+                max={SCALE_MAX}
+                step={5}
+                mark={DEFAULTS.scale}
+                value={scale}
+                onChange={(e) => setScale(Number(e.target.value))}
+                onPointerUp={applyScale}
+                onKeyUp={applyScale}
+                onBlur={applyScale}
+              />
+            </label>
+
+            <SectionTitle title="Note list" scope="this device" />
+            <label className="setting setting-toggle">
+              <span>Show dates</span>
+              <input
+                type="checkbox"
+                checked={appearance.showDates}
+                onChange={(e) => update({ showDates: e.target.checked })}
+              />
+            </label>
+
+            <SectionTitle title="Typing" scope="this device" />
+            <label className="setting setting-toggle">
+              <span>
+                Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={editing.smartTypography}
+                onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
+              />
+            </label>
+
+            <SectionTitle title="Reminders" scope="this device" />
+            <label className="setting setting-toggle">
+              <span>Sound when a reminder is due</span>
+              <input
+                type="checkbox"
+                checked={background.reminderSound}
+                onChange={(e) => {
+                  updateBackground({ reminderSound: e.target.checked })
+                  if (e.target.checked) playChime() // a preview
+                }}
+              />
+            </label>
           </div>
-        </div>
+          <div className="settings-column">
+            {isTauri() && (
+              <>
+                <SectionTitle title="Window" scope="this device" />
+                <label className="setting setting-toggle">
+                  <span>
+                    ✕ hides SyncR in the tray{' '}
+                    <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={background.closeToTray}
+                    onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+                  />
+                </label>
+                <label className="setting setting-toggle">
+                  <span>
+                    Start with Windows <span className="setting-value">when you sign in</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={autostart ?? false}
+                    disabled={autostart === null}
+                    onChange={(e) => toggleAutostart(e.target.checked)}
+                  />
+                </label>
+                <label className="setting setting-toggle">
+                  <span>
+                    Start hidden in the tray{' '}
+                    <span className="setting-value">when started with Windows; otherwise the window shows</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={background.startHidden}
+                    disabled={!autostart}
+                    onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+                  />
+                </label>
+              </>
+            )}
 
-        {/* The note behind the dialog changes while dragging */}
-        <label className="setting">
-          <span className="setting-label">
-            Text size <span className="setting-value">{appearance.fontSize} px</span>
-          </span>
-          <RulerSlider
-            min={FONT_SIZE_MIN}
-            max={FONT_SIZE_MAX}
-            step={1}
-            mark={DEFAULTS.fontSize}
-            value={appearance.fontSize}
-            onChange={(e) => update({ fontSize: Number(e.target.value) })}
-          />
-        </label>
-
-        <label className="setting">
-          <span className="setting-label">
-            App scaling <span className="setting-value">{scale} %</span>
-          </span>
-          <RulerSlider
-            min={SCALE_MIN}
-            max={SCALE_MAX}
-            step={5}
-            mark={DEFAULTS.scale}
-            value={scale}
-            onChange={(e) => setScale(Number(e.target.value))}
-            onPointerUp={applyScale}
-            onKeyUp={applyScale}
-            onBlur={applyScale}
-          />
-        </label>
-
-        <SectionTitle title="Note list" scope="this device" />
-        <label className="setting setting-toggle">
-          <span>Show dates</span>
-          <input
-            type="checkbox"
-            checked={appearance.showDates}
-            onChange={(e) => update({ showDates: e.target.checked })}
-          />
-        </label>
-
-        <SectionTitle title="Typing" scope="this device" />
-        <label className="setting setting-toggle">
-          <span>
-            Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
-          </span>
-          <input
-            type="checkbox"
-            checked={editing.smartTypography}
-            onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
-          />
-        </label>
-
-        <SectionTitle title="Reminders" scope="this device" />
-        <label className="setting setting-toggle">
-          <span>Sound when a reminder is due</span>
-          <input
-            type="checkbox"
-            checked={background.reminderSound}
-            onChange={(e) => {
-              updateBackground({ reminderSound: e.target.checked })
-              if (e.target.checked) playChime() // a preview
-            }}
-          />
-        </label>
-
-        {isTauri() && (
-          <>
-            <SectionTitle title="Window" scope="this device" />
-            <label className="setting setting-toggle">
+            <SectionTitle title="Notes" scope="all devices" />
+            <div className="setting setting-toggle">
               <span>
-                ✕ hides SyncR in the tray{' '}
-                <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
+                Color rules <span className="setting-value">{rulesSummary}</span>
               </span>
-              <input
-                type="checkbox"
-                checked={background.closeToTray}
-                onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
-              />
-            </label>
-            <label className="setting setting-toggle">
+              <button className="setting-button" onClick={() => setShowRules(true)}>
+                Edit…
+              </button>
+            </div>
+
+            <GamesSettings />
+
+            <SectionTitle title="About" />
+            <div className="setting setting-toggle">
               <span>
-                Start with Windows <span className="setting-value">when you sign in</span>
+                SyncR <span className="setting-value">v{__APP_VERSION__}</span>
               </span>
-              <input
-                type="checkbox"
-                checked={autostart ?? false}
-                disabled={autostart === null}
-                onChange={(e) => toggleAutostart(e.target.checked)}
-              />
-            </label>
-            <label className="setting setting-toggle">
-              <span>
-                Start hidden in the tray{' '}
-                <span className="setting-value">when started with Windows; otherwise the window shows</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={background.startHidden}
-                disabled={!autostart}
-                onChange={(e) => updateBackground({ startHidden: e.target.checked })}
-              />
-            </label>
-          </>
-        )}
-
-        <SectionTitle title="Notes" scope="all devices" />
-        <div className="setting setting-toggle">
-          <span>
-            Color rules <span className="setting-value">{rulesSummary}</span>
-          </span>
-          <button className="setting-button" onClick={() => setShowRules(true)}>
-            Edit…
-          </button>
-        </div>
-
-        <GamesSettings />
-
-        <SectionTitle title="About" />
-        <div className="setting setting-toggle">
-          <span>
-            SyncR <span className="setting-value">v{__APP_VERSION__}</span>
-          </span>
-          {/* The result shows at the top of the window, so Settings closes first */}
-          <button
-            className="setting-button"
-            onClick={() => {
-              onClose()
-              checkForUpdates()
-            }}
-          >
-            Check for updates
-          </button>
+              {/* The result shows at the top of the window, so Settings closes first */}
+              <button
+                className="setting-button"
+                onClick={() => {
+                  onClose()
+                  checkForUpdates()
+                }}
+              >
+                Check for updates
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

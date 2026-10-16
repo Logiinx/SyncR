@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Changed
+- Settings is wider with two columns, so everything shows at a glance without scrolling (on the phone it stays one column).
 - Games: a new details window. On the PC, the big cover is on the left with the actions under it: Priority, Pin to Board (or Unpin), Google Calendar for upcoming games, and "Remove from list" set apart at the bottom in a quiet red. On the right: the title with the date and the main platforms, the status as one joined bar, then (for finished or dropped games) the stars, heart and review, and the note. ✕ at the top right closes it (Escape and a click outside too); the Close button is gone. On the phone it's stacked: the cover beside the title, the actions as a row of icons, then the rest.
 - "Flag" is now called "Priority" everywhere, with a sparkle icon instead of a flag: games (the icon on their row, "Mark as priority" in their menu, the details) and Board cards (the button and the menu). It works the same: a priority game or card stays at the top with a light blue tint.
 

@@ -2609,10 +2609,35 @@ button {
   text-transform: uppercase;
 }
 
-h2 + .settings-section {
+/* Two columns on the PC (wider dialog), so all settings show without scrolling */
+.dialog.settings {
+  width: min(860px, 100%);
+}
+
+.settings-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 36px;
+}
+
+/* The first section of each column: no line above it */
+.settings-column > .settings-section:first-child {
   margin-top: 4px;
   padding-top: 0;
   border-top: none;
+}
+
+@media (max-width: 699px) {
+  .settings-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* One column: the second one's first section gets its line back */
+  .settings-column + .settings-column > .settings-section:first-child {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid #353535;
+  }
 }
 
 /* "· this device": not in capitals, dim */
