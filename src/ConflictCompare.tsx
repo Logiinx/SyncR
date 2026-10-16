@@ -4,6 +4,7 @@ import { TriangleAlert, X } from 'lucide-react'
 import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { diffNotes, type Line, type Row, type Segment, type Token } from './noteDiff'
+import { useNarrow } from './useNarrow'
 
 // A conflict copy (made by sync when a note changed on two devices, sync.ts) shows a banner
 // above it. "Compare" opens the comparison with its original: side by side on the PC,
@@ -13,19 +14,6 @@ import { diffNotes, type Line, type Row, type Segment, type Token } from './note
 
 const CONTEXT = 1 // unchanged lines kept visible around a change
 const FOLD_MIN = 3 // fold only runs of at least this many unchanged lines
-
-// Narrow screen (phone): one merged view instead of two columns
-function useNarrow() {
-  const query = '(max-width: 699px)'
-  const [narrow, setNarrow] = useState(() => matchMedia(query).matches)
-  useEffect(() => {
-    const list = matchMedia(query)
-    const update = () => setNarrow(list.matches)
-    list.addEventListener('change', update)
-    return () => list.removeEventListener('change', update)
-  }, [])
-  return narrow
-}
 
 export function ConflictBanner({ note }: { note: Note }) {
   // 'loading' until the database answers; undefined = the original was deleted
@@ -55,7 +43,7 @@ export function ConflictBanner({ note }: { note: Note }) {
 
 function ConflictCompare({ original, copy, onClose }: { original: Note; copy: Note; onClose: () => void }) {
   const rows = useMemo(() => diffNotes(original.content, copy.content), [original.content, copy.content])
-  const narrow = useNarrow()
+  const narrow = useNarrow() // phone: one merged view instead of two columns
   // Folded runs of unchanged lines the user opened (by the index of their first row)
   const [opened, setOpened] = useState<Set<number>>(new Set())
   const changes = rows.filter((row) => row.op !== 'same').length

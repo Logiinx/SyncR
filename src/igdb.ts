@@ -103,6 +103,7 @@ function toFoundGame(game: IgdbGame): FoundGame {
 export interface UpcomingGame extends FoundGame {
   pcDate: number // ms
   exact: boolean // false: only a month, quarter or year is known ("Q1 2027")
+  monthOnly: boolean // only the month is known ("Nov 2026")
   vagueLabel: string // IGDB's text for a vague date, e.g. "Nov 2026", "Q1 2027", "2026"
 }
 
@@ -154,6 +155,7 @@ export async function popularUpcoming(): Promise<UpcomingGame[]> {
       ...toFoundGame(game),
       pcDate: pc.date! * 1000,
       exact: !pc.date_format, // 0 = exact day
+      monthOnly: pc.date_format === 1,
       vagueLabel: pc.human ?? '',
     })
   }

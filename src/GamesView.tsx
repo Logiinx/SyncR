@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronRight, Flag, Gamepad2, Search, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isConnected, searchGames, type FoundGame } from './igdb'
 import Cover from './GameCover'
-import GameCalendar from './GameCalendar'
+import GameCalendar, { type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { starText } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -30,6 +30,7 @@ function GamesView() {
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
+  const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
 
   function openMenu(game: Game, x: number, y: number) {
     setMenu({ game, x, y })
@@ -62,17 +63,27 @@ function GamesView() {
   const inList = new Map(games?.map((g) => [g.id, g.status]))
   return (
     <main className="page games-page">
-      <div className="games">
+      <div className={view === 'calendar' && layout === 'grid' ? 'games wide' : 'games'}>
         <div className="games-views">
           {VIEWS.map(({ value, label }) => (
             <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value)}>
               {label}
             </button>
           ))}
+          {view === 'calendar' && (
+            <div className="calendar-layouts">
+              <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
+                <CalendarDays size={15} />
+              </button>
+              <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
+                <List size={15} />
+              </button>
+            </div>
+          )}
         </div>
         {view === 'calendar' ? (
           isConnected() ? (
-            <GameCalendar inList={inList} />
+            <GameCalendar inList={inList} layout={layout} />
           ) : (
             <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
           )

@@ -2901,6 +2901,127 @@ h3.games-group-title {
   color: var(--text);
 }
 
+/* Grid / list switch on the right of the view buttons (PC only: the phone always shows the list) */
+.calendar-layouts {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.games-views .calendar-layouts button {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+}
+
+@media (max-width: 699px) {
+  .calendar-layouts {
+    display: none;
+  }
+}
+
+/* ---------- Calendar month grid (GameCalendar.tsx) ---------- */
+.games.wide {
+  max-width: 1200px;
+}
+
+.calendar-month {
+  margin-bottom: 16px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--border); /* shows through the gaps as grid lines */
+}
+
+.calendar-weekday {
+  padding: 4px 6px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 0.75em;
+}
+
+/* At least 3 games' room; more games make the whole week row taller */
+.calendar-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 92px;
+  padding: 4px;
+  background: var(--bg);
+}
+
+.calendar-day.blank {
+  background: color-mix(in srgb, var(--text) 2%, var(--bg));
+}
+
+.calendar-day.past .calendar-date {
+  opacity: 0.4;
+}
+
+.calendar-date {
+  color: var(--text-dim);
+  font-size: 0.75em;
+}
+
+.calendar-day.today .calendar-date {
+  color: var(--link);
+  font-weight: 600;
+}
+
+/* A game in a day: small cover + name (up to 3 lines) */
+.calendar-game {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 0.75em;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.calendar-game:hover {
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+}
+
+.calendar-game .game-cover {
+  width: 24px;
+  height: 32px;
+}
+
+.calendar-game span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.calendar-month-only p {
+  margin: 10px 0 4px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.calendar-row {
+  cursor: pointer;
+}
+
+.calendar-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+.calendar-popup {
+  max-width: 420px;
+}
+
 .games-count {
   color: var(--text-dim);
   font-weight: 400;
