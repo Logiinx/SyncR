@@ -5,11 +5,12 @@ import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, sortGames, STATUSES } from './games'
 import { coverUrl, isConnected, searchGames, type FoundGame } from './igdb'
 import ContextMenu, { type MenuItem } from './ContextMenu'
+import GameDialog, { starText } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
-// Click (or right-click / long press) a game for its menu: status, flag, remove.
+// Click a game for its details (GameDialog.tsx); right-click / long press for a quick menu.
 
 const SEARCH_DELAY = 400 // ms after the last key before searching
 
@@ -19,9 +20,23 @@ function GamesView() {
   const [closed, setClosed] = useLocalState<Partial<Record<GameStatus, boolean>>>('syncr.gamesClosed', {})
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
 
   function openMenu(game: Game, x: number, y: number) {
     setMenu({ game, x, y })
+  }
+
+  function askRemove(game: Game) {
+    setDialog({
+      title: 'Remove game?',
+      message: `"${game.name}" will be removed from your list, with its note and review.`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: () => {
+        setOpenId(null)
+        updateGame(game.id, { deleted: true })
+      },
+    })
   }
 
   function menuItems(game: Game): MenuItem[] {
@@ -31,18 +46,7 @@ function GamesView() {
         onClick: () => setGameStatus(game.id, status),
       })),
       { label: game.priority ? 'Remove flag' : 'Flag', onClick: () => updateGame(game.id, { priority: !game.priority }) },
-      {
-        label: 'Remove from list',
-        danger: true,
-        onClick: () =>
-          setDialog({
-            title: 'Remove game?',
-            message: `"${game.name}" will be removed from your list, with its note and review.`,
-            confirmLabel: 'Remove',
-            danger: true,
-            onConfirm: () => updateGame(game.id, { deleted: true }),
-          }),
-      },
+      { label: 'Remove from list', danger: true, onClick: () => askRemove(game) },
     ]
   }
 
@@ -72,6 +76,7 @@ function GamesView() {
                     <GameRow
                       key={game.id}
                       game={game}
+                      onOpen={() => setOpenId(game.id)}
                       onMenu={(x, y) => openMenu(game, x, y)}
                     />
                   ))}
@@ -79,6 +84,16 @@ function GamesView() {
             )
           })}
       </div>
+      {openId && (
+        <GameDialog
+          id={openId}
+          onClose={() => setOpenId(null)}
+          onRemove={() => {
+            const game = games?.find((g) => g.id === openId)
+            if (game) askRemove(game)
+          }}
+        />
+      )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.game)} onClose={() => setMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
@@ -95,14 +110,22 @@ function Cover({ coverId }: { coverId?: string }) {
   )
 }
 
-function GameRow({ game, onMenu }: { game: Game; onMenu: (x: number, y: number) => void }) {
-  const details = [game.status === 'waiting' || !game.releaseDate ? formatRelease(game.releaseDate) : new Date(game.releaseDate).getFullYear(), game.platforms.join(', ')]
-    .filter(Boolean)
-    .join(' · ')
+// One game: cover, name, then what matters for its status, and a preview of the review
+// (finished or dropped games) or the note. Stars and heart on the right.
+function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
+  const played = game.status === 'done' || game.status === 'dropped'
+  const when = played
+    ? `${game.status === 'done' ? 'Finished' : 'Dropped'} ${formatRelease(game.statusAt)}`
+    : game.status === 'waiting' || !game.releaseDate
+      ? formatRelease(game.releaseDate)
+      : String(new Date(game.releaseDate).getFullYear())
+  const text = (played && game.review.trim()) || game.note.trim()
+  const preview = text && (played && game.review.trim() ? `“${text}”` : text)
+  const details = [when, played ? '' : game.platforms.join(', '), preview].filter(Boolean).join(' · ')
   return (
     <div
       className={game.priority ? 'game-row priority' : 'game-row'}
-      onClick={(e) => onMenu(e.clientX, e.clientY)}
+      onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
         onMenu(e.clientX, e.clientY)
@@ -113,6 +136,12 @@ function GameRow({ game, onMenu }: { game: Game; onMenu: (x: number, y: number) 
         <div className="game-name">{game.name}</div>
         <div className="game-details">{details}</div>
       </div>
+      {(game.rating || game.liked) && (
+        <span className="game-rated">
+          {starText(game.rating)}
+          {game.liked && <span className="game-liked"> ♥</span>}
+        </span>
+      )}
       {game.priority && <Flag size={14} className="game-flag" aria-label="Flagged" />}
     </div>
   )

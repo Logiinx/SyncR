@@ -3013,3 +3013,183 @@ h2 + .settings-section {
     padding: 16px 12px;
   }
 }
+
+/* Stars and heart in a row (finished / dropped games) */
+.game-rated {
+  flex-shrink: 0;
+  color: var(--text-yellow);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.game-liked {
+  color: var(--text-pink);
+}
+
+.games-group .game-row {
+  cursor: pointer;
+}
+
+/* ---------- Game details (GameDialog.tsx) ---------- */
+
+.game-dialog-head {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.game-dialog-cover {
+  flex-shrink: 0;
+  width: 72px;
+  height: 96px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--bg);
+}
+
+.game-dialog-head h2 {
+  margin-bottom: 4px;
+}
+
+.dialog .game-dialog-info {
+  margin: 0 0 8px;
+  font-size: 0.85em;
+}
+
+.game-dialog-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.game-dialog-flag:hover {
+  color: var(--text);
+}
+
+.game-dialog-flag.on {
+  border-color: color-mix(in srgb, var(--text-blue) 50%, var(--border));
+  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg-raised));
+  color: var(--text-blue);
+}
+
+/* Status: one button per status, the current one lit */
+.game-status-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.game-status-choices button {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.game-status-choices button:hover {
+  color: var(--text);
+}
+
+.game-status-choices button.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text);
+}
+
+.game-dialog textarea {
+  margin-bottom: 0;
+}
+
+/* Stars: a grey star with a yellow one on top, cut to 0 / 50 / 100 %. Two invisible
+   buttons per star: left half = half a star. */
+.game-rating {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stars {
+  display: flex;
+}
+
+.star {
+  position: relative;
+  display: inline-block;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.star-back {
+  color: color-mix(in srgb, var(--text) 18%, var(--bg-raised));
+}
+
+.star-front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  color: var(--text-yellow);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.star-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.star-half.left {
+  left: 0;
+}
+
+.star-half.right {
+  right: 0;
+}
+
+.game-heart {
+  display: flex;
+  color: var(--text-dim);
+}
+
+.game-heart:hover {
+  color: var(--text-pink);
+}
+
+.game-heart.on {
+  color: var(--text-pink);
+}
+
+.game-heart.on svg {
+  fill: currentColor;
+}
+
+.dialog input.game-date {
+  width: auto;
+  margin: 0;
+  padding: 4px 8px;
+  color-scheme: dark;
+}
+
+/* "Remove from list" on the left, "Done" on the right */
+.game-dialog-buttons {
+  justify-content: space-between;
+}
+
+.dialog-buttons .game-remove {
+  color: var(--text-dim);
+}
+
+.dialog-buttons .game-remove:hover {
+  color: var(--error);
+}
