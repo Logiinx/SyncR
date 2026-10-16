@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
+import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isConnected, searchGames, type FoundGame } from './igdb'
@@ -100,6 +100,7 @@ function GamesView() {
           )
         ) : (
           <>
+            {games && <DelayBanner games={games} />}
             <GameSearch inList={inList} />
             {games && games.length === 0 && isConnected() && (
               <p className="games-empty">
@@ -184,6 +185,28 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         </span>
       )}
       {game.priority && <Flag size={14} className="game-flag" aria-label="Flagged" />}
+    </div>
+  )
+}
+
+// Games the daily refresh found delayed (games.ts): old date → new date, until dismissed (✕).
+// Saved on the game, so it shows on both devices.
+function DelayBanner({ games }: { games: Game[] }) {
+  const delayed = games.filter((g) => g.delayedFrom)
+  if (delayed.length === 0) return null
+  return (
+    <div className="games-delays">
+      {delayed.map((game) => (
+        <div key={game.id} className="games-delay">
+          <CalendarClock size={15} />
+          <span>
+            <b>Delayed:</b> {game.name} · {formatRelease(game.delayedFrom)} → {formatRelease(game.releaseDate, game.releaseLabel)}
+          </span>
+          <button onClick={() => updateGame(game.id, { delayedFrom: undefined })} title="Dismiss">
+            <X size={15} />
+          </button>
+        </div>
+      ))}
     </div>
   )
 }

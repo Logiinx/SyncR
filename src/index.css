@@ -2877,6 +2877,45 @@ h3.games-group-title {
   cursor: default;
 }
 
+/* Delayed games (top of My games), one line each with a ✕ */
+.games-delays {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.games-delay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-yellow) 12%, var(--bg));
+  font-size: 0.9em;
+}
+
+.games-delay > svg {
+  flex-shrink: 0;
+  color: var(--text-yellow);
+}
+
+.games-delay span {
+  flex: 1;
+  min-width: 0;
+}
+
+.games-delay button {
+  display: flex;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.games-delay button:hover {
+  color: var(--text);
+}
+
 /* "My games" | "Calendar" at the top of the Games tab */
 .games-views {
   display: flex;
