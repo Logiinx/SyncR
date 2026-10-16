@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board: a panel on the right for small cards (quick tasks, priority things), opened with the sticky-note button left of the cloud. On the PC it sits beside the note and you can drag its left edge to make it wider or narrower; on the phone it slides over the note. Cards come in the next steps.
+
 ## [0.9.5] - 2026-10-16
 
 ### Fixed

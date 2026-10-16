@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, StickyNote } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote, type Note } from './db'
@@ -9,6 +9,7 @@ import { onFollowLink } from './noteLinks'
 import NoteView from './NoteView'
 import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
+import Board from './Board'
 import SettingsDialog from './SettingsDialog'
 import TabBar from './TabBar'
 import UpdateBanner from './UpdateBanner'
@@ -22,6 +23,7 @@ function App() {
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
+  const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
   // Only a brand-new note gets the cursor automatically
   const [newNoteId, setNewNoteId] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number } | null>(null)
@@ -109,7 +111,15 @@ function App() {
     <div className="app">
       {/* Also the window title bar: empty areas marked data-tauri-drag-region move the window */}
       <header className="topbar" data-tauri-drag-region>
-        <button className="menu-button" onClick={() => setSidebarOpen(!sidebarOpen)} title="Notes">
+        <button
+          className="menu-button"
+          onClick={() => {
+            // Phone: only one panel at a time, they both slide over the note
+            if (isNarrowScreen()) setBoardOpen(false)
+            setSidebarOpen(!sidebarOpen)
+          }}
+          title="Notes"
+        >
           ☰
         </button>
         <TabBar
@@ -123,6 +133,16 @@ function App() {
           onReorder={setOpenTabs}
         />
         <div className="drag-space" data-tauri-drag-region />
+        <button
+          className={`board-button${boardOpen ? ' open' : ''}`}
+          onClick={() => {
+            if (isNarrowScreen()) setSidebarOpen(false)
+            setBoardOpen(!boardOpen)
+          }}
+          title="Board"
+        >
+          <StickyNote size={17} />
+        </button>
         <SyncButton />
         <WindowControls />
       </header>
@@ -151,6 +171,7 @@ function App() {
             </div>
           </main>
         )}
+        {boardOpen && <Board onClose={() => setBoardOpen(false)} />}
       </div>
 
       {menu && (

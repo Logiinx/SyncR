@@ -411,6 +411,75 @@ button {
   display: none;
 }
 
+/* ---------- Board (right panel, Board.tsx) ---------- */
+
+/* The button that opens it, left of the cloud button. Lit while the Board is open. */
+.board-button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.board-button:hover,
+.board-button.open {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: var(--board-width, 280px);
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-left: 1px solid var(--border);
+  animation: board-in 0.15s ease-out;
+}
+
+@keyframes board-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+/* Drag to resize: a thin invisible strip over the left border, lit on hover */
+.board-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+  touch-action: none;
+}
+
+.board-resize:hover,
+.board-resize:active {
+  background: var(--accent);
+}
+
+.board-title {
+  padding: 12px 16px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.board-empty {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 /* Narrow screens (phone): the sidebar slides over the note instead of pushing it */
 @media (max-width: 699px) {
   .sidebar {
@@ -420,6 +489,20 @@ button {
     left: 0;
     width: min(300px, 85vw);
     z-index: 11;
+  }
+
+  /* The Board slides over the note from the right, fixed width, no resizing */
+  .board {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: min(300px, 85vw);
+    z-index: 11;
+  }
+
+  .board-resize {
+    display: none;
   }
 
   .backdrop {
