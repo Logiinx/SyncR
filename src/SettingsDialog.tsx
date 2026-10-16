@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { checkForUpdates } from './UpdateBanner'
@@ -26,8 +26,11 @@ import {
   type FontId,
 } from './appearance'
 
-// Settings for this device. Changes are saved right away; "Done" just closes.
+// Settings. Changes are saved right away. Closed with Escape or a click outside it.
 function SettingsDialog({ onClose }: { onClose: () => void }) {
+  // Focused when it opens (so Escape works), without scrolling: it opens at the top
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
   const [appearance, setAppearance] = useState(loadAppearance)
   function update(change: Partial<Appearance>) {
     // Start from the saved settings (always current), not from `appearance`, which may not
@@ -88,6 +91,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
         className="dialog settings"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-label="Settings"
         onMouseDown={(e) => e.stopPropagation()}
@@ -247,12 +252,6 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             }}
           >
             Check for updates
-          </button>
-        </div>
-
-        <div className="dialog-buttons">
-          <button className="primary" onClick={onClose} autoFocus>
-            Done
           </button>
         </div>
       </div>

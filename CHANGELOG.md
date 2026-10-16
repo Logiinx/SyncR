@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Settings opens at the top again (it used to open scrolled to the bottom), and the "Connected" text no longer pushes the Done button out of view: the Done button is gone. Close Settings with Escape or a click outside it, as before.
+
 ## [0.12.0] - 2026-10-17
 
 ### Added
