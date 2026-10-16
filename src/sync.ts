@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
-import { db, imageIds, noteTitle, type Note, type Reminder, type Setting } from './db'
+import type { InsertType, Table, UpdateSpec } from 'dexie'
+import { db, imageIds, noteTitle, removeOldDeletedCards, type Note, type Setting } from './db'
 import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
@@ -10,11 +11,12 @@ import { deleteFile, download, listFiles, upload } from './dropbox'
 //   /attachments/<id>  one file per image (never changes, so no conflicts)
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
 //   /reminders/<id>    one file per reminder (a deleted one stays as a row with deleted = true)
+//   /cards/<id>        one file per Board card (same as reminders)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
-// - Settings and reminders changed on both sides: the newest wins (no conflict copy).
+// - Settings, reminders and cards changed on both sides: the newest wins (no conflict copy).
 
 // What's stored in /notes/<id> (before encryption)
 interface RemoteNote {
@@ -48,7 +50,6 @@ const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
 const settingPath = (name: string) => `/settings/${name}`
-const reminderPath = (id: string) => `/reminders/${id}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
@@ -129,6 +130,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteAttachments = new Set<string>()
   const remoteSettings = new Map<string, string>() // name -> rev
   const remoteReminders = new Map<string, string>() // id -> rev
+  const remoteCards = new Map<string, string>() // id -> rev
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
@@ -138,6 +140,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'attachments') remoteAttachments.add(id)
     if (folder === 'settings') remoteSettings.set(id, file.rev)
     if (folder === 'reminders') remoteReminders.set(id, file.rev)
+    if (folder === 'cards') remoteCards.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -297,57 +300,18 @@ async function runSync(): Promise<SyncResult> {
     }
   }
 
-  // ---------- 4c. Reminders ----------
-  // Like settings: changed on both sides means the newest wins. A deletion is a change too
-  // (deleted = true), so "deleted here, edited there" also goes to the newest.
+  // ---------- 4c. Reminders and Board cards ----------
+  // Like settings: changed on both sides means the newest wins. See syncRecords().
 
-  // Deleted reminders older than 90 days disappear here and from Dropbox
+  // Deleted ones older than 90 days disappear here and from Dropbox
   for (const id of await removeOldDeleted()) {
-    if (remoteReminders.delete(id)) await deleteFile(reminderPath(id))
+    if (remoteReminders.delete(id)) await deleteFile(`/reminders/${id}`)
   }
-
-  const localReminders = await db.reminders.toArray()
-  const reminderIds = new Set([...remoteReminders.keys(), ...localReminders.map((r) => r.id)])
-  for (const id of reminderIds) {
-    const local = localReminders.find((r) => r.id === id)
-    const remoteRev = remoteReminders.get(id)
-    const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
-    const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
-
-    // Not in Dropbox, and deleted here, or synced before and unchanged (another device removed
-    // an old deleted one): remove it here too. Otherwise it's new (or edited): uploaded below.
-    if (local && !remoteRev && (local.deleted || (local.syncedRev && !changedHere))) {
-      await db.transaction('rw', db.reminders, async () => {
-        if ((await db.reminders.get(id))?.updatedAt === local.updatedAt) await db.reminders.delete(id)
-      })
-      continue
-    }
-    if (!changedHere && !changedThere) continue
-
-    let remote: Reminder | null = null
-    if (changedThere) {
-      const raw = await download(reminderPath(id))
-      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
-    }
-
-    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
-      // Send this device's version
-      const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
-      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
-      const rev = await upload(reminderPath(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
-      if (!rev) throw new RetrySoonError('A reminder changed in Dropbox during sync.')
-      await db.reminders.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt })
-      result.uploaded++
-    } else if (remote && remoteRev) {
-      // Take the other device's version, unless it was changed here while this sync ran
-      const stored = await db.transaction('rw', db.reminders, async () => {
-        if ((await db.reminders.get(id))?.updatedAt !== local?.updatedAt) return false
-        await db.reminders.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
-        return true
-      })
-      if (stored) result.downloaded++
-    }
+  for (const id of await removeOldDeletedCards()) {
+    if (remoteCards.delete(id)) await deleteFile(`/cards/${id}`)
   }
+  await syncRecords(db.reminders, 'reminders', remoteReminders, key, result)
+  await syncRecords(db.cards, 'cards', remoteCards, key, result)
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
   // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
@@ -385,4 +349,70 @@ async function runSync(): Promise<SyncResult> {
   }
 
   return result
+}
+
+// ---------- Reminders and cards (step 4c) ----------
+
+// What reminders and Board cards have in common: a deletion is a change like any other
+// (deleted = true), and syncedRev / syncedUpdatedAt remember what was synced last.
+interface SyncedRecord {
+  id: string
+  updatedAt: number
+  deleted: boolean
+  syncedRev?: string
+  syncedUpdatedAt?: number
+}
+
+// Syncs one table with its Dropbox folder (one encrypted file per record).
+// Changed on both sides: the newest wins, so "deleted here, edited there" also goes to the newest.
+async function syncRecords<T extends SyncedRecord>(
+  table: Table<T, string, InsertType<T, 'id'>>,
+  folder: string,
+  remoteRevs: Map<string, string>, // id -> rev, from the Dropbox listing
+  key: CryptoKey,
+  result: SyncResult,
+) {
+  const path = (id: string) => `/${folder}/${id}`
+  const locals = await table.toArray()
+  const ids = new Set([...remoteRevs.keys(), ...locals.map((r) => r.id)])
+  for (const id of ids) {
+    const local = locals.find((r) => r.id === id)
+    const remoteRev = remoteRevs.get(id)
+    const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
+    const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
+
+    // Not in Dropbox, and deleted here, or synced before and unchanged (another device removed
+    // an old deleted one): remove it here too. Otherwise it's new (or edited): uploaded below.
+    if (local && !remoteRev && (local.deleted || (local.syncedRev && !changedHere))) {
+      await db.transaction('rw', table, async () => {
+        if ((await table.get(id))?.updatedAt === local.updatedAt) await table.delete(id)
+      })
+      continue
+    }
+    if (!changedHere && !changedThere) continue
+
+    let remote: T | null = null
+    if (changedThere) {
+      const raw = await download(path(id))
+      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+    }
+
+    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
+      // Send this device's version
+      const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
+      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
+      const rev = await upload(path(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
+      if (!rev) throw new RetrySoonError(`Something in /${folder} changed in Dropbox during sync.`)
+      await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<InsertType<T, 'id'>>)
+      result.uploaded++
+    } else if (remote && remoteRev) {
+      // Take the other device's version, unless it was changed here while this sync ran
+      const stored = await db.transaction('rw', table, async () => {
+        if ((await table.get(id))?.updatedAt !== local?.updatedAt) return false
+        await table.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
+        return true
+      })
+      if (stored) result.downloaded++
+    }
+  }
 }

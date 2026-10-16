@@ -183,7 +183,9 @@ export function noteTitle(note: Note): string {
 }
 
 // ---------- Board cards ----------
-// Not synced yet (Board step 4), so these don't call changed() for now.
+// Synced like reminders (sync.ts, step 4c). Every change calls changed() so auto-sync runs.
+
+const OLD_DELETED_CARD_MS = 90 * 24 * 60 * 60 * 1000 // like reminders (reminders.ts)
 
 // Higher than any card's order: a card given it lands at the bottom of its part.
 // Deleted cards count too, so Undo puts a card back in its place.
@@ -207,16 +209,19 @@ export async function createCard(): Promise<string> {
     createdAt: now,
     updatedAt: now,
   })
+  changed()
   return id
 }
 
 export async function saveCardContent(id: string, content: JSONContent, text: string) {
   await db.cards.update(id, { content, text, updatedAt: Date.now() })
+  changed()
 }
 
 // Delete (deleted = true) or bring back (Undo)
 export async function setCardDeleted(id: string, deleted: boolean) {
   await db.cards.update(id, { deleted, updatedAt: Date.now() })
+  changed()
 }
 
 // Nothing typed in it (a fresh card, or everything erased)
@@ -228,4 +233,15 @@ export function isEmptyCard(card: Card): boolean {
 // Flag / unflag: the card moves to the bottom of its new part
 export async function setCardPriority(id: string, priority: boolean) {
   await db.cards.update(id, { priority, order: await nextOrder(), updatedAt: Date.now() })
+  changed()
+}
+
+// Deleted cards are kept for a while so the deletion syncs; after 90 days they go for good.
+// Returns their ids, so sync can remove them from Dropbox too.
+export async function removeOldDeletedCards(): Promise<string[]> {
+  const old = (await db.cards.toArray()).filter(
+    (card) => card.deleted && Date.now() - card.updatedAt > OLD_DELETED_CARD_MS,
+  )
+  await db.cards.bulkDelete(old.map((card) => card.id))
+  return old.map((card) => card.id)
 }
