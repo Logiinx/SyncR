@@ -53,6 +53,20 @@ export function sortGames(games: Game[]): Game[] {
   )
 }
 
+// Platforms for a search result: PC and Android first (what you play on), at most 3, then "+N more".
+// E.g. "PC, PS5, XONE +4 more". The details dialog still shows them all.
+const MY_PLATFORMS = ['PC', 'Android']
+const SHOWN_PLATFORMS = 3
+export function shortPlatforms(platforms: string[]) {
+  const sorted = [
+    ...MY_PLATFORMS.filter((p) => platforms.includes(p)),
+    ...platforms.filter((p) => !MY_PLATFORMS.includes(p)),
+  ]
+  const shown = sorted.slice(0, SHOWN_PLATFORMS).join(', ')
+  const more = sorted.length - SHOWN_PLATFORMS
+  return more > 0 ? `${shown} +${more} more` : shown
+}
+
 // "12 Mar 2027", or "TBA" when there's no date yet
 export function formatRelease(time?: number) {
   if (!time) return 'TBA'

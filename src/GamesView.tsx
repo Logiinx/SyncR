@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, ChevronRight, Flag, Gamepad2, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, sortGames, STATUSES } from './games'
+import { addGame, formatRelease, gameId, shortPlatforms, sortGames, STATUSES } from './games'
 import { coverUrl, isConnected, searchGames, type FoundGame } from './igdb'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { starText } from './GameDialog'
@@ -219,7 +219,7 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
                 <div className="game-text">
                   <div className="game-name">{found.name}</div>
                   <div className="game-details">
-                    {[formatRelease(found.releaseDate), found.platforms.join(', ')].filter(Boolean).join(' · ')}
+                    {[formatRelease(found.releaseDate), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {status ? (
