@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Games: the delay banner no longer shows for a release date that only moved by a few hours on the same day (it said e.g. "29 Oct 2026 → 29 Oct 2026"). Only a later day counts as a delay.
+
 ### Changed
 - Sidebar: the Settings button has the same height and icon position as the Games and Reminders buttons.
 

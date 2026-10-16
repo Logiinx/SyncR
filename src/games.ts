@@ -106,6 +106,8 @@ export async function moveReleased() {
   for (const game of due) await setGameStatus(game.id, 'toplay')
 }
 
+const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+
 // Once a day: fresh names, covers, platforms and release dates from IGDB. Only changed games
 // are saved (so they sync). A later date for a Waiting game is a delay: delayedFrom keeps the
 // first date it had, for the banner in the Games tab.
@@ -124,10 +126,13 @@ export async function refreshGames(force = false) {
     if (found.releaseDate !== game.releaseDate || found.releaseLabel !== game.releaseLabel) {
       change.releaseDate = found.releaseDate
       change.releaseLabel = found.releaseLabel
-      const later = !found.releaseDate || found.releaseDate > game.releaseDate!
+      // A later day (not just a later time on the same day) counts as a delay
+      const later = !found.releaseDate || startOfDay(found.releaseDate) > startOfDay(game.releaseDate!)
       if (game.status === 'waiting' && game.releaseDate && later) change.delayedFrom = game.delayedFrom ?? game.releaseDate
       // Moved back to (or before) its first date: no longer delayed
-      if (game.delayedFrom && found.releaseDate && found.releaseDate <= game.delayedFrom) change.delayedFrom = undefined
+      if (game.delayedFrom && found.releaseDate && startOfDay(found.releaseDate) <= startOfDay(game.delayedFrom)) {
+        change.delayedFrom = undefined
+      }
     }
     if (Object.keys(change).length > 0) await updateGame(game.id, change)
   }
