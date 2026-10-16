@@ -13,7 +13,6 @@ import SelectionMenu from './SelectionMenu'
 import Toolbar from './Toolbar'
 import ImageViewer from './ImageViewer'
 import ContextMenu from './ContextMenu'
-import { ClickTitleToToggle } from './clickTitleToToggle'
 import { Image } from './image'
 import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
@@ -61,7 +60,6 @@ export const extensions = [
   }),
   DetailsSummary,
   DetailsContent,
-  ClickTitleToToggle,
   DragSections,
   SlashMenu,
   Image,

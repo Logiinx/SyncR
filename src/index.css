@@ -1600,35 +1600,29 @@ button {
   display: none;
 }
 
-/* ⋮⋮ grip to drag a section (dragSections.ts): left of the ▶ arrow, one line high */
-.has-section-grips {
-  position: relative;
+/* Dragging a section by its title (dragSections.ts) */
+.has-section-drag {
+  position: relative; /* for the drop line and the title copy */
 }
 
-.section-grip {
+/* The section being dragged fades; a copy of its title follows the pointer */
+.section-lifted {
+  opacity: 0.4;
+}
+
+.section-ghost {
   position: absolute;
-  width: 18px;
-  height: 25.6px;
-  margin-left: -20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  letter-spacing: -1px;
-  color: var(--text-dim);
-  border-radius: 4px;
-  cursor: grab;
-  touch-action: none; /* a finger on the grip drags instead of scrolling */
-  user-select: none;
-}
-
-.section-grip:hover {
+  z-index: 3;
+  padding: 2px 10px;
+  border-radius: 6px;
   background: var(--bg-raised);
-  color: var(--text);
-}
-
-.section-grip[hidden] {
-  display: none;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .dragging-section,

@@ -1,17 +1,20 @@
 import { Extension } from '@tiptap/react'
-import { Plugin, Selection } from '@tiptap/pm/state'
+import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { currentZoom } from './appearance'
 
-// Drag a section by its ⋮⋮ grip (left of the ▶ arrow) to move it, with everything inside.
-// A blue line shows where it will land: between any two blocks, also inside another section.
-// Mouse: the grip shows when hovering a section. Phone (no hover): it shows for the section
-// the cursor is in. Pointer events, so mouse and finger work the same way.
+// Section titles: press and drag a title to move its section, with everything inside.
+// A quick click opens/closes the section (and puts the cursor in the title, so a second click
+// edits it). While the cursor is already in that title, it behaves like normal text
+// (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls.
+// While dragging, a copy of the title follows the pointer and a blue line shows where the
+// section will land: between any two blocks, also inside another section.
 
-const MOUSE_DRAG_DISTANCE = 5 // px before a press on the grip becomes a drag
+const DRAG_DISTANCE = 5 // px (mouse) before a press becomes a drag
+const HOLD_MS = 300 // touch: hold this long before the section can be dragged
+const TOUCH_SLOP = 8 // px a finger may move during the hold; more = it's a swipe (scroll)
 const SCROLL_EDGE = 40 // px from the top/bottom of the page where dragging scrolls it
 const SCROLL_STEP = 12 // px scrolled per pointer move near an edge
-const GRIP_REACH = 24 // px: the grip sits this far left of its section
 
 // Where sections can be: in the note itself or inside another section
 const CONTAINERS = new Set(['doc', 'detailsContent'])
@@ -19,6 +22,18 @@ const CONTAINERS = new Set(['doc', 'detailsContent'])
 interface Drop {
   pos: number // where the section will be inserted
   line: { top: number; left: number; width: number } // the blue line, in client pixels
+}
+
+interface Press {
+  pointerId: number
+  touch: boolean
+  x: number
+  y: number
+  summary: HTMLElement // the title that was pressed
+  section: HTMLElement // its section
+  from: number | null // the section's position in the document, once dragging
+  drop: Drop | null
+  holdTimer?: number
 }
 
 export const DragSections = Extension.create({
@@ -31,133 +46,159 @@ export const DragSections = Extension.create({
 
 class SectionDragger {
   view: EditorView
-  wrapper: HTMLElement // the element around the editor; grip and line are placed in it
-  grip: HTMLElement
+  wrapper: HTMLElement // the element around the editor; the line and the title copy go in it
   line: HTMLElement
-  section: HTMLElement | null = null // the section the grip belongs to
-  drag: { pointerId: number; from: number; startY: number; moving: boolean; drop: Drop | null } | null = null
-  canHover = window.matchMedia('(hover: hover)').matches
+  ghost: HTMLElement | null = null // copy of the title that follows the pointer
+  press: Press | null = null
 
   constructor(view: EditorView) {
     this.view = view
     this.wrapper = view.dom.parentElement!
-    this.wrapper.classList.add('has-section-grips')
-
-    this.grip = document.createElement('div')
-    this.grip.className = 'section-grip'
-    this.grip.textContent = '⋮⋮'
-    this.grip.title = 'Drag to move this section'
-    this.grip.hidden = true
-    this.grip.addEventListener('pointerdown', this.onPointerDown)
-    this.grip.addEventListener('pointermove', this.onPointerMove)
-    this.grip.addEventListener('pointerup', this.onPointerUp)
-    this.grip.addEventListener('pointercancel', this.stopDrag)
+    this.wrapper.classList.add('has-section-drag')
 
     this.line = document.createElement('div')
     this.line.className = 'section-drop-line'
     this.line.hidden = true
+    this.wrapper.append(this.line)
 
-    this.wrapper.append(this.grip, this.line)
-    this.wrapper.addEventListener('mousemove', this.onHover)
-    this.wrapper.addEventListener('mouseleave', this.onLeave)
+    view.dom.addEventListener('pointerdown', this.onPointerDown)
   }
 
-  // ---------- Showing the grip ----------
+  // ---------- Pressing a title ----------
 
-  onHover = (e: MouseEvent) => {
-    if (this.drag) return
-    if (this.grip.contains(e.target as Node)) return
-    // Look a bit to the right of the pointer first: on the way from a section's title to its
-    // grip, the pointer crosses the margin (or, for a nested section, the outer one)
-    const find = (element: Element | null) => element?.closest<HTMLElement>('.tiptap [data-type="details"]') ?? null
-    const reach = GRIP_REACH * currentZoom()
-    this.showGrip(find(document.elementFromPoint(e.clientX + reach, e.clientY)) ?? find(e.target as Element))
-  }
+  onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0 || this.press || !this.view.editable) return
+    const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
+    const section = summary?.closest<HTMLElement>('[data-type="details"]')
+    if (!summary || !section || !this.view.dom.contains(section)) return
+    // Already editing this title: normal text behaviour (place the cursor, select)
+    const { $from } = this.view.state.selection
+    if ($from.parent.type.name === 'detailsSummary' && $from.start() === this.view.posAtDOM(summary, 0)) return
 
-  onLeave = () => {
-    if (!this.drag && this.canHover) this.showGrip(null)
-  }
-
-  // Called by ProseMirror after every change (typing, cursor moves)
-  update() {
-    if (this.drag) return
-    if (!this.canHover) {
-      // Phone: the section the cursor is in (the innermost one)
-      const { $from } = this.view.state.selection
-      let section: HTMLElement | null = null
-      for (let d = $from.depth; d > 0; d--) {
-        if ($from.node(d).type.name === 'details') {
-          section = this.view.nodeDOM($from.before(d)) as HTMLElement | null
-          break
-        }
-      }
-      this.showGrip(section)
-    } else if (this.section) {
-      this.showGrip(this.section.isConnected ? this.section : null) // text above may have moved it
+    // No cursor or text selection yet: it's a click (open/close) or a drag, decided on release
+    e.preventDefault()
+    const touch = e.pointerType === 'touch'
+    this.press = { pointerId: e.pointerId, touch, x: e.clientX, y: e.clientY, summary, section, from: null, drop: null }
+    if (touch) this.press.holdTimer = window.setTimeout(() => this.startDrag(), HOLD_MS)
+    window.addEventListener('pointermove', this.onPointerMove)
+    window.addEventListener('pointerup', this.onPointerUp)
+    window.addEventListener('pointercancel', this.cancel)
+    if (touch) {
+      window.addEventListener('touchmove', this.blockScroll, { passive: false })
+      window.addEventListener('contextmenu', this.blockMenu, true)
     }
   }
 
-  showGrip(section: HTMLElement | null) {
-    this.section = section
-    this.grip.hidden = !section
-    if (!section) return
+  onPointerMove = (e: PointerEvent) => {
+    const press = this.press
+    if (!press || e.pointerId !== press.pointerId) return
+    if (press.from === null) {
+      const distance = Math.hypot(e.clientX - press.x, e.clientY - press.y)
+      if (press.touch) {
+        if (distance > TOUCH_SLOP) this.cancel() // a swipe: let the page scroll
+        return
+      }
+      if (distance < DRAG_DISTANCE) return
+      this.startDrag()
+      if (!this.press || this.press.from === null) return // the section was gone
+    }
+    this.autoScroll(e.clientY)
+    this.moveGhost(e.clientY)
+    press.drop = this.findDrop(e.clientX, e.clientY, press.from!)
+    this.showLine(press.drop)
+  }
+
+  onPointerUp = (e: PointerEvent) => {
+    const press = this.press
+    if (!press || e.pointerId !== press.pointerId) return
+    if (press.from !== null) {
+      if (press.drop) this.move(press.from, press.drop.pos)
+    } else {
+      this.clickTitle(press)
+    }
+    this.cancel()
+  }
+
+  // A click (or tap) on a title: open/close the section, and put the cursor where it was
+  // clicked, so a second click edits the title
+  clickTitle(press: Press) {
+    // Layout: <div data-type="details"><button>▶</button><div><summary>…
+    const toggle = press.section.querySelector(':scope > button')
+    if (toggle instanceof HTMLButtonElement) toggle.click()
+    const hit = this.view.posAtCoords({ left: press.x, top: press.y })
+    this.view.focus()
+    if (hit) {
+      const { state } = this.view
+      this.view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(hit.pos))))
+    }
+  }
+
+  // Once dragging: the section fades, a copy of its title follows the pointer
+  startDrag() {
+    const press = this.press
+    if (!press) return
+    press.from = this.sectionPos(press.section)
+    if (press.from === null) return this.cancel()
+    window.clearTimeout(press.holdTimer)
+    this.wrapper.classList.add('dragging-section')
+    press.section.classList.add('section-lifted')
+
     const zoom = currentZoom()
-    const wrapperRect = this.wrapper.getBoundingClientRect()
-    const rect = section.getBoundingClientRect()
-    // Positions inside the zoomed page are in CSS pixels: client pixels / zoom
-    this.grip.style.top = `${(rect.top - wrapperRect.top) / zoom}px`
-    this.grip.style.left = `${(rect.left - wrapperRect.left) / zoom}px`
+    this.ghost = document.createElement('div')
+    this.ghost.className = 'section-ghost'
+    this.ghost.textContent = press.summary.textContent?.trim() || 'Section'
+    this.ghost.style.left = `${(press.summary.getBoundingClientRect().left - this.wrapper.getBoundingClientRect().left) / zoom}px`
+    this.ghost.style.maxWidth = `${press.section.getBoundingClientRect().width / zoom}px`
+    this.wrapper.append(this.ghost)
+    this.moveGhost(press.y)
+  }
+
+  moveGhost(y: number) {
+    if (!this.ghost) return
+    const zoom = currentZoom()
+    // Centered on the pointer's height, in CSS pixels inside the zoomed page
+    this.ghost.style.top = `${(y - this.wrapper.getBoundingClientRect().top) / zoom - this.ghost.offsetHeight / 2}px`
+  }
+
+  // Touch: once the section moves, the finger mustn't scroll the page or open the long-press menu
+  blockScroll = (e: TouchEvent) => {
+    if (this.press?.from !== null) e.preventDefault()
+  }
+
+  blockMenu = (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  cancel = () => {
+    const press = this.press
+    if (!press) return
+    window.clearTimeout(press.holdTimer)
+    window.removeEventListener('pointermove', this.onPointerMove)
+    window.removeEventListener('pointerup', this.onPointerUp)
+    window.removeEventListener('pointercancel', this.cancel)
+    window.removeEventListener('touchmove', this.blockScroll)
+    window.removeEventListener('contextmenu', this.blockMenu, true)
+    press.section.classList.remove('section-lifted')
+    this.ghost?.remove()
+    this.ghost = null
+    this.line.hidden = true
+    this.wrapper.classList.remove('dragging-section')
+    this.press = null
   }
 
   // Position of the section node in the document (null if it's gone)
-  sectionPos(): number | null {
-    if (!this.section?.isConnected) return null
-    const $inside = this.view.state.doc.resolve(this.view.posAtDOM(this.section, 0))
+  sectionPos(section: HTMLElement): number | null {
+    if (!section.isConnected) return null
+    const $inside = this.view.state.doc.resolve(this.view.posAtDOM(section, 0))
     for (let d = $inside.depth; d > 0; d--) {
       const pos = $inside.before(d)
-      if (this.view.nodeDOM(pos) === this.section) return pos
+      if (this.view.nodeDOM(pos) === section) return pos
     }
     return null
   }
 
-  // ---------- Dragging ----------
-
-  onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0) return
-    const from = this.sectionPos()
-    if (from === null) return
-    e.preventDefault() // no text selection, and the phone keyboard stays as it is
-    this.grip.setPointerCapture(e.pointerId)
-    this.drag = { pointerId: e.pointerId, from, startY: e.clientY, moving: false, drop: null }
-  }
-
-  onPointerMove = (e: PointerEvent) => {
-    const drag = this.drag
-    if (!drag || e.pointerId !== drag.pointerId) return
-    if (!drag.moving) {
-      if (Math.abs(e.clientY - drag.startY) < MOUSE_DRAG_DISTANCE) return
-      drag.moving = true
-      this.wrapper.classList.add('dragging-section')
-    }
-    this.autoScroll(e.clientY)
-    drag.drop = this.findDrop(e.clientX, e.clientY, drag.from)
-    this.showLine(drag.drop)
-  }
-
-  onPointerUp = (e: PointerEvent) => {
-    const drag = this.drag
-    if (!drag || e.pointerId !== drag.pointerId) return
-    if (drag.moving && drag.drop) this.move(drag.from, drag.drop.pos)
-    this.stopDrag()
-  }
-
-  stopDrag = () => {
-    this.drag = null
-    this.line.hidden = true
-    this.wrapper.classList.remove('dragging-section')
-    if (this.canHover) this.showGrip(null)
-    else this.update()
-  }
+  // ---------- Where it lands ----------
 
   // The block under the pointer whose parent can hold a section; drop above or below it,
   // depending on which half the pointer is in. Not inside the dragged section itself.
@@ -219,10 +260,9 @@ class SectionDragger {
   }
 
   destroy() {
-    this.grip.remove()
+    this.cancel()
     this.line.remove()
-    this.wrapper.removeEventListener('mousemove', this.onHover)
-    this.wrapper.removeEventListener('mouseleave', this.onLeave)
-    this.wrapper.classList.remove('has-section-grips', 'dragging-section')
+    this.view.dom.removeEventListener('pointerdown', this.onPointerDown)
+    this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }
 }
