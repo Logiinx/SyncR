@@ -111,7 +111,8 @@ function Cover({ coverId }: { coverId?: string }) {
 }
 
 // One game: cover, name, release (full date while waiting, else the year) and a preview of the
-// review (finished or dropped games) or the note. Stars and heart on the right.
+// review (finished or dropped games) or the note. Stars and heart on the right, only for finished or
+// dropped games (like in the details; the rating stays saved if the status changes back).
 // Platforms only show in the details (and in search results).
 function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const played = game.status === 'done' || game.status === 'dropped'
@@ -136,7 +137,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         <div className="game-name">{game.name}</div>
         <div className="game-details">{details}</div>
       </div>
-      {(game.rating || game.liked) && (
+      {played && (game.rating || game.liked) && (
         <span className="game-rated">
           {starText(game.rating)}
           {game.liked && <span className="game-liked"> ♥</span>}
