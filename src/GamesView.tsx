@@ -3,7 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, ChevronRight, Flag, Gamepad2, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
-import { coverUrl, isConnected, searchGames, type FoundGame } from './igdb'
+import { isConnected, searchGames, type FoundGame } from './igdb'
+import Cover from './GameCover'
+import GameCalendar from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { starText } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -14,6 +16,12 @@ import { useLocalState } from './localState'
 
 const SEARCH_DELAY = 400 // ms after the last key before searching
 
+type GamesViewName = 'mine' | 'calendar'
+const VIEWS: { value: GamesViewName; label: string }[] = [
+  { value: 'mine', label: 'My games' },
+  { value: 'calendar', label: 'Calendar' },
+]
+
 function GamesView() {
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
   // Closed groups, remembered per device (e.g. a long Done list folded away)
@@ -21,6 +29,7 @@ function GamesView() {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
+  const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
 
   function openMenu(game: Game, x: number, y: number) {
     setMenu({ game, x, y })
@@ -50,39 +59,57 @@ function GamesView() {
     ]
   }
 
+  const inList = new Map(games?.map((g) => [g.id, g.status]))
   return (
     <main className="page games-page">
       <div className="games">
-        <GameSearch inList={new Map(games?.map((g) => [g.id, g.status]))} />
-        {games && games.length === 0 && isConnected() && (
-          <p className="games-empty">
-            <Gamepad2 size={18} /> Search for a game above to start your list.
-          </p>
+        <div className="games-views">
+          {VIEWS.map(({ value, label }) => (
+            <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {view === 'calendar' ? (
+          isConnected() ? (
+            <GameCalendar inList={inList} />
+          ) : (
+            <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
+          )
+        ) : (
+          <>
+            <GameSearch inList={inList} />
+            {games && games.length === 0 && isConnected() && (
+              <p className="games-empty">
+                <Gamepad2 size={18} /> Search for a game above to start your list.
+              </p>
+            )}
+            {games &&
+              games.length > 0 &&
+              STATUSES.map(({ status, label }) => {
+                const group = sortGames(games.filter((g) => g.status === status))
+                if (group.length === 0) return null
+                const isClosed = !!closed[status]
+                return (
+                  <section key={status} className="games-group">
+                    <button className="games-group-title" onClick={() => setClosed({ ...closed, [status]: !isClosed })}>
+                      {isClosed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                      {label} <span className="games-count">{group.length}</span>
+                    </button>
+                    {!isClosed &&
+                      group.map((game) => (
+                        <GameRow
+                          key={game.id}
+                          game={game}
+                          onOpen={() => setOpenId(game.id)}
+                          onMenu={(x, y) => openMenu(game, x, y)}
+                        />
+                      ))}
+                  </section>
+                )
+              })}
+          </>
         )}
-        {games &&
-          games.length > 0 &&
-          STATUSES.map(({ status, label }) => {
-            const group = sortGames(games.filter((g) => g.status === status))
-            if (group.length === 0) return null
-            const isClosed = !!closed[status]
-            return (
-              <section key={status} className="games-group">
-                <button className="games-group-title" onClick={() => setClosed({ ...closed, [status]: !isClosed })}>
-                  {isClosed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                  {label} <span className="games-count">{group.length}</span>
-                </button>
-                {!isClosed &&
-                  group.map((game) => (
-                    <GameRow
-                      key={game.id}
-                      game={game}
-                      onOpen={() => setOpenId(game.id)}
-                      onMenu={(x, y) => openMenu(game, x, y)}
-                    />
-                  ))}
-              </section>
-            )
-          })}
       </div>
       {openId && (
         <GameDialog
@@ -97,16 +124,6 @@ function GamesView() {
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.game)} onClose={() => setMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
-  )
-}
-
-function Cover({ coverId }: { coverId?: string }) {
-  return coverId ? (
-    <img className="game-cover" src={coverUrl(coverId)} alt="" loading="lazy" />
-  ) : (
-    <span className="game-cover game-cover-none">
-      <Gamepad2 size={14} />
-    </span>
   )
 }
 

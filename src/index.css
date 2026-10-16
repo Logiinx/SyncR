@@ -2871,6 +2871,36 @@ h2 + .settings-section {
   text-transform: uppercase;
 }
 
+/* Calendar month titles: same look as the status group titles, but not clickable */
+h3.games-group-title {
+  margin: 0;
+  cursor: default;
+}
+
+/* "My games" | "Calendar" at the top of the Games tab */
+.games-views {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.games-views button {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.games-views button:hover {
+  color: var(--text);
+}
+
+.games-views button.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text);
+}
+
 .games-count {
   color: var(--text-dim);
   font-weight: 400;
