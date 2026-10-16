@@ -6,7 +6,7 @@ import { formatRelease, STATUSES } from './games'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab): status, flag, note, and for games you've
-// finished or dropped: stars, heart and review. Changes save right away; Done closes.
+// finished or dropped: stars, heart and review. Changes save right away; Close closes.
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
@@ -104,7 +104,7 @@ function GameDetails({ game, onClose, onRemove }: { game: Game; onClose: () => v
             Remove from list
           </button>
           <button className="primary" onClick={onClose} autoFocus>
-            Done
+            Close
           </button>
         </div>
       </div>
