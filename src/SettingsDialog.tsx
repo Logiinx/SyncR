@@ -196,13 +196,25 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             </label>
             <label className="setting setting-toggle">
               <span>
-                Start with Windows <span className="setting-value">hidden in the tray</span>
+                Start with Windows <span className="setting-value">when you sign in</span>
               </span>
               <input
                 type="checkbox"
                 checked={autostart ?? false}
                 disabled={autostart === null}
                 onChange={(e) => toggleAutostart(e.target.checked)}
+              />
+            </label>
+            <label className="setting setting-toggle">
+              <span>
+                Start hidden in the tray{' '}
+                <span className="setting-value">when started with Windows; otherwise the window shows</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={background.startHidden}
+                disabled={!autostart}
+                onChange={(e) => updateBackground({ startHidden: e.target.checked })}
               />
             </label>
           </>

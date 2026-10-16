@@ -8,10 +8,11 @@ import { read, write } from './localState'
 export interface Background {
   closeToTray: boolean // ✕ hides SyncR in the tray (it keeps running for reminders) instead of quitting
   reminderSound: boolean // short chime when a reminder comes due (chime.ts)
+  startHidden: boolean // started by Windows at sign-in: stay in the tray instead of showing the window
 }
 
 const KEY = 'syncr.background'
-const DEFAULTS: Background = { closeToTray: false, reminderSound: true }
+const DEFAULTS: Background = { closeToTray: false, reminderSound: true, startHidden: false }
 
 export function loadBackground(): Background {
   return { ...DEFAULTS, ...read<Partial<Background>>(KEY, {}) }
@@ -23,7 +24,8 @@ export function saveBackground(background: Background) {
 
 // "Start with Windows" lives in Windows itself (a sign-in entry made by the autostart
 // plugin), so it's read from there instead of being stored here. It starts SyncR with
-// --hidden: only the tray icon shows (see startedHidden).
+// --hidden, so SyncR knows Windows started it (see startedHidden); the window then shows
+// or stays in the tray depending on Background.startHidden.
 export const startsWithWindows = () => (isTauri() ? isEnabled() : Promise.resolve(false))
 export const setStartWithWindows = (on: boolean) => (on ? enable() : disable())
 

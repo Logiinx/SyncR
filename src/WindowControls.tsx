@@ -15,9 +15,10 @@ function WindowControls() {
     const win = getCurrentWindow()
     // The window starts hidden and was already moved to its saved place (lib.rs):
     // show it now that the app has drawn its first screen, so it appears in one go.
-    // Started by Windows at sign-in ("Start with Windows"): stay hidden in the tray.
-    startedHidden().then((hidden) => {
-      if (!hidden) win.show().then(() => win.setFocus())
+    // Started by Windows at sign-in ("Start with Windows") with "Start hidden in the tray"
+    // on: stay hidden, only the tray icon shows.
+    startedHidden().then((byWindows) => {
+      if (!(byWindows && loadBackground().startHidden)) win.show().then(() => win.setFocus())
     })
     const refresh = () => win.isMaximized().then(setMaximized)
     refresh()

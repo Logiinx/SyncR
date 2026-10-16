@@ -11,7 +11,8 @@ fn show_main(app: &tauri::AppHandle) {
 }
 
 // True when Windows started SyncR at sign-in ("Start with Windows" adds --hidden):
-// then the window stays hidden in the tray instead of showing (WindowControls.tsx asks this)
+// then the window stays hidden in the tray if "Start hidden in the tray" is on
+// (WindowControls.tsx asks this and decides)
 #[tauri::command]
 fn started_hidden() -> bool {
   std::env::args().any(|arg| arg == "--hidden")

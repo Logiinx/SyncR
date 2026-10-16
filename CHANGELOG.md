@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Settings → Window: "Start hidden in the tray" (off by default). With "Start with Windows" on, SyncR now opens its window when you sign in to Windows; turn this on to have it start quietly in the tray instead, as before.
+
 ### Changed
 - Bullet and numbered lists no longer leave a gap above and below them. Browsers give lists a default margin of 1em (one line of text) at the top and bottom; it's now 0, so a list sits right against the lines around it, like lines that start with a plain "-".
 
