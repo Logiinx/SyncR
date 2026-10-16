@@ -24,6 +24,16 @@ function App() {
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
+
+  // "Pin" in the selection menu: show the Board so the new card is visible
+  useEffect(() => {
+    const open = () => {
+      if (isNarrowScreen()) setSidebarOpen(false)
+      setBoardOpen(true)
+    }
+    window.addEventListener('open-board', open)
+    return () => window.removeEventListener('open-board', open)
+  }, [setBoardOpen, setSidebarOpen])
   // Only a brand-new note gets the cursor automatically
   const [newNoteId, setNewNoteId] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number } | null>(null)

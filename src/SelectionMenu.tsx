@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, Check, FoldVertical, Italic, Link, Palette, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
+import { Bold, Check, FoldVertical, Italic, Link, Palette, Pin, SquareCode, UnfoldVertical, Underline } from 'lucide-react'
+import type { JSONContent } from '@tiptap/react'
+import { createCard } from './db'
 import ColorPicker from './ColorPicker'
 import { canMakeCodeBlock, codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
 import { copyLinkToBlock } from './noteLinks'
@@ -36,6 +38,31 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
       setCopied(true)
       setTimeout(() => setCopied(false), 1200)
     })
+  }
+
+  // "Pin": the selection (with its formatting) becomes a new priority card on the Board.
+  // A piece that can't stand on its own (e.g. part of a table) is pinned as plain text.
+  const [pinned, setPinned] = useState(false)
+  async function pin() {
+    const { from, to } = editor.state.selection
+    const text = editor.state.doc.textBetween(from, to, '\n').trim()
+    if (!text) return
+    let content: JSONContent = { type: 'doc', content: editor.state.selection.content().content.toJSON() }
+    try {
+      editor.schema.nodeFromJSON(content).check()
+    } catch {
+      content = {
+        type: 'doc',
+        content: text.split('\n').map((line) => ({
+          type: 'paragraph',
+          content: line ? [{ type: 'text', text: line }] : undefined,
+        })),
+      }
+    }
+    await createCard({ content, text, priority: true })
+    window.dispatchEvent(new Event('open-board')) // App.tsx: shows the Board if it's hidden
+    setPinned(true)
+    setTimeout(() => setPinned(false), 1200)
   }
 
   return (
@@ -99,6 +126,9 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
 
       <MenuButton title="Copy a link to this spot (paste it in any note)" onClick={copyLink}>
         {copied ? <Check size={ICON_SIZE} /> : <Link size={ICON_SIZE} />}
+      </MenuButton>
+      <MenuButton title="Pin to the Board (copies the selection into a priority card)" onClick={pin}>
+        {pinned ? <Check size={ICON_SIZE} /> : <Pin size={ICON_SIZE} />}
       </MenuButton>
 
       {showColors && <ColorPicker editor={editor} onPicked={() => setShowColors(false)} />}

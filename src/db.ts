@@ -194,16 +194,20 @@ async function nextOrder() {
   return Math.max(0, ...all.map((card) => card.order)) + 1
 }
 
-// A new empty card at the bottom of the normal (non-priority) cards
-export async function createCard(): Promise<string> {
+// A new card at the bottom of its part: empty by default ("+"), or with content ("Pin")
+export async function createCard(start?: {
+  content: JSONContent
+  text: string
+  priority: boolean
+}): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()
   const order = await nextOrder()
   await db.cards.add({
     id,
-    content: null,
-    text: '',
-    priority: false,
+    content: start?.content ?? null,
+    text: start?.text ?? '',
+    priority: start?.priority ?? false,
     order,
     deleted: false,
     createdAt: now,
