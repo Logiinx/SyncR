@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-17
+
 ### Added
 - Board: pin games to it. Right-click a game in the Games tab → "Pin to Board" (the Board opens). The card shows the game's cover and name; click it for the game's details, drag it like any card. A flagged game starts as a priority card; after that the card's priority and the game's flag are separate. Unpin with the card's ✕ (with Undo) or "Unpin from Board" in the game's menu. The card stays if you remove the game from your list (dimmed, no longer opens).
 
