@@ -1178,7 +1178,8 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px 8px 12px; /* same size and icon position as Games / Reminders */
+  border-left: 3px solid transparent;
   border-radius: 6px;
   color: var(--text-dim);
 }

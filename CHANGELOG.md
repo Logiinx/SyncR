@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Sidebar: the Settings button has the same height and icon position as the Games and Reminders buttons.
+
 ## [0.11.1] - 2026-10-16
 
 ### Changed
