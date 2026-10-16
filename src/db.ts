@@ -69,6 +69,24 @@ export interface Reminder {
   syncedUpdatedAt?: number
 }
 
+// A card on the Board (Board.tsx): a small note shown beside whatever note is open.
+// Like a reminder: synced like a setting (newest wins), and a deleted card stays as a row
+// with deleted = true for a while, so the deletion can sync too (and "Undo" can bring it back).
+// order: position in the list; a new card gets the highest, so it lands at the bottom of its
+// part (priority cards are always shown above the others).
+export interface Card {
+  id: string
+  content: JSONContent | null // editor document, like a note's
+  text: string // plain-text copy
+  priority: boolean
+  order: number
+  deleted: boolean
+  createdAt: number
+  updatedAt: number
+  syncedRev?: string
+  syncedUpdatedAt?: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -78,6 +96,7 @@ export const db = new Dexie('syncr') as Dexie & {
   attachments: EntityTable<Attachment, 'id'>
   settings: EntityTable<Setting, 'name'>
   reminders: EntityTable<Reminder, 'id'>
+  cards: EntityTable<Card, 'id'>
 }
 
 db.version(1).stores({
@@ -106,6 +125,10 @@ db.version(6).stores({
 
 db.version(7).stores({
   reminders: 'id',
+})
+
+db.version(8).stores({
+  cards: 'id',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.
@@ -157,4 +180,35 @@ export function noteTitle(note: Note): string {
   if (note.title) return note.title
   const firstLine = note.text.split('\n').find((line) => line.trim() !== '')
   return firstLine?.trim() || 'Untitled'
+}
+
+// ---------- Board cards ----------
+// Not synced yet (Board step 4), so these don't call changed() for now.
+
+// A new empty card at the bottom of the normal (non-priority) cards
+export async function createCard(): Promise<string> {
+  const now = Date.now()
+  const id = crypto.randomUUID()
+  const all = await db.cards.toArray() // deleted ones too, so Undo puts a card back in its place
+  const order = Math.max(0, ...all.map((card) => card.order)) + 1
+  await db.cards.add({
+    id,
+    content: null,
+    text: '',
+    priority: false,
+    order,
+    deleted: false,
+    createdAt: now,
+    updatedAt: now,
+  })
+  return id
+}
+
+export async function saveCardContent(id: string, content: JSONContent, text: string) {
+  await db.cards.update(id, { content, text, updatedAt: Date.now() })
+}
+
+// Delete (deleted = true) or bring back (Undo)
+export async function setCardDeleted(id: string, deleted: boolean) {
+  await db.cards.update(id, { deleted, updatedAt: Date.now() })
 }

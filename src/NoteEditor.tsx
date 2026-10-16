@@ -30,7 +30,8 @@ import { CellSelection } from '@tiptap/pm/tables'
 
 const SAVE_DELAY_MS = 500
 
-const extensions = [
+// Also used by the Board's cards (Card.tsx), so they edit the same way as notes
+export const extensions = [
   StarterKit.configure({ link: false, codeBlock: false }),
   CodeBlock,
   // Links: pasting an address makes a link (also over selected text). Clicks: see links.ts.
