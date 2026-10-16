@@ -2,8 +2,11 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
-import { createCard, db, isEmptyCard, moveCard, setCardDeleted } from './db'
+import { createCard, db, isEmptyCard, moveCard, setCardDeleted, updateGame } from './db'
 import Card from './Card'
+import GameCard from './GameCard'
+import GameDialog from './GameDialog'
+import Dialog, { type DialogRequest } from './Dialog'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
 // visible whatever note is open. Opened with the small tab in the middle of the window's right
@@ -41,6 +44,9 @@ function Board({ onClose }: Props) {
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
   const [undoId, setUndoId] = useState<string | null>(null)
+  // A pinned game's details (click its card), and the "Remove game?" question from there
+  const [openGame, setOpenGame] = useState<string | null>(null)
+  const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
   // Opening the Board: remove cards left empty last time (e.g. the Board was closed while
   // a new card was still empty). Clicking away from an empty card removes it right away (Card.tsx).
@@ -225,6 +231,22 @@ function Board({ onClose }: Props) {
     if (touch) window.addEventListener('contextmenu', blockMenu, true)
   }
 
+  // "Remove from list" in a game's details: the game leaves your list, its card stays
+  async function askRemoveGame(id: string) {
+    const game = await db.games.get(id)
+    if (!game) return
+    setDialog({
+      title: 'Remove game?',
+      message: `"${game.name}" will be removed from your list, with its note and review. Its card stays on the Board.`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: () => {
+        setOpenGame(null)
+        updateGame(game.id, { deleted: true })
+      },
+    })
+  }
+
   function undo() {
     if (undoId) setCardDeleted(undoId, false)
     setUndoId(null)
@@ -272,12 +294,21 @@ function Board({ onClose }: Props) {
             <Fragment key={card.id}>
               {/* A thin line between the priority cards and the others (only when both exist) */}
               {!card.priority && cards[index - 1]?.priority && <div className="board-separator" />}
-              <Card
-                card={card}
-                autoFocus={card.id === newCardId}
-                onDelete={() => deleteCard(card.id)}
-                onPress={(event) => pressCard(card.id, event)}
-              />
+              {card.game ? (
+                <GameCard
+                  card={{ ...card, game: card.game }}
+                  onDelete={() => deleteCard(card.id)}
+                  onPress={(event) => pressCard(card.id, event)}
+                  onOpen={setOpenGame}
+                />
+              ) : (
+                <Card
+                  card={card}
+                  autoFocus={card.id === newCardId}
+                  onDelete={() => deleteCard(card.id)}
+                  onPress={(event) => pressCard(card.id, event)}
+                />
+              )}
             </Fragment>
           ))}
         </div>
@@ -287,6 +318,8 @@ function Board({ onClose }: Props) {
             <button onClick={undo}>Undo</button>
           </div>
         )}
+        {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
+        {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       </aside>
     </>
   )

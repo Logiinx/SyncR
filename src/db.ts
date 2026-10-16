@@ -83,6 +83,9 @@ export interface Card {
   content: JSONContent | null // editor document, like a note's
   text: string // plain-text copy
   priority: boolean
+  // A pinned game (Games tab → "Pin to Board"): its id and a copy of its name and cover, so the
+  // card still shows if the game leaves the list. content stays null, text = the name.
+  game?: { id: string; name: string; coverId?: string }
   order: number
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -233,11 +236,12 @@ async function nextOrder() {
   return Math.max(0, ...all.map((card) => card.order)) + 1
 }
 
-// A new card at the bottom of its part: empty by default ("+"), or with content ("Pin")
+// A new card at the bottom of its part: empty by default ("+"), with content ("Pin"), or a game
 export async function createCard(start?: {
-  content: JSONContent
+  content: JSONContent | null
   text: string
   priority: boolean
+  game?: Card['game']
 }): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()
@@ -247,6 +251,7 @@ export async function createCard(start?: {
     content: start?.content ?? null,
     text: start?.text ?? '',
     priority: start?.priority ?? false,
+    ...(start?.game && { game: start.game }),
     order,
     deleted: false,
     createdAt: now,
@@ -271,6 +276,7 @@ export async function setCardDeleted(id: string, deleted: boolean) {
 
 // Nothing typed in it (a fresh card, or everything erased)
 export function isEmptyCard(card: Card): boolean {
+  if (card.game) return false // a game card has no text of its own
   const blocks = card.content?.content
   return !blocks || (blocks.length === 1 && blocks[0].type === 'paragraph' && !blocks[0].content)
 }
@@ -316,3 +322,26 @@ export async function updateGame(id: string, change: Partial<Game>) {
 export async function setGameStatus(id: string, status: GameStatus) {
   await updateGame(id, { status, statusAt: Date.now() })
 }
+
+// ---------- Games on the Board ----------
+
+// "Pin to Board" (Games tab): a card for the game, at the bottom of its part. A flagged game
+// starts as a priority card; after that the card's priority and the game's flag are separate.
+// Already pinned: nothing.
+export async function pinGameToBoard(game: Game) {
+  if (await pinnedCard(game.id)) return
+  await createCard({
+    content: null,
+    text: game.name,
+    priority: game.priority,
+    game: { id: game.id, name: game.name, coverId: game.coverId },
+  })
+}
+
+export async function unpinGameFromBoard(gameId: string) {
+  const card = await pinnedCard(gameId)
+  if (card) await setCardDeleted(card.id, true)
+}
+
+export const pinnedCard = async (gameId: string) =>
+  (await db.cards.toArray()).find((card) => !card.deleted && card.game?.id === gameId)

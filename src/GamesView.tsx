@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
-import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
+import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
@@ -26,6 +26,11 @@ function GamesView() {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
+  // Games that have a card on the Board (for "Pin to Board" / "Unpin from Board")
+  const pinned = useLiveQuery(
+    async () => new Set((await db.cards.toArray()).filter((c) => !c.deleted && c.game).map((c) => c.game!.id)),
+    [],
+  )
   // Closed groups, remembered per device (e.g. a long Done list folded away)
   const [closed, setClosed] = useLocalState<Partial<Record<GameStatus, boolean>>>('syncr.gamesClosed', {})
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
@@ -59,6 +64,15 @@ function GamesView() {
         onClick: () => setGameStatus(game.id, status),
       })),
       { label: game.priority ? 'Remove flag' : 'Flag', onClick: () => updateGame(game.id, { priority: !game.priority }) },
+      pinned?.has(game.id)
+        ? { label: 'Unpin from Board', onClick: () => unpinGameFromBoard(game.id) }
+        : {
+            label: 'Pin to Board',
+            onClick: async () => {
+              await pinGameToBoard(game)
+              window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
+            },
+          },
       { label: 'Remove from list', danger: true, onClick: () => askRemove(game) },
     ]
   }

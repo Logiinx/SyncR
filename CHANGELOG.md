@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board: pin games to it. Right-click a game in the Games tab → "Pin to Board" (the Board opens). The card shows the game's cover and name; click it for the game's details, drag it like any card. A flagged game starts as a priority card; after that the card's priority and the game's flag are separate. Unpin with the card's ✕ (with Undo) or "Unpin from Board" in the game's menu. The card stays if you remove the game from your list (dimmed, no longer opens).
+
 ### Fixed
 - Games: the delay banner no longer shows for a release date that only moved by a few hours on the same day (it said e.g. "29 Oct 2026 → 29 Oct 2026"). Only a later day counts as a delay.
 

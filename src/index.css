@@ -660,6 +660,52 @@ button {
   padding-left: 24px;
 }
 
+/* A game pinned to the Board (GameCard.tsx): cover and name, buttons centered on the right */
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 54px 6px 8px;
+  font-size: calc(var(--note-size, 16px) * 0.875);
+  cursor: pointer;
+}
+
+.game-card .game-cover {
+  width: 30px;
+  height: 40px;
+}
+
+.game-card .card-buttons {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.game-card-name {
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Priority: the same blue dot as text cards, before the name */
+.game-card.priority .game-card-name::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--text-blue);
+  vertical-align: 2px;
+}
+
+/* The game was removed from your list: the card stays, a bit dimmer, not clickable */
+.game-card.removed {
+  cursor: default;
+}
+
+.game-card.removed .game-card-name {
+  color: var(--text-dim);
+}
+
 /* Thin line between the priority cards and the others */
 .board-separator {
   flex-shrink: 0;
