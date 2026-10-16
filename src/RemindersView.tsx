@@ -1,19 +1,38 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronRight, Plus, Smartphone } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, List, Plus, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
-import type { Reminder } from './db'
+import GameDialog from './GameDialog'
+import Cover from './GameCover'
+import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
+import type { CalendarLayout } from './GameCalendar'
+import { useNarrow } from './useNarrow'
+import { db, updateGame, type Game, type Reminder } from './db'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
 
-// The Reminders tab (opened from "Reminders" in the sidebar): upcoming reminders (soonest
-// first), then a folded "Done" group. Click = edit, right-click / long press = menu.
+// The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your
+// reminders and your Waiting games (exact release dates), or the list, with a switch.
+// Phone: always the list. List: upcoming reminders (soonest first), then a folded "Done" group.
+// Click = edit (a game: its details), right-click / long press a reminder = menu.
 // Uses the Games tab's page layout (.games) and group titles.
+
+const MIN_MONTHS = 3 // the grid shows at least this month and the next two...
+const MAX_MONTHS = 12 // ...and at most a year, up to the last upcoming reminder or release
+
 function RemindersView() {
   // Re-runs whenever a reminder changes (also from sync)
   const reminders = useLiveQuery(listReminders, [])
+  const waitingGames = useLiveQuery(
+    () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
+    [],
+  )
+  const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
+  const narrow = useNarrow()
+  const grid = layout === 'grid' && !narrow
+  const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
   const [doneOpen, setDoneOpen] = useLocalState('syncr.remindersDoneOpen', false)
   const [editing, setEditing] = useState<Reminder | 'new' | null>(null)
   const [menu, setMenu] = useState<{ reminder: Reminder; x: number; y: number } | null>(null)
@@ -49,6 +68,21 @@ function RemindersView() {
     })
   }
 
+  async function askRemoveGame(id: string) {
+    const game = await db.games.get(id)
+    if (!game) return
+    setDialog({
+      title: 'Remove game?',
+      message: `"${game.name}" will be removed from your list, with its note and review.`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: () => {
+        setOpenGame(null)
+        updateGame(game.id, { deleted: true })
+      },
+    })
+  }
+
   const row = (reminder: Reminder) => {
     const overdue = reminder.doneAt === null && reminder.dueAt <= now
     return (
@@ -75,15 +109,33 @@ function RemindersView() {
 
   return (
     <main className="page games-page">
-      <div className="games">
+      <div className={grid ? 'games wide' : 'games'}>
         <div className="games-views">
           <button className="reminders-new" onClick={() => setEditing('new')}>
             <Plus size={15} /> New reminder
           </button>
+          <div className="calendar-layouts at-end">
+            <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
+              <CalendarDays size={15} />
+            </button>
+            <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
+              <List size={15} />
+            </button>
+          </div>
         </div>
 
-        {reminders && reminders.length === 0 && <p className="games-empty">No reminders yet.</p>}
-        {waiting.length > 0 && (
+        {grid && reminders && waitingGames && (
+          <ReminderGrid
+            reminders={reminders}
+            games={waitingGames}
+            now={now}
+            onEdit={setEditing}
+            onMenu={(reminder, x, y) => setMenu({ reminder, x, y })}
+            onGame={setOpenGame}
+          />
+        )}
+        {!grid && reminders && reminders.length === 0 && <p className="games-empty">No reminders yet.</p>}
+        {!grid && waiting.length > 0 && (
           <section className="games-group">
             <h3 className="games-group-title">
               Upcoming <span className="games-count">{waiting.length}</span>
@@ -91,7 +143,7 @@ function RemindersView() {
             {waiting.map(row)}
           </section>
         )}
-        {done.length > 0 && (
+        {!grid && done.length > 0 && (
           <section className="games-group">
             <div className="reminders-done-header">
               <button className="games-group-title" onClick={() => setDoneOpen(!doneOpen)}>
@@ -108,6 +160,7 @@ function RemindersView() {
       </div>
 
       {editing && <ReminderDialog reminder={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
       {menu && (
         <ContextMenu
           x={menu.x}
@@ -131,4 +184,67 @@ function RemindersView() {
   )
 }
 
+
+// Month grid: reminders ("14:30 Call the bank"; done ones crossed out, overdue ones red) and
+// Waiting games (cover + name) on their day. From this month to the last upcoming reminder or
+// release, at least 3 months, at most 12.
+function ReminderGrid(props: {
+  reminders: Reminder[]
+  games: Game[]
+  now: number
+  onEdit: (reminder: Reminder) => void
+  onMenu: (reminder: Reminder, x: number, y: number) => void
+  onGame: (id: string) => void
+}) {
+  const { reminders, games, now } = props
+  const today = new Date()
+  const remindersByDay = byDay(reminders, (r) => r.dueAt)
+  const gamesByDay = byDay(games, (g) => g.releaseDate!)
+  const last = Math.max(
+    ...reminders.filter((r) => r.doneAt === null).map((r) => r.dueAt),
+    ...games.map((g) => g.releaseDate!),
+    0,
+  )
+  const lastMonth = last ? (new Date(last).getFullYear() - today.getFullYear()) * 12 + new Date(last).getMonth() - today.getMonth() : 0
+  const monthCount = Math.min(MAX_MONTHS, Math.max(MIN_MONTHS, lastMonth + 1))
+  const months = Array.from({ length: monthCount }, (_, i) => new Date(today.getFullYear(), today.getMonth() + i, 1))
+  const time = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <MonthGrid
+      months={months}
+      count={(first) =>
+        reminders.filter((r) => sameMonth(new Date(r.dueAt), first)).length +
+        games.filter((g) => sameMonth(new Date(g.releaseDate!), first)).length
+      }
+      renderDay={(date) => (
+        <>
+          {(remindersByDay.get(dayKey(date)) ?? []).map((reminder) => {
+            const overdue = reminder.doneAt === null && reminder.dueAt <= now
+            return (
+              <button
+                key={reminder.id}
+                className={`calendar-reminder${overdue ? ' overdue' : ''}${reminder.doneAt !== null ? ' done' : ''}`}
+                onClick={() => props.onEdit(reminder)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  props.onMenu(reminder, e.clientX, e.clientY)
+                }}
+                title={reminder.note ? `${reminder.text}\n${reminder.note}` : reminder.text}
+              >
+                <span className="calendar-reminder-time">{time(reminder.dueAt)}</span> {reminder.text}
+              </button>
+            )
+          })}
+          {(gamesByDay.get(dayKey(date)) ?? []).map((game) => (
+            <button key={game.id} className="calendar-game" onClick={() => props.onGame(game.id)} title={game.name}>
+              <Cover coverId={game.coverId} />
+              <span>{game.name}</span>
+            </button>
+          ))}
+        </>
+      )}
+    />
+  )
+}
 export default RemindersView

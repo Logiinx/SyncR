@@ -4,6 +4,7 @@ import { addGame, gameId, releaseCountdown, STATUSES } from './games'
 import { CALENDAR_MONTHS, coverUrl, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
+import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
 
 // The Games tab's Calendar view: popular upcoming PC games for the next 6 months (Steam's top
@@ -22,11 +23,6 @@ export const DEFAULT_TOP = 500
 
 // Loaded once per app start (switching views doesn't ask IGDB again)
 let cache: Promise<UpcomingGame[]> | null = null
-
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-const monthTitle = (date: Date) => date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 
 function GameCalendar(props: { inList: Map<string, GameStatus>; layout: CalendarLayout; top: number }) {
   const { inList, layout, top } = props
@@ -152,75 +148,48 @@ function releaseText(game: UpcomingGame, withYear = false) {
   return `${date} · ${releaseCountdown(game.pcDate)}`
 }
 
-// Grid: every month from this one to the end of the range, stacked. Each month: weekday header,
-// day cells (a day with many games grows taller), then its month-only games.
+// Grid: every month from this one to the end of the range, stacked (MonthGrid.tsx). A day shows
+// its games' covers and names; a month's month-only games are listed under its grid.
 function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
   const today = new Date()
-  const byDay = new Map<string, UpcomingGame[]>()
-  for (const game of games.filter((g) => g.exact)) {
-    const key = dayKey(new Date(game.pcDate))
-    byDay.set(key, [...(byDay.get(key) ?? []), game])
-  }
+  const days = byDay(
+    games.filter((g) => g.exact),
+    (g) => g.pcDate,
+  )
   // The range ends 6 months from today, so it usually ends partway through a 7th month
   const end = new Date(today.getFullYear(), today.getMonth() + CALENDAR_MONTHS, today.getDate())
   const months = Array.from({ length: CALENDAR_MONTHS + 1 }, (_, i) => new Date(today.getFullYear(), today.getMonth() + i, 1))
     .filter((first) => first < end)
+  const monthOnly = (first: Date) => games.filter((g) => g.monthOnly && sameMonth(new Date(g.pcDate), first))
 
-  return months.map((first) => {
-    const year = first.getFullYear()
-    const month = first.getMonth()
-    const days = new Date(year, month + 1, 0).getDate()
-    const blanks = (first.getDay() + 6) % 7 // Monday first
-    const monthOnly = games.filter((g) => g.monthOnly && sameMonth(new Date(g.pcDate), first))
-    const count = [...byDay.keys()].filter((k) => k.startsWith(`${year}-${month}-`)).reduce((n, k) => n + byDay.get(k)!.length, 0)
-    return (
-      <section key={`${year}-${month}`} className="games-group calendar-month">
-        <h3 className="games-group-title">
-          {monthTitle(first)} <span className="games-count">{count + monthOnly.length}</span>
-        </h3>
-        <div className="calendar-grid">
-          {WEEKDAYS.map((day) => (
-            <div key={day} className="calendar-weekday">
-              {day}
-            </div>
-          ))}
-          {Array.from({ length: blanks }, (_, i) => (
-            <div key={`blank-${i}`} className="calendar-day blank" />
-          ))}
-          {Array.from({ length: days }, (_, i) => {
-            const date = new Date(year, month, i + 1)
-            const isToday = dayKey(date) === dayKey(today)
-            const past = !isToday && date < today
-            return (
-              <div key={i} className={`calendar-day${isToday ? ' today' : ''}${past ? ' past' : ''}`}>
-                <span className="calendar-date">{i + 1}</span>
-                {(byDay.get(dayKey(date)) ?? []).map((game) => (
-                  <button
-                    key={game.igdbId}
-                    className={statusOf(game) ? 'calendar-game in-list' : 'calendar-game'}
-                    onClick={() => onShow(game)}
-                    title={game.name}
-                  >
-                    <Cover coverId={game.coverId} />
-                    <span>{game.name}</span>
-                  </button>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-        {monthOnly.length > 0 && (
+  return (
+    <MonthGrid
+      months={months}
+      count={(first) => games.filter((g) => (g.exact || g.monthOnly) && sameMonth(new Date(g.pcDate), first)).length}
+      renderDay={(date) =>
+        (days.get(dayKey(date)) ?? []).map((game) => (
+          <button
+            key={game.igdbId}
+            className={statusOf(game) ? 'calendar-game in-list' : 'calendar-game'}
+            onClick={() => onShow(game)}
+            title={game.name}
+          >
+            <Cover coverId={game.coverId} />
+            <span>{game.name}</span>
+          </button>
+        ))
+      }
+      after={(first) =>
+        monthOnly(first).length > 0 && (
           <div className="calendar-month-only">
             <p>Sometime in {first.toLocaleDateString('en-GB', { month: 'long' })}</p>
-            <CalendarRows games={monthOnly} statusOf={statusOf} onShow={onShow} />
+            <CalendarRows games={monthOnly(first)} statusOf={statusOf} onShow={onShow} />
           </div>
-        )}
-      </section>
-    )
-  })
+        )
+      }
+    />
+  )
 }
-
-const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
 
 // Small popup: cover, name, release, all platforms, and where it is in your list (or "Add to Waiting")
 function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?: GameStatus; onClose: () => void }) {
