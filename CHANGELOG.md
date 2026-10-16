@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-10-16
+
+### Fixed
+- The PC version of 0.9.4 never came out: its build failed because the `zip` package (used by the updater) withdrew all its older versions. The updater no longer uses it (it only unpacked .zip updates, and SyncR's updates are a plain installer). This update brings the 0.9.4 changes below to the PC. Nothing new on the phone.
+
 ## [0.9.4] - 2026-10-16
 
 ### Added
