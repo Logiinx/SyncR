@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-16
+
 ### Added
 - Settings → Window: "Start hidden in the tray" (off by default). With "Start with Windows" on, SyncR now opens its window when you sign in to Windows; turn this on to have it start quietly in the tray instead, as before.
 
