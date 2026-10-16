@@ -166,6 +166,23 @@ button {
   fill: var(--error);
 }
 
+/* Phones (touch screen): the soft green and blue look alike there (same brightness, small
+   dot, bright OLED screens wash them out). Bigger dot and stronger, more different colors.
+   The PC keeps the softer ones. */
+@media (pointer: coarse) {
+  .sync-button .badge {
+    r: 3.9px;
+  }
+
+  .sync-button .badge.synced {
+    fill: #2fd16b;
+  }
+
+  .sync-button .badge.pending {
+    fill: #3d8bff;
+  }
+}
+
 /* Offline: an empty gray dot */
 .sync-button .badge.offline {
   fill: var(--gap);
