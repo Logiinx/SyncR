@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { gameId, releaseCountdown, STATUSES } from './games'
+import { Pin } from 'lucide-react'
+import { addGame, gameId, releaseCountdown, STATUSES } from './games'
 import { CALENDAR_MONTHS, coverUrl, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
@@ -10,7 +11,8 @@ import { useNarrow } from './useNarrow'
 // PC: a month grid (Monday first) or a list, with a switch (GamesView.tsx). Phone: always the list.
 // Grid: games with only a month ("Nov 2026") are listed under that month's grid. Games with only
 // a quarter or a year ("Q1 2027", "2026") come last, in "No exact date yet" (in the list, all
-// vague dates do). Click a game for a small popup.
+// vague dates do). Click a game for a small popup. The pin (rows, popup) adds a game to Waiting;
+// games already in your list show where they are instead (grid: a blue tint).
 
 export type CalendarLayout = 'grid' | 'list'
 
@@ -74,6 +76,13 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
 type ShowGame = (game: UpcomingGame) => void
 type StatusOf = (game: UpcomingGame) => GameStatus | undefined
 
+// Pin: add the game to Waiting. Only the list's own fields are saved (not rank etc.). The release
+// date is the PC one; a vague date ("2026") is left out, so it shows as TBA and sorts last.
+function pin(game: UpcomingGame) {
+  const { igdbId, name, coverId, platforms } = game
+  addGame({ igdbId, name, coverId, platforms, releaseDate: game.exact ? game.pcDate : undefined }, 'waiting')
+}
+
 // List: one group per month
 function CalendarList({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
   const months = new Map<string, UpcomingGame[]>()
@@ -112,7 +121,20 @@ function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
           <div className="game-name">{game.name}</div>
           <div className="game-details">{releaseText(game)}</div>
         </div>
-        {status && <span className="game-in-list">In {label(status)}</span>}
+        {status ? (
+          <span className="game-in-list">In {label(status)}</span>
+        ) : (
+          <button
+            className="calendar-pin"
+            title="Add to Waiting"
+            onClick={(e) => {
+              e.stopPropagation() // not the popup
+              pin(game)
+            }}
+          >
+            <Pin size={15} />
+          </button>
+        )}
       </div>
     )
   })
@@ -173,7 +195,12 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
               <div key={i} className={`calendar-day${isToday ? ' today' : ''}${past ? ' past' : ''}`}>
                 <span className="calendar-date">{i + 1}</span>
                 {(byDay.get(dayKey(date)) ?? []).map((game) => (
-                  <button key={game.igdbId} className="calendar-game" onClick={() => onShow(game)} title={game.name}>
+                  <button
+                    key={game.igdbId}
+                    className={statusOf(game) ? 'calendar-game in-list' : 'calendar-game'}
+                    onClick={() => onShow(game)}
+                    title={game.name}
+                  >
                     <Cover coverId={game.coverId} />
                     <span>{game.name}</span>
                   </button>
@@ -195,7 +222,7 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
 
 const sameMonth = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
 
-// Small popup: cover, name, release, all platforms, and where it is in your list
+// Small popup: cover, name, release, all platforms, and where it is in your list (or "Add to Waiting")
 function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?: GameStatus; onClose: () => void }) {
   const label = STATUSES.find((s) => s.status === status)?.label
   return (
@@ -216,7 +243,12 @@ function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?:
             {label && <p className="game-dialog-info">In your list: {label}</p>}
           </div>
         </div>
-        <div className="dialog-buttons">
+        <div className="dialog-buttons game-dialog-buttons">
+          {!status && (
+            <button className="calendar-popup-pin" onClick={() => pin(game)}>
+              <Pin size={15} /> Add to Waiting
+            </button>
+          )}
           <button className="primary" onClick={onClose} autoFocus>
             Close
           </button>

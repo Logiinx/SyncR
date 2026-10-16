@@ -3041,6 +3041,37 @@ h3.games-group-title {
   max-width: 420px;
 }
 
+.calendar-popup .primary {
+  margin-left: auto; /* stays on the right when there's no "Add to Waiting" */
+}
+
+/* Pin = add to Waiting (calendar rows and popup) */
+.calendar-pin {
+  display: flex;
+  flex-shrink: 0;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.calendar-pin:hover,
+.dialog-buttons .calendar-popup-pin:hover {
+  color: var(--link);
+}
+
+.dialog-buttons .calendar-popup-pin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+}
+
+/* Grid: a game already in your list gets the flagged games' blue tint */
+.calendar-game.in-list,
+.calendar-game.in-list:hover {
+  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
+}
+
 .games-count {
   color: var(--text-dim);
   font-weight: 400;

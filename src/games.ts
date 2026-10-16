@@ -17,9 +17,9 @@ export const gameId = (igdbId: number) => `igdb-${igdbId}`
 
 export const isReleased = (game: { releaseDate?: number }) => !!game.releaseDate && game.releaseDate <= Date.now()
 
-// Added from the search: Waiting if it isn't out yet, otherwise To play.
-// A game removed earlier comes back with its note, review and rating.
-export async function addGame(found: FoundGame) {
+// Added from the search: Waiting if it isn't out yet, otherwise To play. The calendar's pin
+// always gives Waiting. A game removed earlier comes back with its note, review and rating.
+export async function addGame(found: FoundGame, status?: GameStatus) {
   const id = gameId(found.igdbId)
   const before = await db.games.get(id)
   if (before && !before.deleted) return
@@ -33,7 +33,7 @@ export async function addGame(found: FoundGame) {
     ...before,
     ...found,
     id,
-    status: isReleased(found) ? 'toplay' : 'waiting',
+    status: status ?? (isReleased(found) ? 'toplay' : 'waiting'),
     statusAt: now,
     deleted: false,
     updatedAt: now,
