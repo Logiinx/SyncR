@@ -1,11 +1,12 @@
 import { Plus } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { currentZoom } from './appearance'
 
 // An open tab: a note, or the Games tab
 export interface Tab {
   id: string
   title: string
+  icon?: ReactNode // special tabs (Games), so they don't look like a note with that name
 }
 
 interface Props {
@@ -198,6 +199,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
               }}
               title={tab.title}
             >
+              {tab.icon}
               <span className="tab-title">{tab.title}</span>
               <button
                 className="tab-close"

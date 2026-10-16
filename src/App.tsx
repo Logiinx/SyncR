@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, Gamepad2, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -61,7 +61,7 @@ function App() {
   )
   // The tabs that exist: notes found in the database, and the Games tab
   const tabs: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
-    if (id === GAMES_TAB) return [{ id, title: 'Games' }]
+    if (id === GAMES_TAB) return [{ id, title: 'Games', icon: <Gamepad2 size={14} className="tab-icon" /> }]
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })

@@ -2809,6 +2809,12 @@ h2 + .settings-section {
 
 /* ---------- Games tab (GamesView.tsx) ---------- */
 
+/* The Games tab's icon in the tab bar, before its title */
+.tab-icon {
+  flex-shrink: 0;
+  color: var(--link);
+}
+
 /* The entry above the notes list (Sidebar.tsx) */
 .sidebar-games {
   display: flex;
