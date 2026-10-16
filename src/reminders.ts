@@ -7,6 +7,8 @@ import { openLink } from './links'
 const DAY_MS = 24 * 60 * 60 * 1000
 const OLD_DELETED_MS = 90 * DAY_MS // like note deletion markers in sync.ts
 
+export const REMINDERS_TAB = 'reminders' // the Reminders tab's id among the open tabs (like GAMES_TAB)
+
 export type ReminderFields = Pick<Reminder, 'text' | 'note' | 'dueAt' | 'phone'>
 
 // Reminders that aren't deleted, soonest first

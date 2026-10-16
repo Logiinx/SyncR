@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Gamepad2, Settings, TriangleAlert } from 'lucide-react'
+import { Bell, Gamepad2, Settings, TriangleAlert } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
-import RemindersSection from './RemindersSection'
+import { listReminders, REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   onMenu: (id: string, x: number, y: number) => void
   onSettings: () => void
   onGames: () => void
+  onReminders: () => void
 }
 
 // "Today, 14:32", "Yesterday, 09:10", otherwise "14-10-2026"
@@ -36,9 +37,10 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders }: Props) {
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
+  const upcoming = useLiveQuery(async () => (await listReminders()).filter((r) => r.doneAt === null).length, [])
 
   return (
     <>
@@ -46,6 +48,13 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames }: Pro
       <aside className="sidebar">
         <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
           <Gamepad2 size={15} /> Games
+        </button>
+        <button
+          className={activeId === REMINDERS_TAB ? 'sidebar-games active' : 'sidebar-games'}
+          onClick={onReminders}
+        >
+          <Bell size={15} /> Reminders
+          {!!upcoming && <span className="reminders-count">{upcoming}</span>}
         </button>
         <ul className="note-list">
           {notes?.map((note) => (
@@ -69,7 +78,6 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames }: Pro
             </li>
           ))}
         </ul>
-        <RemindersSection />
         <div className="sidebar-footer">
           <button className="footer-button" onClick={onSettings}>
             <Settings size={15} /> Settings

@@ -919,105 +919,87 @@ button {
   display: none;
 }
 
-/* ---------- Reminders, at the bottom of the sidebar (RemindersSection.tsx) ---------- */
+/* ---------- Reminders tab (RemindersView.tsx), laid out like the Games tab ---------- */
 
-.reminders {
-  display: flex;
-  flex-direction: column;
-  /* Never pushes the note list away: scrolls by itself when long */
-  max-height: 40%;
-  margin: 0 8px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
+.reminders-count {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
 }
 
-.reminders-header {
+.reminders-new {
   display: flex;
-  align-items: center;
-}
-
-.reminders-toggle {
-  display: flex;
-  flex: 1;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: var(--text-dim);
-  font-size: 13px;
-  text-align: left;
 }
 
-.reminders-toggle:hover,
-.reminders-add:hover,
+.reminders-done-header {
+  display: flex;
+  align-items: center;
+}
+
+.reminders-clear {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
 .reminders-clear:hover {
   background: rgb(255 255 255 / 6%);
   color: var(--text);
 }
 
-.reminders-count {
-  padding: 0 6px;
-  border-radius: 8px;
-  background: var(--border);
-  font-size: 11px;
-}
-
-.reminders-add,
-.reminders-clear {
+/* One reminder: text (+ a line of its note) on the left, when on the right */
+.reminder-row {
   display: flex;
-  padding: 5px 7px;
-  border-radius: 6px;
-  color: var(--text-dim);
-}
-
-.reminders-clear {
-  font-size: 12px;
-}
-
-.done-toggle {
-  font-size: 12px;
-}
-
-.reminders-body {
-  overflow-y: auto;
-}
-
-.reminder-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.reminder-list button {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 5px 8px 5px 28px;
+  padding: 8px;
   border-radius: 6px;
   text-align: left;
 }
 
-.reminder-list button:hover {
-  background: var(--border);
+.reminder-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+.reminder-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .reminder-text {
   overflow: hidden;
-  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-row-note {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.85em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .reminder-due {
+  flex-shrink: 0;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 0.85em;
 }
 
-.reminder-list button.overdue .reminder-due {
+.reminder-row.overdue .reminder-due {
   color: var(--text-red);
 }
 
-.reminder-list.done .reminder-text {
+.reminder-row.done .reminder-text {
   color: var(--text-dim);
   text-decoration: line-through;
 }
