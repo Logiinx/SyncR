@@ -2586,6 +2586,17 @@ h2 + .settings-section {
   color: var(--text-dim);
 }
 
+/* Settings → Games: the connection check (green when it works) */
+.setting-status {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.setting-status.ok {
+  color: var(--text-green);
+}
+
 /* Text fields in a setting: the setting already has the space below */
 .setting > input[type='url'],
 .setting > input[type='password'] {

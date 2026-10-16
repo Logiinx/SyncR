@@ -1,27 +1,45 @@
-import { read, write } from './localState'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { changed, db } from './db'
+import { read } from './localState'
 
 // Game data from IGDB, through SyncR's own proxy (proxy/igdb-worker.js, a Cloudflare Worker):
 // IGDB can't be called from a web page directly and needs a secret that can't be in the app.
-// The proxy's address and password are set in Settings, per device (never synced).
+// The proxy's address and password are set in Settings and synced to all devices (a synced
+// setting, encrypted like everything else in Dropbox).
 
 export interface IgdbConnection {
   url: string // e.g. https://syncr-igdb.<name>.workers.dev
   password: string
 }
 
-const KEY = 'igdb'
+const SETTING = 'igdb-proxy' // lower case: Dropbox lists file names in lower case
+const EMPTY: IgdbConnection = { url: '', password: '' }
 
-export function loadConnection(): IgdbConnection {
-  return read<IgdbConnection>(KEY, { url: '', password: '' })
+export async function loadConnection(): Promise<IgdbConnection> {
+  const row = await db.settings.get(SETTING)
+  return (row?.value as IgdbConnection | undefined) ?? EMPTY
 }
 
-export function saveConnection(connection: IgdbConnection) {
-  write(KEY, connection)
+// Keeps what sync knows about the last synced version (syncedRev, …)
+export async function saveConnection(connection: IgdbConnection) {
+  const change = { value: connection, updatedAt: Date.now() }
+  if (!(await db.settings.update(SETTING, change))) await db.settings.put({ name: SETTING, ...change })
+  changed()
 }
 
-export function isConnected() {
-  const { url, password } = loadConnection()
-  return !!url && !!password
+// Up to v0.11.0 the connection was kept per device (localStorage "igdb"). Moves it into the
+// synced setting once, if there's none yet. Called at start (App, via startGameChecks).
+export async function moveOldConnection() {
+  const old = read<IgdbConnection>('igdb', EMPTY)
+  if (old.url && !(await db.settings.get(SETTING))) await saveConnection(old)
+  localStorage.removeItem('igdb')
+}
+
+export const isComplete = (connection?: IgdbConnection) => !!connection?.url && !!connection.password
+
+// For the UI: the connection, updated when it changes (also from sync). undefined while loading.
+export function useConnection() {
+  return useLiveQuery(loadConnection, [])
 }
 
 // The address as typed, made absolute: without "https://" the browser would treat it as a
@@ -32,8 +50,10 @@ function proxyUrl(typed: string) {
 }
 
 // One IGDB query, e.g. igdb('games', 'search "Guild Wars"; fields name; limit 5;')
-export async function igdb<T>(endpoint: string, query: string, connection = loadConnection()): Promise<T[]> {
-  if (!connection.url || !connection.password) throw new Error('Game search is not set up (Settings → Games)')
+// connection: to check one that isn't saved yet (Settings); otherwise the saved one.
+export async function igdb<T>(endpoint: string, query: string, connection?: IgdbConnection): Promise<T[]> {
+  connection ??= await loadConnection()
+  if (!isComplete(connection)) throw new Error('Game search is not set up (Settings → Games)')
   let response: Response
   try {
     response = await fetch(`${proxyUrl(connection.url)}/${endpoint}`, {

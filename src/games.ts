@@ -1,5 +1,5 @@
 import { changed, db, updateGame, setGameStatus, type Game, type GameStatus } from './db'
-import { fetchGames, isConnected as igdbConnected, type FoundGame } from './igdb'
+import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { read, write } from './localState'
@@ -110,7 +110,7 @@ export async function moveReleased() {
 // are saved (so they sync). A later date for a Waiting game is a delay: delayedFrom keeps the
 // first date it had, for the banner in the Games tab.
 export async function refreshGames(force = false) {
-  if (!igdbConnected()) return
+  if (!isComplete(await loadConnection())) return
   if (!force && Date.now() - read<number>(REFRESHED_KEY, 0) < REFRESH_EVERY) return
   const games = await db.games.filter((g) => !g.deleted).toArray()
   const fresh = new Map((await fetchGames(games.map((g) => g.igdbId))).map((f) => [f.igdbId, f]))
@@ -203,6 +203,7 @@ export async function syncReleaseReminders() {
 let started = false
 export function startGameChecks() {
   if (started) return
+  moveOldConnection().catch((e) => console.warn('Could not move the game search settings', e))
   started = true
   const check = async () => {
     try {

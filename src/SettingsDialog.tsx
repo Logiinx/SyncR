@@ -5,7 +5,7 @@ import { checkForUpdates } from './UpdateBanner'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
 import { playChime } from './chime'
-import { igdb, loadConnection, saveConnection, type IgdbConnection } from './igdb'
+import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import {
   loadBackground,
   saveBackground,
@@ -260,38 +260,60 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-// Game search: the address and password of SyncR's IGDB proxy (igdb.ts), and a test search
+// Game search: the address and password of SyncR's IGDB proxy (igdb.ts), synced to all devices.
+// The connection is checked by itself (when Settings opens, and shortly after typing stops):
+// a green "Connected", or what went wrong.
+const CHECK_DELAY = 800 // ms after the last key
+
 function GamesSettings() {
-  const [connection, setConnection] = useState(loadConnection)
-  const [test, setTest] = useState('')
+  const saved = useConnection()
+  const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
+  useEffect(() => {
+    if (saved) setConnection((current) => current ?? saved)
+  }, [saved])
+
+  useEffect(() => {
+    if (!connection) return
+    if (!isComplete(connection)) {
+      setStatus({ ok: false, text: 'Not set up' })
+      return
+    }
+    let current = true
+    const timer = window.setTimeout(async () => {
+      setStatus({ ok: false, text: 'Checking…' })
+      try {
+        await igdb('games', 'fields name; limit 1;', connection)
+        if (current) setStatus({ ok: true, text: 'Connected' })
+      } catch (error) {
+        if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
+      }
+    }, CHECK_DELAY)
+    return () => {
+      current = false
+      window.clearTimeout(timer)
+    }
+  }, [connection])
 
   function change(update: Partial<IgdbConnection>) {
-    const next = { ...connection, ...update }
+    const next = { ...connection!, ...update }
     setConnection(next)
     saveConnection(next)
-    setTest('')
-  }
-
-  async function runTest() {
-    setTest('Testing…')
-    try {
-      const games = await igdb<{ name: string }>('games', 'search "Guild Wars"; fields name; limit 3;', connection)
-      setTest(games.length ? `Connected. Found: ${games.map((g) => g.name).join(', ')}` : 'Connected (no results)')
-    } catch (error) {
-      setTest(error instanceof Error ? error.message : String(error))
-    }
   }
 
   return (
     <>
-      <SectionTitle title="Games" scope="this device" />
+      <SectionTitle title="Games" scope="all devices" />
       <label className="setting">
         <span className="setting-label">Game search proxy address</span>
         <input
           type="url"
           placeholder="https://….workers.dev"
-          value={connection.url}
+          value={connection?.url ?? ''}
           onChange={(e) => change({ url: e.target.value.trim() })}
+          disabled={!connection}
           spellCheck={false}
         />
       </label>
@@ -299,17 +321,13 @@ function GamesSettings() {
         <span className="setting-label">Proxy password</span>
         <input
           type="password"
-          value={connection.password}
+          value={connection?.password ?? ''}
           onChange={(e) => change({ password: e.target.value })}
+          disabled={!connection}
           autoComplete="off"
         />
       </label>
-      <div className="setting setting-toggle">
-        <span className="setting-value">{test}</span>
-        <button className="setting-button" onClick={runTest} disabled={!connection.url || !connection.password}>
-          Test
-        </button>
-      </div>
+      {status && <p className={status.ok ? 'setting-status ok' : 'setting-status'}>{status.text}</p>}
     </>
   )
 }

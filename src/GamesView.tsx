@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Flag, Gamepad2, List, Search, X } from 'lucide-react'
 import { db, setGameStatus, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
-import { isConnected, searchGames, type FoundGame } from './igdb'
+import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
@@ -23,6 +23,8 @@ const VIEWS: { value: GamesViewName; label: string }[] = [
 ]
 
 function GamesView() {
+  const connection = useConnection() // undefined while loading
+  const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
   // Closed groups, remembered per device (e.g. a long Done list folded away)
   const [closed, setClosed] = useLocalState<Partial<Record<GameStatus, boolean>>>('syncr.gamesClosed', {})
@@ -93,16 +95,18 @@ function GamesView() {
           )}
         </div>
         {view === 'calendar' ? (
-          isConnected() ? (
+          connected ? (
             <GameCalendar inList={inList} layout={layout} top={top} />
           ) : (
-            <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
+            connection && (
+              <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
+            )
           )
         ) : (
           <>
             {games && <DelayBanner games={games} />}
             <GameSearch inList={inList} />
-            {games && games.length === 0 && isConnected() && (
+            {games && games.length === 0 && connected && (
               <p className="games-empty">
                 <Gamepad2 size={18} /> Search for a game above to start your list.
               </p>
@@ -213,6 +217,8 @@ function DelayBanner({ games }: { games: Game[] }) {
 
 // The search box at the top. Results show below it; "Add" puts a game in the list.
 function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
+  const connection = useConnection() // undefined while loading
+  const connected = isComplete(connection)
   const [text, setText] = useState('')
   const [includeDlc, setIncludeDlc] = useLocalState('syncr.gamesIncludeDlc', false)
   const [results, setResults] = useState<FoundGame[] | null>(null)
@@ -244,7 +250,8 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
     return () => window.clearTimeout(timer)
   }, [text, includeDlc])
 
-  if (!isConnected()) {
+  if (connection === undefined) return null
+  if (!connected) {
     return <p className="games-empty">To search for games, set up the game search in Settings → Games.</p>
   }
 
