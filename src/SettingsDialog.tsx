@@ -260,10 +260,18 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 // a green "Connected", or what went wrong.
 const CHECK_DELAY = 800 // ms after the last key
 
+// Address + password of the last check that worked, until the app closes (see GamesSettings)
+let lastGoodConnection: string | null = null
+
 function GamesSettings() {
   const saved = useConnection()
   const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
+  // Shown from the start, so the dialog doesn't grow when the first result comes in. The saved
+  // connection loads a moment later: if one worked before, start on "Connected" (corrected below
+  // if the saved one is different now)
+  const [status, setStatus] = useState(() =>
+    lastGoodConnection ? { ok: true, text: 'Connected' } : { ok: false, text: 'Waiting for connection…' },
+  )
 
   // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
   useEffect(() => {
@@ -276,13 +284,20 @@ function GamesSettings() {
       setStatus({ ok: false, text: 'Not set up' })
       return
     }
+    // Same address and password as the last check that worked: "Connected" right away, and
+    // the check below runs quietly (the status only changes if it fails now)
+    const key = `${connection.url}\n${connection.password}`
+    const knownGood = key === lastGoodConnection
+    if (knownGood) setStatus({ ok: true, text: 'Connected' })
     let current = true
     const timer = window.setTimeout(async () => {
-      setStatus({ ok: false, text: 'Checking…' })
+      if (!knownGood) setStatus({ ok: false, text: 'Checking…' })
       try {
         await igdb('games', 'fields name; limit 1;', connection)
+        lastGoodConnection = key
         if (current) setStatus({ ok: true, text: 'Connected' })
       } catch (error) {
+        if (lastGoodConnection === key) lastGoodConnection = null
         if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
       }
     }, CHECK_DELAY)
@@ -322,7 +337,7 @@ function GamesSettings() {
           autoComplete="off"
         />
       </label>
-      {status && <p className={status.ok ? 'setting-status ok' : 'setting-status'}>{status.text}</p>}
+      <p className={status.ok ? 'setting-status ok' : 'setting-status'}>{status.text}</p>
     </>
   )
 }
