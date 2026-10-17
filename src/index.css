@@ -3702,7 +3702,7 @@ h3.games-group-title {
   }
 }
 
-/* Stars: a grey star with a yellow one on top, cut to 0 / 50 / 100 %. Two invisible
+/* Stars: a grey star icon with a yellow one on top, cut to 0 / 50 / 100 %. Two invisible
    buttons per star: left half = half a star. */
 .game-rating {
   display: flex;
@@ -3712,13 +3712,17 @@ h3.games-group-title {
 
 .stars {
   display: flex;
+  gap: 2px;
 }
 
 .star {
   position: relative;
-  display: inline-block;
-  font-size: 28px;
-  line-height: 1;
+  display: flex;
+}
+
+.star svg {
+  flex-shrink: 0;
+  fill: currentColor;
 }
 
 .star-back {
@@ -3729,10 +3733,30 @@ h3.games-group-title {
   position: absolute;
   top: 0;
   left: 0;
+  display: flex;
   overflow: hidden;
   color: var(--text-yellow);
-  white-space: nowrap;
   pointer-events: none;
+}
+
+/* The rating in the Games list (RatingStars): small filled stars, a half one cut in half */
+.rating-stars {
+  display: flex;
+  gap: 1px;
+}
+
+.rating-star {
+  display: flex;
+  overflow: hidden;
+}
+
+.rating-star svg {
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.rating-star.half {
+  width: 6px;
 }
 
 .star-half {

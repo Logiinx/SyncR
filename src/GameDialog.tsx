@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarPlus, Gamepad2, Heart, Pin, PinOff, Sparkles, Trash2, X } from 'lucide-react'
+import { CalendarPlus, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type Reminder } from './db'
 import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, shortPlatforms, STATUSES } from './games'
 import { addToGoogleCalendar } from './reminders'
@@ -178,9 +178,9 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
         const fill = shown >= star ? 100 : shown >= star - 0.5 ? 50 : 0
         return (
           <span key={star} className="star">
-            <span className="star-back">★</span>
+            <Star size={28} className="star-back" />
             <span className="star-front" style={{ width: `${fill}%` }}>
-              ★
+              <Star size={28} />
             </span>
             {[star - 0.5, star].map((half) => (
               <button
@@ -202,10 +202,19 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
 const reminderTime = (time: number) =>
   new Date(time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-// "★★★½" for the rows in the list
-export function starText(rating?: number) {
-  if (!rating) return ''
-  return '★'.repeat(Math.floor(rating)) + (rating % 1 ? '½' : '')
+// The rating in the list's rows: only the stars given, the last one cut in half for a half star
+export function RatingStars({ rating }: { rating?: number }) {
+  if (!rating) return null
+  const stars = Math.ceil(rating)
+  return (
+    <span className="rating-stars" aria-label={`${rating} stars`}>
+      {Array.from({ length: stars }, (_, i) => (
+        <span key={i} className={i + 1 > rating ? 'rating-star half' : 'rating-star'}>
+          <Star size={12} />
+        </span>
+      ))}
+    </span>
+  )
 }
 
 export default GameDialog

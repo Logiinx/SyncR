@@ -7,7 +7,7 @@ import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import GameDialog, { starText } from './GameDialog'
+import GameDialog, { RatingStars } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 
@@ -201,7 +201,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       </div>
       {played && (game.rating || game.liked) && (
         <span className="game-rated">
-          {starText(game.rating)}
+          <RatingStars rating={game.rating} />
           {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
         </span>
       )}

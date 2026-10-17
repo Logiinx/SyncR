@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - More symbols drawn as icons instead of text characters, so they're centered and match the rest: the ☰ menu button, the image viewer's ✕, the ✓ in sync messages, and the ♥ of liked games in the Games list. In conflict compare, sections are marked with › instead of the old ▸ triangle.
 - Color rules: deleting a rule now uses the trash icon, like deleting a group (✕ is for closing and dismissing).
 - Small icon buttons (toolbar, tab ✕, card buttons, fold arrows, dialog close, sidebar icons) now all light up the same way under the mouse. Before there were five slightly different greys, and on Board cards the hover was nearly invisible.
+- Game ratings: the stars are now icons (in the game's window and in the Games list) instead of ★ text characters. The list shows a real half star instead of "½".
 
 ## [0.12.4] - 2026-10-17
 
