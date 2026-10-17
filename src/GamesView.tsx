@@ -85,29 +85,31 @@ function GamesView() {
     <main className="page games-page">
       <div className={view === 'calendar' && layout === 'grid' ? 'games wide' : 'games'}>
         <div className="games-views">
-          {VIEWS.map(({ value, label }) => (
-            <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value)}>
-              {label}
-            </button>
-          ))}
+          <div className="games-views-switch">
+            {VIEWS.map(({ value, label }) => (
+              <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
           {view === 'calendar' && (
-            <div className="calendar-top" title="How many of Steam's most wishlisted upcoming games to show">
-              Top
-              {TOP_LEVELS.map((level) => (
-                <button key={level} className={top === level ? 'active' : ''} onClick={() => setTop(level)}>
-                  {level}
+            <div className="calendar-controls">
+              <div className="calendar-top" title="How many of Steam's most wishlisted upcoming games to show">
+                Top
+                {TOP_LEVELS.map((level) => (
+                  <button key={level} className={top === level ? 'active' : ''} onClick={() => setTop(level)}>
+                    {level}
+                  </button>
+                ))}
+              </div>
+              <div className="calendar-layouts">
+                <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
+                  <CalendarDays size={15} />
                 </button>
-              ))}
-            </div>
-          )}
-          {view === 'calendar' && (
-            <div className="calendar-layouts">
-              <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
-                <CalendarDays size={15} />
-              </button>
-              <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
-                <List size={15} />
-              </button>
+                <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
+                  <List size={15} />
+                </button>
+              </div>
             </div>
           )}
         </div>

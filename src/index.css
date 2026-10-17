@@ -3149,12 +3149,36 @@ h3.games-group-title {
   color: var(--text);
 }
 
-/* "My games" | "Calendar" at the top of the Games tab */
+/* "My games" | "Calendar" at the top of the Games tab: centered, so they stay in place
+   when the calendar grid makes the page wider. The calendar controls sit on the right. */
 .games-views {
-  display: flex;
-  flex-wrap: wrap; /* phone: the calendar buttons go to a second line if needed */
-  gap: 4px;
+  position: relative;
+  container-type: inline-size;
   margin-bottom: 16px;
+}
+
+.games-views-switch {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.calendar-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Too narrow for both on one line (calendar list, phone): controls on a second line, right */
+@container (max-width: 800px) {
+  .calendar-controls {
+    position: static;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
 }
 
 .games-views button {

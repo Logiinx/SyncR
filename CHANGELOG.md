@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Games: the "My games" and "Calendar" buttons no longer jump sideways when you switch. They're now centered at the top. The calendar's month grid makes the page wider, and since the buttons were attached to the page's left edge, they moved with it. In the calendar's list layout, "Top" and the grid/list buttons now sit on their own line below.
+
 ## [0.12.9] - 2026-10-17
 
 ### Fixed
