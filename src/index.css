@@ -356,7 +356,8 @@ button {
   flex-shrink: 0;
   transition:
     background 0.15s,
-    color 0.15s;
+    color 0.15s,
+    padding 0.15s;
 }
 
 .tab:hover {
@@ -426,11 +427,37 @@ button {
   color: var(--text);
 }
 
-/* With a mouse, only the open tab and the one under the mouse show their ✕ (hidden, not
-   removed, so the tabs don't change width). Touch screens always show it. */
+/* With a mouse, only the open tab shows its ✕. Other tabs have the same space on both sides
+   of the title; under the mouse the tab widens and its ✕ slides in (same size as on the open
+   tab). Touch screens always show every ✕. */
 @media (hover: hover) {
-  .tab:not(.active):not(:hover) .tab-close {
+  .tab:not(.active) {
+    padding-right: 12px;
+  }
+
+  /* Collapsed: no width, and the gap before it cancelled */
+  .tab:not(.active) .tab-close {
+    width: 0;
+    margin-left: -6px;
+    overflow: hidden;
     opacity: 0;
+  }
+
+  .tab:not(.active):hover {
+    padding-right: 5px;
+  }
+
+  .tab:not(.active):hover .tab-close {
+    width: 20px;
+    margin-left: 0;
+    opacity: 1;
+  }
+
+  .tab-close {
+    transition:
+      width 0.15s,
+      margin 0.15s,
+      opacity 0.15s;
   }
 }
 
