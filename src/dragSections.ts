@@ -187,7 +187,7 @@ class SectionDragger {
   // A click (or tap) on a title: open/close the section, and put the cursor where it was
   // clicked, so a second click edits the title
   clickTitle(press: Press) {
-    // Layout: <div data-type="details"><button>▶</button><div><summary>…
+    // Layout: <div data-type="details"><button>(arrow)</button><div><summary>…
     const toggle = press.section.querySelector(':scope > button')
     if (toggle instanceof HTMLButtonElement) toggle.click()
     const hit = this.view.posAtCoords({ left: press.x, top: press.y })

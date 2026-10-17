@@ -29,6 +29,10 @@ import { CellSelection } from '@tiptap/pm/tables'
 
 const SAVE_DELAY_MS = 500
 
+// A section's fold arrow: Lucide's chevron-right (as on Board cards), turned down when open
+const CHEVRON =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
+
 // Also used by the Board's cards (Card.tsx), so they edit the same way as notes
 export const extensions = [
   StarterKit.configure({ link: false, codeBlock: false }),
@@ -55,7 +59,7 @@ export const extensions = [
   Details.configure({
     persist: false,
     renderToggleButton: ({ element, isOpen }) => {
-      element.textContent = '▶'
+      element.innerHTML = CHEVRON
       element.setAttribute('aria-label', isOpen ? 'Close section' : 'Open section')
     },
   }),

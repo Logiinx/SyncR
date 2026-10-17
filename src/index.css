@@ -1799,7 +1799,7 @@ button {
   background: var(--bg-raised);
 }
 
-/* Header: ▶ like a section, then the language */
+/* Header: an arrow like a section, then the language */
 .tiptap .code-header {
   display: flex;
   align-items: center;
@@ -1815,10 +1815,12 @@ button {
 }
 
 .tiptap .code-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 22px;
   padding: 0;
-  font-size: 11px;
   color: var(--text-dim);
   transition: transform 0.15s;
 }
@@ -1933,13 +1935,15 @@ button {
   min-width: 0;
 }
 
-/* The ▶ arrow; turns to point down when open */
+/* The arrow (a chevron, like on Board cards); turns to point down when open */
 .tiptap [data-type='details'] > button {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 25.6px; /* one line */
   padding: 0;
-  font-size: 11px;
   color: var(--text-dim);
   transition: transform 0.15s;
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -58,7 +59,7 @@ lowlight.register('plaintext', plaintext)
 const lowlightNoGuess = { ...lowlight, highlightAuto: (value: string) => lowlight.highlight('plaintext', value) }
 
 // Code block with syntax highlighting (lowlight adds <span class="hljs-…"> as decorations)
-// and a header like a section title: ▶ to fold it, and the language.
+// and a header like a section title: an arrow to fold it, and the language.
 // Typing ``` and a space (or ```js) still makes one; Enter three times at the end leaves it.
 export const CodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
@@ -94,7 +95,7 @@ function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeView
           aria-label={open ? 'Fold code block' : 'Unfold code block'}
           title={open ? 'Fold' : 'Unfold'}
         >
-          ▶
+          <ChevronRight size={14} />
         </button>
         <select
           className="code-language"
