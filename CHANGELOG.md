@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- "Check for updates" moved from Settings to a small icon right of Settings at the bottom of the sidebar. It spins while checking; the result shows in the bar at the top as before.
+- Settings → About now says "by Logiinx" next to the version.
+
 ## [0.12.4] - 2026-10-17
 
 ### Added

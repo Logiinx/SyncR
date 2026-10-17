@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
-import { checkForUpdates } from './UpdateBanner'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
 import { playChime } from './chime'
@@ -243,20 +242,11 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <GamesSettings />
 
             <SectionTitle title="About" />
-            <div className="setting setting-toggle">
+            {/* Check for updates: the icon next to Settings in the sidebar */}
+            <div className="setting">
               <span>
-                SyncR <span className="setting-value">v{__APP_VERSION__}</span>
+                SyncR <span className="setting-value">v{__APP_VERSION__} · by Logiinx</span>
               </span>
-              {/* The result shows at the top of the window, so Settings closes first */}
-              <button
-                className="setting-button"
-                onClick={() => {
-                  onClose()
-                  checkForUpdates()
-                }}
-              >
-                Check for updates
-              </button>
             </div>
           </div>
         </div>

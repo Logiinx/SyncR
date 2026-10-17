@@ -5,9 +5,10 @@ import { finalSync } from './autoSync'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
 
-// Asks the bar to check for a new version now (the "Check for updates" button in Settings)
-export function checkForUpdates() {
-  window.dispatchEvent(new Event('check-for-updates'))
+// Asks the bar to check for a new version now (the update icon in the sidebar). Resolves once
+// the check is done (the icon spins until then).
+export function checkForUpdates(): Promise<void> {
+  return new Promise((done) => window.dispatchEvent(new CustomEvent('check-for-updates', { detail: done })))
 }
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -30,7 +31,8 @@ function UpdateBanner() {
 
   // "Check for updates"
   useEffect(() => {
-    const onCheck = async () => {
+    const onCheck = async (event: Event) => {
+      const done = (event as CustomEvent<() => void>).detail
       setNotice('Checking for updates…')
       try {
         if (isTauri()) {
@@ -48,6 +50,8 @@ function UpdateBanner() {
         setNotice(`SyncR is up to date (v${__APP_VERSION__}).`)
       } catch (error) {
         setNotice(`Couldn't check for updates: ${errorText(error)}`)
+      } finally {
+        done?.()
       }
     }
     window.addEventListener('check-for-updates', onCheck)

@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Gamepad2, Settings, TriangleAlert } from 'lucide-react'
+import { useState } from 'react'
+import { Bell, Gamepad2, RefreshCw, Settings, TriangleAlert } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
 import { listReminders, REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
+import { checkForUpdates } from './UpdateBanner'
 
 interface Props {
   activeId: string | null
@@ -38,6 +40,7 @@ function notePreview(note: Note) {
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
 function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders }: Props) {
+  const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
   // Upcoming reminders, without release reminders (hidden in the tab, see RemindersView.tsx)
@@ -85,6 +88,20 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         <div className="sidebar-footer">
           <button className="footer-button" onClick={onSettings}>
             <Settings size={15} /> Settings
+          </button>
+          {/* Check for updates: the result shows in the bar at the top; spins while checking */}
+          <button
+            className={checking ? 'footer-icon checking' : 'footer-icon'}
+            onClick={async () => {
+              if (checking) return
+              setChecking(true)
+              await checkForUpdates()
+              setChecking(false)
+            }}
+            title="Check for updates"
+            aria-label="Check for updates"
+          >
+            <RefreshCw size={15} />
           </button>
         </div>
       </aside>

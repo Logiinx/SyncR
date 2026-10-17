@@ -1260,7 +1260,7 @@ button {
 
 .sidebar-footer {
   display: flex;
-  flex-direction: column;
+  gap: 4px;
   margin: 4px 8px 8px;
 }
 
@@ -1268,15 +1268,32 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
   padding: 8px 10px 8px 12px; /* same size and icon position as Games / Reminders */
   border-left: 3px solid transparent;
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.footer-button:hover {
+/* Check for updates: a small icon right of Settings, spinning while it checks */
+.footer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.footer-button:hover,
+.footer-icon:hover {
   background: rgb(255 255 255 / 6%);
   color: var(--text);
+}
+
+.footer-icon.checking svg {
+  animation: spin 0.8s linear infinite;
 }
 
 /* ---------- Page and editor ---------- */
