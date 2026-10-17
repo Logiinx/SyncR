@@ -1,6 +1,7 @@
 :root {
   --bg: #161616;
   --bg-raised: #202020;
+  --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
   --border: #2a2a2a;
   --text: #e4e4e4;
   --text-dim: #808080;
@@ -121,7 +122,7 @@ button {
 }
 
 .window-controls button:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -160,7 +161,7 @@ button {
 
 .sync-button:hover {
   --gap: var(--bg-raised);
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -327,7 +328,7 @@ button {
 }
 
 .menu-button:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -421,7 +422,7 @@ button {
 }
 
 .tab-close:hover {
-  background: rgb(255 255 255 / 10%);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -446,7 +447,7 @@ button {
 }
 
 .tab-new:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -725,7 +726,7 @@ button {
 }
 
 .card-fold:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -838,7 +839,7 @@ button {
 
 .card-priority:hover,
 .card-delete:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1322,7 +1323,7 @@ button {
 
 .footer-button:hover,
 .footer-icon:hover {
-  background: rgb(255 255 255 / 6%);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1437,7 +1438,7 @@ button {
 }
 
 .compare-close:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1585,7 +1586,7 @@ button {
 }
 
 .compare-fold:hover {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1639,7 +1640,7 @@ button {
 }
 
 .toolbar button:hover:not(:disabled) {
-  background: var(--bg-raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -2615,7 +2616,7 @@ button {
 }
 
 .icon-button:hover {
-  background: var(--border);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -3602,7 +3603,7 @@ h3.games-group-title {
 }
 
 .gd-close:hover {
-  background: rgb(255 255 255 / 6%);
+  background: var(--hover);
   color: var(--text);
 }
 
