@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-17
+
 ### Added
 - Phone: swipe left from the right edge to open the Board, swipe right on it to close it.
 
