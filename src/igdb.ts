@@ -135,12 +135,66 @@ function trackedRelease(game: IgdbGame): Pick<FoundGame, 'releaseDate' | 'releas
   return first.human && first.human !== 'TBD' ? { releaseLabel: first.human } : {}
 }
 
+const SEARCH_LIMIT = 50 // matches fetched per query, to have popular ones to sort
+const SEARCH_SHOWN = 20
+const WANT_TO_PLAY = 2 // IGDB popularity types
+const VISITS = 1
+
+// "Cronos: The New Dawn" → ['cronos', 'the', 'new', 'dawn'] (punctuation ignored)
+const nameWords = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+
+// Two queries, because IGDB's own search only matches whole words ("Cronos the new d" finds
+// nothing): its search, plus names containing every typed word, each as the start of a word
+// in the name (so a word still being typed counts). Exact names first, then most popular.
 export async function searchGames(text: string, includeDlc: boolean): Promise<FoundGame[]> {
-  const words = text.replace(/["\\]/g, ' ').trim()
-  if (!words) return []
-  const where = includeDlc ? '' : ` where game_type = ${MAIN_GAME_TYPES} & version_parent = null;`
-  const games = await igdb<IgdbGame>('games', `search "${words}"; fields ${GAME_FIELDS};${where} limit 20;`)
-  return games.map(toFoundGame)
+  const typed = nameWords(text)
+  if (typed.length === 0) return []
+  const filter = includeDlc ? [] : [`game_type = ${MAIN_GAME_TYPES}`, 'version_parent = null']
+  const searchWhere = filter.length ? ` where ${filter.join(' & ')};` : ''
+  const nameWhere = [...typed.map((word) => `name ~ *"${word}"*`), ...filter].join(' & ')
+  const [bySearch, byName] = await Promise.all([
+    igdb<IgdbGame>('games', `search "${typed.join(' ')}"; fields ${GAME_FIELDS};${searchWhere} limit ${SEARCH_LIMIT};`),
+    igdb<IgdbGame>('games', `fields ${GAME_FIELDS}; where ${nameWhere}; sort hypes desc; limit ${SEARCH_LIMIT};`),
+  ])
+  const startsWords = (game: IgdbGame) => {
+    const words = nameWords(game.name)
+    return typed.every((t) => words.some((w) => w.startsWith(t)))
+  }
+  const games = new Map<number, IgdbGame>()
+  for (const game of [...bySearch, ...byName.filter(startsWords)]) games.set(game.id, game)
+
+  const score = await popularity([...games.keys()])
+  const exact = (game: IgdbGame) => (nameWords(game.name).join(' ') === typed.join(' ') ? 1 : 0)
+  const rank = (game: IgdbGame) => [exact(game), score.get(game.id)?.wantToPlay ?? 0, score.get(game.id)?.visits ?? 0]
+  return [...games.values()]
+    .sort((a, b) => {
+      const [ra, rb] = [rank(a), rank(b)]
+      return rb[0] - ra[0] || rb[1] - ra[1] || rb[2] - ra[2]
+    })
+    .slice(0, SEARCH_SHOWN)
+    .map(toFoundGame)
+}
+
+// IGDB's popularity scores: "Want to Play" ranks best (also covers upcoming games),
+// visits break ties. Without them (request failed) the results keep IGDB's order.
+async function popularity(ids: number[]) {
+  const score = new Map<number, { wantToPlay?: number; visits?: number }>()
+  if (ids.length === 0) return score
+  try {
+    const rows = await igdb<{ game_id: number; popularity_type: number; value: number }>(
+      'popularity_primitives',
+      `fields game_id, popularity_type, value; where game_id = (${ids.join(',')}) & popularity_type = (${WANT_TO_PLAY},${VISITS}); limit ${PAGE};`,
+    )
+    for (const row of rows) {
+      const entry = score.get(row.game_id) ?? {}
+      if (row.popularity_type === WANT_TO_PLAY) entry.wantToPlay = row.value
+      else entry.visits = row.value
+      score.set(row.game_id, entry)
+    }
+  } catch {
+    // keep the order without popularity
+  }
+  return score
 }
 
 // Fresh data for games already in the list (the daily refresh, games.ts)

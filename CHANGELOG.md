@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Games: the search shows the most popular matches first, by how many IGDB users want to play each game, which works for upcoming games too. Games whose name is exactly what you typed stay on top. Before, results came in IGDB's name-match order, so a well-known game like "Blight: Survival" could be missing from the first 20 when you searched "Blight".
+
+### Fixed
+- Games: the search finds games while you're still typing a word ("Cronos the new d" now finds "Cronos: The New Dawn"). IGDB's own search only matches whole words, so a half-typed word gave no results. SyncR now also looks for names whose words start with what you typed, ignoring punctuation like ":".
+
 ## [0.12.11] - 2026-10-17
 
 ### Fixed
