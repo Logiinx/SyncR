@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-10-17
+
 ### Added
 - Board cards can have a title: right-click a card → "Add title". It's bold and centered (right-click → "Align title left" to switch), double-click it to edit, and the small arrow beside it folds the card's text away. Title, alignment and folding sync to your other devices. A card with only a title is kept.
 
