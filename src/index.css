@@ -3260,9 +3260,19 @@ h3.games-group-title {
   font-size: 0.75em;
 }
 
+/* Today: the number in white on a small blue rounded square (at least square for one digit).
+   The negative margins keep the number where it is on the other days. */
 .calendar-day.today .calendar-date {
-  color: var(--link);
+  align-self: flex-start;
+  box-sizing: border-box;
+  min-width: 1.6em;
+  margin: -1px 0 -1px -3px;
+  padding: 1px 3px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--text);
   font-weight: 600;
+  text-align: center;
 }
 
 /* A game in a day: small cover + name (up to 3 lines) */

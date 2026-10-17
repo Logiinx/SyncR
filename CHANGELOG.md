@@ -5,6 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Changed
+- Calendars (Reminders and Games): today's date is shown in white on a small blue rounded square, instead of blue text.
+
+### Changed
 - Tabs: the open tab's blue line is calmer: thinner, a muted blue, and only under the title instead of along the whole tab.
 
 ### Fixed
