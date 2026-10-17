@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Notes: opening the sidebar (or the Board) at the end of a note no longer scrolls the end out of view. A note only counted as "at the bottom" within 4 pixels of its very end, but typing at the end leaves it about 21 pixels above that (the space under the last line). So the browser kept the top line in place instead, and as the narrower note's lines wrapped, the end slid down out of view. "At the bottom" now includes the last 50 pixels.
+
 ## [0.12.10] - 2026-10-17
 
 ### Fixed

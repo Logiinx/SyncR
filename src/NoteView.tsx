@@ -6,7 +6,10 @@ import { ConflictBanner } from './ConflictCompare'
 
 const SAVE_SCROLL_MS = 200
 
-const isAtBottom = (page: HTMLElement) => page.scrollHeight - page.scrollTop - page.clientHeight < 4
+// "At the bottom" includes a little above the very end: typing at the end only scrolls far
+// enough to show the cursor, which leaves the page ~21px above it (the space under the last line)
+const BOTTOM_SLACK = 50 // px
+const isAtBottom = (page: HTMLElement) => page.scrollHeight - page.scrollTop - page.clientHeight < BOTTOM_SLACK
 
 // The scrollable page around the editor. Restores and remembers the scroll position.
 // A conflict copy gets a banner above the page (it stays in view while scrolling), with
