@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.8] - 2026-10-17
+
 ### Fixed
 - Clicking a link in a note (or a Board card) opened it twice in the browser: once by SyncR, and once more by the browser's own handling of the link, which SyncR didn't block. It now opens once.
 
