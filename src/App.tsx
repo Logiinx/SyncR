@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Bell, ChevronLeft, Gamepad2, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
@@ -10,6 +10,7 @@ import NoteView from './NoteView'
 import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import Board from './Board'
+import { useBoardSwipe } from './edgeSwipe'
 import SettingsDialog from './SettingsDialog'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
@@ -31,6 +32,8 @@ function App() {
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  useBoardSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen)
 
   // Games: release day check and daily refresh from IGDB (games.ts)
   useEffect(startGameChecks, [])
@@ -176,7 +179,7 @@ function App() {
       </header>
       <UpdateBanner />
 
-      <div className="body">
+      <div className="body" ref={bodyRef}>
         {sidebarOpen && (
           <Sidebar
             activeId={activeId}

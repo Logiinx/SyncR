@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Phone: swipe left from the right edge to open the Board, swipe right on it to close it.
+
+### Fixed
+- Board cards: a bullet, numbered or check list at the end of a card no longer leaves an empty line below it. TipTap's "trailing node" kept adding an empty paragraph after a final list. Cards don't use it anymore, and the empty line it already added is hidden.
+
 ## [0.12.1] - 2026-10-17
 
 ### Changed

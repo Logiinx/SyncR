@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { EditorContent, useEditor, type Editor } from '@tiptap/react'
+import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
+import StarterKit from '@tiptap/starter-kit'
 import { Sparkles, X } from 'lucide-react'
 import { saveCardContent, setCardDeleted, setCardPriority, type Card as CardData } from './db'
 import { extensions } from './NoteEditor'
 import ContextMenu from './ContextMenu'
 
 const SAVE_DELAY_MS = 500
+
+const LISTS = ['bulletList', 'orderedList', 'taskList']
+
+// Cards made before the trailing paragraph was switched off (see below) may end with an
+// empty paragraph right after a list: drop it when showing the card
+function withoutTrailingLine(content: JSONContent): JSONContent {
+  const blocks = content.content ?? []
+  const last = blocks[blocks.length - 1]
+  const beforeLast = blocks[blocks.length - 2]
+  if (last?.type === 'paragraph' && !last.content?.length && LISTS.includes(beforeLast?.type ?? '')) {
+    return { ...content, content: blocks.slice(0, -1) }
+  }
+  return content
+}
 
 interface Props {
   card: CardData
@@ -34,17 +49,24 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
 
   // The notes' extensions, except that checkboxes can be ticked while the card isn't being
   // edited (the editor allows it, and the "change" listener below saves it in the card).
+  // No trailing paragraph: in notes it keeps a line free below a list at the end, but on a
+  // card it looks like an empty line that can't be removed. Enter on an empty item ends a list.
   const cardExtensions = useMemo(
     () =>
       extensions.map((extension) =>
-        extension.name === 'taskItem' ? TaskItem.configure({ nested: true, onReadOnlyChecked: () => true }) : extension,
+        extension.name === 'taskItem'
+          ? TaskItem.configure({ nested: true, onReadOnlyChecked: () => true })
+          : extension.name === 'starterKit'
+            ? StarterKit.configure({ link: false, codeBlock: false, trailingNode: false })
+            : extension,
       ),
     [],
   )
+  const content = useMemo(() => card.content && withoutTrailingLine(card.content), [card.content])
 
   const editor = useEditor({
     extensions: cardExtensions,
-    content: card.content,
+    content,
     editable: autoFocus,
     editorProps: {
       attributes: { spellcheck: 'false' },
@@ -118,11 +140,11 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
 
   // The card was changed from outside (sync): show it, unless an edit is waiting
   useEffect(() => {
-    if (!editor || !card.content || saveTimer.current !== undefined) return
-    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(card.content)) {
-      editor.commands.setContent(card.content, { emitUpdate: false })
+    if (!editor || !content || saveTimer.current !== undefined) return
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
+      editor.commands.setContent(content, { emitUpdate: false })
     }
-  }, [editor, card.content])
+  }, [editor, content])
 
   // Closing the Board (or deleting the card) while a save is waiting: save it now.
   // Not the place to remove an empty card: in development React runs this cleanup once right
