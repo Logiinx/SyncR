@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.13] - 2026-10-17
+
 ### Changed
 - Games → My games: one status at a time. Tabs at the top ("Waiting 7 | To play 6 | …", with counts) replace the long page of collapsible groups, so there's much less scrolling. Your games show as big covers, 6 per row on the PC, with the countdown (Waiting), the year, or your stars underneath. Priority games get a blue ring. A switch on the right of the tabs goes back to the list with dates and notes. The tab and the layout you pick are remembered on each device.
 
