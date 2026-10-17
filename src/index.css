@@ -695,7 +695,7 @@ button {
 
 .card-title.left {
   text-align: left;
-  padding-left: 28px;
+  padding-left: 30px;
 }
 
 .card-title input {
@@ -711,7 +711,7 @@ button {
 
 .card-fold {
   position: absolute;
-  left: 6px;
+  left: 8px; /* same space as the buttons on the right */
   /* Centered on the title line (padding + half a line - half the button), plus 2px: the
      letters sit a bit low in their line, so the exact middle looked too high */
   top: calc(8px + 0.75em - 7px);
@@ -811,9 +811,10 @@ button {
 /* Flag and ✕ in the top-right corner: shown on hover with a mouse, always on the phone */
 .card-buttons {
   position: absolute;
-  /* Centered on the first line of text: padding (8px) + half a line (1.5em / 2) - half a button */
+  /* Centered on the first line of text: padding (8px) + half a line (1.5em / 2) - half a button,
+     plus 2px like the fold arrow (the letters sit a bit low in their line) */
   font-size: calc(var(--note-size, 16px) * 0.875);
-  top: calc(8px + 0.75em - 10px);
+  top: calc(8px + 0.75em - 8px);
   right: 8px; /* about the same space as above and below them on a one-line card */
   display: flex;
   gap: 2px;
@@ -1625,6 +1626,15 @@ button {
   scrollbar-width: none;
 }
 
+/* Phone: the buttons centered (same space on both sides), with less padding so they fit a
+   normal phone width; "safe" keeps the first ones reachable when they still don't fit */
+@media (max-width: 699px) {
+  .toolbar {
+    justify-content: safe center;
+    padding: 0 12px;
+  }
+}
+
 .toolbar button {
   display: flex;
   flex-shrink: 0;
@@ -1726,17 +1736,19 @@ button {
 
 /* ---------- Bullet and numbered lists ---------- */
 
-/* The bullet / number sits at the left edge of the text, like the "-" you typed
+/* The bullet / number sits near the left edge of the text, like the "-" you typed
    (browsers indent lists by 40px). Nested lists step in by the same amount.
-   No gap above or below (browsers add 1em), like lines that start with "-". */
-.tiptap ul:not([data-type='taskList']) {
-  margin: 0;
-  padding-left: 1.1em;
+   No gap above or below (browsers add 1em), like lines that start with "-".
+   --indent: where the text of bullets, numbers, checklist items and section titles starts,
+   all the same, so they line up. In em, so it scales with the text (smaller on cards). */
+.tiptap {
+  --indent: 1.4em;
 }
 
+.tiptap ul:not([data-type='taskList']),
 .tiptap ol {
   margin: 0;
-  padding-left: 1.3em;
+  padding-left: var(--indent);
 }
 
 /* ---------- Checklists ---------- */
@@ -1749,13 +1761,13 @@ button {
 
 /* Nested items (Tab) are indented */
 .tiptap ul[data-type='taskList'] ul[data-type='taskList'] {
-  padding-left: 24px;
+  padding-left: var(--indent);
 }
 
 .tiptap ul[data-type='taskList'] li {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: calc(var(--indent) - 15px); /* box (15px) + gap = the indent */
 }
 
 .tiptap ul[data-type='taskList'] li > label {
@@ -2033,24 +2045,30 @@ button {
   min-width: 0;
 }
 
-/* The arrow (a chevron, like on Board cards); turns to point down when open */
+/* The arrow (a chevron, like on Board cards); turns to point down when open. One line high,
+   and 2px lower than the exact middle: the letters sit a bit low in their line (as on cards).
+   Arrow + gap = the indent, so the title lines up with list text. */
 .tiptap [data-type='details'] > button {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 25.6px; /* one line */
-  padding: 0;
+  width: calc(var(--indent) - 4px);
+  height: 1lh;
+  padding: 4px 0 0;
   color: var(--text-dim);
-  transition: transform 0.15s;
 }
 
 .tiptap [data-type='details'] > button:hover {
   color: var(--text);
 }
 
-.tiptap [data-type='details'].is-open > button {
+/* The arrow turns, not the button (its 2px shift would turn sideways) */
+.tiptap [data-type='details'] > button svg {
+  transition: transform 0.15s;
+}
+
+.tiptap [data-type='details'].is-open > button svg {
   transform: rotate(90deg);
 }
 
@@ -3596,7 +3614,8 @@ h3.games-group-title {
 .gd-close {
   display: flex;
   flex-shrink: 0;
-  margin: -4px -6px 0 0;
+  /* Same space above and on the right (19px), centered on the name's first line */
+  margin: -2px -2px 0 0;
   padding: 5px;
   border-radius: 6px;
   color: var(--text-dim);

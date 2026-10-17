@@ -12,6 +12,10 @@ All notable changes to SyncR. Newest version first.
 - Color rules: deleting a rule now uses the trash icon, like deleting a group (✕ is for closing and dismissing).
 - Small icon buttons (toolbar, tab ✕, card buttons, fold arrows, dialog close, sidebar icons) now all light up the same way under the mouse. Before there were five slightly different greys, and on Board cards the hover was nearly invisible.
 - Game ratings: the stars are now icons (in the game's window and in the Games list) instead of ★ text characters. The list shows a real half star instead of "½".
+- Notes and cards: bullet, numbered and checklist items and section titles now all start their text at the same distance from the left (before: about 18, 23 and 26 px), so they line up in one column.
+- Section arrows sit 2px lower, level with the title's letters (the font draws letters a bit low in their line, so the exact middle looked high). The ✦ and ✕ on Board cards got the same correction, so they line up with the fold arrow again, and the arrow now has the same 8px space from the edge as the buttons on the right.
+- Game window: the ✕ is centered on the game's name, with the same space above it and to its right.
+- Phone: the toolbar buttons are centered with equal space on both sides (the bar was 1px too wide and scrolled).
 
 ## [0.12.4] - 2026-10-17
 
