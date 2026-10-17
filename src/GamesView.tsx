@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Gamepad2, Heart, List, Search, Sparkles, X } from 'lucide-react'
+import { CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -17,6 +17,7 @@ import { useLocalState } from './localState'
 const SEARCH_DELAY = 400 // ms after the last key before searching
 
 type GamesViewName = 'mine' | 'calendar'
+type ShelfLayout = 'grid' | 'list'
 const VIEWS: { value: GamesViewName; label: string }[] = [
   { value: 'mine', label: 'My games' },
   { value: 'calendar', label: 'Calendar' },
@@ -31,8 +32,9 @@ function GamesView() {
     async () => new Set((await db.cards.toArray()).filter((c) => !c.deleted && c.game).map((c) => c.game!.id)),
     [],
   )
-  // Closed groups, remembered per device (e.g. a long Done list folded away)
-  const [closed, setClosed] = useLocalState<Partial<Record<GameStatus, boolean>>>('syncr.gamesClosed', {})
+  // The status shown (one at a time) and grid or list, remembered per device
+  const [shown, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
+  const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
@@ -130,30 +132,32 @@ function GamesView() {
                 <Gamepad2 size={18} /> Search for a game above to start your list.
               </p>
             )}
-            {games &&
-              games.length > 0 &&
-              STATUSES.map(({ status, label }) => {
-                const group = sortGames(games.filter((g) => g.status === status))
-                if (group.length === 0) return null
-                const isClosed = !!closed[status]
-                return (
-                  <section key={status} className="games-group">
-                    <button className="games-group-title" onClick={() => setClosed({ ...closed, [status]: !isClosed })}>
-                      {isClosed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      {label} <span className="games-count">{group.length}</span>
+            {games && games.length > 0 && (
+              <>
+                <div className="games-status-tabs">
+                  {STATUSES.map(({ status, label }) => (
+                    <button key={status} className={shown === status ? 'active' : ''} onClick={() => setShown(status)}>
+                      {label} <span className="games-count">{games.filter((g) => g.status === status).length}</span>
                     </button>
-                    {!isClosed &&
-                      group.map((game) => (
-                        <GameRow
-                          key={game.id}
-                          game={game}
-                          onOpen={() => setOpenId(game.id)}
-                          onMenu={(x, y) => openMenu(game, x, y)}
-                        />
-                      ))}
-                  </section>
-                )
-              })}
+                  ))}
+                  <div className="calendar-layouts games-layouts">
+                    <button className={shelf === 'grid' ? 'active' : ''} onClick={() => setShelf('grid')} title="Covers">
+                      <LayoutGrid size={15} />
+                    </button>
+                    <button className={shelf === 'list' ? 'active' : ''} onClick={() => setShelf('list')} title="List">
+                      <List size={15} />
+                    </button>
+                  </div>
+                </div>
+                <GameShelf
+                  games={sortGames(games.filter((g) => g.status === shown))}
+                  layout={shelf}
+                  emptyText={`No games in ${STATUSES.find((s) => s.status === shown)?.label}.`}
+                  onOpen={setOpenId}
+                  onMenu={openMenu}
+                />
+              </>
+            )}
           </>
         )}
       </div>
@@ -170,6 +174,68 @@ function GamesView() {
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.game)} onClose={() => setMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
+  )
+}
+
+// The games of one status: big covers in a grid, or rows
+function GameShelf({
+  games,
+  layout,
+  emptyText,
+  onOpen,
+  onMenu,
+}: {
+  games: Game[]
+  layout: ShelfLayout
+  emptyText: string
+  onOpen: (id: string) => void
+  onMenu: (game: Game, x: number, y: number) => void
+}) {
+  if (games.length === 0) return <p className="games-shelf-empty">{emptyText}</p>
+  const Item = layout === 'grid' ? GameTile : GameRow
+  return (
+    <div className={layout === 'grid' ? 'games-grid' : 'games-group'}>
+      {games.map((game) => (
+        <Item key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
+      ))}
+    </div>
+  )
+}
+
+// One game in the grid: big cover, name (2 lines max), and one short line: the countdown while
+// waiting (or the vague date), stars and heart once played, else the release year
+function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
+  const played = game.status === 'done' || game.status === 'dropped'
+  const when =
+    game.status === 'waiting'
+      ? releaseCountdown(game.releaseDate) || formatRelease(game.releaseDate, game.releaseLabel)
+      : game.releaseDate
+        ? String(new Date(game.releaseDate).getFullYear())
+        : ''
+  return (
+    <div
+      className={game.priority ? 'game-tile priority' : 'game-tile'}
+      onClick={onOpen}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onMenu(e.clientX, e.clientY)
+      }}
+      title={game.status === 'waiting' ? formatRelease(game.releaseDate, game.releaseLabel) : undefined}
+    >
+      <div className="game-tile-cover">
+        <Cover coverId={game.coverId} big />
+        {game.priority && <Sparkles size={14} className="game-priority-icon" aria-label="Priority" />}
+      </div>
+      <div className="game-tile-name">{game.name}</div>
+      {played && (game.rating || game.liked) ? (
+        <span className="game-rated">
+          <RatingStars rating={game.rating} />
+          {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
+        </span>
+      ) : (
+        <div className="game-details">{when}</div>
+      )}
+    </div>
   )
 }
 

@@ -3230,9 +3230,110 @@ h3.games-group-title {
     margin-left: 0; /* on its own line under the view buttons */
   }
 
-  .calendar-layouts {
+  .calendar-layouts:not(.games-layouts) {
     display: none;
   }
+}
+
+/* My games: one status at a time ("Waiting 15 | To play 9 | …") */
+.games-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0 12px;
+}
+
+.games-status-tabs button {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+/* Covers / list switch on the right of the tabs */
+.games-status-tabs .games-layouts {
+  margin-left: auto;
+}
+
+.games-status-tabs .games-layouts button {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+}
+
+.games-status-tabs button:hover {
+  color: var(--text);
+}
+
+.games-status-tabs button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 25%, var(--bg));
+  color: var(--text);
+}
+
+.games-shelf-empty {
+  color: var(--text-dim);
+}
+
+/* Big covers, as many per row as fit (6 on the PC page, 3 on a phone) */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px 12px;
+}
+
+.game-tile {
+  min-width: 0;
+  cursor: pointer;
+}
+
+.game-tile-cover {
+  position: relative;
+}
+
+.game-tile .game-cover {
+  display: flex;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.game-tile:hover .game-cover {
+  outline-color: var(--border);
+}
+
+/* Priority: blue ring and the sparkles in the corner */
+.game-tile.priority .game-cover {
+  outline-color: var(--text-blue);
+}
+
+.game-tile .game-priority-icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px;
+  box-sizing: content-box;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+}
+
+.game-tile-name {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.9em;
+  line-height: 1.3;
+}
+
+.game-tile .game-details,
+.game-tile .game-rated {
+  margin-top: 2px;
+  font-size: 0.8em;
 }
 
 /* ---------- Calendar month grid (GameCalendar.tsx) ---------- */
