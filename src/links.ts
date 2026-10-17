@@ -84,6 +84,13 @@ export const OpenLinksOnClick = Extension.create({
             },
             mouseout: () => (tooltip?.hide(), false),
             mousedown: () => (tooltip?.hide(), false),
+            // handleClick below opens the link, but it runs on mouseup: its preventDefault
+            // doesn't stop the browser's own click on the <a> (target="_blank"), which opened
+            // the link a second time. Block that one here.
+            click: (_view, event) => {
+              if ((event.target as HTMLElement).closest('a[href]')) event.preventDefault()
+              return false
+            },
             keydown: () => (tooltip?.hide(), false),
             wheel: () => (tooltip?.hide(), false),
           },
