@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Board cards: after leaving a list with Enter, the new empty line was removed again half a second later (when the card saved), putting the cursor back in the list, so "- " no longer made a bullet. Broken in 0.12.2.
+
 ## [0.12.2] - 2026-10-17
 
 ### Added

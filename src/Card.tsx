@@ -12,7 +12,8 @@ const SAVE_DELAY_MS = 500
 const LISTS = ['bulletList', 'orderedList', 'taskList']
 
 // Cards made before the trailing paragraph was switched off (see below) may end with an
-// empty paragraph right after a list: drop it when showing the card
+// empty paragraph right after a list: drop it when a card is shown or changed by sync.
+// (Not while typing: leaving a list with Enter makes the same empty line, and it must stay.)
 function withoutTrailingLine(content: JSONContent): JSONContent {
   const blocks = content.content ?? []
   const last = blocks[blocks.length - 1]
@@ -62,11 +63,10 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
       ),
     [],
   )
-  const content = useMemo(() => card.content && withoutTrailingLine(card.content), [card.content])
 
   const editor = useEditor({
     extensions: cardExtensions,
-    content,
+    content: card.content && withoutTrailingLine(card.content),
     editable: autoFocus,
     editorProps: {
       attributes: { spellcheck: 'false' },
@@ -138,13 +138,15 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, autoFocus])
 
-  // The card was changed from outside (sync): show it, unless an edit is waiting
+  // The card was changed from outside (sync): show it, unless an edit is waiting.
+  // Both compared without that empty line, so the one just made by leaving a list stays.
   useEffect(() => {
-    if (!editor || !content || saveTimer.current !== undefined) return
-    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
+    if (!editor || !card.content || saveTimer.current !== undefined) return
+    const content = withoutTrailingLine(card.content)
+    if (JSON.stringify(withoutTrailingLine(editor.getJSON())) !== JSON.stringify(content)) {
       editor.commands.setContent(content, { emitUpdate: false })
     }
-  }, [editor, content])
+  }, [editor, card.content])
 
   // Closing the Board (or deleting the card) while a save is waiting: save it now.
   // Not the place to remove an empty card: in development React runs this cleanup once right
