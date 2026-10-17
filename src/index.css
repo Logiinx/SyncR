@@ -341,7 +341,7 @@ button {
   scrollbar-width: none;
 }
 
-/* A tab: icon, title, ✕. The open one is a lighter tile with a thin blue line along the bottom. */
+/* A tab: icon, title, ✕. The open one is a lighter tile with a thin muted blue line under its title. */
 .tab {
   position: relative;
   display: flex;
@@ -370,15 +370,23 @@ button {
   color: var(--text);
 }
 
-.tab.active::after {
+/* The line: 3px with round ends at the bottom of the title, as wide as the text, 2px below
+   it. The same space above (margin) and below (padding), so the title stays centered. */
+.tab.active .tab-title {
+  position: relative;
+  margin-top: 5px;
+  padding-bottom: 5px;
+}
+
+.tab.active .tab-title::after {
   content: '';
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 0;
+  right: 0;
   bottom: 0;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--link);
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--link) 70%, var(--bg));
 }
 
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
@@ -408,6 +416,7 @@ button {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  line-height: 18px; /* with the open tab's line below it, still inside the 30px tab */
 }
 
 .tab-close {

@@ -4,6 +4,13 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Tabs: the open tab's blue line is calmer: thinner, a muted blue, and only under the title instead of along the whole tab.
+
+### Fixed
+- Settings → Games: a long error message stays on one line (cut with …) instead of making the dialog taller on the phone. Point at it or tap it to read it in full.
+- Settings → Games: when the game search isn't set up, "Waiting for connection…" stays for a second before "Not set up", instead of flashing for a split second.
+
 ## [0.12.6] - 2026-10-17
 
 ### Fixed
