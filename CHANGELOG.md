@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.7] - 2026-10-17
+
 ### Changed
 - Calendars (Reminders and Games): today's date is shown in white on a small blue rounded square, instead of blue text.
 
