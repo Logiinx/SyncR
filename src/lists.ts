@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 
 // Adds an empty item after the (empty) first item the cursor is in, and moves there
 function addSecondItem(editor: Editor) {
@@ -58,4 +58,51 @@ function listEnter(editor: Editor) {
   if (!isFirstItem) return false
   addSecondItem(editor)
   return true
+}
+
+// "- " (also "*", "+", "1. ", "[ ] ", "[x] ") right after a Shift+Enter line break: the lists'
+// own shortcuts only work at the start of a paragraph, and a line break stays inside one. Here
+// the paragraph is split at the break and the part after it becomes the list, as with Enter.
+export const ListAfterBreak = Extension.create({
+  name: 'listAfterBreak',
+
+  addProseMirrorPlugins() {
+    const editor = this.editor
+    return [
+      new Plugin({
+        props: {
+          handleTextInput: (_view, from, to, text) => text === ' ' && from === to && listAfterBreak(editor),
+        },
+      }),
+    ]
+  },
+})
+
+function listAfterBreak(editor: Editor) {
+  const { $from } = editor.state.selection
+  const paragraph = $from.parent
+  if (paragraph.type.name !== 'paragraph') return false
+  if ($from.depth >= 2 && ['listItem', 'taskItem'].includes($from.node(-1).type.name)) return false
+
+  // The last line break before the cursor, and the text between it and the cursor
+  let breakOffset = -1
+  paragraph.forEach((node, offset) => {
+    if (node.type.name === 'hardBreak' && offset < $from.parentOffset) breakOffset = offset
+  })
+  if (breakOffset < 0) return false
+  const marker = paragraph.textBetween(breakOffset + 1, $from.parentOffset)
+  const number = marker.match(/^(\d+)\.$/)
+  const task = /^\[[ x]?\]$/.test(marker)
+  if (!number && !task && !/^[-+*]$/.test(marker)) return false
+
+  // Remove the break and the marker, split there, then make the list from the new paragraph
+  const breakPos = $from.start() + breakOffset
+  const chain = editor.chain().command(({ tr }) => {
+    tr.delete(breakPos, $from.pos).split(breakPos)
+    tr.setSelection(TextSelection.create(tr.doc, breakPos + 2))
+    return true
+  })
+  if (number) return chain.toggleOrderedList().updateAttributes('orderedList', { start: Number(number[1]) }).run()
+  if (task) return chain.toggleTaskList().updateAttributes('taskItem', { checked: marker === '[x]' }).run()
+  return chain.toggleBulletList().run()
 }

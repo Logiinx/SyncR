@@ -17,7 +17,7 @@ import { Image } from './image'
 import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
-import { ListEnter } from './lists'
+import { ListAfterBreak, ListEnter } from './lists'
 import { SmartTypography } from './typography'
 import { CodeBlock } from './codeBlock'
 import { DragSections } from './dragSections'
@@ -49,6 +49,7 @@ export const extensions = [
   Highlight.configure({ multicolor: true }),
   ColorRules,
   ListEnter,
+  ListAfterBreak,
   SmartTypography,
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({
