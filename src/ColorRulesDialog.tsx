@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Trash2, X } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { loadRuleGroups, saveRuleGroups, type ColorRule, type RuleGroup } from './colorRules'
 import { COLORS } from './ColorPicker'
 
@@ -105,7 +105,7 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
                     title="Delete rule"
                     aria-label="Delete rule"
                   >
-                    <X size={15} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
                 {colorsFor === rule.id && (
