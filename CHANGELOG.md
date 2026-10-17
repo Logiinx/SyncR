@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-10-17
+
 ### Fixed
 - Settings → Games: the status line now shows "Waiting for connection…" from the start, so the dialog no longer grows a little when "Connected" appears.
 - Settings → Games: once the connection has worked, reopening Settings shows "Connected" right away instead of checking again in view. A check still runs quietly, and the status only changes if it fails. Remembered until SyncR closes.
