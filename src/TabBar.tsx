@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { currentZoom } from './appearance'
 
@@ -209,7 +209,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
                 }}
                 title="Close tab"
               >
-                ×
+                <X size={13} />
               </button>
             </div>
           )

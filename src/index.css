@@ -335,26 +335,43 @@ button {
   scrollbar-width: none;
 }
 
+/* A tab: icon, title, ✕. The open one is a lighter tile with a thin blue line along the bottom. */
 .tab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   max-width: 200px;
   height: 30px;
-  padding: 0 4px 0 10px;
+  padding: 0 5px 0 12px;
   border-radius: 6px;
   color: var(--text-dim);
   cursor: pointer;
   flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .tab:hover {
   background: var(--bg-raised);
+  color: var(--text);
 }
 
 .tab.active {
   background: var(--border);
   color: var(--text);
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--link);
 }
 
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
@@ -387,16 +404,28 @@ button {
 }
 
 .tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   width: 20px;
   height: 20px;
+  padding: 0;
   border-radius: 4px;
-  line-height: 1;
   color: var(--text-dim);
 }
 
 .tab-close:hover {
   background: rgb(255 255 255 / 10%);
   color: var(--text);
+}
+
+/* With a mouse, only the open tab and the one under the mouse show their ✕ (hidden, not
+   removed, so the tabs don't change width). Touch screens always show it. */
+@media (hover: hover) {
+  .tab:not(.active):not(:hover) .tab-close {
+    opacity: 0;
+  }
 }
 
 .tab-new {
