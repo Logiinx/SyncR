@@ -86,6 +86,11 @@ export interface Card {
   // A pinned game (Games tab → "Pin to Board"): its id and a copy of its name and cover, so the
   // card still shows if the game leaves the list. content stays null, text = the name.
   game?: { id: string; name: string; coverId?: string }
+  // A title above the text (Card.tsx): bold, centered unless titleAlign is 'left'. folded hides
+  // the text under it. All synced with the card.
+  title?: string
+  titleAlign?: 'left'
+  folded?: boolean
   order: number
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -266,6 +271,12 @@ export async function saveCardContent(id: string, content: JSONContent, text: st
   changed()
 }
 
+// Title, its alignment, folded (Card.tsx). undefined removes the field.
+export async function updateCardTitle(id: string, changes: Partial<Pick<Card, 'title' | 'titleAlign' | 'folded'>>) {
+  await db.cards.update(id, { ...changes, updatedAt: Date.now() })
+  changed()
+}
+
 // Delete (deleted = true) or bring back (Undo)
 export async function setCardDeleted(id: string, deleted: boolean) {
   const now = Date.now()
@@ -276,7 +287,7 @@ export async function setCardDeleted(id: string, deleted: boolean) {
 
 // Nothing typed in it (a fresh card, or everything erased)
 export function isEmptyCard(card: Card): boolean {
-  if (card.game) return false // a game card has no text of its own
+  if (card.game || card.title) return false // a game card has no text of its own; a title is enough
   const blocks = card.content?.content
   return !blocks || (blocks.length === 1 && blocks[0].type === 'paragraph' && !blocks[0].content)
 }

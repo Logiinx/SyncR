@@ -153,7 +153,7 @@ function Board({ onClose }: Props) {
       })
       const separator = others.findIndex((el) => el.classList.contains('board-separator'))
       const priority = j <= separator // above the separator (or the "Priority" zone) = priority
-      // Preview: the dragged card already looks like it will once dropped (blue tint and dot or not)
+      // Preview: the dragged card already looks like it will once dropped (blue tint or not)
       dragged.classList.toggle('priority', priority)
       // New order: between its neighbours (the separator is no neighbour)
       const cardOf = (el?: HTMLElement) => allCards.find((c) => c.id === el?.dataset.cardId)

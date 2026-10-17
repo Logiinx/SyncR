@@ -2,8 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
-import { Sparkles, X } from 'lucide-react'
-import { saveCardContent, setCardDeleted, setCardPriority, type Card as CardData } from './db'
+import { ChevronDown, Sparkles, X } from 'lucide-react'
+import {
+  saveCardContent,
+  setCardDeleted,
+  setCardPriority,
+  updateCardTitle,
+  type Card as CardData,
+} from './db'
 import { extensions } from './NoteEditor'
 import ContextMenu from './ContextMenu'
 
@@ -35,7 +41,9 @@ interface Props {
 // Not editable until you double-click it (or right-click → Edit), so a click and drag moves it
 // (Board.tsx). Clicking out of it or Escape ends editing. Checkboxes can be ticked anytime.
 // ✕ deletes it (the Board offers Undo for a few seconds). The sparkle (or right-click) marks it
-// as priority: it moves up with the other priority cards and gets a blue tint and dot.
+// as priority: it moves up with the other priority cards and gets a blue tint.
+// Optional title (right-click → Add title): bold, centered or left, edited with a double-click,
+// and its ▾ folds the text away. A card with a title but no text is kept.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
 function Card({ card, autoFocus, onDelete, onPress }: Props) {
@@ -43,6 +51,10 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
   const saveTimer = useRef<number | undefined>(undefined)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [editing, setEditing] = useState(autoFocus)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const cancelTitle = useRef(false) // Escape: the title's blur doesn't save
+  const hasTitle = useRef(!!card.title) // for onBlur below (it keeps the first render's card)
+  hasTitle.current = !!card.title
   const cardRef = useRef<HTMLDivElement>(null)
 
   const save = (editor: Editor) =>
@@ -88,7 +100,7 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
     onBlur: ({ editor }) => {
       setEditing(false)
       editor.setEditable(false, false)
-      if (editor.isEmpty) {
+      if (editor.isEmpty && !hasTitle.current) {
         window.clearTimeout(saveTimer.current)
         saveTimer.current = undefined
         setCardDeleted(card.id, true)
@@ -162,9 +174,33 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
+  // Title typed: saved when it loses focus (Enter too). Emptied: the title is removed.
+  function saveTitle(value: string) {
+    setEditingTitle(false)
+    if (cancelTitle.current) {
+      cancelTitle.current = false
+      return
+    }
+    const title = value.trim()
+    if (title === (card.title ?? '')) return
+    if (title) updateCardTitle(card.id, { title })
+    else updateCardTitle(card.id, { title: undefined, titleAlign: undefined, folded: undefined })
+  }
+
+  const folded = !!card.title && card.folded
+  const className = [
+    'card',
+    card.priority && 'priority',
+    editing && 'editing',
+    (card.title || editingTitle) && 'titled',
+    folded && 'folded',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div
-      className={`card${card.priority ? ' priority' : ''}${editing ? ' editing' : ''}`}
+      className={className}
       data-card-id={card.id}
       ref={cardRef}
       onPointerDown={(event) => {
@@ -180,6 +216,44 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
         setMenu({ x: event.clientX, y: event.clientY })
       }}
     >
+      {(card.title || editingTitle) && (
+        <div className={`card-title${card.titleAlign === 'left' ? ' left' : ''}`}>
+          {card.title && (
+            <button
+              className="card-fold"
+              onClick={() => updateCardTitle(card.id, { folded: card.folded ? undefined : true })}
+              title={folded ? 'Unfold' : 'Fold'}
+            >
+              <ChevronDown size={14} />
+            </button>
+          )}
+          {editingTitle ? (
+            <input
+              autoFocus
+              defaultValue={card.title ?? ''}
+              placeholder="Title"
+              spellCheck={false}
+              onBlur={(event) => saveTitle(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur()
+                if (event.key === 'Escape') {
+                  cancelTitle.current = true
+                  event.currentTarget.blur()
+                }
+              }}
+            />
+          ) : (
+            <span
+              onDoubleClick={(event) => {
+                event.stopPropagation() // edits the title, not the text
+                setEditingTitle(true)
+              }}
+            >
+              {card.title}
+            </span>
+          )}
+        </div>
+      )}
       <EditorContent editor={editor} className="card-editor" />
       <div className="card-buttons">
         <button
@@ -200,6 +274,20 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
           onClose={() => setMenu(null)}
           items={[
             ...(editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
+            ...(card.title
+              ? [
+                  { label: 'Edit title', onClick: () => setEditingTitle(true) },
+                  {
+                    label: card.titleAlign === 'left' ? 'Center title' : 'Align title left',
+                    onClick: () =>
+                      updateCardTitle(card.id, { titleAlign: card.titleAlign === 'left' ? undefined : 'left' }),
+                  },
+                  {
+                    label: 'Remove title',
+                    onClick: () => updateCardTitle(card.id, { title: undefined, titleAlign: undefined, folded: undefined }),
+                  },
+                ]
+              : [{ label: 'Add title', onClick: () => setEditingTitle(true) }]),
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               onClick: () => setCardPriority(card.id, !card.priority),

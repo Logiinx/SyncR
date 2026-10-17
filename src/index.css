@@ -611,7 +611,7 @@ button {
     pointer-events: none;
   }
 
-  /* Priority cards: blue brackets, matching their dot */
+  /* Priority cards: blue brackets, matching their tint */
   .board-cards:not(.dragging) > .card.priority:not(.editing):hover::before,
   .board-cards:not(.dragging) > .card.priority:not(.editing):hover::after {
     border-color: var(--text-blue);
@@ -630,7 +630,7 @@ button {
   }
 }
 
-/* Priority: a light blue tint and a small blue dot before the first line */
+/* Priority: a light blue tint */
 .card.priority {
   background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
 }
@@ -644,20 +644,76 @@ button {
   position: relative;
 }
 
-.card.priority .card-editor::before {
-  content: '';
-  position: absolute;
-  left: 10px;
-  top: calc(8px + 0.75em - 3px); /* centered on the first line (padding + half a line) */
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-blue);
+
+/* Title (Card.tsx): bold, centered between the ▾ on the left and the buttons on the right
+   (same room on both sides), or left after the ▾. The text sits right under it. */
+.card-title {
+  position: relative;
+  padding: 8px 54px 0;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.5;
+  font-family: var(--note-font, system-ui, sans-serif);
   font-size: calc(var(--note-size, 16px) * 0.875);
+  overflow-wrap: anywhere;
 }
 
-.card.priority .card-editor .tiptap {
-  padding-left: 24px;
+.card-title.left {
+  text-align: left;
+  padding-left: 28px;
+}
+
+.card-title input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.card-fold {
+  position: absolute;
+  left: 6px;
+  /* Centered on the title line (padding + half a line - half the button), plus 2px: the
+     letters sit a bit low in their line, so the exact middle looked too high */
+  top: calc(8px + 0.75em - 7px);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.card-fold:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.card-fold svg {
+  transition: transform 0.15s;
+}
+
+.card.folded .card-fold svg {
+  transform: rotate(-90deg);
+}
+
+.card.titled .card-editor .tiptap {
+  padding-top: 2px;
+}
+
+/* Folded: only the title shows */
+.card.folded .card-editor {
+  display: none;
+}
+
+.card.folded .card-title {
+  padding-bottom: 8px;
 }
 
 /* A game pinned to the Board (GameCard.tsx): cover and name, buttons centered on the right */
@@ -683,18 +739,6 @@ button {
 .game-card-name {
   overflow: hidden;
   overflow-wrap: anywhere;
-}
-
-/* Priority: the same blue dot as text cards, before the name */
-.game-card.priority .game-card-name::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 8px;
-  border-radius: 50%;
-  background: var(--text-blue);
-  vertical-align: 2px;
 }
 
 /* The game was removed from your list: the card stays, a bit dimmer, not clickable */
@@ -764,7 +808,7 @@ button {
   color: var(--text);
 }
 
-/* A priority card's flag is blue (shown on hover like ✕; the dot already marks it) */
+/* A priority card's flag is blue (shown on hover like ✕; the tint already marks it) */
 .card.priority .card-priority {
   color: var(--text-blue);
 }

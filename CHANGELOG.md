@@ -4,7 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board cards can have a title: right-click a card → "Add title". It's bold and centered (right-click → "Align title left" to switch), double-click it to edit, and the small arrow beside it folds the card's text away. Title, alignment and folding sync to your other devices. A card with only a title is kept.
+
 ### Changed
+- Board: priority cards (text and games) no longer have the small blue dot before their first line, which looked off next to bullets. The blue tint and the blue ✦ still mark them.
+- Notes: sections and code blocks now fold with the same small arrow (chevron) as Board card titles, instead of the ▶ triangle.
 - Phone: the swipe that opens the Board can now start anywhere in the right third of the screen, not just at the edge. With Android's gesture navigation, a swipe starting right at the edge is taken as "Back" and never reaches the app. Swipes on a wide table still scroll the table.
 
 ## [0.12.3] - 2026-10-17
