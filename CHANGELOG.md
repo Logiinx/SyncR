@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-10-17
+
+### Changed
+- Notes and cards: "- ", "1. " or "[ ] " right after a Shift+Enter line break now starts a list too. Before, these shortcuts only worked at the start of a paragraph (after Enter), and a line break stays inside the paragraph. Now the paragraph is split at the line break and the new part becomes the list.
+
 ### Fixed
 - Board cards: after leaving a list with Enter, the new empty line was removed again half a second later (when the card saved), putting the cursor back in the list, so "- " no longer made a bullet. Broken in 0.12.2.
 
