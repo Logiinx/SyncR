@@ -2813,8 +2813,15 @@ button {
 /* Settings → Games: the connection check (green when it works) */
 .setting-status {
   margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--text-dim);
   font-size: 0.9em;
+}
+
+.setting-status.full {
+  white-space: normal;
 }
 
 .setting-status.ok {

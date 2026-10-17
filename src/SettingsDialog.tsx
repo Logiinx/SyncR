@@ -272,6 +272,8 @@ function GamesSettings() {
   const [status, setStatus] = useState(() =>
     lastGoodConnection ? { ok: true, text: 'Connected' } : { ok: false, text: 'Waiting for connection…' },
   )
+  const openedAt = useRef(Date.now())
+  const [fullStatus, setFullStatus] = useState(false) // a long message, tapped: shown in full
 
   // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
   useEffect(() => {
@@ -280,9 +282,12 @@ function GamesSettings() {
 
   useEffect(() => {
     if (!connection) return
+    // Not set up: "Waiting for connection…" stays until Settings has been open for a second
+    // (a brief flash of it looked jumpy), then "Not set up"
     if (!isComplete(connection)) {
-      setStatus({ ok: false, text: 'Not set up' })
-      return
+      const wait = Math.max(0, 1000 - (Date.now() - openedAt.current))
+      const timer = window.setTimeout(() => setStatus({ ok: false, text: 'Not set up' }), wait)
+      return () => window.clearTimeout(timer)
     }
     // Same address and password as the last check that worked: "Connected" right away, and
     // the check below runs quietly (the status only changes if it fails now)
@@ -337,7 +342,15 @@ function GamesSettings() {
           autoComplete="off"
         />
       </label>
-      <p className={status.ok ? 'setting-status ok' : 'setting-status'}>{status.text}</p>
+      {/* One line (a long error would make the dialog grow on the phone): cut with …, the whole
+          text on hover, or tap it to show it in full */}
+      <p
+        className={`setting-status${status.ok ? ' ok' : ''}${fullStatus ? ' full' : ''}`}
+        title={status.text}
+        onClick={() => setFullStatus(!fullStatus)}
+      >
+        {status.text}
+      </p>
     </>
   )
 }
