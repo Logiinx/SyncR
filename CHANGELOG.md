@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.12] - 2026-10-17
+
 ### Changed
 - Games: the search shows the most popular matches first, by how many IGDB users want to play each game, which works for upcoming games too. Games whose name is exactly what you typed stay on top. Before, results came in IGDB's name-match order, so a well-known game like "Blight: Survival" could be missing from the first 20 when you searched "Blight".
 
