@@ -1,10 +1,12 @@
 import { useEffect, type RefObject } from 'react'
 
-// Phone: swipe left from the right edge opens the Board, swipe right on the open Board closes
+// Phone: swipe left from the right side opens the Board, swipe right on the open Board closes
 // it. Only fires once the finger has moved far enough, mostly sideways (a scroll stays a scroll).
 // The Board then slides in with its usual animation; it doesn't follow the finger.
 
-const EDGE = 40 // px from the right edge where an opening swipe may start
+// An opening swipe may start anywhere in the right third of the screen: Android's gesture
+// navigation takes swipes that start right at the edge as "Back", and pages can't prevent that
+const EDGE_PART = 1 / 3
 const DISTANCE = 50 // px the finger must move sideways
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
@@ -25,7 +27,9 @@ export function useBoardSwipe(
       const { clientX: x, clientY: y } = e.touches[0]
       const target = e.target as Element
       const onBoard = !!target.closest('.board, .backdrop')
-      if (boardOpen ? onBoard : x > window.innerWidth - EDGE) start = { x, y }
+      // A wide table scrolls sideways: a swipe there is meant for the table
+      const inTable = !!target.closest('.tableWrapper')
+      if (boardOpen ? onBoard : !inTable && x > window.innerWidth * (1 - EDGE_PART)) start = { x, y }
     }
 
     const onMove = (e: TouchEvent) => {

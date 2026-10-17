@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Phone: the swipe that opens the Board can now start anywhere in the right third of the screen, not just at the edge. With Android's gesture navigation, a swipe starting right at the edge is taken as "Back" and never reaches the app. Swipes on a wide table still scroll the table.
+
 ## [0.12.3] - 2026-10-17
 
 ### Changed
