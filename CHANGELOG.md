@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Games → Calendar: the popup when you click a game is small again (cover beside the name and release date). Since 0.12.1 it used the new game details window's two-column layout and showed the cover at full size.
+
 ## [0.12.8] - 2026-10-17
 
 ### Fixed

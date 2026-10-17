@@ -197,22 +197,22 @@ function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?:
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
-        className="dialog game-dialog calendar-popup"
+        className="dialog calendar-popup"
         role="dialog"
         aria-label={game.name}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <div className="game-dialog-head">
-          {game.coverId && <img className="game-dialog-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
+        <div className="calendar-popup-head">
+          {game.coverId && <img className="calendar-popup-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
           <div>
             <h2>{game.name}</h2>
-            <p className="game-dialog-info">{releaseText(game, true)}</p>
-            {game.platforms.length > 0 && <p className="game-dialog-info">{game.platforms.join(', ')}</p>}
-            {label && <p className="game-dialog-info">In your list: {label}</p>}
+            <p className="calendar-popup-info">{releaseText(game, true)}</p>
+            {game.platforms.length > 0 && <p className="calendar-popup-info">{game.platforms.join(', ')}</p>}
+            {label && <p className="calendar-popup-info">In your list: {label}</p>}
           </div>
         </div>
-        <div className="dialog-buttons game-dialog-buttons">
+        <div className="dialog-buttons">
           {!status && (
             <button className="calendar-popup-pin" onClick={() => pin(game)}>
               <Pin size={15} /> Add to Waiting

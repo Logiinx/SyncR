@@ -3364,8 +3364,34 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
 }
 
+/* Its own classes, not the game details window's (that one's two-column layout made this
+   popup wide, with a full-size cover): a small cover beside the name and details */
 .calendar-popup {
   max-width: 420px;
+}
+
+.calendar-popup-head {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.calendar-popup-cover {
+  flex-shrink: 0;
+  width: 72px;
+  height: 96px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--bg);
+}
+
+.calendar-popup-head h2 {
+  margin-bottom: 4px;
+}
+
+.dialog .calendar-popup-info {
+  margin: 0 0 8px;
+  font-size: 0.85em;
 }
 
 .calendar-popup .primary {
