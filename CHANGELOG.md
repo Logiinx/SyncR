@@ -8,9 +8,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Changed
 - Calendars (Reminders and Games): today's date is shown in white on a small blue rounded square, instead of blue text.
-
-### Changed
-- Tabs: the open tab's blue line is calmer: thinner, a muted blue, and only under the title instead of along the whole tab.
+- Tabs: the open tab's blue line is now a short rounded bar in a muted blue, only under the title, instead of a line along the whole tab.
 
 ### Fixed
 - Settings → Games: a long error message stays on one line (cut with …) instead of making the dialog taller on the phone. Point at it or tap it to read it in full.
