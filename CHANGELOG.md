@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - "Check for updates" moved from Settings to a small icon right of Settings at the bottom of the sidebar. It spins while checking; the result shows in the bar at the top as before.
 - Settings → About now says "by Logiinx" next to the version.
 - Tabs look more finished: the ✕ is a real icon, centered in its button (it was a text character, placed by the font). The open tab has a thin blue line along its bottom. With a mouse, other tabs show their ✕ only when you point at them.
+- More symbols drawn as icons instead of text characters, so they're centered and match the rest: the ☰ menu button, the image viewer's ✕, the ✓ in sync messages, and the ♥ of liked games in the Games list. In conflict compare, sections are marked with › instead of the old ▸ triangle.
 
 ## [0.12.4] - 2026-10-17
 

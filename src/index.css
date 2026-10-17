@@ -308,16 +308,21 @@ button {
   }
 }
 
+/* The ✓ icon, centered on the first line (the message can wrap) */
 .sync-message-ok {
+  flex-shrink: 0;
+  margin-top: calc((1lh - 14px) / 2);
   color: var(--ok);
 }
 
 .menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  font-size: 18px;
   color: var(--text-dim);
 }
 
@@ -1847,9 +1852,11 @@ button {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgb(0 0 0 / 50%);
   color: var(--text);
-  font-size: 16px;
 }
 
 .image-viewer-close:hover {
@@ -3467,6 +3474,9 @@ h3.games-group-title {
 
 /* Stars and heart in a row (finished / dropped games) */
 .game-rated {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
   color: var(--text-yellow);
   font-size: 0.9em;
@@ -3475,6 +3485,7 @@ h3.games-group-title {
 
 .game-liked {
   color: var(--text-pink);
+  fill: currentColor;
 }
 
 .games-group .game-row {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 
 // Opens the full-screen view of an image (called when an image in a note is clicked)
 export function openImageViewer(url: string) {
@@ -52,7 +53,7 @@ function ImageViewer() {
         }}
       />
       <button className="image-viewer-close" aria-label="Close" title="Close (Esc)" onClick={close}>
-        ✕
+        <X size={18} />
       </button>
     </div>
   )

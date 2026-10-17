@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Gamepad2, List, Search, Sparkles, X } from 'lucide-react'
+import { CalendarClock, CalendarDays, ChevronDown, ChevronRight, Gamepad2, Heart, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -202,7 +202,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       {played && (game.rating || game.liked) && (
         <span className="game-rated">
           {starText(game.rating)}
-          {game.liked && <span className="game-liked"> ♥</span>}
+          {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
         </span>
       )}
       {game.priority && <Sparkles size={14} className="game-priority-icon" aria-label="Priority" />}

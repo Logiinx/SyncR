@@ -258,7 +258,7 @@ function marker(line: Line): string {
     case 'task-done':
       return '☑'
     case 'section':
-      return '▸'
+      return '›'
     default:
       return ''
   }

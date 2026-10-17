@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronLeft, Gamepad2, Plus } from 'lucide-react'
+import { Bell, ChevronLeft, Gamepad2, Menu, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -161,7 +161,7 @@ function App() {
           }}
           title="Notes"
         >
-          ☰
+          <Menu size={18} />
         </button>
         <TabBar
           tabs={tabs}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Check } from 'lucide-react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
 import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
@@ -240,7 +241,7 @@ function SyncButton() {
           style={message.place}
           onAnimationEnd={() => message.leaving && setMessage(null)}
         >
-          {message.ok && <span className="sync-message-ok">✓</span>}
+          {message.ok && <Check size={14} className="sync-message-ok" />}
           {message.text}
         </div>
       )}
