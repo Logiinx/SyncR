@@ -64,6 +64,9 @@ const settingPath = (name: string) => `/settings/${name}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
+// A version that lost a conflict, kept as a note (see saveConflictCopy)
+const conflictCopyId = (note: Note) => `${note.id}-c${note.updatedAt}`
+
 // Images are stored without their file type; the first bytes tell which format it is
 function imageType(bytes: Uint8Array) {
   if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png'
@@ -121,18 +124,33 @@ async function runSync(): Promise<SyncResult> {
       return true
     })
     if (stored) result.downloaded++
+    return stored
   }
 
-  // Keeps a version that lost a conflict, as a new note
-  async function saveConflictCopy(note: Note, device: string) {
+  // Keeps a version that lost a conflict, as a new note. Its id comes from the note and the
+  // version's time, so a retry of the same conflict (the step after it failed or was skipped)
+  // finds the copy already there instead of making a second one.
+  // Returns 'new', 'existing' (made by the attempt that failed), or null (no copy: it's in
+  // Dropbox already, or was deleted).
+  async function saveConflictCopy(note: Note, device: string): Promise<'new' | 'existing' | null> {
+    const id = conflictCopyId(note)
+    if (remoteNotes.has(id) || remoteDeleted.has(id)) return null
     const when = new Date(note.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
-    await db.notes.add({
-      ...note,
-      id: crypto.randomUUID(),
-      title: `${noteTitle(note)} (conflict, ${device}, ${when})`,
-      conflictOf: note.id, // for the comparison (ConflictCompare.tsx); syncs with the note
+    const added = await db.transaction('rw', db.notes, db.deletions, async () => {
+      if (await db.deletions.get(id)) return null
+      if (await db.notes.get(id)) return false
+      await db.notes.add({
+        ...note,
+        id,
+        title: `${noteTitle(note)} (conflict, ${device}, ${when})`,
+        conflictOf: note.id, // for the comparison (ConflictCompare.tsx); syncs with the note
+      })
+      return true
     })
+    if (added === null) return null
+    // An existing one was made by the attempt that failed: still reported ("conflict copy created")
     result.conflicts++
+    return added ? 'new' : 'existing'
   }
 
   // ---------- What's where ----------
@@ -285,8 +303,13 @@ async function runSync(): Promise<SyncResult> {
       await saveConflictCopy(older, device)
       await uploadNote(local, { update: remoteRev })
     } else {
-      await saveConflictCopy(local, deviceName())
-      await storeNote(remote, remoteRev, local.updatedAt)
+      const copy = await saveConflictCopy(local, deviceName())
+      // Edited here while this sync ran: nothing replaced, so no copy needed (the next sync
+      // compares again, with the newer edit)
+      if (!(await storeNote(remote, remoteRev, local.updatedAt)) && copy) {
+        if (copy === 'new') await db.notes.delete(conflictCopyId(local))
+        result.conflicts--
+      }
     }
   }
 
