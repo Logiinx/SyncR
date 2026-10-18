@@ -33,6 +33,9 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
   const bodyRef = useRef<HTMLDivElement>(null)
+  // Search across all notes (Sidebar.tsx): kept while the sidebar closes, not after a restart
+  const [searchQuery, setSearchQuery] = useState('')
+  const [focusSearch, setFocusSearch] = useState(false)
   usePanelSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen, setSidebarOpen)
 
   // Games: release day check and daily refresh from IGDB (games.ts)
@@ -49,6 +52,19 @@ function App() {
     window.addEventListener('open-note', onOpenNote)
     return () => window.removeEventListener('open-note', onOpenNote)
   }, [setOpenTabs, setActiveId])
+
+  // Ctrl+Shift+F: open the sidebar with the cursor in its search box
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.key.toLowerCase() !== 'f') return
+      e.preventDefault()
+      if (isNarrowScreen()) setBoardOpen(false)
+      setSidebarOpen(true)
+      setFocusSearch(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setBoardOpen, setSidebarOpen])
 
   // "Pin" in the selection menu: show the Board so the new card is visible
   useEffect(() => {
@@ -189,6 +205,10 @@ function App() {
             onSettings={() => setSettingsOpen(true)}
             onGames={() => openNote(GAMES_TAB)}
             onReminders={() => openNote(REMINDERS_TAB)}
+            query={searchQuery}
+            onQuery={setSearchQuery}
+            focusSearch={focusSearch}
+            onSearchFocused={() => setFocusSearch(false)}
           />
         )}
         {activeId === REMINDERS_TAB && openTabs.includes(REMINDERS_TAB) ? (

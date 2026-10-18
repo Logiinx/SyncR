@@ -1060,6 +1060,29 @@ button {
   }
 }
 
+/* Search across all notes, at the top of the sidebar (looks like the games search) */
+.sidebar-search {
+  margin: 8px 8px 0;
+  font-size: 14px;
+}
+
+.sidebar-search input {
+  padding: 6px 0;
+}
+
+.sidebar-no-results {
+  margin: 16px 8px 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* The matched words in a search snippet */
+.note-preview strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .note-list {
   flex: 1;
   margin: 0;

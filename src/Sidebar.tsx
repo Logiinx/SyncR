@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
-import { Bell, Gamepad2, RefreshCw, Settings, TriangleAlert } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, Gamepad2, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
 import { db, noteTitle, type Note } from './db'
 import { listReminders, REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
 import { checkForUpdates } from './UpdateBanner'
+import { searchNotes, type Snippet } from './noteSearch'
 
 interface Props {
   activeId: string | null
@@ -14,6 +15,10 @@ interface Props {
   onSettings: () => void
   onGames: () => void
   onReminders: () => void
+  query: string // search across all notes; kept in App so it survives closing the sidebar
+  onQuery: (query: string) => void
+  focusSearch: boolean // Ctrl+Shift+F (App.tsx): the box should get the cursor
+  onSearchFocused: () => void
 }
 
 // "Today, 14:32", "Yesterday, 09:10", otherwise "14-10-2026"
@@ -30,6 +35,11 @@ function formatDate(time: number) {
   return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`
 }
 
+// A search snippet with the matched words in bold
+function SnippetText({ parts }: { parts: Snippet }) {
+  return parts.map((part, i) => (part.match ? <strong key={i}>{part.text}</strong> : part.text))
+}
+
 // The text under the title. When the title is the first line, the preview starts after it.
 function notePreview(note: Note) {
   const lines = note.text.split('\n').filter((line) => line.trim() !== '')
@@ -39,7 +49,7 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, query, onQuery, focusSearch, onSearchFocused }: Props) {
   const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
@@ -48,6 +58,15 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
     async () => (await listReminders()).filter((r) => r.doneAt === null && !r.gameId).length,
     [],
   )
+
+  // While searching, only the matching notes, each with the text around the match
+  const results = notes && query.trim() ? searchNotes(notes, query) : null
+  const searchInput = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!focusSearch) return
+    searchInput.current?.select()
+    onSearchFocused()
+  }, [focusSearch, onSearchFocused])
 
   return (
     <>
@@ -63,8 +82,25 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           <Bell size={15} /> Reminders
           {!!upcoming && <span className="reminders-count">{upcoming}</span>}
         </button>
+        <div className="game-search-bar sidebar-search">
+          <Search size={15} />
+          <input
+            ref={searchInput}
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && onQuery('')}
+            placeholder="Search notes"
+            spellCheck={false}
+          />
+          {query && (
+            <button className="game-search-clear" onClick={() => onQuery('')} title="Clear">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        {results?.length === 0 && <p className="sidebar-no-results">No notes found</p>}
         <ul className="note-list">
-          {notes?.map((note) => (
+          {(results ?? notes?.map((note) => ({ note, snippet: null })))?.map(({ note, snippet }) => (
             <li key={note.id}>
               <button
                 className={note.id === activeId ? 'active' : ''}
@@ -80,7 +116,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
                   {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
                   {noteTitle(note)}
                 </span>
-                <span className="note-preview">{notePreview(note)}</span>
+                <span className="note-preview">{snippet ? <SnippetText parts={snippet} /> : notePreview(note)}</span>
               </button>
             </li>
           ))}
