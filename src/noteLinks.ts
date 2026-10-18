@@ -279,7 +279,7 @@ export function takePendingJump(noteId: string): LinkTarget | null {
 }
 
 const FLASH_MS = 1600
-const SEARCH_FLASH_MS = 4000 // longer and stronger than a link's: easy to spot after a search
+const SEARCH_FLASH_MS = 3600 // pulses 3 times (index.css): easy to spot after a search
 
 // Opens the sections around the block, scrolls it to the middle and briefly highlights it
 export function jumpToBlock(editor: Editor, blockId: string) {

@@ -2009,23 +2009,23 @@ button {
   }
 }
 
-/* A search match after opening a result (noteSearch.ts): strong yellow like a browser's find,
-   held 3 s, then fading out over 1 s (SEARCH_FLASH_MS in noteLinks.ts is the total) */
+/* A search match after opening a result (noteSearch.ts): the app's blue, a bit stronger than
+   the blue highlighter, pulsing 3 times (fade in, fade out). SEARCH_FLASH_MS in noteLinks.ts
+   is the total (3 × 1.2 s). */
 .tiptap .search-flash {
-  animation: search-flash 4s linear;
+  animation: search-flash 1.2s ease-in-out 3;
   border-radius: 3px;
-  box-shadow: 0 0 0 2px rgb(242 208 100 / 0%);
 }
 
 @keyframes search-flash {
   0%,
-  75% {
-    background: rgb(242 208 100 / 55%);
-    box-shadow: 0 0 0 2px rgb(242 208 100 / 55%);
-  }
   100% {
     background: transparent;
-    box-shadow: 0 0 0 2px rgb(242 208 100 / 0%);
+    box-shadow: 0 0 0 2px rgb(111 169 242 / 0%);
+  }
+  50% {
+    background: rgb(111 169 242 / 45%);
+    box-shadow: 0 0 0 2px rgb(111 169 242 / 45%);
   }
 }
 
