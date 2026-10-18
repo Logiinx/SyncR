@@ -60,8 +60,9 @@ function listEnter(editor: Editor) {
   return true
 }
 
-// "- " (also "*", "+", "1. ", "[ ] ", "[x] ") right after a Shift+Enter line break: the lists'
-// own shortcuts only work at the start of a paragraph, and a line break stays inside one. Here
+// "- " (also "*", "+", "1. ", "[ ] ", "[x] ") right after a line break (Ctrl+Enter, or older and
+// pasted text; Shift+Enter makes a new line now, lineBreaks.ts): the lists' own shortcuts only
+// work at the start of a paragraph, and a line break stays inside one. Here
 // the paragraph is split at the break and the part after it becomes the list, as with Enter.
 export const ListAfterBreak = Extension.create({
   name: 'listAfterBreak',
@@ -98,7 +99,8 @@ function listAfterBreak(editor: Editor) {
   // Remove the break and the marker, split there, then make the list from the new paragraph
   const breakPos = $from.start() + breakOffset
   const chain = editor.chain().command(({ tr }) => {
-    tr.delete(breakPos, $from.pos).split(breakPos)
+    // The new paragraph doesn't take the block id: two blocks would share it (note links)
+    tr.delete(breakPos, $from.pos).split(breakPos, 1, [{ type: paragraph.type, attrs: { blockId: null } }])
     tr.setSelection(TextSelection.create(tr.doc, breakPos + 2))
     return true
   })

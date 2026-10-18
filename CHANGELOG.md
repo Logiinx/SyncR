@@ -7,6 +7,12 @@ All notable changes to SyncR. Newest version first.
 ### Added
 - Selection menu: a "Separate lines" button turns line breaks (Shift+Enter, or text pasted from Notesnook or web pages) into real lines. Both look the same, but lines joined by line breaks are one paragraph: triple-click selected all of them, and a heading, list or section applied to all of them at once. The button only shows when the selection contains line breaks; Ctrl+Z undoes it. In a list item, the lines stay in the same item.
 
+### Changed
+- Shift+Enter now makes a new line, like Enter, so pressing it out of habit no longer joins lines into one paragraph. Inside a list or checklist item it still makes a line break (a new line without a new bullet), and code blocks work as before. Ctrl+Enter still makes a line break anywhere. Also in Board cards.
+
+### Fixed
+- Typing "- " (or "1. ", "[ ] ") right after a line break made a list whose first line had the same hidden link id as the line above, so a link to that spot could jump to the wrong line.
+
 ## [0.12.17] - 2026-10-18
 
 ### Fixed

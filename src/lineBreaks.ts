@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react'
+import { Extension, type Editor } from '@tiptap/react'
 import type { Node } from '@tiptap/pm/model'
 import { canSplit } from '@tiptap/pm/transform'
 
@@ -44,3 +44,27 @@ export function splitLineBreaks(editor: Editor) {
     })
     .run()
 }
+
+// Shift+Enter makes a new line, like Enter: it's often pressed out of habit (apps where Enter
+// sends), and a line break would join the lines into one paragraph. Inside a list or checklist
+// item it stays a line break (a new line without a new bullet), and code blocks keep their own
+// behavior. Ctrl+Enter still makes a line break anywhere.
+export const ShiftEnter = Extension.create({
+  name: 'shiftEnter',
+  priority: 150, // after ListEnter (200, its own Shift+Enter cases), before the line break (100)
+
+  addKeyboardShortcuts() {
+    return {
+      'Shift-Enter': ({ editor }) => {
+        const { $from } = editor.state.selection
+        if ($from.parent.type.name === 'codeBlock') return false
+        if ($from.depth >= 2 && ['listItem', 'taskItem'].includes($from.node(-1).type.name)) return false
+        // A plain Enter through every key handler, so all of Enter's cases apply (lists,
+        // section titles, slash menu…), as ProseMirror itself does for Android's Enter
+        const { view } = editor
+        const enter = new KeyboardEvent('keydown', { key: 'Enter' })
+        return view.someProp('handleKeyDown', (handle) => handle(view, enter)) ?? false
+      },
+    }
+  },
+})
