@@ -33,6 +33,18 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
   const [showColors, setShowColors] = useState(false)
   const chain = () => editor.chain().focus()
 
+  // The note's scroll area (NoteView's .page): the menu stays inside it, below the toolbar stuck
+  // to its top (bottom padding 16: TipTap adds the 8px offset after this). Looked up each time:
+  // the editor is only put in the page after the first render.
+  const page = () => editor.view.dom.closest<HTMLElement>('.page')
+  const area = () => ({
+    boundary: page() ?? undefined,
+    padding: { top: (page()?.querySelector<HTMLElement>('.toolbar')?.offsetHeight ?? 0) + 8, right: 8, bottom: 16, left: 8 },
+  })
+  // Scrolling the note places the menu again (TipTap only listens to the window's scrolling).
+  // Set the first time the menu shows.
+  const [scrollTarget, setScrollTarget] = useState<HTMLElement | null>(null)
+
   // "Copy link": shows a check mark for a moment once the link is on the clipboard
   const [copied, setCopied] = useState(false)
   function copyLink() {
@@ -71,12 +83,18 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
     <BubbleMenu
       editor={editor}
       className={showColors ? 'selection-menu with-colors' : 'selection-menu'}
-      // Below the selection, so it doesn't cover what you selected; above when there's no room
+      // Below the selection, so it doesn't cover what you selected; above when there's no room.
+      // A selection taller than the window (Ctrl+A) has room on neither side: the menu then stays
+      // below and slides up to the bottom edge, over the text. Hidden once the selection is
+      // scrolled completely out of view.
       options={{
         placement: 'bottom',
         offset: 8,
-        flip: true,
-        shift: { padding: 8 },
+        flip: () => ({ ...area(), fallbackStrategy: 'initialPlacement' as const }),
+        shift: () => ({ ...area(), crossAxis: true }),
+        hide: area,
+        scrollTarget: scrollTarget ?? window,
+        onShow: () => setScrollTarget(page()),
         onHide: () => setShowColors(false),
       }}
     >

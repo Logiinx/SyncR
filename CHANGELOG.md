@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Selection menu: it no longer gets cut off at the bottom of the window when the selection is taller than the screen (for example after Ctrl+A). It now slides up and stays at the bottom edge of the note. It also no longer covers the toolbar, follows the selection while the note scrolls, and hides when the selection is scrolled out of view.
+
 ## [0.12.18] - 2026-10-19
 
 ### Added
