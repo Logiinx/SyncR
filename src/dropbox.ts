@@ -258,11 +258,32 @@ export async function waitForChanges(cursor: string, signal: AbortSignal) {
   return { changes: data.changes as boolean, backoff: (data.backoff as number | undefined) ?? 0 }
 }
 
-// Deleting a file that's already gone is fine.
-export async function deleteFile(path: string) {
+// Deleting a file that's already gone is fine (returns true).
+// With rev: only if the file is still at that version. Returns false if it changed meanwhile
+// (another device saved it). Dropbox doesn't document which error that gives, so on an error
+// we look at the file itself.
+export async function deleteFile(path: string, rev?: string): Promise<boolean> {
   try {
-    await api('files/delete_v2', { path })
+    await api('files/delete_v2', rev ? { path, parent_rev: rev } : { path })
+    return true
   } catch (e) {
-    if (!String(e).includes('not_found')) throw e
+    if (!rev) {
+      if (!String(e).includes('not_found')) throw e
+      return true
+    }
+    const current = await fileRev(path)
+    if (current === null) return true // gone anyway
+    if (current !== rev) return false
+    throw e // still the same version: a real error
+  }
+}
+
+// The file's current version, or null if it doesn't exist
+async function fileRev(path: string): Promise<string | null> {
+  try {
+    return (await api('files/get_metadata', { path })).rev
+  } catch (e) {
+    if (String(e).includes('not_found')) return null
+    throw e
   }
 }

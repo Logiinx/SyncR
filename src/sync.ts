@@ -187,12 +187,24 @@ async function runSync(): Promise<SyncResult> {
       const remote = await downloadNote(id)
       if (remote) await storeNote(remote, remoteRev, undefined)
     } else if (remoteRev || last) {
-      // Was in Dropbox: leave a marker for other devices, then remove the note file
+      // Was in Dropbox: leave a marker for other devices, then remove the note file, only if
+      // it's still the version listed above
       if (!remoteDeleted.has(id)) {
         const marker = await encrypt(key, new TextEncoder().encode(JSON.stringify(deletion)))
         await upload(deletedPath(id), marker, 'overwrite')
       }
-      await deleteFile(notePath(id))
+      if (remoteRev && !(await deleteFile(notePath(id), remoteRev))) {
+        // Edited on the other device a moment ago (after the listing): the edit wins after all.
+        // Not marked done: step 3 downloads it (with the listing's older rev, so the next sync
+        // downloads it once more and stores the right rev).
+        await deleteFile(deletedPath(id))
+        await db.transaction('rw', db.deletions, db.synced, async () => {
+          await db.deletions.delete(id)
+          await db.synced.delete(id)
+        })
+        continue
+      }
+      if (!remoteRev) await deleteFile(notePath(id))
       result.deleted++
     }
     // else: never synced, nothing to do in Dropbox

@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Fixed
 - Sync: an edit you were typing at the very moment a sync ran is no longer lost. Before, the half-second of typing still waiting to be saved was invisible to sync: a newer version from your other device could be stored and then overwritten by that save (the other device's edit vanished, without a conflict copy), and a note deleted on your other device was deleted here even though you had just typed in it (your words were dropped). Sync now saves waiting edits first, so these become a normal conflict copy, and an edit beats a deletion as intended.
+- Sync: deleting a note no longer deletes an edit your other device saved a moment earlier. The deletion now tells Dropbox "only if the note is still the version I saw" (its revision); if it changed, the edit wins and the note comes back, as with other edit-versus-deletion cases.
 
 ## [0.12.16] - 2026-10-18
 
