@@ -1,20 +1,22 @@
 import { useEffect, type RefObject } from 'react'
 
-// Phone: swipe left from the right side opens the Board, swipe right on the open Board closes
-// it. Only fires once the finger has moved far enough, mostly sideways (a scroll stays a scroll).
-// The Board then slides in with its usual animation; it doesn't follow the finger.
+// Phone: swipe left from the right side opens the Board, swipe right from the left side opens
+// the sidebar. Swiping the open panel back toward its edge closes it. Only fires once the finger
+// has moved far enough, mostly sideways (a scroll stays a scroll). The panel then slides in with
+// its usual animation; it doesn't follow the finger.
 
-// An opening swipe may start anywhere in the right third of the screen: Android's gesture
-// navigation takes swipes that start right at the edge as "Back", and pages can't prevent that
+// An opening swipe may start anywhere in the outer third of the screen on that side: Android's
+// gesture navigation takes swipes that start right at the edge as "Back", and pages can't prevent that
 const EDGE_PART = 1 / 3
 const DISTANCE = 50 // px the finger must move sideways
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
-export function useBoardSwipe(
+export function usePanelSwipe(
   area: RefObject<HTMLElement | null>,
   boardOpen: boolean,
   sidebarOpen: boolean,
   setBoardOpen: (open: boolean) => void,
+  setSidebarOpen: (open: boolean) => void,
 ) {
   useEffect(() => {
     const el = area.current
@@ -23,13 +25,15 @@ export function useBoardSwipe(
 
     const onStart = (e: TouchEvent) => {
       start = null
-      if (e.touches.length !== 1 || !isNarrowScreen() || sidebarOpen) return
+      if (e.touches.length !== 1 || !isNarrowScreen()) return
       const { clientX: x, clientY: y } = e.touches[0]
       const target = e.target as Element
-      const onBoard = !!target.closest('.board, .backdrop')
+      // Both panels cover the note with the same backdrop; only one is open at a time here
+      const onPanel = !!target.closest('.board, .sidebar, .backdrop')
       // A wide table scrolls sideways: a swipe there is meant for the table
       const inTable = !!target.closest('.tableWrapper')
-      if (boardOpen ? onBoard : !inTable && x > window.innerWidth * (1 - EDGE_PART)) start = { x, y }
+      const nearEdge = x > window.innerWidth * (1 - EDGE_PART) || x < window.innerWidth * EDGE_PART
+      if (boardOpen || sidebarOpen ? onPanel : !inTable && nearEdge) start = { x, y }
     }
 
     const onMove = (e: TouchEvent) => {
@@ -45,12 +49,18 @@ export function useBoardSwipe(
         if (Math.abs(dy) > 10) start = null // it's a scroll
         return
       }
-      if (!boardOpen && dx < -DISTANCE) {
-        start = null
+      if (Math.abs(dx) < DISTANCE) return
+      const left = dx < 0
+      const fromRight = start.x > window.innerWidth / 2
+      start = null
+      if (boardOpen) {
+        if (!left) setBoardOpen(false)
+      } else if (sidebarOpen) {
+        if (left) setSidebarOpen(false)
+      } else if (left && fromRight) {
         setBoardOpen(true)
-      } else if (boardOpen && dx > DISTANCE) {
-        start = null
-        setBoardOpen(false)
+      } else if (!left && !fromRight) {
+        setSidebarOpen(true)
       }
     }
 
@@ -60,5 +70,5 @@ export function useBoardSwipe(
       el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
     }
-  }, [area, boardOpen, sidebarOpen, setBoardOpen])
+  }, [area, boardOpen, sidebarOpen, setBoardOpen, setSidebarOpen])
 }

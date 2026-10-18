@@ -10,7 +10,7 @@ import NoteView from './NoteView'
 import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import Board from './Board'
-import { useBoardSwipe } from './edgeSwipe'
+import { usePanelSwipe } from './edgeSwipe'
 import SettingsDialog from './SettingsDialog'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
@@ -33,7 +33,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
   const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
   const bodyRef = useRef<HTMLDivElement>(null)
-  useBoardSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen)
+  usePanelSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen, setSidebarOpen)
 
   // Games: release day check and daily refresh from IGDB (games.ts)
   useEffect(startGameChecks, [])
