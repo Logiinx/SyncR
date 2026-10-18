@@ -24,6 +24,7 @@ import { DragSections } from './dragSections'
 import { SlashMenu } from './slashMenu'
 import { jumpToBlock, NoteLinks, PROTOCOL, takePendingJump } from './noteLinks'
 import { NotePicker } from './notePicker'
+import { jumpToSearch, takePendingSearch } from './noteSearch'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
 
@@ -148,6 +149,9 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     const jump = () => {
       const target = takePendingJump(note.id)
       if (target?.blockId) setTimeout(() => jumpToBlock(editor, target.blockId!))
+      // Or a search result was opened (Sidebar.tsx): jump to the first match
+      const query = takePendingSearch(note.id)
+      if (query) setTimeout(() => jumpToSearch(editor, query))
     }
     jump()
     window.addEventListener('syncr-jump', jump)

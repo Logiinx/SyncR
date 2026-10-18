@@ -126,10 +126,15 @@ export const NoteLinks = Extension.create({
         state: {
           init: () => DecorationSet.empty,
           apply: (tr, old) => {
-            const flash: number | null | undefined = tr.getMeta(flashKey)
+            // A block's position, or a piece of text (search, noteSearch.ts)
+            const flash: number | { from: number; to: number } | null | undefined = tr.getMeta(flashKey)
             if (flash === undefined) return old.map(tr.mapping, tr.doc)
-            const node = flash === null ? null : tr.doc.nodeAt(flash)
-            if (flash === null || !node) return DecorationSet.empty
+            if (flash === null) return DecorationSet.empty
+            if (typeof flash === 'object') {
+              return DecorationSet.create(tr.doc, [Decoration.inline(flash.from, flash.to, { class: 'link-flash' })])
+            }
+            const node = tr.doc.nodeAt(flash)
+            if (!node) return DecorationSet.empty
             return DecorationSet.create(tr.doc, [
               Decoration.node(flash, flash + node.nodeSize, { class: 'link-flash' }),
             ])
@@ -284,14 +289,7 @@ export function jumpToBlock(editor: Editor, blockId: string) {
     return
   }
   // Closed sections around it (and the block itself, if it's a section): open them
-  const $pos = view.state.doc.resolve(pos + 1)
-  for (let d = 1; d <= $pos.depth; d++) {
-    if ($pos.node(d).type.name !== 'details') continue
-    const section = view.nodeDOM($pos.before(d)) as HTMLElement | null
-    if (section && !section.classList.contains('is-open')) {
-      section.querySelector<HTMLButtonElement>(':scope > button')?.click()
-    }
-  }
+  openSectionsAround(editor, pos + 1)
   view.dispatch(
     view.state.tr
       .setSelection(Selection.near(view.state.doc.resolve(pos + 1)))
@@ -300,7 +298,43 @@ export function jumpToBlock(editor: Editor, blockId: string) {
   )
   const element = view.nodeDOM(pos) as HTMLElement | null
   element?.scrollIntoView({ block: 'center' })
+  endFlash(editor)
+}
+
+// Search (noteSearch.ts): the same for a piece of text, without moving the cursor, so the
+// phone keyboard doesn't open
+export function flashText(editor: Editor, from: number, to: number) {
+  const { view } = editor
+  openSectionsAround(editor, from, false)
+  view.dispatch(view.state.tr.setMeta(flashKey, { from, to }).setMeta('addToHistory', false))
+  const { node } = view.domAtPos(from)
+  const element = node instanceof HTMLElement ? node : node.parentElement
+  element?.scrollIntoView({ block: 'center' })
+  endFlash(editor)
+}
+
+function openSectionsAround(editor: Editor, pos: number, focus = true) {
+  const { view } = editor
+  const $pos = view.state.doc.resolve(pos)
+  for (let d = 1; d <= $pos.depth; d++) {
+    if ($pos.node(d).type.name !== 'details') continue
+    const section = view.nodeDOM($pos.before(d)) as HTMLElement | null
+    if (!section || section.classList.contains('is-open')) continue
+    const toggle = section.querySelector<HTMLButtonElement>(':scope > button')
+    if (focus) {
+      toggle?.click()
+      continue
+    }
+    // The toggle's click also focuses the editor (keyboard on the phone). Without it: what the
+    // click does in @tiptap/extension-details 3.31 (toggleDetailsContent), minus the focus.
+    section.classList.add('is-open')
+    toggle?.setAttribute('aria-label', 'Close section')
+    section.querySelector(':scope > div > [data-type="detailsContent"]')?.dispatchEvent(new Event('toggleDetailsContent'))
+  }
+}
+
+function endFlash(editor: Editor) {
   setTimeout(() => {
-    if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(flashKey, null))
+    if (!editor.view.isDestroyed) editor.view.dispatch(editor.view.state.tr.setMeta(flashKey, null))
   }, FLASH_MS)
 }

@@ -11,6 +11,7 @@ import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import Board from './Board'
 import { usePanelSwipe } from './edgeSwipe'
+import { setPendingSearch } from './noteSearch'
 import SettingsDialog from './SettingsDialog'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
@@ -199,7 +200,11 @@ function App() {
         {sidebarOpen && (
           <Sidebar
             activeId={activeId}
-            onOpen={openNote}
+            onOpen={(id) => {
+              openNote(id)
+              // A search result: the note jumps to the first match (noteSearch.ts)
+              if (searchQuery.trim()) setPendingSearch(id, searchQuery)
+            }}
             onClose={() => setSidebarOpen(false)}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
             onSettings={() => setSettingsOpen(true)}
