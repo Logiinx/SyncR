@@ -18,7 +18,7 @@ import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
 import { ListAfterBreak, ListEnter } from './lists'
-import { ShiftEnter } from './lineBreaks'
+import { LineBreaks } from './lineBreaks'
 import { SmartTypography } from './typography'
 import { CodeBlock } from './codeBlock'
 import { DragSections } from './dragSections'
@@ -56,7 +56,7 @@ export const extensions = [
   ColorRules,
   ListEnter,
   ListAfterBreak,
-  ShiftEnter,
+  LineBreaks,
   SmartTypography,
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({

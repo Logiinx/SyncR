@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Changed
 - Shift+Enter now makes a new line, like Enter, so pressing it out of habit no longer joins lines into one paragraph. Inside a list or checklist item it still makes a line break (a new line without a new bullet), and code blocks work as before. Ctrl+Enter still makes a line break anywhere. Also in Board cards.
+- Pasted text with line breaks (from Notesnook, many web pages) now becomes separate lines, as if you had pressed Enter between them. Same rule as the "Separate lines" button: in a list item the lines stay in the same item, headings keep their line breaks, and pasting into a code block works as before.
 
 ### Fixed
 - Typing "- " (or "1. ", "[ ] ") right after a line break made a list whose first line had the same hidden link id as the line above, so a link to that spot could jump to the wrong line.

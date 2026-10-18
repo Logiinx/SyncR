@@ -1,5 +1,6 @@
 import { Extension, type Editor } from '@tiptap/react'
-import type { Node } from '@tiptap/pm/model'
+import { Fragment, Slice, type Node } from '@tiptap/pm/model'
+import { Plugin } from '@tiptap/pm/state'
 import { canSplit } from '@tiptap/pm/transform'
 
 // Line breaks (Shift+Enter, or pasted text that used <br>) look exactly like separate lines,
@@ -45,13 +46,50 @@ export function splitLineBreaks(editor: Editor) {
     .run()
 }
 
+// Pasted text: each paragraph with line breaks becomes one paragraph per line, as with the
+// button (Notesnook and many web pages use <br> between lines). The first line keeps the
+// paragraph's attrs, the others start without a block id. Headings keep their line breaks.
+function splitPastedLines(fragment: Fragment): Fragment {
+  const nodes: Node[] = []
+  fragment.forEach((node) => {
+    if (node.type.name !== 'paragraph') {
+      nodes.push(node.isTextblock || node.isLeaf ? node : node.copy(splitPastedLines(node.content)))
+      return
+    }
+    let attrs = node.attrs
+    let line: Node[] = []
+    const endLine = () => {
+      nodes.push(node.type.create(attrs, line, node.marks))
+      attrs = { ...node.attrs, blockId: null }
+      line = []
+    }
+    node.forEach((child) => (child.type.name === 'hardBreak' ? endLine() : line.push(child)))
+    endLine()
+  })
+  return Fragment.from(nodes)
+}
+
 // Shift+Enter makes a new line, like Enter: it's often pressed out of habit (apps where Enter
 // sends), and a line break would join the lines into one paragraph. Inside a list or checklist
 // item it stays a line break (a new line without a new bullet), and code blocks keep their own
 // behavior. Ctrl+Enter still makes a line break anywhere.
-export const ShiftEnter = Extension.create({
-  name: 'shiftEnter',
+// Pasted line breaks become separate lines too (splitPastedLines). Pasting into a code block
+// isn't affected: ProseMirror pastes plain text there, without this step.
+export const LineBreaks = Extension.create({
+  name: 'lineBreaks',
   priority: 150, // after ListEnter (200, its own Shift+Enter cases), before the line break (100)
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          // The slice stays open at the same depths: the first line still joins the text
+          // before the cursor, the last one the text after it
+          transformPasted: (slice) => new Slice(splitPastedLines(slice.content), slice.openStart, slice.openEnd),
+        },
+      }),
+    ]
+  },
 
   addKeyboardShortcuts() {
     return {

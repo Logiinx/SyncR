@@ -60,8 +60,8 @@ function listEnter(editor: Editor) {
   return true
 }
 
-// "- " (also "*", "+", "1. ", "[ ] ", "[x] ") right after a line break (Ctrl+Enter, or older and
-// pasted text; Shift+Enter makes a new line now, lineBreaks.ts): the lists' own shortcuts only
+// "- " (also "*", "+", "1. ", "[ ] ", "[x] ") right after a line break (Ctrl+Enter, or older
+// text; Shift+Enter and pasting make new lines now, lineBreaks.ts): the lists' own shortcuts only
 // work at the start of a paragraph, and a line break stays inside one. Here
 // the paragraph is split at the break and the part after it becomes the list, as with Enter.
 export const ListAfterBreak = Extension.create({
