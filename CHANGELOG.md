@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - Sync: deleting a note no longer deletes an edit your other device saved a moment earlier. The deletion now tells Dropbox "only if the note is still the version I saw" (its revision); if it changed, the edit wins and the note comes back, as with other edit-versus-deletion cases.
 - Sync: a conflict no longer creates the same conflict copy twice. When the step after making the copy failed (your other device saved again a moment later) or was skipped (you kept typing), the retry made a second, identical copy. A conflict copy's id now comes from the note and the time of the version it keeps, so a retry finds the copy it already made.
 - Sync: one file in Dropbox that can't be decrypted (for example saved with another passphrase, or put in the folder by hand) no longer stops all syncing. Before, sync stopped at that file with a cryptic error ("The operation failed for an operation-specific reason") and retried every minute, so nothing after it ever synced. Now such files are skipped and left untouched, everything else syncs, and a message says how many items couldn't be read.
+- Dropbox: you're no longer signed out by a passing error. The app renews its Dropbox access every few hours; any "400" error answer during that renewal used to erase the sign-in, although Dropbox also uses 400 for temporary problems. Now only Dropbox's "invalid_grant" answer (the sign-in was really revoked) signs you out; other errors are retried later.
 
 ## [0.12.16] - 2026-10-18
 

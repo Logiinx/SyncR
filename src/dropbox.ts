@@ -147,12 +147,15 @@ async function accessToken() {
       client_id: APP_KEY,
     }),
   })
-  if (res.status === 400 || res.status === 401) {
-    // The sign-in was revoked (e.g. from the Dropbox website)
-    saveAuth(null)
-    throw new Error('Dropbox sign-in expired. Please connect again.')
+  if (!res.ok) {
+    // The sign-in was revoked (e.g. from the Dropbox website): only "invalid_grant" means that.
+    // Other errors (also 400s) may pass: keep the sign-in, sync tries again later.
+    if ((await res.text()).includes('invalid_grant')) {
+      saveAuth(null)
+      throw new Error('Dropbox sign-in expired. Please connect again.')
+    }
+    throw new Error(`Dropbox error (${res.status})`)
   }
-  if (!res.ok) throw new Error(`Dropbox error (${res.status})`)
   const data = await res.json()
   saveAuth({ ...auth, accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
   return data.access_token as string
