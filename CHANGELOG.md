@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.14] - 2026-10-18
+
 ### Added
 - Board on the phone: a "New card" button at the bottom of the panel, within reach of your thumb. The "+" at the top is still there.
 - Phone: swipe right from the left third of the screen to open the sidebar, swipe left on it to close it (like the Board on the right side).
