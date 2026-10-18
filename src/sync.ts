@@ -45,6 +45,7 @@ export interface SyncResult {
   downloaded: number
   deleted: number
   conflicts: number
+  unreadable: number // files in Dropbox that couldn't be decrypted or read: skipped (see readFile)
   cursor: string // Dropbox's "bookmark" for this sync, to wait for later changes
 }
 
@@ -91,7 +92,7 @@ export async function syncNow(): Promise<SyncResult> {
 async function runSync(): Promise<SyncResult> {
   const key = await getKey()
   if (!key) throw new Error('Enter your passphrase first.')
-  const result: SyncResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, cursor: '' }
+  const result: SyncResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, unreadable: 0, cursor: '' }
 
   // ---------- Encrypted read / write ----------
 
@@ -104,10 +105,10 @@ async function runSync(): Promise<SyncResult> {
     result.uploaded++
   }
 
+  // An unreadable note counts as missing: nothing here is changed or replaced because of it
   async function downloadNote(id: string): Promise<RemoteNote | null> {
-    const raw = await download(notePath(id))
-    if (!raw) return null
-    return JSON.parse(new TextDecoder().decode(await decrypt(key!, raw)))
+    const remote = await readFile<RemoteNote>(notePath(id), key!, result)
+    return remote === UNREADABLE ? null : remote
   }
 
   // Saves a downloaded note locally without changing its dates.
@@ -332,11 +333,8 @@ async function runSync(): Promise<SyncResult> {
     const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
     if (!changedHere && !changedThere) continue
 
-    let remote: Setting | null = null
-    if (changedThere) {
-      const raw = await download(settingPath(name))
-      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
-    }
+    const remote = changedThere ? await readFile<Setting>(settingPath(name), key, result) : null
+    if (remote === UNREADABLE) continue // left alone, not overwritten
 
     if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
       // Send this device's version
@@ -384,7 +382,13 @@ async function runSync(): Promise<SyncResult> {
     if (localAttachments.has(id) || !remoteAttachments.has(id)) continue
     const raw = await download(attachmentPath(id))
     if (!raw) continue
-    const bytes = await decrypt(key, raw)
+    let bytes: Uint8Array<ArrayBuffer>
+    try {
+      bytes = await decrypt(key, raw)
+    } catch {
+      result.unreadable++
+      continue
+    }
     await db.attachments.put({ id, blob: new Blob([bytes], { type: imageType(bytes) }), createdAt: Date.now() })
     localAttachments.add(id)
     // Open notes show it right away (see image.ts)
@@ -410,6 +414,21 @@ async function runSync(): Promise<SyncResult> {
   }
 
   return result
+}
+
+// A file in Dropbox that can't be decrypted or read (saved with another passphrase, put there by
+// hand, …). Skipped and left as it is, so everything else still syncs; the user is told how many.
+const UNREADABLE = Symbol('unreadable')
+
+async function readFile<T>(path: string, key: CryptoKey, result: SyncResult): Promise<T | null | typeof UNREADABLE> {
+  const raw = await download(path)
+  if (!raw) return null
+  try {
+    return JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+  } catch {
+    result.unreadable++
+    return UNREADABLE
+  }
 }
 
 // ---------- Reminders and cards (step 4c) ----------
@@ -463,11 +482,8 @@ async function syncRecords<T extends SyncedRecord>(
     }
     if (!changedHere && !changedThere) continue
 
-    let remote: T | null = null
-    if (changedThere) {
-      const raw = await download(path(id))
-      if (raw) remote = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
-    }
+    const remote = changedThere ? await readFile<T>(path(id), key, result) : null
+    if (remote === UNREADABLE) continue // left alone, not overwritten
 
     if (local && changedHere && (!remote || localWins(local, remote))) {
       // Send this device's version

@@ -15,6 +15,7 @@ function describe(r: SyncResult) {
     r.downloaded && `${r.downloaded} received`,
     r.deleted && `${r.deleted} deleted`,
     r.conflicts && `${r.conflicts} conflict ${r.conflicts === 1 ? 'copy' : 'copies'}`,
+    r.unreadable && `${r.unreadable} unreadable in Dropbox (skipped)`,
   ].filter(Boolean)
   return parts.length ? parts.join(' · ') : 'Up to date'
 }

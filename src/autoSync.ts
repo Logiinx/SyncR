@@ -33,6 +33,7 @@ let changedDuringSync = false
 let urgentAfterSync = false // syncSoon() was called during a sync: go again right away
 let quickRetries = 0
 let failing = false // the last sync ended with an error (already reported)
+let lastUnreadable = 0 // unreadable files found by the last sync (sync.ts readFile)
 let lastSyncAt = 0
 let timer: number | undefined
 let cursor: string | null = null
@@ -93,6 +94,11 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     if (!manual && result.conflicts) {
       notify(`${result.conflicts} conflict ${result.conflicts === 1 ? 'copy' : 'copies'} created.`)
     }
+    // Unreadable files are skipped every sync: told once, and again if their number changes
+    if (!manual && result.unreadable && result.unreadable !== lastUnreadable) {
+      notify(`${result.unreadable} ${result.unreadable === 1 ? 'item' : 'items'} in Dropbox couldn't be read and ${result.unreadable === 1 ? 'was' : 'were'} skipped (saved with another passphrase?).`)
+    }
+    lastUnreadable = result.unreadable
     poll()
     return result
   } catch (e) {
