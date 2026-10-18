@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Selection menu: a "Separate lines" button turns line breaks (Shift+Enter, or text pasted from Notesnook or web pages) into real lines. Both look the same, but lines joined by line breaks are one paragraph: triple-click selected all of them, and a heading, list or section applied to all of them at once. The button only shows when the selection contains line breaks; Ctrl+Z undoes it. In a list item, the lines stay in the same item.
+
 ## [0.12.17] - 2026-10-18
 
 ### Fixed

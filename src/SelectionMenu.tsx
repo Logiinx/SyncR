@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
-import { Bold, Check, FoldVertical, Italic, Link, Palette, Pin, SquareCode, Underline, Ungroup } from 'lucide-react'
+import { Bold, Check, FoldVertical, Italic, Link, Palette, Pin, Rows3, SquareCode, Underline, Ungroup } from 'lucide-react'
 import type { JSONContent } from '@tiptap/react'
 import { createCard } from './db'
 import ColorPicker from './ColorPicker'
 import { canMakeCodeBlock, codeBlockToParagraphs, selectionToCodeBlock } from './codeBlock'
 import { copyLinkToBlock } from './noteLinks'
+import { selectionHasLineBreaks, splitLineBreaks } from './lineBreaks'
 import { BubbleMenu } from '@tiptap/react/menus'
 
 const ICON_SIZE = 16
@@ -24,6 +25,7 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
       inSection: editor.isActive('details'),
       inCodeBlock: editor.isActive('codeBlock'),
       canMakeCodeBlock: canMakeCodeBlock(editor),
+      hasLineBreaks: selectionHasLineBreaks(editor),
     }),
   })
 
@@ -122,6 +124,12 @@ function SelectionMenu({ editor, noteId, title }: { editor: Editor; noteId: stri
       >
         <SquareCode size={ICON_SIZE} />
       </MenuButton>
+      {/* Only when there's something to split (lineBreaks.ts) */}
+      {state.hasLineBreaks && (
+        <MenuButton title="Separate lines (turns Shift+Enter line breaks into real lines)" onClick={() => splitLineBreaks(editor)}>
+          <Rows3 size={ICON_SIZE} />
+        </MenuButton>
+      )}
 
       <span className="menu-divider" />
 
