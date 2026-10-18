@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
-import { ChevronDown, Sparkles, X } from 'lucide-react'
+import { ChevronDown, Ellipsis, Sparkles, X } from 'lucide-react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
@@ -214,6 +214,9 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
         if (!editing) startEditing({ left: event.clientX, top: event.clientY })
       }}
       onContextMenu={(event) => {
+        // Phone: a long press on the text is for Android's menu (copy, paste); the card's menu
+        // is on the "⋯" button instead, so the two never open together
+        if (window.matchMedia('(pointer: coarse)').matches) return
         event.preventDefault()
         setMenu({ x: event.clientX, y: event.clientY })
       }}
@@ -268,6 +271,17 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
         </BubbleMenu>
       )}
       <div className="card-buttons">
+        {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
+        <button
+          className="card-more"
+          onClick={(event) => {
+            const box = event.currentTarget.getBoundingClientRect()
+            setMenu({ x: box.left, y: box.bottom + 4 })
+          }}
+          title="More"
+        >
+          <Ellipsis size={13} />
+        </button>
         <button
           className="card-priority"
           onClick={() => setCardPriority(card.id, !card.priority)}

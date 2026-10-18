@@ -856,6 +856,7 @@ button {
   gap: 2px;
 }
 
+.card-more,
 .card-priority,
 .card-delete {
   width: 20px;
@@ -874,6 +875,7 @@ button {
   opacity: 1;
 }
 
+.card-more:hover,
 .card-priority:hover,
 .card-delete:hover {
   background: var(--hover);
@@ -885,10 +887,30 @@ button {
   color: var(--text-blue);
 }
 
+/* "⋯" (the card's menu) only on the phone, where a long press is for Android's text menu */
+.card-more {
+  display: none;
+}
+
 @media (pointer: coarse) {
+  .card-more,
   .card-priority,
   .card-delete {
     opacity: 1;
+  }
+
+  .card-more {
+    display: flex;
+  }
+
+  /* Room for three buttons instead of two */
+  .card-editor .tiptap {
+    padding-right: 76px;
+  }
+
+  .card-title {
+    padding-left: 76px;
+    padding-right: 76px;
   }
 }
 
