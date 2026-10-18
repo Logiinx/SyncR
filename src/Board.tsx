@@ -318,7 +318,12 @@ function Board({ onClose }: Props) {
             <button onClick={undo}>Undo</button>
           </div>
         )}
-        {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
+        {/* Phone only (CSS): the header "+" is hard to reach with the thumb */}
+        <button className="board-add-row" onClick={addCard}>
+          <Plus size={16} />
+          New card
+        </button>
+        {openGame &&<GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
         {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       </aside>
     </>

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board on the phone: a "New card" button at the bottom of the panel, within reach of your thumb. The "+" at the top is still there.
+
 ## [0.12.13] - 2026-10-17
 
 ### Changed

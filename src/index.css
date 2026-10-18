@@ -910,6 +910,30 @@ button {
   color: var(--text);
 }
 
+/* Phone: a "New card" row at the bottom of the panel, within reach of the thumb */
+.board-add-row {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .board-add-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 12px 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--bg-raised);
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .board-add-row:active {
+    color: var(--text);
+  }
+}
+
 /* Not being edited: the card is moved by click and drag (Board.tsx), so no text selection
    (and no long-press text menu on the phone). Double-click edits it. */
 .card:not(.editing) .tiptap {
