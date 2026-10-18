@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Added
 - Search across all notes: a search box in the sidebar (Ctrl+Shift+F on the PC opens it). Only the matching notes stay in the list, each with the text around the match and the found words in bold. Case and accents don't matter ("ete" finds "été"), and with several words a note must contain all of them, in any order. The search stays while you open notes, until you clear it (✕ or Escape).
-- Opening a search result scrolls the note to the match and highlights it for a moment. With several words, it goes to the first line that has all of them (the snippet in the list shows that same spot). Collapsed sections around the match open. The cursor doesn't move there, so the phone keyboard stays closed.
+- Opening a search result scrolls the note to the match and highlights it in yellow for 3 seconds, then it fades out. With several words, it goes to the first line that has all of them (the snippet in the list shows that same spot). Collapsed sections around the match open. The cursor doesn't move there, so the phone keyboard stays closed.
 
 ### Fixed
 - Phone: after picking a text color or highlight (in notes and cards), the color shows right away. Android draws its own selection (white text on blue) and ignores the app's selection style, so the new color stayed hidden until you unselected. Now the selection collapses to a cursor at the end of the colored text. On the PC the selection stays as before.

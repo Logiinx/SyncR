@@ -2009,6 +2009,26 @@ button {
   }
 }
 
+/* A search match after opening a result (noteSearch.ts): strong yellow like a browser's find,
+   held 3 s, then fading out over 1 s (SEARCH_FLASH_MS in noteLinks.ts is the total) */
+.tiptap .search-flash {
+  animation: search-flash 4s linear;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgb(242 208 100 / 0%);
+}
+
+@keyframes search-flash {
+  0%,
+  75% {
+    background: rgb(242 208 100 / 55%);
+    box-shadow: 0 0 0 2px rgb(242 208 100 / 55%);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 2px rgb(242 208 100 / 0%);
+  }
+}
+
 /* ---------- Code blocks (codeBlock.tsx) ---------- */
 
 .tiptap .code-block {

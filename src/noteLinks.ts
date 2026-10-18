@@ -131,7 +131,7 @@ export const NoteLinks = Extension.create({
             if (flash === undefined) return old.map(tr.mapping, tr.doc)
             if (flash === null) return DecorationSet.empty
             if (typeof flash === 'object') {
-              return DecorationSet.create(tr.doc, [Decoration.inline(flash.from, flash.to, { class: 'link-flash' })])
+              return DecorationSet.create(tr.doc, [Decoration.inline(flash.from, flash.to, { class: 'search-flash' })])
             }
             const node = tr.doc.nodeAt(flash)
             if (!node) return DecorationSet.empty
@@ -279,6 +279,7 @@ export function takePendingJump(noteId: string): LinkTarget | null {
 }
 
 const FLASH_MS = 1600
+const SEARCH_FLASH_MS = 4000 // longer and stronger than a link's: easy to spot after a search
 
 // Opens the sections around the block, scrolls it to the middle and briefly highlights it
 export function jumpToBlock(editor: Editor, blockId: string) {
@@ -310,7 +311,7 @@ export function flashText(editor: Editor, from: number, to: number) {
   const { node } = view.domAtPos(from)
   const element = node instanceof HTMLElement ? node : node.parentElement
   element?.scrollIntoView({ block: 'center' })
-  endFlash(editor)
+  endFlash(editor, SEARCH_FLASH_MS)
 }
 
 function openSectionsAround(editor: Editor, pos: number, focus = true) {
@@ -333,8 +334,8 @@ function openSectionsAround(editor: Editor, pos: number, focus = true) {
   }
 }
 
-function endFlash(editor: Editor) {
+function endFlash(editor: Editor, ms = FLASH_MS) {
   setTimeout(() => {
     if (!editor.view.isDestroyed) editor.view.dispatch(editor.view.state.tr.setMeta(flashKey, null))
-  }, FLASH_MS)
+  }, ms)
 }
