@@ -184,6 +184,22 @@ export function changed() {
   window.dispatchEvent(new Event('notes-changed'))
 }
 
+// Editors register a "save now" function here (NoteEditor.tsx), for an edit that's still
+// waiting for its autosave. Sync saves those first, so it compares against what's on screen
+// (sync.ts), and so does the last sync before closing (autoSync.ts finalSync).
+const pendingSaves = new Set<() => Promise<void>>()
+
+export function registerFlush(flush: () => Promise<void>) {
+  pendingSaves.add(flush)
+  return () => {
+    pendingSaves.delete(flush)
+  }
+}
+
+export async function savePendingEdits() {
+  await Promise.all([...pendingSaves].map((flush) => flush()))
+}
+
 export async function createNote(): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()

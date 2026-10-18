@@ -1,3 +1,4 @@
+import { savePendingEdits } from './db'
 import { waitForChanges } from './dropbox'
 import { read, write } from './localState'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
@@ -155,22 +156,11 @@ export function syncByUser() {
 
 const FINAL_SYNC_TIMEOUT_MS = 5000
 
-// Editors register a "save now" function here, so finalSync() can include an edit
-// that's still waiting for its autosave.
-const flushers = new Set<() => Promise<void>>()
-
-export function registerFlush(flush: () => Promise<void>) {
-  flushers.add(flush)
-  return () => {
-    flushers.delete(flush)
-  }
-}
-
 // Saves waiting edits and sends everything that's waiting to Dropbox. Gives up after
 // 5 seconds (e.g. offline): the changes stay safe on this device and sync next time.
 export async function finalSync() {
   const work = async () => {
-    await Promise.all([...flushers].map((flush) => flush()))
+    await savePendingEdits()
     if (!enabled) return
     while (running) await sleep(50) // let a running sync finish first
     if (status !== 'synced') await run()

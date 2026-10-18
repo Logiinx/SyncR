@@ -7,8 +7,8 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Link } from '@tiptap/extension-link'
 import { Color, TextStyle } from '@tiptap/extension-text-style'
 import { Highlight } from '@tiptap/extension-highlight'
-import { registerFlush, syncSoon } from './autoSync'
-import { noteTitle, saveNoteContent, type Note } from './db'
+import { syncSoon } from './autoSync'
+import { noteTitle, registerFlush, saveNoteContent, type Note } from './db'
 import SelectionMenu from './SelectionMenu'
 import Toolbar from './Toolbar'
 import ImageViewer from './ImageViewer'
@@ -129,7 +129,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     }
     editor.on('blur', saveAndSync)
     document.addEventListener('visibilitychange', onVisibility)
-    // Closing the app or installing an update: finalSync() saves this editor first
+    // Sync and the last sync before closing save this editor's waiting edit first (db.ts)
     const unregister = registerFlush(saveNow)
 
     return () => {

@@ -1,6 +1,15 @@
 import { isTauri } from '@tauri-apps/api/core'
 import type { InsertType, Table, UpdateSpec } from 'dexie'
-import { db, imageIds, noteTitle, removeOldDeletedCards, removeOldDeletedGames, type Note, type Setting } from './db'
+import {
+  db,
+  imageIds,
+  noteTitle,
+  removeOldDeletedCards,
+  removeOldDeletedGames,
+  savePendingEdits,
+  type Note,
+  type Setting,
+} from './db'
 import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
 import { deleteFile, download, listFiles, upload } from './dropbox'
@@ -197,6 +206,8 @@ async function runSync(): Promise<SyncResult> {
   // ---------- 2. Notes deleted on the other device ----------
 
   for (const id of remoteDeleted.keys()) {
+    // An edit still waiting for its autosave counts as an edit (it beats the deletion)
+    await savePendingEdits()
     const note = await db.notes.get(id)
     if (!note) continue
     if (isChangedLocally(note)) {
@@ -205,11 +216,14 @@ async function runSync(): Promise<SyncResult> {
       const remoteRev = remoteNotes.get(id)
       await uploadNote(note, remoteRev ? { update: remoteRev } : 'add')
     } else {
-      await db.transaction('rw', db.notes, db.synced, async () => {
+      // Unless it was edited here while this sync ran: then the next sync sends the edit
+      const deleted = await db.transaction('rw', db.notes, db.synced, async () => {
+        if ((await db.notes.get(id))?.updatedAt !== note.updatedAt) return false
         await db.notes.delete(id)
         await db.synced.delete(id)
+        return true
       })
-      result.deleted++
+      if (deleted) result.deleted++
     }
     done.add(id)
   }
@@ -225,6 +239,9 @@ async function runSync(): Promise<SyncResult> {
   for (const [id, remoteRev] of remoteNotes) {
     if (done.has(id)) continue
     done.add(id)
+    // An edit still waiting for its autosave must count as a local change, or the downloaded
+    // version would be stored, then overwritten by that save without a conflict copy
+    await savePendingEdits()
     const local = await db.notes.get(id)
     const last = synced.get(id)
 
