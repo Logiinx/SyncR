@@ -17,7 +17,8 @@ const textColor = (id: string) => `var(--text-${id})`
 export const highlightColor = (id: string) => `var(--hl-${id})`
 
 // Two rows of swatches: text color, then highlighter. The first swatch of each row removes it.
-function ColorPicker({ editor, onPicked }: { editor: Editor; onPicked: () => void }) {
+// Cards only get the text color row (highlights = false).
+function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; onPicked: () => void; highlights?: boolean }) {
   const { color, highlight } = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -48,21 +49,23 @@ function ColorPicker({ editor, onPicked }: { editor: Editor; onPicked: () => voi
           </Swatch>
         ))}
       </div>
-      <div className="color-row" role="group" aria-label="Highlight">
-        <Swatch title="No highlight" selected={!highlight} onClick={() => pick(() => chain().unsetHighlight().run())}>
-          <Ban size={14} />
-        </Swatch>
-        {COLORS.map(({ id, name }) => (
-          <Swatch
-            key={id}
-            title={`${name} highlight`}
-            selected={highlight === highlightColor(id)}
-            onClick={() => pick(() => chain().setHighlight({ color: highlightColor(id) }).run())}
-          >
-            <span className="highlight-swatch" style={{ background: highlightColor(id) }} />
+      {highlights && (
+        <div className="color-row" role="group" aria-label="Highlight">
+          <Swatch title="No highlight" selected={!highlight} onClick={() => pick(() => chain().unsetHighlight().run())}>
+            <Ban size={14} />
           </Swatch>
-        ))}
-      </div>
+          {COLORS.map(({ id, name }) => (
+            <Swatch
+              key={id}
+              title={`${name} highlight`}
+              selected={highlight === highlightColor(id)}
+              onClick={() => pick(() => chain().setHighlight({ color: highlightColor(id) }).run())}
+            >
+              <span className="highlight-swatch" style={{ background: highlightColor(id) }} />
+            </Swatch>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

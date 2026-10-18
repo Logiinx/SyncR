@@ -2319,6 +2319,12 @@ button {
   border-top: 1px solid var(--border);
 }
 
+/* Cards: the menu is only the color row */
+.card-color-menu .color-picker {
+  padding-top: 0;
+  border-top: none;
+}
+
 /* ---------- Text color and highlight (ColorPicker.tsx) ---------- */
 
 /* Selected text keeps its own color (the system style turns it white), so a new color

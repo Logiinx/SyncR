@@ -3,6 +3,7 @@ import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
 import { ChevronDown, Sparkles, X } from 'lucide-react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
   setCardDeleted,
@@ -12,6 +13,7 @@ import {
 } from './db'
 import { extensions } from './NoteEditor'
 import ContextMenu from './ContextMenu'
+import ColorPicker from './ColorPicker'
 
 const SAVE_DELAY_MS = 500
 
@@ -255,6 +257,16 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
         </div>
       )}
       <EditorContent editor={editor} className="card-editor" />
+      {/* Selected text while editing: text colors (no highlights on cards) */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          className="selection-menu card-color-menu"
+          options={{ placement: 'bottom', offset: 8, flip: true, shift: { padding: 8 } }}
+        >
+          <ColorPicker editor={editor} onPicked={() => {}} highlights={false} />
+        </BubbleMenu>
+      )}
       <div className="card-buttons">
         <button
           className="card-priority"
