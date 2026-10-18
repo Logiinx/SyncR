@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.15] - 2026-10-18
+
 ### Changed
 - Board on the phone: a long press on a card's text now only opens Android's own menu (copy, paste…), no longer the card's menu on top of it. The card's menu (title, priority, delete) moved to a new "⋯" button next to the flag and ✕. On the PC, right-click works as before.
 
