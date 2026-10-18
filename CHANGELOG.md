@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.12.16] - 2026-10-18
+
 ### Added
 - Search across all notes: a search box in the sidebar (Ctrl+Shift+F on the PC opens it). Only the matching notes stay in the list, each with the text around the match and the found words in bold. Case and accents don't matter ("ete" finds "été"), and with several words a note must contain all of them, in any order. The search stays while you open notes, until you clear it (✕ or Escape).
 - Opening a search result scrolls the note to the match and makes it pulse in blue three times (fading in and out, about 3.5 seconds). With several words, it goes to the first line that has all of them (the snippet in the list shows that same spot). Collapsed sections around the match open. The cursor doesn't move there, so the phone keyboard stays closed.
