@@ -1,5 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core'
-import type { InsertType, Table, UpdateSpec } from 'dexie'
+import type { Table, UpdateSpec } from 'dexie'
 import {
   db,
   imageIds,
@@ -8,7 +8,6 @@ import {
   removeOldDeletedGames,
   savePendingEdits,
   type Note,
-  type Setting,
 } from './db'
 import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
@@ -61,7 +60,6 @@ export function deviceName() {
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
-const settingPath = (name: string) => `/settings/${name}`
 const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
@@ -178,14 +176,14 @@ async function runSync(): Promise<SyncResult> {
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
   const done = new Set<string>() // notes fully handled by an earlier step
-  const imagesUsedHere = async () => new Set((await db.notes.toArray()).flatMap((n) => imageIds(n.content)))
+  const imagesUsedIn = (notes: Note[]) => new Set(notes.flatMap((n) => imageIds(n.content)))
   const localAttachments = new Set(await db.attachments.toCollection().primaryKeys())
 
   // ---------- 0. Images used on this device that Dropbox doesn't have yet ----------
   // Before the notes, so a note in Dropbox never points to a missing image.
   // Images no note uses (e.g. pasted, then undone) aren't uploaded.
 
-  for (const id of await imagesUsedHere()) {
+  for (const id of imagesUsedIn(await db.notes.toArray())) {
     if (remoteAttachments.has(id) || !localAttachments.has(id)) continue
     const attachment = await db.attachments.get(id)
     if (!attachment) continue
@@ -315,45 +313,19 @@ async function runSync(): Promise<SyncResult> {
   }
 
   // ---------- 4. New notes from this device (incl. conflict copies) ----------
+  // The notes as they are now, read once for steps 4 to 6
 
-  for (const note of await db.notes.toArray()) {
+  const notesNow = await db.notes.toArray()
+  for (const note of notesNow) {
     // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
     if (!done.has(note.id)) await uploadNote(note, 'add')
   }
 
   // ---------- 4b. Settings (color rules, …) ----------
-  // Like a note, but changed on both sides means the newest wins.
+  // Like reminders and cards (syncRecords below), except that a setting missing in Dropbox is
+  // never removed here (settings aren't deleted): it's kept, and sent again once it changes.
 
-  const localSettings = await db.settings.toArray()
-  const settingNames = new Set([...remoteSettings.keys(), ...localSettings.map((s) => s.name)])
-  for (const name of settingNames) {
-    const local = localSettings.find((s) => s.name === name)
-    const remoteRev = remoteSettings.get(name)
-    const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
-    const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
-    if (!changedHere && !changedThere) continue
-
-    const remote = changedThere ? await readFile<Setting>(settingPath(name), key, result) : null
-    if (remote === UNREADABLE) continue // left alone, not overwritten
-
-    if (local && changedHere && (!remote || local.updatedAt >= remote.updatedAt)) {
-      // Send this device's version
-      const data: Setting = { name, value: local.value, updatedAt: local.updatedAt }
-      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
-      const rev = await upload(settingPath(name), encrypted, remoteRev ? { update: remoteRev } : 'add')
-      if (!rev) throw new RetrySoonError('A setting changed in Dropbox during sync.')
-      await db.settings.update(name, { syncedRev: rev, syncedUpdatedAt: local.updatedAt })
-      result.uploaded++
-    } else if (remote && remoteRev) {
-      // Take the other device's version, unless it was changed here while this sync ran
-      const stored = await db.transaction('rw', db.settings, async () => {
-        if ((await db.settings.get(name))?.updatedAt !== local?.updatedAt) return false
-        await db.settings.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
-        return true
-      })
-      if (stored) result.downloaded++
-    }
-  }
+  await syncRecords(db.settings, 'settings', remoteSettings, key, result, (setting) => setting.name, false)
 
   // ---------- 4c. Reminders, Board cards and games ----------
   // Like settings: changed on both sides means the newest wins. See syncRecords().
@@ -365,19 +337,19 @@ async function runSync(): Promise<SyncResult> {
   for (const id of await removeOldDeletedCards()) {
     if (remoteCards.delete(id)) await deleteFile(`/cards/${id}`)
   }
-  await syncRecords(db.reminders, 'reminders', remoteReminders, key, result)
+  await syncRecords(db.reminders, 'reminders', remoteReminders, key, result, byId)
   for (const id of await removeOldDeletedGames()) {
     if (remoteGames.delete(id)) await deleteFile(`/games/${id}`)
   }
-  await syncRecords(db.cards, 'cards', remoteCards, key, result)
-  await syncRecords(db.games, 'games', remoteGames, key, result)
+  await syncRecords(db.cards, 'cards', remoteCards, key, result, byId)
+  await syncRecords(db.games, 'games', remoteGames, key, result, byId)
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
   // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
-  // `used` is shared with step 6 (this step doesn't change notes). An edit made meanwhile
-  // only affects the unused mark, and the next sync corrects it.
+  // `used` is shared with step 6 (neither step changes notes). An edit made since step 4 only
+  // affects the unused mark, and the next sync corrects it.
 
-  const used = await imagesUsedHere()
+  const used = imagesUsedIn(notesNow)
   for (const id of used) {
     if (localAttachments.has(id) || !remoteAttachments.has(id)) continue
     const raw = await download(attachmentPath(id))
@@ -431,14 +403,13 @@ async function readFile<T>(path: string, key: CryptoKey, result: SyncResult): Pr
   }
 }
 
-// ---------- Reminders and cards (step 4c) ----------
+// ---------- Settings, reminders, cards and games (steps 4b and 4c) ----------
 
-// What reminders, Board cards and games have in common: a deletion is a change like any other
-// (deleted = true), and syncedRev / syncedUpdatedAt remember what was synced last.
+// What they have in common: syncedRev / syncedUpdatedAt remember what was synced last, and (not
+// for settings) a deletion is a change like any other (deleted = true).
 interface SyncedRecord {
-  id: string
   updatedAt: number
-  deleted: boolean
+  deleted?: boolean
   restoredAt?: number // when a deleted record was deliberately brought back (re-added, Undo)
   syncedRev?: string
   syncedUpdatedAt?: number
@@ -454,27 +425,31 @@ export function localWins(local: SyncedRecord, remote: SyncedRecord) {
   return local.updatedAt >= remote.updatedAt
 }
 
-// Syncs one table with its Dropbox folder (one encrypted file per record).
+const byId = (record: { id: string }) => record.id
+
+// Syncs one table with its Dropbox folder (one encrypted file per record, named by idOf).
 // Changed on both sides: the newest wins, so "deleted here, edited there" also goes to the newest.
-async function syncRecords<T extends SyncedRecord>(
-  table: Table<T, string, InsertType<T, 'id'>>,
+async function syncRecords<T extends SyncedRecord, TInsert>(
+  table: Table<T, string, TInsert>,
   folder: string,
   remoteRevs: Map<string, string>, // id -> rev, from the Dropbox listing
   key: CryptoKey,
   result: SyncResult,
+  idOf: (record: T) => string,
+  removeWhenGone = true,
 ) {
   const path = (id: string) => `/${folder}/${id}`
-  const locals = await table.toArray()
-  const ids = new Set([...remoteRevs.keys(), ...locals.map((r) => r.id)])
+  const locals = new Map((await table.toArray()).map((record) => [idOf(record), record]))
+  const ids = new Set([...remoteRevs.keys(), ...locals.keys()])
   for (const id of ids) {
-    const local = locals.find((r) => r.id === id)
+    const local = locals.get(id)
     const remoteRev = remoteRevs.get(id)
     const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
     const changedThere = remoteRev !== undefined && remoteRev !== local?.syncedRev
 
     // Not in Dropbox, and deleted here, or synced before and unchanged (another device removed
     // an old deleted one): remove it here too. Otherwise it's new (or edited): uploaded below.
-    if (local && !remoteRev && (local.deleted || (local.syncedRev && !changedHere))) {
+    if (removeWhenGone && local && !remoteRev && (local.deleted || (local.syncedRev && !changedHere))) {
       await db.transaction('rw', table, async () => {
         if ((await table.get(id))?.updatedAt === local.updatedAt) await table.delete(id)
       })
@@ -491,13 +466,13 @@ async function syncRecords<T extends SyncedRecord>(
       const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
       const rev = await upload(path(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
       if (!rev) throw new RetrySoonError(`Something in /${folder} changed in Dropbox during sync.`)
-      await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<InsertType<T, 'id'>>)
+      await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<TInsert>)
       result.uploaded++
     } else if (remote && remoteRev) {
       // Take the other device's version, unless it was changed here while this sync ran
       const stored = await db.transaction('rw', table, async () => {
         if ((await table.get(id))?.updatedAt !== local?.updatedAt) return false
-        await table.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt })
+        await table.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt } as unknown as TInsert)
         return true
       })
       if (stored) result.downloaded++
