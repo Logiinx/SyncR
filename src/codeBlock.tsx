@@ -146,7 +146,7 @@ export function canMakeCodeBlock(editor: Editor) {
   return codeBlockRange(editor.state) !== null
 }
 
-// For the selection menu: the selected lines become one code block (setCodeBlock would make
+// For the toolbar: the selected lines become one code block (setCodeBlock would make
 // one block per paragraph)
 export function selectionToCodeBlock(editor: Editor) {
   return editor

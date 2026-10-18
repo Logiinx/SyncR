@@ -2322,7 +2322,7 @@ button {
   pointer-events: none;
 }
 
-/* ---------- Selection menu ---------- */
+/* ---------- Menu on selected text (Board cards: colors, Card.tsx) ---------- */
 
 .selection-menu {
   /* In front of the toolbar when the selection is on the first lines */
@@ -2363,23 +2363,9 @@ button {
   color: var(--text);
 }
 
-/* Thin line between formatting and the section buttons */
-.menu-divider {
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: #353535;
-}
-
 .selection-menu button:disabled {
   opacity: 0.4;
   cursor: default;
-}
-
-/* With the palette open, the menu gets a second part below the buttons */
-.selection-menu.with-colors {
-  flex-wrap: wrap;
-  max-width: 300px;
 }
 
 .selection-menu .color-picker {

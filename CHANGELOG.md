@@ -4,8 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-### Fixed
-- Selection menu: it no longer gets cut off at the bottom of the window when the selection is taller than the screen (for example after Ctrl+A). It now slides up and stays at the bottom edge of the note. It also no longer covers the toolbar, follows the selection while the note scrolls, and hides when the selection is scrolled out of view.
+### Changed
+- The menu that popped up over selected text is gone (it covered the text and got cut off after Ctrl+A). Its buttons are now in the toolbar, sorted into groups: undo · text style · what the lines are (checklist, section, code block, separate lines) · insert (table, image) · use elsewhere (copy link, pin to Board). Buttons that can't be used right now are grayed out, so the others never move. With nothing selected, section, code block, separate lines and copy link act on the line the cursor is in. Section and code block are one button each: lit when the cursor is inside one, click again to turn it back into normal lines.
+- Phone: the toolbar keeps undo, text style and checklist; the other buttons are in a "⋯" list, which only shows what can be used right now.
 
 ## [0.12.18] - 2026-10-19
 

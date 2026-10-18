@@ -196,7 +196,7 @@ function findBlock(doc: PMNode, blockId: string): number | null {
   return found
 }
 
-// ---------- Copying a link (selection menu) ----------
+// ---------- Copying a link (toolbar) ----------
 
 // The innermost linkable block around the cursor. In a section's title: the section.
 function blockAtCursor(editor: Editor): { pos: number; node: PMNode } | null {

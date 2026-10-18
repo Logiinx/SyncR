@@ -67,7 +67,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [setBoardOpen, setSidebarOpen])
 
-  // "Pin" in the selection menu: show the Board so the new card is visible
+  // "Pin" in the toolbar: show the Board so the new card is visible
   useEffect(() => {
     const open = () => {
       if (isNarrowScreen()) setSidebarOpen(false)
