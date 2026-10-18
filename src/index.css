@@ -1060,13 +1060,17 @@ button {
   }
 }
 
-/* Search across all notes, at the top of the sidebar (looks like the games search) */
-.sidebar-search {
+/* Search across all notes, above the note list (looks like the games search; ".sidebar" so
+   these win over .game-search-bar, which comes later) */
+.sidebar .sidebar-search {
   margin: 8px 8px 0;
+  /* Icon and text in line with Games and Reminders (their 3px bar + 12px padding, minus the
+     box's 1px border) */
+  padding-left: 14px;
   font-size: 14px;
 }
 
-.sidebar-search input {
+.sidebar .sidebar-search input {
   padding: 6px 0;
 }
 
