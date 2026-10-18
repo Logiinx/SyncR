@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Fixed
+- Phone: after picking a text color or highlight (in notes and cards), the color shows right away. Android draws its own selection (white text on blue) and ignores the app's selection style, so the new color stayed hidden until you unselected. Now the selection collapses to a cursor at the end of the colored text. On the PC the selection stays as before.
+
 ## [0.12.15] - 2026-10-18
 
 ### Changed

@@ -29,6 +29,9 @@ function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; 
   const chain = () => editor.chain().focus()
   const pick = (run: () => void) => {
     run()
+    // Phone: Android draws its own selection (white text), ignoring our ::selection style, so
+    // the new color only shows once unselected. Put the cursor at the end of the text instead.
+    if (window.matchMedia('(pointer: coarse)').matches) editor.commands.setTextSelection(editor.state.selection.to)
     onPicked()
   }
 
