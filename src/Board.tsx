@@ -100,21 +100,27 @@ function Board({ onClose }: Props) {
     setUndo({ ids: [id], label: 'Card deleted' }) // a newer delete replaces the offer (the older one stays deleted)
   }
 
-  // Moving a card: press on it and drag (on a touch screen, hold it a moment first, so a
-  // swipe still scrolls). The card follows the pointer and the others slide out of the way.
-  // Where it is when you let go decides the spot: above the separator = priority,
+  // Moving a card (or a group, by its header): press on it and drag (on a touch screen, hold it
+  // a moment first, so a swipe still scrolls). It follows the pointer and the others slide out
+  // of the way. Where it is when you let go decides the spot: above the separator = priority,
   // below = normal. Moves are CSS transforms set directly, so React doesn't redraw on each move.
+  // A card can also go into or out of a group: under an open group's header or among its cards
+  // = in it (the group's line turns blue), past its bottom = out; over the middle of a folded
+  // group = into it (the pile lights up). Groups only move among the cards, never into a group.
   function pressCard(id: string, event: React.PointerEvent) {
     const list = listRef.current
-    const card = cards?.find((c) => c.id === id)
+    const card = rows?.find((c) => c.id === id)
     // Even a single card can be dragged: the "Priority" / "Normal" zone lets it change side
-    if (event.button !== 0 || !list || !cards || !card) return
-    const allCards = cards
+    if (event.button !== 0 || !list || !rows || !cards || !card) return
+    const allCards = rows
+    const topLevel = cards
+    const isGroup = !!card.group
+    const groupNow = inGroup(card) ? card.groupId! : null
     const touch = event.pointerType === 'touch'
     const start = { x: event.clientX, y: event.clientY }
     let pointerY = event.clientY
     let started = false
-    let target: { priority: boolean; order: number } | null = null
+    let target: { priority: boolean; order: number; groupId: string | null; into: boolean } | null = null
     // Measured when the drag starts
     let items: HTMLElement[] = []
     let dragged: HTMLElement | null = null
@@ -126,19 +132,30 @@ function Board({ onClose }: Props) {
     const contentY = (clientY: number) => clientY - list.getBoundingClientRect().top + list.scrollTop
 
     function begin() {
-      const draggedEl = list!.querySelector<HTMLElement>(`:scope > [data-card-id="${id}"]`)
+      const draggedEl = list!.querySelector<HTMLElement>(`[data-card-id="${id}"]`)
       if (!draggedEl) return
       const topBefore = draggedEl.offsetTop
-      // All cards on one side (no separator): a temporary zone takes its place, so the card
-      // can still change side. All normal: "Priority" at the top; all priority: "Normal" at the bottom.
+      // All cards on the Board on one side (no separator): a temporary zone takes its place, so
+      // the card can still change side. All normal: "Priority" at the top; all priority: "Normal"
+      // at the bottom. (Inside a group, a card dropped without a separator takes its neighbours' side.)
       if (!list!.querySelector(':scope > .board-separator')) {
+        const rest = topLevel.filter((c) => c.id !== id)
+        const side = rest.length ? rest[0].priority : card!.priority
         zone = document.createElement('div')
         zone.className = 'board-separator board-drop-zone'
-        zone.textContent = card!.priority ? 'Normal ↓' : 'Priority ↑'
-        if (card!.priority) list!.append(zone)
+        zone.textContent = side ? 'Normal ↓' : 'Priority ↑'
+        if (side) list!.append(zone)
         else list!.prepend(zone)
       }
-      items = [...list!.querySelectorAll<HTMLElement>(':scope > .card, :scope > .card-group, :scope > .board-separator')]
+      // In page order: a group being moved passes whole groups; a card passes group headers
+      // and the cards inside open groups one by one
+      items = [
+        ...list!.querySelectorAll<HTMLElement>(
+          isGroup
+            ? ':scope > .card, :scope > .card-group, :scope > .board-separator'
+            : ':scope > .card, :scope > .board-separator, .card-group-head, .card-group-cards > .card, .card-group-cards > .board-separator',
+        ),
+      ]
       dragged = draggedEl
       index = items.indexOf(dragged)
       others = items.filter((el) => el !== dragged)
@@ -162,21 +179,79 @@ function Board({ onClose }: Props) {
       // j = how many of the other cards (and the separator) end up above it
       let j = others.findIndex((el) => edge < el.offsetTop + el.offsetHeight / 2)
       if (j === -1) j = others.length
+
+      // The group an element is inside (a card or separator in an open group), else null
+      const groupOf = (el?: HTMLElement) =>
+        el?.closest('.card-group-cards') ? el.closest<HTMLElement>('.card-group')!.dataset.cardId! : null
+      // The card (or group, for a header) an element shows
+      const cardOf = (el?: HTMLElement) =>
+        el && allCards.find((c) => c.id === el.closest<HTMLElement>('[data-card-id]')?.dataset.cardId)
+      const y = contentY(pointerY)
+
+      // Which open group it goes in: the pointer decides (below the middle of its header, above
+      // its bottom), not the card's edge, which for a tall card can be far past the group. The
+      // spot then stays among that group's cards, or outside every group.
+      let groupId: string | null = null
+      if (!isGroup) {
+        others.forEach((head, h) => {
+          if (!head.classList.contains('card-group-head') || head.parentElement!.classList.contains('folded')) return
+          const box = head.parentElement!
+          const id = box.dataset.cardId!
+          let last = h // its last card (or the header, if it has none)
+          while (last + 1 < others.length && groupOf(others[last + 1]) === id) last++
+          const inside = y >= box.offsetTop + head.offsetHeight / 2 && y < box.offsetTop + box.offsetHeight
+          if (inside) {
+            groupId = id
+            j = Math.min(Math.max(j, h + 1), last + 1)
+          } else if (j > h && j <= last) {
+            j = y < box.offsetTop + box.offsetHeight / 2 ? h : last + 1
+          }
+        })
+      }
+
+      // Pointer over the middle of a folded group: into it. The group then stays where it is
+      // (the spot is kept on the dragged card's side of it), so it doesn't slide away from the pointer.
+      const h = isGroup
+        ? -1
+        : others.findIndex(
+            (el) =>
+              el.classList.contains('card-group-head') &&
+              el.parentElement!.classList.contains('folded') &&
+              Math.abs(y - (el.offsetTop + el.offsetHeight / 2)) < el.offsetHeight * 0.3,
+          )
+      const intoHead = h >= 0 ? others[h] : undefined
+      if (intoHead) j = index <= h ? Math.min(j, h) : Math.max(j, h + 1)
+
       // Make room: the ones it passed slide one place towards where it came from
-      others.forEach((el, k) => {
-        const y = k >= j && k < index ? shift : k < j && k >= index ? -shift : 0
-        el.style.transform = y ? `translateY(${y}px)` : ''
-      })
-      const separator = others.findIndex((el) => el.classList.contains('board-separator'))
-      const priority = j <= separator // above the separator (or the "Priority" zone) = priority
-      // Preview: the dragged card already looks like it will once dropped (blue tint or not)
+      const offsets = others.map((_, k) => (k >= j && k < index ? shift : k < j && k >= index ? -shift : 0))
+      others.forEach((el, k) => (el.style.transform = offsets[k] ? `translateY(${offsets[k]}px)` : ''))
+
+      let priority = card!.priority
+      let order = card!.order
+      if (intoHead) {
+        groupId = intoHead.parentElement!.dataset.cardId!
+      } else {
+        // The cards there (separators, and cards of other groups, don't count)
+        const inPlace = (el: HTMLElement) => !el.classList.contains('board-separator') && groupOf(el) === groupId
+        const before = others.slice(0, j).filter(inPlace)
+        const after = others.slice(j).filter(inPlace)
+        // Above the separator (or the "Priority" zone) = priority; no separator: its neighbours' side
+        const separator = others.findIndex((el) => el.classList.contains('board-separator') && groupOf(el) === groupId)
+        priority = separator >= 0 ? j <= separator : (cardOf(before.at(-1)) ?? cardOf(after[0]) ?? card!).priority
+        // New order: between its neighbours on that side
+        const sameSide = (el: HTMLElement) => cardOf(el)?.priority === priority
+        const prev = cardOf(before.filter(sameSide).at(-1))
+        const next = cardOf(after.find(sameSide))
+        order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : card!.order
+      }
+      // Preview: the dragged card already looks like it will once dropped (blue tint or not),
+      // and the group it goes into is marked
       dragged.classList.toggle('priority', priority)
-      // New order: between its neighbours (the separator is no neighbour)
-      const cardOf = (el?: HTMLElement) => allCards.find((c) => c.id === el?.dataset.cardId)
-      const prev = cardOf(others[j - 1])
-      const next = cardOf(others[j])
-      const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : card!.order
-      target = { priority, order }
+      for (const el of list!.querySelectorAll<HTMLElement>('.card-group')) {
+        el.classList.toggle('drop-target', !intoHead && el.dataset.cardId === groupId)
+        el.classList.toggle('drop-into', el === intoHead?.parentElement)
+      }
+      target = { priority, order, groupId, into: !!intoHead }
     }
 
     const holdTimer = touch ? window.setTimeout(begin, HOLD_MS) : undefined
@@ -221,10 +296,15 @@ function Board({ onClose }: Props) {
       const putBack = () => {
         zone?.remove()
         for (const el of items) el.style.transform = ''
+        for (const el of list!.querySelectorAll('.card-group')) el.classList.remove('drop-target', 'drop-into')
         lifted.classList.remove('lifted')
         list!.classList.remove('dragging')
       }
-      const moved = e?.type === 'pointerup' && target && (target.priority !== card!.priority || target.order !== card!.order)
+      const moved =
+        e?.type === 'pointerup' &&
+        target &&
+        (target.groupId !== groupNow ||
+          (!target.into && (target.priority !== card!.priority || target.order !== card!.order)))
       if (moved && target) {
         // Once the new order is on screen, drop the transforms without animation
         settle.current = () => {
@@ -233,7 +313,8 @@ function Board({ onClose }: Props) {
           putBack()
           requestAnimationFrame(() => list!.classList.remove('settling'))
         }
-        moveCard(id, target.priority, target.order)
+        if (target.into) moveToGroup(id, target.groupId!)
+        else moveCard(id, target.priority, target.order, isGroup ? undefined : target.groupId)
         window.setTimeout(() => settle.current?.(), 500) // in case the list didn't change
       } else {
         lifted.classList.toggle('priority', card!.priority) // undo the preview

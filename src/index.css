@@ -663,17 +663,17 @@ button {
    (dragSections.ts): two gray corner brackets like the app icon, a slightly lighter tile,
    a grab hand. Not while a card is being dragged. */
 @media (hover: hover) {
-  .board-cards:not(.dragging) > .card:not(.editing):hover {
+  .board-cards:not(.dragging) .card:not(.editing):hover {
     background: color-mix(in srgb, var(--text) 6%, var(--bg));
     cursor: grab;
   }
 
-  .board-cards:not(.dragging) > .card.priority:not(.editing):hover {
+  .board-cards:not(.dragging) .card.priority:not(.editing):hover {
     background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
   }
 
-  .board-cards:not(.dragging) > .card:not(.editing):hover::before,
-  .board-cards:not(.dragging) > .card:not(.editing):hover::after {
+  .board-cards:not(.dragging) .card:not(.editing):hover::before,
+  .board-cards:not(.dragging) .card:not(.editing):hover::after {
     content: '';
     position: absolute;
     width: 14px;
@@ -683,18 +683,18 @@ button {
   }
 
   /* Priority cards: blue brackets, matching their tint */
-  .board-cards:not(.dragging) > .card.priority:not(.editing):hover::before,
-  .board-cards:not(.dragging) > .card.priority:not(.editing):hover::after {
+  .board-cards:not(.dragging) .card.priority:not(.editing):hover::before,
+  .board-cards:not(.dragging) .card.priority:not(.editing):hover::after {
     border-color: var(--text-blue);
   }
 
-  .board-cards:not(.dragging) > .card:not(.editing):hover::before {
+  .board-cards:not(.dragging) .card:not(.editing):hover::before {
     top: -3px;
     left: -3px;
     border-width: 2px 0 0 2px;
   }
 
-  .board-cards:not(.dragging) > .card:not(.editing):hover::after {
+  .board-cards:not(.dragging) .card:not(.editing):hover::after {
     bottom: -3px;
     right: -3px;
     border-width: 0 2px 2px 0;
@@ -1037,8 +1037,20 @@ button {
    lifted (slightly bigger, soft shadow) and follows the pointer without delay */
 .board-cards > .card,
 .board-cards > .card-group,
-.board-cards > .board-separator {
+.board-cards > .board-separator,
+.card-group-head,
+.card-group-cards > .card,
+.card-group-cards > .board-separator {
   transition: transform 0.15s ease;
+}
+
+/* A card dragged into an open group: its line turns blue. Over a folded group: the pile lights up. */
+.card-group.drop-target .card-group-cards {
+  border-left-color: var(--text-blue);
+}
+
+.card-group.drop-into .card-group-head {
+  background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));
 }
 
 .board-cards.dragging {
@@ -1046,7 +1058,7 @@ button {
   user-select: none;
 }
 
-.board-cards > .card.lifted,
+.board-cards .card.lifted,
 .board-cards > .card-group.lifted {
   z-index: 2;
   transition: none;
@@ -1068,7 +1080,9 @@ button {
 }
 
 /* Just dropped: the cards are already in their new places, so no slide back */
-.board-cards.settling > * {
+.board-cards.settling > *,
+.board-cards.settling .card-group-head,
+.board-cards.settling .card-group-cards > * {
   transition: none;
 }
 

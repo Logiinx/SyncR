@@ -384,9 +384,15 @@ export async function removeOldDeletedCards(): Promise<string[]> {
   return old.map((card) => card.id)
 }
 
-// Dropped somewhere else on the Board (drag and drop): new part and position
-export async function moveCard(id: string, priority: boolean, order: number) {
-  await db.cards.update(id, { priority, order, updatedAt: Date.now() })
+// Dropped somewhere else on the Board (drag and drop): new part and position, and for a card
+// the group it's now in (null: none; undefined: unchanged, e.g. a group being moved)
+export async function moveCard(id: string, priority: boolean, order: number, groupId?: string | null) {
+  await db.cards.update(id, {
+    priority,
+    order,
+    ...(groupId !== undefined && { groupId: groupId ?? undefined }),
+    updatedAt: Date.now(),
+  })
   changed()
 }
 
