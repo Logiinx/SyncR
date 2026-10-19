@@ -4,15 +4,17 @@ export interface DialogRequest {
   title: string
   message?: string
   input?: { initial: string; placeholder: string } // shows a text field (for rename)
+  checkbox?: string // shows a checkbox with this label, unticked (e.g. "Delete its cards too")
   confirmLabel: string
   danger?: boolean // red confirm button (for delete)
   noCancel?: boolean // just a message with an OK button
-  onConfirm: (value: string) => void
+  onConfirm: (value: string, checked: boolean) => void
 }
 
 // A small centered box. Enter confirms, Escape or clicking outside cancels.
 function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => void }) {
   const [value, setValue] = useState(request.input?.initial ?? '')
+  const [checked, setChecked] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -25,7 +27,7 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
   }, [request])
 
   function confirm() {
-    request.onConfirm(value)
+    request.onConfirm(value, checked)
     onClose()
   }
 
@@ -50,6 +52,12 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
             placeholder={request.input.placeholder}
             onChange={(e) => setValue(e.target.value)}
           />
+        )}
+        {request.checkbox && (
+          <label className="dialog-check">
+            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+            {request.checkbox}
+          </label>
         )}
         <div className="dialog-buttons">
           {!request.noCancel && (

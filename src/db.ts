@@ -329,6 +329,31 @@ export async function createGroup(name: string, cardId: string) {
   await moveToGroup(cardId, id)
 }
 
+// Deleting a group: its cards are deleted too, or go back on the Board where the group was
+// (in the same order; they keep groupId, so Undo puts them back in it). Returns what Undo
+// brings back.
+export async function deleteGroup(id: string, withCards: boolean): Promise<string[]> {
+  const all = await db.cards.toArray()
+  const group = all.find((row) => row.id === id)
+  if (!group) return []
+  const inside = all.filter((card) => !card.deleted && !card.group && card.groupId === id).sort((a, b) => a.order - b.order)
+  // Orders between the group's and the next one up, so nothing else lands between them
+  const above = all.map((row) => row.order).filter((order) => order > group.order)
+  const step = ((above.length ? Math.min(...above) : group.order + 1) - group.order) / (inside.length + 1)
+  const now = Date.now()
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.update(id, { deleted: true, updatedAt: now })
+    for (const [i, card] of inside.entries()) {
+      await db.cards.update(
+        card.id,
+        withCards ? { deleted: true, updatedAt: now } : { order: group.order + step * (i + 1), updatedAt: now },
+      )
+    }
+  })
+  changed()
+  return withCards ? [id, ...inside.map((card) => card.id)] : [id]
+}
+
 // Into a group (at the bottom of its part there), or out of it (undefined: bottom of its part
 // on the Board). The card keeps its priority.
 export async function moveToGroup(id: string, groupId: string | undefined) {

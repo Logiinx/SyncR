@@ -56,8 +56,8 @@ function Board({ onClose }: Props) {
   const cardMoving = useRef(false)
   // The card just added gets the keyboard focus
   const [newCardId, setNewCardId] = useState<string | null>(null)
-  // The card just deleted, while "Undo" is offered
-  const [undoId, setUndoId] = useState<string | null>(null)
+  // The card (or group) just deleted, while "Undo" is offered: what it brings back
+  const [undo, setUndo] = useState<{ ids: string[]; label: string } | null>(null)
   // "Move to group" in a card's menu: the groups to choose from
   const [groupMenu, setGroupMenu] = useState<{ cardId: string; x: number; y: number } | null>(null)
   // A pinned game's details (click its card), and the "Remove game?" question from there
@@ -86,10 +86,10 @@ function Board({ onClose }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!undoId) return
-    const timer = window.setTimeout(() => setUndoId(null), UNDO_MS)
+    if (!undo) return
+    const timer = window.setTimeout(() => setUndo(null), UNDO_MS)
     return () => window.clearTimeout(timer)
-  }, [undoId])
+  }, [undo])
 
   async function addCard() {
     setNewCardId(await createCard())
@@ -97,7 +97,7 @@ function Board({ onClose }: Props) {
 
   function deleteCard(id: string) {
     setCardDeleted(id, true)
-    setUndoId(id) // a newer delete replaces the offer (the older one stays deleted)
+    setUndo({ ids: [id], label: 'Card deleted' }) // a newer delete replaces the offer (the older one stays deleted)
   }
 
   // Moving a card: press on it and drag (on a touch screen, hold it a moment first, so a
@@ -317,9 +317,9 @@ function Board({ onClose }: Props) {
     })
   }
 
-  function undo() {
-    if (undoId) setCardDeleted(undoId, false)
-    setUndoId(null)
+  function undoDelete() {
+    for (const id of undo?.ids ?? []) setCardDeleted(id, false)
+    setUndo(null)
   }
 
   function startResize(event: React.PointerEvent) {
@@ -365,16 +365,22 @@ function Board({ onClose }: Props) {
               if (!card.group) return renderCard(card)
               const inside = groupCards(card.id)
               return (
-                <CardGroup group={card} count={inside.length} onPress={(event) => pressCard(card.id, event)}>
+                <CardGroup
+                  group={card}
+                  count={inside.length}
+                  onPress={(event) => pressCard(card.id, event)}
+                  onDialog={setDialog}
+                  onDeleted={(ids) => setUndo({ ids, label: 'Group deleted' })}
+                >
                   {withSeparator(inside, renderCard)}
                 </CardGroup>
               )
             })}
         </div>
-        {undoId && (
+        {undo && (
           <div className="board-undo">
-            Card deleted
-            <button onClick={undo}>Undo</button>
+            {undo.label}
+            <button onClick={undoDelete}>Undo</button>
           </div>
         )}
         {/* Phone only (CSS): the header "+" is hard to reach with the thumb */}

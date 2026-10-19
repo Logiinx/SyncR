@@ -2903,6 +2903,21 @@ button {
   outline: 1px solid var(--accent);
 }
 
+/* A checkbox under the message (Dialog.tsx checkbox) */
+.dialog-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.dialog .dialog-check input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 /* ---------- Settings dialog ---------- */
 
 .dialog .settings-note {
