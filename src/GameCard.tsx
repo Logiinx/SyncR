@@ -76,10 +76,11 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
             ...(inList ? [{ label: 'Open', onClick: () => onOpen(card.game.id) }] : []),
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
+              divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Unpin from Board', danger: true, onClick: onDelete },
+            { label: 'Unpin from Board', danger: true, divider: true, onClick: onDelete },
           ]}
         />
       )}

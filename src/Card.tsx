@@ -283,7 +283,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
             ...(editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
             ...(card.title
               ? [
-                  { label: 'Edit title', onClick: () => setEditingTitle(true) },
+                  { label: 'Edit title', divider: true, onClick: () => setEditingTitle(true) },
                   {
                     label: card.titleAlign === 'left' ? 'Center title' : 'Align title left',
                     onClick: () =>
@@ -294,13 +294,14 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
                     onClick: () => updateCardTitle(card.id, { title: undefined, titleAlign: undefined, folded: undefined }),
                   },
                 ]
-              : [{ label: 'Add title', onClick: () => setEditingTitle(true) }]),
+              : [{ label: 'Add title', divider: true, onClick: () => setEditingTitle(true) }]),
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
+              divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Delete', danger: true, onClick: onDelete },
+            { label: 'Delete', danger: true, divider: true, onClick: onDelete },
           ]}
         />
       )}

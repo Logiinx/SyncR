@@ -2625,6 +2625,12 @@ button {
   background: var(--border);
 }
 
+.context-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
 /* ---------- "/" menu (slashMenu.tsx), placed under the cursor by the Suggestion plugin ---------- */
 
 .slash-menu-popup {

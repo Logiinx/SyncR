@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 ### Changed
 - Board: clicking a card's title folds or unfolds it (not just the small arrow). To rename the title, use "Edit title" in the card's menu.
 - Board: the ✕ and ✨ buttons on cards are gone, for a cleaner Board. Delete (or Unpin) and priority are in the card's menu: right-click on the PC, "⋯" on the phone (game cards got the "⋯" too).
+- Board: the menus of cards and groups are sorted into groups of actions, with thin lines between them (edit · title · priority and group · delete).
 
 ## [0.12.19] - 2026-10-19
 

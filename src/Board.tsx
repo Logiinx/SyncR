@@ -258,6 +258,7 @@ function Board({ onClose }: Props) {
         .map((group) => ({ label: group.title ?? 'Group', onClick: () => moveToGroup(card.id, group.id) })),
       {
         label: 'New group…',
+        divider: true,
         onClick: () =>
           setDialog({
             title: 'New group',
@@ -266,7 +267,7 @@ function Board({ onClose }: Props) {
             onConfirm: (name) => name.trim() && createGroup(name.trim(), card.id),
           }),
       },
-      ...(inGroup(card) ? [{ label: 'Remove from group', onClick: () => moveToGroup(card.id, undefined) }] : []),
+      ...(inGroup(card) ? [{ label: 'Remove from group', divider: true, onClick: () => moveToGroup(card.id, undefined) }] : []),
     ]
   }
 

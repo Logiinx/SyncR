@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { Fragment, useEffect } from 'react'
 import { currentZoom } from './appearance'
 
 export interface MenuItem {
   label: string
   danger?: boolean
+  divider?: boolean // a thin line above it (starts a new group of actions)
   onClick: () => void
 }
 
@@ -38,17 +39,19 @@ function ContextMenu({ x, y, items, onClose }: Props) {
       }}
     >
       <div className="context-menu" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()}>
-        {items.map((item) => (
-          <button
-            key={item.label}
-            className={item.danger ? 'danger' : ''}
-            onClick={() => {
-              onClose()
-              item.onClick()
-            }}
-          >
-            {item.label}
-          </button>
+        {items.map((item, index) => (
+          <Fragment key={item.label}>
+            {item.divider && index > 0 && <div className="context-menu-divider" />}
+            <button
+              className={item.danger ? 'danger' : ''}
+              onClick={() => {
+                onClose()
+                item.onClick()
+              }}
+            >
+              {item.label}
+            </button>
+          </Fragment>
         ))}
       </div>
     </div>

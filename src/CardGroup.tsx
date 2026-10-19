@@ -88,9 +88,10 @@ function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Pro
             { label: 'Rename', onClick: rename },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
+              divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Delete group', danger: true, onClick: askDelete },
+            { label: 'Delete group', danger: true, divider: true, onClick: askDelete },
           ]}
         />
       )}
