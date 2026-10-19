@@ -32,7 +32,9 @@ function App() {
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', false)
-  const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', false)
+  // The Board starts open on a new PC, so new users see that it exists (on a phone it would
+  // cover the note: closed there)
+  const [boardOpen, setBoardOpen] = useLocalState('syncr.boardOpen', !isNarrowScreen())
   const bodyRef = useRef<HTMLDivElement>(null)
   // Search across all notes (Sidebar.tsx): kept while the sidebar closes, not after a restart
   const [searchQuery, setSearchQuery] = useState('')
