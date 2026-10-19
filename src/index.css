@@ -702,12 +702,12 @@ button {
   }
 }
 
-/* Priority: a blue bar on the left, and a light blue tint unless the card has its own color */
+/* Priority: a bar on the left in the card's color (blue when it has none, with a light blue tint) */
 .card.priority {
   --tint: var(--text-blue);
   --tile: 12%;
   --tile-hi: 15%;
-  box-shadow: inset 3px 0 0 var(--text-blue);
+  box-shadow: inset 3px 0 0 var(--tint);
 }
 
 .card.colored {
@@ -847,7 +847,7 @@ button {
   --tile: 16%;
   --edge1: 20%;
   --edge2: 12%;
-  --bar: var(--text-blue);
+  --bar: var(--tint); /* in the group's color */
 }
 
 .card-group.colored {
@@ -1088,7 +1088,7 @@ button {
 }
 
 .board-cards .card.priority.lifted {
-  box-shadow: inset 3px 0 0 var(--text-blue), 0 8px 20px rgb(0 0 0 / 45%);
+  box-shadow: inset 3px 0 0 var(--tint), 0 8px 20px rgb(0 0 0 / 45%);
 }
 
 /* While dragging with all cards on one side: a temporary zone where the separator would be,
