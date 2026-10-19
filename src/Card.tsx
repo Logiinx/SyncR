@@ -7,11 +7,13 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
   setCardDeleted,
+  setCardColor,
   setCardPriority,
   updateCardTitle,
   type Card as CardData,
 } from './db'
 import { extensions } from './NoteEditor'
+import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import ColorPicker from './ColorPicker'
 
@@ -52,7 +54,8 @@ interface Props {
 function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  // colors: the "Color…" list instead of the menu
+  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
   const [editing, setEditing] = useState(autoFocus)
   const [editingTitle, setEditingTitle] = useState(false)
   const cancelTitle = useRef(false) // Escape: the title's blur doesn't save
@@ -194,6 +197,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   const className = [
     'card',
     card.priority && 'priority',
+    card.color && 'colored',
     editing && 'editing',
     (card.title || editingTitle) && 'titled',
     folded && 'folded',
@@ -204,6 +208,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   return (
     <div
       className={className}
+      style={tintStyle(card.color)}
       data-card-id={card.id}
       ref={cardRef}
       onPointerDown={(event) => {
@@ -279,7 +284,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={[
+          items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
             ...(editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
             ...(card.title
               ? [
@@ -300,6 +305,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
+            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Delete', danger: true, divider: true, onClick: onDelete },
           ]}

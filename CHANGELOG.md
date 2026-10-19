@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board: background colors for cards, game cards and groups. Right-click (⋯ on the phone) → "Color…" and pick one of 8 colors, or "Default" to remove it. A group's color shows on its header and its line; its cards keep their own.
+
+### Changed
+- Board: priority cards and groups now have a blue bar on their left edge, so priority still shows on a colored card.
+
 ## [0.13.0] - 2026-10-19
 
 ### Added

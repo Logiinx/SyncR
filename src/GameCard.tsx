@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Ellipsis } from 'lucide-react'
-import { changed, db, setCardPriority, type Card } from './db'
+import { changed, db, setCardColor, setCardPriority, type Card } from './db'
+import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import Cover from './GameCover'
 
@@ -18,7 +19,7 @@ interface Props {
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
 function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
   const game = useLiveQuery(() => db.games.get(card.game.id), [card.game.id])
   const inList = !!game && !game.deleted
   const name = inList ? game.name : card.game.name
@@ -38,7 +39,8 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
 
   return (
     <div
-      className={`card game-card${card.priority ? ' priority' : ''}${inList ? '' : ' removed'}`}
+      className={`card game-card${card.priority ? ' priority' : ''}${card.color ? ' colored' : ''}${inList ? '' : ' removed'}`}
+      style={tintStyle(card.color)}
       data-card-id={card.id}
       title={inList ? undefined : 'No longer in your games'}
       onPointerDown={(event) => {
@@ -72,13 +74,14 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={[
+          items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
             ...(inList ? [{ label: 'Open', onClick: () => onOpen(card.game.id) }] : []),
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
+            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Unpin from Board', danger: true, divider: true, onClick: onDelete },
           ]}

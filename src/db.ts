@@ -97,6 +97,7 @@ export interface Card {
   // shows a group as an empty card with a title.)
   group?: true
   groupId?: string
+  color?: string // background tint, a palette name ('red', 'blue'…; cardColors.ts). None = default
   order: number
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -296,6 +297,12 @@ export async function saveCardContent(id: string, content: JSONContent, text: st
 // Title, its alignment, folded (Card.tsx). undefined removes the field.
 export async function updateCardTitle(id: string, changes: Partial<Pick<Card, 'title' | 'titleAlign' | 'folded'>>) {
   await db.cards.update(id, { ...changes, updatedAt: Date.now() })
+  changed()
+}
+
+// Background color (cardColors.ts); undefined = default
+export async function setCardColor(id: string, color: string | undefined) {
+  await db.cards.update(id, { color, updatedAt: Date.now() })
   changed()
 }
 

@@ -1,10 +1,13 @@
 import { Fragment, useEffect } from 'react'
+import { Check } from 'lucide-react'
 import { currentZoom } from './appearance'
 
 export interface MenuItem {
   label: string
   danger?: boolean
   divider?: boolean // a thin line above it (starts a new group of actions)
+  swatch?: string // a small round color dot before the label (a CSS color)
+  checked?: boolean // a ✓ after the label (the current choice)
   onClick: () => void
 }
 
@@ -49,7 +52,9 @@ function ContextMenu({ x, y, items, onClose }: Props) {
                 item.onClick()
               }}
             >
+              {item.swatch && <span className="menu-swatch" style={{ background: item.swatch }} />}
               {item.label}
+              {item.checked && <Check size={14} className="menu-check" />}
             </button>
           </Fragment>
         ))}

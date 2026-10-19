@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, Ellipsis, Layers } from 'lucide-react'
-import { deleteGroup, setCardPriority, updateCardTitle, type Card } from './db'
+import { deleteGroup, setCardColor, setCardPriority, updateCardTitle, type Card } from './db'
+import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import type { DialogRequest } from './Dialog'
 
@@ -19,7 +20,7 @@ interface Props {
 // so it can't be mistaken for a folded card with a title.
 // Its menu (right-click on the header; "⋯" on the phone): rename, priority, delete.
 function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Props) {
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
   const name = group.title ?? ''
 
   function rename() {
@@ -44,9 +45,11 @@ function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Pro
     })
   }
 
-  const className = ['card-group', group.priority && 'priority', group.folded && 'folded'].filter(Boolean).join(' ')
+  const className = ['card-group', group.priority && 'priority', group.color && 'colored', group.folded && 'folded']
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className={className} data-card-id={group.id}>
+    <div className={className} style={tintStyle(group.color)} data-card-id={group.id}>
       <div
         className="card-group-head"
         onPointerDown={(event) => {
@@ -84,13 +87,14 @@ function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Pro
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={[
+          items={menu.colors ? colorMenuItems(group.color, (color) => setCardColor(group.id, color)) : [
             { label: 'Rename', onClick: rename },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
+            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Delete group', danger: true, divider: true, onClick: askDelete },
           ]}
         />

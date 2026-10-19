@@ -647,16 +647,21 @@ button {
   gap: 6px;
 }
 
-/* A soft tile: no border, just a bit lighter than the panel (a bit more while editing) */
+/* A soft tile: no border, just a bit lighter than the panel (a bit more while editing or under
+   the mouse). --tint is its color: the text color by default, blue for priority, or the card's
+   own (cardColors.ts, set on the element). */
 .card {
+  --tint: var(--text);
+  --tile: 4%;
+  --tile-hi: 6%;
   position: relative;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+  background: color-mix(in srgb, var(--tint) var(--tile), var(--bg));
   border-radius: 8px;
 }
 
 .card:focus-within {
-  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  background: color-mix(in srgb, var(--tint) var(--tile-hi), var(--bg));
 }
 
 /* Mouse over a card that isn't being edited: it can be dragged. Same look as a section
@@ -664,12 +669,8 @@ button {
    a grab hand. Not while a card is being dragged. */
 @media (hover: hover) {
   .board-cards:not(.dragging) .card:not(.editing):hover {
-    background: color-mix(in srgb, var(--text) 6%, var(--bg));
+    background: color-mix(in srgb, var(--tint) var(--tile-hi), var(--bg));
     cursor: grab;
-  }
-
-  .board-cards:not(.dragging) .card.priority:not(.editing):hover {
-    background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
   }
 
   .board-cards:not(.dragging) .card:not(.editing):hover::before,
@@ -701,13 +702,17 @@ button {
   }
 }
 
-/* Priority: a light blue tint */
+/* Priority: a blue bar on the left, and a light blue tint unless the card has its own color */
 .card.priority {
-  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
+  --tint: var(--text-blue);
+  --tile: 12%;
+  --tile-hi: 15%;
+  box-shadow: inset 3px 0 0 var(--text-blue);
 }
 
-.card.priority:focus-within {
-  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
+.card.colored {
+  --tile: 14%;
+  --tile-hi: 18%;
 }
 
 /* (On the text area, not the card: the card's ::before/::after draw the hover brackets) */
@@ -824,14 +829,31 @@ button {
    indented and joined by a line on the left. Folded: the header looks like a small pile of
    cards (two edges peek out under it), unlike a folded card with a title. */
 .card-group {
+  /* Like cards: --tint is the text color, blue for priority, or the group's own color
+     (which then also colors its line). --edge1/2: the pile's two edges when folded. */
+  --tint: var(--text);
+  --tile: 7%;
+  --edge1: 11%;
+  --edge2: 7%;
+  --bar: transparent;
+  --group-tile: color-mix(in srgb, var(--tint) var(--tile), var(--bg));
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  --group-tile: color-mix(in srgb, var(--text) 7%, var(--bg));
 }
 
 .card-group.priority {
-  --group-tile: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
+  --tint: var(--text-blue);
+  --tile: 16%;
+  --edge1: 20%;
+  --edge2: 12%;
+  --bar: var(--text-blue);
+}
+
+.card-group.colored {
+  --tile: 16%;
+  --edge1: 22%;
+  --edge2: 13%;
 }
 
 .card-group-head {
@@ -841,6 +863,7 @@ button {
   padding: 7px 10px 7px 8px;
   border-radius: 8px;
   background: var(--group-tile);
+  box-shadow: inset 3px 0 0 var(--bar);
   font-family: var(--note-font, system-ui, sans-serif);
   font-size: calc(var(--note-size, 16px) * 0.875);
   font-weight: 600;
@@ -898,14 +921,9 @@ button {
 
 .card-group.folded .card-group-head {
   box-shadow:
-    0 7px 0 -3px color-mix(in srgb, var(--text) 11%, var(--bg)),
-    0 14px 0 -6px color-mix(in srgb, var(--text) 7%, var(--bg));
-}
-
-.card-group.priority.folded .card-group-head {
-  box-shadow:
-    0 7px 0 -3px color-mix(in srgb, var(--text-blue) 20%, var(--bg)),
-    0 14px 0 -6px color-mix(in srgb, var(--text-blue) 12%, var(--bg));
+    inset 3px 0 0 var(--bar),
+    0 7px 0 -3px color-mix(in srgb, var(--tint) var(--edge1), var(--bg)),
+    0 14px 0 -6px color-mix(in srgb, var(--tint) var(--edge2), var(--bg));
 }
 
 .card-group-cards {
@@ -915,6 +933,10 @@ button {
   margin: 6px 0 0 8px;
   padding-left: 8px;
   border-left: 2px solid var(--border);
+}
+
+.card-group.colored .card-group-cards {
+  border-left-color: color-mix(in srgb, var(--tint) 45%, transparent);
 }
 
 .card-group-empty {
@@ -1063,6 +1085,10 @@ button {
   z-index: 2;
   transition: none;
   box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
+}
+
+.board-cards .card.priority.lifted {
+  box-shadow: inset 3px 0 0 var(--text-blue), 0 8px 20px rgb(0 0 0 / 45%);
 }
 
 /* While dragging with all cards on one side: a temporary zone where the separator would be,
@@ -2637,6 +2663,26 @@ button {
 
 .context-menu button:hover {
   background: var(--border);
+}
+
+/* "Color…" lists: a dot before the name, a ✓ after the current one */
+.context-menu button:has(.menu-swatch, .menu-check) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-swatch {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.menu-check {
+  margin-left: auto;
+  color: var(--text-dim);
 }
 
 .context-menu-divider {
