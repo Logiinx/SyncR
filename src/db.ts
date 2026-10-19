@@ -98,6 +98,7 @@ export interface Card {
   group?: true
   groupId?: string
   color?: string // background tint, a palette name ('red', 'blue'…; cardColors.ts). None = default
+  colorCards?: true // a group colored "with its cards": cards that enter it later take its color
   order: number
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -306,12 +307,12 @@ export async function setCardColor(id: string, color: string | undefined) {
   changed()
 }
 
-// A group's color, and with withCards the same color for every card in it (once: cards added
-// later keep their own)
+// A group's color. withCards: every card in it gets that color too, and so do cards that enter
+// it later (until the group is colored alone again)
 export async function setGroupColor(id: string, color: string | undefined, withCards: boolean) {
   const now = Date.now()
   await db.transaction('rw', db.cards, async () => {
-    await db.cards.update(id, { color, updatedAt: now })
+    await db.cards.update(id, { color, colorCards: withCards && color ? true : undefined, updatedAt: now })
     if (!withCards) return
     const inside = await db.cards.filter((card) => !card.deleted && !card.group && card.groupId === id).toArray()
     for (const card of inside) await db.cards.update(card.id, { color, updatedAt: now })
@@ -377,8 +378,21 @@ export async function deleteGroup(id: string, withCards: boolean): Promise<strin
 // Into a group (at the bottom of its part there), or out of it (undefined: bottom of its part
 // on the Board). The card keeps its priority.
 export async function moveToGroup(id: string, groupId: string | undefined) {
-  await db.cards.update(id, { groupId, order: await nextOrder(), updatedAt: Date.now() })
+  await db.cards.update(id, {
+    groupId,
+    order: await nextOrder(),
+    ...(await enteringColor(id, groupId)),
+    updatedAt: Date.now(),
+  })
   changed()
+}
+
+// A card entering a group colored "with its cards" takes the group's color (nothing to change
+// otherwise, or when it's only moving inside the same group)
+async function enteringColor(id: string, groupId: string | null | undefined): Promise<Partial<Card>> {
+  if (!groupId || (await db.cards.get(id))?.groupId === groupId) return {}
+  const group = await db.cards.get(groupId)
+  return group?.colorCards ? { color: group.color } : {}
 }
 
 // Nothing typed in it (a fresh card, or everything erased)
@@ -411,6 +425,7 @@ export async function moveCard(id: string, priority: boolean, order: number, gro
     priority,
     order,
     ...(groupId !== undefined && { groupId: groupId ?? undefined }),
+    ...(await enteringColor(id, groupId)),
     updatedAt: Date.now(),
   })
   changed()
