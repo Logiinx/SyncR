@@ -716,11 +716,12 @@ button {
 }
 
 
-/* Title (Card.tsx): bold, centered between the ▾ on the left and the buttons on the right
-   (same room on both sides), or left after the ▾. The text sits right under it. */
+/* Title (Card.tsx): bold, centered (same room on both sides as the ▾ on the left), or left
+   after the ▾. Click it to fold. The text sits right under it. */
 .card-title {
   position: relative;
-  padding: 8px 54px 0;
+  padding: 8px 30px 0;
+  cursor: pointer;
   text-align: center;
   font-weight: 600;
   line-height: 1.5;
@@ -747,30 +748,20 @@ button {
 
 .card-fold {
   position: absolute;
-  left: 8px; /* same space as the buttons on the right */
+  left: 10px;
   /* Centered on the title line (padding + half a line - half the button), plus 2px: the
      letters sit a bit low in their line, so the exact middle looked too high */
   top: calc(8px + 0.75em - 7px);
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
+  margin-top: 2px;
   color: var(--text-dim);
-}
-
-.card-fold:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.card-fold svg {
   transition: transform 0.15s;
 }
 
-.card.folded .card-fold svg {
+.card-title:hover .card-fold {
+  color: var(--text);
+}
+
+.card.folded .card-fold {
   transform: rotate(-90deg);
 }
 
@@ -792,7 +783,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 54px 6px 8px;
+  padding: 6px 10px 6px 8px;
   font-size: calc(var(--note-size, 16px) * 0.875);
   cursor: pointer;
 }
@@ -934,7 +925,7 @@ button {
 
 /* Same editor as notes, smaller and tighter. Paragraphs without gaps, like in notes. */
 .card-editor .tiptap {
-  padding: 8px 54px 8px 10px; /* room on the right for the flag and ✕ */
+  padding: 8px 10px;
   min-height: 1.5em;
   outline: none;
   line-height: 1.5;
@@ -947,7 +938,7 @@ button {
   margin: 0;
 }
 
-/* Flag and ✕ in the top-right corner: shown on hover with a mouse, always on the phone */
+/* Phone only: "⋯" (the card's menu) in the top-right corner */
 .card-buttons {
   position: absolute;
   /* Centered on the first line of text: padding (8px) + half a line (1.5em / 2) - half a button,
@@ -959,61 +950,37 @@ button {
   gap: 2px;
 }
 
-.card-more,
-.card-priority,
-.card-delete {
+/* "⋯" only on the phone: there a long press is for Android's text menu (or moves the card) */
+.card-more {
   width: 20px;
   height: 20px;
   padding: 0;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
   color: var(--text-dim);
-  opacity: 0;
 }
 
-.card:hover :is(.card-priority, .card-delete),
-:is(.card-priority, .card-delete):focus-visible {
-  opacity: 1;
-}
-
-.card-more:hover,
-.card-priority:hover,
-.card-delete:hover {
+.card-more:hover {
   background: var(--hover);
   color: var(--text);
 }
 
-/* A priority card's flag is blue (shown on hover like ✕; the tint already marks it) */
-.card.priority .card-priority {
-  color: var(--text-blue);
-}
-
-/* "⋯" (the card's menu) only on the phone, where a long press is for Android's text menu */
-.card-more {
-  display: none;
-}
-
 @media (pointer: coarse) {
-  .card-more,
-  .card-priority,
-  .card-delete {
-    opacity: 1;
-  }
-
   .card-more {
     display: flex;
   }
 
-  /* Room for three buttons instead of two */
-  .card-editor .tiptap {
-    padding-right: 76px;
+  /* Room for the "⋯" */
+  .card-editor .tiptap,
+  .game-card {
+    padding-right: 32px;
   }
 
   .card-title {
-    padding-left: 76px;
-    padding-right: 76px;
+    padding-left: 32px;
+    padding-right: 32px;
   }
 }
 

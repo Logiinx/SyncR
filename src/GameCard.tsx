@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Sparkles, X } from 'lucide-react'
+import { Ellipsis } from 'lucide-react'
 import { changed, db, setCardPriority, type Card } from './db'
 import ContextMenu from './ContextMenu'
 import Cover from './GameCover'
@@ -14,7 +14,7 @@ interface Props {
 }
 
 // A game pinned to the Board ("Pin to Board" in the Games tab): cover and name. Moves, gets
-// priority and is deleted like any card (Card.tsx), but has no text to edit. Click: the game's details
+// priority and is unpinned like any card (Card.tsx: its menu), but has no text to edit. Click: the game's details
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
 function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
@@ -55,15 +55,16 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
       <Cover coverId={coverId} />
       <span className="game-card-name">{name}</span>
       <div className="card-buttons">
+        {/* Phone only (CSS): opens the menu (a long press moves the card) */}
         <button
-          className="card-priority"
-          onClick={() => setCardPriority(card.id, !card.priority)}
-          title={card.priority ? 'Remove priority' : 'Mark as priority'}
+          className="card-more"
+          onClick={(event) => {
+            const box = event.currentTarget.getBoundingClientRect()
+            setMenu({ x: box.left, y: box.bottom + 4 })
+          }}
+          title="More"
         >
-          <Sparkles size={12} />
-        </button>
-        <button className="card-delete" onClick={onDelete} title="Unpin from Board">
-          <X size={13} />
+          <Ellipsis size={13} />
         </button>
       </div>
       {menu && (

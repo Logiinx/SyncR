@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
-import { ChevronDown, Ellipsis, Sparkles, X } from 'lucide-react'
+import { ChevronDown, Ellipsis } from 'lucide-react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
@@ -43,10 +43,10 @@ interface Props {
 // One card on the Board: the same editor as notes, saved shortly after you stop typing.
 // Not editable until you double-click it (or right-click → Edit), so a click and drag moves it
 // (Board.tsx). Clicking out of it or Escape ends editing. Checkboxes can be ticked anytime.
-// ✕ deletes it (the Board offers Undo for a few seconds). The sparkle (or right-click) marks it
-// as priority: it moves up with the other priority cards and gets a blue tint.
-// Optional title (right-click → Add title): bold, centered or left, edited with a double-click,
-// and its ▾ folds the text away. A card with a title but no text is kept.
+// Everything else is in its menu (right-click; "⋯" on the phone): Delete (the Board offers Undo
+// for a few seconds), priority (moves up with the other priority cards, blue tint), title.
+// Optional title (menu → Add title): bold, centered or left; clicking it folds the text away.
+// A card with a title but no text is kept.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
 function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
@@ -223,16 +223,13 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
       }}
     >
       {(card.title || editingTitle) && (
-        <div className={`card-title${card.titleAlign === 'left' ? ' left' : ''}`}>
-          {card.title && (
-            <button
-              className="card-fold"
-              onClick={() => updateCardTitle(card.id, { folded: card.folded ? undefined : true })}
-              title={folded ? 'Unfold' : 'Fold'}
-            >
-              <ChevronDown size={14} />
-            </button>
-          )}
+        <div
+          className={`card-title${card.titleAlign === 'left' ? ' left' : ''}`}
+          title={editingTitle ? undefined : folded ? 'Unfold' : 'Fold'}
+          onClick={() => !editingTitle && updateCardTitle(card.id, { folded: card.folded ? undefined : true })}
+          onDoubleClick={(event) => event.stopPropagation()} // folds twice, doesn't edit the text
+        >
+          {card.title && <ChevronDown size={14} className="card-fold" />}
           {editingTitle ? (
             <input
               autoFocus
@@ -249,14 +246,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               }}
             />
           ) : (
-            <span
-              onDoubleClick={(event) => {
-                event.stopPropagation() // edits the title, not the text
-                setEditingTitle(true)
-              }}
-            >
-              {card.title}
-            </span>
+            <span>{card.title}</span>
           )}
         </div>
       )}
@@ -282,16 +272,6 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           title="More"
         >
           <Ellipsis size={13} />
-        </button>
-        <button
-          className="card-priority"
-          onClick={() => setCardPriority(card.id, !card.priority)}
-          title={card.priority ? 'Remove priority' : 'Mark as priority'}
-        >
-          <Sparkles size={12} />
-        </button>
-        <button className="card-delete" onClick={onDelete} title="Delete card">
-          <X size={13} />
         </button>
       </div>
       {menu && (
