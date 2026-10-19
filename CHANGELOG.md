@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-10-19
+
 ### Changed
 - On a new PC, the notes sidebar and the Board start open, so both are easy to discover. Once you open or close them, the app remembers your choice as before. On a phone they still start closed (they would cover the note).
 
