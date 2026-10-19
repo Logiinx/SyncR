@@ -91,6 +91,12 @@ export interface Card {
   title?: string
   titleAlign?: 'left'
   folded?: boolean
+  // A group of cards (CardGroup.tsx) is a row too: group = true, its name in title, folded
+  // like a titled card, no text. Its order and priority place it among the cards; the cards in
+  // it have its id in groupId and their own order and priority inside it. (An older app version
+  // shows a group as an empty card with a title.)
+  group?: true
+  groupId?: string
   order: number
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -298,6 +304,35 @@ export async function setCardDeleted(id: string, deleted: boolean) {
   const now = Date.now()
   // Undo: a deliberate restore, so it beats the deletion if that already reached another device
   await db.cards.update(id, { deleted, updatedAt: now, ...(!deleted && { restoredAt: now }) })
+  changed()
+}
+
+// A new group with a card in it ("Move to group" → "New group…"): the group takes the card's
+// place on the Board, the card goes in it
+export async function createGroup(name: string, cardId: string) {
+  const card = await db.cards.get(cardId)
+  if (!card) return
+  const now = Date.now()
+  const id = crypto.randomUUID()
+  await db.cards.add({
+    id,
+    content: null,
+    text: '',
+    title: name,
+    group: true,
+    priority: card.priority,
+    order: card.order,
+    deleted: false,
+    createdAt: now,
+    updatedAt: now,
+  })
+  await moveToGroup(cardId, id)
+}
+
+// Into a group (at the bottom of its part there), or out of it (undefined: bottom of its part
+// on the Board). The card keeps its priority.
+export async function moveToGroup(id: string, groupId: string | undefined) {
+  await db.cards.update(id, { groupId, order: await nextOrder(), updatedAt: Date.now() })
   changed()
 }
 

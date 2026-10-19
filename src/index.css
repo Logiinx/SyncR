@@ -829,6 +829,109 @@ button {
   background: var(--border);
 }
 
+/* A group of cards (CardGroup.tsx): a header (▾, stack icon, name, count), then its cards,
+   indented and joined by a line on the left. Folded: the header looks like a small pile of
+   cards (two edges peek out under it), unlike a folded card with a title. */
+.card-group {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  --group-tile: color-mix(in srgb, var(--text) 7%, var(--bg));
+}
+
+.card-group.priority {
+  --group-tile: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
+}
+
+.card-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 8px;
+  border-radius: 8px;
+  background: var(--group-tile);
+  font-family: var(--note-font, system-ui, sans-serif);
+  font-size: calc(var(--note-size, 16px) * 0.875);
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.card-group-head:hover {
+  background: color-mix(in srgb, var(--text) 10%, var(--group-tile));
+}
+
+.card-group-chevron {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.card-group.folded .card-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.card-group-icon {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.card-group.priority .card-group-icon {
+  color: var(--text-blue);
+}
+
+.card-group-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.card-group-count {
+  flex-shrink: 0;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* The pile: two card edges (4px each) under the folded header, each a bit narrower */
+.card-group.folded {
+  margin-bottom: 8px;
+}
+
+.card-group.folded .card-group-head {
+  box-shadow:
+    0 7px 0 -3px color-mix(in srgb, var(--text) 11%, var(--bg)),
+    0 14px 0 -6px color-mix(in srgb, var(--text) 7%, var(--bg));
+}
+
+.card-group.priority.folded .card-group-head {
+  box-shadow:
+    0 7px 0 -3px color-mix(in srgb, var(--text-blue) 20%, var(--bg)),
+    0 14px 0 -6px color-mix(in srgb, var(--text-blue) 12%, var(--bg));
+}
+
+.card-group-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 0 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
+.card-group-empty {
+  padding: 4px 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* Same editor as notes, smaller and tighter. Paragraphs without gaps, like in notes. */
 .card-editor .tiptap {
   padding: 8px 54px 8px 10px; /* room on the right for the flag and ✕ */
@@ -966,6 +1069,7 @@ button {
 /* Dragging: the other cards (and the separator) slide out of the way; the dragged card is
    lifted (slightly bigger, soft shadow) and follows the pointer without delay */
 .board-cards > .card,
+.board-cards > .card-group,
 .board-cards > .board-separator {
   transition: transform 0.15s ease;
 }
@@ -975,7 +1079,8 @@ button {
   user-select: none;
 }
 
-.board-cards > .card.lifted {
+.board-cards > .card.lifted,
+.board-cards > .card-group.lifted {
   z-index: 2;
   transition: none;
   box-shadow: 0 8px 20px rgb(0 0 0 / 45%);

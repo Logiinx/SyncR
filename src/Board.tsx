@@ -2,9 +2,21 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
-import { createCard, db, isEmptyCard, moveCard, setCardDeleted, updateGame } from './db'
+import {
+  createCard,
+  createGroup,
+  db,
+  isEmptyCard,
+  moveCard,
+  moveToGroup,
+  setCardDeleted,
+  updateGame,
+  type Card as CardData,
+} from './db'
 import Card from './Card'
+import CardGroup from './CardGroup'
 import GameCard from './GameCard'
+import ContextMenu from './ContextMenu'
 import GameDialog from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 
@@ -20,6 +32,9 @@ const UNDO_MS = 5000
 const HOLD_MS = 300 // touch screens: hold a card this long before it moves (a swipe scrolls)
 const GAP = 6 // px between cards (.board-cards gap)
 
+// Priority cards first, then the others; inside each part, in their order (new = bottom)
+const byPart = (a: CardData, b: CardData) => Number(b.priority) - Number(a.priority) || a.order - b.order
+
 interface Props {
   onClose: () => void
 }
@@ -27,14 +42,13 @@ interface Props {
 function Board({ onClose }: Props) {
   const [width, setWidth] = useLocalState('syncr.boardWidth', 280)
   const drag = useRef<{ startX: number; startWidth: number } | null>(null)
-  // Priority cards first, then the others; inside each part, in their order (new = bottom)
-  const cards = useLiveQuery(
-    async () =>
-      (await db.cards.toArray())
-        .filter((card) => !card.deleted)
-        .sort((a, b) => Number(b.priority) - Number(a.priority) || a.order - b.order),
-    [],
-  )
+  const rows = useLiveQuery(async () => (await db.cards.toArray()).filter((card) => !card.deleted), [])
+  // Groups (CardGroup.tsx) sit among the cards; a card whose group is gone shows on its own
+  const groups = rows?.filter((row) => row.group) ?? []
+  const inGroup = (card: CardData) => !card.group && groups.some((group) => group.id === card.groupId)
+  const groupCards = (id: string) => rows!.filter((row) => !row.group && row.groupId === id).sort(byPart)
+  // What's directly on the Board: cards not in a group, and the groups
+  const cards = rows?.filter((row) => !inGroup(row)).sort(byPart)
   const listRef = useRef<HTMLDivElement>(null)
   // After dropping a card: puts the cards back in place once the new order is on screen
   const settle = useRef<(() => void) | null>(null)
@@ -44,6 +58,8 @@ function Board({ onClose }: Props) {
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card just deleted, while "Undo" is offered
   const [undoId, setUndoId] = useState<string | null>(null)
+  // "Move to group" in a card's menu: the groups to choose from
+  const [groupMenu, setGroupMenu] = useState<{ cardId: string; x: number; y: number } | null>(null)
   // A pinned game's details (click its card), and the "Remove game?" question from there
   const [openGame, setOpenGame] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
@@ -56,7 +72,7 @@ function Board({ onClose }: Props) {
     })
   }, [])
 
-  useEffect(() => settle.current?.(), [cards])
+  useEffect(() => settle.current?.(), [rows])
 
   // Touch: once a card moves, the finger mustn't scroll the list. Added once, not at each press:
   // Chrome decides when a touch starts whether a touchmove listener may block scrolling.
@@ -122,7 +138,7 @@ function Board({ onClose }: Props) {
         if (card!.priority) list!.append(zone)
         else list!.prepend(zone)
       }
-      items = [...list!.querySelectorAll<HTMLElement>(':scope > .card, :scope > .board-separator')]
+      items = [...list!.querySelectorAll<HTMLElement>(':scope > .card, :scope > .card-group, :scope > .board-separator')]
       dragged = draggedEl
       index = items.indexOf(dragged)
       others = items.filter((el) => el !== dragged)
@@ -231,6 +247,60 @@ function Board({ onClose }: Props) {
     if (touch) window.addEventListener('contextmenu', blockMenu, true)
   }
 
+  // "Move to group": the other groups, a new one, or out of its group
+  function groupMenuItems(cardId: string) {
+    const card = rows?.find((row) => row.id === cardId)
+    if (!card) return []
+    return [
+      ...groups
+        .filter((group) => group.id !== card.groupId)
+        .sort(byPart)
+        .map((group) => ({ label: group.title ?? 'Group', onClick: () => moveToGroup(card.id, group.id) })),
+      {
+        label: 'New group…',
+        onClick: () =>
+          setDialog({
+            title: 'New group',
+            input: { initial: '', placeholder: 'Group name' },
+            confirmLabel: 'Create',
+            onConfirm: (name) => name.trim() && createGroup(name.trim(), card.id),
+          }),
+      },
+      ...(inGroup(card) ? [{ label: 'Remove from group', onClick: () => moveToGroup(card.id, undefined) }] : []),
+    ]
+  }
+
+  function renderCard(card: CardData) {
+    const onMoveToGroup = (x: number, y: number) => setGroupMenu({ cardId: card.id, x, y })
+    return card.game ? (
+      <GameCard
+        card={{ ...card, game: card.game }}
+        onDelete={() => deleteCard(card.id)}
+        onPress={(event) => pressCard(card.id, event)}
+        onOpen={setOpenGame}
+        onMoveToGroup={onMoveToGroup}
+      />
+    ) : (
+      <Card
+        card={card}
+        autoFocus={card.id === newCardId}
+        onDelete={() => deleteCard(card.id)}
+        onPress={(event) => pressCard(card.id, event)}
+        onMoveToGroup={onMoveToGroup}
+      />
+    )
+  }
+
+  // Cards in order, with a thin line between the priority ones and the others (only when both exist)
+  function withSeparator(list: CardData[], render: (card: CardData) => React.ReactNode) {
+    return list.map((card, index) => (
+      <Fragment key={card.id}>
+        {!card.priority && list[index - 1]?.priority && <div className="board-separator" />}
+        {render(card)}
+      </Fragment>
+    ))
+  }
+
   // "Remove from list" in a game's details: the game leaves your list, its card stays
   async function askRemoveGame(id: string) {
     const game = await db.games.get(id)
@@ -283,34 +353,23 @@ function Board({ onClose }: Props) {
         <div className="board-header">
           <StickyNote size={15} className="board-icon" />
           <span className="board-title">Board</span>
-          {!!cards?.length && <span className="board-count">{cards.length}</span>}
+          {!!rows?.length && <span className="board-count">{rows.filter((row) => !row.group).length}</span>}
           {/* New card: lands at the bottom of the normal cards, scrolled into view */}
           <button className="board-add" onClick={addCard} title="New card">
             <Plus size={16} />
           </button>
         </div>
         <div className="board-cards" ref={listRef}>
-          {cards?.map((card, index) => (
-            <Fragment key={card.id}>
-              {/* A thin line between the priority cards and the others (only when both exist) */}
-              {!card.priority && cards[index - 1]?.priority && <div className="board-separator" />}
-              {card.game ? (
-                <GameCard
-                  card={{ ...card, game: card.game }}
-                  onDelete={() => deleteCard(card.id)}
-                  onPress={(event) => pressCard(card.id, event)}
-                  onOpen={setOpenGame}
-                />
-              ) : (
-                <Card
-                  card={card}
-                  autoFocus={card.id === newCardId}
-                  onDelete={() => deleteCard(card.id)}
-                  onPress={(event) => pressCard(card.id, event)}
-                />
-              )}
-            </Fragment>
-          ))}
+          {cards &&
+            withSeparator(cards, (card) => {
+              if (!card.group) return renderCard(card)
+              const inside = groupCards(card.id)
+              return (
+                <CardGroup group={card} count={inside.length} onPress={(event) => pressCard(card.id, event)}>
+                  {withSeparator(inside, renderCard)}
+                </CardGroup>
+              )
+            })}
         </div>
         {undoId && (
           <div className="board-undo">
@@ -324,6 +383,14 @@ function Board({ onClose }: Props) {
           New card
         </button>
         {openGame &&<GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
+        {groupMenu && (
+          <ContextMenu
+            x={groupMenu.x}
+            y={groupMenu.y}
+            onClose={() => setGroupMenu(null)}
+            items={groupMenuItems(groupMenu.cardId)}
+          />
+        )}
         {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       </aside>
     </>

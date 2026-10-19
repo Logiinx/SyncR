@@ -37,6 +37,7 @@ interface Props {
   autoFocus: boolean // just added with "+": starts in edit mode, cursor in it
   onDelete: () => void
   onPress: (event: React.PointerEvent) => void // pressed (not while editing): may start a drag (Board.tsx)
+  onMoveToGroup: (x: number, y: number) => void // "Move to group…": the Board shows the groups there
 }
 
 // One card on the Board: the same editor as notes, saved shortly after you stop typing.
@@ -48,7 +49,7 @@ interface Props {
 // and its ▾ folds the text away. A card with a title but no text is kept.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
-function Card({ card, autoFocus, onDelete, onPress }: Props) {
+function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
@@ -318,6 +319,7 @@ function Card({ card, autoFocus, onDelete, onPress }: Props) {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               onClick: () => setCardPriority(card.id, !card.priority),
             },
+            { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Delete', danger: true, onClick: onDelete },
           ]}
         />

@@ -10,13 +10,14 @@ interface Props {
   onDelete: () => void
   onPress: (event: React.PointerEvent) => void // may start a drag (Board.tsx)
   onOpen: (gameId: string) => void // the game's details
+  onMoveToGroup: (x: number, y: number) => void // "Move to group…" (Board.tsx)
 }
 
 // A game pinned to the Board ("Pin to Board" in the Games tab): cover and name. Moves, gets
 // priority and is deleted like any card (Card.tsx), but has no text to edit. Click: the game's details
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
-function GameCard({ card, onDelete, onPress, onOpen }: Props) {
+function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const game = useLiveQuery(() => db.games.get(card.game.id), [card.game.id])
   const inList = !!game && !game.deleted
@@ -76,6 +77,7 @@ function GameCard({ card, onDelete, onPress, onOpen }: Props) {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               onClick: () => setCardPriority(card.id, !card.priority),
             },
+            { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Unpin from Board', danger: true, onClick: onDelete },
           ]}
         />
