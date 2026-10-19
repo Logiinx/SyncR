@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-10-19
+
 ### Added
 - Board: a group's menu has two color lists: "Color…" (only the group) and "Color with its cards…" (the group and every card in it; cards that join the group later take its color too, until you use "Color…" on the group alone).
 
