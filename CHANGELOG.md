@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-19
+
 ### Added
 - Board: card groups. Right-click a card (⋯ on the phone) → "Move to group…" to put it in a new or existing group, or take it out again. Click a group's header to fold its cards away; a folded group looks like a small pile of cards with the number of cards in it. Inside a group, priority cards stay on top, as on the Board. Groups can be dragged like cards, and cards can be dragged into a group (its line turns blue), out of it, or onto a folded group (it lights up). Right-click a group's header ("⋯" on the phone) to rename it, make it a priority, or delete it. When deleting, you choose whether its cards are deleted too or go back on the Board; "Undo" brings everything back. **Update the app on both PC and phone:** an older version shows a group as an empty card.
 
