@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { ChevronDown, Ellipsis, Layers } from 'lucide-react'
-import { deleteGroup, setCardColor, setCardPriority, updateCardTitle, type Card } from './db'
+import { deleteGroup, setCardPriority, setGroupColor, updateCardTitle, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import type { DialogRequest } from './Dialog'
 
 interface Props {
   group: Card
-  count: number // cards in it
+  cards: Card[] // the cards in it
   onPress: (event: React.PointerEvent) => void // pressed on the header: may start a drag (Board.tsx)
   onDialog: (request: DialogRequest) => void // rename / delete questions (shown by the Board)
   onDeleted: (ids: string[]) => void // deleted: what "Undo" brings back
@@ -19,8 +19,10 @@ interface Props {
 // Clicking the header folds them away (synced). Folded, it looks like a small pile of cards,
 // so it can't be mistaken for a folded card with a title.
 // Its menu (right-click on the header; "⋯" on the phone): rename, priority, delete.
-function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Props) {
-  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
+function CardGroup({ group, cards, onPress, onDialog, onDeleted, children }: Props) {
+  // colors: one of the "Color…" lists instead of the menu (the group only, or with its cards)
+  const [menu, setMenu] = useState<{ x: number; y: number; colors?: 'group' | 'all' } | null>(null)
+  const count = cards.length
   const name = group.title ?? ''
 
   function rename() {
@@ -43,6 +45,13 @@ function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Pro
       danger: true,
       onConfirm: async (_, withCards) => onDeleted(await deleteGroup(group.id, withCards)),
     })
+  }
+
+  // A "Color…" list: the group only, or the group and its cards (then checked only when they
+  // all have that color too)
+  function colorItems(withCards: boolean) {
+    const current = withCards && cards.some((card) => card.color !== group.color) ? null : group.color
+    return colorMenuItems(current, (color) => setGroupColor(group.id, color, withCards))
   }
 
   const className = ['card-group', group.priority && 'priority', group.color && 'colored', group.folded && 'folded']
@@ -87,14 +96,15 @@ function CardGroup({ group, count, onPress, onDialog, onDeleted, children }: Pro
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={menu.colors ? colorMenuItems(group.color, (color) => setCardColor(group.id, color)) : [
+          items={menu.colors ? colorItems(menu.colors === 'all') : [
             { label: 'Rename', onClick: rename },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: 'group' }) },
+            { label: 'Color with its cards…', onClick: () => setMenu({ ...menu, colors: 'all' }) },
             { label: 'Delete group', danger: true, divider: true, onClick: askDelete },
           ]}
         />

@@ -306,6 +306,19 @@ export async function setCardColor(id: string, color: string | undefined) {
   changed()
 }
 
+// A group's color, and with withCards the same color for every card in it (once: cards added
+// later keep their own)
+export async function setGroupColor(id: string, color: string | undefined, withCards: boolean) {
+  const now = Date.now()
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.update(id, { color, updatedAt: now })
+    if (!withCards) return
+    const inside = await db.cards.filter((card) => !card.deleted && !card.group && card.groupId === id).toArray()
+    for (const card of inside) await db.cards.update(card.id, { color, updatedAt: now })
+  })
+  changed()
+}
+
 // Delete (deleted = true) or bring back (Undo)
 export async function setCardDeleted(id: string, deleted: boolean) {
   const now = Date.now()

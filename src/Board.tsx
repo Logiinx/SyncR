@@ -449,7 +449,7 @@ function Board({ onClose }: Props) {
               return (
                 <CardGroup
                   group={card}
-                  count={inside.length}
+                  cards={inside}
                   onPress={(event) => pressCard(card.id, event)}
                   onDialog={setDialog}
                   onDeleted={(ids) => setUndo({ ids, label: 'Group deleted' })}

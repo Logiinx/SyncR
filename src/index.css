@@ -892,8 +892,9 @@ button {
   color: var(--text-dim);
 }
 
-.card-group.priority .card-group-icon {
-  color: var(--text-blue);
+/* In the group's color (blue for a priority group without one) */
+.card-group:is(.priority, .colored) .card-group-icon {
+  color: var(--tint);
 }
 
 .card-group-name {
