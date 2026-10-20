@@ -3584,11 +3584,20 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
-/* Big covers, as many per row as fit (6 on the PC page, 3 on a phone) */
+/* Big covers. The grid uses the page's free width (up to 2200 px), not just the 760 px of the
+   search and tabs above it: each cover gets about 1/7 of it (so ~6 per row) and grows with the
+   window up to 170 px; wider still, more per row. A phone: 3 per row (100 px at least).
+   100cqw = the page's width (.games-page is the container) */
+.games-page {
+  container-type: inline-size;
+}
+
 .games-grid {
+  --shelf-width: min(100cqw - 64px, 2200px);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(100px, var(--shelf-width) / 7, 170px), 1fr));
   gap: 16px 12px;
+  margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* wider than the column, centered */
 }
 
 .game-tile {
