@@ -1,12 +1,13 @@
 import { savePendingEdits } from './db'
-import { waitForChanges } from './dropbox'
+import { cancelStuckRequests, waitForChanges } from './dropbox'
 import { read, write } from './localState'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
 // Syncs: when started (app open + unlocked), ~1.5 s after the user stops editing, when the
-// window gets focus again, when the connection comes back, when the app goes to the
-// background with changes waiting, and when Dropbox reports a change (longpoll).
+// window gets focus again, when the connection comes back, when the PC wakes from sleep, when
+// the app goes to the background with changes waiting, and when Dropbox reports a change
+// (longpoll). At those moments (and on a click) a sync stuck on a dead connection starts over.
 
 export type SyncStatus = 'off' | 'synced' | 'syncing' | 'pending' | 'offline' | 'error'
 
@@ -15,6 +16,8 @@ const RETRY_SOON_MS = 3000
 const RETRY_LATER_MS = 60_000
 const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this recent
 const MAX_QUICK_RETRIES = 3
+const HEARTBEAT_MS = 5000
+const WAKE_GAP_MS = 20_000 // the heartbeat came this late: the computer was asleep
 
 let status: SyncStatus = 'off'
 // Same object until the status changes (React's useSyncExternalStore needs that)
@@ -38,6 +41,8 @@ let lastSyncAt = 0
 let timer: number | undefined
 let cursor: string | null = null
 let pollAbort: AbortController | null = null
+let heartbeat: number | undefined
+let lastBeat = 0
 
 // ---------- Status for the UI ----------
 
@@ -108,7 +113,11 @@ async function run(manual = false): Promise<SyncResult | undefined> {
         : e instanceof Error
           ? e.message
           : String(e)
-    if (e instanceof RetrySoonError && quickRetries < MAX_QUICK_RETRIES) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      // Stuck on a dead connection and cancelled (cancelStuckRequests): start over right away
+      setStatus('pending')
+      schedule(0)
+    } else if (e instanceof RetrySoonError && quickRetries < MAX_QUICK_RETRIES) {
       quickRetries++
       setStatus('pending')
       schedule(RETRY_SOON_MS)
@@ -155,6 +164,7 @@ export function syncSoon() {
 
 // The user clicked the cloud. Returns undefined if it failed or a sync was already running.
 export function syncByUser() {
+  if (running) cancelStuckRequests()
   return run(true)
 }
 
@@ -218,16 +228,29 @@ function onVisible() {
   onFocus()
 }
 
-// During a sync, coming back to the window adds nothing: the poll that follows the sync
-// reports anything the other device saves meanwhile.
+// During a sync, coming back to the window doesn't queue another one (the poll that follows the
+// sync reports anything the other device saves meanwhile), but a sync stuck on a dead
+// connection starts over.
 function onFocus() {
-  if (running) return
+  if (running) {
+    cancelStuckRequests()
+    return
+  }
   if (Date.now() - lastSyncAt > FOCUS_MIN_GAP_MS) schedule(0)
   else poll()
 }
 
 function onOnline() {
+  cancelStuckRequests()
   schedule(0)
+}
+
+// Much later than planned while on screen: the computer was asleep. Connections from before are
+// probably dead, the longpoll too, and the other device may have saved meanwhile.
+function onHeartbeat() {
+  const now = Date.now()
+  if (now - lastBeat > WAKE_GAP_MS && document.visibilityState === 'visible') onFocus()
+  lastBeat = now
 }
 
 export function startAutoSync() {
@@ -237,6 +260,8 @@ export function startAutoSync() {
   window.addEventListener('focus', onFocus)
   window.addEventListener('online', onOnline)
   document.addEventListener('visibilitychange', onVisible)
+  lastBeat = Date.now()
+  heartbeat = window.setInterval(onHeartbeat, HEARTBEAT_MS)
   schedule(0)
 }
 
@@ -248,6 +273,7 @@ export function stopAutoSync() {
   window.removeEventListener('online', onOnline)
   document.removeEventListener('visibilitychange', onVisible)
   window.clearTimeout(timer)
+  window.clearInterval(heartbeat)
   pollAbort?.abort()
   cursor = null
   setStatus('off')

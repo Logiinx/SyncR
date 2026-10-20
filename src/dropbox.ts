@@ -5,8 +5,59 @@ const APP_KEY = '5600l0im00ni2so'
 const AUTH_KEY = 'syncr.dropbox'
 const VERIFIER_KEY = 'syncr.dropbox.verifier'
 
-// A request that hangs longer than this fails, so it can't block sync forever
-const REQUEST_TIMEOUT_MS = 30_000
+// A request that hangs longer than this fails, so a dead connection (e.g. after the PC slept)
+// can't block sync for long. Files get 1 s more per 50 KB, for slow connections.
+const REQUEST_TIMEOUT_MS = 15_000
+const timeoutFor = (bytes: number) => REQUEST_TIMEOUT_MS + bytes / 50
+
+// A request still waiting for Dropbox after this long when the user comes back is probably on
+// a dead connection: cancelStuckRequests() ends it, and sync starts again.
+const STUCK_MS = 5000
+
+// Requests running now (not the longpoll, which waits for minutes on purpose)
+const active = new Set<{ startedAt: number; controller: AbortController }>()
+
+// Every Dropbox request goes through here (except the longpoll). The answer is read completely
+// before the deadline, so a connection that dies halfway can't hang either.
+async function request(url: string, init: RequestInit, bytes = 0) {
+  const controller = new AbortController()
+  const entry = { startedAt: Date.now(), controller }
+  const timeout = new DOMException('Dropbox is not answering', 'TimeoutError')
+  let timer = window.setTimeout(() => controller.abort(timeout), timeoutFor(bytes))
+  active.add(entry)
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal })
+    // A downloaded file: more time once Dropbox says how big it is
+    const size = Number(res.headers.get('Content-Length'))
+    if (size > bytes) {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => controller.abort(timeout), timeoutFor(size))
+    }
+    const body = await res.arrayBuffer()
+    // (A response with "no content" can't be given a body, not even an empty one)
+    const noContent = [204, 205, 304].includes(res.status)
+    return new Response(noContent ? null : body, { status: res.status, statusText: res.statusText, headers: res.headers })
+  } catch (e) {
+    // Ended by us (timeout or cancelled): that reason, whatever error the browser gave
+    throw controller.signal.aborted ? controller.signal.reason : e
+  } finally {
+    window.clearTimeout(timer)
+    active.delete(entry)
+  }
+}
+
+// Cancels requests that have been waiting for more than STUCK_MS (they fail with an AbortError).
+// Returns true if there were any.
+export function cancelStuckRequests() {
+  let cancelled = false
+  for (const entry of active) {
+    if (Date.now() - entry.startedAt < STUCK_MS) continue
+    entry.controller.abort(new DOMException('Dropbox request cancelled', 'AbortError'))
+    active.delete(entry)
+    cancelled = true
+  }
+  return cancelled
+}
 
 interface Auth {
   refreshToken: string
@@ -91,9 +142,8 @@ export async function finishConnect(): Promise<string | null> {
   if (error) return `Dropbox: ${error}`
   if (!verifier) return 'Dropbox sign-in expired. Please try again.'
 
-  const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+  const res = await request('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code: code!,
@@ -139,9 +189,8 @@ async function accessToken() {
   if (auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now() + 60_000) {
     return auth.accessToken
   }
-  const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+  const res = await request('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: auth.refreshToken,
@@ -164,14 +213,13 @@ async function accessToken() {
 
 // A POST to Dropbox with the sign-in. If Dropbox rejects the access token (it can end a
 // session before the token's expiry), gets a fresh one and tries once more.
-async function authorizedPost(url: string, headers: Record<string, string>, body?: BodyInit) {
+async function authorizedPost(url: string, headers: Record<string, string>, body?: Uint8Array<ArrayBuffer> | string) {
   const send = async () =>
-    fetch(url, {
-      method: 'POST',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      headers: { ...headers, Authorization: `Bearer ${await accessToken()}` },
-      body,
-    })
+    request(
+      url,
+      { method: 'POST', headers: { ...headers, Authorization: `Bearer ${await accessToken()}` }, body },
+      typeof body === 'string' ? 0 : (body?.byteLength ?? 0),
+    )
   const res = await send()
   if (res.status !== 401) return res
   const auth = loadAuth()
