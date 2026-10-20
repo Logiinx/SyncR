@@ -84,6 +84,8 @@ export const extensions = [
 function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
+  // The last save started: "save now" waits for it, so sync never compares an older version
+  const saving = useRef<Promise<void> | undefined>(undefined)
   const [imageMenu, setImageMenu] = useState<{ pos: number; x: number; y: number } | null>(null)
   const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
 
@@ -97,7 +99,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(() => {
         saveTimer.current = undefined
-        saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+        saving.current = saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
       }, SAVE_DELAY_MS)
     },
   })
@@ -114,12 +116,14 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   useEffect(() => {
     if (!editor) return
 
-    // Saves now if a save is waiting
+    // Saves now if a save is waiting. If one is already running, waits until it's done (its
+    // error goes to whoever started it).
     const saveNow = async () => {
-      if (saveTimer.current === undefined) return
+      if (saveTimer.current === undefined) return saving.current?.catch(() => {})
       window.clearTimeout(saveTimer.current)
       saveTimer.current = undefined
-      await saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+      saving.current = saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+      await saving.current
     }
 
     // Leaving the editor (tap elsewhere, phone keyboard closed) or the app (back button,
