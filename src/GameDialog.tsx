@@ -71,6 +71,12 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
               </span>
             )}
             <div className="gd-actions">
+              {/* The main action, in blue, first */}
+              <TrailerButton
+                igdbId={game.igdbId}
+                open={trailerOpen}
+                onToggle={() => setTrailerOpen(!trailerOpen)}
+              />
               <button
                 className={game.priority ? 'gd-action on' : 'gd-action'}
                 onClick={() => updateGame(game.id, { priority: !game.priority })}
@@ -114,11 +120,6 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                   <p>Alert: {reminderTime(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
                 )}
                 <GameExtrasInfo igdbId={game.igdbId} />
-                <TrailerButton
-                  igdbId={game.igdbId}
-                  open={trailerOpen}
-                  onToggle={() => setTrailerOpen(!trailerOpen)}
-                />
               </div>
               <button className="gd-close" onClick={onClose} title="Close">
                 <X size={18} />

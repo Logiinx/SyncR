@@ -4148,22 +4148,23 @@ h3.games-group-title {
   gap: 6px;
 }
 
-/* Always outlined, so they read as buttons (user request) */
+/* Filled chips, so they read as buttons (user's pick: like the status buttons); the main
+   action (Watch trailer) is blue, Remove is red text only */
 .gd-action {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
+  padding: 7px 10px;
   border-radius: 6px;
-  color: var(--text-dim);
+  background: rgb(255 255 255 / 6%);
+  color: color-mix(in srgb, var(--text) 85%, var(--text-dim));
   font-size: 0.85em;
   text-align: left;
   white-space: nowrap;
 }
 
 .gd-action:hover {
-  background: rgb(255 255 255 / 6%);
+  background: rgb(255 255 255 / 11%);
   color: var(--text);
 }
 
@@ -4174,7 +4175,7 @@ h3.games-group-title {
 /* Remove: set apart at the bottom, a quiet red that gets stronger on hover */
 .gd-action.gd-remove {
   margin-top: 8px;
-  border-color: color-mix(in srgb, var(--error) 35%, var(--border));
+  background: none;
   color: color-mix(in srgb, var(--error) 60%, var(--text-dim));
 }
 
@@ -4665,21 +4666,26 @@ h3.games-group-title {
   margin: 0;
 }
 
-/* "Trailer": open (PC: the trailer view is showing; phone: the panel below) */
-.trailer-toggle.open {
-  color: var(--link);
+/* "Watch trailer": the main action, blue (like OK / Save) */
+.gd-action.trailer-toggle {
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+}
+
+.gd-action.trailer-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 80%, #fff);
+}
+
+/* Open (phone: the panel is showing below) */
+.gd-action.trailer-toggle.open {
+  background: color-mix(in srgb, var(--accent) 60%, var(--bg-raised));
 }
 
 /* The arrow only on a phone: it points to the panel below (up when open) */
 .trailer-toggle .trailer-arrow {
   display: none;
   transition: transform 0.15s;
-}
-
-/* In the game details: under the extras, only as wide as its text */
-.gd-title .trailer-toggle {
-  width: fit-content;
-  margin-top: 10px;
 }
 
 @media (max-width: 699px) {

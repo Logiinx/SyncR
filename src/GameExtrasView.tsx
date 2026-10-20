@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Clapperboard, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
@@ -31,14 +31,15 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
-// "Trailer": opens the trailer view (PC, TrailerTheater) or the panel below the window (phone,
-// with an arrow pointing down). Only shown when the game has a trailer.
+// "Watch trailer", the game windows' main (blue) button: opens the trailer view (PC,
+// TrailerTheater) or the panel below the window (phone, with an arrow pointing down). Only shown
+// when the game has a trailer.
 export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: () => void }) {
   const extras = useGameExtras(props.igdbId)
   if (!extras?.trailer) return null
   return (
     <button className={`gd-action trailer-toggle${props.open ? ' open' : ''}`} onClick={props.onToggle}>
-      <Clapperboard size={15} /> <span>Trailer</span>
+      <Play size={15} fill="currentColor" /> <span>Watch trailer</span>
       <ChevronRight size={15} className="trailer-arrow" />
     </button>
   )
