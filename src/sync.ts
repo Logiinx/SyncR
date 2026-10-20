@@ -75,6 +75,30 @@ function imageType(bytes: Uint8Array) {
   return ''
 }
 
+// Runs `handle` for each item, a few at a time, so downloads overlap (uploads and deletions still
+// go one at a time, see dropbox.ts). Each item must not depend on another's outcome. After an
+// error no new items start, the ones running finish, then the first error is thrown, so nothing
+// of this sync is still running when it ends.
+const AT_ONCE = 4
+
+async function forEachAtOnce<T>(items: Iterable<T>, handle: (item: T) => Promise<void>) {
+  const queue = [...items]
+  let failed = false
+  const worker = async () => {
+    while (queue.length && !failed) {
+      try {
+        await handle(queue.shift()!)
+      } catch (e) {
+        failed = true
+        throw e
+      }
+    }
+  }
+  const results = await Promise.allSettled(Array.from({ length: Math.min(AT_ONCE, queue.length) }, worker))
+  const error = results.find((r) => r.status === 'rejected')
+  if (error) throw error.reason
+}
+
 let running = false
 
 export async function syncNow(): Promise<SyncResult> {
@@ -265,10 +289,11 @@ async function runSync(): Promise<SyncResult> {
   }
 
   // ---------- 3. Notes in Dropbox ----------
+  // A few notes at a time (each note is handled on its own)
 
-  for (const [id, remoteRev] of remoteNotes) {
-    if (done.has(id)) continue
-    done.add(id)
+  const toCheck = [...remoteNotes].filter(([id]) => !done.has(id))
+  for (const [id] of toCheck) done.add(id)
+  await forEachAtOnce(toCheck, async ([id, remoteRev]) => {
     // An edit still waiting for its autosave must count as a local change, or the downloaded
     // version would be stored, then overwritten by that save without a conflict copy
     await savePendingEdits()
@@ -279,7 +304,7 @@ async function runSync(): Promise<SyncResult> {
       // New from the other device
       const remote = await downloadNote(id)
       if (remote) await storeNote(remote, remoteRev, undefined)
-      continue
+      return
     }
 
     const changedHere = isChangedLocally(local)
@@ -287,14 +312,14 @@ async function runSync(): Promise<SyncResult> {
 
     if (!changedThere) {
       if (changedHere) await uploadNote(local, { update: remoteRev })
-      continue
+      return
     }
 
     const remote = await downloadNote(id)
-    if (!remote) continue
+    if (!remote) return
     if (!changedHere || remote.updatedAt === local.updatedAt) {
       await storeNote(remote, remoteRev, local.updatedAt)
-      continue
+      return
     }
 
     // Changed on both sides: the newest keeps the note
@@ -311,7 +336,7 @@ async function runSync(): Promise<SyncResult> {
         result.conflicts--
       }
     }
-  }
+  })
 
   // ---------- 4. New notes from this device (incl. conflict copies) ----------
   // The notes as they are now, read once for steps 4 to 6
@@ -351,22 +376,22 @@ async function runSync(): Promise<SyncResult> {
   // affects the unused mark, and the next sync corrects it.
 
   const used = imagesUsedIn(notesNow)
-  for (const id of used) {
-    if (localAttachments.has(id) || !remoteAttachments.has(id)) continue
+  const missing = [...used].filter((id) => !localAttachments.has(id) && remoteAttachments.has(id))
+  await forEachAtOnce(missing, async (id) => {
     const raw = await download(attachmentPath(id))
-    if (!raw) continue
+    if (!raw) return
     let bytes: Uint8Array<ArrayBuffer>
     try {
       bytes = await decrypt(key, raw)
     } catch {
       result.unreadable++
-      continue
+      return
     }
     await db.attachments.put({ id, blob: new Blob([bytes], { type: imageType(bytes) }), createdAt: Date.now() })
     localAttachments.add(id)
     // Open notes show it right away (see image.ts)
     window.dispatchEvent(new Event('attachments-changed'))
-  }
+  })
 
   // ---------- 6. Clean up images no note uses anymore ----------
   // Deleted here and in Dropbox once no note on this device has used them for a week.
@@ -457,7 +482,8 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
   const path = (id: string) => `/${folder}/${id}`
   const locals = new Map((await table.toArray()).map((record) => [idOf(record), record]))
   const ids = new Set([...remoteRevs.keys(), ...locals.keys()])
-  for (const id of ids) {
+  // A few records at a time (each record is handled on its own)
+  await forEachAtOnce(ids, async (id) => {
     const local = locals.get(id)
     const remoteRev = remoteRevs.get(id)
     const changedHere = local !== undefined && local.updatedAt !== local.syncedUpdatedAt
@@ -469,12 +495,12 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
       await db.transaction('rw', table, async () => {
         if ((await table.get(id))?.updatedAt === local.updatedAt) await table.delete(id)
       })
-      continue
+      return
     }
-    if (!changedHere && !changedThere) continue
+    if (!changedHere && !changedThere) return
 
     const remote = changedThere ? await readFile<T>(path(id), key, result) : null
-    if (remote === UNREADABLE) continue // left alone, not overwritten
+    if (remote === UNREADABLE) return // left alone, not overwritten
 
     if (local && changedHere && (!remote || localWins(local, remote))) {
       // Send this device's version
@@ -493,5 +519,5 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
       })
       if (stored) result.downloaded++
     }
-  }
+  })
 }

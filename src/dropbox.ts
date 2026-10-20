@@ -212,7 +212,8 @@ async function accessToken() {
 }
 
 // A POST to Dropbox with the sign-in. If Dropbox rejects the access token (it can end a
-// session before the token's expiry), gets a fresh one and tries once more.
+// session before the token's expiry), gets a fresh one and tries once more. "Too many requests"
+// (e.g. the other device writing at the same moment): waits as long as Dropbox asks, up to 3 times.
 async function authorizedPost(url: string, headers: Record<string, string>, body?: Uint8Array<ArrayBuffer> | string) {
   const send = async () =>
     request(
@@ -220,11 +221,39 @@ async function authorizedPost(url: string, headers: Record<string, string>, body
       { method: 'POST', headers: { ...headers, Authorization: `Bearer ${await accessToken()}` }, body },
       typeof body === 'string' ? 0 : (body?.byteLength ?? 0),
     )
-  const res = await send()
+  let res = await send()
+  for (let tries = 0; res.status === 429 && tries < 3; tries++) {
+    const wait = await retryAfterMs(res)
+    await new Promise((resolve) => window.setTimeout(resolve, wait))
+    res = await send()
+  }
   if (res.status !== 401) return res
   const auth = loadAuth()
   if (auth) saveAuth({ refreshToken: auth.refreshToken, name: auth.name }) // forget the access token
   return send()
+}
+
+// How long Dropbox asks to wait after "too many requests" (header or answer), 1 to 10 s
+async function retryAfterMs(res: Response) {
+  let seconds = Number(res.headers.get('Retry-After'))
+  if (!seconds) {
+    try {
+      seconds = Number((await res.clone().json()).error?.retry_after)
+    } catch {
+      // not JSON
+    }
+  }
+  return Math.min(Math.max(seconds || 1, 1), 10) * 1000
+}
+
+// Dropbox handles writes to a folder one at a time and refuses some when several arrive at
+// once. Sync runs downloads side by side (sync.ts), so uploads and deletions queue up here.
+let writeQueue: Promise<unknown> = Promise.resolve()
+
+function oneWriteAtATime<T>(write: () => Promise<T>): Promise<T> {
+  const result = writeQueue.then(write)
+  writeQueue = result.catch(() => {})
+  return result
 }
 
 // Calls a Dropbox API endpoint (JSON in, JSON out), e.g. api('users/get_current_account').
@@ -264,13 +293,15 @@ export async function upload(
   mode: 'add' | 'overwrite' | { update: string },
 ): Promise<string | null> {
   const dropboxMode = typeof mode === 'string' ? mode : { '.tag': 'update', update: mode.update }
-  const res = await authorizedPost(
-    'https://content.dropboxapi.com/2/files/upload',
-    {
-      'Content-Type': 'application/octet-stream',
-      'Dropbox-API-Arg': JSON.stringify({ path, mode: dropboxMode, autorename: false, mute: true }),
-    },
-    data,
+  const res = await oneWriteAtATime(() =>
+    authorizedPost(
+      'https://content.dropboxapi.com/2/files/upload',
+      {
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({ path, mode: dropboxMode, autorename: false, mute: true }),
+      },
+      data,
+    ),
   )
   if (res.status === 409 && mode !== 'overwrite' && (await res.text()).includes('conflict')) return null
   if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
@@ -337,7 +368,7 @@ export async function waitForChanges(cursor: string, signal: AbortSignal) {
 // we look at the file itself.
 export async function deleteFile(path: string, rev?: string): Promise<boolean> {
   try {
-    await api('files/delete_v2', rev ? { path, parent_rev: rev } : { path })
+    await oneWriteAtATime(() => api('files/delete_v2', rev ? { path, parent_rev: rev } : { path }))
     ownWrites.set(path.toLowerCase(), null)
     return true
   } catch (e) {

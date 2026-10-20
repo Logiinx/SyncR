@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Changed
-- Sync: the cloud no longer spins for long: no needless second sync, and a sync stuck on a dead connection (e.g. after sleep) starts over.
+- Sync: faster, never stuck for long: no needless second sync, several files at once, and a sync stuck on a dead connection starts over.
 
 ## [0.16.0] - 2026-10-21
 
