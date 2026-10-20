@@ -20,7 +20,7 @@ interface Auth {
   refreshToken: string
   accessToken?: string
   expiresAt?: number // ms since epoch
-  name?: string // the calendar's name (for the main calendar: the Google account's email)
+  name?: string // the Google profile's name (or the main calendar's name: the account's email)
 }
 
 // The app's own address: http://localhost:5173/, http://localhost:4173/SyncR/,
@@ -84,7 +84,7 @@ export async function connect(): Promise<Result | null> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
-    scope: SCOPE,
+    scope: `${SCOPE} openid profile`, // profile: the name shown in Settings ("Connected as …")
     state: STATE,
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
@@ -138,17 +138,34 @@ async function finish(params: URLSearchParams): Promise<Result> {
     refreshToken: data.refresh_token,
     accessToken: data.access_token,
     expiresAt: Date.now() + data.expires_in * 1000,
+    name: profileName(data.id_token),
   })
 
-  // Remember the calendar's name, for Settings. Not essential, so errors are ignored.
-  try {
-    const list = await calendarApi('calendars/primary/events?maxResults=1')
-    const auth = loadAuth()
-    if (auth) saveAuth({ ...auth, name: list.summary })
-  } catch {
-    // ignore
+  // No profile name (the user unticked it): the calendar's name (the account's email) instead.
+  // Not essential, so errors are ignored.
+  if (!loadAuth()?.name) {
+    try {
+      const list = await calendarApi('calendars/primary/events?maxResults=1')
+      const auth = loadAuth()
+      if (auth) saveAuth({ ...auth, name: list.summary })
+    } catch {
+      // ignore
+    }
   }
   return { ok: true, text: 'Google Calendar connected.' }
+}
+
+// The Google profile's name, from the "ID token" Google sends with the "profile" permission.
+// It's a signed JSON; its middle part (base64url) holds the name. Not checking the signature
+// is fine: it came straight from Google (through our proxy) and only labels Settings.
+function profileName(idToken?: string): string | undefined {
+  try {
+    const base64 = idToken!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+    return JSON.parse(new TextDecoder().decode(bytes)).name || undefined // UTF-8, e.g. accents
+  } catch {
+    return undefined
+  }
 }
 
 export async function disconnect() {
