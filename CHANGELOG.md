@@ -5,7 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
-- Reminders: "New event" adds an event to your Google Calendar: title (several lines possible: Shift+Enter on PC), date and time, alert, and repeat (every day, week, month or year). Click an event to edit or delete it. Notes are optional.
+- Reminders: "New event" adds an event to your Google Calendar: title (several lines possible: Shift+Enter on PC), date and time, alert, and repeat (every day, week, month or year). Notes are optional.
+- Reminders: click an event to see it in full (whole title, day, alert, notes) with Edit and Delete. Right-click (or long press on the phone) for Edit, Delete and Open in Google Calendar.
 - Repeating events: editing or deleting changes only that date, unless you tick "All events in the series".
 
 ## [0.14.0] - 2026-10-20

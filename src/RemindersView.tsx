@@ -13,6 +13,8 @@ import { formatRelease, releaseCountdown } from './games'
 import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
+import EventPreview from './EventPreview'
+import { openLink } from './links'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
 
@@ -45,6 +47,8 @@ function RemindersView() {
   const [doneOpen, setDoneOpen] = useLocalState('syncr.remindersDoneOpen', false)
   const [editing, setEditing] = useState<Reminder | 'new' | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
+  const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
+  const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
   const [menu, setMenu] = useState<{ reminder: Reminder; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
@@ -99,6 +103,7 @@ function RemindersView() {
       danger: true,
       onConfirm: (_, wholeSeries) => {
         setEditingEvent(null)
+        setPreviewEvent(null)
         const remove = wholeSeries ? deleteSeries : deleteEvent
         remove(event).catch((e) =>
           setDialog({
@@ -164,7 +169,15 @@ function RemindersView() {
 
   // A calendar event in the list: like a reminder (its description as the note)
   const eventRow = (event: CalendarEvent) => (
-    <button key={event.id} className="reminder-row" onClick={() => setEditingEvent(event)}>
+    <button
+      key={event.id}
+      className="reminder-row"
+      onClick={() => setPreviewEvent(event)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setEventMenu({ event, x: e.clientX, y: e.clientY })
+      }}
+    >
       <span className="reminder-row-text">
         <span className="reminder-text">{event.title}</span>
         {event.description && <span className="reminder-row-note">{event.description}</span>}
@@ -216,7 +229,8 @@ function RemindersView() {
             games={waitingGames}
             now={now}
             onEdit={setEditing}
-            onEditEvent={setEditingEvent}
+            onOpenEvent={setPreviewEvent}
+            onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
             onMenu={(reminder, x, y) => setMenu({ reminder, x, y })}
             onGame={setOpenGame}
           />
@@ -258,6 +272,29 @@ function RemindersView() {
           onClose={() => setEditingEvent(null)}
         />
       )}
+      {previewEvent && (
+        <EventPreview
+          event={previewEvent}
+          onEdit={() => {
+            setPreviewEvent(null)
+            setEditingEvent(previewEvent)
+          }}
+          onDelete={() => askDeleteEvent(previewEvent)}
+          onClose={() => setPreviewEvent(null)}
+        />
+      )}
+      {eventMenu && (
+        <ContextMenu
+          x={eventMenu.x}
+          y={eventMenu.y}
+          onClose={() => setEventMenu(null)}
+          items={[
+            { label: 'Edit', onClick: () => setEditingEvent(eventMenu.event) },
+            { label: 'Delete', danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
+            { label: 'Open in Google Calendar', onClick: () => openLink(eventMenu.event.link) },
+          ]}
+        />
+      )}
       {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
       {menu && (
         <ContextMenu
@@ -293,7 +330,8 @@ function ReminderGrid(props: {
   games: Game[]
   now: number
   onEdit: (reminder: Reminder) => void
-  onEditEvent: (event: CalendarEvent) => void
+  onOpenEvent: (event: CalendarEvent) => void
+  onEventMenu: (event: CalendarEvent, x: number, y: number) => void
   onMenu: (reminder: Reminder, x: number, y: number) => void
   onGame: (id: string) => void
 }) {
@@ -345,7 +383,11 @@ function ReminderGrid(props: {
             <button
               key={event.id}
               className="calendar-reminder"
-              onClick={() => props.onEditEvent(event)}
+              onClick={() => props.onOpenEvent(event)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                props.onEventMenu(event, e.clientX, e.clientY)
+              }}
               title={event.description ? `${event.title}\n${event.description}` : event.title}
             >
               {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>} {event.title}

@@ -4385,3 +4385,38 @@ h3.games-group-title {
 .dialog-buttons .event-delete {
   margin-right: auto;
 }
+
+/* ---------- Event preview (EventPreview.tsx) ---------- */
+
+/* The whole title, with its line breaks */
+.event-preview .event-preview-title {
+  margin-bottom: 8px;
+  font-size: 1.25em;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.event-preview .event-preview-when {
+  margin: 0 0 12px;
+}
+
+.event-preview .event-preview-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.event-preview .event-preview-notes {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.event-preview .dialog-buttons {
+  margin-top: 20px;
+}
