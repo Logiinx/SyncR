@@ -11,7 +11,7 @@ import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
 import { formatRelease, releaseCountdown } from './games'
 import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
-import { deleteEvent, useCalendarEvents } from './calendarEvents'
+import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
@@ -88,16 +88,19 @@ function RemindersView() {
       })
   }
 
-  // Deleting needs internet: if it fails, the event stays and a message says why
+  // Deleting needs internet: if it fails, the event stays and a message says why.
+  // A repeating event: only this date, unless "All events in the series" is ticked.
   function askDeleteEvent(event: CalendarEvent) {
     setDialog({
       title: 'Delete event?',
-      message: `"${event.title}" will be deleted from your Google Calendar.${event.seriesId ? ' Only this date: the other dates of the repeating event stay.' : ''}`,
+      message: `"${event.title}" will be deleted from your Google Calendar.${event.seriesId ? ' Only this date, unless you tick the box.' : ''}`,
+      checkbox: event.seriesId ? 'All events in the series' : undefined,
       confirmLabel: 'Delete',
       danger: true,
-      onConfirm: () => {
+      onConfirm: (_, wholeSeries) => {
         setEditingEvent(null)
-        deleteEvent(event).catch((e) =>
+        const remove = wholeSeries ? deleteSeries : deleteEvent
+        remove(event).catch((e) =>
           setDialog({
             title: "Couldn't delete the event",
             message: e instanceof Error ? e.message : String(e),

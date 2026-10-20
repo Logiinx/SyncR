@@ -22,6 +22,7 @@ interface GoogleEvent {
   reminders?: { useDefault: boolean; overrides?: { method: string; minutes: number }[] }
   colorId?: string
   htmlLink: string
+  recurrence?: string[] // a series: its repeat rule, e.g. ["RRULE:FREQ=WEEKLY"]
 }
 
 interface Reminder {
@@ -174,6 +175,90 @@ export async function updateEvent(event: CalendarEvent, fields: EventFields) {
 // For one date of a repeating event: only that date goes
 export async function deleteEvent(event: CalendarEvent) {
   await calendarApi(`calendars/primary/events/${encodeURIComponent(event.id)}`, { method: 'DELETE' })
+  await refreshEvents()
+}
+
+// ---------- All events of a repeating event (the series) ----------
+
+// 'custom': a rule SyncR can't show as one of its choices (kept as it is)
+export type SeriesRepeat = Exclude<Repeat, 'none'> | 'custom'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// A series' repeat rule as one of the simple choices. Google Calendar writes e.g.
+// "RRULE:FREQ=MONTHLY;WKST=MO;INTERVAL=1;BYMONTHDAY=3": its extra parts only repeat what the
+// start date says, so that's "Every month". Anything more (every 2 weeks, an end date, several
+// days, "first Monday") is 'custom'.
+function seriesRepeat(recurrence: string[] = []): SeriesRepeat {
+  const rules = recurrence.filter((line) => line.startsWith('RRULE:'))
+  if (rules.length !== 1) return 'custom'
+  const parts = rules[0].slice('RRULE:'.length).split(';').map((part) => part.split('='))
+  const freq = parts.find(([key]) => key === 'FREQ')?.[1]
+  if (freq !== 'DAILY' && freq !== 'WEEKLY' && freq !== 'MONTHLY' && freq !== 'YEARLY') return 'custom'
+  const plain = parts.every(
+    ([key, value]) =>
+      key === 'FREQ' ||
+      key === 'WKST' ||
+      (key === 'INTERVAL' && value === '1') ||
+      (key === 'BYDAY' && /^[A-Z]{2}$/.test(value)) || // one weekday, without "1" (first) etc.
+      ((key === 'BYMONTHDAY' || key === 'BYMONTH') && /^\d+$/.test(value)),
+  )
+  return plain ? freq : 'custom'
+}
+
+const series = (event: CalendarEvent): Promise<GoogleEvent> =>
+  calendarApi(`calendars/primary/events/${encodeURIComponent(event.seriesId!)}`)
+
+// For the event window: how the series repeats (needs internet)
+export async function loadSeriesRepeat(event: CalendarEvent) {
+  return seriesRepeat((await series(event)).recurrence)
+}
+
+// Changes all events of the series. What changed is found by comparing with this one date
+// (event), then applied to the series. A new time applies to all dates; a new date moves the
+// whole series by the same number of days (e.g. every 3rd → every 5th of the month).
+export async function updateSeries(event: CalendarEvent, fields: EventFields, repeat: SeriesRepeat) {
+  const master = await series(event)
+  const current = seriesRepeat(master.recurrence)
+  const changes: Record<string, unknown> = {}
+  if (fields.title !== event.title) changes.summary = fields.title
+  if (fields.description !== event.description) changes.description = fields.description
+  const days = Math.round((new Date(fields.start).setHours(0, 0, 0, 0) - new Date(event.start).setHours(0, 0, 0, 0)) / DAY_MS)
+  if (fields.start !== event.start) {
+    // A rule with fixed days (every 3rd) would stay on them: refuse instead of mixing things up
+    if (days !== 0 && current === 'custom') {
+      throw new Error("This event repeats in a way SyncR can't change: move its dates in Google Calendar.")
+    }
+    const start = new Date(toTime(master.start))
+    const length = toTime(master.end) - start.getTime()
+    start.setDate(start.getDate() + days) // the clock time stays, also across daylight saving changes
+    if (event.allDay) {
+      const end = new Date(start)
+      end.setDate(end.getDate() + Math.round(length / DAY_MS))
+      Object.assign(changes, { start: googleDay(start.getTime()), end: googleDay(end.getTime()) })
+    } else {
+      const time = new Date(fields.start)
+      start.setHours(time.getHours(), time.getMinutes(), 0, 0)
+      Object.assign(changes, { start: googleTime(start.getTime()), end: googleTime(start.getTime() + length) })
+    }
+  }
+  if (fields.alert !== 'keep') changes.reminders = googleAlerts(fields.alert)
+  // A new choice, or a new day for a simple rule ("on the 3rd" must become "on the 5th"):
+  // write the rule again. Other lines (dates deleted on their own) stay.
+  if (repeat !== 'custom' && (repeat !== current || days !== 0)) {
+    const others = (master.recurrence ?? []).filter((line) => !line.startsWith('RRULE:'))
+    changes.recurrence = [...others, `RRULE:FREQ=${repeat}`]
+  }
+  if (Object.keys(changes).length === 0) return
+  await calendarApi(`calendars/primary/events/${encodeURIComponent(event.seriesId!)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+  await refreshEvents()
+}
+
+export async function deleteSeries(event: CalendarEvent) {
+  await calendarApi(`calendars/primary/events/${encodeURIComponent(event.seriesId!)}`, { method: 'DELETE' })
   await refreshEvents()
 }
 

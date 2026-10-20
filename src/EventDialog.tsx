@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CalendarEvent } from './db'
-import { createEvent, updateEvent, type Repeat } from './calendarEvents'
+import {
+  createEvent,
+  loadSeriesRepeat,
+  updateEvent,
+  updateSeries,
+  type Repeat,
+  type SeriesRepeat,
+} from './calendarEvents'
 
-// Add (event = null) or edit an event of the main Google Calendar (calendarEvents.ts).
+// Add (event = null) or edit an event of the main Google Calendar (calendarEvents.ts). For a
+// repeating event, only this date changes, unless "All events in the series" is ticked.
 // The title is the main thing (it's what the phone's notification shows), then the date and
 // time, the alert and (new events) how it repeats. Notes are optional, hidden behind
 // "Add notes". No end time: new events last 15 minutes, edits keep the length.
@@ -64,7 +72,11 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
   const [title, setTitle] = useState(event?.title ?? '')
   const [when, setWhen] = useState(allDay ? toDayValue(event!.start) : toInputValue(event?.start ?? nextFullHour()))
   const [alert, setAlert] = useState(() => alertChoice(event))
-  const [repeat, setRepeat] = useState<Repeat>('none')
+  const [repeat, setRepeat] = useState<Repeat | SeriesRepeat>('none')
+  // A repeating event: "All events in the series" ticked, and how the series repeats (loaded from
+  // Google when ticked; null until then)
+  const [wholeSeries, setWholeSeries] = useState(false)
+  const [seriesRule, setSeriesRule] = useState<SeriesRepeat | null>(null)
   const [description, setDescription] = useState(event?.description ?? '')
   const [showNotes, setShowNotes] = useState(!!event?.description)
   const [saving, setSaving] = useState(false)
@@ -83,7 +95,22 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
 
   // Parsed as local time; NaN when the field is empty. "2026-10-15" alone would be read as UTC
   const start = new Date(allDay ? `${when}T00:00` : when).getTime()
-  const canSave = title.trim() !== '' && !Number.isNaN(start) && !saving
+  const loadingSeries = wholeSeries && seriesRule === null
+  const canSave = title.trim() !== '' && !Number.isNaN(start) && !saving && !loadingSeries
+
+  function toggleSeries(on: boolean) {
+    setWholeSeries(on)
+    if (!on || seriesRule !== null || !event) return
+    loadSeriesRepeat(event)
+      .then((rule) => {
+        setSeriesRule(rule)
+        setRepeat(rule)
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e))
+        setWholeSeries(false)
+      })
+  }
 
   async function save() {
     if (!canSave) return
@@ -91,8 +118,9 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
     setError(null)
     const fields = { title: title.trim(), description: description.trim(), start, alert: allDay ? ('keep' as const) : alert }
     try {
-      if (event) await updateEvent(event, fields)
-      else await createEvent(fields, repeat)
+      if (event && wholeSeries) await updateSeries(event, fields, repeat as SeriesRepeat)
+      else if (event) await updateEvent(event, fields)
+      else await createEvent(fields, repeat as Repeat)
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -141,11 +169,19 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
               </select>
             </label>
           )}
-          {!event && (
+          {/* New events, or all events of a series (no "Doesn't repeat" there: to end a series,
+              delete it). A rule SyncR can't show is kept as it is ("Custom") */}
+          {(!event || wholeSeries) && (
             <label>
               <span>Repeat</span>
-              <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)}>
-                {REPEATS.map(([value, label]) => (
+              <select
+                value={loadingSeries ? 'loading' : repeat}
+                disabled={loadingSeries}
+                onChange={(e) => setRepeat(e.target.value as Repeat | SeriesRepeat)}
+              >
+                {loadingSeries && <option value="loading">Loading…</option>}
+                {seriesRule === 'custom' && <option value="custom">Custom (kept as is)</option>}
+                {REPEATS.filter(([value]) => !event || value !== 'none').map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -154,6 +190,12 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
             </label>
           )}
         </div>
+        {event?.seriesId && (
+          <label className="dialog-check">
+            <input type="checkbox" checked={wholeSeries} onChange={(e) => toggleSeries(e.target.checked)} />
+            All events in the series
+          </label>
+        )}
         {showNotes ? (
           <textarea value={description} placeholder="Notes" rows={3} onChange={(e) => setDescription(e.target.value)} />
         ) : (
