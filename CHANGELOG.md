@@ -15,6 +15,7 @@ All notable changes to SyncR. Newest version first.
 - Reminders: repeating events have a small repeat icon, and "Hide repeating" hides them from the list and grid (they still alert, and stay in Google Calendar).
 - Reminders list: dates are written out ("3 November 2026"; Today and Tomorrow stay), with a title for each month.
 - Games: without the game search set up, the Calendar's message sits at the same place as in My games.
+- Games: the game windows (your games' details, and games in the Calendar) are bigger, with a much bigger cover.
 
 ## [0.15.0] - 2026-10-20
 

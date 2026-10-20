@@ -3862,23 +3862,24 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
 }
 
-/* Its own classes, not the game details window's (that one's two-column layout made this
-   popup wide, with a full-size cover): a small cover beside the name and details */
+/* Its own classes, not the game details window's (it has fewer things to show): the cover
+   beside the name and details, as big as in the game details (GameDialog.tsx), for consistency */
 .calendar-popup {
-  max-width: 420px;
+  width: min(600px, 100%);
+  max-width: none;
 }
 
 .calendar-popup-head {
   display: flex;
-  gap: 14px;
+  gap: 24px;
   margin-bottom: 16px;
 }
 
 .calendar-popup-cover {
   flex-shrink: 0;
-  width: 72px;
-  height: 96px;
-  border-radius: 4px;
+  width: 240px;
+  height: 320px;
+  border-radius: 8px;
   object-fit: cover;
   background: var(--bg);
 }
@@ -3890,6 +3891,17 @@ h3.games-group-title {
 .dialog .calendar-popup-info {
   margin: 0 0 8px;
   font-size: 0.85em;
+}
+
+@media (max-width: 699px) {
+  .calendar-popup-head {
+    gap: 14px;
+  }
+
+  .calendar-popup-cover {
+    width: 120px;
+    height: 160px;
+  }
 }
 
 .calendar-popup .primary {
@@ -4093,8 +4105,8 @@ h3.games-group-title {
 /* PC: two columns, the cover and the actions on the left */
 .dialog.game-dialog {
   display: flex;
-  gap: 20px;
-  width: min(600px, 100%);
+  gap: 24px;
+  width: min(780px, 100%);
 }
 
 .gd-side {
@@ -4102,12 +4114,12 @@ h3.games-group-title {
   flex-direction: column;
   flex-shrink: 0;
   gap: 12px;
-  width: 150px;
+  width: 240px;
 }
 
 .gd-cover {
-  width: 150px;
-  height: 200px;
+  width: 240px; /* big (user request), same shape as before */
+  height: 320px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--bg);
@@ -4252,7 +4264,7 @@ h3.games-group-title {
 @media (max-width: 699px) {
   .dialog.game-dialog {
     display: grid;
-    grid-template-columns: 90px minmax(0, 1fr);
+    grid-template-columns: 120px minmax(0, 1fr);
     gap: 14px;
   }
 
@@ -4264,8 +4276,8 @@ h3.games-group-title {
   .gd-cover {
     grid-column: 1;
     grid-row: 1;
-    width: 90px;
-    height: 120px;
+    width: 120px;
+    height: 160px;
   }
 
   .gd-head {
