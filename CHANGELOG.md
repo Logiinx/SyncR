@@ -18,6 +18,7 @@ All notable changes to SyncR. Newest version first.
 - Games: the game windows (your games' details, and games in the Calendar) are bigger, with a much bigger cover.
 - Games: the game windows show the developer, publisher and game modes. On the PC, "Trailer" opens a trailer view as big as your window, with the game's info on top (on a phone, the trailer opens below the window).
 - Games: the Calendar's game window is wider and shorter, with "Add to Waiting" under the game's details and ✕ to close.
+- Games: the buttons in the game windows (Trailer, Priority, Pin to Board…) have an outline, so they look like buttons.
 
 ## [0.15.0] - 2026-10-20
 

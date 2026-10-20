@@ -3905,8 +3905,8 @@ h3.games-group-title {
 .calendar-popup-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin: 12px 0 0 -8px; /* the buttons' text lines up with the details */
+  gap: 8px;
+  margin-top: 12px;
 }
 
 @media (max-width: 699px) {
@@ -4145,14 +4145,16 @@ h3.games-group-title {
 .gd-actions {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
+/* Always outlined, so they read as buttons (user request) */
 .gd-action {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
+  border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-dim);
   font-size: 0.85em;
@@ -4172,6 +4174,7 @@ h3.games-group-title {
 /* Remove: set apart at the bottom, a quiet red that gets stronger on hover */
 .gd-action.gd-remove {
   margin-top: 8px;
+  border-color: color-mix(in srgb, var(--error) 35%, var(--border));
   color: color-mix(in srgb, var(--error) 60%, var(--text-dim));
 }
 
@@ -4673,9 +4676,10 @@ h3.games-group-title {
   transition: transform 0.15s;
 }
 
-/* In the game details: under the extras, its text lined up with them */
+/* In the game details: under the extras, only as wide as its text */
 .gd-title .trailer-toggle {
-  margin: 8px 0 0 -8px;
+  width: fit-content;
+  margin-top: 10px;
 }
 
 @media (max-width: 699px) {
