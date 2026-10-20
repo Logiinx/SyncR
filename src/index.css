@@ -3791,13 +3791,13 @@ h3.games-group-title {
   color: var(--text);
 }
 
-/* Loading: a turning blue ring with a gap, like the cloud button's while syncing */
-.refresh-ring {
-  width: 15px;
-  height: 15px;
+/* SyncR's loading icon (Spinner.tsx): a turning blue ring with a gap, like the cloud button's
+   while syncing */
+.spinner {
+  flex-shrink: 0;
 }
 
-.refresh-ring circle {
+.spinner circle {
   fill: none;
   stroke: var(--link);
   stroke-width: 1.8;
@@ -3884,8 +3884,23 @@ h3.games-group-title {
   background: var(--bg);
 }
 
-.calendar-popup-head h2 {
-  margin-bottom: 4px;
+/* Left: the cover and "Add to Waiting"; right: the name (✕ beside it) and the details */
+.calendar-popup-side {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.calendar-popup-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog .calendar-popup-head h2 {
+  flex: 1;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
 }
 
 .dialog .calendar-popup-info {
@@ -3902,13 +3917,18 @@ h3.games-group-title {
     width: 120px;
     height: 160px;
   }
+
+  /* Room for its text under the cover (the game details window shows only icons there) */
+  .calendar-popup .calendar-popup-pin span {
+    display: inline;
+  }
+
+  .calendar-popup .calendar-popup-pin {
+    padding: 6px 2px; /* as wide as the cover */
+  }
 }
 
-.calendar-popup .primary {
-  margin-left: auto; /* stays on the right when there's no "Add to Waiting" */
-}
-
-/* Pin = add to Waiting (calendar rows and popup) */
+/* Pin = add to Waiting (calendar rows; the popup's button is a .gd-action under the cover) */
 .calendar-pin {
   display: flex;
   flex-shrink: 0;
@@ -3918,15 +3938,8 @@ h3.games-group-title {
 }
 
 .calendar-pin:hover,
-.dialog-buttons .calendar-popup-pin:hover {
+.calendar-popup-pin:hover {
   color: var(--link);
-}
-
-.dialog-buttons .calendar-popup-pin {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-dim);
 }
 
 /* Grid: a game already in your list gets the flagged games' blue tint */
@@ -4505,4 +4518,104 @@ h3.games-group-title {
 
 .event-preview .dialog-buttons {
   margin-top: 20px;
+}
+
+/* ---------- Game extras: developer, publisher, modes, trailer (GameExtrasView.tsx) ---------- */
+
+.game-extras {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 0.85em;
+}
+
+.game-extras div {
+  display: flex;
+  gap: 8px;
+}
+
+.game-extras dt {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--text-dim);
+}
+
+.game-extras dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 16:9, the width of its column */
+.game-trailer {
+  margin-top: 16px;
+}
+
+.game-trailer iframe,
+.game-trailer-start {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 8px;
+}
+
+/* Before playing: the game's cover, darkened, with ▶ and the video's name */
+.game-trailer-start {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  background-color: var(--bg);
+  background-position: center;
+  background-size: cover;
+}
+
+.game-trailer-start::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+}
+
+.game-trailer-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 15%);
+  color: #fff;
+  transform: translate(-50%, -50%);
+  transition: background 0.15s;
+}
+
+.game-trailer-start:hover .game-trailer-play {
+  background: var(--accent);
+}
+
+.game-trailer-name {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.85em;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-trailer-link {
+  margin-top: 6px;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 0.8em;
+}
+
+.game-trailer-link:hover {
+  color: var(--link);
 }

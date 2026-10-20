@@ -14,6 +14,7 @@ import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
 import EventPreview from './EventPreview'
+import Spinner from './Spinner'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
@@ -241,11 +242,8 @@ function RemindersView() {
                 disabled={calendar.refreshing}
                 title="Refresh events from Google Calendar"
               >
-                {/* While loading: a turning ring, like the cloud button's while syncing */}
                 {calendar.refreshing ? (
-                  <svg className="refresh-ring" viewBox="0 0 16 16" aria-label="Refreshing">
-                    <circle cx="8" cy="8" r="5.5" />
-                  </svg>
+                  <Spinner label="Refreshing" />
                 ) : (
                   <RefreshCw size={15} />
                 )}

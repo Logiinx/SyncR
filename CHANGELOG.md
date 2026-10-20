@@ -16,6 +16,8 @@ All notable changes to SyncR. Newest version first.
 - Reminders list: dates are written out ("3 November 2026"; Today and Tomorrow stay), with a title for each month.
 - Games: without the game search set up, the Calendar's message sits at the same place as in My games.
 - Games: the game windows (your games' details, and games in the Calendar) are bigger, with a much bigger cover.
+- Games: the game windows show the developer, publisher and game modes, and a trailer you can play right there (loaded only when you click it).
+- Games: in the Calendar's game window, "Add to Waiting" is under the cover and ✕ closes it.
 
 ## [0.15.0] - 2026-10-20
 
