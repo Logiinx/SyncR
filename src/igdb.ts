@@ -49,6 +49,22 @@ function proxyUrl(typed: string) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
 
+// Another request to the same proxy, e.g. Google Calendar's sign-in (google.ts)
+export async function igdbProxyFetch(path: string, body: string, timeoutMs: number) {
+  const connection = await loadConnection()
+  if (!isComplete(connection)) throw new Error('Set up the game search proxy first (Settings → Games)')
+  try {
+    return await fetch(`${proxyUrl(connection.url)}/${path}`, {
+      method: 'POST',
+      headers: { 'X-SyncR-Password': connection.password },
+      body,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  } catch {
+    throw new Error("Could not reach SyncR's proxy (offline, or wrong address?)")
+  }
+}
+
 // One IGDB query, e.g. igdb('games', 'search "Guild Wars"; fields name; limit 5;')
 // connection: to check one that isn't saved yet (Settings); otherwise the saved one.
 export async function igdb<T>(endpoint: string, query: string, connection?: IgdbConnection): Promise<T[]> {

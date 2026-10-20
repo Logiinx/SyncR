@@ -5,6 +5,12 @@ import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
 import { playChime } from './chime'
+import {
+  connect as connectGoogle,
+  connectedName as googleName,
+  disconnect as disconnectGoogle,
+  isConnected as isGoogleConnected,
+} from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import {
   loadBackground,
@@ -245,6 +251,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             <GamesSettings />
+            <GoogleSettings />
 
             <SectionTitle title="About" />
             {/* Check for updates: the icon next to Settings in the sidebar */}
@@ -363,6 +370,54 @@ function GamesSettings() {
       >
         {status.text}
       </p>
+    </>
+  )
+}
+
+// Google Calendar sign-in (google.ts), per device. Connect leaves the app for Google's page;
+// the result shows under the cloud button on return. Needs the game search proxy (above).
+function GoogleSettings() {
+  const [connected, setConnected] = useState(isGoogleConnected)
+  const [busy, setBusy] = useState(false)
+  const proxy = useConnection()
+
+  useEffect(() => {
+    const refresh = () => setConnected(isGoogleConnected())
+    window.addEventListener('google-change', refresh)
+    return () => window.removeEventListener('google-change', refresh)
+  }, [])
+
+  // The PC app's sign-in (through the normal browser) comes in a later step
+  const status = connected
+    ? `Connected${googleName() ? ` as ${googleName()}` : ''}`
+    : isTauri()
+      ? 'Not available in the PC app yet'
+      : !isComplete(proxy)
+        ? 'Needs the game search proxy (above)'
+        : 'Not connected'
+
+  async function toggle() {
+    setBusy(true)
+    if (connected) await disconnectGoogle()
+    else await connectGoogle() // leaves the app
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <SectionTitle title="Google Calendar" scope="this device" />
+      <div className="setting setting-toggle">
+        <span>
+          Main calendar <span className="setting-value">{status}</span>
+        </span>
+        <button
+          className="setting-button"
+          disabled={busy || (!connected && (isTauri() || !isComplete(proxy)))}
+          onClick={toggle}
+        >
+          {connected ? 'Disconnect' : 'Connect…'}
+        </button>
+      </div>
     </>
   )
 }

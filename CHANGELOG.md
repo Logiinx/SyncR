@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Settings → Google Calendar: connect your main Google Calendar (phone and browser for now; the PC app follows). First step towards showing your calendar in Reminders.
+
 ## [0.13.4] - 2026-10-20
 
 ### Added

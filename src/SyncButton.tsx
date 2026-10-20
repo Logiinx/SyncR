@@ -5,6 +5,7 @@ import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
 import { forgetKey, getKey } from './crypto'
 import { connect, disconnect, finishConnect, isConnected } from './dropbox'
+import { finishConnect as finishGoogleConnect, isGoogleReturn } from './google'
 import PassphraseDialog from './PassphraseDialog'
 import type { SyncResult } from './sync'
 
@@ -118,13 +119,17 @@ function SyncButton() {
     refreshKey()
 
     // Just came back from the Dropbox sign-in: ask for the passphrase right away
-    const justConnected = new URL(location.href).searchParams.has('code')
+    const justConnected = new URL(location.href).searchParams.has('code') && !isGoogleReturn()
     finishConnect()
       .then((error) => {
         setSignInError(error)
         if (justConnected && !error) refreshKey().then(() => setAskPassphrase(true))
       })
       .catch((e) => setSignInError(String(e)))
+    // Just came back from Google Calendar's sign-in (Settings): its result shows here too
+    finishGoogleConnect()
+      .then((result) => result && showMessage(result.text, result.ok))
+      .catch((e) => showMessage(e instanceof Error ? e.message : String(e)))
 
     return () => {
       window.removeEventListener('dropbox-change', refreshConnected)
