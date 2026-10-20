@@ -6,6 +6,10 @@ All notable changes to SyncR. Newest version first.
 
 ### Added
 - Google Calendar events now alert you in SyncR too, at each event's alert time: the same pop-up on the PC and cards in the app, with Done and Snooze (these only affect the device you use). An alert missed while SyncR was closed still shows for a day.
+- Games you're waiting for get their release day in your Google Calendar: an all-day event in purple (Grape) with the game's name, alerting 2 days before at 10:00. It moves when the date changes, and goes when you remove the game. The game's details link to it.
+
+### Changed
+- Release reminders are now these Google Calendar events (the old hidden SyncR reminders are removed). Needs Google Calendar connected (Settings).
 
 ## [0.15.0] - 2026-10-20
 

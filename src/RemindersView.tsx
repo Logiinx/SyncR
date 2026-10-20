@@ -9,7 +9,7 @@ import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
-import { formatRelease, releaseCountdown } from './games'
+import { formatRelease, releaseCountdown, releaseEventId } from './games'
 import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
@@ -36,10 +36,12 @@ function RemindersView() {
     () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
     [],
   )
-  // The main Google Calendar's events (calendarEvents.ts); for now, a click opens the event in
-  // Google Calendar (editing in SyncR comes next)
+  // The main Google Calendar's events (calendarEvents.ts). The release events of Waiting games
+  // (games.ts) are left out: the game shows instead (with its cover). Once out, the game moves
+  // to "To play" and its event shows like any other.
+  const gameEventIds = new Set((waitingGames ?? []).map(releaseEventId))
   const calendar = useCalendarEvents()
-  const events = calendar.events ?? []
+  const events = (calendar.events ?? []).filter((event) => !gameEventIds.has(event.id))
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
   const narrow = useNarrow()
   const grid = layout === 'grid' && !narrow

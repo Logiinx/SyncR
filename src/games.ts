@@ -3,6 +3,8 @@ import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGa
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { read, write } from './localState'
+import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
+import { isConnected as googleConnected } from './google'
 
 // The Games tab (GamesView.tsx): adding games, how the status groups are ordered, and the
 // background checks (release day, daily refresh from IGDB).
@@ -139,72 +141,69 @@ export async function refreshGames(force = false) {
   write(REFRESHED_KEY, Date.now())
 }
 
-// ---------- Release reminders (shown in the Reminders tab) ----------
+// ---------- Release events (Google Calendar, see calendarEvents.ts) ----------
 
 const REMIND_DAYS_BEFORE = 2
 const REMIND_HOUR = 10
+// An all-day event's alert counts back from its day's midnight: 2 days before, at 10:00
+const RELEASE_ALERT = REMIND_DAYS_BEFORE * 24 * 60 - REMIND_HOUR * 60
 
-// 10:00, two days before the release day
-export function releaseReminderTime(releaseDate: number) {
-  const time = new Date(releaseDate)
-  time.setDate(time.getDate() - REMIND_DAYS_BEFORE)
-  time.setHours(REMIND_HOUR, 0, 0, 0)
-  return time.getTime()
-}
+// The game's event id: fixed, so the PC and the phone always mean the same event
+export const releaseEventId = (game: Pick<Game, 'igdbId'>) => `game${game.igdbId}`
 
-export const releaseReminderText = (game: Pick<Game, 'name' | 'releaseDate'>) =>
-  `${game.name} comes out on ${new Date(game.releaseDate!).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`
+// What this device last made sure of in Google, per event id ("<day>|<name>", or "removed"),
+// so the check after every sync doesn't ask Google again and again. Until the app closes.
+const confirmed = new Map<string, string>()
 
-// One reminder per Waiting game with an exact date that isn't out yet. Its id comes from the
-// game's id, so two devices make the same reminder, not two. gameRelease = the date it was
-// made for: a new date (delay) moves it and brings it back (even if done or deleted); the same
-// date leaves it alone (so a reminder you deleted stays deleted). When the game no longer
-// qualifies, an unfinished reminder is removed (gameRelease cleared, so pinning again makes a
-// new one). Only saves what changed.
-export async function syncReleaseReminders() {
-  const now = Date.now()
+// One Google Calendar event (all-day, Grape, titled with the game's name) per Waiting game with
+// an exact date that isn't out yet. A new date moves it; a game that no longer qualifies (removed,
+// another status) loses it, if its day hasn't come yet. One the user deleted in Google stays
+// deleted until the date changes (calendarEvents.ts saveReleaseEvent). Needs Google Calendar
+// connected on this device. Google is only asked when the stored events (the next 12 months)
+// don't already match.
+export async function syncReleaseEvents() {
+  if (!googleConnected()) return
+  const stored = new Map((await db.events.toArray()).map((event) => [event.id, event]))
+  let googleChanged = false
   for (const game of await db.games.toArray()) {
-    const id = `release-${game.id}`
-    const existing = await db.reminders.get(id)
+    const id = releaseEventId(game)
     const wanted = !game.deleted && game.status === 'waiting' && !!game.releaseDate && !isReleased(game)
     if (!wanted) {
-      if (existing && !existing.deleted && existing.doneAt === null) {
-        await db.reminders.update(id, { deleted: true, text: '', note: '', gameRelease: undefined, updatedAt: now })
-        changed()
-      }
+      // Only events that may exist: stored, or made earlier while the app was open
+      if ((!stored.has(id) && !confirmed.has(id)) || confirmed.get(id) === 'removed') continue
+      if (await removeReleaseEvent(id)) googleChanged = true
+      confirmed.set(id, 'removed')
       continue
     }
-    const text = releaseReminderText(game)
-    if (existing && existing.gameRelease === game.releaseDate) {
-      // Same date: only follow a new name
-      if (!existing.deleted && existing.text !== text) {
-        await db.reminders.update(id, { text, updatedAt: now })
-        changed()
-      }
-      continue
+    const day = startOfDay(game.releaseDate!)
+    const mark = `${day}|${game.name}`
+    const event = stored.get(id)
+    const matches = event?.allDay && event.start === day && event.title === game.name
+    if (confirmed.get(id) !== mark && !matches) {
+      if (await saveReleaseEvent({ id, title: game.name, day, alert: RELEASE_ALERT })) googleChanged = true
     }
-    await db.reminders.put({
-      phone: false,
-      createdAt: now,
-      ...existing,
-      id,
-      text,
-      note: '',
-      dueAt: Math.max(releaseReminderTime(game.releaseDate!), now), // pinned less than 2 days before: now
-      gameId: game.id,
-      gameRelease: game.releaseDate,
-      doneAt: null,
-      deleted: false,
-      ...(existing?.deleted && { restoredAt: now }), // brought back by a new date: beats the deletion
-      updatedAt: now,
-    })
-    changed()
+    confirmed.set(id, mark)
   }
+  await removeOldReleaseReminders()
+  if (googleChanged) await refreshEvents()
 }
 
-// Started once by the app. The refresh and the release reminders wait for a finished sync (when
+// Before v0.16, releases had hidden SyncR reminders (id "release-<game id>"). Now the Google
+// events do it: the old ones are deleted (synced, so once is enough for all devices).
+async function removeOldReleaseReminders() {
+  const old = await db.reminders.filter((r) => !!r.gameId && !r.deleted).toArray()
+  if (old.length === 0) return
+  const now = Date.now()
+  for (const reminder of old) {
+    await db.reminders.update(reminder.id, { deleted: true, text: '', note: '', gameRelease: undefined, updatedAt: now })
+  }
+  changed()
+}
+
+// Started once by the app. The refresh and the release events wait for a finished sync (when
 // Dropbox is set up): saving makes a record the newest copy, which must not win over an edit
-// made on the other device that hasn't arrived yet (e.g. a reminder marked done on the phone).
+// made on the other device that hasn't arrived yet; and the release events must follow the
+// latest game list (e.g. a game removed on the phone).
 let started = false
 export function startGameChecks() {
   if (started) return
@@ -213,7 +212,7 @@ export function startGameChecks() {
   const check = async () => {
     try {
       await moveReleased()
-      if (!dropboxConnected()) await syncReleaseReminders() // with Dropbox: after each sync (refresh)
+      if (!dropboxConnected()) await syncReleaseEvents() // with Dropbox: after each sync (refresh)
     } catch (e) {
       console.warn('Release day check failed', e)
     }
@@ -222,7 +221,7 @@ export function startGameChecks() {
     try {
       await refreshGames()
       await moveReleased() // a date may have moved to today
-      await syncReleaseReminders()
+      await syncReleaseEvents()
     } catch (e) {
       console.warn('Game refresh failed', e)
     }

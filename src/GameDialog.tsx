@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarPlus, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
-import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type Reminder } from './db'
-import { formatRelease, isReleased, releaseReminderText, releaseReminderTime, shortPlatforms, STATUSES } from './games'
-import { addToGoogleCalendar } from './reminders'
+import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
+import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
+import { formatRelease, releaseEventId, shortPlatforms, STATUSES } from './games'
+import { openLink } from './links'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -13,20 +13,19 @@ import { coverUrl } from './igdb'
 
 function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
-  // Its release reminder (games.ts), shown under the release date while it exists
-  const reminder = useLiveQuery(() => db.reminders.get(`release-${id}`), [id])
+  // Its release event in Google Calendar (games.ts), shown under the release date while it exists
+  const releaseEvent = useLiveQuery(async () => (game ? db.events.get(releaseEventId(game)) : undefined), [game?.igdbId])
   if (!game) return null
-  return <GameDetails game={game} reminder={reminder} onClose={onClose} onRemove={onRemove} />
+  return <GameDetails game={game} releaseEvent={releaseEvent} onClose={onClose} onRemove={onRemove} />
 }
 
-function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => void; onRemove: () => void }) {
-  const { game, reminder, onClose, onRemove } = props
+function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose: () => void; onRemove: () => void }) {
+  const { game, releaseEvent, onClose, onRemove } = props
   // The texts are kept here while typing (the saved game comes back a moment later)
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
   const played = game.status === 'done' || game.status === 'dropped'
   const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
-  const upcoming = game.status === 'waiting' && !!game.releaseDate && !isReleased(game)
   // Focused when it opens (so Escape works), without scrolling
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
@@ -71,16 +70,10 @@ function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => vo
             >
               {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? 'Unpin from Board' : 'Pin to Board'}</span>
             </button>
-            {/* The release reminder's time and text, as a Google Calendar event (for the phone) */}
-            {upcoming && (
-              <button
-                className="gd-action"
-                title="Add the release reminder to Google Calendar (2 days before, 10:00)"
-                onClick={() =>
-                  addToGoogleCalendar({ text: releaseReminderText(game), note: '', dueAt: releaseReminderTime(game.releaseDate!) })
-                }
-              >
-                <CalendarPlus size={15} /> <span>Google Calendar</span>
+            {/* Its release event (made by SyncR for Waiting games, games.ts) */}
+            {releaseEvent && (
+              <button className="gd-action" title="Open in Google Calendar" onClick={() => openLink(releaseEvent.link)}>
+                <CalendarDays size={15} /> <span>Google Calendar</span>
               </button>
             )}
             <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
@@ -97,11 +90,8 @@ function GameDetails(props: { game: Game; reminder?: Reminder; onClose: () => vo
                 {formatRelease(game.releaseDate, game.releaseLabel)}
                 {game.platforms.length > 0 && ` · ${shortPlatforms(game.platforms)}`}
               </p>
-              {reminder && !reminder.deleted && (
-                <p>
-                  Reminder: {reminderTime(reminder.dueAt)}
-                  {reminder.doneAt !== null && ' (done)'}
-                </p>
+              {releaseEvent && releaseEvent.alerts.length > 0 && (
+                <p>Alert: {reminderTime(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
               )}
             </div>
             <button className="gd-close" onClick={onClose} title="Close">

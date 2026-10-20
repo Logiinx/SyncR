@@ -263,6 +263,79 @@ export async function deleteSeries(event: CalendarEvent) {
   await refreshEvents()
 }
 
+// ---------- Game release events (games.ts) ----------
+
+// An all-day event on a game's release day, in Grape, with a fixed id ("game<IGDB id>"), so
+// two devices always mean the same event and can't make two.
+export interface ReleaseEvent {
+  id: string
+  title: string
+  day: number // the release day (its local date counts)
+  alert: number // minutes before the day's start (midnight)
+}
+
+const GRAPE = '3' // Google's event color "Grape"
+const REMOVED_BY_SYNCR = 'syncrRemoved' // private mark: SyncR deleted it (not the user)
+
+// The event, also when deleted (status "cancelled"); null if it never existed
+async function fetchEvent(id: string): Promise<GoogleEvent & { extendedProperties?: { private?: Record<string, string> } } | null> {
+  try {
+    return await calendarApi(`calendars/primary/events/${encodeURIComponent(id)}`)
+  } catch (e) {
+    if (String(e).includes('(404)')) return null
+    throw e
+  }
+}
+
+const dayAfter = (day: number) => {
+  const next = new Date(day)
+  next.setDate(next.getDate() + 1)
+  return next.getTime()
+}
+
+// Makes the event match (new, moved, renamed). One deleted by the user stays deleted, unless
+// the release day changed (then it comes back on the new day). Returns true if Google changed.
+export async function saveReleaseEvent(release: ReleaseEvent): Promise<boolean> {
+  const event = await fetchEvent(release.id)
+  const wanted = {
+    summary: release.title,
+    start: googleDay(release.day),
+    end: googleDay(dayAfter(release.day)),
+    colorId: GRAPE,
+    reminders: googleAlerts(release.alert),
+  }
+  const path = `calendars/primary/events/${encodeURIComponent(release.id)}`
+  if (!event) {
+    await calendarApi('calendars/primary/events', { method: 'POST', body: JSON.stringify({ id: release.id, ...wanted }) })
+    return true
+  }
+  const sameDay = event.start.date === wanted.start.date
+  if (event.status === 'cancelled') {
+    const removedBySyncR = event.extendedProperties?.private?.[REMOVED_BY_SYNCR] === 'yes'
+    if (sameDay && !removedBySyncR) return false // the user deleted it
+    await calendarApi(path, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...wanted, status: 'confirmed', extendedProperties: { private: { [REMOVED_BY_SYNCR]: '' } } }),
+    })
+    return true
+  }
+  if (sameDay && event.summary === release.title) return false // as wanted (the user may have changed its color or alert)
+  await calendarApi(path, { method: 'PATCH', body: JSON.stringify(wanted) })
+  return true
+}
+
+// Deletes the event if it exists and its day hasn't come yet (a game moves to "To play" on its
+// release day: its event stays). Marked first, so saveReleaseEvent() knows SyncR deleted it.
+// Returns true if Google changed.
+export async function removeReleaseEvent(id: string): Promise<boolean> {
+  const event = await fetchEvent(id)
+  if (!event || event.status === 'cancelled' || toTime(event.start) <= Date.now()) return false
+  const path = `calendars/primary/events/${encodeURIComponent(id)}`
+  await calendarApi(path, { method: 'PATCH', body: JSON.stringify({ extendedProperties: { private: { [REMOVED_BY_SYNCR]: 'yes' } } }) })
+  await calendarApi(path, { method: 'DELETE' })
+  return true
+}
+
 // Started once by the app: keeps the events fresh in the background too, for their alerts
 // (eventAlerts.ts): at start, every 10 minutes, and when the app comes back to the front.
 // Errors (offline…) are only logged: the stored events stay.
