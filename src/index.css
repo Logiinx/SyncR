@@ -3884,14 +3884,7 @@ h3.games-group-title {
   background: var(--bg);
 }
 
-/* Left: the cover and "Add to Waiting"; right: the name (✕ beside it) and the details */
-.calendar-popup-side {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  gap: 12px;
-}
-
+/* Right of the cover: the name (✕ beside it), the details, then the buttons */
 .calendar-popup-main {
   flex: 1;
   min-width: 0;
@@ -3908,6 +3901,14 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
+/* "Add to Waiting" and "Trailer ›", under the game's details */
+.calendar-popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 12px 0 0 -8px; /* the buttons' text lines up with the details */
+}
+
 @media (max-width: 699px) {
   .calendar-popup-head {
     gap: 14px;
@@ -3918,17 +3919,13 @@ h3.games-group-title {
     height: 160px;
   }
 
-  /* Room for its text under the cover (the game details window shows only icons there) */
-  .calendar-popup .calendar-popup-pin span {
+  /* With their text (the game details window shows only icons in its action row) */
+  .calendar-popup-actions .gd-action span {
     display: inline;
-  }
-
-  .calendar-popup .calendar-popup-pin {
-    padding: 6px 2px; /* as wide as the cover */
   }
 }
 
-/* Pin = add to Waiting (calendar rows; the popup's button is a .gd-action under the cover) */
+/* Pin = add to Waiting (calendar rows; the popup's button is a .gd-action) */
 .calendar-pin {
   display: flex;
   flex-shrink: 0;
@@ -4545,13 +4542,32 @@ h3.games-group-title {
   overflow-wrap: anywhere;
 }
 
-/* 16:9, the width of its column */
-.game-trailer {
-  margin-top: 16px;
+/* A game window and its trailer panel (GameDialog.tsx, GameCalendar.tsx): side by side when
+   there's room, else the panel goes below. --window-width: the window's own width */
+.game-window {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
-.game-trailer iframe,
-.game-trailer-start {
+.game-window > .dialog {
+  max-height: none; /* the frame scrolls instead (window + panel below it on small screens) */
+}
+
+/* The trailer panel: the free width beside the window (at most 760 px, never taller than the
+   screen); YouTube picks the quality from the player's size */
+.dialog.trailer-panel {
+  width: max(320px, min(760px, calc(100vw - var(--window-width) - 76px), calc((100vh - 120px) * 16 / 9)));
+  padding: 16px;
+}
+
+.trailer-panel iframe {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -4559,54 +4575,59 @@ h3.games-group-title {
   border-radius: 8px;
 }
 
-/* Before playing: the game's cover, darkened, with ▶ and the video's name */
-.game-trailer-start {
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-  background-color: var(--bg);
-  background-position: center;
-  background-size: cover;
-}
-
-.game-trailer-start::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 55%);
-}
-
-.game-trailer-play {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+.trailer-panel-foot {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgb(255 255 255 / 15%);
-  color: #fff;
-  transform: translate(-50%, -50%);
-  transition: background 0.15s;
-}
-
-.game-trailer-start:hover .game-trailer-play {
-  background: var(--accent);
-}
-
-.game-trailer-name {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  left: 12px;
-  overflow: hidden;
-  color: #fff;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--text-dim);
   font-size: 0.85em;
-  text-align: left;
+}
+
+.trailer-panel-foot span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* "Trailer ›": the arrow points to the panel (right), back when open */
+.trailer-toggle .trailer-arrow {
+  transition: transform 0.15s;
+}
+
+.trailer-toggle.open {
+  color: var(--link);
+}
+
+.trailer-toggle.open .trailer-arrow {
+  transform: rotate(180deg);
+}
+
+/* In the game details: under the extras, its text lined up with them */
+.gd-title .trailer-toggle {
+  margin: 8px 0 0 -8px;
+}
+
+/* Phone: the panel goes below the window, as wide; the arrow points down (up when open) */
+@media (max-width: 699px) {
+  /* With its text (the game details window's other actions show only icons on a phone) */
+  .gd-action.trailer-toggle span {
+    display: inline;
+  }
+
+  .dialog.trailer-panel {
+    width: 100%;
+  }
+
+  .trailer-toggle .trailer-arrow {
+    transform: rotate(90deg);
+  }
+
+  .trailer-toggle.open .trailer-arrow {
+    transform: rotate(-90deg);
+  }
 }
 
 .game-trailer-link {

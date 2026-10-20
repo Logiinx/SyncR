@@ -4,7 +4,7 @@ import { addGame, gameId, releaseCountdown, STATUSES } from './games'
 import { CALENDAR_MONTHS, coverUrl, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
-import { GameExtrasInfo, GameTrailer } from './GameExtrasView'
+import { GameExtrasInfo, TrailerButton, TrailerPanel } from './GameExtrasView'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
 
@@ -192,47 +192,56 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
   )
 }
 
-// A game of the calendar: the cover with "Add to Waiting" under it; on the right the name,
-// release, all platforms, where it is in your list, and the extras (developer, publisher,
-// modes); the trailer below. ✕, Escape or a click outside closes it.
+// A game of the calendar: the cover; on the right the name, release, all platforms, where it is
+// in your list, the extras (developer, publisher, modes), then "Add to Waiting" and "Trailer ›"
+// (the trailer opens in a panel beside the window, or below on a phone).
+// ✕, Escape or a click outside closes it.
 function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?: GameStatus; onClose: () => void }) {
   const label = STATUSES.find((s) => s.status === status)?.label
+  const [trailerOpen, setTrailerOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
   useEffect(() => popupRef.current?.focus({ preventScroll: true }), []) // so Escape works
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        ref={popupRef}
-        className="dialog calendar-popup"
-        role="dialog"
-        aria-label={game.name}
-        tabIndex={-1}
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      >
-        <div className="calendar-popup-head">
-          <div className="calendar-popup-side">
+      <div className="game-window" style={{ '--window-width': '600px' } as React.CSSProperties}>
+        <div
+          ref={popupRef}
+          className="dialog calendar-popup"
+          role="dialog"
+          aria-label={game.name}
+          tabIndex={-1}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        >
+          <div className="calendar-popup-head">
             {game.coverId && <img className="calendar-popup-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
-            {!status && (
-              <button className="gd-action calendar-popup-pin" onClick={() => pin(game)}>
-                <Pin size={15} /> <span>Add to Waiting</span>
-              </button>
-            )}
-          </div>
-          <div className="calendar-popup-main">
-            <div className="gd-head">
-              <h2>{game.name}</h2>
-              <button className="gd-close" onClick={onClose} title="Close">
-                <X size={18} />
-              </button>
+            <div className="calendar-popup-main">
+              <div className="gd-head">
+                <h2>{game.name}</h2>
+                <button className="gd-close" onClick={onClose} title="Close">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="calendar-popup-info">{releaseText(game, true)}</p>
+              {game.platforms.length > 0 && <p className="calendar-popup-info">{game.platforms.join(', ')}</p>}
+              {label && <p className="calendar-popup-info">In your list: {label}</p>}
+              <GameExtrasInfo igdbId={game.igdbId} />
+              <div className="calendar-popup-actions">
+                {!status && (
+                  <button className="gd-action calendar-popup-pin" onClick={() => pin(game)}>
+                    <Pin size={15} /> <span>Add to Waiting</span>
+                  </button>
+                )}
+                <TrailerButton
+                  igdbId={game.igdbId}
+                  open={trailerOpen}
+                  onToggle={() => setTrailerOpen(!trailerOpen)}
+                />
+              </div>
             </div>
-            <p className="calendar-popup-info">{releaseText(game, true)}</p>
-            {game.platforms.length > 0 && <p className="calendar-popup-info">{game.platforms.join(', ')}</p>}
-            {label && <p className="calendar-popup-info">In your list: {label}</p>}
-            <GameExtrasInfo igdbId={game.igdbId} />
           </div>
         </div>
-        <GameTrailer igdbId={game.igdbId} coverId={game.coverId} />
+        {trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
       </div>
     </div>
   )
