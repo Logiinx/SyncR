@@ -94,7 +94,9 @@ function GamesView() {
               </button>
             ))}
           </div>
-          {view === 'calendar' && (
+          {/* Only with the game search set up: otherwise they do nothing, and the taller header
+              put the "set up the game search" text lower than in My games */}
+          {view === 'calendar' && connected && (
             <div className="calendar-controls">
               <div className="calendar-top" title="How many of Steam's most wishlisted upcoming games to show">
                 Top
