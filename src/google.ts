@@ -1,3 +1,4 @@
+import { db } from './db'
 import { igdbProxyFetch } from './igdb'
 
 // Google Calendar sign-in (OAuth 2 with PKCE). Google only gives a lasting sign-in (refresh
@@ -37,7 +38,10 @@ function loadAuth(): Auth | null {
 
 function saveAuth(auth: Auth | null) {
   if (auth) localStorage.setItem(AUTH_KEY, JSON.stringify(auth))
-  else localStorage.removeItem(AUTH_KEY)
+  else {
+    localStorage.removeItem(AUTH_KEY)
+    db.events.clear() // signed out: the stored events go too (calendarEvents.ts)
+  }
   window.dispatchEvent(new Event('google-change'))
 }
 

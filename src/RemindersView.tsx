@@ -10,12 +10,15 @@ import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
 import { formatRelease, releaseCountdown } from './games'
-import { db, updateGame, type Game, type Reminder } from './db'
+import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
+import { useCalendarEvents } from './calendarEvents'
+import { openLink } from './links'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
 
 // The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your
-// reminders and your Waiting games (exact release dates), or the list, with a switch.
+// reminders, your Google Calendar's events (calendarEvents.ts) and your Waiting games (exact
+// release dates), or the list, with a switch.
 // Phone: always the list. List: upcoming reminders (soonest first), then a folded "Done" group.
 // Click = edit (a game: its details), right-click / long press a reminder = menu.
 // Uses the Games tab's page layout (.games) and group titles.
@@ -31,6 +34,10 @@ function RemindersView() {
     () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
     [],
   )
+  // The main Google Calendar's events (calendarEvents.ts); for now, a click opens the event in
+  // Google Calendar (editing in SyncR comes next)
+  const calendar = useCalendarEvents()
+  const events = calendar.events ?? []
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
   const narrow = useNarrow()
   const grid = layout === 'grid' && !narrow
@@ -48,9 +55,11 @@ function RemindersView() {
   }, [])
 
   const waiting = reminders?.filter((r) => r.doneAt === null) ?? []
-  // List: upcoming reminders and Waiting games (by release day) together, soonest first
+  // List: upcoming reminders, calendar events (not over yet) and Waiting games (by release day)
+  // together, soonest first
   const upcoming = [
     ...waiting.map((reminder) => ({ time: reminder.dueAt, reminder })),
+    ...events.filter((event) => event.end > now).map((event) => ({ time: event.start, event })),
     ...(waitingGames ?? []).map((game) => ({ time: game.releaseDate!, game })),
   ].sort((a, b) => a.time - b.time)
   const done = (reminders?.filter((r) => r.doneAt !== null) ?? []).sort((a, b) => b.doneAt! - a.doneAt!)
@@ -114,6 +123,17 @@ function RemindersView() {
     )
   }
 
+  // A calendar event in the list: like a reminder (its description as the note)
+  const eventRow = (event: CalendarEvent) => (
+    <button key={event.id} className="reminder-row" onClick={() => openLink(event.link)}>
+      <span className="reminder-row-text">
+        <span className="reminder-text">{event.title}</span>
+        {event.description && <span className="reminder-row-note">{event.description}</span>}
+      </span>
+      <span className="reminder-due">{formatDue(event.start, event.allDay)}</span>
+    </button>
+  )
+
   // A Waiting game in the list: small cover, name, release day and countdown. Its release
   // reminder (2 days before) is in its details.
   const gameRow = (game: Game) => (
@@ -146,9 +166,14 @@ function RemindersView() {
           </div>
         </div>
 
+        {/* The last refresh failed: the stored events still show */}
+        {calendar.error && (
+          <p className="games-empty">Google Calendar: {calendar.error} (showing the last loaded events)</p>
+        )}
         {grid && reminders && waitingGames && (
           <ReminderGrid
             reminders={reminders}
+            events={events}
             games={waitingGames}
             now={now}
             onEdit={setEditing}
@@ -156,7 +181,7 @@ function RemindersView() {
             onGame={setOpenGame}
           />
         )}
-        {!grid && reminders && waitingGames && reminders.length + waitingGames.length === 0 && (
+        {!grid && reminders && waitingGames && reminders.length + events.length + waitingGames.length === 0 && (
           <p className="games-empty">No reminders yet.</p>
         )}
         {!grid && upcoming.length > 0 && (
@@ -164,7 +189,9 @@ function RemindersView() {
             <h3 className="games-group-title">
               Upcoming <span className="games-count">{upcoming.length}</span>
             </h3>
-            {upcoming.map((item) => ('reminder' in item ? row(item.reminder) : gameRow(item.game)))}
+            {upcoming.map((item) =>
+              'reminder' in item ? row(item.reminder) : 'event' in item ? eventRow(item.event) : gameRow(item.game),
+            )}
           </section>
         )}
         {!grid && done.length > 0 && (
@@ -209,23 +236,27 @@ function RemindersView() {
 }
 
 
-// Month grid: reminders ("14:30 Call the bank"; done ones crossed out, overdue ones red) and
-// Waiting games (cover + name) on their day. From this month to the last upcoming reminder or
-// release, at least 3 months, at most 12.
+// Month grid: reminders ("14:30 Call the bank"; done ones crossed out, overdue ones red), calendar
+// events (on their first day; all-day ones without a time) and Waiting games (cover + name) on
+// their day. From this month to the last upcoming reminder, event or release, at least 3 months,
+// at most 12.
 function ReminderGrid(props: {
   reminders: Reminder[]
+  events: CalendarEvent[]
   games: Game[]
   now: number
   onEdit: (reminder: Reminder) => void
   onMenu: (reminder: Reminder, x: number, y: number) => void
   onGame: (id: string) => void
 }) {
-  const { reminders, games, now } = props
+  const { reminders, events, games, now } = props
   const today = new Date()
   const remindersByDay = byDay(reminders, (r) => r.dueAt)
+  const eventsByDay = byDay(events, (e) => e.start)
   const gamesByDay = byDay(games, (g) => g.releaseDate!)
   const last = Math.max(
     ...reminders.filter((r) => r.doneAt === null).map((r) => r.dueAt),
+    ...events.map((e) => e.start),
     ...games.map((g) => g.releaseDate!),
     0,
   )
@@ -239,6 +270,7 @@ function ReminderGrid(props: {
       months={months}
       count={(first) =>
         reminders.filter((r) => sameMonth(new Date(r.dueAt), first)).length +
+        events.filter((e) => sameMonth(new Date(e.start), first)).length +
         games.filter((g) => sameMonth(new Date(g.releaseDate!), first)).length
       }
       renderDay={(date) => (
@@ -261,6 +293,16 @@ function ReminderGrid(props: {
               </button>
             )
           })}
+          {(eventsByDay.get(dayKey(date)) ?? []).map((event) => (
+            <button
+              key={event.id}
+              className="calendar-reminder"
+              onClick={() => openLink(event.link)}
+              title={event.description ? `${event.title}\n${event.description}` : event.title}
+            >
+              {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>} {event.title}
+            </button>
+          ))}
           {(gamesByDay.get(dayKey(date)) ?? []).map((game) => (
             <button key={game.id} className="calendar-game" onClick={() => props.onGame(game.id)} title={game.name}>
               <Cover coverId={game.coverId} />

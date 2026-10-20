@@ -137,6 +137,22 @@ export interface Game {
   syncedUpdatedAt?: number
 }
 
+// An event of the main Google Calendar (calendarEvents.ts), kept on this device so the Reminders
+// tab works offline. Not synced through Dropbox: Google is their sync. A repeating event comes
+// as one row per date (Google's "single events"), each with its own id.
+export interface CalendarEvent {
+  id: string // Google's event id (for one date of a repeating event: "<series id>_<date>")
+  title: string
+  description: string // plain text ('' = none)
+  start: number // ms; an all-day event: local midnight of its first day
+  end: number // ms; an all-day event: local midnight after its last day
+  allDay: boolean
+  seriesId?: string // set for one date of a repeating event
+  alerts: number[] // minutes before the start for its notifications (its own, or the calendar's default)
+  colorId?: string // Google's event color ("1" to "11"); none = the calendar's color
+  link: string // opens the event in Google Calendar
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -148,6 +164,7 @@ export const db = new Dexie('syncr') as Dexie & {
   reminders: EntityTable<Reminder, 'id'>
   cards: EntityTable<Card, 'id'>
   games: EntityTable<Game, 'id'>
+  events: EntityTable<CalendarEvent, 'id'>
 }
 
 db.version(1).stores({
@@ -184,6 +201,10 @@ db.version(8).stores({
 
 db.version(9).stores({
   games: 'id',
+})
+
+db.version(10).stores({
+  events: 'id',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

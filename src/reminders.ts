@@ -87,8 +87,9 @@ export async function removeOldDeleted(): Promise<string[]> {
   return old.map((r) => r.id)
 }
 
-// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00"
-export function formatDue(time: number) {
+// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00".
+// allDay (an all-day calendar event): without the time, e.g. "Today", "17-10-2026".
+export function formatDue(time: number, allDay = false) {
   const date = new Date(time)
   const pad = (n: number) => String(n).padStart(2, '0')
   const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -96,8 +97,9 @@ export function formatDue(time: number) {
   const ref = new Date()
   ref.setHours(0, 0, 0, 0)
   const dayFromToday = (offset: number) => new Date(ref).setDate(ref.getDate() + offset)
-  if (day === dayFromToday(0)) return `Today, ${clock}`
-  if (day === dayFromToday(1)) return `Tomorrow, ${clock}`
-  if (day === dayFromToday(-1)) return `Yesterday, ${clock}`
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}, ${clock}`
+  const at = allDay ? '' : `, ${clock}`
+  if (day === dayFromToday(0)) return `Today${at}`
+  if (day === dayFromToday(1)) return `Tomorrow${at}`
+  if (day === dayFromToday(-1)) return `Yesterday${at}`
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}${at}`
 }
