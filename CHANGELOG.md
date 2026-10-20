@@ -20,6 +20,7 @@ All notable changes to SyncR. Newest version first.
 - Games: the Calendar's game window is wider and shorter, with "Add to Waiting" under the game's details and ✕ to close.
 - Games: clearer buttons in the game windows: "Watch trailer" in blue, the others as gray buttons, "Remove from list" as red text.
 - Games: on wide screens, My games shows bigger covers, then more games per row (e.g. 6 on a laptop, 8 in full HD, 12 on a 1440p screen).
+- Games: the status tabs (Waiting, To play…) are cleaner: underlined tabs, no "0" for empty ones, lined up with the covers, and they scroll sideways on a phone.
 
 ## [0.15.0] - 2026-10-20
 

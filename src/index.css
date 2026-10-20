@@ -3545,38 +3545,82 @@ h3.games-group-title {
 }
 
 /* My games: one status at a time ("Waiting 15 | To play 9 | …") */
+/* The statuses as underlined tabs (user's pick): text only, a line under the row, the open one
+   underlined in blue with its count in blue. The covers / list switch at the end of the row.
+   In the Covers layout the row is as wide as the cover grid (.wide, same width) */
 .games-status-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 16px 0 12px;
+  align-items: flex-end; /* the tabs' underline on the row's line */
+  gap: 16px;
+  margin: 16px 0 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-.games-status-tabs button {
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+/* The tabs; on a narrow screen they scroll sideways (no scrollbar), the switch stays in view */
+.games-status-list {
+  display: flex;
+  gap: 20px;
+  min-width: 0;
+  margin-bottom: -1px; /* the open tab's underline sits on the row's line */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.games-status-tabs.wide {
+  margin-inline: min(0px, (100% - var(--shelf-width)) / 2);
+}
+
+.games-status-list > button {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
-/* Covers / list switch on the right of the tabs */
+.games-status-list > button:hover {
+  color: var(--text);
+}
+
+.games-status-list > button.active {
+  border-bottom-color: var(--link);
+  color: var(--text);
+}
+
+.games-status-tabs .games-count {
+  font-size: 0.85em;
+}
+
+.games-status-list > button.active .games-count {
+  color: var(--link);
+}
+
+/* Covers / list: a small joined switch at the end of the row */
 .games-status-tabs .games-layouts {
-  margin-left: auto;
+  gap: 2px;
+  margin: 0 0 4px auto;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--bg-raised);
 }
 
 .games-status-tabs .games-layouts button {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  color: var(--text-dim);
 }
 
-.games-status-tabs button:hover {
+.games-status-tabs .games-layouts button:hover {
   color: var(--text);
 }
 
-.games-status-tabs button.active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 25%, var(--bg));
+.games-status-tabs .games-layouts button.active {
+  background: var(--accent);
   color: var(--text);
 }
 
@@ -3590,10 +3634,10 @@ h3.games-group-title {
    100cqw = the page's width (.games-page is the container) */
 .games-page {
   container-type: inline-size;
+  --shelf-width: min(100cqw - 64px, 2200px); /* also the status tabs' width (Covers layout) */
 }
 
 .games-grid {
-  --shelf-width: min(100cqw - 64px, 2200px);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(100px, var(--shelf-width) / 7, 170px), 1fr));
   gap: 16px 12px;

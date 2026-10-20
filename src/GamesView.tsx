@@ -138,12 +138,20 @@ function GamesView() {
             )}
             {games && games.length > 0 && (
               <>
-                <div className="games-status-tabs">
-                  {STATUSES.map(({ status, label }) => (
-                    <button key={status} className={shown === status ? 'active' : ''} onClick={() => setShown(status)}>
-                      {label} <span className="games-count">{games.filter((g) => g.status === status).length}</span>
-                    </button>
-                  ))}
+                {/* Underlined tabs (an empty status shows no count); as wide as the cover grid */}
+                <div className={shelf === 'grid' ? 'games-status-tabs wide' : 'games-status-tabs'}>
+                  {/* Scrolls sideways when the screen is too narrow (phone) */}
+                  <div className="games-status-list">
+                    {STATUSES.map(({ status, label }) => {
+                      const count = games.filter((g) => g.status === status).length
+                      return (
+                        <button key={status} className={shown === status ? 'active' : ''} onClick={() => setShown(status)}>
+                          {label}
+                          {count > 0 && <span className="games-count">{count}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
                   <div className="calendar-layouts games-layouts">
                     <button className={shelf === 'grid' ? 'active' : ''} onClick={() => setShelf('grid')} title="Covers">
                       <LayoutGrid size={15} />
