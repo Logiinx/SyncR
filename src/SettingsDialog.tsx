@@ -407,9 +407,7 @@ function GoogleSettings() {
     <>
       <SectionTitle title="Google Calendar" scope="this device" />
       <div className="setting setting-toggle">
-        <span>
-          Main calendar <span className="setting-value">{status}</span>
-        </span>
+        <span>Main calendar</span>
         <button
           className="setting-button"
           disabled={busy || (!connected && (isTauri() || !isComplete(proxy)))}
@@ -418,6 +416,10 @@ function GoogleSettings() {
           {connected ? 'Disconnect' : 'Connect…'}
         </button>
       </div>
+      {/* Same status line as Games: green when connected */}
+      <p className={`setting-status${connected ? ' ok' : ''}`} title={status}>
+        {status}
+      </p>
     </>
   )
 }
