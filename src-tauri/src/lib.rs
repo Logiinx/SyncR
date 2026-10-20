@@ -18,6 +18,65 @@ fn started_hidden() -> bool {
   std::env::args().any(|arg| arg == "--hidden")
 }
 
+// Google Calendar sign-in (google.ts). Google doesn't allow its sign-in page inside an app
+// window, so it opens in the normal browser, and Google sends the browser back to
+// http://localhost:47615/?code=… (a redirect address of SyncR's Google client). This listens
+// there for that one visit, shows a short "you can close this tab" page, brings SyncR to the
+// front and returns the part after "?" to the app. Gives up after 5 minutes (e.g. the browser
+// tab was closed without signing in).
+#[tauri::command]
+async fn google_sign_in(app: tauri::AppHandle, url: String) -> Result<String, String> {
+  use tauri_plugin_opener::OpenerExt;
+  // Listening before the browser opens, so Google's answer can't come too early
+  let listener = std::net::TcpListener::bind("127.0.0.1:47615")
+    .map_err(|_| "A Google sign-in is already waiting in your browser".to_string())?;
+  app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())?;
+  let query = tauri::async_runtime::spawn_blocking(move || wait_for_google(listener))
+    .await
+    .map_err(|e| e.to_string())??;
+  #[cfg(desktop)]
+  show_main(&app);
+  Ok(query)
+}
+
+fn wait_for_google(listener: std::net::TcpListener) -> Result<String, String> {
+  use std::io::{ErrorKind, Read, Write};
+  use std::time::{Duration, Instant};
+  listener.set_nonblocking(true).map_err(|e| e.to_string())?; // so the 5-minute limit works
+  let deadline = Instant::now() + Duration::from_secs(300);
+  while Instant::now() < deadline {
+    match listener.accept() {
+      Ok((mut stream, _)) => {
+        let _ = stream.set_nonblocking(false);
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+        let mut buffer = [0u8; 8192];
+        let length = stream.read(&mut buffer).unwrap_or(0);
+        let request = String::from_utf8_lossy(&buffer[..length]);
+        // The first line: "GET /?state=google&code=… HTTP/1.1"
+        let path = request.lines().next().and_then(|line| line.split(' ').nth(1)).unwrap_or("");
+        let Some(query) = path.strip_prefix("/?") else {
+          // Something else, e.g. the browser asking for /favicon.ico
+          let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+          continue;
+        };
+        let page = "<!doctype html><meta charset=\"utf-8\"><title>SyncR</title>\
+          <body style=\"background:#161616;color:#e4e4e4;font-family:system-ui;text-align:center;padding-top:20vh\">\
+          <h2>Back to SyncR</h2><p>You can close this tab.</p></body>";
+        let _ = write!(
+          stream,
+          "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+          page.len(),
+          page
+        );
+        return Ok(query.to_string());
+      }
+      Err(error) if error.kind() == ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(100)),
+      Err(error) => return Err(error.to_string()),
+    }
+  }
+  Err("Google sign-in timed out. Please try again.".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default();
@@ -37,7 +96,7 @@ pub fn run() {
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser
     .plugin(tauri_plugin_opener::init())
-    .invoke_handler(tauri::generate_handler![started_hidden]);
+    .invoke_handler(tauri::generate_handler![started_hidden, google_sign_in]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
   // saved when the app closes and restored at the next start.

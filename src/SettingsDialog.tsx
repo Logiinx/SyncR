@@ -374,11 +374,13 @@ function GamesSettings() {
   )
 }
 
-// Google Calendar sign-in (google.ts), per device. Connect leaves the app for Google's page;
-// the result shows under the cloud button on return. Needs the game search proxy (above).
+// Google Calendar sign-in (google.ts), per device. Phone/browser: Connect leaves the app for
+// Google's page; the result shows under the cloud button on return. PC app: Google's page opens
+// in the browser; the result shows here. Needs the game search proxy (above).
 function GoogleSettings() {
   const [connected, setConnected] = useState(isGoogleConnected)
   const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null) // PC app: waiting, or what went wrong
   const proxy = useConnection()
 
   useEffect(() => {
@@ -387,19 +389,24 @@ function GoogleSettings() {
     return () => window.removeEventListener('google-change', refresh)
   }, [])
 
-  // The PC app's sign-in (through the normal browser) comes in a later step
   const status = connected
     ? `Connected${googleName() ? ` as ${googleName()}` : ''}`
-    : isTauri()
-      ? 'Not available in the PC app yet'
-      : !isComplete(proxy)
-        ? 'Needs the game search proxy (above)'
-        : 'Not connected'
+    : (message ?? (!isComplete(proxy) ? 'Needs the game search proxy (above)' : 'Not connected'))
 
   async function toggle() {
     setBusy(true)
-    if (connected) await disconnectGoogle()
-    else await connectGoogle() // leaves the app
+    setMessage(null)
+    try {
+      if (connected) await disconnectGoogle()
+      else {
+        // Phone/browser: leaves the app. PC app: waits here for the sign-in in the browser
+        if (isTauri()) setMessage('Finish the sign-in in your browser…')
+        const result = await connectGoogle()
+        setMessage(result && !result.ok ? result.text : null)
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
     setBusy(false)
   }
 
@@ -410,7 +417,7 @@ function GoogleSettings() {
         <span>Main calendar</span>
         <button
           className="setting-button"
-          disabled={busy || (!connected && (isTauri() || !isComplete(proxy)))}
+          disabled={busy || (!connected && !isComplete(proxy))}
           onClick={toggle}
         >
           {connected ? 'Disconnect' : 'Connect…'}

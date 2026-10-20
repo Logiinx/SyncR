@@ -1,3 +1,4 @@
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { db } from './db'
 import { igdbProxyFetch } from './igdb'
 
@@ -22,11 +23,15 @@ interface Auth {
   name?: string // the calendar's name (for the main calendar: the Google account's email)
 }
 
-// Where Google sends the user back. Must match a redirect URI of the client in Google Cloud:
-// http://localhost:5173/, http://localhost:4173/SyncR/, https://logiinx.github.io/SyncR/
-function redirectUri() {
-  return new URL(import.meta.env.BASE_URL, location.origin).href
-}
+// The app's own address: http://localhost:5173/, http://localhost:4173/SyncR/,
+// https://logiinx.github.io/SyncR/
+const appAddress = () => new URL(import.meta.env.BASE_URL, location.origin).href
+
+// Where Google sends the user back; must be a redirect URI of the client in Google Cloud. The
+// app's own address, except in the PC app: there the sign-in runs in the normal browser, and
+// SyncR listens for the return on this address (src-tauri/src/lib.rs, google_sign_in).
+const PC_ADDRESS = 'http://localhost:47615/'
+const redirectUri = () => (isTauri() ? PC_ADDRESS : appAddress())
 
 function loadAuth(): Auth | null {
   try {
@@ -67,8 +72,13 @@ async function challengeFor(verifier: string) {
 
 // ---------- Sign in / out ----------
 
-// Leaves the app and opens Google's sign-in page. Google comes back with ?state=google&code=…
-export async function connect() {
+type Result = { ok: boolean; text: string }
+
+// Opens Google's sign-in page. Google comes back with ?state=google&code=…
+// Phone/browser: leaves the app (finishConnect() completes it on return; returns null).
+// PC app: the page opens in the normal browser and this waits for its return (lib.rs), then
+// completes the sign-in and returns the result.
+export async function connect(): Promise<Result | null> {
   const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)))
   localStorage.setItem(VERIFIER_KEY, verifier)
   const params = new URLSearchParams({
@@ -82,7 +92,13 @@ export async function connect() {
     access_type: 'offline', // gives a refresh token, so no re-login
     prompt: 'consent', // without it, Google sends the refresh token only the very first time
   })
-  location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  if (!isTauri()) {
+    location.href = url
+    return null
+  }
+  const query = await invoke<string>('google_sign_in', { url })
+  return finish(new URLSearchParams(query))
 }
 
 // Asks Google for tokens through the proxy (it adds the client secret)
@@ -92,16 +108,19 @@ async function tokenRequest(body: Record<string, string>) {
 
 // Call once at startup. If we just came back from Google, finish the sign-in.
 // Returns null if there was nothing to do, otherwise a message for the user (ok: it worked).
-export async function finishConnect(): Promise<{ ok: boolean; text: string } | null> {
-  const fail = (text: string) => ({ ok: false, text })
+export async function finishConnect(): Promise<Result | null> {
   if (!isGoogleReturn()) return null
-  const url = new URL(location.href)
-  const code = url.searchParams.get('code')
-  const error = url.searchParams.get('error')
-  const granted = url.searchParams.get('scope') ?? ''
+  const params = new URL(location.href).searchParams
+  history.replaceState(null, '', appAddress()) // removes ?code=… from the address bar
+  return finish(params)
+}
 
-  // Remove ?code=… from the address bar
-  history.replaceState(null, '', redirectUri())
+// Google's answer (what came after "?"): gets the tokens
+async function finish(params: URLSearchParams): Promise<Result> {
+  const fail = (text: string) => ({ ok: false, text })
+  const code = params.get('code')
+  const error = params.get('error')
+  const granted = params.get('scope') ?? ''
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
 
