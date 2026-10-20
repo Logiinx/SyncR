@@ -4,7 +4,7 @@ import { addGame, gameId, releaseCountdown, STATUSES } from './games'
 import { CALENDAR_MONTHS, coverUrl, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
-import { GameExtrasInfo, TrailerButton, TrailerPanel } from './GameExtrasView'
+import { GameExtrasInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
 
@@ -193,17 +193,33 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
 }
 
 // A game of the calendar: the cover; on the right the name, release, all platforms, where it is
-// in your list, the extras (developer, publisher, modes), then "Add to Waiting" and "Trailer ›"
-// (the trailer opens in a panel beside the window, or below on a phone).
+// in your list, the extras (developer, publisher, modes), then "Add to Waiting" and "Trailer"
+// (PC: the trailer view in place of the window; phone: a panel below it).
 // ✕, Escape or a click outside closes it.
 function CalendarPopup({ game, status, onClose }: { game: UpcomingGame; status?: GameStatus; onClose: () => void }) {
   const label = STATUSES.find((s) => s.status === status)?.label
   const [trailerOpen, setTrailerOpen] = useState(false)
+  const narrow = useNarrow() // PC: the trailer opens in its own view; phone: below the window
   const popupRef = useRef<HTMLDivElement>(null)
-  useEffect(() => popupRef.current?.focus({ preventScroll: true }), []) // so Escape works
+  // So Escape works (again after coming back from the trailer view)
+  useEffect(() => popupRef.current?.focus({ preventScroll: true }), [trailerOpen])
+  if (trailerOpen && !narrow) {
+    return (
+      <div className="dialog-backdrop" onMouseDown={() => setTrailerOpen(false)}>
+        <TrailerTheater
+          igdbId={game.igdbId}
+          title={game.name}
+          release={releaseText(game, true)}
+          platforms={game.platforms.join(', ')}
+          onBack={() => setTrailerOpen(false)}
+          onClose={onClose}
+        />
+      </div>
+    )
+  }
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div className="game-window" style={{ '--window-width': '600px' } as React.CSSProperties}>
+      <div className="game-window">
         <div
           ref={popupRef}
           className="dialog calendar-popup"

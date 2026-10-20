@@ -4542,13 +4542,11 @@ h3.games-group-title {
   overflow-wrap: anywhere;
 }
 
-/* A game window and its trailer panel (GameDialog.tsx, GameCalendar.tsx): side by side when
-   there's room, else the panel goes below. --window-width: the window's own width */
+/* A game window and, on a phone, its trailer panel below it (GameDialog.tsx, GameCalendar.tsx) */
 .game-window {
   display: flex;
   flex-wrap: wrap;
   align-content: center;
-  align-items: flex-start;
   justify-content: center;
   gap: 12px;
   width: 100%;
@@ -4557,21 +4555,23 @@ h3.games-group-title {
 }
 
 .game-window > .dialog {
-  max-height: none; /* the frame scrolls instead (window + panel below it on small screens) */
+  max-height: none; /* the frame scrolls instead (window + panel below it) */
 }
 
-/* The trailer panel: the free width beside the window (at most 760 px, never taller than the
-   screen); YouTube picks the quality from the player's size */
 .dialog.trailer-panel {
-  width: max(320px, min(760px, calc(100vw - var(--window-width) - 76px), calc((100vh - 120px) * 16 / 9)));
+  width: 100%;
   padding: 16px;
 }
 
-.trailer-panel iframe {
+.trailer-panel iframe,
+.trailer-theater iframe {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
+}
+
+.trailer-panel iframe {
   border-radius: 8px;
 }
 
@@ -4592,17 +4592,84 @@ h3.games-group-title {
   white-space: nowrap;
 }
 
-/* "Trailer ›": the arrow points to the panel (right), back when open */
-.trailer-toggle .trailer-arrow {
-  transition: transform 0.15s;
+/* PC: the trailer view (TrailerTheater): a header bar with the game's info, then the player as
+   big as the window allows, keeping 16:9 (its height + the bar fit the screen) */
+.trailer-theater {
+  --theater-bar: 92px;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, calc((100vh - 34px - var(--theater-bar)) * 16 / 9));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-raised);
 }
 
+.trailer-theater:focus {
+  outline: none;
+}
+
+.trailer-theater-bar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: var(--theater-bar);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trailer-theater-back {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.trailer-theater-back:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.trailer-theater-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-backdrop .trailer-theater-info h2 {
+  margin: 0 0 2px;
+  overflow: hidden;
+  font-size: 1.15em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trailer-theater-info p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trailer-theater-bar .game-trailer-link {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* "Trailer": open (PC: the trailer view is showing; phone: the panel below) */
 .trailer-toggle.open {
   color: var(--link);
 }
 
-.trailer-toggle.open .trailer-arrow {
-  transform: rotate(180deg);
+/* The arrow only on a phone: it points to the panel below (up when open) */
+.trailer-toggle .trailer-arrow {
+  display: none;
+  transition: transform 0.15s;
 }
 
 /* In the game details: under the extras, its text lined up with them */
@@ -4610,18 +4677,14 @@ h3.games-group-title {
   margin: 8px 0 0 -8px;
 }
 
-/* Phone: the panel goes below the window, as wide; the arrow points down (up when open) */
 @media (max-width: 699px) {
   /* With its text (the game details window's other actions show only icons on a phone) */
   .gd-action.trailer-toggle span {
     display: inline;
   }
 
-  .dialog.trailer-panel {
-    width: 100%;
-  }
-
   .trailer-toggle .trailer-arrow {
+    display: block;
     transform: rotate(90deg);
   }
 

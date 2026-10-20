@@ -4,7 +4,8 @@ import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X }
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { formatRelease, releaseEventId, shortPlatforms, STATUSES } from './games'
 import { openLink } from './links'
-import { GameExtrasInfo, TrailerButton, TrailerPanel } from './GameExtrasView'
+import { GameExtrasInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
+import { useNarrow } from './useNarrow'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -27,14 +28,30 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
   const [review, setReview] = useState(game.review)
   const played = game.status === 'done' || game.status === 'dropped'
   const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
-  const [trailerOpen, setTrailerOpen] = useState(false) // the trailer panel beside the window
-  // Focused when it opens (so Escape works), without scrolling
+  const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
+  const narrow = useNarrow()
+  // Focused when it opens (so Escape works), without scrolling; again after the trailer view
   const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
+  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [trailerOpen])
+
+  if (trailerOpen && !narrow) {
+    return (
+      <div className="dialog-backdrop" onMouseDown={() => setTrailerOpen(false)}>
+        <TrailerTheater
+          igdbId={game.igdbId}
+          title={game.name}
+          release={formatRelease(game.releaseDate, game.releaseLabel)}
+          platforms={shortPlatforms(game.platforms)}
+          onBack={() => setTrailerOpen(false)}
+          onClose={onClose}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div className="game-window" style={{ '--window-width': '780px' } as React.CSSProperties}>
+      <div className="game-window">
         <div
           className="dialog game-dialog"
           role="dialog"

@@ -1,4 +1,5 @@
-import { ChevronRight, Clapperboard } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Clapperboard, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
@@ -30,8 +31,8 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
-// "Trailer ›": opens the trailer panel beside the window (PC) or below it (phone, the arrow then
-// points down). Only shown when the game has a trailer.
+// "Trailer": opens the trailer view (PC, TrailerTheater) or the panel below the window (phone,
+// with an arrow pointing down). Only shown when the game has a trailer.
 export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: () => void }) {
   const extras = useGameExtras(props.igdbId)
   if (!extras?.trailer) return null
@@ -43,10 +44,69 @@ export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: 
   )
 }
 
-// The trailer panel (opened by TrailerButton): YouTube's player, loaded only now (the
-// privacy-friendly youtube-nocookie address) and started. Its size follows the free space on
-// the screen (see .trailer-panel), and YouTube picks the quality from the player's size and the
-// connection (apps can't choose it anymore). "Open on YouTube" in case the player can't show.
+// PC: the trailer view (opened by TrailerButton, in place of the game window). A header bar
+// with the game's info (title; release, platforms, modes; developer, publisher) and the
+// buttons, then the player as big as the window allows, keeping its 16:9 shape. Back, Escape
+// or a click outside go back to the game window; ✕ closes both. The player loads only now.
+export function TrailerTheater(props: {
+  igdbId: number
+  title: string
+  release: string
+  platforms: string
+  onBack: () => void
+  onClose: () => void
+}) {
+  const extras = useGameExtras(props.igdbId)
+  const theaterRef = useRef<HTMLDivElement>(null)
+  useEffect(() => theaterRef.current?.focus({ preventScroll: true }), []) // so Escape works
+  const trailer = extras?.trailer
+  if (!trailer) return null
+  const details = [props.release, props.platforms, extras.modes.join(', ')].filter(Boolean)
+  const companies = [
+    extras.developers.length > 0 && `Developer: ${extras.developers.join(', ')}`,
+    extras.publishers.length > 0 && `Publisher: ${extras.publishers.join(', ')}`,
+  ].filter(Boolean)
+  return (
+    <div
+      ref={theaterRef}
+      className="trailer-theater"
+      role="dialog"
+      aria-label={`${props.title}: ${trailer.name}`}
+      tabIndex={-1}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.key === 'Escape' && props.onBack()}
+    >
+      <header className="trailer-theater-bar">
+        <button className="trailer-theater-back" onClick={props.onBack} title="Back to the game">
+          <ChevronLeft size={18} /> Back
+        </button>
+        <div className="trailer-theater-info">
+          <h2>{props.title}</h2>
+          <p>{details.join(' · ')}</p>
+          {companies.length > 0 && <p>{companies.join(' · ')}</p>}
+        </div>
+        <button className="game-trailer-link" onClick={() => openLink(`https://www.youtube.com/watch?v=${trailer.id}`)}>
+          Open on YouTube
+        </button>
+        <button className="gd-close" onClick={props.onClose} title="Close">
+          <X size={18} />
+        </button>
+      </header>
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&rel=0`}
+        title={trailer.name}
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  )
+}
+
+// Phone: the trailer panel (opened by TrailerButton) below the window, as wide as it.
+// Both views: YouTube's player (the privacy-friendly youtube-nocookie address), loaded only when
+// opened; YouTube picks the quality from the player's size and the connection (apps can't choose
+// it anymore). "Open on YouTube" in case the player can't show (e.g. age-restricted videos).
 export function TrailerPanel({ igdbId }: { igdbId: number }) {
   const trailer = useGameExtras(igdbId)?.trailer
   if (!trailer) return null
