@@ -3102,6 +3102,22 @@ button {
   color: var(--text-dim);
 }
 
+/* Settings → About: the version number opens "What's new". Looks like text, underlined on hover. */
+.version-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.version-link:hover,
+.version-link:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 /* Settings → Games: the connection check (green when it works) */
 .setting-status {
   margin: 0;

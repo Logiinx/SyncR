@@ -250,11 +250,15 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             {/* Check for updates: the icon next to Settings in the sidebar */}
             <div className="setting">
               <span>
-                SyncR <span className="setting-value">v{__APP_VERSION__} · by Logiinx</span>
+                SyncR{' '}
+                <span className="setting-value">
+                  {/* Click the version: what's new in it */}
+                  <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
+                    v{__APP_VERSION__}
+                  </button>{' '}
+                  · by Logiinx
+                </span>
               </span>
-              <button className="setting-button" onClick={() => setShowWhatsNew(true)}>
-                What's new
-              </button>
             </div>
           </div>
         </div>
