@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, List, Plus, RefreshCw, Smartphone } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, List, Plus, RefreshCw, Repeat, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
@@ -41,7 +41,12 @@ function RemindersView() {
   // to "To play" and its event shows like any other.
   const gameEventIds = new Set((waitingGames ?? []).map(releaseEventId))
   const calendar = useCalendarEvents()
-  const events = (calendar.events ?? []).filter((event) => !gameEventIds.has(event.id))
+  // "Hide repeating" (per device): repeating events leave the list and grid, so the next real
+  // events are easy to see. Their alerts still come (eventAlerts.ts reads all events)
+  const [hideRepeating, setHideRepeating] = useLocalState('syncr.hideRepeating', false)
+  const events = (calendar.events ?? []).filter(
+    (event) => !gameEventIds.has(event.id) && !(hideRepeating && event.seriesId),
+  )
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
   const narrow = useNarrow()
   const grid = layout === 'grid' && !narrow
@@ -184,7 +189,10 @@ function RemindersView() {
         <span className="reminder-text">{event.title}</span>
         {event.description && <span className="reminder-row-note">{event.description}</span>}
       </span>
-      <span className="reminder-due">{formatDue(event.start, event.allDay)}</span>
+      <span className="reminder-due">
+        {formatDue(event.start, event.allDay)}
+        {event.seriesId && <Repeat size={12} aria-label="Repeating event" />}
+      </span>
     </button>
   )
 
@@ -213,6 +221,15 @@ function RemindersView() {
             <Plus size={15} /> New event
           </button>
           <div className="reminders-tools">
+            {calendar.connected && (
+              <label
+                className="reminders-hide-repeating"
+                title="Hide repeating events here (they stay in Google Calendar, and still alert)"
+              >
+                <input type="checkbox" checked={hideRepeating} onChange={(e) => setHideRepeating(e.target.checked)} />
+                Hide repeating
+              </label>
+            )}
             {calendar.connected && (
               <button
                 className="reminders-refresh"
@@ -413,7 +430,8 @@ function ReminderGrid(props: {
               }}
               title={event.description ? `${event.title}\n${event.description}` : event.title}
             >
-              {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>} {event.title}
+              {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>}
+              {event.seriesId && <Repeat size={11} className="calendar-repeat" aria-label="Repeating event" />} {event.title}
             </button>
           ))}
           {(gamesByDay.get(dayKey(date)) ?? []).map((game) => (

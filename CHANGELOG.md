@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 - Release reminders are now these Google Calendar events (the old hidden SyncR reminders are removed). Needs Google Calendar connected (Settings).
 - Reminders: "New event" and the view buttons are on one row, with a new refresh button to reload your events.
 - "What's new": the text is white instead of gray, easier to read.
+- Reminders: repeating events have a small repeat icon, and "Hide repeating" hides them from the list and grid (they still alert, and stay in Google Calendar).
 
 ## [0.15.0] - 2026-10-20
 

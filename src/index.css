@@ -1343,6 +1343,12 @@ button {
   font-size: 0.85em;
 }
 
+/* Small icons after the date: a repeating event; an old reminder also in Google Calendar */
+.reminder-due svg {
+  margin-left: 5px;
+  vertical-align: -1px;
+}
+
 .reminder-row.overdue .reminder-due {
   color: var(--text-red);
 }
@@ -3749,6 +3755,29 @@ h3.games-group-title {
 
 .reminders-tools .calendar-layouts {
   margin-left: 0;
+}
+
+.reminders-hide-repeating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 0.9em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.reminders-hide-repeating input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* A repeating event in the month grid: the icon after its time */
+.calendar-repeat {
+  margin-right: 1px;
+  color: var(--text-dim);
+  vertical-align: -1px;
 }
 
 .reminders-refresh {
