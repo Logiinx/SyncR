@@ -2805,7 +2805,7 @@ button {
 .whats-new-body {
   overflow-y: auto;
   margin-bottom: 16px;
-  color: var(--text-dim);
+  color: var(--text); /* white, not dim: easier to read (user request) */
 }
 
 .whats-new-body h3 {
@@ -2826,6 +2826,10 @@ button {
 .whats-new-body ul {
   margin: 0;
   padding-left: 20px;
+}
+
+.whats-new-body p {
+  color: inherit; /* not the dim of other dialogs' messages */
 }
 
 .whats-new-body li {
