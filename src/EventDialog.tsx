@@ -8,6 +8,7 @@ import {
   type Repeat,
   type SeriesRepeat,
 } from './calendarEvents'
+import Spinner from './Spinner'
 
 // Add (event = null) or edit an event of the main Google Calendar (calendarEvents.ts). For a
 // repeating event, only this date changes, unless "All events in the series" is ticked.
@@ -212,7 +213,15 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
           )}
           <button onClick={onClose}>Cancel</button>
           <button className="primary" disabled={!canSave} onClick={save}>
-            {saving ? 'Saving…' : event ? 'Save' : 'Add'}
+            {saving ? (
+              <span className="loading-line">
+                <Spinner size={13} /> Saving…
+              </span>
+            ) : event ? (
+              'Save'
+            ) : (
+              'Add'
+            )}
           </button>
         </div>
       </div>

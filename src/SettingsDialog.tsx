@@ -31,6 +31,7 @@ import {
   type Appearance,
   type FontId,
 } from './appearance'
+import Spinner from './Spinner'
 
 // Settings. Changes are saved right away. Closed with Escape or a click outside it.
 function SettingsDialog({ onClose }: { onClose: () => void }) {
@@ -368,6 +369,7 @@ function GamesSettings() {
         title={status.text}
         onClick={() => setFullStatus(!fullStatus)}
       >
+        {status.text === 'Checking…' && <Spinner size={12} />}
         {status.text}
       </p>
     </>
@@ -425,6 +427,7 @@ function GoogleSettings() {
       </div>
       {/* Same status line as Games: green when connected */}
       <p className={`setting-status${connected ? ' ok' : ''}`} title={status}>
+        {busy && !connected && isTauri() && <Spinner size={12} />}
         {status}
       </p>
     </>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPassphrase, hasPassphrase, MIN_PASSPHRASE_LENGTH, unlock } from './crypto'
+import Spinner from './Spinner'
 
 // Asks for the sync passphrase. First device: create it (typed twice). Other devices: enter it.
 // Closing it without a passphrase is fine: sync just stays locked.
@@ -66,7 +67,11 @@ function PassphraseDialog({ onClose }: { onClose: () => void }) {
         }}
       >
         <h2>{mode === 'create' ? 'Create a passphrase' : 'Enter your passphrase'}</h2>
-        {mode === 'loading' && !error && <p>Checking Dropbox…</p>}
+        {mode === 'loading' && !error && (
+          <p className="loading-line">
+            <Spinner /> Checking Dropbox…
+          </p>
+        )}
         {mode === 'create' && (
           <p>
             Your notes are encrypted with it before they go to Dropbox. You'll enter it once on each device.

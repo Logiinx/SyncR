@@ -7,6 +7,7 @@ import Cover from './GameCover'
 import { GameExtrasInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
+import Spinner from './Spinner'
 
 // The Games tab's Calendar view: popular upcoming PC games for the next 6 months (Steam's top
 // 100 / 300 / 500 / 1000 most wishlisted, chosen with buttons).
@@ -48,7 +49,13 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
   }, [])
 
   if (error) return <p className="game-search-message error">{error}</p>
-  if (!loaded) return <p className="game-search-message">Loading upcoming games…</p>
+  if (!loaded) {
+    return (
+      <p className="game-search-message loading-line">
+        <Spinner /> Loading upcoming games…
+      </p>
+    )
+  }
   const games = loaded.filter((g) => g.rank <= top) // the chosen level (top 100 / 300 / 500 / 1000)
   if (games.length === 0) return <p className="game-search-message">No upcoming games found.</p>
 

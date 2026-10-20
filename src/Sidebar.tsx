@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { Bell, Gamepad2, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
+import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
 import { listReminders, REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
@@ -125,9 +126,9 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           <button className="footer-button" onClick={onSettings}>
             <Settings size={15} /> Settings
           </button>
-          {/* Check for updates: the result shows in the bar at the top; spins while checking */}
+          {/* Check for updates: the result shows in the bar at the top; the loading ring while checking */}
           <button
-            className={checking ? 'footer-icon checking' : 'footer-icon'}
+            className="footer-icon"
             onClick={async () => {
               if (checking) return
               setChecking(true)
@@ -137,7 +138,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
             title="Check for updates"
             aria-label="Check for updates"
           >
-            <RefreshCw size={15} />
+            {checking ? <Spinner label="Checking for updates" /> : <RefreshCw size={15} />}
           </button>
         </div>
       </aside>

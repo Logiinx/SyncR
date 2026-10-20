@@ -4,6 +4,7 @@ import type { Update } from '@tauri-apps/plugin-updater'
 import { finalSync } from './autoSync'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
+import Spinner from './Spinner'
 
 // Asks the bar to check for a new version now (the update icon in the sidebar). Resolves once
 // the check is done (the icon spins until then).
@@ -77,7 +78,7 @@ function UpdateBanner() {
           }}
           disabled={installing}
         >
-          {installing ? 'Reloading…' : 'Reload'}
+          {installing ? <WithSpinner text="Reloading…" /> : 'Reload'}
         </button>
       </div>
     )
@@ -100,14 +101,31 @@ function UpdateBanner() {
       <div className="update-banner">
         {installError ? `Update failed: ${installError}` : `SyncR ${update.version} is available.`}
         <button onClick={onInstall} disabled={installing}>
-          {installing ? 'Installing…' : installError ? 'Try again' : 'Update now'}
+          {installing ? <WithSpinner text="Installing…" /> : installError ? 'Try again' : 'Update now'}
         </button>
       </div>
     )
   }
 
-  if (notice) return <div className="update-banner">{notice}</div>
+  if (notice) {
+    return (
+      <div className="update-banner">
+        {LOADING_NOTICES.includes(notice) && <Spinner />}
+        {notice}
+      </div>
+    )
+  }
   return null
 }
+
+// Notices that mean "wait": shown with the loading ring
+const LOADING_NOTICES = ['Checking for updates…', 'Downloading the new version…']
+
+// A button's text while it works, with the loading ring before it
+const WithSpinner = ({ text }: { text: string }) => (
+  <span className="loading-line">
+    <Spinner size={13} /> {text}
+  </span>
+)
 
 export default UpdateBanner

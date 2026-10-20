@@ -16,6 +16,7 @@ All notable changes to SyncR. Newest version first.
 - Games: bigger game windows and covers, clearer buttons, and cleaner status tabs.
 - Games: on wide screens, My games shows bigger covers, then more games per row.
 - "What's new" is easier to read (white text instead of gray).
+- Everywhere something loads (updates, game search, Settings…), SyncR shows the same turning blue ring.
 
 ## [0.15.0] - 2026-10-20
 

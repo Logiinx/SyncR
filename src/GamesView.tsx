@@ -10,6 +10,7 @@ import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { RatingStars } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
+import Spinner from './Spinner'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
 // Click a game for its details (GameDialog.tsx); right-click / long press for a quick menu.
@@ -364,6 +365,7 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
           placeholder="Search for a game to add"
           spellCheck={false}
         />
+        {searching && <Spinner label="Searching" />}
         {text && (
           <button className="game-search-clear" onClick={() => setText('')} title="Clear">
             <X size={15} />
