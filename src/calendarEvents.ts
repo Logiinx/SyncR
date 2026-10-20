@@ -97,6 +97,86 @@ async function load() {
   })
 }
 
+// ---------- Add, edit, delete (need internet; each reloads the events after) ----------
+
+export type Repeat = 'none' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+
+// What the event window (EventDialog.tsx) edits. alert: minutes before the start for the
+// notification, null = none, 'keep' = leave the event's alerts as they are (it has several)
+export interface EventFields {
+  title: string
+  description: string
+  start: number
+  alert: number | null | 'keep'
+}
+
+const NEW_EVENT_MS = 15 * 60 * 1000 // the end isn't shown in SyncR; new events last 15 minutes
+
+// Google wants local time ("2026-10-21T10:00:00") with the time zone next to it (needed for
+// repeating events, so their time stays the same across daylight saving changes)
+function googleTime(time: number) {
+  const date = new Date(time)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const dateTime = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`
+  return { dateTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+}
+
+// An all-day event's day: "2026-10-21"
+function googleDay(time: number) {
+  const date = new Date(time)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return { date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` }
+}
+
+const googleAlerts = (alert: number | null) =>
+  alert === null ? { useDefault: false, overrides: [] } : { useDefault: false, overrides: [{ method: 'popup', minutes: alert }] }
+
+export async function createEvent(fields: EventFields, repeat: Repeat) {
+  await calendarApi('calendars/primary/events', {
+    method: 'POST',
+    body: JSON.stringify({
+      summary: fields.title,
+      description: fields.description,
+      start: googleTime(fields.start),
+      end: googleTime(fields.start + NEW_EVENT_MS),
+      ...(fields.alert !== 'keep' && { reminders: googleAlerts(fields.alert) }),
+      ...(repeat !== 'none' && { recurrence: [`RRULE:FREQ=${repeat}`] }),
+    }),
+  })
+  await refreshEvents()
+}
+
+// Sends only what changed, so what SyncR doesn't show (color, place, guests…) stays. For one
+// date of a repeating event, only that date changes (Google keeps it as an exception).
+export async function updateEvent(event: CalendarEvent, fields: EventFields) {
+  const changes: Record<string, unknown> = {}
+  if (fields.title !== event.title) changes.summary = fields.title
+  if (fields.description !== event.description) changes.description = fields.description
+  if (fields.start !== event.start) {
+    // Keeps the event's length; an all-day event stays all-day (on its new day)
+    const end = fields.start + (event.end - event.start)
+    Object.assign(
+      changes,
+      event.allDay
+        ? { start: googleDay(fields.start), end: googleDay(end) }
+        : { start: googleTime(fields.start), end: googleTime(end) },
+    )
+  }
+  if (fields.alert !== 'keep') changes.reminders = googleAlerts(fields.alert)
+  if (Object.keys(changes).length === 0) return
+  await calendarApi(`calendars/primary/events/${encodeURIComponent(event.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+  await refreshEvents()
+}
+
+// For one date of a repeating event: only that date goes
+export async function deleteEvent(event: CalendarEvent) {
+  await calendarApi(`calendars/primary/events/${encodeURIComponent(event.id)}`, { method: 'DELETE' })
+  await refreshEvents()
+}
+
 // For the Reminders tab: the stored events (soonest first), refreshed when the tab opens, every
 // 5 minutes while it's open, and when the app comes back to the front. error: the last refresh
 // failed (the stored events still show).

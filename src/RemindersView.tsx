@@ -11,8 +11,8 @@ import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
 import { formatRelease, releaseCountdown } from './games'
 import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
-import { useCalendarEvents } from './calendarEvents'
-import { openLink } from './links'
+import { deleteEvent, useCalendarEvents } from './calendarEvents'
+import EventDialog from './EventDialog'
 import { useLocalState } from './localState'
 import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
 
@@ -44,6 +44,7 @@ function RemindersView() {
   const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
   const [doneOpen, setDoneOpen] = useLocalState('syncr.remindersDoneOpen', false)
   const [editing, setEditing] = useState<Reminder | 'new' | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [menu, setMenu] = useState<{ reminder: Reminder; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
@@ -71,6 +72,41 @@ function RemindersView() {
       confirmLabel: 'Delete',
       danger: true,
       onConfirm: () => deleteReminder(reminder.id),
+    })
+  }
+
+  // New things go to Google Calendar, so it must be connected on this device
+  function newEvent() {
+    if (calendar.connected) setEditingEvent('new')
+    else
+      setDialog({
+        title: 'Connect Google Calendar',
+        message: 'New events go to your Google Calendar. Connect it first in Settings → Google Calendar.',
+        confirmLabel: 'OK',
+        noCancel: true,
+        onConfirm: () => {},
+      })
+  }
+
+  // Deleting needs internet: if it fails, the event stays and a message says why
+  function askDeleteEvent(event: CalendarEvent) {
+    setDialog({
+      title: 'Delete event?',
+      message: `"${event.title}" will be deleted from your Google Calendar.${event.seriesId ? ' Only this date: the other dates of the repeating event stay.' : ''}`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        setEditingEvent(null)
+        deleteEvent(event).catch((e) =>
+          setDialog({
+            title: "Couldn't delete the event",
+            message: e instanceof Error ? e.message : String(e),
+            confirmLabel: 'OK',
+            noCancel: true,
+            onConfirm: () => {},
+          }),
+        )
+      },
     })
   }
 
@@ -125,7 +161,7 @@ function RemindersView() {
 
   // A calendar event in the list: like a reminder (its description as the note)
   const eventRow = (event: CalendarEvent) => (
-    <button key={event.id} className="reminder-row" onClick={() => openLink(event.link)}>
+    <button key={event.id} className="reminder-row" onClick={() => setEditingEvent(event)}>
       <span className="reminder-row-text">
         <span className="reminder-text">{event.title}</span>
         {event.description && <span className="reminder-row-note">{event.description}</span>}
@@ -153,8 +189,8 @@ function RemindersView() {
     <main className="page games-page">
       <div className={grid ? 'games wide' : 'games'}>
         <div className="games-views">
-          <button className="reminders-new" onClick={() => setEditing('new')}>
-            <Plus size={15} /> New reminder
+          <button className="reminders-new" onClick={newEvent}>
+            <Plus size={15} /> New event
           </button>
           <div className="calendar-layouts at-end">
             <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
@@ -177,6 +213,7 @@ function RemindersView() {
             games={waitingGames}
             now={now}
             onEdit={setEditing}
+            onEditEvent={setEditingEvent}
             onMenu={(reminder, x, y) => setMenu({ reminder, x, y })}
             onGame={setOpenGame}
           />
@@ -211,6 +248,13 @@ function RemindersView() {
       </div>
 
       {editing && <ReminderDialog reminder={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {editingEvent && (
+        <EventDialog
+          event={editingEvent === 'new' ? null : editingEvent}
+          onDelete={askDeleteEvent}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
       {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
       {menu && (
         <ContextMenu
@@ -246,6 +290,7 @@ function ReminderGrid(props: {
   games: Game[]
   now: number
   onEdit: (reminder: Reminder) => void
+  onEditEvent: (event: CalendarEvent) => void
   onMenu: (reminder: Reminder, x: number, y: number) => void
   onGame: (id: string) => void
 }) {
@@ -297,7 +342,7 @@ function ReminderGrid(props: {
             <button
               key={event.id}
               className="calendar-reminder"
-              onClick={() => openLink(event.link)}
+              onClick={() => props.onEditEvent(event)}
               title={event.description ? `${event.title}\n${event.description}` : event.title}
             >
               {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>} {event.title}

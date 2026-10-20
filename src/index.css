@@ -4320,3 +4320,66 @@ h3.games-group-title {
   width: 24px;
   height: 32px;
 }
+
+/* ---------- Event window (EventDialog.tsx) ---------- */
+
+/* The title is the main thing */
+.dialog .event-title {
+  font-size: 1.1em;
+}
+
+/* Alert and Repeat side by side, small label above each */
+.event-options {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.event-options label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.dialog select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.15em; /* back to the normal size (the label is smaller) */
+}
+
+.dialog select:focus {
+  outline: 1px solid var(--accent);
+}
+
+.event-add-notes {
+  display: block;
+  margin: -4px 0 16px;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.event-add-notes:hover {
+  color: var(--text);
+}
+
+.dialog .event-error {
+  margin: -4px 0 16px;
+  color: var(--text-red);
+  font-size: 0.9em;
+}
+
+/* Delete on the left, away from Save */
+.dialog-buttons .event-delete {
+  margin-right: auto;
+}

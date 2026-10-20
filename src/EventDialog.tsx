@@ -1,0 +1,164 @@
+import { useEffect, useRef, useState } from 'react'
+import type { CalendarEvent } from './db'
+import { createEvent, updateEvent, type Repeat } from './calendarEvents'
+
+// Add (event = null) or edit an event of the main Google Calendar (calendarEvents.ts).
+// The title is the main thing (it's what the phone's notification shows), then the date and
+// time, the alert and (new events) how it repeats. Notes are optional, hidden behind
+// "Add notes". No end time: new events last 15 minutes, edits keep the length.
+// Saving and deleting need internet: the window stays open with the error if they fail.
+// Enter in the title saves, Escape cancels.
+
+const ALERTS: [number | null, string][] = [
+  [0, 'At start'],
+  [5, '5 minutes before'],
+  [10, '10 minutes before'],
+  [30, '30 minutes before'],
+  [60, '1 hour before'],
+  [1440, '1 day before'],
+  [null, 'No alert'],
+]
+
+const REPEATS: [Repeat, string][] = [
+  ['none', "Doesn't repeat"],
+  ['DAILY', 'Every day'],
+  ['WEEKLY', 'Every week'],
+  ['MONTHLY', 'Every month'],
+  ['YEARLY', 'Every year'],
+]
+
+// <input type="datetime-local"> works with local time as "2026-10-15T18:00"
+function toInputValue(time: number) {
+  const date = new Date(time)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+// The day only ("2026-10-15"), for an all-day event
+const toDayValue = (time: number) => toInputValue(time).slice(0, 10)
+
+// New events start at the next full hour
+function nextFullHour() {
+  const date = new Date()
+  date.setHours(date.getHours() + 1, 0, 0, 0)
+  return date.getTime()
+}
+
+// The event's alert as one of the choices: its single alert, none, or 'keep' when it has
+// several (or one that isn't in the list): then the choice "Keep current alerts" shows
+function alertChoice(event: CalendarEvent | null): number | null | 'keep' {
+  if (!event) return 0 // new events: at start (the user's habit)
+  if (event.alerts.length === 0) return null
+  if (event.alerts.length === 1 && ALERTS.some(([minutes]) => minutes === event.alerts[0])) return event.alerts[0]
+  return 'keep'
+}
+
+function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: CalendarEvent) => void; onClose: () => void }) {
+  const { event, onClose } = props
+  const allDay = event?.allDay ?? false // older all-day events stay all-day: date only, alerts kept
+  const [title, setTitle] = useState(event?.title ?? '')
+  const [when, setWhen] = useState(allDay ? toDayValue(event!.start) : toInputValue(event?.start ?? nextFullHour()))
+  const [alert, setAlert] = useState(() => alertChoice(event))
+  const [repeat, setRepeat] = useState<Repeat>('none')
+  const [description, setDescription] = useState(event?.description ?? '')
+  const [showNotes, setShowNotes] = useState(!!event?.description)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const titleRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => titleRef.current?.focus(), [])
+
+  // Parsed as local time; NaN when the field is empty. "2026-10-15" alone would be read as UTC
+  const start = new Date(allDay ? `${when}T00:00` : when).getTime()
+  const canSave = title.trim() !== '' && !Number.isNaN(start) && !saving
+
+  async function save() {
+    if (!canSave) return
+    setSaving(true)
+    setError(null)
+    const fields = { title: title.trim(), description: description.trim(), start, alert: allDay ? ('keep' as const) : alert }
+    try {
+      if (event) await updateEvent(event, fields)
+      else await createEvent(fields, repeat)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <div
+        className="dialog reminder-dialog event-dialog"
+        role="dialog"
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+          if (e.key === 'Enter' && e.target === titleRef.current) save()
+        }}
+      >
+        <h2>{event ? 'Edit event' : 'New event'}</h2>
+        <input
+          ref={titleRef}
+          className="event-title"
+          value={title}
+          placeholder="Title"
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <input type={allDay ? 'date' : 'datetime-local'} value={when} onChange={(e) => setWhen(e.target.value)} />
+        <div className="event-options">
+          {!allDay && (
+            <label>
+              <span>Alert</span>
+              <select
+                value={alert === null ? 'none' : String(alert)}
+                onChange={(e) => setAlert(e.target.value === 'none' ? null : e.target.value === 'keep' ? 'keep' : Number(e.target.value))}
+              >
+                {alertChoice(event) === 'keep' && <option value="keep">Keep current alerts</option>}
+                {ALERTS.map(([minutes, label]) => (
+                  <option key={label} value={minutes === null ? 'none' : String(minutes)}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!event && (
+            <label>
+              <span>Repeat</span>
+              <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)}>
+                {REPEATS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {showNotes ? (
+          <textarea value={description} placeholder="Notes" rows={3} onChange={(e) => setDescription(e.target.value)} />
+        ) : (
+          <button className="event-add-notes" onClick={() => setShowNotes(true)}>
+            + Add notes
+          </button>
+        )}
+        {error && <p className="event-error">{error}</p>}
+        <div className="dialog-buttons">
+          {event && (
+            <button className="danger event-delete" disabled={saving} onClick={() => props.onDelete(event)}>
+              Delete
+            </button>
+          )}
+          <button onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={!canSave} onClick={save}>
+            {saving ? 'Saving…' : event ? 'Save' : 'Add'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default EventDialog
