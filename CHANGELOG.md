@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-21
+
 ### Added
 - Reminders: your Google Calendar events now alert you in SyncR too. Done and Snooze only affect that device; missed alerts show for a day.
 - Games: waiting games get a purple all-day event on their release day in Google Calendar, alerting 2 days before at 10:00.
