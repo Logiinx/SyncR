@@ -4598,7 +4598,8 @@ h3.games-group-title {
   --theater-bar: 92px;
   display: flex;
   flex-direction: column;
-  width: min(100%, calc((100vh - 34px - var(--theater-bar)) * 16 / 9));
+  /* 100vh / --zoom: the window's height in the zoomed page (Settings → scale, appearance.ts) */
+  width: min(100%, calc((100vh / var(--zoom, 1) - 34px - var(--theater-bar)) * 16 / 9));
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
