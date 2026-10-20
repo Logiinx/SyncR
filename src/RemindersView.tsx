@@ -215,12 +215,19 @@ function RemindersView() {
           <div className="reminders-tools">
             {calendar.connected && (
               <button
-                className={`reminders-refresh${calendar.refreshing ? ' spinning' : ''}`}
+                className="reminders-refresh"
                 onClick={calendar.refresh}
                 disabled={calendar.refreshing}
                 title="Refresh events from Google Calendar"
               >
-                <RefreshCw size={15} />
+                {/* While loading: a turning ring, like the cloud button's while syncing */}
+                {calendar.refreshing ? (
+                  <svg className="refresh-ring" viewBox="0 0 16 16" aria-label="Refreshing">
+                    <circle cx="8" cy="8" r="5.5" />
+                  </svg>
+                ) : (
+                  <RefreshCw size={15} />
+                )}
               </button>
             )}
             <div className="calendar-layouts">

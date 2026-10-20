@@ -10,6 +10,7 @@ import { calendarApi, isConnected } from './google'
 
 const MONTHS_AHEAD = 11 // like the grid's MAX_MONTHS (RemindersView.tsx): 12 months in all
 const REFRESH_MS = 5 * 60 * 1000 // while the Reminders tab is open
+const MIN_SPIN_MS = 600 // the refresh button's ring, at least
 
 // Google's event, the parts we use
 interface GoogleEvent {
@@ -380,9 +381,12 @@ export function useCalendarEvents() {
     }
   }, [connected])
 
+  // The ring stays at least MIN_SPIN_MS: a refresh often takes a fraction of a second, and
+  // a ring that only flashes looks like a glitch
   function refresh() {
     setRefreshing(true)
-    return refreshEvents()
+    const minSpin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
+    return Promise.all([refreshEvents(), minSpin])
       .then(() => setError(null))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setRefreshing(false))
