@@ -4323,9 +4323,11 @@ h3.games-group-title {
 
 /* ---------- Event window (EventDialog.tsx) ---------- */
 
-/* The title is the main thing */
+/* The title is the main thing. Several lines possible: the box grows by itself */
 .dialog .event-title {
+  overflow: hidden;
   font-size: 1.1em;
+  resize: none;
 }
 
 /* Alert and Repeat side by side, small label above each */

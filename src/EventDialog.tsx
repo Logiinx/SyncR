@@ -7,7 +7,9 @@ import { createEvent, updateEvent, type Repeat } from './calendarEvents'
 // time, the alert and (new events) how it repeats. Notes are optional, hidden behind
 // "Add notes". No end time: new events last 15 minutes, edits keep the length.
 // Saving and deleting need internet: the window stays open with the error if they fail.
-// Enter in the title saves, Escape cancels.
+// The title can have several lines (Google keeps them); its box grows with it. PC: Enter in the
+// title saves, Shift+Enter starts a new line. Phone (touch screen, no Shift): Enter starts a new
+// line, the Add/Save button saves. Escape cancels.
 
 const ALERTS: [number | null, string][] = [
   [0, 'At start'],
@@ -37,6 +39,9 @@ function toInputValue(time: number) {
 // The day only ("2026-10-15"), for an all-day event
 const toDayValue = (time: number) => toInputValue(time).slice(0, 10)
 
+// A phone or tablet: Enter in the title starts a new line instead of saving
+const touchScreen = matchMedia('(pointer: coarse)').matches
+
 // New events start at the next full hour
 function nextFullHour() {
   const date = new Date()
@@ -64,9 +69,17 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
   const [showNotes, setShowNotes] = useState(!!event?.description)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const titleRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => titleRef.current?.focus(), [])
+
+  // The title box grows with its text (one line when empty)
+  useEffect(() => {
+    const box = titleRef.current
+    if (!box) return
+    box.style.height = 'auto'
+    box.style.height = `${box.scrollHeight + 2}px` // + the border
+  }, [title])
 
   // Parsed as local time; NaN when the field is empty. "2026-10-15" alone would be read as UTC
   const start = new Date(allDay ? `${when}T00:00` : when).getTime()
@@ -95,13 +108,17 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose()
-          if (e.key === 'Enter' && e.target === titleRef.current) save()
+          if (e.key === 'Enter' && e.target === titleRef.current && !e.shiftKey && !touchScreen) {
+            e.preventDefault() // no new line
+            save()
+          }
         }}
       >
         <h2>{event ? 'Edit event' : 'New event'}</h2>
-        <input
+        <textarea
           ref={titleRef}
           className="event-title"
+          rows={1}
           value={title}
           placeholder="Title"
           onChange={(e) => setTitle(e.target.value)}

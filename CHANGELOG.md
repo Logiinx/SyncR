@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
-- Reminders: "New event" adds an event to your Google Calendar: title, date and time, alert, and repeat (every day, week, month or year). Click an event to edit or delete it. Notes are optional.
+- Reminders: "New event" adds an event to your Google Calendar: title (several lines possible: Shift+Enter on PC), date and time, alert, and repeat (every day, week, month or year). Click an event to edit or delete it. Notes are optional.
 
 ## [0.14.0] - 2026-10-20
 
