@@ -83,20 +83,18 @@ const AT_ONCE = 4
 
 async function forEachAtOnce<T>(items: Iterable<T>, handle: (item: T) => Promise<void>) {
   const queue = [...items]
-  let failed = false
+  const errors: unknown[] = [] // in the order they happened
   const worker = async () => {
-    while (queue.length && !failed) {
+    while (queue.length && !errors.length) {
       try {
         await handle(queue.shift()!)
-      } catch (e) {
-        failed = true
-        throw e
+      } catch (error) {
+        errors.push(error)
       }
     }
   }
-  const results = await Promise.allSettled(Array.from({ length: Math.min(AT_ONCE, queue.length) }, worker))
-  const error = results.find((r) => r.status === 'rejected')
-  if (error) throw error.reason
+  await Promise.all(Array.from({ length: Math.min(AT_ONCE, queue.length) }, worker))
+  if (errors.length) throw errors[0]
 }
 
 let running = false
