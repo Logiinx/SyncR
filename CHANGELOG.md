@@ -5,51 +5,46 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 ### Added
-- Google Calendar events now alert you in SyncR too, at each event's alert time: the same pop-up on the PC and cards in the app, with Done and Snooze (these only affect the device you use). An alert missed while SyncR was closed still shows for a day.
-- Games you're waiting for get their release day in your Google Calendar: an all-day event in purple (Grape) with the game's name, alerting 2 days before at 10:00. It moves when the date changes, and goes when you remove the game. The game's details link to it.
+- Reminders: your Google Calendar events now alert you in SyncR too. Done and Snooze only affect that device; missed alerts show for a day.
+- Games: waiting games get a purple all-day event on their release day in Google Calendar, alerting 2 days before at 10:00.
+- Games: game windows show the developer, publisher and game modes, and "Watch trailer" (a big trailer view on the PC).
+- Reminders: a refresh button, and "Hide repeating" to hide repeating events from the list and grid (they still alert).
 
 ### Changed
-- Release reminders are now these Google Calendar events (the old hidden SyncR reminders are removed). Needs Google Calendar connected (Settings).
-- Reminders: "New event" and the view buttons are on one row, with a new refresh button to reload your events.
-- "What's new": the text is white instead of gray, easier to read.
-- Reminders: repeating events have a small repeat icon, and "Hide repeating" hides them from the list and grid (they still alert, and stay in Google Calendar).
-- Reminders list: dates are written out ("3 November 2026"; Today and Tomorrow stay), with a title for each month.
-- Games: without the game search set up, the Calendar's message sits at the same place as in My games.
-- Games: the game windows (your games' details, and games in the Calendar) are bigger, with a much bigger cover.
-- Games: the game windows show the developer, publisher and game modes. On the PC, "Watch trailer" opens a trailer view as big as your window, with the game's info on top (on a phone, the trailer opens below the window).
-- Games: the Calendar's game window is wider and shorter, with "Add to Waiting" under the game's details and ✕ to close.
-- Games: clearer buttons in the game windows: "Watch trailer" in blue, the others as gray buttons, "Remove from list" as red text.
-- Games: on wide screens, My games shows bigger covers, then more games per row (e.g. 6 on a laptop, 8 in full HD, 12 on a 1440p screen).
-- Games: the status tabs (Waiting, To play…) are cleaner: underlined tabs, no "0" for empty ones, lined up with the covers, and they scroll sideways on a phone.
+- Release reminders are now those Google Calendar events (needs Google Calendar connected). The old hidden reminders are removed.
+- Reminders list: dates are written out ("3 November 2026") and grouped by month. Repeating events have a small icon.
+- Games: bigger game windows and covers, clearer buttons, and cleaner status tabs.
+- Games: on wide screens, My games shows bigger covers, then more games per row.
+- "What's new" is easier to read (white text instead of gray).
 
 ## [0.15.0] - 2026-10-20
 
 ### Added
-- Reminders: "New event" adds an event to your Google Calendar: title (several lines possible: Shift+Enter on PC), date and time, alert, and repeat (every day, week, month or year). Notes are optional.
-- Reminders: click an event to see it in full (whole title, day, alert, notes) with Edit and Delete. Right-click (or long press on the phone) for Edit, Delete and Open in Google Calendar.
+- Reminders: "New event" adds an event to Google Calendar: title, date and time, alert and repeat. Shift+Enter adds a line on the PC.
+- Reminders: click an event to see it in full, with Edit and Delete. Right-click (long press on a phone) for more.
 - Repeating events: editing or deleting changes only that date, unless you tick "All events in the series".
 
 ## [0.14.0] - 2026-10-20
 
 ### Added
-- Settings → Google Calendar: connect your main Google Calendar (on the PC, the sign-in opens in your web browser).
-- Reminders: your Google Calendar events show in the month grid and the list (the next 12 months, also offline). Click one to open it in Google Calendar.
+- Settings → Google Calendar: connect your main calendar (on the PC, the sign-in opens in your web browser).
+- Reminders: your Google Calendar events show in the grid and the list for the next 12 months, also offline.
 
 ## [0.13.4] - 2026-10-20
 
 ### Added
-- After an update, a small window shows what changed since the version you used before (on PC and phone, once per update). A new install shows nothing.
+- After an update, a small window shows what's new since the version you used before (PC and phone).
 - Settings → About: click the version number to see the notes of the last 5 versions again.
 
 ## [0.13.3] - 2026-10-19
 
 ### Changed
-- On a new PC, the notes sidebar and the Board start open, so both are easy to discover. Once you open or close them, the app remembers your choice as before. On a phone they still start closed (they would cover the note).
+- On a new PC, the notes sidebar and the Board start open, so you discover them. On a phone they still start closed.
 
 ## [0.13.2] - 2026-10-19
 
 ### Added
-- Board: a group's menu has two color lists: "Color…" (only the group) and "Color with its cards…" (the group and every card in it; cards that join the group later take its color too, until you use "Color…" on the group alone).
+- Board: a group's menu has "Color…" (just the group) and "Color with its cards…" (the group, its cards and cards added later).
 
 ### Changed
 - Board: a group's stack icon takes the group's color.
