@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-10-21
+
 ### Changed
 - Sync: faster, never stuck for long: no needless second sync, several files at once, and a sync stuck on a dead connection starts over.
 
