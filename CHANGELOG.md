@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Added
 - After an update, a small window shows what changed since the version you used before (on PC and phone, once per update). A new install shows nothing.
+- Settings → About: a "What's new" button shows the notes of the last 5 versions again.
 
 ## [0.13.3] - 2026-10-19
 

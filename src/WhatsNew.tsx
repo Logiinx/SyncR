@@ -71,27 +71,23 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
   )
 }
 
-function WhatsNew() {
-  const [releases, setReleases] = useState<Release[]>(() => {
-    const seen = read<string | null>(SEEN_KEY, null)
-    return seen && newer(__APP_VERSION__, seen) ? releasesSince(seen) : []
-  })
-  const okRef = useRef<HTMLButtonElement>(null)
+// For Settings → "What's new": the last few releases, newest first
+export function recentReleases(count = 5) {
+  return releasesSince('0.0.0').slice(0, count)
+}
 
-  // Remember this version right away, so the popup shows only once (even if the app is closed with it open)
-  useEffect(() => write(SEEN_KEY, __APP_VERSION__), [])
+// The notes window. The title names this version; with several releases each gets its own heading.
+export function WhatsNewDialog({ releases, onClose }: { releases: Release[]; onClose: () => void }) {
+  const okRef = useRef<HTMLButtonElement>(null)
   useEffect(() => okRef.current?.focus(), [])
 
-  if (!releases.length) return null
-  const close = () => setReleases([])
-
   return (
-    <div className="dialog-backdrop" onMouseDown={close}>
+    <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
         className="dialog whats-new"
         role="dialog"
         onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && close()}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <h2>What's new in v{__APP_VERSION__}</h2>
         <div className="whats-new-body">
@@ -100,13 +96,26 @@ function WhatsNew() {
           ))}
         </div>
         <div className="dialog-buttons">
-          <button ref={okRef} className="primary" onClick={close}>
+          <button ref={okRef} className="primary" onClick={onClose}>
             OK
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+function WhatsNew() {
+  const [releases, setReleases] = useState<Release[]>(() => {
+    const seen = read<string | null>(SEEN_KEY, null)
+    return seen && newer(__APP_VERSION__, seen) ? releasesSince(seen) : []
+  })
+
+  // Remember this version right away, so the popup shows only once (even if the app is closed with it open)
+  useEffect(() => write(SEEN_KEY, __APP_VERSION__), [])
+
+  if (!releases.length) return null
+  return <WhatsNewDialog releases={releases} onClose={() => setReleases([])} />
 }
 
 export default WhatsNew

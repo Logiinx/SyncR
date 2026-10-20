@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
+import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
 import { playChime } from './chime'
@@ -84,7 +85,11 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     })
   }, [showRules])
 
+  // "What's new" also opens in place of Settings, like the color rules
+  const [showWhatsNew, setShowWhatsNew] = useState(false)
+
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
+  if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
@@ -247,6 +252,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
               <span>
                 SyncR <span className="setting-value">v{__APP_VERSION__} · by Logiinx</span>
               </span>
+              <button className="setting-button" onClick={() => setShowWhatsNew(true)}>
+                What's new
+              </button>
             </div>
           </div>
         </div>
