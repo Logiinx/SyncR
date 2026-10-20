@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Google Calendar events now alert you in SyncR too, at each event's alert time: the same pop-up on the PC and cards in the app, with Done and Snooze (these only affect the device you use). An alert missed while SyncR was closed still shows for a day.
+
 ## [0.15.0] - 2026-10-20
 
 ### Added

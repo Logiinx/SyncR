@@ -34,12 +34,12 @@ function ReminderPopup() {
 
   return (
     <div ref={listRef} className="reminder-popup" role="alert">
-      {due?.map((reminder) => (
+      {due?.map((item) => (
         <ReminderCard
-          key={reminder.id}
-          reminder={reminder}
+          key={item.key}
+          item={item}
           withOpen
-          onAction={(action) => sendFromPopup({ id: reminder.id, action })}
+          onAction={(action) => sendFromPopup({ id: item.key, action })}
         />
       ))}
     </div>

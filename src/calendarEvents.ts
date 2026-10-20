@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type CalendarEvent } from './db'
+import { removeOldAlertStates } from './eventAlerts'
 import { calendarApi, isConnected } from './google'
 
 // The main Google Calendar's events, shown in the Reminders tab (see DECISIONS.md, "Reminders
@@ -260,6 +261,23 @@ export async function updateSeries(event: CalendarEvent, fields: EventFields, re
 export async function deleteSeries(event: CalendarEvent) {
   await calendarApi(`calendars/primary/events/${encodeURIComponent(event.seriesId!)}`, { method: 'DELETE' })
   await refreshEvents()
+}
+
+// Started once by the app: keeps the events fresh in the background too, for their alerts
+// (eventAlerts.ts): at start, every 10 minutes, and when the app comes back to the front.
+// Errors (offline…) are only logged: the stored events stay.
+const BACKGROUND_REFRESH_MS = 10 * 60 * 1000
+let checking = false
+export function startCalendarChecks() {
+  if (checking) return
+  checking = true
+  const check = () => {
+    removeOldAlertStates().catch((e) => console.warn('Could not clean up event alerts', e))
+    refreshEvents().catch((e) => console.warn('Calendar refresh failed', e))
+  }
+  check()
+  window.setInterval(check, BACKGROUND_REFRESH_MS)
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check())
 }
 
 // For the Reminders tab: the stored events (soonest first), refreshed when the tab opens, every

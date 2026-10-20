@@ -3,8 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow, primaryMonitor } from '@tauri-apps/api/window'
-import type { Reminder } from './db'
-import { runAction, type ReminderAction } from './dueReminders'
+import { runAction, type DueItem, type ReminderAction } from './dueReminders'
 
 // The desktop reminder pop-up: a small always-on-top window in the bottom-right corner of the
 // screen, shown while reminders are due, even when SyncR's window is hidden in the tray.
@@ -19,7 +18,7 @@ const MARGIN = 12 // from the screen edges
 // Button clicks from the pop-up to the main window: through Tauri's events in the desktop
 // app; through a BroadcastChannel in the browser (only used to test the pop-up page in a tab)
 export interface PopupMessage {
-  id: string
+  id: string // a reminder's id or an event alert's key (DueItem.key)
   action: ReminderAction
 }
 const EVENT = 'reminder-popup-action'
@@ -110,7 +109,7 @@ async function showMainWindow() {
 
 // Used by the main window: keeps the pop-up open while reminders are due and runs its button
 // clicks. Returns true if the pop-up couldn't open (then the main window shows cards).
-export function useReminderPopup(due: Reminder[] | undefined) {
+export function useReminderPopup(due: DueItem[] | undefined) {
   const [failed, setFailed] = useState(false)
 
   // Checked on every change (not just "some due / none due"), so a pop-up closed with

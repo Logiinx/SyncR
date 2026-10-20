@@ -153,6 +153,15 @@ export interface CalendarEvent {
   link: string // opens the event in Google Calendar
 }
 
+// What was done with one alert of a calendar event on this device (eventAlerts.ts): Done, or
+// snoozed. Not synced (as decided: per device). Removed a week after the alert.
+export interface AlertState {
+  key: string // "<event id>@<alert time>": a moved event or a new alert time is a new alert
+  at: number // the alert time (ms)
+  doneAt?: number
+  snoozedUntil?: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -165,6 +174,7 @@ export const db = new Dexie('syncr') as Dexie & {
   cards: EntityTable<Card, 'id'>
   games: EntityTable<Game, 'id'>
   events: EntityTable<CalendarEvent, 'id'>
+  alertStates: EntityTable<AlertState, 'key'>
 }
 
 db.version(1).stores({
@@ -205,6 +215,10 @@ db.version(9).stores({
 
 db.version(10).stores({
   events: 'id',
+})
+
+db.version(11).stores({
+  alertStates: 'key',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

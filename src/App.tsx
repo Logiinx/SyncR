@@ -18,6 +18,7 @@ import GamesView from './GamesView'
 import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
+import { startCalendarChecks } from './calendarEvents'
 import UpdateBanner from './UpdateBanner'
 import WhatsNew from './WhatsNew'
 import SyncButton from './SyncButton'
@@ -44,6 +45,9 @@ function App() {
 
   // Games: release day check and daily refresh from IGDB (games.ts)
   useEffect(startGameChecks, [])
+
+  // Google Calendar: events kept fresh in the background, for their alerts (calendarEvents.ts)
+  useEffect(startCalendarChecks, [])
 
   // A conflict was resolved (ConflictCompare.tsx): show the note that was kept, close the copy
   useEffect(() => {
