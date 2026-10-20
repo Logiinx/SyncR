@@ -193,6 +193,10 @@ export async function api(endpoint: string, args?: unknown) {
 
 // ---------- Files (paths are inside the app folder, e.g. "/crypto.json") ----------
 
+// What this device wrote to Dropbox (lower-case path -> new rev, null = deleted). Sync clears it
+// when it starts, and afterwards tells its own changes from the other device's (sync.ts).
+export const ownWrites = new Map<string, string | null>()
+
 // Returns the file's bytes, or null if it doesn't exist.
 export async function download(path: string): Promise<Uint8Array | null> {
   const res = await authorizedPost('https://content.dropboxapi.com/2/files/download', {
@@ -222,7 +226,9 @@ export async function upload(
   )
   if (res.status === 409 && mode !== 'overwrite' && (await res.text()).includes('conflict')) return null
   if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
-  return (await res.json()).rev
+  const rev: string = (await res.json()).rev
+  ownWrites.set(path.toLowerCase(), rev)
+  return rev
 }
 
 export interface FileInfo {
@@ -244,6 +250,21 @@ export async function listFiles(): Promise<{ files: FileInfo[]; cursor: string }
     }
     if (!page.has_more) return { files, cursor: page.cursor }
     page = await api('files/list_folder/continue', { cursor: page.cursor })
+  }
+}
+
+// What changed in the app folder after the cursor, and a new cursor for this moment.
+// rev = null: the file was deleted. Folders are left out.
+export async function changesSince(cursor: string) {
+  const changes: { path: string; rev: string | null }[] = []
+  for (;;) {
+    const page = await api('files/list_folder/continue', { cursor })
+    for (const entry of page.entries) {
+      if (entry['.tag'] === 'file') changes.push({ path: entry.path_lower, rev: entry.rev })
+      if (entry['.tag'] === 'deleted') changes.push({ path: entry.path_lower, rev: null })
+    }
+    cursor = page.cursor
+    if (!page.has_more) return { changes, cursor }
   }
 }
 
@@ -269,6 +290,7 @@ export async function waitForChanges(cursor: string, signal: AbortSignal) {
 export async function deleteFile(path: string, rev?: string): Promise<boolean> {
   try {
     await api('files/delete_v2', rev ? { path, parent_rev: rev } : { path })
+    ownWrites.set(path.toLowerCase(), null)
     return true
   } catch (e) {
     if (!rev) {
@@ -276,7 +298,7 @@ export async function deleteFile(path: string, rev?: string): Promise<boolean> {
       return true
     }
     const current = await fileRev(path)
-    if (current === null) return true // gone anyway
+    if (current === null) return true // gone anyway (a deletion we didn't make: not in ownWrites)
     if (current !== rev) return false
     throw e // still the same version: a real error
   }

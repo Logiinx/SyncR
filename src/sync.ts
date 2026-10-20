@@ -11,7 +11,7 @@ import {
 } from './db'
 import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
-import { deleteFile, download, listFiles, upload } from './dropbox'
+import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
 //   /notes/<id>        one file per note
@@ -161,6 +161,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteReminders = new Map<string, string>() // id -> rev
   const remoteCards = new Map<string, string>() // id -> rev
   const remoteGames = new Map<string, string>() // id -> rev
+  ownWrites.clear()
   const { files, cursor } = await listFiles()
   result.cursor = cursor
   for (const file of files) {
@@ -382,6 +383,21 @@ async function runSync(): Promise<SyncResult> {
     } else if (now - unusedSince > UNUSED_IMAGE_MS) {
       if (remoteAttachments.has(id)) await deleteFile(attachmentPath(id))
       await db.attachments.delete(id)
+    }
+  }
+
+  // ---------- 7. Skip our own changes when waiting for the next ones ----------
+  // The cursor is from the listing, before this sync wrote anything, so Dropbox would report
+  // our own writes as changes and start a second, useless sync. If everything changed since
+  // then was written by us, the cursor moves on; anything else (the other device saved during
+  // this sync) keeps the old one, so that change is still reported.
+
+  if (ownWrites.size) {
+    try {
+      const since = await changesSince(cursor)
+      if (since.changes.every((change) => ownWrites.get(change.path) === change.rev)) result.cursor = since.cursor
+    } catch {
+      // Keep the old cursor: at worst one extra sync
     }
   }
 

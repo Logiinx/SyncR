@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Sync: no more second sync right after each one (it was checking its own changes), so the cloud spins for less time.
+
 ## [0.16.0] - 2026-10-21
 
 ### Added

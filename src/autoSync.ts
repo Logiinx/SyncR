@@ -218,7 +218,10 @@ function onVisible() {
   onFocus()
 }
 
+// During a sync, coming back to the window adds nothing: the poll that follows the sync
+// reports anything the other device saves meanwhile.
 function onFocus() {
+  if (running) return
   if (Date.now() - lastSyncAt > FOCUS_MIN_GAP_MS) schedule(0)
   else poll()
 }
