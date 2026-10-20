@@ -355,11 +355,12 @@ export function startCalendarChecks() {
 
 // For the Reminders tab: the stored events (soonest first), refreshed when the tab opens, every
 // 5 minutes while it's open, and when the app comes back to the front. error: the last refresh
-// failed (the stored events still show).
+// failed (the stored events still show). refresh: the refresh button (refreshing: running).
 export function useCalendarEvents() {
   const events = useLiveQuery(async () => (await db.events.toArray()).sort((a, b) => a.start - b.start), [])
   const [connected, setConnected] = useState(isConnected)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     const onChange = () => setConnected(isConnected())
@@ -369,10 +370,6 @@ export function useCalendarEvents() {
 
   useEffect(() => {
     if (!connected) return
-    const refresh = () =>
-      refreshEvents()
-        .then(() => setError(null))
-        .catch((e) => setError(e instanceof Error ? e.message : String(e)))
     const onVisible = () => document.visibilityState === 'visible' && refresh()
     refresh()
     const timer = setInterval(refresh, REFRESH_MS)
@@ -383,5 +380,13 @@ export function useCalendarEvents() {
     }
   }, [connected])
 
-  return { events, connected, error }
+  function refresh() {
+    setRefreshing(true)
+    return refreshEvents()
+      .then(() => setError(null))
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setRefreshing(false))
+  }
+
+  return { events, connected, error, refresh, refreshing }
 }

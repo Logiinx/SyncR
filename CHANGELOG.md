@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 
 ### Changed
 - Release reminders are now these Google Calendar events (the old hidden SyncR reminders are removed). Needs Google Calendar connected (Settings).
+- Reminders: "New event" and the view buttons are on one row, with a new refresh button to reload your events.
 
 ## [0.15.0] - 2026-10-20
 

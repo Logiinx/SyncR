@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, List, Plus, Smartphone } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, List, Plus, RefreshCw, Smartphone } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import ReminderDialog from './ReminderDialog'
@@ -206,17 +206,31 @@ function RemindersView() {
   return (
     <main className="page games-page">
       <div className={grid ? 'games wide' : 'games'}>
-        <div className="games-views">
+        {/* One row: New event on the left; refresh and grid / list on the right (the phone has
+            no grid: only refresh there) */}
+        <div className="games-views reminders-toolbar">
           <button className="reminders-new" onClick={newEvent}>
             <Plus size={15} /> New event
           </button>
-          <div className="calendar-layouts at-end">
-            <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
-              <CalendarDays size={15} />
-            </button>
-            <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
-              <List size={15} />
-            </button>
+          <div className="reminders-tools">
+            {calendar.connected && (
+              <button
+                className={`reminders-refresh${calendar.refreshing ? ' spinning' : ''}`}
+                onClick={calendar.refresh}
+                disabled={calendar.refreshing}
+                title="Refresh events from Google Calendar"
+              >
+                <RefreshCw size={15} />
+              </button>
+            )}
+            <div className="calendar-layouts">
+              <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
+                <CalendarDays size={15} />
+              </button>
+              <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
+                <List size={15} />
+              </button>
+            </div>
           </div>
         </div>
 
