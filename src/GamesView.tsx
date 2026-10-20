@@ -85,7 +85,9 @@ function GamesView() {
   const inList = new Map(games?.map((g) => [g.id, g.status]))
   return (
     <main className="page games-page">
-      <div className={view === 'calendar' && layout === 'grid' ? 'games wide' : 'games'}>
+      {/* Wide only for the month grid (not for the "set up the game search" text, which then
+          sat further left than in My games) */}
+      <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
         <div className="games-views">
           <div className="games-views-switch">
             {VIEWS.map(({ value, label }) => (
