@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- After an update, a small window shows what changed since the version you used before (on PC and phone, once per update). A new install shows nothing.
+
 ## [0.13.3] - 2026-10-19
 
 ### Changed

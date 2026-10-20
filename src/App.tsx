@@ -19,6 +19,7 @@ import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
 import UpdateBanner from './UpdateBanner'
+import WhatsNew from './WhatsNew'
 import SyncButton from './SyncButton'
 import WindowControls from './WindowControls'
 
@@ -267,6 +268,7 @@ function App() {
       <ReminderAlerts />
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      <WhatsNew />
     </div>
   )
 }
