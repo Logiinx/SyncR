@@ -9,7 +9,7 @@ import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
-import { formatRelease, releaseCountdown, releaseEventId } from './games'
+import { releaseCountdown, releaseEventId } from './games'
 import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
@@ -196,20 +196,24 @@ function RemindersView() {
     </button>
   )
 
-  // A Waiting game in the list: small cover, name, release day and countdown. Its release
-  // reminder (2 days before) is in its details.
-  const gameRow = (game: Game) => (
-    <button key={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
-      <Cover coverId={game.coverId} />
-      <span className="reminder-row-text">
-        <span className="reminder-text">{game.name}</span>
-        <span className="reminder-row-note">Comes out</span>
-      </span>
-      <span className="reminder-due">
-        {formatRelease(game.releaseDate)} · {releaseCountdown(game.releaseDate)}
-      </span>
-    </button>
-  )
+  // A Waiting game in the list: small cover, name, release day and countdown ("in 12 days"; not
+  // for Today / Tomorrow, which already say it). Its release event's alert is in its details.
+  const gameRow = (game: Game) => {
+    const countdown = releaseCountdown(game.releaseDate)
+    return (
+      <button key={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
+        <Cover coverId={game.coverId} />
+        <span className="reminder-row-text">
+          <span className="reminder-text">{game.name}</span>
+          <span className="reminder-row-note">Comes out</span>
+        </span>
+        <span className="reminder-due">
+          {formatDue(game.releaseDate!, true)}
+          {countdown !== 'today' && countdown !== 'tomorrow' && ` · ${countdown}`}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <main className="page games-page">
@@ -278,16 +282,18 @@ function RemindersView() {
         {!grid && reminders && waitingGames && reminders.length + events.length + waitingGames.length === 0 && (
           <p className="games-empty">No reminders yet.</p>
         )}
-        {!grid && upcoming.length > 0 && (
-          <section className="games-group">
-            <h3 className="games-group-title">
-              Upcoming <span className="games-count">{upcoming.length}</span>
-            </h3>
-            {upcoming.map((item) =>
-              'reminder' in item ? row(item.reminder) : 'event' in item ? eventRow(item.event) : gameRow(item.game),
-            )}
-          </section>
-        )}
+        {/* One group per month ("November 2026 3"), for an easier read of what's coming */}
+        {!grid &&
+          byMonth(upcoming).map(({ month, items }) => (
+            <section key={month} className="games-group">
+              <h3 className="games-group-title">
+                {month} <span className="games-count">{items.length}</span>
+              </h3>
+              {items.map((item) =>
+                'reminder' in item ? row(item.reminder) : 'event' in item ? eventRow(item.event) : gameRow(item.game),
+              )}
+            </section>
+          ))}
         {!grid && done.length > 0 && (
           <section className="games-group">
             <div className="reminders-done-header">
@@ -359,6 +365,17 @@ function RemindersView() {
   )
 }
 
+
+// The list's items (sorted by time) in groups per month: "November 2026" and its items
+function byMonth<T extends { time: number }>(items: T[]) {
+  const groups: { month: string; items: T[] }[] = []
+  for (const item of items) {
+    const month = new Date(item.time).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    if (groups.at(-1)?.month === month) groups.at(-1)!.items.push(item)
+    else groups.push({ month, items: [item] })
+  }
+  return groups
+}
 
 // Month grid: reminders ("14:30 Call the bank"; done ones crossed out, overdue ones red), calendar
 // events (on their first day; all-day ones without a time) and Waiting games (cover + name) on

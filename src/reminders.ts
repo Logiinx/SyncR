@@ -87,8 +87,8 @@ export async function removeOldDeleted(): Promise<string[]> {
   return old.map((r) => r.id)
 }
 
-// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "17-10-2026, 14:00".
-// allDay (an all-day calendar event): without the time, e.g. "Today", "17-10-2026".
+// "Today, 18:00", "Tomorrow, 09:00", "Yesterday, 14:30", otherwise "3 November 2026, 14:00".
+// allDay (an all-day event, a release day): no time, e.g. "Today", "3 November 2026".
 export function formatDue(time: number, allDay = false) {
   const date = new Date(time)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -101,5 +101,5 @@ export function formatDue(time: number, allDay = false) {
   if (day === dayFromToday(0)) return `Today${at}`
   if (day === dayFromToday(1)) return `Tomorrow${at}`
   if (day === dayFromToday(-1)) return `Yesterday${at}`
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}${at}`
+  return `${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}${at}`
 }
