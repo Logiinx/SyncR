@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Reminders and Games calendars: reminders, events and releases on days before today are slightly faded (full again on hover).
+
 ## [0.16.1] - 2026-10-21
 
 ### Changed

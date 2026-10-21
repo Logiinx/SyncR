@@ -3739,6 +3739,15 @@ h3.games-group-title {
   opacity: 0.4;
 }
 
+/* Items on days before today (reminders, events, releases): faded, full again on hover */
+.calendar-day.past > :not(.calendar-date) {
+  opacity: 0.55;
+}
+
+.calendar-day.past > :not(.calendar-date):hover {
+  opacity: 1;
+}
+
 .calendar-date {
   color: var(--text-dim);
   font-size: 0.75em;
