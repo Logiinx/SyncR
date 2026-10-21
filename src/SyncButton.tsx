@@ -8,6 +8,7 @@ import { connect, disconnect, finishConnect, isConnected } from './dropbox'
 import { finishConnect as finishGoogleConnect, isGoogleReturn } from './google'
 import PassphraseDialog from './PassphraseDialog'
 import type { SyncResult } from './sync'
+import { shortDate } from './dates'
 
 // "2 sent · 1 received · 1 conflict copy" (shown after a ✓)
 function describe(r: SyncResult) {
@@ -40,7 +41,7 @@ function placeUnder(button: HTMLElement) {
 // Not connected: click to connect Dropbox. Connected but locked (no passphrase on this
 // device yet): shows a lock, click to enter the passphrase. Unlocked: click = sync now,
 // right-click (long press on a phone) = menu.
-// "just now", "5 min ago", "3 h ago", "yesterday", otherwise "14-10-2026"
+// "just now", "5 min ago", "3 h ago", "yesterday", otherwise "14 Oct 2026"
 function timeAgo(time: number) {
   const minutes = Math.floor((Date.now() - time) / 60_000)
   if (minutes < 1) return 'just now'
@@ -50,8 +51,7 @@ function timeAgo(time: number) {
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
   if (date.toDateString() === yesterday.toDateString()) return 'yesterday'
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`
+  return shortDate(time)
 }
 
 // Drawn twice: a thicker copy in the background color first, so a gap separates it from the cloud

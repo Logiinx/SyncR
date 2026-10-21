@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isReleased, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
+import { addGame, formatRelease, gameId, releaseText, shortPlatforms, sortGames, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { loadToPlayPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -226,12 +226,7 @@ function GameShelf({
 // waiting (or the vague date), stars and heart once played, else the release year
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const played = game.status === 'done' || game.status === 'dropped'
-  const when =
-    game.status === 'waiting'
-      ? releaseCountdown(game.releaseDate) || formatRelease(game.releaseDate, game.releaseLabel)
-      : game.releaseDate
-        ? String(new Date(game.releaseDate).getFullYear())
-        : formatRelease(game.releaseDate, game.releaseLabel) // no exact day yet (e.g. early access): "Mar 2027" or "TBA"
+  const when = releaseText(game, 'short')
   return (
     <div
       className={game.priority ? 'game-tile priority' : 'game-tile'}
@@ -266,14 +261,9 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
 // Platforms only show in the details (and in search results).
 function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const played = game.status === 'done' || game.status === 'dropped'
-  const when =
-    game.status === 'waiting' || !game.releaseDate
-      ? formatRelease(game.releaseDate, game.releaseLabel)
-      : String(new Date(game.releaseDate).getFullYear())
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
-  const countdown = game.status === 'waiting' ? releaseCountdown(game.releaseDate) : ''
-  const details = [when, countdown, preview].filter(Boolean).join(' · ')
+  const details = [releaseText(game, 'year'), preview].filter(Boolean).join(' · ')
   return (
     <div
       className={game.priority ? 'game-row priority' : 'game-row'}
@@ -418,7 +408,7 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
                 <div className="game-text">
                   <div className="game-name" title={found.name}>{found.name}</div>
                   <div className="game-details">
-                    {[formatRelease(found.releaseDate, found.releaseLabel), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
+                    {[releaseText(found, 'full'), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {status ? (
@@ -442,19 +432,13 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
       {preview && (
         <GamePreview
           game={preview}
-          release={previewRelease(preview)}
+          release={releaseText(preview, 'full')}
           status={inList.get(gameId(preview.igdbId))}
           onClose={() => setPreview(null)}
         />
       )}
     </div>
   )
-}
-
-// The preview's release line: the full date, with a countdown while it isn't out yet
-function previewRelease(game: FoundGame) {
-  const date = formatRelease(game.releaseDate, game.releaseLabel)
-  return game.releaseDate && !isReleased(game) ? `${date} · ${releaseCountdown(game.releaseDate)}` : date
 }
 
 export default GamesView

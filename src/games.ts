@@ -3,6 +3,7 @@ import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGa
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { loadToPlayPrices } from './prices'
+import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
 import { isConnected as googleConnected } from './google'
@@ -94,7 +95,21 @@ export function releaseCountdown(time?: number) {
 // "12 Mar 2027", a vague date ("Q1 2027"), or "TBA" when there's no date yet
 export function formatRelease(time?: number, label?: string) {
   if (!time) return label || 'TBA'
-  return new Date(time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return shortDate(time)
+}
+
+// A game's release line, the one place that decides it (each view had its own copy, and they
+// drifted apart). No exact day: the vague date ("Mar 2027") or "TBA", in every form.
+// 'full' (search results, preview): the date, plus the countdown until it's out.
+// 'year' (Games list): while waiting the date + countdown, else the year.
+// 'short' (Games grid): while waiting the countdown alone (the tooltip has the date), else the year.
+export function releaseText(game: { releaseDate?: number; releaseLabel?: string; status?: string }, form: 'full' | 'year' | 'short') {
+  const date = formatRelease(game.releaseDate, game.releaseLabel)
+  if (!game.releaseDate) return date
+  const upcoming = form === 'full' ? !isReleased(game) : game.status === 'waiting'
+  if (!upcoming) return form === 'full' ? date : String(new Date(game.releaseDate).getFullYear())
+  const countdown = releaseCountdown(game.releaseDate)
+  return form === 'short' ? countdown : `${date} · ${countdown}`
 }
 
 // ---------- Background checks ----------
