@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Pin } from 'lucide-react'
-import { addGame, gameId, releaseText, STATUSES } from './games'
+import { addGame, gameId, releaseText } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
+import AddOrInList from './AddOrInList'
 import GamePreview from './GamePreview'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
@@ -82,7 +82,7 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
 type ShowGame = (game: UpcomingGame) => void
 type StatusOf = (game: UpcomingGame) => GameStatus | undefined
 
-// Pin: add the game to Waiting. Only the list's own fields are saved (not rank etc.). Its release
+// Add: the game goes to Waiting. Only the list's own fields are saved (not rank etc.). Its release
 // date follows the usual rule (PC first); a vague date keeps its label ("Q1 2027") and sorts last.
 function pin(game: UpcomingGame) {
   const { igdbId, name, coverId, platforms, releaseDate, releaseLabel } = game
@@ -117,33 +117,16 @@ function CalendarGroup(props: { title: string; games: UpcomingGame[]; statusOf: 
 }
 
 function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
-  const label = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
-  return games.map((game) => {
-    const status = statusOf(game)
-    return (
-      <div key={game.igdbId} className="game-row calendar-row" onClick={() => onShow(game)}>
-        <Cover coverId={game.coverId} />
-        <div className="game-text">
-          <div className="game-name" title={game.name}>{game.name}</div>
-          <div className="game-details">{releaseLine(game)}</div>
-        </div>
-        {status ? (
-          <span className="game-in-list">In {label(status)}</span>
-        ) : (
-          <button
-            className="calendar-pin"
-            title="Add to Waiting"
-            onClick={(e) => {
-              e.stopPropagation() // not the popup
-              pin(game)
-            }}
-          >
-            <Pin size={15} />
-          </button>
-        )}
+  return games.map((game) => (
+    <div key={game.igdbId} className="game-row calendar-row" onClick={() => onShow(game)}>
+      <Cover coverId={game.coverId} />
+      <div className="game-text">
+        <div className="game-name" title={game.name}>{game.name}</div>
+        <div className="game-details">{releaseLine(game)}</div>
       </div>
-    )
-  })
+      <AddOrInList status={statusOf(game)} onAdd={() => pin(game)} />
+    </div>
+  ))
 }
 
 // The release line like everywhere else (games.ts), from the calendar's PC date: "29 Oct 2026 · in 7 days",

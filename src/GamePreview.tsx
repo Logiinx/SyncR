@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pin, Plus, X } from 'lucide-react'
-import { addGame, allPlatforms, isReleased, STATUSES } from './games'
+import { addGame, allPlatforms, isReleased, statusLabel, STATUSES } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -14,7 +14,7 @@ import ContextMenu from './ContextMenu'
 // ✕, Escape or a click outside closes it.
 function GamePreview(props: { game: FoundGame; release: string; status?: GameStatus; onClose: () => void }) {
   const { game, release, status, onClose } = props
-  const label = STATUSES.find((s) => s.status === status)?.label
+  const label = statusLabel(status)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null) // "Add to list"
   const narrow = useNarrow() // PC: the trailer opens in its own view; phone: below the window
@@ -68,7 +68,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
               </div>
               <p className="calendar-popup-info">{release}</p>
               {game.platforms.length > 0 && <p className="calendar-popup-info">{allPlatforms(game.platforms)}</p>}
-              {label && <p className="calendar-popup-info">In your list: {label}</p>}
+              {label && <p className="calendar-popup-info">In {label}</p>}
               <GameExtrasInfo igdbId={game.igdbId} />
               <GamePricesInfo igdbId={game.igdbId} />
               <div className="calendar-popup-actions">

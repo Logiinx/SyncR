@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, releaseText, shortPlatforms, sortGames, STATUSES } from './games'
+import { addGame, formatRelease, gameId, releaseText, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { loadToPlayPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
+import AddOrInList from './AddOrInList'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { RatingStars } from './GameDialog'
@@ -172,7 +173,7 @@ function GamesView() {
                 <GameShelf
                   games={sortGames(games.filter((g) => g.status === shown))}
                   layout={shelf}
-                  emptyText={`No games in ${STATUSES.find((s) => s.status === shown)?.label}.`}
+                  emptyText={`No games in ${statusLabel(shown)}.`}
                   onOpen={setOpenId}
                   onMenu={openMenu}
                 />
@@ -368,7 +369,6 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
     return <p className="games-empty">To search for games, set up the game search in Settings → Games.</p>
   }
 
-  const label = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
   return (
     <div className="game-search">
       <div className="game-search-bar">
@@ -411,19 +411,7 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
                     {[releaseText(found, 'full'), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                {status ? (
-                  <span className="game-in-list">In {label(status)}</span>
-                ) : (
-                  <button
-                    className="setting-button"
-                    onClick={(e) => {
-                      e.stopPropagation() // not the row's preview
-                      addGame(found)
-                    }}
-                  >
-                    Add
-                  </button>
-                )}
+                <AddOrInList status={status} onAdd={() => addGame(found)} />
               </div>
             )
           })}

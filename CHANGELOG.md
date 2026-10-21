@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - Notes, sync: dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Conflict copies use it too, with the time.
 - Games: search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
 - Games: game window and preview list all platforms, PC and Android first. Search results keep the short list.
+- Games: calendar rows have an "Add" button like search results (was a pin icon). The preview says "In To play" like the rows.
 
 ## [0.18.6] - 2026-10-21
 

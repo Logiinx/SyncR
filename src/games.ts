@@ -20,6 +20,7 @@ export const STATUSES: { status: GameStatus; label: string }[] = [
   { status: 'done', label: 'Done' },
   { status: 'dropped', label: 'Dropped' },
 ]
+export const statusLabel = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
 
 export const gameId = (igdbId: number) => `igdb-${igdbId}`
 

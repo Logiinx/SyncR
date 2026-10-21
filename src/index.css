@@ -4081,16 +4081,7 @@ h3.games-group-title {
   }
 }
 
-/* Pin = add to Waiting (calendar rows; the popup's button is a .gd-action) */
-.calendar-pin {
-  display: flex;
-  flex-shrink: 0;
-  padding: 6px;
-  border-radius: 6px;
-  color: var(--text-dim);
-}
-
-.calendar-pin:hover,
+/* Add to Waiting / Add to list in the preview (a .gd-action) */
 .calendar-popup-pin:hover {
   color: var(--link);
 }
