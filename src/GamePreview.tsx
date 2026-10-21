@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pin, Plus, X } from 'lucide-react'
-import { addGame, isReleased, STATUSES } from './games'
+import { addGame, allPlatforms, isReleased, STATUSES } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -37,7 +37,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
           igdbId={game.igdbId}
           title={game.name}
           release={release}
-          platforms={game.platforms.join(', ')}
+          platforms={allPlatforms(game.platforms)}
           onBack={() => setTrailerOpen(false)}
           onClose={onClose}
         />
@@ -67,7 +67,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
                 </button>
               </div>
               <p className="calendar-popup-info">{release}</p>
-              {game.platforms.length > 0 && <p className="calendar-popup-info">{game.platforms.join(', ')}</p>}
+              {game.platforms.length > 0 && <p className="calendar-popup-info">{allPlatforms(game.platforms)}</p>}
               {label && <p className="calendar-popup-info">In your list: {label}</p>}
               <GameExtrasInfo igdbId={game.igdbId} />
               <GamePricesInfo igdbId={game.igdbId} />

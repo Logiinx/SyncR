@@ -64,15 +64,18 @@ export function sortGames(games: Game[]): Game[] {
   )
 }
 
-// Platforms for a search result: PC and Android first (what you play on), at most 3, then "+N more".
-// E.g. "PC, PS5, XONE +4 more". The details dialog still shows them all.
+// A game's platforms, PC and Android first (what you play on). Windows (game window, preview,
+// trailer view) show them all; rows (search results) at most 3, then "+N more":
+// "PC, PS5, XONE +4 more".
 const MY_PLATFORMS = ['PC', 'Android']
 const SHOWN_PLATFORMS = 3
+const sortPlatforms = (platforms: string[]) => [
+  ...MY_PLATFORMS.filter((p) => platforms.includes(p)),
+  ...platforms.filter((p) => !MY_PLATFORMS.includes(p)),
+]
+export const allPlatforms = (platforms: string[]) => sortPlatforms(platforms).join(', ')
 export function shortPlatforms(platforms: string[]) {
-  const sorted = [
-    ...MY_PLATFORMS.filter((p) => platforms.includes(p)),
-    ...platforms.filter((p) => !MY_PLATFORMS.includes(p)),
-  ]
+  const sorted = sortPlatforms(platforms)
   const shown = sorted.slice(0, SHOWN_PLATFORMS).join(', ')
   const more = sorted.length - SHOWN_PLATFORMS
   return more > 0 ? `${shown} +${more} more` : shown

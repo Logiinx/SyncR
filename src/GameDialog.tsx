@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
-import { releaseEventId, releaseText, shortPlatforms, STATUSES } from './games'
+import { allPlatforms, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
@@ -41,7 +41,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
           igdbId={game.igdbId}
           title={game.name}
           release={releaseText(game, 'full')}
-          platforms={shortPlatforms(game.platforms)}
+          platforms={allPlatforms(game.platforms)}
           onBack={() => setTrailerOpen(false)}
           onClose={onClose}
         />
@@ -114,7 +114,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                 <h2>{game.name}</h2>
                 <p>
                   {releaseText(game, 'full')}
-                  {game.platforms.length > 0 && ` · ${shortPlatforms(game.platforms)}`}
+                  {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
                 </p>
                 {releaseEvent && releaseEvent.alerts.length > 0 && (
                   <p>Alert: {reminderTime(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
