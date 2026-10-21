@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-10-21
+
 ### Changed
 - Reminders and Games calendars: reminders, events and releases on days before today are slightly faded (full again on hover).
 - Tabs: the open note tab has a thinner, cleaner blue underline, like the Games status tabs.
