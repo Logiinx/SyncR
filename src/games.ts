@@ -184,20 +184,7 @@ export async function syncReleaseEvents() {
     }
     confirmed.set(id, mark)
   }
-  await removeOldReleaseReminders()
   if (googleChanged) await refreshEvents()
-}
-
-// Before v0.16, releases had hidden SyncR reminders (id "release-<game id>"). Now the Google
-// events do it: the old ones are deleted (synced, so once is enough for all devices).
-async function removeOldReleaseReminders() {
-  const old = await db.reminders.filter((r) => !!r.gameId && !r.deleted).toArray()
-  if (old.length === 0) return
-  const now = Date.now()
-  for (const reminder of old) {
-    await db.reminders.update(reminder.id, { deleted: true, text: '', note: '', gameRelease: undefined, updatedAt: now })
-  }
-  changed()
 }
 
 // Started once by the app. The refresh and the release events wait for a finished sync (when

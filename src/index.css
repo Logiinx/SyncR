@@ -1269,39 +1269,13 @@ button {
 
 /* ---------- Reminders tab (RemindersView.tsx), laid out like the Games tab ---------- */
 
-.reminders-count {
-  margin-left: auto;
-  padding: 0 6px;
-  border-radius: 8px;
-  background: var(--border);
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
 .reminders-new {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.reminders-done-header {
-  display: flex;
-  align-items: center;
-}
-
-.reminders-clear {
-  padding: 4px 8px;
-  border-radius: 6px;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-.reminders-clear:hover {
-  background: rgb(255 255 255 / 6%);
-  color: var(--text);
-}
-
-/* One reminder: text (+ a line of its note) on the left, when on the right */
+/* One event or game: text (+ a line of its note) on the left, when on the right */
 .reminder-row {
   display: flex;
   align-items: center;
@@ -1343,19 +1317,10 @@ button {
   font-size: 0.85em;
 }
 
-/* Small icons after the date: a repeating event; an old reminder also in Google Calendar */
+/* Small icon after the date: a repeating event */
 .reminder-due svg {
   margin-left: 5px;
   vertical-align: -1px;
-}
-
-.reminder-row.overdue .reminder-due {
-  color: var(--text-red);
-}
-
-.reminder-row.done .reminder-text {
-  color: var(--text-dim);
-  text-decoration: line-through;
 }
 
 .dialog textarea {
@@ -1373,27 +1338,6 @@ button {
 
 .dialog textarea:focus {
   outline: 1px solid var(--accent);
-}
-
-.reminder-phone {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  cursor: pointer;
-}
-
-.dialog .reminder-phone input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--link);
-  cursor: pointer;
-}
-
-.dialog .reminder-phone-hint {
-  margin: -8px 0 16px;
-  font-size: 0.9em;
 }
 
 /* Due reminders: cards in the bottom-right corner, above the page, below menus and dialogs
@@ -4006,21 +3950,6 @@ h3.games-group-title {
 
 .calendar-reminder-time {
   color: var(--text-dim);
-}
-
-.calendar-reminder.overdue {
-  border-left-color: var(--text-red);
-}
-
-.calendar-reminder.overdue .calendar-reminder-time {
-  color: var(--text-red);
-}
-
-.calendar-reminder.done {
-  border-left-color: var(--border);
-  background: none;
-  color: var(--text-dim);
-  text-decoration: line-through;
 }
 
 .calendar-month-only p {

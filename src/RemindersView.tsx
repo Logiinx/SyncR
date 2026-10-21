@@ -1,38 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, ChevronRight, List, Plus, RefreshCw, Repeat, Smartphone } from 'lucide-react'
+import { CalendarDays, List, Plus, RefreshCw, Repeat } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
-import ReminderDialog from './ReminderDialog'
 import GameDialog from './GameDialog'
 import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId } from './games'
-import { db, updateGame, type CalendarEvent, type Game, type Reminder } from './db'
+import { db, updateGame, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
 import EventPreview from './EventPreview'
 import Spinner from './Spinner'
 import { openLink } from './links'
 import { useLocalState } from './localState'
-import { addToGoogleCalendar, clearDone, deleteReminder, formatDue, listReminders, markDone, markNotDone } from './reminders'
+import { formatDue } from './reminders'
 
-// The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your
-// reminders, your Google Calendar's events (calendarEvents.ts) and your Waiting games (exact
-// release dates), or the list, with a switch.
-// Phone: always the list. List: upcoming reminders (soonest first), then a folded "Done" group.
-// Click = edit (a game: its details), right-click / long press a reminder = menu.
+// The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
+// Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
+// list, with a switch. Phone: always the list (soonest first).
+// Click an event = preview (a game: its details), right-click / long press an event = menu.
 // Uses the Games tab's page layout (.games) and group titles.
 
 const MIN_MONTHS = 3 // the grid shows at least this month and the next two...
-const MAX_MONTHS = 12 // ...and at most a year, up to the last upcoming reminder or release
+const MAX_MONTHS = 12 // ...and at most a year, up to the last upcoming event or release
 
 function RemindersView() {
-  // Re-runs whenever a reminder changes (also from sync). Release reminders (games.ts) are left
-  // out: their game shows instead (click it for its details, which show the reminder).
-  const reminders = useLiveQuery(async () => (await listReminders()).filter((r) => !r.gameId), [])
   const waitingGames = useLiveQuery(
     () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
     [],
@@ -52,40 +47,23 @@ function RemindersView() {
   const narrow = useNarrow()
   const grid = layout === 'grid' && !narrow
   const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
-  const [doneOpen, setDoneOpen] = useLocalState('syncr.remindersDoneOpen', false)
-  const [editing, setEditing] = useState<Reminder | 'new' | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
-  const [menu, setMenu] = useState<{ reminder: Reminder; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
-  // Redraw every 30 s, so "overdue" and "Today" stay correct
+  // Redraw every 30 s, so events that are over leave the list
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(timer)
   }, [])
 
-  const waiting = reminders?.filter((r) => r.doneAt === null) ?? []
-  // List: upcoming reminders, calendar events (not over yet) and Waiting games (by release day)
-  // together, soonest first
+  // List: calendar events (not over yet) and Waiting games (by release day) together, soonest first
   const upcoming = [
-    ...waiting.map((reminder) => ({ time: reminder.dueAt, reminder })),
     ...events.filter((event) => event.end > now).map((event) => ({ time: event.start, event })),
     ...(waitingGames ?? []).map((game) => ({ time: game.releaseDate!, game })),
   ].sort((a, b) => a.time - b.time)
-  const done = (reminders?.filter((r) => r.doneAt !== null) ?? []).sort((a, b) => b.doneAt! - a.doneAt!)
-
-  function askDelete(reminder: Reminder) {
-    setDialog({
-      title: 'Delete reminder?',
-      message: `"${reminder.text}" will be deleted. This can't be undone.`,
-      confirmLabel: 'Delete',
-      danger: true,
-      onConfirm: () => deleteReminder(reminder.id),
-    })
-  }
 
   // New things go to Google Calendar, so it must be connected on this device
   function newEvent() {
@@ -126,16 +104,6 @@ function RemindersView() {
     })
   }
 
-  function askClearDone() {
-    setDialog({
-      title: 'Clear done reminders?',
-      message: `${done.length} done reminder${done.length === 1 ? '' : 's'} will be deleted. This can't be undone.`,
-      confirmLabel: 'Clear',
-      danger: true,
-      onConfirm: () => clearDone(),
-    })
-  }
-
   async function askRemoveGame(id: string) {
     const game = await db.games.get(id)
     if (!game) return
@@ -151,31 +119,7 @@ function RemindersView() {
     })
   }
 
-  const row = (reminder: Reminder) => {
-    const overdue = reminder.doneAt === null && reminder.dueAt <= now
-    return (
-      <button
-        key={reminder.id}
-        className={`reminder-row${overdue ? ' overdue' : ''}${reminder.doneAt !== null ? ' done' : ''}`}
-        onClick={() => setEditing(reminder)}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          setMenu({ reminder, x: e.clientX, y: e.clientY })
-        }}
-      >
-        <span className="reminder-row-text">
-          <span className="reminder-text">{reminder.text}</span>
-          {reminder.note && <span className="reminder-row-note">{reminder.note}</span>}
-        </span>
-        <span className="reminder-due">
-          {formatDue(reminder.dueAt)}
-          {reminder.phone && <Smartphone size={12} aria-label="Also in Google Calendar" />}
-        </span>
-      </button>
-    )
-  }
-
-  // A calendar event in the list: like a reminder (its description as the note)
+  // A calendar event in the list: its title, its description as the note
   const eventRow = (event: CalendarEvent) => (
     <button
       key={event.id}
@@ -264,20 +208,16 @@ function RemindersView() {
         {calendar.error && (
           <p className="games-empty">Google Calendar: {calendar.error} (showing the last loaded events)</p>
         )}
-        {grid && reminders && waitingGames && (
+        {grid && waitingGames && (
           <ReminderGrid
-            reminders={reminders}
             events={events}
             games={waitingGames}
-            now={now}
-            onEdit={setEditing}
             onOpenEvent={setPreviewEvent}
             onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
-            onMenu={(reminder, x, y) => setMenu({ reminder, x, y })}
             onGame={setOpenGame}
           />
         )}
-        {!grid && reminders && waitingGames && reminders.length + events.length + waitingGames.length === 0 && (
+        {!grid && waitingGames && events.length + waitingGames.length === 0 && (
           <p className="games-empty">No reminders yet.</p>
         )}
         {/* One group per month ("November 2026 3"), for an easier read of what's coming */}
@@ -288,27 +228,12 @@ function RemindersView() {
                 {month} <span className="games-count">{items.length}</span>
               </h3>
               {items.map((item) =>
-                'reminder' in item ? row(item.reminder) : 'event' in item ? eventRow(item.event) : gameRow(item.game),
+                'event' in item ? eventRow(item.event) : gameRow(item.game),
               )}
             </section>
           ))}
-        {!grid && done.length > 0 && (
-          <section className="games-group">
-            <div className="reminders-done-header">
-              <button className="games-group-title" onClick={() => setDoneOpen(!doneOpen)}>
-                {doneOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                Done <span className="games-count">{done.length}</span>
-              </button>
-              <button className="reminders-clear" onClick={askClearDone}>
-                Clear
-              </button>
-            </div>
-            {doneOpen && done.map(row)}
-          </section>
-        )}
       </div>
 
-      {editing && <ReminderDialog reminder={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
       {editingEvent && (
         <EventDialog
           event={editingEvent === 'new' ? null : editingEvent}
@@ -340,24 +265,6 @@ function RemindersView() {
         />
       )}
       {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          onClose={() => setMenu(null)}
-          items={[
-            { label: 'Edit', onClick: () => setEditing(menu.reminder) },
-            menu.reminder.doneAt === null
-              ? { label: 'Done', onClick: () => markDone(menu.reminder.id) }
-              : { label: 'Not done', onClick: () => markNotDone(menu.reminder.id) },
-            // Opens Calendar again (e.g. the event wasn't saved there, or was deleted)
-            ...(menu.reminder.doneAt === null
-              ? [{ label: 'Add to Google Calendar', onClick: () => addToGoogleCalendar(menu.reminder) }]
-              : []),
-            { label: 'Delete', danger: true, onClick: () => askDelete(menu.reminder) },
-          ]}
-        />
-      )}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
   )
@@ -375,28 +282,21 @@ function byMonth<T extends { time: number }>(items: T[]) {
   return groups
 }
 
-// Month grid: reminders ("14:30 Call the bank"; done ones crossed out, overdue ones red), calendar
-// events (on their first day; all-day ones without a time) and Waiting games (cover + name) on
-// their day. From this month to the last upcoming reminder, event or release, at least 3 months,
-// at most 12.
+// Month grid: calendar events ("14:30 Call the bank", on their first day; all-day ones without a
+// time) and Waiting games (cover + name) on their day. From this month to the last upcoming
+// event or release, at least 3 months, at most 12.
 function ReminderGrid(props: {
-  reminders: Reminder[]
   events: CalendarEvent[]
   games: Game[]
-  now: number
-  onEdit: (reminder: Reminder) => void
   onOpenEvent: (event: CalendarEvent) => void
   onEventMenu: (event: CalendarEvent, x: number, y: number) => void
-  onMenu: (reminder: Reminder, x: number, y: number) => void
   onGame: (id: string) => void
 }) {
-  const { reminders, events, games, now } = props
+  const { events, games } = props
   const today = new Date()
-  const remindersByDay = byDay(reminders, (r) => r.dueAt)
   const eventsByDay = byDay(events, (e) => e.start)
   const gamesByDay = byDay(games, (g) => g.releaseDate!)
   const last = Math.max(
-    ...reminders.filter((r) => r.doneAt === null).map((r) => r.dueAt),
     ...events.map((e) => e.start),
     ...games.map((g) => g.releaseDate!),
     0,
@@ -410,30 +310,11 @@ function ReminderGrid(props: {
     <MonthGrid
       months={months}
       count={(first) =>
-        reminders.filter((r) => sameMonth(new Date(r.dueAt), first)).length +
         events.filter((e) => sameMonth(new Date(e.start), first)).length +
         games.filter((g) => sameMonth(new Date(g.releaseDate!), first)).length
       }
       renderDay={(date) => (
         <>
-          {(remindersByDay.get(dayKey(date)) ?? []).map((reminder) => {
-            const overdue = reminder.doneAt === null && reminder.dueAt <= now
-            return (
-              <button
-                key={reminder.id}
-                className={`calendar-reminder${overdue ? ' overdue' : ''}${reminder.doneAt !== null ? ' done' : ''}`}
-                onClick={() => props.onEdit(reminder)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  props.onMenu(reminder, e.clientX, e.clientY)
-                }}
-                title={reminder.note ? `${reminder.text}\n${reminder.note}` : reminder.text}
-              >
-                <span className="calendar-reminder-time">{time(reminder.dueAt)}</span>{' '}
-                {reminder.text}
-              </button>
-            )
-          })}
           {(eventsByDay.get(dayKey(date)) ?? []).map((event) => (
             <button
               key={event.id}

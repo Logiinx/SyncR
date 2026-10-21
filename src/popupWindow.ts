@@ -18,7 +18,7 @@ const MARGIN = 12 // from the screen edges
 // Button clicks from the pop-up to the main window: through Tauri's events in the desktop
 // app; through a BroadcastChannel in the browser (only used to test the pop-up page in a tab)
 export interface PopupMessage {
-  id: string // a reminder's id or an event alert's key (DueItem.key)
+  id: string // an event alert's key (DueItem.key)
   action: ReminderAction
 }
 const EVENT = 'reminder-popup-action'

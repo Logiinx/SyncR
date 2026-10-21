@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Bell, Gamepad2, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
 import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
-import { listReminders, REMINDERS_TAB } from './reminders'
+import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
 import { checkForUpdates } from './UpdateBanner'
 import { searchNotes, type Snippet } from './noteSearch'
@@ -54,11 +54,6 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
-  // Upcoming reminders, without release reminders (hidden in the tab, see RemindersView.tsx)
-  const upcoming = useLiveQuery(
-    async () => (await listReminders()).filter((r) => r.doneAt === null && !r.gameId).length,
-    [],
-  )
 
   // While searching, only the matching notes, each with the text around the match
   const results = notes && query.trim() ? searchNotes(notes, query) : null
@@ -81,7 +76,6 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           onClick={onReminders}
         >
           <Bell size={15} /> Reminders
-          {!!upcoming && <span className="reminders-count">{upcoming}</span>}
         </button>
         <div className="game-search-bar sidebar-search">
           <Search size={15} />

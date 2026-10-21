@@ -4,7 +4,7 @@ import { runAction, useChime, useDueReminders, type DueItem, type ReminderAction
 import { useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
 
-// One due reminder or event alert: text, time, note, and the buttons. "Open SyncR" only in the pop-up.
+// One due event alert: text, time, note, and the buttons. "Open SyncR" only in the pop-up.
 export function ReminderCard({ item, onAction, withOpen }: {
   item: DueItem
   onAction: (action: ReminderAction) => void

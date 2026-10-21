@@ -1,15 +1,15 @@
 import { db } from './db'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
-// (its own, or the calendar's default: CalendarEvent.alerts) come due like reminders and show
-// in the same pop-up / cards (dueReminders.ts). Done and Snooze only change this device
-// (db.alertStates, not synced), never the event in Google.
+// (its own, or the calendar's default: CalendarEvent.alerts) come due and show in the pop-up /
+// cards (dueReminders.ts). Done and Snooze only change this device (db.alertStates, not
+// synced), never the event in Google.
 
 const HOUR_MS = 60 * 60 * 1000
 export const MISSED_MS = 24 * HOUR_MS // an alert missed while SyncR was closed still shows for a day
 const KEEP_STATES_MS = 7 * 24 * HOUR_MS
 
-export const ALERT_PREFIX = 'event:' // tells an event alert's key apart from a reminder's id
+const ALERT_PREFIX = 'event:' // starts an alert's key (DueItem.key)
 
 // One alert of one event. dueAt: when it shows (its time, or later when snoozed)
 export interface EventAlert {
