@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 - Games: search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
 - Games: game window and preview list all platforms, PC and Android first. Search results keep the short list.
 - Games: calendar rows have an "Add" button like search results (was a pin icon). The preview says "In To play" like the rows.
+- Menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line, like on the Board.
 - Games: the game window's alert time reads like in Reminders ("Tomorrow, 10:00", "27 October 2026, 10:00").
 
 ## [0.18.6] - 2026-10-21

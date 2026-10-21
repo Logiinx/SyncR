@@ -328,7 +328,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
             },
             { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Delete', danger: true, divider: true, onClick: onDelete },
+            { label: 'Delete', danger: true, onClick: onDelete },
           ]}
         />
       )}

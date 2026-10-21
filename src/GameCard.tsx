@@ -83,7 +83,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
             },
             { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Unpin from Board', danger: true, divider: true, onClick: onDelete },
+            { label: 'Unpin from Board', danger: true, onClick: onDelete },
           ]}
         />
       )}

@@ -113,7 +113,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
             },
             { label: 'Color…', onClick: () => setMenu({ ...menu, colors: 'group' }) },
             { label: 'Color with its cards…', onClick: () => setMenu({ ...menu, colors: 'all' }) },
-            { label: 'Delete group', danger: true, divider: true, onClick: askDelete },
+            { label: 'Delete group', danger: true, onClick: askDelete },
           ]}
         />
       )}

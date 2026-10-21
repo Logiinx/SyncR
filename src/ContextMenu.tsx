@@ -4,7 +4,7 @@ import { currentZoom } from './appearance'
 
 export interface MenuItem {
   label: string
-  danger?: boolean
+  danger?: boolean // red; put it last: it always gets the line above it
   divider?: boolean // a thin line above it (starts a new group of actions)
   swatch?: string // a small round color dot before the label (a CSS color)
   checked?: boolean // a ✓ after the label (the current choice)
@@ -44,7 +44,7 @@ function ContextMenu({ x, y, items, onClose }: Props) {
       <div className="context-menu" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()}>
         {items.map((item, index) => (
           <Fragment key={item.label}>
-            {item.divider && index > 0 && <div className="context-menu-divider" />}
+            {(item.divider || item.danger) && index > 0 && <div className="context-menu-divider" />}
             <button
               className={item.danger ? 'danger' : ''}
               onClick={() => {

@@ -279,8 +279,8 @@ function RemindersView() {
           onClose={() => setEventMenu(null)}
           items={[
             { label: 'Edit', onClick: () => setEditingEvent(eventMenu.event) },
-            { label: 'Delete', danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
             { label: 'Open in Google Calendar', onClick: () => openLink(eventMenu.event.link) },
+            { label: 'Delete', danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
           ]}
         />
       )}
