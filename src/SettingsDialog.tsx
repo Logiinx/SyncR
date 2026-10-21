@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -38,6 +38,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
+  useSettingsColumns(dialogRef)
   const [appearance, setAppearance] = useState(loadAppearance)
   function update(change: Partial<Appearance>) {
     // Start from the saved settings (always current), not from `appearance`, which may not
@@ -111,9 +112,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       >
         <h2>Settings</h2>
 
-        {/* Two columns on the PC, so everything shows without scrolling; one on the phone */}
+        {/* As many columns as the window needs to show everything without scrolling (PC,
+            useSettingsColumns); one on the phone */}
         <div className="settings-columns">
-          <div className="settings-column">
+          <section className="settings-group">
             <SectionTitle title="Appearance" scope="this device" />
             <div className="setting">
               <span className="setting-label">Font</span>
@@ -164,7 +166,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onBlur={applyScale}
               />
             </label>
-
+          </section>
+          <section className="settings-group">
             <SectionTitle title="Note list" scope="this device" />
             <label className="setting setting-toggle">
               <span>Show dates</span>
@@ -174,7 +177,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onChange={(e) => update({ showDates: e.target.checked })}
               />
             </label>
-
+          </section>
+          <section className="settings-group">
             <SectionTitle title="Typing" scope="this device" />
             <label className="setting setting-toggle">
               <span>
@@ -186,7 +190,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
               />
             </label>
-
+          </section>
+          <section className="settings-group">
             <SectionTitle title="Reminders" scope="this device" />
             <label className="setting setting-toggle">
               <span>Sound when a reminder is due</span>
@@ -199,48 +204,47 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 }}
               />
             </label>
-          </div>
-          <div className="settings-column">
-            {isTauri() && (
-              <>
-                <SectionTitle title="Window" scope="this device" />
-                <label className="setting setting-toggle">
-                  <span>
-                    ✕ hides SyncR in the tray{' '}
-                    <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={background.closeToTray}
-                    onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
-                  />
-                </label>
-                <label className="setting setting-toggle">
-                  <span>
-                    Start with Windows <span className="setting-value">when you sign in</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={autostart ?? false}
-                    disabled={autostart === null}
-                    onChange={(e) => toggleAutostart(e.target.checked)}
-                  />
-                </label>
-                <label className="setting setting-toggle">
-                  <span>
-                    Start hidden in the tray{' '}
-                    <span className="setting-value">when started with Windows; otherwise the window shows</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={background.startHidden}
-                    disabled={!autostart}
-                    onChange={(e) => updateBackground({ startHidden: e.target.checked })}
-                  />
-                </label>
-              </>
-            )}
-
+          </section>
+          {isTauri() && (
+            <section className="settings-group">
+              <SectionTitle title="Window" scope="this device" />
+              <label className="setting setting-toggle">
+                <span>
+                  ✕ hides SyncR in the tray{' '}
+                  <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={background.closeToTray}
+                  onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+                />
+              </label>
+              <label className="setting setting-toggle">
+                <span>
+                  Start with Windows <span className="setting-value">when you sign in</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={autostart ?? false}
+                  disabled={autostart === null}
+                  onChange={(e) => toggleAutostart(e.target.checked)}
+                />
+              </label>
+              <label className="setting setting-toggle">
+                <span>
+                  Start hidden in the tray{' '}
+                  <span className="setting-value">when started with Windows; otherwise the window shows</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={background.startHidden}
+                  disabled={!autostart}
+                  onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+                />
+              </label>
+            </section>
+          )}
+          <section className="settings-group">
             <SectionTitle title="Notes" scope="all devices" />
             <div className="setting setting-toggle">
               <span>
@@ -250,10 +254,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 Edit…
               </button>
             </div>
-
-            <GamesSettings />
-            <GoogleSettings />
-
+          </section>
+          <GamesSettings />
+          <GoogleSettings />
+          <section className="settings-group">
             <SectionTitle title="About" />
             {/* Check for updates: the icon next to Settings in the sidebar */}
             <div className="setting">
@@ -268,7 +272,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 </span>
               </span>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
@@ -339,7 +343,7 @@ function GamesSettings() {
   }
 
   return (
-    <>
+    <section className="settings-group">
       <SectionTitle title="Games" scope="all devices" />
       <label className="setting">
         <span className="setting-label">Game search proxy address</span>
@@ -372,7 +376,7 @@ function GamesSettings() {
         {status.text === 'Checking…' && <Spinner size={12} />}
         {status.text}
       </p>
-    </>
+    </section>
   )
 }
 
@@ -413,7 +417,7 @@ function GoogleSettings() {
   }
 
   return (
-    <>
+    <section className="settings-group">
       <SectionTitle title="Google Calendar" scope="this device" />
       <div className="setting setting-toggle">
         <span>Main calendar</span>
@@ -430,8 +434,60 @@ function GoogleSettings() {
         {busy && !connected && isTauri() && <Spinner size={12} />}
         {status}
       </p>
-    </>
+    </section>
   )
+}
+
+// PC: the fewest columns (2 or more) that show all settings without scrolling, as long as each
+// column stays at least MIN_COLUMN wide (a small window keeps scrolling). Sets --columns on the
+// dialog (index.css sizes it from that) and marks the section at the top of each column (no
+// line above it). Again when the window, the app scaling or the settings' content change.
+// Phone: one column.
+const MIN_COLUMN = 320 // px: narrower cuts the font names ("JetBrains Mono")
+const COLUMN_GAP = 36 // px, as in index.css
+
+function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current
+    const columns = dialog?.querySelector<HTMLElement>('.settings-columns')
+    if (!dialog || !columns) return
+
+    function apply(count: number) {
+      dialog!.style.setProperty('--columns', String(count))
+      // Twice: removing the line can move a section to the top of the next column
+      for (let i = 0; i < 2; i++) {
+        const top = columns!.getBoundingClientRect().top
+        for (const group of columns!.children) {
+          group.classList.toggle('column-top', group.getBoundingClientRect().top - top < 24)
+        }
+      }
+    }
+
+    function fit() {
+      const narrow = matchMedia('(max-width: 699px)').matches
+      let count = narrow ? 1 : 2
+      apply(count)
+      while (!narrow && dialog!.scrollHeight > dialog!.clientHeight) {
+        apply(count + 1)
+        if (columns!.clientWidth < (count + 1) * MIN_COLUMN + count * COLUMN_GAP) {
+          apply(count) // too narrow: keep scrolling instead
+          break
+        }
+        count++
+      }
+    }
+
+    fit()
+    window.addEventListener('resize', fit)
+    // Content (a status line, Google connected) and the app scaling (--zoom on <html>)
+    const observer = new MutationObserver(fit)
+    observer.observe(columns, { childList: true, subtree: true, characterData: true })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
+    return () => {
+      window.removeEventListener('resize', fit)
+      observer.disconnect()
+    }
+  }, [dialogRef])
 }
 
 // A slider with a ruler under it: one tick per value you can pick, a longer one at the

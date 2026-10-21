@@ -3055,34 +3055,37 @@ button {
   text-transform: uppercase;
 }
 
-/* Two columns on the PC (wider dialog), so all settings show without scrolling */
+/* PC: as many columns as needed to show all settings without scrolling (--columns, 2 or more,
+   set by useSettingsColumns in SettingsDialog.tsx); the dialog grows with them. 392px columns:
+   two of them make the 860px dialog. The sections flow into the columns, never split. */
 .dialog.settings {
-  width: min(860px, 100%);
+  --columns: 2;
+  width: min(calc(var(--columns) * 392px + (var(--columns) - 1) * 36px + 40px), 100%);
 }
 
 .settings-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 36px;
+  column-count: var(--columns);
+  column-gap: 36px;
 }
 
-/* The first section of each column: no line above it */
-.settings-column > .settings-section:first-child {
+.settings-group {
+  break-inside: avoid;
+}
+
+/* The section at the top of each column: no line above it */
+.settings-group.column-top > .settings-section {
   margin-top: 4px;
   padding-top: 0;
   border-top: none;
 }
 
 @media (max-width: 699px) {
-  .settings-columns {
-    grid-template-columns: minmax(0, 1fr);
+  .dialog.settings {
+    width: 100%;
   }
 
-  /* One column: the second one's first section gets its line back */
-  .settings-column + .settings-column > .settings-section:first-child {
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 1px solid #353535;
+  .settings-columns {
+    column-count: 1;
   }
 }
 
