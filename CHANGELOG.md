@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Board: a new card (+) starts in its title. Enter, Tab or ↓ go to the text (empty title = no title); Escape drops the card.
+
+### Fixed
+- Board: the card menu (e.g. "Add title") works on the first click while you're writing in the card.
+
 ## [0.16.5] - 2026-10-21
 
 ### Changed

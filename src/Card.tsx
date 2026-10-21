@@ -54,11 +54,14 @@ interface Props {
 function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
-  // colors: the "Color…" list instead of the menu
-  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
+  // colors: the "Color…" list instead of the menu. editing: as it was when the menu opened, so
+  // the items don't move when pressing one ends editing ("Edit" appeared above and the click
+  // landed on the wrong item)
+  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean; editing?: boolean } | null>(null)
   const [editing, setEditing] = useState(autoFocus)
   const [editingTitle, setEditingTitle] = useState(false)
   const cancelTitle = useRef(false) // Escape: the title's blur doesn't save
+  const newTitle = useRef(false) // the title of a card just added with "+": Enter goes on to the text
   const hasTitle = useRef(!!card.title) // for onBlur below (it keeps the first render's card)
   hasTitle.current = !!card.title
   const cardRef = useRef<HTMLDivElement>(null)
@@ -148,11 +151,16 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
     else editor.commands.focus('end')
   }
 
-  // A card just added with "+": edit it, cursor in it, ready to type. An effect, not just the
-  // starting state: the card can appear before the Board knows it's the new one. (The editor's
-  // own autofocus option runs before the card is on the page, so it didn't work here either.)
+  // A card just added with "+": cursor in its title first (Enter, Tab or ↓ go on to the text,
+  // Escape drops the card). The text is editable already, so clicking it skips the title.
+  // An effect, not just the starting state: the card can appear before the Board knows it's the
+  // new one. (The editor's own autofocus option runs before the card is on the page.)
   useEffect(() => {
-    if (editor && autoFocus) startEditing()
+    if (!editor || !autoFocus) return
+    setEditing(true)
+    editor.setEditable(true, false)
+    newTitle.current = true
+    setEditingTitle(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, autoFocus])
 
@@ -181,16 +189,27 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   }, [editor])
 
   // Title typed: saved when it loses focus (Enter too). Emptied: the title is removed.
+  // Gives whether the card has a title now.
   function saveTitle(value: string) {
     setEditingTitle(false)
     if (cancelTitle.current) {
       cancelTitle.current = false
-      return
+      return !!card.title
     }
     const title = value.trim()
-    if (title === (card.title ?? '')) return
+    if (title === (card.title ?? '')) return !!title
     if (title) updateCardTitle(card.id, { title })
     else updateCardTitle(card.id, { title: undefined, titleAlign: undefined, folded: undefined })
+    return !!title
+  }
+
+  // The new card's title loses focus, not to its text (clicked away, Escape): editing ends, and
+  // the card is removed if it's still empty
+  function leaveNewCard(titled: boolean) {
+    if (!editor) return
+    setEditing(false)
+    editor.setEditable(false, false)
+    if (editor.isEmpty && !titled) setCardDeleted(card.id, true)
   }
 
   const folded = !!card.title && card.folded
@@ -224,7 +243,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         // is on the "⋯" button instead, so the two never open together
         if (window.matchMedia('(pointer: coarse)').matches) return
         event.preventDefault()
-        setMenu({ x: event.clientX, y: event.clientY })
+        setMenu({ x: event.clientX, y: event.clientY, editing })
       }}
     >
       {(card.title || editingTitle) && (
@@ -241,8 +260,19 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               defaultValue={card.title ?? ''}
               placeholder="Title"
               spellCheck={false}
-              onBlur={(event) => saveTitle(event.currentTarget.value)}
+              onBlur={(event) => {
+                const toText = !!editor && editor.view.dom.contains(event.relatedTarget as Node | null)
+                const titled = saveTitle(event.currentTarget.value)
+                if (!newTitle.current) return
+                newTitle.current = false
+                if (!toText) leaveNewCard(titled)
+              }}
               onKeyDown={(event) => {
+                if (newTitle.current && ['Enter', 'Tab', 'ArrowDown'].includes(event.key)) {
+                  event.preventDefault()
+                  editor?.commands.focus('end') // blurs the title: saved above
+                  return
+                }
                 if (event.key === 'Enter') event.currentTarget.blur()
                 if (event.key === 'Escape') {
                   cancelTitle.current = true
@@ -272,7 +302,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           className="card-more"
           onClick={(event) => {
             const box = event.currentTarget.getBoundingClientRect()
-            setMenu({ x: box.left, y: box.bottom + 4 })
+            setMenu({ x: box.left, y: box.bottom + 4, editing })
           }}
           title="More"
         >
@@ -285,7 +315,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
-            ...(editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
+            ...(menu.editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
             ...(card.title
               ? [
                   { label: 'Edit title', divider: true, onClick: () => setEditingTitle(true) },
