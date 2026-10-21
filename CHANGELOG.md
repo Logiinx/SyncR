@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-21
+
 - Games: tidier prices on To play games: Steam logo and key icon on their own lines, discount in a green badge.
 
 ## [0.18.0] - 2026-10-21
