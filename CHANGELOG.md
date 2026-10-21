@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Settings: tighter spacing when the window is too narrow for more columns, so everything still fits without scrolling (PC).
+
 ## [0.16.3] - 2026-10-21
 
 ### Changed

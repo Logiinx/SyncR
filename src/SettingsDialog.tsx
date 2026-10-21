@@ -439,9 +439,9 @@ function GoogleSettings() {
 }
 
 // PC: the fewest columns (2 or more) that show all settings without scrolling, as long as each
-// column stays at least MIN_COLUMN wide (a small window keeps scrolling). Sets --columns on the
-// dialog (index.css sizes it from that) and marks the section at the top of each column (no
-// line above it). Again when the window, the app scaling or the settings' content change.
+// column stays at least MIN_COLUMN wide. Still too tall (a small window): tighter spacing
+// ("compact" in index.css). Sets --columns on the dialog (index.css sizes it from that) and marks
+// the section at the top of each column (no line above it). Again when the window, the app scaling or the settings' content change.
 // Phone: one column.
 const MIN_COLUMN = 320 // px: narrower cuts the font names ("JetBrains Mono")
 const COLUMN_GAP = 36 // px, as in index.css
@@ -466,6 +466,7 @@ function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
     function fit() {
       const narrow = matchMedia('(max-width: 699px)').matches
       let count = narrow ? 1 : 2
+      dialog!.classList.remove('compact')
       apply(count)
       while (!narrow && dialog!.scrollHeight > dialog!.clientHeight) {
         apply(count + 1)
@@ -474,6 +475,10 @@ function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
           break
         }
         count++
+      }
+      if (!narrow && dialog!.scrollHeight > dialog!.clientHeight) {
+        dialog!.classList.add('compact')
+        apply(count) // the tops again, with the new spacing
       }
     }
 

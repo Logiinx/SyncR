@@ -3079,6 +3079,29 @@ button {
   border-top: none;
 }
 
+/* A window too small for all settings even with more columns: tighter spacing */
+.dialog.settings.compact {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.dialog.settings.compact h2 {
+  margin-bottom: 8px;
+}
+
+.dialog.settings.compact .setting {
+  margin-bottom: 10px;
+}
+
+.dialog.settings.compact .setting-label {
+  margin-bottom: 4px;
+}
+
+.dialog.settings.compact .settings-group:not(.column-top) > .settings-section {
+  margin: 12px 0 8px;
+  padding-top: 10px;
+}
+
 @media (max-width: 699px) {
   .dialog.settings {
     width: 100%;
