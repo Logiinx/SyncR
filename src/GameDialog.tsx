@@ -4,6 +4,7 @@ import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X }
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { allPlatforms, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
+import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { coverUrl } from './igdb'
@@ -117,7 +118,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                   {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
                 </p>
                 {releaseEvent && releaseEvent.alerts.length > 0 && (
-                  <p>Alert: {reminderTime(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
+                  <p>Alert: {formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
                 )}
                 <GameExtrasInfo igdbId={game.igdbId} />
                 <GamePricesInfo igdbId={game.igdbId} />
@@ -217,10 +218,6 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
     </div>
   )
 }
-
-// "Tue 27 Oct, 10:00"
-const reminderTime = (time: number) =>
-  new Date(time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 // The rating in the list's rows: only the stars given, the last one cut in half for a half star
 export function RatingStars({ rating }: { rating?: number }) {
