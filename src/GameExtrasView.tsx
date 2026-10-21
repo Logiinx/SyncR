@@ -32,9 +32,10 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
-// Prices in the game windows (prices.ts): Steam's price with its discount, the cheapest key
-// that works in France (GG.deals), and the all-time lows. A price opens its Steam or GG.deals
-// page. Nothing shows for games not on Steam or when prices can't load.
+// Prices in the game windows (prices.ts), same look as the To play list (GamePriceLine): Steam
+// logo + price + green discount badge (and the old price), key icon + the cheapest key that
+// works in France (GG.deals), then the all-time lows. A price opens its Steam or GG.deals page.
+// Nothing shows for games not on Steam or when prices can't load.
 export function GamePricesInfo({ igdbId }: { igdbId: number }) {
   const prices = useGamePrices(igdbId)
   if (prices === undefined) return <Spinner />
@@ -45,37 +46,27 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
     deals?.keyshopsLow && `key ${formatEuros(deals.keyshopsLow)}`,
   ].filter(Boolean)
   return (
-    <dl className="game-extras game-prices">
+    <div className="game-prices">
       <div>
-        <dt>Steam</dt>
-        <dd>
-          <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
-            {steam ? formatEuros(steam.final) : 'No price'}
-          </button>
-          {steam && steam.discount > 0 && (
-            <span className="price-was">
-              −{steam.discount}% <s>{formatEuros(steam.initial)}</s>
-            </span>
-          )}
-        </dd>
+        <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
+          <SteamIcon /> {steam ? formatEuros(steam.final) : 'No price'}
+        </button>
+        {steam && steam.discount > 0 && (
+          <>
+            <span className="price-badge">−{steam.discount}%</span>
+            <s className="price-was">{formatEuros(steam.initial)}</s>
+          </>
+        )}
       </div>
       {deals && (
         <div>
-          <dt>Key</dt>
-          <dd>
-            <button className="price-link" onClick={() => openLink(deals.url)}>
-              {deals.keyshops ? formatEuros(deals.keyshops) : 'None'}
-            </button>
-          </dd>
+          <button className="price-link" onClick={() => openLink(deals.url)}>
+            <KeyRound className="price-icon" aria-label="Key" /> {deals.keyshops ? formatEuros(deals.keyshops) : 'None'}
+          </button>
         </div>
       )}
-      {lows.length > 0 && (
-        <div>
-          <dt>Lowest ever</dt>
-          <dd>{lows.join(' · ')}</dd>
-        </div>
-      )}
-    </dl>
+      {lows.length > 0 && <p className="price-lows">Lowest ever: {lows.join(' · ')}</p>}
+    </div>
   )
 }
 
