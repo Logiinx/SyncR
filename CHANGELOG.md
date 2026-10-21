@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Notes**
-- Notes and cards: pasted lines starting with "-", "*" or "•" become a bullet list (in a list or checklist: its items). Ctrl+Shift+V keeps them.
+- Pasted lines starting with "-", "*" or "•" become a list, also on cards (in a list or checklist: its items). Ctrl+Shift+V keeps them.
 
 ## [0.19.1] - 2026-10-22
 
