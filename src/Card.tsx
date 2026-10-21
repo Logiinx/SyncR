@@ -47,7 +47,8 @@ interface Props {
 // (Board.tsx). Clicking out of it or Escape ends editing. Checkboxes can be ticked anytime.
 // Everything else is in its menu (right-click; "⋯" on the phone): Delete (the Board offers Undo
 // for a few seconds), priority (moves up with the other priority cards, blue tint), title.
-// Optional title (menu → Add title): bold, centered or left; clicking it folds the text away.
+// Optional title (menu → Add title, or typed first on a new card): bold, centered; clicking it
+// folds the text away. Emptying it removes it.
 // A card with a title but no text is kept.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
@@ -248,7 +249,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
     >
       {(card.title || editingTitle) && (
         <div
-          className={`card-title${card.titleAlign === 'left' ? ' left' : ''}`}
+          className="card-title"
           title={editingTitle ? undefined : folded ? 'Unfold' : 'Fold'}
           onClick={() => !editingTitle && updateCardTitle(card.id, { folded: card.folded ? undefined : true })}
           onDoubleClick={(event) => event.stopPropagation()} // folds twice, doesn't edit the text
@@ -315,21 +316,11 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
-            ...(menu.editing ? [] : [{ label: 'Edit', onClick: () => startEditing() }]),
-            ...(card.title
-              ? [
-                  { label: 'Edit title', divider: true, onClick: () => setEditingTitle(true) },
-                  {
-                    label: card.titleAlign === 'left' ? 'Center title' : 'Align title left',
-                    onClick: () =>
-                      updateCardTitle(card.id, { titleAlign: card.titleAlign === 'left' ? undefined : 'left' }),
-                  },
-                  {
-                    label: 'Remove title',
-                    onClick: () => updateCardTitle(card.id, { title: undefined, titleAlign: undefined, folded: undefined }),
-                  },
-                ]
-              : [{ label: 'Add title', divider: true, onClick: () => setEditingTitle(true) }]),
+            // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
+            ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
+              ? []
+              : [{ label: 'Edit', onClick: () => startEditing() }]),
+            { label: card.title ? 'Edit title' : 'Add title', divider: true, onClick: () => setEditingTitle(true) },
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               divider: true,

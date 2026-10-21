@@ -86,8 +86,8 @@ export interface Card {
   // A pinned game (Games tab → "Pin to Board"): its id and a copy of its name and cover, so the
   // card still shows if the game leaves the list. content stays null, text = the name.
   game?: { id: string; name: string; coverId?: string }
-  // A title above the text (Card.tsx): bold, centered unless titleAlign is 'left'. folded hides
-  // the text under it. All synced with the card.
+  // A title above the text (Card.tsx): bold, centered. folded hides the text under it.
+  // All synced with the card. titleAlign: left-aligned titles from before v0.16.6, now ignored.
   title?: string
   titleAlign?: 'left'
   folded?: boolean
