@@ -300,22 +300,26 @@ async function nextOrder() {
   return Math.max(0, ...all.map((card) => card.order)) + 1
 }
 
-// A new card at the bottom of its part: empty by default ("+"), with content ("Pin"), or a game
+// A new card at the bottom of its part: empty by default ("+"), with content ("Pin"), or a game.
+// In a group (its menu → New card): at the bottom of the group, with its color if it colors its cards.
 export async function createCard(start?: {
   content: JSONContent | null
   text: string
   priority: boolean
   game?: Card['game']
-}): Promise<string> {
+}, groupId?: string): Promise<string> {
   const now = Date.now()
   const id = crypto.randomUUID()
   const order = await nextOrder()
+  const group = groupId ? await db.cards.get(groupId) : undefined
   await db.cards.add({
     id,
     content: start?.content ?? null,
     text: start?.text ?? '',
     priority: start?.priority ?? false,
     ...(start?.game && { game: start.game }),
+    ...(groupId && { groupId }),
+    ...(group?.colorCards && group.color && { color: group.color }),
     order,
     deleted: false,
     createdAt: now,

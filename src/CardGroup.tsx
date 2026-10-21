@@ -11,6 +11,7 @@ interface Props {
   onPress: (event: React.PointerEvent) => void // pressed on the header: may start a drag (Board.tsx)
   onDialog: (request: DialogRequest) => void // rename / delete questions (shown by the Board)
   onDeleted: (ids: string[]) => void // deleted: what "Undo" brings back
+  onNewCard: () => void // menu → New card: added at the bottom of the group (Board.tsx)
   children: React.ReactNode // its cards, already in order
 }
 
@@ -18,8 +19,8 @@ interface Props {
 // the name and how many cards are in it; its cards under it, a bit indented, joined by a line.
 // Clicking the header folds them away (synced). Folded, it looks like a small pile of cards,
 // so it can't be mistaken for a folded card with a title.
-// Its menu (right-click on the header; "⋯" on the phone): rename, priority, delete.
-function CardGroup({ group, cards, onPress, onDialog, onDeleted, children }: Props) {
+// Its menu (right-click on the header; "⋯" on the phone): new card, rename, priority, delete.
+function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, children }: Props) {
   // colors: one of the "Color…" lists instead of the menu (the group only, or with its cards)
   const [menu, setMenu] = useState<{ x: number; y: number; colors?: 'group' | 'all' } | null>(null)
   const count = cards.length
@@ -97,7 +98,14 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, children }: Pro
           y={menu.y}
           onClose={() => setMenu(null)}
           items={menu.colors ? colorItems(menu.colors === 'all') : [
-            { label: 'Rename', onClick: rename },
+            {
+              label: 'New card',
+              onClick: () => {
+                if (group.folded) updateCardTitle(group.id, { folded: undefined }) // unfolded to show it
+                onNewCard()
+              },
+            },
+            { label: 'Rename', divider: true, onClick: rename },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
               divider: true,

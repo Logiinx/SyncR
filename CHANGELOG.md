@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Added
+- Board: right-click a group → "New card" adds a card at the bottom of that group (unfolds it, takes its color if it colors its cards).
+
 ### Changed
 - Board: a new card (+) starts in its title. Enter, Tab or ↓ go to the text (empty title = no title); Escape drops the card.
 

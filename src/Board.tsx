@@ -91,8 +91,8 @@ function Board({ onClose }: Props) {
     return () => window.clearTimeout(timer)
   }, [undo])
 
-  async function addCard() {
-    setNewCardId(await createCard())
+  async function addCard(groupId?: string) {
+    setNewCardId(await createCard(undefined, groupId))
   }
 
   function deleteCard(id: string) {
@@ -437,7 +437,7 @@ function Board({ onClose }: Props) {
           <span className="board-title">Board</span>
           {!!rows?.length && <span className="board-count">{rows.filter((row) => !row.group).length}</span>}
           {/* New card: lands at the bottom of the normal cards, scrolled into view */}
-          <button className="board-add" onClick={addCard} title="New card">
+          <button className="board-add" onClick={() => addCard()} title="New card">
             <Plus size={16} />
           </button>
         </div>
@@ -453,6 +453,7 @@ function Board({ onClose }: Props) {
                   onPress={(event) => pressCard(card.id, event)}
                   onDialog={setDialog}
                   onDeleted={(ids) => setUndo({ ids, label: 'Group deleted' })}
+                  onNewCard={() => addCard(card.id)}
                 >
                   {withSeparator(inside, renderCard)}
                 </CardGroup>
@@ -466,7 +467,7 @@ function Board({ onClose }: Props) {
           </div>
         )}
         {/* Phone only (CSS): the header "+" is hard to reach with the thumb */}
-        <button className="board-add-row" onClick={addCard}>
+        <button className="board-add-row" onClick={() => addCard()}>
           <Plus size={16} />
           New card
         </button>
