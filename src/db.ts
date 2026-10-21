@@ -154,12 +154,14 @@ export interface CalendarEvent {
 }
 
 // What was done with one alert of a calendar event on this device (eventAlerts.ts): Done, or
-// snoozed. Not synced (as decided: per device). Removed a week after the alert.
+// snoozed. Not synced (as decided: per device; a snooze also moves the event in Google, see
+// eventAlerts.ts). Removed a week after the alert.
 export interface AlertState {
   key: string // "<event id>@<alert time>": a moved event or a new alert time is a new alert
   at: number // the alert time (ms)
   doneAt?: number
   snoozedUntil?: number
+  notMoved?: boolean // snoozed, but the event couldn't be moved in Google (offline…)
 }
 
 // The local database, stored in the browser/app (IndexedDB).

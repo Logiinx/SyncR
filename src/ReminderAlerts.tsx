@@ -18,6 +18,9 @@ export function ReminderCard({ item, onAction, withOpen }: {
       </div>
       <div className="reminder-alert-due">{formatDue(item.time, item.allDay)}</div>
       {item.note && <div className="reminder-alert-note">{item.note}</div>}
+      {item.notMoved && (
+        <div className="reminder-alert-note">Snoozed on this device only: Google Calendar couldn't be reached.</div>
+      )}
       <div className="reminder-alert-buttons">
         <button className="primary" onClick={() => onAction('done')}>
           Done

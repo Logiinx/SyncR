@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { playChime } from './chime'
-import { listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert, snoozeAlertTomorrow } from './eventAlerts'
+import { listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
 
 // What is due right now, used by the cards (ReminderAlerts.tsx) and the desktop pop-up
 // (ReminderPopup.tsx): the alerts of Google Calendar events (eventAlerts.ts).
@@ -16,6 +16,7 @@ export interface DueItem {
   time: number // shown on the card: the event's start
   allDay: boolean
   dueAt: number // when it came due (a snoozed one: when the snooze ended)
+  notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
 }
 
 // The buttons on a due item
@@ -25,19 +26,19 @@ export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) 
   if (action === 'done') return markAlertDone(key)
   if (action === 'snooze10') return snoozeAlert(key, 10)
   if (action === 'snooze60') return snoozeAlert(key, 60)
-  return snoozeAlertTomorrow(key)
+  return snoozeAlert(key, 'tomorrow')
 }
 
 // Event alerts as cards, soonest first
 async function listItems(): Promise<DueItem[]> {
   const alerts = await listEventAlerts()
   return alerts
-    .map((a) => ({ key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt }))
+    .map((a) => ({ key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt, notMoved: a.notMoved }))
     .sort((a, b) => a.dueAt - b.dueAt)
 }
 
 // Everything due and not done, kept up to date. No "already shown" bookkeeping: an alert stays
-// due until Done or Snooze (per device), and alerts missed while the app was closed are simply
+// due until Done or Snooze, and alerts missed while the app was closed are simply
 // due at the start, but only for a day (MISSED_MS), so a device that was off for a while
 // doesn't bring back every old alert.
 // undefined = still loading.

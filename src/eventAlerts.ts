@@ -1,11 +1,13 @@
+import { updateEvent } from './calendarEvents'
 import { db } from './db'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
 // (its own, or the calendar's default: CalendarEvent.alerts) come due and show in the pop-up /
-// cards (dueReminders.ts). Done and Snooze only change this device (db.alertStates, not
-// synced), never the event in Google.
+// cards (dueReminders.ts). Done only changes this device (db.alertStates, not synced); Snooze
+// also moves the event in Google (snoozeAlert).
 
-const HOUR_MS = 60 * 60 * 1000
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
 export const MISSED_MS = 24 * HOUR_MS // an alert missed while SyncR was closed still shows for a day
 const KEEP_STATES_MS = 7 * 24 * HOUR_MS
 
@@ -20,6 +22,7 @@ export interface EventAlert {
   allDay: boolean
   at: number
   dueAt: number
+  notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
 }
 
 // Every alert of the stored events that isn't done, sorted by when they show. Which are due (and
@@ -35,29 +38,61 @@ export async function listEventAlerts(): Promise<EventAlert[]> {
       const state = byKey.get(key)
       if (state?.doneAt) continue
       const dueAt = state?.snoozedUntil ?? at
-      alerts.push({ key, title: event.title, description: event.description, start: event.start, allDay: event.allDay, at, dueAt })
+      alerts.push({
+        key, title: event.title, description: event.description, start: event.start, allDay: event.allDay, at, dueAt,
+        notMoved: !!state?.notMoved,
+      })
     }
   }
   return alerts.sort((a, b) => a.dueAt - b.dueAt)
 }
 
-// "event:<id>@<time>" → the alert time
+// "event:<id>@<time>" → the alert time, and the event's id
 const alertTime = (key: string) => Number(key.slice(key.lastIndexOf('@') + 1))
+const eventId = (key: string) => key.slice(ALERT_PREFIX.length, key.lastIndexOf('@'))
 
-async function save(key: string, change: { doneAt?: number; snoozedUntil?: number }) {
+async function save(key: string, change: { doneAt?: number; snoozedUntil?: number; notMoved?: boolean }) {
   await db.alertStates.put({ key, at: alertTime(key), ...change })
 }
 
 export const markAlertDone = (key: string) => save(key, { doneAt: Date.now() })
-export const snoozeAlert = (key: string, minutes: number) => save(key, { snoozedUntil: Date.now() + minutes * 60 * 1000 })
-
-// "Tomorrow": the alert's own time of day, tomorrow (like snoozeTomorrow in reminders.ts)
-export function snoozeAlertTomorrow(key: string) {
+// When a snoozed alert shows again: in some minutes, or "Tomorrow": the alert's own time of day,
+// tomorrow
+function snoozeEnd(key: string, minutes: number | 'tomorrow') {
+  if (minutes !== 'tomorrow') return Date.now() + minutes * 60 * 1000
   const at = new Date(alertTime(key))
   const next = new Date()
   next.setHours(at.getHours(), at.getMinutes(), 0, 0)
   next.setDate(next.getDate() + 1)
-  return save(key, { snoozedUntil: next.getTime() })
+  return next.getTime()
+}
+
+// Snooze: the card goes away at once (this device), then the event moves in Google so that its
+// alert comes back at the snooze's end, on every device (event 14:30, 15-min alert shown at 14:15,
+// 10 min → event at 14:40). For a repeating event only this date moves. All-day events (game
+// releases: moving them would change the release day) are only snoozed here. If Google can't be
+// reached, the snooze stays on this device and the card says so when it's back.
+export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
+  const until = snoozeEnd(key, minutes)
+  await save(key, { snoozedUntil: until })
+  const event = await db.events.get(eventId(key))
+  if (!event || event.allDay) return
+  // Google keeps whole minutes
+  const start = Math.round((event.start + until - alertTime(key)) / MINUTE_MS) * MINUTE_MS
+  try {
+    await updateEvent(event, { title: event.title, description: event.description, start, alert: 'keep' })
+  } catch (error) {
+    console.error(error)
+    await save(key, { snoozedUntil: until, notMoved: true })
+    return
+  }
+  // The moved event's other alerts that are now past (e.g. "1 day before") stay done, instead of
+  // coming back as missed ones (a moved event's alerts are new alerts: new keys)
+  const now = Date.now()
+  for (const before of event.alerts) {
+    const at = start - before * MINUTE_MS
+    if (at < now) await save(`${ALERT_PREFIX}${event.id}@${at}`, { doneAt: now })
+  }
 }
 
 // States of alerts more than a week old aren't needed anymore (those alerts no longer show)
