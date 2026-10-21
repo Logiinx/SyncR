@@ -111,9 +111,34 @@ export async function moveReleased() {
 
 const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0)
 
+// How precise a release date is (TBA 0, year 1, quarter 2, month 3, exact day 4) and the period
+// it covers. Vague dates are IGDB's texts: "2026", "Q1 2027", "Nov 2026". TBA, or a text SyncR
+// doesn't know, covers all time.
+function releasePeriod(time?: number, label?: string): { level: number; start: number; end: number } {
+  if (time) {
+    const day = startOfDay(time)
+    return { level: 4, start: day, end: new Date(day).setDate(new Date(day).getDate() + 1) }
+  }
+  let match = label?.match(/^(\d{4})$/)
+  if (match) return { level: 1, start: new Date(+match[1], 0, 1).getTime(), end: new Date(+match[1] + 1, 0, 1).getTime() }
+  match = label?.match(/^Q([1-4]) (\d{4})$/)
+  if (match) {
+    const [quarter, year] = [+match[1], +match[2]]
+    return { level: 2, start: new Date(year, quarter * 3 - 3, 1).getTime(), end: new Date(year, quarter * 3, 1).getTime() }
+  }
+  const month = label && /^[A-Z][a-z]{2} \d{4}$/.test(label) ? new Date(`1 ${label}`) : undefined
+  if (month && !isNaN(month.getTime())) {
+    return { level: 3, start: month.getTime(), end: new Date(month.getFullYear(), month.getMonth() + 1, 1).getTime() }
+  }
+  return { level: 0, start: Infinity, end: Infinity }
+}
+
 // Once a day: fresh names, covers, platforms and release dates from IGDB. Only changed games
-// are saved (so they sync). A later date for a Waiting game is a delay: delayedFrom keeps the
-// first date it had, for the banner in the Games tab.
+// are saved (so they sync). For the banners in the Games tab, a Waiting game's new date is:
+// - a delay when it starts after the old date's period ends (Q1 2027 → 15 Jun 2027):
+//   delayedFrom / delayedFromLabel keep the first date it had;
+// - else "Date set" when it's more precise (TBA → 2027 → Q1 2027 → Feb 2027 → 15 Feb 2027):
+//   datedFrom keeps the first vaguer date. A delay wins over it (user's choice).
 export async function refreshGames(force = false) {
   if (!isComplete(await loadConnection())) return
   if (!force && Date.now() - read<number>(REFRESHED_KEY, 0) < REFRESH_EVERY) return
@@ -129,12 +154,23 @@ export async function refreshGames(force = false) {
     if (found.releaseDate !== game.releaseDate || found.releaseLabel !== game.releaseLabel) {
       change.releaseDate = found.releaseDate
       change.releaseLabel = found.releaseLabel
-      // A later day (not just a later time on the same day) counts as a delay
-      const later = !found.releaseDate || startOfDay(found.releaseDate) > startOfDay(game.releaseDate!)
-      if (game.status === 'waiting' && game.releaseDate && later) change.delayedFrom = game.delayedFrom ?? game.releaseDate
-      // Moved back to (or before) its first date: no longer delayed
-      if (game.delayedFrom && found.releaseDate && startOfDay(found.releaseDate) <= startOfDay(game.delayedFrom)) {
+      const before = releasePeriod(game.releaseDate, game.releaseLabel)
+      const after = releasePeriod(found.releaseDate, found.releaseLabel)
+      if (game.status === 'waiting' && after.start >= before.end) {
+        // Delayed (a later day, not just a later time on the same day)
+        if (game.delayedFrom === undefined && game.delayedFromLabel === undefined) {
+          if (game.releaseDate) change.delayedFrom = game.releaseDate
+          else change.delayedFromLabel = game.releaseLabel
+        }
+        change.datedFrom = undefined
+      } else if (game.status === 'waiting' && after.level > before.level) {
+        change.datedFrom = game.datedFrom ?? formatRelease(game.releaseDate, game.releaseLabel)
+      }
+      // Moved back into (or before) its first date: no longer delayed
+      const first = game.delayedFrom || game.delayedFromLabel ? releasePeriod(game.delayedFrom, game.delayedFromLabel) : undefined
+      if (first && after.start < first.end) {
         change.delayedFrom = undefined
+        change.delayedFromLabel = undefined
       }
     }
     if (Object.keys(change).length > 0) await updateGame(game.id, change)

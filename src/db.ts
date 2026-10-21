@@ -121,6 +121,8 @@ export interface Game {
   releaseDate?: number // release day, ms (PC, else Android, else consoles: igdb.ts trackedRelease)
   releaseLabel?: string // only a vague date is known, e.g. "Q1 2027"; neither = not announced (TBA)
   delayedFrom?: number // the earlier release day, when the refresh found a delay (banner until dismissed)
+  delayedFromLabel?: string // the same when the earlier date was vague, e.g. "Q1 2027"
+  datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)

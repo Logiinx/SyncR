@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isReleased, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
@@ -300,20 +300,34 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   )
 }
 
-// Games the daily refresh found delayed (games.ts): old date → new date, until dismissed (✕).
-// Saved on the game, so it shows on both devices.
+// What the daily refresh found (games.ts), until dismissed (✕): Waiting games whose date got
+// more precise ("Date set", green) and delayed games (yellow). Old date → new date. Saved on
+// the game, so it shows on both devices.
 function DelayBanner({ games }: { games: Game[] }) {
-  const delayed = games.filter((g) => g.delayedFrom)
-  if (delayed.length === 0) return null
+  const dated = games.filter((g) => g.datedFrom)
+  const delayed = games.filter((g) => g.delayedFrom || g.delayedFromLabel)
+  if (dated.length === 0 && delayed.length === 0) return null
   return (
     <div className="games-delays">
+      {dated.map((game) => (
+        <div key={`dated-${game.id}`} className="games-delay games-dated">
+          <CalendarCheck size={15} />
+          <span>
+            <b>Date set:</b> {game.name} · {game.datedFrom} → {formatRelease(game.releaseDate, game.releaseLabel)}
+          </span>
+          <button onClick={() => updateGame(game.id, { datedFrom: undefined })} title="Dismiss">
+            <X size={15} />
+          </button>
+        </div>
+      ))}
       {delayed.map((game) => (
         <div key={game.id} className="games-delay">
           <CalendarClock size={15} />
           <span>
-            <b>Delayed:</b> {game.name} · {formatRelease(game.delayedFrom)} → {formatRelease(game.releaseDate, game.releaseLabel)}
+            <b>Delayed:</b> {game.name} · {formatRelease(game.delayedFrom, game.delayedFromLabel)} →{' '}
+            {formatRelease(game.releaseDate, game.releaseLabel)}
           </span>
-          <button onClick={() => updateGame(game.id, { delayedFrom: undefined })} title="Dismiss">
+          <button onClick={() => updateGame(game.id, { delayedFrom: undefined, delayedFromLabel: undefined })} title="Dismiss">
             <X size={15} />
           </button>
         </div>

@@ -3521,6 +3521,14 @@ h3.games-group-title {
   color: var(--text-yellow);
 }
 
+.games-dated {
+  background: color-mix(in srgb, var(--text-green) 12%, var(--bg));
+}
+
+.games-dated > svg {
+  color: var(--text-green);
+}
+
 .games-delay span {
   flex: 1;
   min-width: 0;
