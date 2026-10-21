@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-21
+
 - Games: Steam price (and discount), cheapest key that works in France and lowest ever, in a game's window and on To play games.
 
 ## [0.17.1] - 2026-10-21
