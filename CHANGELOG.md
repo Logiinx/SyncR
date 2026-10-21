@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-10-22
+
 **App**
 - What's new: changes are grouped by area (Notes, Games…), and on the PC the scroll bar always shows when there's more below.
 
