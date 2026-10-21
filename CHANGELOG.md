@@ -15,6 +15,7 @@ All notable changes to SyncR. Newest version first.
 - Menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line, like on the Board.
 - Windows that only show things (Settings, color rules, What's new, event preview) close with a ✕ at the top right, like the game window.
 - Error messages and red menu items all use the same red (the one sync errors use).
+- Games, Board: a game and its Board card share one priority: marking one marks the other.
 - Games: the game window's alert time reads like in Reminders ("Tomorrow, 10:00", "27 October 2026, 10:00").
 
 ## [0.18.6] - 2026-10-21

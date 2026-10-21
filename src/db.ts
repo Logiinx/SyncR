@@ -445,9 +445,10 @@ export function isEmptyCard(card: Card): boolean {
   return !blocks || (blocks.length === 1 && blocks[0].type === 'paragraph' && !blocks[0].content)
 }
 
-// Priority on / off: the card moves to the bottom of its new part
+// Priority on / off: the card moves to the bottom of its new part (a game card: its game too)
 export async function setCardPriority(id: string, priority: boolean) {
   await db.cards.update(id, { priority, order: await nextOrder(), updatedAt: Date.now() })
+  await gameFollowsCard(id, priority)
   changed()
 }
 
@@ -471,6 +472,7 @@ export async function moveCard(id: string, priority: boolean, order: number, gro
     ...(await enteringColor(id, groupId)),
     updatedAt: Date.now(),
   })
+  await gameFollowsCard(id, priority)
   changed()
 }
 
@@ -487,6 +489,7 @@ export async function removeOldDeletedGames(): Promise<string[]> {
 
 export async function updateGame(id: string, change: Partial<Game>) {
   await db.games.update(id, { ...change, updatedAt: Date.now() })
+  if (change.priority !== undefined) await cardFollowsGame(id, change.priority)
   changed()
 }
 
@@ -496,9 +499,8 @@ export async function setGameStatus(id: string, status: GameStatus) {
 
 // ---------- Games on the Board ----------
 
-// "Pin to Board" (Games tab): a card for the game, at the bottom of its part. A priority game
-// starts as a priority card; after that the card's priority and the game's are separate.
-// Already pinned: nothing.
+// "Pin to Board" (Games tab): a card for the game, at the bottom of its part, with the game's
+// priority (the two share it, see below). Already pinned: nothing.
 export async function pinGameToBoard(game: Game) {
   if (await pinnedCard(game.id)) return
   await createCard({
@@ -516,3 +518,35 @@ export async function unpinGameFromBoard(gameId: string) {
 
 export const pinnedCard = async (gameId: string) =>
   (await db.cards.toArray()).find((card) => !card.deleted && card.game?.id === gameId)
+
+// A game and its Board card share one priority: marking one marks the other. Both rows keep
+// their own field (the Board sorts cards by it), so each change is copied to the other.
+async function cardFollowsGame(gameId: string, priority: boolean) {
+  const card = await pinnedCard(gameId)
+  if (card && card.priority !== priority) {
+    await db.cards.update(card.id, { priority, order: await nextOrder(), updatedAt: Date.now() })
+  }
+}
+
+async function gameFollowsCard(cardId: string, priority: boolean) {
+  const gameId = (await db.cards.get(cardId))?.game?.id
+  const game = gameId ? await db.games.get(gameId) : undefined
+  if (game && !game.deleted && game.priority !== priority) {
+    await db.games.update(game.id, { priority, updatedAt: Date.now() })
+  }
+}
+
+// Pairs that differ (set before they were linked, or by an older app version on the other
+// device): either one marked → both marked. Run after each sync (games.ts).
+export async function matchGamePriorities() {
+  const cards = await db.cards.filter((card) => !card.deleted && !!card.game).toArray()
+  let fixed = false
+  for (const card of cards) {
+    const game = await db.games.get(card.game!.id)
+    if (!game || game.deleted || game.priority === card.priority) continue
+    if (game.priority) await db.cards.update(card.id, { priority: true, order: await nextOrder(), updatedAt: Date.now() })
+    else await db.games.update(game.id, { priority: true, updatedAt: Date.now() })
+    fixed = true
+  }
+  if (fixed) changed()
+}

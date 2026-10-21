@@ -1,4 +1,4 @@
-import { changed, db, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
+import { changed, db, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
 import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
@@ -281,6 +281,7 @@ export function startGameChecks() {
   }
   const refresh = async () => {
     try {
+      await matchGamePriorities()
       await refreshGames()
       await moveReleased() // a date may have moved to today
       await syncReleaseEvents()
