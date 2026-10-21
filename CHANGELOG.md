@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Games: tidier prices on To play games: Steam logo and key icon on their own lines, discount in a green badge.
+
 ## [0.18.0] - 2026-10-21
 
 - Games: Steam price (and discount), cheapest key that works in France and lowest ever, in a game's window and on To play games.

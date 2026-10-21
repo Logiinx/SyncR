@@ -4721,11 +4721,40 @@ h3.games-group-title {
 }
 
 .game-price-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
   color: var(--link);
+  font-size: 0.85em;
 }
 
 .game-tile .game-price-line {
-  white-space: normal; /* narrow tiles: the key price goes on a second line rather than cut off */
+  flex-direction: column; /* grid: Steam and key on their own lines, every tile the same shape */
+  margin-top: 2px;
+  font-size: 0.8em;
+}
+
+.game-price-line > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.price-icon {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  color: var(--text-dim);
+}
+
+.price-badge {
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--hl-green);
+  color: var(--text-green);
+  font-size: 0.9em;
 }
 
 .price-was {
