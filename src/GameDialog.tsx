@@ -4,7 +4,7 @@ import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X }
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { formatRelease, releaseEventId, shortPlatforms, STATUSES } from './games'
 import { openLink } from './links'
-import { GameExtrasInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
+import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { coverUrl } from './igdb'
 
@@ -120,6 +120,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                   <p>Alert: {reminderTime(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
                 )}
                 <GameExtrasInfo igdbId={game.igdbId} />
+                <GamePricesInfo igdbId={game.igdbId} />
               </div>
               <button className="gd-close" onClick={onClose} title="Close">
                 <X size={18} />

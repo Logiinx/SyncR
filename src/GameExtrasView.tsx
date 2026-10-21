@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
+import { formatEuros, useGamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
 // the trailer (a button that opens a panel beside the window). Nothing shows when they can't
@@ -27,6 +28,53 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
             <dd>{values.join(', ')}</dd>
           </div>
         ))}
+    </dl>
+  )
+}
+
+// Prices in the game windows (prices.ts): Steam's price with its discount, the cheapest key
+// that works in France (GG.deals), and the all-time lows. A price opens its Steam or GG.deals
+// page. Nothing shows for games not on Steam or when prices can't load.
+export function GamePricesInfo({ igdbId }: { igdbId: number }) {
+  const prices = useGamePrices(igdbId)
+  if (prices === undefined) return <Spinner />
+  if (!prices) return null
+  const { steam, deals } = prices
+  const lows = [
+    deals?.retailLow && `store ${formatEuros(deals.retailLow)}`,
+    deals?.keyshopsLow && `key ${formatEuros(deals.keyshopsLow)}`,
+  ].filter(Boolean)
+  return (
+    <dl className="game-extras game-prices">
+      <div>
+        <dt>Steam</dt>
+        <dd>
+          <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
+            {steam ? formatEuros(steam.final) : 'No price'}
+          </button>
+          {steam && steam.discount > 0 && (
+            <span className="price-was">
+              −{steam.discount}% <s>{formatEuros(steam.initial)}</s>
+            </span>
+          )}
+        </dd>
+      </div>
+      {deals && (
+        <div>
+          <dt>Key</dt>
+          <dd>
+            <button className="price-link" onClick={() => openLink(deals.url)}>
+              {deals.keyshops ? formatEuros(deals.keyshops) : 'None'}
+            </button>
+          </dd>
+        </div>
+      )}
+      {lows.length > 0 && (
+        <div>
+          <dt>Lowest ever</dt>
+          <dd>{lows.join(' · ')}</dd>
+        </div>
+      )}
     </dl>
   )
 }

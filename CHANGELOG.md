@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Games: a game's window shows its Steam price (with discount), the cheapest key that works in France, and the lowest ever. Click to open.
+
 ## [0.17.1] - 2026-10-21
 
 - Sections: Enter in a title opens the section and moves into it. On PC, a click only folds/unfolds; right-click a title to edit it.

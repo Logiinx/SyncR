@@ -4698,6 +4698,33 @@ h3.games-group-title {
   overflow-wrap: anywhere;
 }
 
+/* Prices under the extras (GameExtrasView.tsx): a price opens its Steam or GG.deals page */
+.game-prices {
+  margin-top: 6px;
+}
+
+.game-extras.game-prices dt {
+  width: 80px;
+}
+
+.price-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.price-link:hover {
+  text-decoration: underline;
+}
+
+.price-was {
+  margin-left: 8px;
+  color: var(--text-dim);
+}
+
 /* A game window and, on a phone, its trailer panel below it (GameDialog.tsx, GameCalendar.tsx) */
 .game-window {
   display: flex;

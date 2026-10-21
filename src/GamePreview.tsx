@@ -3,7 +3,7 @@ import { ChevronDown, Pin, Plus, X } from 'lucide-react'
 import { addGame, isReleased, STATUSES } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
-import { GameExtrasInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
+import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import ContextMenu from './ContextMenu'
 
@@ -70,6 +70,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
               {game.platforms.length > 0 && <p className="calendar-popup-info">{game.platforms.join(', ')}</p>}
               {label && <p className="calendar-popup-info">In your list: {label}</p>}
               <GameExtrasInfo igdbId={game.igdbId} />
+              <GamePricesInfo igdbId={game.igdbId} />
               <div className="calendar-popup-actions">
                 {!status && !released && (
                   <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>

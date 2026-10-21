@@ -1,6 +1,7 @@
 // Game prices in euros: Steam's own price and the cheapest key (GG.deals), through our proxy's
 // /prices route (proxy/igdb-worker.js). Looked up live, never saved or synced.
-import { igdb, igdbProxyFetch } from './igdb'
+import { useEffect, useState } from 'react'
+import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
 export interface GamePrices {
   steamId: number
@@ -75,4 +76,22 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
 export function formatEuros(value: number | string): string {
   const euros = typeof value === 'number' ? value / 100 : Number(value)
   return euros.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+}
+
+// One game's prices for the game windows: undefined while loading, null when there's nothing
+// to show (not on Steam, game search not set up, offline)
+export function useGamePrices(igdbId: number): GamePrices | null | undefined {
+  const [prices, setPrices] = useState<GamePrices | null | undefined>(undefined)
+  useEffect(() => {
+    let current = true
+    setPrices(undefined)
+    loadConnection()
+      .then((connection) => (isComplete(connection) ? gamePrices([igdbId]) : null))
+      .then((result) => current && setPrices(result?.get(igdbId) ?? null))
+      .catch(() => current && setPrices(null))
+    return () => {
+      current = false
+    }
+  }, [igdbId])
+  return prices
 }
