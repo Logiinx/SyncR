@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.5] - 2026-10-21
+
 - Games: "Lowest ever" says just "Free" when a game was once given away (was "store free").
 
 ## [0.18.4] - 2026-10-21
