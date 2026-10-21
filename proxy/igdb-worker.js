@@ -9,6 +9,8 @@
 //   TWITCH_CLIENT_SECRET  same place ("New Secret")
 //   PROXY_PASSWORD        any long random text; typed once in SyncR's Settings on each device,
 //                         so only your SyncR can use this Worker (and your IGDB quota)
+//   FRIEND_PASSWORD       optional: a second password for someone else's SyncR; game search
+//                         and Google sign-in work, game prices don't (your GG.deals limit)
 //   GOOGLE_CLIENT_SECRET  console.cloud.google.com → Google Auth Platform → Clients → SyncR
 //   GGDEALS_KEY           gg.deals → Settings → API key (game prices, see /prices)
 //
@@ -141,9 +143,12 @@ export default {
     // The browser asks first whether the real request is allowed (CORS preflight)
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     if (request.method !== 'POST') return reply({ error: 'Use POST' }, 405)
-    if (!env.PROXY_PASSWORD || request.headers.get('X-SyncR-Password') !== env.PROXY_PASSWORD) {
-      return reply({ error: 'Wrong password' }, 401)
-    }
+    // Owner: everything. Friend (optional): everything but prices, so they can't use up the
+    // owner's GG.deals limit.
+    const password = request.headers.get('X-SyncR-Password')
+    const owner = !!env.PROXY_PASSWORD && password === env.PROXY_PASSWORD
+    const friend = !!env.FRIEND_PASSWORD && password === env.FRIEND_PASSWORD
+    if (!owner && !friend) return reply({ error: 'Wrong password' }, 401)
     const endpoint = new URL(request.url).pathname.replace(/^\/+|\/+$/g, '')
     if (endpoint === 'google/token') {
       if (!env.GOOGLE_CLIENT_SECRET) return reply({ error: 'GOOGLE_CLIENT_SECRET is not set' }, 500)
@@ -155,6 +160,7 @@ export default {
       }
     }
     if (endpoint === 'prices') {
+      if (!owner) return reply({}, 200) // the app then just shows no prices
       try {
         return reply(await gamePrices(env, request), 200)
       } catch (error) {
