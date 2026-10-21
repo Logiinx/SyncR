@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { loadRuleGroups, saveRuleGroups, type ColorRule, type RuleGroup } from './colorRules'
 import { COLORS } from './ColorPicker'
+import CloseButton from './CloseButton'
 
 const newRule = (): ColorRule => ({ id: crypto.randomUUID(), words: '', color: 'red', enabled: true })
 
-// Edit the color rules (colorRules.ts). Every change is saved right away; "Done" just closes.
+// Edit the color rules (colorRules.ts). Every change is saved right away; ✕ just closes.
 function ColorRulesDialog({ onClose }: { onClose: () => void }) {
   const [groups, setGroups] = useState<RuleGroup[] | null>(null)
   const [colorsFor, setColorsFor] = useState<string | null>(null) // rule whose palette is open
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // group id
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadRuleGroups().then(setGroups)
+    dialogRef.current?.focus({ preventScroll: true }) // so Escape works
   }, [])
 
   function update(next: RuleGroup[]) {
@@ -32,12 +35,17 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
         className="dialog color-rules"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-label="Color rules"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2>Color rules</h2>
+        <div className="dialog-head">
+          <h2>Color rules</h2>
+          <CloseButton onClick={onClose} />
+        </div>
         <p className="settings-note">
           Words in your notes get these colors automatically (whole words, any case). Separate several words with
           commas. Switch a group off when you don't need it.
@@ -138,12 +146,6 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
             + New group
           </button>
         )}
-
-        <div className="dialog-buttons">
-          <button className="primary" onClick={onClose} autoFocus>
-            Done
-          </button>
-        </div>
       </div>
     </div>
   )

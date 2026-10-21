@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
+import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2 } from 'lucide-react'
+import CloseButton from './CloseButton'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { allPlatforms, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
@@ -123,9 +124,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                 <GameExtrasInfo igdbId={game.igdbId} />
                 <GamePricesInfo igdbId={game.igdbId} />
               </div>
-              <button className="gd-close" onClick={onClose} title="Close">
-                <X size={18} />
-              </button>
+              <CloseButton onClick={onClose} />
             </div>
 
             <div className="gd-status" role="group" aria-label="Status">

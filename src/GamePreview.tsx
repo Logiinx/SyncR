@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pin, Plus, X } from 'lucide-react'
+import { ChevronDown, Pin, Plus } from 'lucide-react'
+import CloseButton from './CloseButton'
 import { addGame, allPlatforms, isReleased, statusLabel, STATUSES } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
@@ -62,9 +63,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
             <div className="calendar-popup-main">
               <div className="gd-head">
                 <h2>{game.name}</h2>
-                <button className="gd-close" onClick={onClose} title="Close">
-                  <X size={18} />
-                </button>
+                <CloseButton onClick={onClose} />
               </div>
               <p className="calendar-popup-info">{release}</p>
               {game.platforms.length > 0 && <p className="calendar-popup-info">{allPlatforms(game.platforms)}</p>}

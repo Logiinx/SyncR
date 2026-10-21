@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TriangleAlert, X } from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
+import CloseButton from './CloseButton'
 import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { diffNotes, type Line, type Row, type Segment, type Token } from './noteDiff'
@@ -107,9 +108,7 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
             Keep this copy
           </button>
         </span>
-        <button className="compare-close" onClick={onClose} title="Close (Esc)">
-          <X size={16} />
-        </button>
+        <CloseButton onClick={onClose} />
       </div>
 
       <div className={`compare-body${narrow ? ' merged' : ' columns'}`}>

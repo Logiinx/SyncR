@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import changelog from '../CHANGELOG.md?raw'
 import { read, write } from './localState'
+import CloseButton from './CloseButton'
 
 // After an update, shows once what changed since the version last used on this device.
 // The text comes from CHANGELOG.md, built into the app. A new device shows nothing.
@@ -82,7 +83,7 @@ export function updateRelease(version: string, notes: string): Release {
 }
 
 // The notes window. The title names this version (or the update's); with several releases each
-// gets its own heading. With onUpdate (the update bar's "What's new"): Close and "Update now".
+// gets its own heading. With onUpdate (the update bar's "What's new"): an "Update now" button.
 export function WhatsNewDialog(props: {
   releases: Release[]
   version?: string
@@ -90,39 +91,35 @@ export function WhatsNewDialog(props: {
   onClose: () => void
 }) {
   const { releases, onUpdate, onClose } = props
-  const okRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => okRef.current?.focus(), [])
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), []) // so Escape works
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
         className="dialog whats-new"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
+        <div className="dialog-head">
+          <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
+          <CloseButton onClick={onClose} />
+        </div>
         <div className="whats-new-body">
           {releases.map((r) => (
             <ReleaseNotes key={r.version} release={r} showVersion={releases.length > 1} />
           ))}
         </div>
-        <div className="dialog-buttons">
-          {onUpdate ? (
-            <>
-              <button ref={okRef} onClick={onClose}>
-                Close
-              </button>
-              <button className="primary" onClick={onUpdate}>
-                Update now
-              </button>
-            </>
-          ) : (
-            <button ref={okRef} className="primary" onClick={onClose}>
-              OK
+        {onUpdate && (
+          <div className="dialog-buttons">
+            <button className="primary" onClick={onUpdate}>
+              Update now
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

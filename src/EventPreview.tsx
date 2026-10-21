@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { Bell, Repeat } from 'lucide-react'
 import type { CalendarEvent } from './db'
+import CloseButton from './CloseButton'
 
 // A calendar event, shown big (left click on an event in the Reminders tab): the whole title
 // with its line breaks, the day and time written out, the alert, whether it repeats, the notes.
 // Edit opens the event window (EventDialog.tsx); Delete asks first (RemindersView.tsx).
-// Escape or clicking outside closes it, Enter edits.
+// ✕, Escape or clicking outside closes it, Enter edits.
 
 // "At start", "10 minutes before", "1 hour before", "2 days before"
 function alertText(minutes: number) {
@@ -42,7 +43,10 @@ function EventPreview(props: {
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2 className="event-preview-title">{event.title}</h2>
+        <div className="dialog-head">
+          <h2 className="event-preview-title">{event.title}</h2>
+          <CloseButton onClick={onClose} />
+        </div>
         <p className="event-preview-when">{whenText(event)}</p>
         <p className="event-preview-info">
           <Bell size={14} />
@@ -59,7 +63,6 @@ function EventPreview(props: {
           <button className="danger event-delete" onClick={props.onDelete}>
             Delete
           </button>
-          <button onClick={onClose}>Close</button>
           <button ref={editRef} className="primary" onClick={props.onEdit}>
             Edit
           </button>

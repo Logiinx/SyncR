@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Flame, KeyRound, Play, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame, KeyRound, Play } from 'lucide-react'
+import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
@@ -232,9 +233,7 @@ export function TrailerTheater(props: {
         <button className="game-trailer-link" onClick={() => openLink(`https://www.youtube.com/watch?v=${trailer.id}`)}>
           Open on YouTube
         </button>
-        <button className="gd-close" onClick={props.onClose} title="Close">
-          <X size={18} />
-        </button>
+        <CloseButton onClick={props.onClose} />
       </header>
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&rel=0`}

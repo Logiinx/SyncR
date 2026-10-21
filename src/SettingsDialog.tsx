@@ -32,6 +32,7 @@ import {
   type FontId,
 } from './appearance'
 import Spinner from './Spinner'
+import CloseButton from './CloseButton'
 
 // Settings. Changes are saved right away. Closed with Escape or a click outside it.
 function SettingsDialog({ onClose }: { onClose: () => void }) {
@@ -110,7 +111,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2>Settings</h2>
+        <div className="dialog-head">
+          <h2>Settings</h2>
+          <CloseButton onClick={onClose} />
+        </div>
 
         {/* As many columns as the window needs to show everything without scrolling (PC,
             useSettingsColumns); one on the phone */}

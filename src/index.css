@@ -1632,21 +1632,6 @@ button {
   border-color: var(--text-dim);
 }
 
-.compare-close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--text-dim);
-}
-
-.compare-close:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
 .compare-body {
   flex: 1;
   min-height: 0;
@@ -4367,17 +4352,35 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
-.gd-close {
+/* The ✕ of every window (CloseButton.tsx) */
+.close-button {
   display: flex;
   flex-shrink: 0;
-  /* Same space above and on the right (19px), centered on the name's first line */
+  /* Same space above and on the right (19px), centered on the title's first line */
   margin: -2px -2px 0 0;
   padding: 5px;
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.gd-close:hover {
+/* In a bar whose items are centered (conflict compare): no nudge */
+.compare-header .close-button {
+  margin: 0;
+}
+
+/* A small window's title with the ✕ beside it (Settings, What's new…) */
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.dialog-head h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+.close-button:hover {
   background: var(--hover);
   color: var(--text);
 }
