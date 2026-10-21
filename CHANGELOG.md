@@ -11,7 +11,7 @@ All notable changes to SyncR. Newest version first.
 - Notes, sync: dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Conflict copies use it too, with the time.
 - Games: search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
 - Games: game window and preview list all platforms, PC and Android first. Search results keep the short list.
-- Games: calendar rows have an "Add" button like search results (was a pin icon). The preview says "In To play" like the rows.
+- Games: calendar rows have an "Add" button like search results (was a pin icon). The preview says "In To play" like the rows. A game already in your list opens its game window.
 - Menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line, like on the Board.
 - Windows that only show things (Settings, color rules, What's new, event preview) close with a ✕ at the top right, like the game window.
 - Error messages and red menu items all use the same red (the one sync errors use).

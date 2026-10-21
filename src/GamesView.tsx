@@ -121,7 +121,7 @@ function GamesView() {
         </div>
         {view === 'calendar' ? (
           connected ? (
-            <GameCalendar inList={inList} layout={layout} top={top} />
+            <GameCalendar inList={inList} layout={layout} top={top} onOpen={setOpenId} />
           ) : (
             connection && (
               <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>

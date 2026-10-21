@@ -14,8 +14,9 @@ import Spinner from './Spinner'
 // PC: a month grid (Monday first) or a list, with a switch (GamesView.tsx). Phone: always the list.
 // Grid: games with only a month ("Nov 2026") are listed under that month's grid. Games with only
 // a quarter or a year ("Q1 2027", "2026") come last, in "No exact date yet" (in the list, all
-// vague dates do). Click a game for a small popup (GamePreview.tsx). The pin (rows, popup) adds
-// a game to Waiting; games already in your list show where they are instead (grid: a blue tint).
+// vague dates do). Click a game for a small popup (GamePreview.tsx), or its game window when it's
+// already in your list (like search results). "Add" (rows) and the popup's button add a game to
+// Waiting; games already in your list show where they are instead (grid: a blue tint).
 
 export type CalendarLayout = 'grid' | 'list'
 
@@ -26,8 +27,13 @@ export const DEFAULT_TOP = 500
 // Loaded once per app start (switching views doesn't ask IGDB again)
 let cache: Promise<UpcomingGame[]> | null = null
 
-function GameCalendar(props: { inList: Map<string, GameStatus>; layout: CalendarLayout; top: number }) {
-  const { inList, layout, top } = props
+function GameCalendar(props: {
+  inList: Map<string, GameStatus>
+  layout: CalendarLayout
+  top: number
+  onOpen: (id: string) => void // a game in your list: its game window
+}) {
+  const { inList, layout, top, onOpen } = props
   const [loaded, setLoaded] = useState<UpcomingGame[] | null>(null) // Steam's top 1000
   const [error, setError] = useState('')
   const [shown, setShown] = useState<UpcomingGame | null>(null) // the game in the popup
@@ -60,17 +66,18 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
   if (games.length === 0) return <p className="game-search-message">No upcoming games found</p>
 
   const statusOf = (game: UpcomingGame) => inList.get(gameId(game.igdbId))
+  const show = (game: UpcomingGame) => (statusOf(game) ? onOpen(gameId(game.igdbId)) : setShown(game))
   const grid = layout === 'grid' && !narrow
   const vague = games.filter((g) => !g.exact && !(grid && g.monthOnly))
   return (
     <div className="game-calendar">
       {grid ? (
-        <CalendarGrid games={games} statusOf={statusOf} onShow={setShown} />
+        <CalendarGrid games={games} statusOf={statusOf} onShow={show} />
       ) : (
-        <CalendarList games={games.filter((g) => g.exact)} statusOf={statusOf} onShow={setShown} />
+        <CalendarList games={games.filter((g) => g.exact)} statusOf={statusOf} onShow={show} />
       )}
       {vague.length > 0 && (
-        <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={setShown} />
+        <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={show} />
       )}
       {shown && (
         <GamePreview game={shown} release={releaseLine(shown)} status={statusOf(shown)} onClose={() => setShown(null)} />
