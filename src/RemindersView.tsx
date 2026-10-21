@@ -151,7 +151,7 @@ function RemindersView() {
     >
       <span className="reminder-row-text">
         <span className="reminder-text" title={event.title}>{event.title}</span>
-        {event.description && <span className="reminder-row-note">{event.description}</span>}
+        {event.description && <span className="reminder-row-note" title={event.description}>{event.description}</span>}
       </span>
       <span className="reminder-due">
         {formatDue(event.start, event.allDay)}

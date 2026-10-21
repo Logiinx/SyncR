@@ -277,7 +277,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       <Cover coverId={game.coverId} />
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
-        <div className="game-details">{details}</div>
+        <div className="game-details" title={details}>{details}</div>
         {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
       </div>
       {played && (game.rating || game.liked) && (

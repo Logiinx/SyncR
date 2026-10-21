@@ -107,7 +107,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
                 }}
               >
                 <span className="note-date">{formatDate(note.updatedAt)}</span>
-                <span className="note-title">
+                <span className="note-title" title={noteTitle(note)}>
                   {/* A conflict copy made by sync: open it to compare it with the original */}
                   {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
                   {noteTitle(note)}

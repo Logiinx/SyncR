@@ -236,6 +236,7 @@ const NotePickerList = forwardRef<PickerHandle, PickerProps>(function NotePicker
     <div className="slash-menu note-picker" role="listbox">
       {items.map((item, index) => {
         const Icon = ICONS[item.kind]
+        const label = item.part ?? (showsNotes ? item.title : 'Whole note')
         return (
           <div
             key={item.key}
@@ -251,7 +252,7 @@ const NotePickerList = forwardRef<PickerHandle, PickerProps>(function NotePicker
               onClick={() => command(item)}
             >
               <Icon size={16} />
-              <span className="picker-label">{item.part ?? (showsNotes ? item.title : 'Whole note')}</span>
+              <span className="picker-label" title={label}>{label}</span>
               {item.current && showsNotes && <span className="picker-hint">this note</span>}
             </button>
             {showsNotes && (
