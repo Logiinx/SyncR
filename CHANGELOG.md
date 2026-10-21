@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-10-21
+
 ### Changed
 - Games: click a search result to preview it (details, trailer) before adding it, or to open it if it's already in your list.
 - Settings: adds a third column (or more) when the window is short, so everything fits without scrolling (PC).
