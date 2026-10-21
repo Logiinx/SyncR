@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Reminders: SyncR's old reminders are gone; the tab and alerts use only Google Calendar. Their old Dropbox folder is removed.
+
 ## [0.16.4] - 2026-10-21
 
 ### Changed

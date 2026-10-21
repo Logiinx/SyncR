@@ -9,7 +9,6 @@ import {
   savePendingEdits,
   type Note,
 } from './db'
-import { removeOldDeleted } from './reminders'
 import { decrypt, encrypt, getKey } from './crypto'
 import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
 
@@ -18,14 +17,14 @@ import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from
 //   /deleted/<id>      marker left when a note is deleted, so other devices delete it too
 //   /attachments/<id>  one file per image (never changes, so no conflicts)
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
-//   /reminders/<id>    one file per reminder (a deleted one stays as a row with deleted = true)
-//   /cards/<id>        one file per Board card (same as reminders)
-//   /games/<id>        one file per game in the Games tab (same as reminders)
+//   /cards/<id>        one file per Board card (a deleted one stays as a row with deleted = true)
+//   /games/<id>        one file per game in the Games tab (same as cards)
+// (/reminders/ held SyncR's own reminders, replaced by Google Calendar events: removed, step 4c.)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
 // - Deleted on one side but edited on the other: the edit wins, the note comes back.
-// - Settings, reminders, cards and games changed on both sides: the newest wins (no conflict copy),
+// - Settings, cards and games changed on both sides: the newest wins (no conflict copy),
 //   except that a deletion beats an edit of a copy that hadn't seen it (see localWins).
 
 // What's stored in /notes/<id> (before encryption)
@@ -180,7 +179,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
   const remoteSettings = new Map<string, string>() // name -> rev
-  const remoteReminders = new Map<string, string>() // id -> rev
+  const oldReminders: string[] = [] // paths in /reminders/ (removed in step 4c)
   const remoteCards = new Map<string, string>() // id -> rev
   const remoteGames = new Map<string, string>() // id -> rev
   ownWrites.clear()
@@ -192,7 +191,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'deleted') remoteDeleted.set(id, file.modified)
     if (folder === 'attachments') remoteAttachments.add(id)
     if (folder === 'settings') remoteSettings.set(id, file.rev)
-    if (folder === 'reminders') remoteReminders.set(id, file.rev)
+    if (folder === 'reminders') oldReminders.push(file.path)
     if (folder === 'cards') remoteCards.set(id, file.rev)
     if (folder === 'games') remoteGames.set(id, file.rev)
   }
@@ -346,22 +345,25 @@ async function runSync(): Promise<SyncResult> {
   }
 
   // ---------- 4b. Settings (color rules, …) ----------
-  // Like reminders and cards (syncRecords below), except that a setting missing in Dropbox is
+  // Like cards and games (syncRecords below), except that a setting missing in Dropbox is
   // never removed here (settings aren't deleted): it's kept, and sent again once it changes.
 
   await syncRecords(db.settings, 'settings', remoteSettings, key, result, (setting) => setting.name, false)
 
-  // ---------- 4c. Reminders, Board cards and games ----------
+  // ---------- 4c. Board cards and games ----------
   // Like settings: changed on both sides means the newest wins. See syncRecords().
 
-  // Deleted ones older than 90 days disappear here and from Dropbox
-  for (const id of await removeOldDeleted()) {
-    if (remoteReminders.delete(id)) await deleteFile(`/reminders/${id}`)
+  // SyncR's own reminders, replaced by Google Calendar events (v0.16): the first sync that still
+  // finds their folder removes it. Its files count as our own changes (see the cursor below).
+  if (oldReminders.length) {
+    await deleteFile('/reminders')
+    for (const path of oldReminders) ownWrites.set(path.toLowerCase(), null)
   }
+
+  // Deleted ones older than 90 days disappear here and from Dropbox
   for (const id of await removeOldDeletedCards()) {
     if (remoteCards.delete(id)) await deleteFile(`/cards/${id}`)
   }
-  await syncRecords(db.reminders, 'reminders', remoteReminders, key, result, byId)
   for (const id of await removeOldDeletedGames()) {
     if (remoteGames.delete(id)) await deleteFile(`/games/${id}`)
   }
@@ -442,7 +444,7 @@ async function readFile<T>(path: string, key: CryptoKey, result: SyncResult): Pr
   }
 }
 
-// ---------- Settings, reminders, cards and games (steps 4b and 4c) ----------
+// ---------- Settings, cards and games (steps 4b and 4c) ----------
 
 // What they have in common: syncedRev / syncedUpdatedAt remember what was synced last, and (not
 // for settings) a deletion is a change like any other (deleted = true).
