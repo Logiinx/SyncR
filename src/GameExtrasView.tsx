@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, KeyRound, Play, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
-import { formatEuros, useGamePrices, useKnownPrice } from './prices'
+import { formatEuros, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
 // the trailer (a button that opens a panel beside the window). Nothing shows when they can't
@@ -41,6 +41,17 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
   if (prices === undefined) return <Spinner />
   if (!prices) return null
   const { steam, deals } = prices
+  if (isFree(prices)) {
+    return (
+      <div className="game-prices">
+        <div>
+          <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
+            <SteamIcon /> Free
+          </button>
+        </div>
+      </div>
+    )
+  }
   const lows = [
     deals?.retailLow && `store ${formatEuros(deals.retailLow)}`,
     deals?.keyshopsLow && `key ${formatEuros(deals.keyshopsLow)}`,
@@ -70,6 +81,12 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
+// Free to play: Steam gives no price and GG.deals says 0 in stores (key shops may still list odd
+// prices for it, e.g. Dota 2: hidden)
+function isFree({ steam, deals }: GamePrices) {
+  return !steam && deals?.retail != null && Number(deals.retail) === 0
+}
+
 // Steam's logo (Simple Icons, CC0), lucide has no brand icons
 function SteamIcon() {
   return (
@@ -86,6 +103,15 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
   const prices = useKnownPrice(igdbId)
   if (!prices) return null
   const { steam, deals } = prices
+  if (isFree(prices)) {
+    return (
+      <div className="game-price-line">
+        <span>
+          <SteamIcon /> Free
+        </span>
+      </div>
+    )
+  }
   if (!steam && !deals?.keyshops) return null
   return (
     <div className="game-price-line">
