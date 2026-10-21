@@ -150,7 +150,7 @@ function RemindersView() {
       }}
     >
       <span className="reminder-row-text">
-        <span className="reminder-text">{event.title}</span>
+        <span className="reminder-text" title={event.title}>{event.title}</span>
         {event.description && <span className="reminder-row-note">{event.description}</span>}
       </span>
       <span className="reminder-due">
@@ -168,7 +168,7 @@ function RemindersView() {
       <button key={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
         <Cover coverId={game.coverId} />
         <span className="reminder-row-text">
-          <span className="reminder-text">{game.name}</span>
+          <span className="reminder-text" title={game.name}>{game.name}</span>
           <span className="reminder-row-note">Comes out</span>
         </span>
         <span className="reminder-due">

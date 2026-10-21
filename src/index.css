@@ -4779,18 +4779,22 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
-/* Cheaper on Steam than keys (star), lowest price ever (flame) */
-.price-star {
-  display: inline-flex;
+/* Prices (list and game windows): the pricier of Steam and key is gray; Steam's logo turns yellow
+   when it's the cheapest. After .price-link, so the gray wins over its blue. */
+.price-dearer {
+  color: var(--text-dim);
+}
+
+.price-icon.steam-cheapest {
   color: var(--text-yellow);
 }
 
+/* Lowest price ever (flame) */
 .price-flame {
   display: inline-flex;
   color: var(--text-orange);
 }
 
-.price-star svg,
 .price-flame svg {
   width: 1em;
   height: 1em;

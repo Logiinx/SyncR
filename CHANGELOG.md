@@ -5,6 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 - Games: in the To play grid, prices sit at the bottom of each tile, so they line up across a row.
+- Games: To play and game windows show the pricier of Steam and key in gray. When Steam is cheapest, its logo turns yellow (replaces the star).
+- Games, Reminders: hovering a game or event name that's cut off shows it in full.
+- Games: in the grid, games with no exact release day show "Mar 2027" or "TBA" instead of nothing.
 
 ## [0.18.6] - 2026-10-21
 

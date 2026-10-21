@@ -231,7 +231,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
       ? releaseCountdown(game.releaseDate) || formatRelease(game.releaseDate, game.releaseLabel)
       : game.releaseDate
         ? String(new Date(game.releaseDate).getFullYear())
-        : ''
+        : formatRelease(game.releaseDate, game.releaseLabel) // no exact day yet (e.g. early access): "Mar 2027" or "TBA"
   return (
     <div
       className={game.priority ? 'game-tile priority' : 'game-tile'}
@@ -240,7 +240,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         e.preventDefault()
         onMenu(e.clientX, e.clientY)
       }}
-      title={game.status === 'waiting' ? formatRelease(game.releaseDate, game.releaseLabel) : undefined}
+      title={game.status === 'waiting' ? `${game.name}\n${formatRelease(game.releaseDate, game.releaseLabel)}` : game.name}
     >
       <div className="game-tile-cover">
         <Cover coverId={game.coverId} big />
@@ -285,7 +285,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
     >
       <Cover coverId={game.coverId} />
       <div className="game-text">
-        <div className="game-name">{game.name}</div>
+        <div className="game-name" title={game.name}>{game.name}</div>
         <div className="game-details">{details}</div>
         {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
       </div>
@@ -416,7 +416,7 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
               >
                 <Cover coverId={found.coverId} />
                 <div className="game-text">
-                  <div className="game-name">{found.name}</div>
+                  <div className="game-name" title={found.name}>{found.name}</div>
                   <div className="game-details">
                     {[formatRelease(found.releaseDate, found.releaseLabel), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>

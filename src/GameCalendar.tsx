@@ -124,7 +124,7 @@ function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
       <div key={game.igdbId} className="game-row calendar-row" onClick={() => onShow(game)}>
         <Cover coverId={game.coverId} />
         <div className="game-text">
-          <div className="game-name">{game.name}</div>
+          <div className="game-name" title={game.name}>{game.name}</div>
           <div className="game-details">{releaseText(game)}</div>
         </div>
         {status ? (
