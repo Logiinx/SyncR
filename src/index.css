@@ -4895,9 +4895,8 @@ h3.games-group-title {
   margin: 0;
 }
 
-/* "Watch trailer": the main action, blue (like OK / Save) */
+/* "Watch trailer": the main action, blue (like OK / Save); left-aligned like the other actions */
 .gd-action.trailer-toggle {
-  justify-content: center;
   background: var(--accent);
   color: #fff;
 }
@@ -4925,6 +4924,7 @@ h3.games-group-title {
 
   .trailer-toggle .trailer-arrow {
     display: block;
+    margin-left: auto;
     transform: rotate(90deg);
   }
 
