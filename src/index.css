@@ -3732,6 +3732,8 @@ h3.games-group-title {
 }
 
 .game-tile {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   cursor: pointer;
 }
@@ -4752,7 +4754,8 @@ h3.games-group-title {
 
 .game-tile .game-price-line {
   flex-direction: column; /* grid: Steam and key on their own lines, every tile the same shape */
-  margin-top: 2px;
+  margin-top: auto; /* at the bottom of the tile: prices line up across a row */
+  padding-top: 2px;
   font-size: 0.8em;
 }
 
