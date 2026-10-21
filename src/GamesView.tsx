@@ -173,7 +173,7 @@ function GamesView() {
                 <GameShelf
                   games={sortGames(games.filter((g) => g.status === shown))}
                   layout={shelf}
-                  emptyText={`No games in ${statusLabel(shown)}.`}
+                  emptyText={`No games in ${statusLabel(shown)}`}
                   onOpen={setOpenId}
                   onMenu={openMenu}
                 />
@@ -394,7 +394,7 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
       {error && <p className="game-search-message error">{error}</p>}
       {results && !error && (
         <div className="game-results">
-          {results.length === 0 && !searching && <p className="game-search-message">No games found.</p>}
+          {results.length === 0 && !searching && <p className="game-search-message">No games found</p>}
           {results.map((found) => {
             const id = gameId(found.igdbId)
             const status = inList.get(id)

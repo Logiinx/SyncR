@@ -238,7 +238,7 @@ function RemindersView() {
           />
         )}
         {!grid && waitingGames && events.length + waitingGames.length === 0 && (
-          <p className="games-empty">No reminders yet.</p>
+          <p className="games-empty">No reminders yet</p>
         )}
         {/* One group per month ("November 2026 3"), for an easier read of what's coming */}
         {!grid &&

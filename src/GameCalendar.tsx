@@ -57,7 +57,7 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
     )
   }
   const games = loaded.filter((g) => g.rank <= top) // the chosen level (top 100 / 300 / 500 / 1000)
-  if (games.length === 0) return <p className="game-search-message">No upcoming games found.</p>
+  if (games.length === 0) return <p className="game-search-message">No upcoming games found</p>
 
   const statusOf = (game: UpcomingGame) => inList.get(gameId(game.igdbId))
   const grid = layout === 'grid' && !narrow
