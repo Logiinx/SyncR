@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+### Changed
+- Games: click a search result to preview it (details, trailer) before adding it, or to open it if it's already in your list.
+
 ## [0.16.2] - 2026-10-21
 
 ### Changed

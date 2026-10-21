@@ -4050,6 +4050,12 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
+/* "Add to" above the status bar (a game that's out) */
+.dialog .calendar-popup-info.preview-add-label {
+  margin-top: 12px;
+  color: var(--text-dim);
+}
+
 /* "Add to Waiting" and "Trailer ›", under the game's details */
 .calendar-popup-actions {
   display: flex;
@@ -4110,8 +4116,14 @@ h3.games-group-title {
   cursor: default;
 }
 
-.games-group .game-row:hover {
+.games-group .game-row:hover,
+.game-result:hover {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+/* Search results: click for the preview (or the details when it's in your list) */
+.game-result {
+  cursor: pointer;
 }
 
 .game-row.priority {

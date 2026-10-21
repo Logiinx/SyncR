@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isReleased, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
@@ -11,6 +11,7 @@ import GameDialog, { RatingStars } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
+import GamePreview from './GamePreview'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
 // Click a game for its details (GameDialog.tsx); right-click / long press for a quick menu.
@@ -131,7 +132,7 @@ function GamesView() {
         ) : (
           <>
             {games && <DelayBanner games={games} />}
-            <GameSearch inList={inList} />
+            <GameSearch inList={inList} onOpen={setOpenId} />
             {games && games.length === 0 && connected && (
               <p className="games-empty">
                 <Gamepad2 size={18} /> Search for a game above to start your list.
@@ -313,13 +314,15 @@ function DelayBanner({ games }: { games: Game[] }) {
   )
 }
 
-// The search box at the top. Results show below it; "Add" puts a game in the list.
-function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
+// The search box at the top. Results show below it; "Add" puts a game in the list. Click a result
+// for a preview (GamePreview.tsx), or for its details if it's already in your list.
+function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpen: (id: string) => void }) {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const [text, setText] = useState('')
   const [includeDlc, setIncludeDlc] = useLocalState('syncr.gamesIncludeDlc', false)
   const [results, setResults] = useState<FoundGame[] | null>(null)
+  const [preview, setPreview] = useState<FoundGame | null>(null)
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(false)
   const latest = useRef(0) // only the newest search may show its results
@@ -381,9 +384,14 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
         <div className="game-results">
           {results.length === 0 && !searching && <p className="game-search-message">No games found.</p>}
           {results.map((found) => {
-            const status = inList.get(gameId(found.igdbId))
+            const id = gameId(found.igdbId)
+            const status = inList.get(id)
             return (
-              <div key={found.igdbId} className="game-row">
+              <div
+                key={found.igdbId}
+                className="game-row game-result"
+                onClick={() => (status ? onOpen(id) : setPreview(found))}
+              >
                 <Cover coverId={found.coverId} />
                 <div className="game-text">
                   <div className="game-name">{found.name}</div>
@@ -394,7 +402,13 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
                 {status ? (
                   <span className="game-in-list">In {label(status)}</span>
                 ) : (
-                  <button className="setting-button" onClick={() => addGame(found)}>
+                  <button
+                    className="setting-button"
+                    onClick={(e) => {
+                      e.stopPropagation() // not the row's preview
+                      addGame(found)
+                    }}
+                  >
                     Add
                   </button>
                 )}
@@ -403,8 +417,22 @@ function GameSearch({ inList }: { inList: Map<string, GameStatus> }) {
           })}
         </div>
       )}
+      {preview && (
+        <GamePreview
+          game={preview}
+          release={previewRelease(preview)}
+          status={inList.get(gameId(preview.igdbId))}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   )
+}
+
+// The preview's release line: the full date, with a countdown while it isn't out yet
+function previewRelease(game: FoundGame) {
+  const date = formatRelease(game.releaseDate, game.releaseLabel)
+  return game.releaseDate && !isReleased(game) ? `${date} · ${releaseCountdown(game.releaseDate)}` : date
 }
 
 export default GamesView
