@@ -1,12 +1,13 @@
 import { Extension } from '@tiptap/react'
-import { Plugin, TextSelection } from '@tiptap/pm/state'
+import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { currentZoom } from './appearance'
 
 // Section titles: press and drag a title to move its section, with everything inside.
-// A quick click opens/closes the section (and puts the cursor in the title, so a second click
-// edits it). While the cursor is already in that title, it behaves like normal text
-// (click, select). Phone: hold the title a moment before dragging, so a swipe still scrolls;
+// A quick click only opens/closes the section; a right-click edits the title (cursor at its
+// end). Enter in a title opens the section and moves into it. While the cursor is already in
+// that title, it behaves like normal text (click, select). Phone: a tap opens/closes and puts
+// the cursor in the title, so a second tap edits it. hold the title a moment before dragging, so a swipe still scrolls;
 // holding drags even while editing the title (a tap still places the cursor). While the
 // finger is down, the title is briefly not editable (CSS: not selectable), otherwise Android's
 // own long press selects its words and opens the keyboard, which cancels the drag.
@@ -47,6 +48,28 @@ interface Press {
 
 export const DragSections = Extension.create({
   name: 'dragSections',
+  priority: 101, // its Enter runs before the Details extension's (a new line after the section)
+
+  addKeyboardShortcuts() {
+    return {
+      // In a title: open the section if it's closed, cursor on its first line
+      Enter: ({ editor }) => {
+        const { state, view } = editor
+        const { $head } = state.selection
+        if ($head.parent.type.name !== 'detailsSummary') return false
+        const section = view.nodeDOM($head.before($head.depth - 1))
+        if (section instanceof HTMLElement && !section.classList.contains('is-open')) {
+          const toggle = section.querySelector(':scope > button')
+          if (toggle instanceof HTMLButtonElement) toggle.click()
+        }
+        // Read the state again: opening may have changed it
+        const tr = view.state.tr
+        tr.setSelection(Selection.near(tr.doc.resolve($head.after() + 1)))
+        view.dispatch(tr.scrollIntoView())
+        return true
+      },
+    }
+  },
 
   addProseMirrorPlugins() {
     return [
@@ -92,6 +115,7 @@ class SectionDragger {
     view.dom.addEventListener('pointerdown', this.onPointerDown)
     view.dom.addEventListener('pointermove', this.onHover)
     view.dom.addEventListener('pointerleave', this.onLeave)
+    view.dom.addEventListener('contextmenu', this.onContextMenu)
     // Added once, not at each press: Chrome decides when a touch starts whether a touchmove
     // listener may block scrolling. One added later only gets moves it can't cancel.
     view.dom.addEventListener('touchmove', this.blockScroll, { passive: false })
@@ -184,18 +208,33 @@ class SectionDragger {
     this.cancel()
   }
 
-  // A click (or tap) on a title: open/close the section, and put the cursor where it was
-  // clicked, so a second click edits the title
+  // A click (or tap) on a title: open/close the section. Touch: also put the cursor where it
+  // was tapped, so a second tap edits the title (no right-click on a phone).
   clickTitle(press: Press) {
     // Layout: <div data-type="details"><button>(arrow)</button><div><summary>…
     const toggle = press.section.querySelector(':scope > button')
     if (toggle instanceof HTMLButtonElement) toggle.click()
+    if (!press.touch) return
     const hit = this.view.posAtCoords({ left: press.x, top: press.y })
     this.view.focus()
     if (hit) {
       const { state } = this.view
       this.view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(hit.pos))))
     }
+  }
+
+  // Right-click on a title: edit it, cursor at the end. (A phone's long press never gets
+  // here: blockMenu stops it while the finger is down.)
+  onContextMenu = (e: MouseEvent) => {
+    const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
+    if (!summary || !this.view.editable || this.editingTitle(summary)) return
+    e.preventDefault()
+    this.frame(null)
+    const start = this.view.posAtDOM(summary, 0)
+    const { state } = this.view
+    const end = state.doc.resolve(start).end()
+    this.view.focus()
+    this.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, end)))
   }
 
   // Once dragging: the section fades, a copy of its title follows the pointer
@@ -346,6 +385,7 @@ class SectionDragger {
     this.view.dom.removeEventListener('pointerdown', this.onPointerDown)
     this.view.dom.removeEventListener('pointermove', this.onHover)
     this.view.dom.removeEventListener('pointerleave', this.onLeave)
+    this.view.dom.removeEventListener('contextmenu', this.onContextMenu)
     this.view.dom.removeEventListener('touchmove', this.blockScroll)
     this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }

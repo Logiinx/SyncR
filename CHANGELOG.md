@@ -4,6 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Sections: Enter in a title opens the section and moves into it. On PC, a click only folds/unfolds; right-click a title to edit it.
 - Notes: with the app scale above 100%, the "/" and "[[" menus no longer slip off the bottom of the window and make the note jump.
 
 ## [0.17.0] - 2026-10-21
