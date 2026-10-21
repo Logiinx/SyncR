@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, KeyRound, Play, Star, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame, KeyRound, Play, Star, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
@@ -69,12 +69,14 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
           </>
         )}
         {steamIsCheapest(prices) && <CheaperOnSteam />}
+        {steamAtLowest(prices) && <LowestEver />}
       </div>
       {deals && (
         <div>
           <button className="price-link" onClick={() => openLink(deals.url)}>
             <KeyRound className="price-icon" aria-label="Key" /> {deals.keyshops ? formatEuros(deals.keyshops) : 'None'}
           </button>
+          {keyAtLowest(prices) && <LowestEver />}
         </div>
       )}
       {lows.length > 0 && <p className="price-lows">Lowest ever: {lows.join(' · ')}</p>}
@@ -99,6 +101,26 @@ function CheaperOnSteam() {
   return (
     <span className="price-star" title="Cheaper on Steam than keys">
       <Star aria-label="Cheaper on Steam than keys" fill="currentColor" />
+    </span>
+  )
+}
+
+// At its lowest price ever (GG.deals history). Steam: GG.deals has no Steam-only history, so
+// this compares with the lowest of all official stores (user's choice: never wrong when shown,
+// may miss a Steam-only low).
+function steamAtLowest({ steam, deals }: GamePrices) {
+  return !!steam && deals?.retailLow != null && steam.final <= Math.round(Number(deals.retailLow) * 100)
+}
+
+function keyAtLowest({ deals }: GamePrices) {
+  return deals?.keyshops != null && deals.keyshopsLow != null && Number(deals.keyshops) <= Number(deals.keyshopsLow)
+}
+
+// A small orange flame after a price at its lowest ever
+function LowestEver() {
+  return (
+    <span className="price-flame" title="Lowest price ever">
+      <Flame aria-label="Lowest price ever" fill="currentColor" />
     </span>
   )
 }
@@ -136,11 +158,13 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
           <SteamIcon /> {formatEuros(steam.final)}
           {steam.discount > 0 && <span className="price-badge">−{steam.discount}%</span>}
           {steamIsCheapest(prices) && <CheaperOnSteam />}
+          {steamAtLowest(prices) && <LowestEver />}
         </span>
       )}
       {deals?.keyshops && (
         <span>
           <KeyRound className="price-icon" aria-label="Key" /> {formatEuros(deals.keyshops)}
+          {keyAtLowest(prices) && <LowestEver />}
         </span>
       )}
     </div>

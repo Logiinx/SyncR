@@ -4755,6 +4755,12 @@ h3.games-group-title {
   white-space: nowrap;
 }
 
+/* Narrow tiles (phone): discount + star + flame can be wider than the tile, they wrap */
+.game-tile .game-price-line > span {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
 .price-icon {
   flex-shrink: 0;
   width: 1em;
@@ -4762,13 +4768,19 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
-/* Cheaper on Steam than keys */
+/* Cheaper on Steam than keys (star), lowest price ever (flame) */
 .price-star {
   display: inline-flex;
   color: var(--text-yellow);
 }
 
-.price-star svg {
+.price-flame {
+  display: inline-flex;
+  color: var(--text-orange);
+}
+
+.price-star svg,
+.price-flame svg {
   width: 1em;
   height: 1em;
 }
