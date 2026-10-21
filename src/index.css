@@ -648,8 +648,8 @@ button {
 }
 
 /* A soft tile: no border, just a bit lighter than the panel (a bit more while editing or under
-   the mouse). --tint is its color: the text color by default, blue for priority, or the card's
-   own (cardColors.ts, set on the element). */
+   the mouse). --tint is its color: the text color by default, or the card's own (cardColors.ts,
+   set on the element). */
 .card {
   --tint: var(--text);
   --tile: 4%;
@@ -683,10 +683,15 @@ button {
     pointer-events: none;
   }
 
-  /* Priority cards: blue brackets, matching their tint */
+  /* Priority cards: brackets in their frame's color */
   .board-cards:not(.dragging) .card.priority:not(.editing):hover::before,
   .board-cards:not(.dragging) .card.priority:not(.editing):hover::after {
     border-color: var(--text-blue);
+  }
+
+  .board-cards:not(.dragging) .card.priority.colored:not(.editing):hover::before,
+  .board-cards:not(.dragging) .card.priority.colored:not(.editing):hover::after {
+    border-color: var(--tint);
   }
 
   .board-cards:not(.dragging) .card:not(.editing):hover::before {
@@ -702,12 +707,15 @@ button {
   }
 }
 
-/* Priority: a bar on the left in the card's color (blue when it has none, with a light blue tint) */
+/* Priority: a thin frame in the card's color (blue when it has none). The same mark as priority
+   games in the Games tab (tiles and rows). */
 .card.priority {
-  --tint: var(--text-blue);
-  --tile: 12%;
-  --tile-hi: 15%;
-  box-shadow: inset 3px 0 0 var(--tint);
+  outline: 1.5px solid var(--text-blue);
+  outline-offset: -1.5px;
+}
+
+.card.priority.colored {
+  outline-color: var(--tint);
 }
 
 .card.colored {
@@ -824,25 +832,26 @@ button {
    indented and joined by a line on the left. Folded: the header looks like a small pile of
    cards (two edges peek out under it), unlike a folded card with a title. */
 .card-group {
-  /* Like cards: --tint is the text color, blue for priority, or the group's own color
-     (which then also colors its line). --edge1/2: the pile's two edges when folded. */
+  /* Like cards: --tint is the text color, or the group's own color (which then also colors its
+     line). --edge1/2: the pile's two edges when folded. */
   --tint: var(--text);
   --tile: 7%;
   --edge1: 11%;
   --edge2: 7%;
-  --bar: transparent;
   --group-tile: color-mix(in srgb, var(--tint) var(--tile), var(--bg));
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
 }
 
-.card-group.priority {
-  --tint: var(--text-blue);
-  --tile: 16%;
-  --edge1: 20%;
-  --edge2: 12%;
-  --bar: var(--tint); /* in the group's color */
+/* Priority: the header gets the cards' frame (blue, or the group's color) */
+.card-group.priority > .card-group-head {
+  outline: 1.5px solid var(--text-blue);
+  outline-offset: -1.5px;
+}
+
+.card-group.priority.colored > .card-group-head {
+  outline-color: var(--tint);
 }
 
 .card-group.colored {
@@ -858,7 +867,6 @@ button {
   padding: 7px 10px 7px 8px;
   border-radius: 8px;
   background: var(--group-tile);
-  box-shadow: inset 3px 0 0 var(--bar);
   font-family: var(--note-font, system-ui, sans-serif);
   font-size: calc(var(--note-size, 16px) * 0.875);
   font-weight: 600;
@@ -888,7 +896,11 @@ button {
 }
 
 /* In the group's color (blue for a priority group without one) */
-.card-group:is(.priority, .colored) .card-group-icon {
+.card-group.priority .card-group-icon {
+  color: var(--text-blue);
+}
+
+.card-group.colored .card-group-icon {
   color: var(--tint);
 }
 
@@ -917,7 +929,6 @@ button {
 
 .card-group.folded .card-group-head {
   box-shadow:
-    inset 3px 0 0 var(--bar),
     0 7px 0 -3px color-mix(in srgb, var(--tint) var(--edge1), var(--bg)),
     0 14px 0 -6px color-mix(in srgb, var(--tint) var(--edge2), var(--bg));
 }
@@ -1081,10 +1092,6 @@ button {
   z-index: 2;
   transition: none;
   box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
-}
-
-.board-cards .card.priority.lifted {
-  box-shadow: inset 3px 0 0 var(--tint), 0 8px 20px rgb(0 0 0 / 45%);
 }
 
 /* While dragging with all cards on one side: a temporary zone where the separator would be,
@@ -3741,19 +3748,9 @@ h3.games-group-title {
   outline-color: var(--border);
 }
 
-/* Priority: blue ring and the sparkles in the corner */
+/* Priority: a blue ring (Board cards and list rows: a blue frame) */
 .game-tile.priority .game-cover {
   outline-color: var(--text-blue);
-}
-
-.game-tile .game-priority-icon {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 3px;
-  box-sizing: content-box;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
 }
 
 .game-tile-name {
@@ -4083,7 +4080,7 @@ h3.games-group-title {
   letter-spacing: 0;
 }
 
-/* One game: small cover, name, date · platforms. Flagged: the priority cards' blue tint. */
+/* One game: small cover, name, date · platforms */
 .game-row {
   display: flex;
   align-items: center;
@@ -4103,12 +4100,10 @@ h3.games-group-title {
   cursor: pointer;
 }
 
+/* Priority: the Board cards' blue frame */
 .game-row.priority {
-  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
-}
-
-.games-group .game-row.priority:hover {
-  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
+  outline: 1.5px solid var(--text-blue);
+  outline-offset: -1.5px;
 }
 
 .game-cover {
@@ -4144,11 +4139,6 @@ h3.games-group-title {
   font-size: 0.85em;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.game-priority-icon {
-  flex-shrink: 0;
-  color: var(--text-blue);
 }
 
 /* Search: a field, the DLC checkbox, then the results */

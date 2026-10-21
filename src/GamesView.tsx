@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
@@ -231,7 +231,6 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
     >
       <div className="game-tile-cover">
         <Cover coverId={game.coverId} big />
-        {game.priority && <Sparkles size={14} className="game-priority-icon" aria-label="Priority" />}
       </div>
       <div className="game-tile-name">{game.name}</div>
       {played && (game.rating || game.liked) ? (
@@ -277,7 +276,6 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
           {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
         </span>
       )}
-      {game.priority && <Sparkles size={14} className="game-priority-icon" aria-label="Priority" />}
     </div>
   )
 }
