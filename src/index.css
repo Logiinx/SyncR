@@ -370,12 +370,13 @@ button {
   color: var(--text);
 }
 
-/* The line: 3px with round ends at the bottom of the title, as wide as the text, 2px below
-   it. The same space above (margin) and below (padding), so the title stays centered. */
+/* The line: 2px in blue at the bottom of the title (like the games' status tabs), as wide as
+   the text, 2px below it. The same space above (margin) and below (padding), so the title
+   stays centered. */
 .tab.active .tab-title {
   position: relative;
-  margin-top: 5px;
-  padding-bottom: 5px;
+  margin-top: 4px;
+  padding-bottom: 4px;
 }
 
 .tab.active .tab-title::after {
@@ -384,9 +385,8 @@ button {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--link) 70%, var(--bg));
+  height: 2px;
+  background: var(--link);
 }
 
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
