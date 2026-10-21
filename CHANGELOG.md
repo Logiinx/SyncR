@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.16.6] - 2026-10-21
+
 ### Added
 - Board: right-click a group → "New card" adds a card at the bottom of that group (unfolds it, takes its color if it colors its cards).
 
