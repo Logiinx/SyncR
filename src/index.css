@@ -1350,58 +1350,80 @@ button {
   z-index: 25;
 }
 
+/* One alert card: a strip on the left (the event's Google color, else the accent), the text
+   (a click opens the event), then a big Done and Snooze (which unfolds its choices) */
 .reminder-alert {
-  padding: 12px 14px;
+  padding: 12px 14px 12px 12px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--link);
+  border-left: 4px solid var(--link);
   border-radius: 8px;
   background: var(--bg-raised);
   box-shadow: 0 6px 20px rgb(0 0 0 / 45%);
 }
 
-.reminder-alert-head {
+.reminder-alert-body {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin: -4px 0 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  text-align: left;
 }
 
-.reminder-alert-head svg {
-  flex-shrink: 0;
-  margin-top: 3px;
-  color: var(--link);
-}
-
-.reminder-alert-text {
-  overflow-wrap: anywhere;
+.reminder-alert-body:hover {
+  background: rgb(255 255 255 / 5%);
 }
 
 .reminder-alert-due {
-  margin: 2px 0 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--text-dim);
   font-size: 12px;
 }
 
+.reminder-alert-text {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The note: 3 lines at most (the whole note is in the event's preview) */
 .reminder-alert-note {
-  margin: 6px 0 0 22px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--text-dim);
   font-size: 13px;
-  opacity: 0.85;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
+.reminder-alert-warning {
+  margin-top: 4px;
+  color: var(--text-yellow);
+  font-size: 12px;
+}
+
 .reminder-alert-buttons {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  margin: 10px 0 0 22px;
+  gap: 6px;
+  margin: 10px 0 0 6px;
 }
 
 .reminder-alert-buttons button {
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: rgb(255 255 255 / 7%);
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 8%);
   font-size: 13px;
 }
 
@@ -1409,9 +1431,11 @@ button {
   background: rgb(255 255 255 / 14%);
 }
 
+/* Done: twice as wide as Snooze */
 .reminder-alert-buttons .primary {
-  margin-right: 8px;
+  flex: 2;
   background: var(--accent);
+  font-weight: 600;
 }
 
 .reminder-alert-buttons .primary:hover {
@@ -1419,21 +1443,32 @@ button {
   filter: brightness(1.2);
 }
 
-.reminder-alert-label {
+.reminder-alert-buttons .reminder-alert-back {
+  flex: 0 0 32px;
+}
+
+/* "3 reminders · Done all", above the cards when 2 or more are due */
+.reminder-alerts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
   color: var(--text-dim);
   font-size: 12px;
 }
 
-/* "Open SyncR", only in the desktop pop-up */
-.reminder-alert-open {
-  margin: 8px 0 0 22px;
-  padding: 0;
-  color: var(--link);
-  font-size: 13px;
+.reminder-alerts-head button {
+  padding: 3px 10px;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
 }
 
-.reminder-alert-open:hover {
-  text-decoration: underline;
+.reminder-alerts-head button:hover {
+  background: rgb(255 255 255 / 10%);
 }
 
 /* The desktop pop-up window (ReminderPopup.tsx): the cards fill the window edge to edge,
@@ -1444,14 +1479,19 @@ button {
   user-select: none;
 }
 
-.reminder-popup .reminder-alert {
+.reminder-popup .reminder-alert,
+.reminder-popup .reminder-alerts-head {
   border: none;
-  border-left: 3px solid var(--link);
   border-radius: 0;
   box-shadow: none;
 }
 
-.reminder-popup .reminder-alert + .reminder-alert {
+.reminder-popup .reminder-alert {
+  border-left: 4px solid var(--link);
+}
+
+.reminder-popup .reminder-alert + .reminder-alert,
+.reminder-popup .reminder-alerts-head + .reminder-alert {
   border-top: 1px solid var(--border);
 }
 

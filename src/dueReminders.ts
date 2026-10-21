@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { playChime } from './chime'
-import { listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
+import { eventId, listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
+import { REMINDERS_TAB } from './reminders'
 
 // What is due right now, used by the cards (ReminderAlerts.tsx) and the desktop pop-up
 // (ReminderPopup.tsx): the alerts of Google Calendar events (eventAlerts.ts).
@@ -17,10 +18,25 @@ export interface DueItem {
   allDay: boolean
   dueAt: number // when it came due (a snoozed one: when the snooze ended)
   notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
+  colorId?: string // the event's Google color (the card's strip)
 }
 
-// The buttons on a due item
+// The buttons on a due item ('open': a click on the card's text)
 export type ReminderAction = 'done' | 'snooze10' | 'snooze60' | 'tomorrow' | 'open'
+
+// A click on a card: SyncR shows the Reminders tab with the event's preview. RemindersView takes
+// the event (takeAlertEvent) when it opens, or right away if it's already open.
+let alertEvent: string | null = null
+export function openAlertEvent(key: string) {
+  alertEvent = eventId(key)
+  window.dispatchEvent(new CustomEvent('open-note', { detail: { id: REMINDERS_TAB } }))
+  window.dispatchEvent(new Event('open-alert-event'))
+}
+export function takeAlertEvent() {
+  const id = alertEvent
+  alertEvent = null
+  return id
+}
 
 export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) {
   if (action === 'done') return markAlertDone(key)
@@ -33,7 +49,7 @@ export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) 
 async function listItems(): Promise<DueItem[]> {
   const alerts = await listEventAlerts()
   return alerts
-    .map((a) => ({ key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt, notMoved: a.notMoved }))
+    .map((a) => ({ key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt, notMoved: a.notMoved, colorId: a.colorId }))
     .sort((a, b) => a.dueAt - b.dueAt)
 }
 

@@ -3,7 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow, primaryMonitor } from '@tauri-apps/api/window'
-import { runAction, type DueItem, type ReminderAction } from './dueReminders'
+import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
 
 // The desktop reminder pop-up: a small always-on-top window in the bottom-right corner of the
 // screen, shown while reminders are due, even when SyncR's window is hidden in the tray.
@@ -99,7 +99,7 @@ async function closePopup() {
   await (await WebviewWindow.getByLabel(POPUP_LABEL))?.destroy()
 }
 
-// "Open SyncR": the main window comes back from the tray / minimized / behind others
+// A click on a card: the main window comes back from the tray / minimized / behind others
 async function showMainWindow() {
   const win = getCurrentWindow()
   await win.unminimize()
@@ -123,7 +123,10 @@ export function useReminderPopup(due: DueItem[] | undefined) {
   useEffect(() => {
     if (!isTauri()) return
     return onPopupMessage(({ id, action }) => {
-      if (action === 'open') showMainWindow()
+      if (action === 'open') {
+        showMainWindow()
+        openAlertEvent(id)
+      }
       else runAction(id, action)
     })
   }, [])

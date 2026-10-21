@@ -23,6 +23,7 @@ export interface EventAlert {
   at: number
   dueAt: number
   notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
+  colorId?: string // the event's Google color
 }
 
 // Every alert of the stored events that isn't done, sorted by when they show. Which are due (and
@@ -40,7 +41,7 @@ export async function listEventAlerts(): Promise<EventAlert[]> {
       const dueAt = state?.snoozedUntil ?? at
       alerts.push({
         key, title: event.title, description: event.description, start: event.start, allDay: event.allDay, at, dueAt,
-        notMoved: !!state?.notMoved,
+        notMoved: !!state?.notMoved, colorId: event.colorId,
       })
     }
   }
@@ -49,7 +50,7 @@ export async function listEventAlerts(): Promise<EventAlert[]> {
 
 // "event:<id>@<time>" → the alert time, and the event's id
 const alertTime = (key: string) => Number(key.slice(key.lastIndexOf('@') + 1))
-const eventId = (key: string) => key.slice(ALERT_PREFIX.length, key.lastIndexOf('@'))
+export const eventId = (key: string) => key.slice(ALERT_PREFIX.length, key.lastIndexOf('@'))
 
 async function save(key: string, change: { doneAt?: number; snoozedUntil?: number; notMoved?: boolean }) {
   await db.alertStates.put({ key, at: alertTime(key), ...change })

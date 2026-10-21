@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow, primaryMonitor } from '@tauri-apps/api/window'
 import { useChime, useDueReminders } from './dueReminders'
-import { ReminderCard } from './ReminderAlerts'
+import { ReminderCards } from './ReminderAlerts'
 import { POPUP_WIDTH, popupPosition, sendFromPopup } from './popupWindow'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
@@ -34,14 +34,7 @@ function ReminderPopup() {
 
   return (
     <div ref={listRef} className="reminder-popup" role="alert">
-      {due?.map((item) => (
-        <ReminderCard
-          key={item.key}
-          item={item}
-          withOpen
-          onAction={(action) => sendFromPopup({ id: item.key, action })}
-        />
-      ))}
+      {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
     </div>
   )
 }

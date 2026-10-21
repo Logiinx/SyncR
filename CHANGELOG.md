@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 - Reminders: once an event's start time has passed, it fades in the month grid (like past days) and leaves the list.
 - Reminders: Snooze on an alert now moves the event in Google Calendar (only this date; all-day events: the alert only).
+- Reminders: cleaner alert cards: big Done, Snooze opens its choices, Done all, event's color. Click a card to see its event.
 
 ## [0.16.6] - 2026-10-21
 

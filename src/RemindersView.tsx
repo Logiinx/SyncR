@@ -17,6 +17,7 @@ import Spinner from './Spinner'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { formatDue } from './reminders'
+import { takeAlertEvent } from './dueReminders'
 
 // The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
 // Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
@@ -51,6 +52,23 @@ function RemindersView() {
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
+
+  // A click on an alert card (dueReminders.ts): show its event (a Waiting game's release event:
+  // the game)
+  useEffect(() => {
+    const show = async () => {
+      const id = takeAlertEvent()
+      if (!id) return
+      const games = await db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray()
+      const game = games.find((g) => releaseEventId(g) === id)
+      if (game) return setOpenGame(game.id)
+      const event = await db.events.get(id)
+      if (event) setPreviewEvent(event)
+    }
+    show()
+    window.addEventListener('open-alert-event', show)
+    return () => window.removeEventListener('open-alert-event', show)
+  }, [])
 
   // Redraw every 30 s, so events that have started leave the list and fade in the grid
   const [now, setNow] = useState(Date.now())
