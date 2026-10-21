@@ -7,7 +7,7 @@ All notable changes to SyncR. Newest version first.
 ### Changed
 - Reminders and Games calendars: reminders, events and releases on days before today are slightly faded (full again on hover).
 - Tabs: the open note tab has a thinner, cleaner blue underline, like the Games status tabs.
-- Updates: a calmer, slimmer update bar with the download's progress, and "What's new" to read the changes before updating (PC).
+- Updates: slimmer bar with download progress and "What's new" (PC). From the next update on, installing shows no installer window.
 
 ## [0.16.1] - 2026-10-21
 
