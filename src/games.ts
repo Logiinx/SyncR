@@ -2,6 +2,7 @@ import { changed, db, updateGame, setGameStatus, type Game, type GameStatus } fr
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
+import { loadToPlayPrices } from './prices'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
 import { isConnected as googleConnected } from './google'
@@ -196,6 +197,7 @@ export function startGameChecks() {
   if (started) return
   moveOldConnection().catch((e) => console.warn('Could not move the game search settings', e))
   started = true
+  let pricesLoaded = false
   const check = async () => {
     try {
       await moveReleased()
@@ -211,6 +213,11 @@ export function startGameChecks() {
       await syncReleaseEvents()
     } catch (e) {
       console.warn('Game refresh failed', e)
+    }
+    // To play prices, once per start, after the first sync brought the list up to date
+    if (!pricesLoaded) {
+      pricesLoaded = true
+      loadToPlayPrices()
     }
   }
   check()

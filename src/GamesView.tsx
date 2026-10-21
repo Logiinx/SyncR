@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isReleased, releaseCountdown, shortPlatforms, sortGames, STATUSES } from './games'
+import { GamePriceLine } from './GameExtrasView'
+import { loadToPlayPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
@@ -40,6 +42,10 @@ function GamesView() {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
+  // To play: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  useEffect(() => {
+    if (shown === 'toplay') loadToPlayPrices()
+  }, [shown])
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
   const [top, setTop] = useLocalState('syncr.calendarTop', DEFAULT_TOP)
@@ -249,6 +255,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
       ) : (
         <div className="game-details">{when}</div>
       )}
+      {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
     </div>
   )
 }
@@ -280,6 +287,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       <div className="game-text">
         <div className="game-name">{game.name}</div>
         <div className="game-details">{details}</div>
+        {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
       </div>
       {played && (game.rating || game.liked) && (
         <span className="game-rated">

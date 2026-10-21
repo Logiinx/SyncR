@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
-import { formatEuros, useGamePrices } from './prices'
+import { formatEuros, useGamePrices, useKnownPrice } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
 // the trailer (a button that opens a panel beside the window). Nothing shows when they can't
@@ -77,6 +77,20 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
       )}
     </dl>
   )
+}
+
+// To play list: one short line, Steam price (and discount) · cheapest key. Only shows prices
+// already looked up (at start, or when the list opens), nothing while unknown.
+export function GamePriceLine({ igdbId }: { igdbId: number }) {
+  const prices = useKnownPrice(igdbId)
+  if (!prices) return null
+  const { steam, deals } = prices
+  const parts = [
+    steam && `${formatEuros(steam.final)}${steam.discount > 0 ? ` −${steam.discount}%` : ''}`,
+    deals?.keyshops && `key ${formatEuros(deals.keyshops)}`,
+  ].filter(Boolean)
+  if (parts.length === 0) return null
+  return <div className="game-details game-price-line">{parts.join(' · ')}</div>
 }
 
 // "Watch trailer", the game windows' main (blue) button: opens the trailer view (PC,

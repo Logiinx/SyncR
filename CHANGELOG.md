@@ -4,7 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-- Games: a game's window shows its Steam price (with discount), the cheapest key that works in France, and the lowest ever. Click to open.
+- Games: Steam price (and discount), cheapest key that works in France and lowest ever, in a game's window and on To play games.
 
 ## [0.17.1] - 2026-10-21
 

@@ -4720,6 +4720,14 @@ h3.games-group-title {
   text-decoration: underline;
 }
 
+.game-price-line {
+  color: var(--link);
+}
+
+.game-tile .game-price-line {
+  white-space: normal; /* narrow tiles: the key price goes on a second line rather than cut off */
+}
+
 .price-was {
   margin-left: 8px;
   color: var(--text-dim);

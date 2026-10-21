@@ -1,6 +1,7 @@
 // Game prices in euros: Steam's own price and the cheapest key (GG.deals), through our proxy's
 // /prices route (proxy/igdb-worker.js). Looked up live, never saved or synced.
 import { useEffect, useState } from 'react'
+import { db } from './db'
 import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
 export interface GamePrices {
@@ -69,7 +70,33 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
     if (!result.has(id)) result.set(id, null)
     cache.set(id, { prices: result.get(id)!, time: Date.now() })
   }
+  listeners.forEach((listener) => listener())
   return result
+}
+
+// The lists show only what's already known (no lookup of their own); they update when new prices arrive
+const listeners = new Set<() => void>()
+
+export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
+  const [, setVersion] = useState(0)
+  useEffect(() => {
+    const listener = () => setVersion((v) => v + 1)
+    listeners.add(listener)
+    return () => void listeners.delete(listener)
+  }, [])
+  return cache.get(igdbId)?.prices
+}
+
+// Prices of all "To play" games at once: at start (games.ts) and when the To play list opens.
+// Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
+export async function loadToPlayPrices() {
+  try {
+    if (!isComplete(await loadConnection())) return
+    const games = await db.games.filter((g) => g.status === 'toplay' && !g.deleted).toArray()
+    if (games.length > 0) await gamePrices(games.map((g) => g.igdbId))
+  } catch (e) {
+    console.warn('Price lookup failed', e)
+  }
 }
 
 // "17,99 €" from cents or from GG.deals' "17.99"
