@@ -6,6 +6,7 @@ import { finalSync } from './autoSync'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
 import Spinner from './Spinner'
+import { updateRelease, WhatsNewDialog } from './WhatsNew'
 
 // Asks the bar to check for a new version now (the update icon in the sidebar). Resolves once
 // the check is done (the icon spins until then).
@@ -27,6 +28,7 @@ function UpdateBanner() {
   const [progress, setProgress] = useState<number | null | undefined>(undefined)
   const [installError, setInstallError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [notesOpen, setNotesOpen] = useState(false)
 
   useEffect(() => {
     findUpdate().then(setUpdate)
@@ -136,6 +138,14 @@ function UpdateBanner() {
           ) : (
             <>
               <b>{version}</b> is ready.
+              {update.body?.trim() && (
+                <>
+                  <span className="update-dim"> · </span>
+                  <button className="update-link" onClick={() => setNotesOpen(true)}>
+                    What's new
+                  </button>
+                </>
+              )}
             </>
           )}
         </span>
@@ -146,6 +156,17 @@ function UpdateBanner() {
         )}
         {installing && typeof progress === 'number' && (
           <div className="update-progress" style={{ width: `${progress * 100}%` }} />
+        )}
+        {notesOpen && (
+          <WhatsNewDialog
+            releases={[updateRelease(update.version, update.body ?? '')]}
+            version={update.version}
+            onUpdate={() => {
+              setNotesOpen(false)
+              onInstall()
+            }}
+            onClose={() => setNotesOpen(false)}
+          />
         )}
       </div>
     )

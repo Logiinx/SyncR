@@ -76,8 +76,20 @@ export function recentReleases(count = 5) {
   return releasesSince('0.0.0').slice(0, count)
 }
 
-// The notes window. The title names this version; with several releases each gets its own heading.
-export function WhatsNewDialog({ releases, onClose }: { releases: Release[]; onClose: () => void }) {
+// An update's notes (update.body: its CHANGELOG.md lines, added by build-desktop.yml), as a release
+export function updateRelease(version: string, notes: string): Release {
+  return { version, body: notes.split(/\r?\n/).filter((line) => line.trim()) }
+}
+
+// The notes window. The title names this version (or the update's); with several releases each
+// gets its own heading. With onUpdate (the update bar's "What's new"): Close and "Update now".
+export function WhatsNewDialog(props: {
+  releases: Release[]
+  version?: string
+  onUpdate?: () => void
+  onClose: () => void
+}) {
+  const { releases, onUpdate, onClose } = props
   const okRef = useRef<HTMLButtonElement>(null)
   useEffect(() => okRef.current?.focus(), [])
 
@@ -89,16 +101,27 @@ export function WhatsNewDialog({ releases, onClose }: { releases: Release[]; onC
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2>What's new in v{__APP_VERSION__}</h2>
+        <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
         <div className="whats-new-body">
           {releases.map((r) => (
             <ReleaseNotes key={r.version} release={r} showVersion={releases.length > 1} />
           ))}
         </div>
         <div className="dialog-buttons">
-          <button ref={okRef} className="primary" onClick={onClose}>
-            OK
-          </button>
+          {onUpdate ? (
+            <>
+              <button ref={okRef} onClick={onClose}>
+                Close
+              </button>
+              <button className="primary" onClick={onUpdate}>
+                Update now
+              </button>
+            </>
+          ) : (
+            <button ref={okRef} className="primary" onClick={onClose}>
+              OK
+            </button>
+          )}
         </div>
       </div>
     </div>

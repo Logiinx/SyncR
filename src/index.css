@@ -3371,6 +3371,15 @@ button {
   color: var(--text-dim);
 }
 
+.update-link {
+  padding: 0;
+  color: var(--link);
+}
+
+.update-link:hover {
+  text-decoration: underline;
+}
+
 .update-button {
   flex-shrink: 0;
   padding: 3px 12px;
