@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.4] - 2026-10-21
+
 - Games: prices for editions sold on Steam as a package (e.g. Fallout: New Vegas Ultimate Edition), and for games IGDB links to an old Steam page.
 - Games: "Lowest ever" says "free" instead of 0,00 € (e.g. after a giveaway).
 
