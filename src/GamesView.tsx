@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, Sparkles, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, releaseText, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { loadToPlayPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -55,17 +55,8 @@ function GamesView() {
     setMenu({ game, x, y })
   }
 
-  function askRemove(game: Game) {
-    setDialog({
-      title: 'Remove game?',
-      message: `"${game.name}" will be removed from your list, with its note and review.`,
-      confirmLabel: 'Remove',
-      danger: true,
-      onConfirm: () => {
-        setOpenId(null)
-        updateGame(game.id, { deleted: true })
-      },
-    })
+  async function askRemove(game: Game) {
+    setDialog(await removeGameQuestion(game, () => setOpenId(null)))
   }
 
   function menuItems(game: Game): MenuItem[] {

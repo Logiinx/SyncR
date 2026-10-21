@@ -10,7 +10,6 @@ import {
   moveCard,
   moveToGroup,
   setCardDeleted,
-  updateGame,
   type Card as CardData,
 } from './db'
 import Card from './Card'
@@ -18,6 +17,7 @@ import CardGroup from './CardGroup'
 import GameCard from './GameCard'
 import ContextMenu from './ContextMenu'
 import GameDialog from './GameDialog'
+import { removeGameQuestion } from './games'
 import Dialog, { type DialogRequest } from './Dialog'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
@@ -387,16 +387,7 @@ function Board({ onClose }: Props) {
   async function askRemoveGame(id: string) {
     const game = await db.games.get(id)
     if (!game) return
-    setDialog({
-      title: 'Remove game?',
-      message: `"${game.name}" will be removed from your list, with its note and review. Its card stays on the Board.`,
-      confirmLabel: 'Remove',
-      danger: true,
-      onConfirm: () => {
-        setOpenGame(null)
-        updateGame(game.id, { deleted: true })
-      },
-    })
+    setDialog(await removeGameQuestion(game, () => setOpenGame(null)))
   }
 
   function undoDelete() {

@@ -1,4 +1,5 @@
-import { changed, db, updateGame, setGameStatus, type Game, type GameStatus } from './db'
+import { changed, db, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
+import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
@@ -51,6 +52,22 @@ export async function addGame(found: FoundGame, status?: GameStatus) {
     updatedAt: now,
   })
   changed()
+}
+
+// "Remove game?" (Games, Board, Reminders): the game leaves your list with its note and review;
+// its Board card, if any, stays (dimmed). onRemoved closes whatever showed the game.
+export async function removeGameQuestion(game: Game, onRemoved: () => void): Promise<DialogRequest> {
+  const pinned = await pinnedCard(game.id)
+  return {
+    title: 'Remove game?',
+    message: `"${game.name}" will be removed from your list, with its note and review.${pinned ? ' Its card stays on the Board.' : ''}`,
+    confirmLabel: 'Remove',
+    danger: true,
+    onConfirm: () => {
+      onRemoved()
+      updateGame(game.id, { deleted: true })
+    },
+  }
 }
 
 // Priority games first. Waiting: soonest release first, not announced (TBA) last.

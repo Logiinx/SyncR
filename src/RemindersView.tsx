@@ -8,8 +8,8 @@ import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import type { CalendarLayout } from './GameCalendar'
 import { useNarrow } from './useNarrow'
-import { releaseCountdown, releaseEventId } from './games'
-import { db, updateGame, type CalendarEvent, type Game } from './db'
+import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
+import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
 import EventPreview from './EventPreview'
@@ -126,16 +126,7 @@ function RemindersView() {
   async function askRemoveGame(id: string) {
     const game = await db.games.get(id)
     if (!game) return
-    setDialog({
-      title: 'Remove game?',
-      message: `"${game.name}" will be removed from your list, with its note and review.`,
-      confirmLabel: 'Remove',
-      danger: true,
-      onConfirm: () => {
-        setOpenGame(null)
-        updateGame(game.id, { deleted: true })
-      },
-    })
+    setDialog(await removeGameQuestion(game, () => setOpenGame(null)))
   }
 
   // A calendar event in the list: its title, its description as the note
