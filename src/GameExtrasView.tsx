@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, KeyRound, Play, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, KeyRound, Play, Star, X } from 'lucide-react'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
@@ -68,6 +68,7 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
             <s className="price-was">{formatEuros(steam.initial)}</s>
           </>
         )}
+        {steamIsCheapest(prices) && <CheaperOnSteam />}
       </div>
       {deals && (
         <div>
@@ -85,6 +86,21 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
 // prices for it, e.g. Dota 2: hidden)
 function isFree({ steam, deals }: GamePrices) {
   return !steam && deals?.retail != null && Number(deals.retail) === 0
+}
+
+// Steam costs no more than the cheapest key (user: equal counts, Steam is the safer buy). Only
+// when there is a key price to compare with.
+function steamIsCheapest({ steam, deals }: GamePrices) {
+  return !!steam && deals?.keyshops != null && steam.final / 100 <= Number(deals.keyshops)
+}
+
+// A small yellow star after the Steam price when Steam is the cheapest (steamIsCheapest)
+function CheaperOnSteam() {
+  return (
+    <span className="price-star" title="Cheaper on Steam than keys">
+      <Star aria-label="Cheaper on Steam than keys" fill="currentColor" />
+    </span>
+  )
 }
 
 // Steam's logo (Simple Icons, CC0), lucide has no brand icons
@@ -119,6 +135,7 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
         <span>
           <SteamIcon /> {formatEuros(steam.final)}
           {steam.discount > 0 && <span className="price-badge">−{steam.discount}%</span>}
+          {steamIsCheapest(prices) && <CheaperOnSteam />}
         </span>
       )}
       {deals?.keyshops && (

@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Games: a small yellow star next to the Steam price when Steam costs the same or less than the cheapest key.
+
 ## [0.18.2] - 2026-10-21
 
 - Games: a game's window shows its prices like the To play list (Steam logo, key icon, green discount badge). Free games say "Free".

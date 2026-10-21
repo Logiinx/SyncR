@@ -4762,6 +4762,17 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
+/* Cheaper on Steam than keys */
+.price-star {
+  display: inline-flex;
+  color: var(--text-yellow);
+}
+
+.price-star svg {
+  width: 1em;
+  height: 1em;
+}
+
 .price-badge {
   margin-left: 2px;
   padding: 0 4px;
