@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-10-22
+
 **Notes**
 - Pasted lines starting with "-", "*" or "•" become a list, also on cards (in a list or checklist: its items). Ctrl+Shift+V keeps them.
 
