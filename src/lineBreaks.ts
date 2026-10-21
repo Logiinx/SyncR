@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { Fragment, Slice, type Node } from '@tiptap/pm/model'
+import { Fragment, Slice, type Node, type NodeType } from '@tiptap/pm/model'
 import { Plugin, type Selection } from '@tiptap/pm/state'
 import { canSplit } from '@tiptap/pm/transform'
 
@@ -75,6 +75,53 @@ function splitPastedLines(fragment: Fragment): Fragment {
   return Fragment.from(nodes)
 }
 
+// "- ", "* " or "• " at the start of a line, also indented (all become the same level)
+const BULLET = /^[ \t]*[-*•][ \t]+/
+
+// Pasted lines that start with a dash become a bullet list, one item per line; lines next to
+// each other form one list. Only for pastes of 2+ lines, so one "- x" pasted into a sentence
+// stays text. Only at the top level of the paste. Ctrl+Shift+V skips this (keeps the dashes).
+function pastedBullets(slice: Slice, inItem: NodeType | null, textBefore: boolean): Slice {
+  const content = slice.content
+  if (content.childCount < 2) return slice
+  const marker = (node: Node) =>
+    node.type.name === 'paragraph' && node.firstChild?.isText ? node.textContent.match(BULLET)?.[0].length : undefined
+  const lines: Node[] = []
+  content.forEach((node) => lines.push(node))
+  if (!lines.some((node) => marker(node) !== undefined)) return slice
+  const { bulletList, listItem, paragraph } = content.firstChild!.type.schema.nodes
+  const item = (node: Node, type = listItem) => type.create(null, node.cut(marker(node) ?? 0))
+
+  // Pasted inside a list or checklist: every line becomes an item of that list (not a list
+  // inside the item; new checklist items unticked). The first line joins the cursor's item, unless it has a dash and the item has
+  // text before the cursor: then it starts a new item. The last one gets the text after it.
+  if (inItem) {
+    if (!lines.every((node) => node.type === paragraph)) return slice
+    const items = lines.map((node) => item(node, inItem))
+    if (marker(lines[0]) !== undefined && textBefore) items.unshift(inItem.create(null, paragraph.create()))
+    return new Slice(Fragment.from(items), 2, 2)
+  }
+
+  const nodes: Node[] = []
+  let items: Node[] = []
+  const endList = () => {
+    if (items.length) nodes.push(bulletList.create(null, items))
+    items = []
+  }
+  for (const node of lines) {
+    if (marker(node) !== undefined) items.push(item(node))
+    else {
+      endList()
+      nodes.push(node)
+    }
+  }
+  endList()
+  // A converted first or last line no longer joins the text around the cursor: the list goes
+  // in as whole blocks (open depth 0 on that side)
+  const open = (node: Node, depth: number) => (marker(node) !== undefined ? 0 : depth)
+  return new Slice(Fragment.from(nodes), open(lines[0], slice.openStart), open(lines[lines.length - 1], slice.openEnd))
+}
+
 // Shift+Enter makes a new line, like Enter: it's often pressed out of habit (apps where Enter
 // sends), and a line break would join the lines into one paragraph. Inside a list or checklist
 // item it stays a line break (a new line without a new bullet), and code blocks keep their own
@@ -86,12 +133,31 @@ export const LineBreaks = Extension.create({
   priority: 150, // after ListEnter (200, its own Shift+Enter cases), before the line break (100)
 
   addProseMirrorPlugins() {
+    let keepDashes = false // Ctrl+Shift+V: paste the text as it is
     return [
       new Plugin({
         props: {
+          handleKeyDown: (_view, event) => {
+            keepDashes = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'v'
+            return false
+          },
           // The slice stays open at the same depths: the first line still joins the text
           // before the cursor, the last one the text after it
-          transformPasted: (slice) => new Slice(splitPastedLines(slice.content), slice.openStart, slice.openEnd),
+          transformPasted: (slice, view) => {
+            const lines = new Slice(splitPastedLines(slice.content), slice.openStart, slice.openEnd)
+            if (keepDashes) {
+              keepDashes = false
+              return lines
+            }
+            const { $from } = view.state.selection
+            // The nearest list or checklist item, if any
+            let item: NodeType | null = null
+            for (let d = $from.depth; d > 0 && !item; d--) {
+              const type = $from.node(d).type
+              if (type.name === 'listItem' || type.name === 'taskItem') item = type
+            }
+            return pastedBullets(lines, item, $from.parentOffset > 0)
+          },
         },
       }),
     ]
