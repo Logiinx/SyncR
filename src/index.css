@@ -4050,12 +4050,6 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
-/* "Add to" above the status bar (a game that's out) */
-.dialog .calendar-popup-info.preview-add-label {
-  margin-top: 12px;
-  color: var(--text-dim);
-}
-
 /* "Add to Waiting" and "Trailer ›", under the game's details */
 .calendar-popup-actions {
   display: flex;
