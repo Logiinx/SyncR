@@ -16,6 +16,7 @@ import {
   TextQuote,
   type LucideIcon,
 } from 'lucide-react'
+import { currentZoom } from './appearance'
 
 // Type "/" at the start of a line or after a space: a menu to insert a block. Typing more
 // filters it ("/tab" → Table), ↑ ↓ choose, Enter inserts, Esc closes. Not inside code.
@@ -55,6 +56,28 @@ function filterItems(query: string, editor: Editor) {
   )
 }
 
+// Shows a "/" or "[[" popup under the cursor, or over it when it doesn't fit below. Placed
+// here, not by the plugin: with the app scale (CSS zoom) its numbers came out scaled twice
+// and the popup landed off the window. Screen pixels are divided by the scale. Fixed, so it
+// never makes the page longer. The plugin calls this again on scroll, resize, new items.
+export function mountPopup(props: SuggestionProps<any, any>, element: HTMLElement) {
+  element.style.visibility = 'hidden' // until placed
+  return props.mount(element, {
+    onPosition: () => {
+      const cursor = props.clientRect?.()
+      if (!cursor) return
+      const box = element.getBoundingClientRect()
+      const gap = 4
+      const below = innerHeight - cursor.bottom - gap
+      const above = cursor.top - gap
+      const top = box.height <= below || below >= above ? cursor.bottom + gap : cursor.top - gap - box.height
+      const left = Math.max(0, Math.min(cursor.left, innerWidth - box.width - gap))
+      const zoom = currentZoom()
+      Object.assign(element.style, { left: `${left / zoom}px`, top: `${top / zoom}px`, visibility: '' })
+    },
+  })
+}
+
 export const SlashMenu = Extension.create({
   name: 'slashMenu',
 
@@ -79,7 +102,7 @@ export const SlashMenu = Extension.create({
           return {
             onStart: (props) => {
               component = new ReactRenderer(SlashMenuList, { props, editor: props.editor, className: 'slash-menu-popup' })
-              unmount = props.mount(component.element as HTMLElement)
+              unmount = mountPopup(props, component.element as HTMLElement)
             },
             onUpdate: (props) => component?.updateProps(props),
             onKeyDown: (props) => {

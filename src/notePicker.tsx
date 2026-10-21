@@ -5,6 +5,7 @@ import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@
 import { ChevronRight, FileText, FoldVertical, Heading } from 'lucide-react'
 import { db, noteTitle, saveNoteContent } from './db'
 import { noteLinkHref } from './noteLinks'
+import { mountPopup } from './slashMenu'
 
 // Type [[ to link to another note: a list of notes, filtered by what you type next.
 // Enter links to the whole note. Tab, → or the › button shows the note's headings and
@@ -162,7 +163,7 @@ export const NotePicker = Extension.create({
           return {
             onStart: (props) => {
               component = new ReactRenderer(NotePickerList, { props, editor: props.editor, className: 'slash-menu-popup' })
-              unmount = props.mount(component.element as HTMLElement)
+              unmount = mountPopup(props, component.element as HTMLElement)
             },
             onUpdate: (props) => component?.updateProps(props),
             onKeyDown: (props) => {

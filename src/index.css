@@ -2677,6 +2677,10 @@ button {
 /* ---------- "/" menu (slashMenu.tsx), placed under the cursor by the Suggestion plugin ---------- */
 
 .slash-menu-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: max-content;
   z-index: 50;
 }
 

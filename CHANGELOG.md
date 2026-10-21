@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Notes: with the app scale above 100%, the "/" and "[[" menus no longer slip off the bottom of the window and make the note jump.
+
 ## [0.17.0] - 2026-10-21
 
 - Reminders: once an event's start time has passed, it fades in the month grid (like past days) and leaves the list.
