@@ -45,7 +45,8 @@
     transition: --thumb 0.3s;
   }
 
-  .scrollbar-visible {
+  .scrollbar-visible,
+  .whats-new-body /* always shown: tells whether more changes are below (user request) */ {
     --thumb: #4a4a4a;
   }
 

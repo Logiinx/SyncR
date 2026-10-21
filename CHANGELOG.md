@@ -4,38 +4,50 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- What's new: changes are grouped by area (Notes, Games…), and on the PC the scroll bar always shows when there's more below.
+
 ## [0.19.0] - 2026-10-22
 
-- Games: in the To play grid, prices sit at the bottom of each tile, so they line up across a row.
-- Games: To play and game windows show the pricier of Steam and key in gray. When Steam is cheapest, its logo turns yellow (replaces the star).
-- Games, Reminders, note list, note links: hovering a name or line that's cut off shows it in full.
-- Games: in the grid, games with no exact release day show "Mar 2027" or "TBA" instead of nothing.
-- Notes, sync: dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Conflict copies use it too, with the time.
-- Games: search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
-- Games: game window and preview list all platforms, PC and Android first. Search results keep the short list.
-- Games: calendar rows get an "Add" button like search (was a pin). A game already in your list opens its game window.
+**Notes**
+- Dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Sync conflict copies use it too, with the time.
+
+**Games**
+- In the To play grid, prices sit at the bottom of each tile, so they line up across a row.
+- To play and game windows show the pricier of Steam and key in gray. When Steam is cheapest, its logo turns yellow (replaces the star).
+- In the grid, games with no exact release day show "Mar 2027" or "TBA" instead of nothing.
+- Search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
+- Game window and preview list all platforms, PC and Android first. Search results keep the short list.
+- Calendar rows get an "Add" button like search (was a pin). A game already in your list opens its game window.
+- Priority is a thin frame everywhere, also on Board cards (was ✨ or a bar, no more blue tint). A game and its card share it.
+- The game window's alert time reads like in Reminders ("Tomorrow, 10:00", "27 October 2026, 10:00").
+
+**App**
+- Hovering a name or line that's cut off shows it in full (Games, Reminders, note list, note links).
 - Menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line, like on the Board.
 - Windows that only show things (Settings, color rules, What's new, event preview) close with a ✕ at the top right, like the game window.
 - Error messages and red menu items all use the same red (the one sync errors use).
-- Games, Board: priority is a thin frame everywhere (was ✨ or a bar, no more blue tint). A game and its card share it.
-- Games: the game window's alert time reads like in Reminders ("Tomorrow, 10:00", "27 October 2026, 10:00").
 
 ## [0.18.6] - 2026-10-21
 
-- Games: a green "Date set" line when a Waiting game's date gets more precise (TBA → Q1 2027 → 15 Feb 2027). Delays from vague dates show too.
+**Games**
+- A green "Date set" line when a Waiting game's date gets more precise (TBA → Q1 2027 → 15 Feb 2027). Delays from vague dates show too.
 
 ## [0.18.5] - 2026-10-21
 
-- Games: "Lowest ever" says just "Free" when a game was once given away (was "store free").
+**Games**
+- "Lowest ever" says just "Free" when a game was once given away (was "store free").
 
 ## [0.18.4] - 2026-10-21
 
-- Games: prices for editions sold on Steam as a package (e.g. Fallout: New Vegas Ultimate Edition), and for games IGDB links to an old Steam page.
-- Games: "Lowest ever" says "free" instead of 0,00 € (e.g. after a giveaway).
+**Games**
+- Prices for editions sold on Steam as a package (e.g. Fallout: New Vegas Ultimate Edition), and for games IGDB links to an old Steam page.
+- "Lowest ever" says "free" instead of 0,00 € (e.g. after a giveaway).
 
 ## [0.18.3] - 2026-10-21
 
-- Games: next to prices, a yellow star when Steam costs no more than the cheapest key, and an orange flame at the lowest price ever.
+**Games**
+- Next to prices, a yellow star when Steam costs no more than the cheapest key, and an orange flame at the lowest price ever.
 
 ## [0.18.2] - 2026-10-21
 
