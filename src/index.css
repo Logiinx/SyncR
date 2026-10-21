@@ -3777,12 +3777,15 @@ h3.games-group-title {
   opacity: 0.4;
 }
 
-/* Items on days before today (reminders, events, releases): faded, full again on hover */
-.calendar-day.past > :not(.calendar-date) {
+/* Items on days before today (reminders, events, releases), and today's events already started:
+   faded, full again on hover */
+.calendar-day.past > :not(.calendar-date),
+.calendar-reminder.past {
   opacity: 0.55;
 }
 
-.calendar-day.past > :not(.calendar-date):hover {
+.calendar-day.past > :not(.calendar-date):hover,
+.calendar-reminder.past:hover {
   opacity: 1;
 }
 

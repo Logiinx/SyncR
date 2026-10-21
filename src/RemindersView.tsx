@@ -52,16 +52,17 @@ function RemindersView() {
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
-  // Redraw every 30 s, so events that are over leave the list
+  // Redraw every 30 s, so events that have started leave the list and fade in the grid
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(timer)
   }, [])
 
-  // List: calendar events (not over yet) and Waiting games (by release day) together, soonest first
+  // List: calendar events (not started yet; all-day ones until their day is over) and Waiting
+  // games (by release day) together, soonest first
   const upcoming = [
-    ...events.filter((event) => event.end > now).map((event) => ({ time: event.start, event })),
+    ...events.filter((event) => (event.allDay ? event.end : event.start) > now).map((event) => ({ time: event.start, event })),
     ...(waitingGames ?? []).map((game) => ({ time: game.releaseDate!, game })),
   ].sort((a, b) => a.time - b.time)
 
@@ -212,6 +213,7 @@ function RemindersView() {
           <ReminderGrid
             events={events}
             games={waitingGames}
+            now={now}
             onOpenEvent={setPreviewEvent}
             onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
             onGame={setOpenGame}
@@ -283,11 +285,13 @@ function byMonth<T extends { time: number }>(items: T[]) {
 }
 
 // Month grid: calendar events ("14:30 Call the bank", on their first day; all-day ones without a
-// time) and Waiting games (cover + name) on their day. From this month to the last upcoming
+// time) and Waiting games (cover + name) on their day. Today's timed events fade once
+// their start time has passed (all-day ones with their day). From this month to the last upcoming
 // event or release, at least 3 months, at most 12.
 function ReminderGrid(props: {
   events: CalendarEvent[]
   games: Game[]
+  now: number
   onOpenEvent: (event: CalendarEvent) => void
   onEventMenu: (event: CalendarEvent, x: number, y: number) => void
   onGame: (id: string) => void
@@ -318,7 +322,7 @@ function ReminderGrid(props: {
           {(eventsByDay.get(dayKey(date)) ?? []).map((event) => (
             <button
               key={event.id}
-              className="calendar-reminder"
+              className={`calendar-reminder${!event.allDay && event.start <= props.now ? ' past' : ''}`}
               onClick={() => props.onOpenEvent(event)}
               onContextMenu={(e) => {
                 e.preventDefault()

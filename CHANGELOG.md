@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Reminders: once an event's start time has passed, it fades in the month grid (like past days) and leaves the list.
+
 ## [0.16.6] - 2026-10-21
 
 ### Added
