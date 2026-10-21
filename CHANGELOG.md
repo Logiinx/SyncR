@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-10-21
+
 - Games: a game's window shows its prices like the To play list (Steam logo, key icon, green discount badge). Free games say "Free".
 - Games: "Watch trailer" lines up on the left like the other buttons in a game's window.
 
