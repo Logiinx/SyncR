@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.3] - 2026-10-21
+
 - Games: next to prices, a yellow star when Steam costs no more than the cheapest key, and an orange flame at the lowest price ever.
 
 ## [0.18.2] - 2026-10-21
