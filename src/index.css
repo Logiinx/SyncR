@@ -3282,7 +3282,7 @@ button {
 }
 
 .dialog .dialog-error {
-  color: #ff8080;
+  color: var(--error);
 }
 
 .dialog-buttons button:disabled {
@@ -3321,7 +3321,7 @@ button {
 }
 
 .context-menu .danger {
-  color: #ff8080;
+  color: var(--error);
 }
 
 /* ---------- Update banner ---------- */
@@ -4633,7 +4633,7 @@ h3.games-group-title {
 
 .dialog .event-error {
   margin: -4px 0 16px;
-  color: var(--text-red);
+  color: var(--error);
   font-size: 0.9em;
 }
 
