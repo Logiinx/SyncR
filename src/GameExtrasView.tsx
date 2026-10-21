@@ -53,8 +53,8 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
     )
   }
   const lows = [
-    deals?.retailLow && `store ${formatEuros(deals.retailLow)}`,
-    deals?.keyshopsLow && `key ${formatEuros(deals.keyshopsLow)}`,
+    deals?.retailLow && `store ${lowText(deals.retailLow)}`,
+    deals?.keyshopsLow && `key ${lowText(deals.keyshopsLow)}`,
   ].filter(Boolean)
   return (
     <div className="game-prices">
@@ -83,6 +83,9 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
     </div>
   )
 }
+
+// An all-time low: "free" rather than "0,00 €" (e.g. a past giveaway)
+const lowText = (price: string) => (Number(price) === 0 ? 'free' : formatEuros(price))
 
 // Free to play: Steam gives no price and GG.deals says 0 in stores (key shops may still list odd
 // prices for it, e.g. Dota 2: hidden)
