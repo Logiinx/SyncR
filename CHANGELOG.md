@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.18.6] - 2026-10-21
+
 - Games: a green "Date set" line when a Waiting game's date gets more precise (TBA → Q1 2027 → 15 Feb 2027). Delays from vague dates show too.
 
 ## [0.18.5] - 2026-10-21
