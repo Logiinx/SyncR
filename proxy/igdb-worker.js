@@ -10,6 +10,7 @@
 //   PROXY_PASSWORD        any long random text; typed once in SyncR's Settings on each device,
 //                         so only your SyncR can use this Worker (and your IGDB quota)
 //   GOOGLE_CLIENT_SECRET  console.cloud.google.com → Google Auth Platform → Clients → SyncR
+//   GGDEALS_KEY           gg.deals → Settings → API key (game prices, see /prices)
 //
 // The app sends: POST https://<worker>/<endpoint>, header "X-SyncR-Password", body = an IGDB
 // query (Apicalypse), e.g. 'search "Guild Wars"; fields name; limit 5;'.
@@ -71,6 +72,44 @@ async function googleToken(env, request) {
   return fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: params })
 }
 
+// Game prices in euros, for up to 100 Steam IDs. Body (JSON): { steamIds: [570, 1091500] }.
+// Steam's own price (with its discount) and GG.deals' cheapest prices on official stores and
+// key shops, with the all-time lows. Answer: { "<steamId>": { steam, deals } }, each null if unknown.
+async function gamePrices(env, request) {
+  const { steamIds } = await request.json()
+  const ids = (Array.isArray(steamIds) ? steamIds : []).map(Number).filter((id) => id > 0).slice(0, 100)
+  if (ids.length === 0) return {}
+  const [steam, deals] = await Promise.all([
+    fetch(`https://store.steampowered.com/api/appdetails?appids=${ids.join(',')}&cc=fr&filters=price_overview`)
+      .then((response) => (response.ok ? response.json() : {}))
+      .catch(() => ({})),
+    env.GGDEALS_KEY
+      ? fetch(`https://api.gg.deals/v1/prices/by-steam-app-id/?ids=${ids.join(',')}&region=fr&key=${env.GGDEALS_KEY}`)
+          .then((response) => (response.ok ? response.json() : {}))
+          .catch(() => ({}))
+      : {},
+  ])
+  const result = {}
+  for (const id of ids) {
+    // Prices in cents; a free game has no price_overview
+    const price = steam[id]?.data?.price_overview
+    const game = deals.data?.[id]
+    result[id] = {
+      steam: price ? { final: price.final, initial: price.initial, discount: price.discount_percent } : null,
+      deals: game
+        ? {
+            url: game.url,
+            retail: game.prices.currentRetail,
+            keyshops: game.prices.currentKeyshops,
+            retailLow: game.prices.historicalRetail,
+            keyshopsLow: game.prices.historicalKeyshops,
+          }
+        : null,
+    }
+  }
+  return result
+}
+
 function askIgdb(env, endpoint, query, accessToken) {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
@@ -111,6 +150,13 @@ export default {
       try {
         const response = await googleToken(env, request)
         return reply(await response.text(), response.status)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    if (endpoint === 'prices') {
+      try {
+        return reply(await gamePrices(env, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
       }
