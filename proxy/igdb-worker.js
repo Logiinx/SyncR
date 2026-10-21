@@ -74,41 +74,57 @@ async function googleToken(env, request) {
   return fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: params })
 }
 
-// Game prices in euros, for up to 100 Steam IDs. Body (JSON): { steamIds: [570, 1091500] }.
+// Game prices in euros, for up to 100 Steam games ("apps") and 20 Steam packages ("subs",
+// e.g. editions sold as a bundle). Body (JSON): { steamIds: [570, 1091500], subIds: [13435] }.
 // Steam's own price (with its discount) and GG.deals' cheapest prices on official stores and
-// key shops, with the all-time lows. Answer: { "<steamId>": { steam, deals } }, each null if unknown.
+// key shops, with the all-time lows. Answer: { "<appId>": { steam, deals }, "sub<subId>": … },
+// each null if unknown.
+const askJson = (url) =>
+  fetch(url)
+    .then((response) => (response.ok ? response.json() : {}))
+    .catch(() => ({}))
+
+const askDeals = (env, kind, ids) =>
+  env.GGDEALS_KEY && ids.length > 0
+    ? askJson(`https://api.gg.deals/v1/prices/by-steam-${kind}-id/?ids=${ids.join(',')}&region=fr&key=${env.GGDEALS_KEY}`)
+    : {}
+
+const cleanIds = (ids, max) => (Array.isArray(ids) ? ids : []).map(Number).filter((id) => id > 0).slice(0, max)
+
+function priceEntry(price, game) {
+  return {
+    // Prices in cents; a free game has no price
+    steam: price ? { final: price.final, initial: price.initial, discount: price.discount_percent } : null,
+    deals: game
+      ? {
+          url: game.url,
+          retail: game.prices.currentRetail,
+          keyshops: game.prices.currentKeyshops,
+          retailLow: game.prices.historicalRetail,
+          keyshopsLow: game.prices.historicalKeyshops,
+        }
+      : null,
+  }
+}
+
 async function gamePrices(env, request) {
-  const { steamIds } = await request.json()
-  const ids = (Array.isArray(steamIds) ? steamIds : []).map(Number).filter((id) => id > 0).slice(0, 100)
-  if (ids.length === 0) return {}
-  const [steam, deals] = await Promise.all([
-    fetch(`https://store.steampowered.com/api/appdetails?appids=${ids.join(',')}&cc=fr&filters=price_overview`)
-      .then((response) => (response.ok ? response.json() : {}))
-      .catch(() => ({})),
-    env.GGDEALS_KEY
-      ? fetch(`https://api.gg.deals/v1/prices/by-steam-app-id/?ids=${ids.join(',')}&region=fr&key=${env.GGDEALS_KEY}`)
-          .then((response) => (response.ok ? response.json() : {}))
-          .catch(() => ({}))
+  const body = await request.json()
+  const apps = cleanIds(body.steamIds, 100)
+  const subs = cleanIds(body.subIds, 20)
+  const [steamApps, steamSubs, dealsApps, dealsSubs] = await Promise.all([
+    apps.length > 0
+      ? askJson(`https://store.steampowered.com/api/appdetails?appids=${apps.join(',')}&cc=fr&filters=price_overview`)
       : {},
+    // Steam answers one package per request
+    Promise.all(subs.map((id) => askJson(`https://store.steampowered.com/api/packagedetails?packageids=${id}&cc=fr`))),
+    askDeals(env, 'app', apps),
+    askDeals(env, 'sub', subs),
   ])
   const result = {}
-  for (const id of ids) {
-    // Prices in cents; a free game has no price_overview
-    const price = steam[id]?.data?.price_overview
-    const game = deals.data?.[id]
-    result[id] = {
-      steam: price ? { final: price.final, initial: price.initial, discount: price.discount_percent } : null,
-      deals: game
-        ? {
-            url: game.url,
-            retail: game.prices.currentRetail,
-            keyshops: game.prices.currentKeyshops,
-            retailLow: game.prices.historicalRetail,
-            keyshopsLow: game.prices.historicalKeyshops,
-          }
-        : null,
-    }
-  }
+  for (const id of apps) result[id] = priceEntry(steamApps[id]?.data?.price_overview, dealsApps.data?.[id])
+  subs.forEach((id, i) => {
+    result[`sub${id}`] = priceEntry(steamSubs[i]?.[id]?.data?.price, dealsSubs.data?.[id])
+  })
   return result
 }
 

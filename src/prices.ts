@@ -5,7 +5,7 @@ import { db } from './db'
 import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
 export interface GamePrices {
-  steamId: number
+  steamUrl: string // the Steam store page (a game, or a package for some editions)
   steam: { final: number; initial: number; discount: number } | null // cents; null = free or not sold
   deals: {
     url: string // the game's GG.deals page
@@ -21,20 +21,41 @@ const STEAM = 1 // IGDB external game source
 interface IgdbExternal {
   id: number
   external_games?: { uid?: string; external_game_source?: number; category?: number }[]
+  websites?: { url?: string }[]
 }
 
-// IGDB id → Steam app id (games not on Steam are left out)
-async function steamIds(igdbIds: number[]): Promise<Map<number, number>> {
-  const result = new Map<number, number>()
+// Where a game is sold on Steam: a game page ("app"), or a package ("sub") for editions sold as
+// a bundle of the game and its add-ons (e.g. Fallout: New Vegas Ultimate Edition)
+interface SteamRef {
+  kind: 'app' | 'sub'
+  id: number
+}
+
+// The Steam store page among the game's web links first (the current one: IGDB's other Steam
+// links can be old pages, e.g. Fallout: New Vegas also lists a removed one), else IGDB's Steam
+// link, else a package page (editions often have only that). Games not on Steam are left out.
+function findSteam(game: IgdbExternal): SteamRef | undefined {
+  const page = (kind: SteamRef['kind']) => {
+    for (const site of game.websites ?? []) {
+      const match = site.url?.match(new RegExp(`store\\.steampowered\\.com/${kind}/(\\d+)`))
+      if (match) return { kind, id: Number(match[1]) }
+    }
+  }
+  const linked = game.external_games?.find((e) => (e.external_game_source ?? e.category) === STEAM && Number(e.uid) > 0)
+  return page('app') ?? (linked && { kind: 'app', id: Number(linked.uid) }) ?? page('sub')
+}
+
+async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef>> {
+  const result = new Map<number, SteamRef>()
   for (let i = 0; i < igdbIds.length; i += 500) {
     const ids = igdbIds.slice(i, i + 500)
     const games = await igdb<IgdbExternal>(
       'games',
-      `fields external_games.uid, external_games.external_game_source, external_games.category; where id = (${ids.join(',')}); limit 500;`,
+      `fields external_games.uid, external_games.external_game_source, external_games.category, websites.url; where id = (${ids.join(',')}); limit 500;`,
     )
     for (const game of games) {
-      const steam = game.external_games?.find((e) => (e.external_game_source ?? e.category) === STEAM && Number(e.uid) > 0)
-      if (steam) result.set(game.id, Number(steam.uid))
+      const steam = findSteam(game)
+      if (steam) result.set(game.id, steam)
     }
   }
   return result
@@ -44,7 +65,11 @@ async function steamIds(igdbIds: number[]): Promise<Map<number, number>> {
 const CACHE_MS = 10 * 60_000
 const cache = new Map<number, { prices: GamePrices | null; time: number }>()
 
-// Prices by IGDB id; null = not on Steam. GG.deals allows 100 games per request (and per minute).
+// Per request: GG.deals allows 100 games (and 100 per minute); Steam answers one package at a time
+const MAX_APPS = 100
+const MAX_SUBS = 20
+
+// Prices by IGDB id; null = not on Steam
 export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePrices | null>> {
   const result = new Map<number, GamePrices | null>()
   const missing = igdbIds.filter((id) => {
@@ -53,19 +78,30 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
     return !result.has(id)
   })
   if (missing.length === 0) return result
-  const steam = await steamIds(missing)
-  const withSteam = missing.filter((id) => steam.has(id))
-  for (let i = 0; i < withSteam.length; i += 100) {
-    const part = withSteam.slice(i, i + 100)
-    const response = await igdbProxyFetch('prices', JSON.stringify({ steamIds: part.map((id) => steam.get(id)) }), 20_000)
-    if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
-    const answer: Record<string, Omit<GamePrices, 'steamId'>> = await response.json()
-    for (const id of part) {
-      const steamId = steam.get(id)!
-      const found = answer[steamId]
-      result.set(id, found ? { steamId, ...found } : null)
+  const steam = await steamRefs(missing)
+  let batch: number[] = [] // IGDB ids
+  const ask = async () => {
+    const refs = batch.map((id) => steam.get(id)!)
+    const body = {
+      steamIds: refs.filter((r) => r.kind === 'app').map((r) => r.id),
+      subIds: refs.filter((r) => r.kind === 'sub').map((r) => r.id),
     }
+    const response = await igdbProxyFetch('prices', JSON.stringify(body), 20_000)
+    if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
+    const answer: Record<string, Omit<GamePrices, 'steamUrl'>> = await response.json()
+    for (const id of batch) {
+      const { kind, id: steamId } = steam.get(id)!
+      const found = answer[kind === 'app' ? steamId : `sub${steamId}`]
+      result.set(id, found ? { steamUrl: `https://store.steampowered.com/${kind}/${steamId}/`, ...found } : null)
+    }
+    batch = []
   }
+  for (const id of missing.filter((id) => steam.has(id))) {
+    batch.push(id)
+    const kinds = batch.map((b) => steam.get(b)!.kind)
+    if (kinds.filter((k) => k === 'app').length === MAX_APPS || kinds.filter((k) => k === 'sub').length === MAX_SUBS) await ask()
+  }
+  if (batch.length > 0) await ask()
   for (const id of missing) {
     if (!result.has(id)) result.set(id, null)
     cache.set(id, { prices: result.get(id)!, time: Date.now() })

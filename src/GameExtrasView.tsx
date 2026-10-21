@@ -45,7 +45,7 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
     return (
       <div className="game-prices">
         <div>
-          <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
+          <button className="price-link" onClick={() => openLink(prices.steamUrl)}>
             <SteamIcon /> Free
           </button>
         </div>
@@ -59,7 +59,7 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
   return (
     <div className="game-prices">
       <div>
-        <button className="price-link" onClick={() => openLink(`https://store.steampowered.com/app/${prices.steamId}/`)}>
+        <button className="price-link" onClick={() => openLink(prices.steamUrl)}>
           <SteamIcon /> {steam ? formatEuros(steam.final) : 'No price'}
         </button>
         {steam && steam.discount > 0 && (

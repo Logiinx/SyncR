@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+- Games: prices for editions sold on Steam as a package (e.g. Fallout: New Vegas Ultimate Edition), and for games IGDB links to an old Steam page.
+
 ## [0.18.3] - 2026-10-21
 
 - Games: next to prices, a yellow star when Steam costs no more than the cheapest key, and an orange flame at the lowest price ever.
