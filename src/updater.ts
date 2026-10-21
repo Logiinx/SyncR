@@ -21,8 +21,15 @@ export async function findUpdate(): Promise<Update | null> {
 }
 
 // Last sync first (max 5 s): the installer closes the app.
-export async function installUpdate(update: Update) {
+// onProgress gets the downloaded part (0 to 1), or null if the size is unknown.
+export async function installUpdate(update: Update, onProgress: (done: number | null) => void) {
   await finalSync()
-  await update.downloadAndInstall()
+  let total = 0
+  let received = 0
+  await update.downloadAndInstall((event) => {
+    if (event.event === 'Started') total = event.data.contentLength ?? 0
+    if (event.event === 'Progress') received += event.data.chunkLength
+    onProgress(event.event === 'Finished' ? 1 : total ? Math.min(1, received / total) : null)
+  })
   await relaunch()
 }

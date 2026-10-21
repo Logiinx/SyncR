@@ -3332,18 +3332,82 @@ button {
 
 /* ---------- Update banner ---------- */
 
+/* A slim dark bar under the tabs with a blue left edge (red when the update failed):
+   icon, text, and "Update now" at the end. While downloading, a thin blue line along its
+   bottom fills up. */
 .update-banner {
+  --edge: var(--link);
+  position: relative;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 8px 24px;
+  min-height: 36px;
+  padding: 4px 12px 4px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  box-shadow: inset 3px 0 0 var(--edge);
+  font-size: 0.9em;
+}
+
+.update-banner.failed {
+  --edge: var(--error);
+}
+
+.update-icon {
+  flex-shrink: 0;
+  color: var(--edge);
+}
+
+.update-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-text b {
+  font-weight: 600;
+}
+
+.update-dim {
+  color: var(--text-dim);
+}
+
+.update-button {
+  flex-shrink: 0;
+  padding: 3px 12px;
+  border-radius: 5px;
   background: var(--accent);
 }
 
-.update-banner button {
-  padding: 2px 10px;
-  border-radius: 4px;
-  background: rgb(255 255 255 / 15%);
+.update-button:hover {
+  filter: brightness(1.2);
+}
+
+.update-progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--link);
+  transition: width 0.2s;
+}
+
+/* "Checking…", "Up to date", "Couldn't check": a small gray line, gone after a few seconds */
+.update-notice {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.82em;
+}
+
+.update-notice-ok {
+  color: var(--ok);
+}
+
+.update-notice-error {
+  color: var(--error);
 }
 
 /* ---------- Games tab (GamesView.tsx) ---------- */
@@ -3851,12 +3915,11 @@ h3.games-group-title {
 }
 
 /* SyncR's loading icon (Spinner.tsx): a turning blue ring with a gap, like the cloud button's
-   while syncing. On a blue background (update banner, a blue button) it takes the text color */
+   while syncing. On a blue background (a blue button) it takes the text color */
 .spinner {
   flex-shrink: 0;
 }
 
-.update-banner .spinner circle,
 .primary .spinner circle {
   stroke: currentColor;
 }

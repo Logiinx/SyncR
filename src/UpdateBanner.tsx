@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
+import { Check, CircleArrowDown, TriangleAlert } from 'lucide-react'
 import type { Update } from '@tauri-apps/plugin-updater'
 import { finalSync } from './autoSync'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
@@ -14,13 +15,16 @@ export function checkForUpdates(): Promise<void> {
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
-// Shows a bar at the top when a new version of SyncR is available.
-// Desktop app: downloads and installs it. Phone / browser: reloads into the new version.
-// Also shows the result of "Check for updates" for a few seconds.
+// Shows a slim bar at the top when a new version of SyncR is available.
+// Desktop app: downloads and installs it (with the download's progress). Phone / browser:
+// reloads into the new version. Also shows the result of "Check for updates" for a few
+// seconds, as a small gray line.
 function UpdateBanner() {
   const [update, setUpdate] = useState<Update | null>(null)
   const [applyWebUpdate, setApplyWebUpdate] = useState<(() => void) | null>(null)
   const [installing, setInstalling] = useState(false)
+  // The downloaded part (0 to 1); null = downloading, size unknown; undefined = not yet
+  const [progress, setProgress] = useState<number | null | undefined>(undefined)
   const [installError, setInstallError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -69,17 +73,20 @@ function UpdateBanner() {
   if (applyWebUpdate) {
     return (
       <div className="update-banner">
-        A new version of SyncR is available.
-        <button
-          onClick={async () => {
-            setInstalling(true)
-            await finalSync() // max 5 s, then reload anyway
-            applyWebUpdate()
-          }}
-          disabled={installing}
-        >
-          {installing ? <WithSpinner text="Reloading…" /> : 'Reload'}
-        </button>
+        {installing ? <Spinner /> : <CircleArrowDown size={16} className="update-icon" />}
+        <span className="update-text">{installing ? 'Reloading…' : 'A new version of SyncR is ready.'}</span>
+        {!installing && (
+          <button
+            className="update-button"
+            onClick={async () => {
+              setInstalling(true)
+              await finalSync() // max 5 s, then reload anyway
+              applyWebUpdate()
+            }}
+          >
+            Reload
+          </button>
+        )}
       </div>
     )
   }
@@ -88,8 +95,9 @@ function UpdateBanner() {
     const onInstall = async () => {
       setInstalling(true)
       setInstallError(null)
+      setProgress(undefined)
       try {
-        await installUpdate(update)
+        await installUpdate(update, setProgress)
       } catch (error) {
         console.error('Update failed:', error)
         setInstallError(errorText(error))
@@ -97,20 +105,62 @@ function UpdateBanner() {
       }
     }
 
+    // While installing: first the last sync, then the download, then the installer
+    const version = `SyncR ${update.version}`
+    const status =
+      progress === undefined
+        ? 'Syncing before the update…'
+        : progress === 1
+          ? `Installing ${version}…`
+          : `Downloading ${version}…`
+
     return (
-      <div className="update-banner">
-        {installError ? `Update failed: ${installError}` : `SyncR ${update.version} is available.`}
-        <button onClick={onInstall} disabled={installing}>
-          {installing ? <WithSpinner text="Installing…" /> : installError ? 'Try again' : 'Update now'}
-        </button>
+      <div className={installError ? 'update-banner failed' : 'update-banner'}>
+        {installing ? (
+          <Spinner />
+        ) : installError ? (
+          <TriangleAlert size={16} className="update-icon" />
+        ) : (
+          <CircleArrowDown size={16} className="update-icon" />
+        )}
+        <span className="update-text">
+          {installing ? (
+            <>
+              {status}
+              {typeof progress === 'number' && progress < 1 && (
+                <span className="update-dim"> {Math.round(progress * 100)}%</span>
+              )}
+            </>
+          ) : installError ? (
+            `Update failed: ${installError}`
+          ) : (
+            <>
+              <b>{version}</b> is ready.
+            </>
+          )}
+        </span>
+        {!installing && (
+          <button className="update-button" onClick={onInstall}>
+            {installError ? 'Try again' : 'Update now'}
+          </button>
+        )}
+        {installing && typeof progress === 'number' && (
+          <div className="update-progress" style={{ width: `${progress * 100}%` }} />
+        )}
       </div>
     )
   }
 
   if (notice) {
     return (
-      <div className="update-banner">
-        {LOADING_NOTICES.includes(notice) && <Spinner />}
+      <div className="update-notice">
+        {LOADING_NOTICES.includes(notice) ? (
+          <Spinner size={13} />
+        ) : notice.startsWith("Couldn't") ? (
+          <TriangleAlert size={13} className="update-notice-error" />
+        ) : (
+          <Check size={13} className="update-notice-ok" />
+        )}
         {notice}
       </div>
     )
@@ -120,12 +170,5 @@ function UpdateBanner() {
 
 // Notices that mean "wait": shown with the loading ring
 const LOADING_NOTICES = ['Checking for updates…', 'Downloading the new version…']
-
-// A button's text while it works, with the loading ring before it
-const WithSpinner = ({ text }: { text: string }) => (
-  <span className="loading-line">
-    <Spinner size={13} /> {text}
-  </span>
-)
 
 export default UpdateBanner
