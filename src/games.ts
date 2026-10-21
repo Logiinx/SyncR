@@ -100,13 +100,14 @@ export function formatRelease(time?: number, label?: string) {
 
 // A game's release line, the one place that decides it (each view had its own copy, and they
 // drifted apart). No exact day: the vague date ("Mar 2027") or "TBA", in every form.
-// 'full' (search results, preview): the date, plus the countdown until it's out.
+// 'full' (search results, preview, game window, Games calendar): the date, plus the countdown until it's out.
 // 'year' (Games list): while waiting the date + countdown, else the year.
 // 'short' (Games grid): while waiting the countdown alone (the tooltip has the date), else the year.
 export function releaseText(game: { releaseDate?: number; releaseLabel?: string; status?: string }, form: 'full' | 'year' | 'short') {
   const date = formatRelease(game.releaseDate, game.releaseLabel)
   if (!game.releaseDate) return date
-  const upcoming = form === 'full' ? !isReleased(game) : game.status === 'waiting'
+  // ('full' still counts down on the release day itself: "22 Oct 2026 · today")
+  const upcoming = form === 'full' ? releaseCountdown(game.releaseDate) !== 'out now' : game.status === 'waiting'
   if (!upcoming) return form === 'full' ? date : String(new Date(game.releaseDate).getFullYear())
   const countdown = releaseCountdown(game.releaseDate)
   return form === 'short' ? countdown : `${date} · ${countdown}`

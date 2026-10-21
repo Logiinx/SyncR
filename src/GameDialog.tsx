@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, X } from 'lucide-react'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
-import { formatRelease, releaseEventId, shortPlatforms, STATUSES } from './games'
+import { releaseEventId, releaseText, shortPlatforms, STATUSES } from './games'
 import { openLink } from './links'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
@@ -40,7 +40,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
         <TrailerTheater
           igdbId={game.igdbId}
           title={game.name}
-          release={formatRelease(game.releaseDate, game.releaseLabel)}
+          release={releaseText(game, 'full')}
           platforms={shortPlatforms(game.platforms)}
           onBack={() => setTrailerOpen(false)}
           onClose={onClose}
@@ -113,7 +113,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
               <div className="gd-title">
                 <h2>{game.name}</h2>
                 <p>
-                  {formatRelease(game.releaseDate, game.releaseLabel)}
+                  {releaseText(game, 'full')}
                   {game.platforms.length > 0 && ` · ${shortPlatforms(game.platforms)}`}
                 </p>
                 {releaseEvent && releaseEvent.alerts.length > 0 && (

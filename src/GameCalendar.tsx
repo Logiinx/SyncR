@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Pin } from 'lucide-react'
-import { addGame, gameId, releaseCountdown, STATUSES } from './games'
+import { addGame, gameId, releaseText, STATUSES } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
@@ -73,7 +73,7 @@ function GameCalendar(props: { inList: Map<string, GameStatus>; layout: Calendar
         <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={setShown} />
       )}
       {shown && (
-        <GamePreview game={shown} release={releaseText(shown, true)} status={statusOf(shown)} onClose={() => setShown(null)} />
+        <GamePreview game={shown} release={releaseLine(shown)} status={statusOf(shown)} onClose={() => setShown(null)} />
       )}
     </div>
   )
@@ -125,7 +125,7 @@ function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
         <Cover coverId={game.coverId} />
         <div className="game-text">
           <div className="game-name" title={game.name}>{game.name}</div>
-          <div className="game-details">{releaseText(game)}</div>
+          <div className="game-details">{releaseLine(game)}</div>
         </div>
         {status ? (
           <span className="game-in-list">In {label(status)}</span>
@@ -146,17 +146,10 @@ function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
   })
 }
 
-// "Thu 29 Oct · in 13 days", or IGDB's text for a vague date ("Q1 2027")
-function releaseText(game: UpcomingGame, withYear = false) {
-  if (!game.exact) return game.vagueLabel
-  const date = new Date(game.pcDate).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    ...(withYear && { year: 'numeric' }),
-  })
-  return `${date} · ${releaseCountdown(game.pcDate)}`
-}
+// The release line like everywhere else (games.ts), from the calendar's PC date: "29 Oct 2026 · in 7 days",
+// or IGDB's text for a vague date ("Q1 2027")
+const releaseLine = (game: UpcomingGame) =>
+  releaseText({ releaseDate: game.exact ? game.pcDate : undefined, releaseLabel: game.vagueLabel }, 'full')
 
 // Grid: every month from this one to the end of the range, stacked (MonthGrid.tsx). A day shows
 // its games' covers and names; a month's month-only games are listed under its grid.

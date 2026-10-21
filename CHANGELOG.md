@@ -9,7 +9,7 @@ All notable changes to SyncR. Newest version first.
 - Games, Reminders: hovering a game or event name that's cut off shows it in full.
 - Games: in the grid, games with no exact release day show "Mar 2027" or "TBA" instead of nothing.
 - Notes, sync: dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Conflict copies use it too, with the time.
-- Games: search results show the countdown for games not out yet ("in 39 days"), like the calendar.
+- Games: search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
 
 ## [0.18.6] - 2026-10-21
 
