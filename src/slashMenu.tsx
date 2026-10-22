@@ -89,7 +89,14 @@ export const SlashMenu = Extension.create({
         char: '/',
         // Only after a space or at the start of a line, so "1/2" or "http://" don't open it
         allowedPrefixes: [' '],
-        allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
+        // allowedPrefixes only sees the text with the same formatting as the "/": after a
+        // colored or bold word it thinks the "/" starts the line. Check the whole line too.
+        allow: ({ state, range }) => {
+          const $from = state.doc.resolve(range.from)
+          if ($from.parent.type.spec.code) return false
+          const before = $from.parent.textBetween(0, $from.parentOffset, undefined, ' ')
+          return before === '' || /\s$/.test(before)
+        },
         placement: 'bottom-start',
         items: ({ query, editor }) => filterItems(query, editor),
         // Remove the typed "/query", then insert the block
