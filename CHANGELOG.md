@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.19.6] - 2026-10-22
+
 **Notes**
 - The "/" menu no longer opens when "/" is typed right after a colored or bold word.
 
