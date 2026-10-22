@@ -120,3 +120,14 @@ export const AlignPaths = Extension.create({
     }
   },
 })
+
+// Tab and Shift+Tab that nothing else used (lists, tables, code blocks, menus, aligning) do
+// nothing, instead of the browser moving the focus out of the note
+export const TabStaysInNote = Extension.create({
+  name: 'tabStaysInNote',
+  priority: 1, // after every other Tab
+
+  addKeyboardShortcuts() {
+    return { Tab: () => true, 'Shift-Tab': () => true }
+  },
+})

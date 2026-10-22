@@ -25,7 +25,7 @@ import { DragSections } from './dragSections'
 import { SlashMenu } from './slashMenu'
 import { jumpToBlock, NoteLinks, PROTOCOL, takePendingJump } from './noteLinks'
 import { NotePicker } from './notePicker'
-import { AlignPaths } from './alignPaths'
+import { AlignPaths, TabStaysInNote } from './alignPaths'
 import { jumpToSearch, takePendingSearch } from './noteSearch'
 import TableMenu from './TableMenu'
 import { CellSelection } from '@tiptap/pm/tables'
@@ -65,6 +65,7 @@ export const extensions = [
   ListAfterBreak,
   LineBreaks,
   AlignPaths,
+  TabStaysInNote,
   SmartTypography,
   // Collapsible sections. Open/closed isn't saved, so they're always closed when a note opens.
   Details.configure({
