@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- Tab aligns a line under ">" only with the cursor at its start (or right after its first ">"); further in it does nothing.
+
 ## [0.19.4] - 2026-10-22
 
 **Notes**

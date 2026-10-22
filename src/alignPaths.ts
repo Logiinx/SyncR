@@ -4,7 +4,8 @@ import { Extension, type Editor } from '@tiptap/react'
 // line starting under "RPG"). The font isn't fixed-width, so spaces can't do it exactly: the
 // line gets a left indent instead (attribute alignIndent, in em so it follows the text size),
 // measured from where each ">" of the line above is drawn.
-// Tab: under the next ">", Shift+Tab: the previous one (then back to the left edge).
+// Tab: under the next ">", Shift+Tab: the previous one (then back to the left edge), only
+// with the cursor before the line's first ">".
 // Enter keeps the indent on the new line; Backspace at the start of the line removes it.
 // The toolbar's "Align under >" button does what Tab does, and wraps back to the left edge.
 
@@ -98,9 +99,18 @@ export const AlignPaths = Extension.create({
   },
 
   addKeyboardShortcuts() {
+    // Tab and Shift+Tab only align from the start of the line (up to its first ">" and the
+    // spaces after it, e.g. right after typing "> "). Further in they do nothing, so the line
+    // doesn't jump (later ">" aren't lined up: user's choice)
+    const fromStart = (editor: Editor, direction: 1 | -1) => {
+      const { $from } = editor.state.selection
+      const before = $from.parent.textBetween(0, $from.parentOffset)
+      if (pathAbove(editor) && !/^\s*>?\s*$/.test(before)) return true
+      return alignLine(editor, direction)
+    }
     return {
-      Tab: ({ editor }) => alignLine(editor, 1),
-      'Shift-Tab': ({ editor }) => alignLine(editor, -1),
+      Tab: ({ editor }) => fromStart(editor, 1),
+      'Shift-Tab': ({ editor }) => fromStart(editor, -1),
       Backspace: ({ editor }) => {
         const { selection } = editor.state
         const { $from } = selection
