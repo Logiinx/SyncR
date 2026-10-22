@@ -73,7 +73,8 @@ export const extensions = [
     },
   }),
   DetailsSummary,
-  DetailsContent,
+  // No "Enter on an empty last line leaves the section": Enter always adds a line inside
+  DetailsContent.extend({ addKeyboardShortcuts: () => ({}) }),
   DragSections,
   SlashMenu,
   Image,
