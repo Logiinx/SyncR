@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.19.4] - 2026-10-22
+
 **Notes**
 - Tab lines a line up exactly under the next ">" of the line above (Shift+Tab goes back). Also a toolbar button, and on cards.
 
