@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-10-22
+
 **Notes**
 - Typing "> " makes a quote only at the very start of a line, no longer after spaces (handy to line up text).
 - Enter in a section always adds a line, even on an empty line: it no longer leaves the section (↓ or a click gets you out).
