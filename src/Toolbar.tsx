@@ -5,6 +5,7 @@ import {
   Check,
   Ellipsis,
   FoldVertical,
+  IndentIncrease,
   ImageIcon,
   Italic,
   Link,
@@ -26,6 +27,7 @@ import { canMakeCodeBlock, codeBlockToParagraphs, selectionToCodeBlock } from '.
 import { createCard } from './db'
 import { insertImages } from './image'
 import { hasLineBreaks, splitLineBreaks } from './lineBreaks'
+import { alignLine, pathAbove } from './alignPaths'
 import { copyLinkToBlock } from './noteLinks'
 import { useNarrow } from './useNarrow'
 
@@ -82,6 +84,8 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
       inCodeBlock: editor.isActive('codeBlock'),
       canMakeCodeBlock: canMakeCodeBlock(editor),
       hasLineBreaks: hasLineBreaks(editor),
+      canAlign: !!pathAbove(editor),
+      aligned: !!editor.state.selection.$from.parent.attrs.alignIndent,
       hasSelection: !editor.state.selection.empty,
     }),
   })
@@ -94,6 +98,8 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
   const toggleCodeBlock = () => (state.inCodeBlock ? codeBlockToParagraphs(editor) : selectionToCodeBlock(editor))
   const insertTable = () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
   const pickImage = () => fileInput.current?.click()
+  // Like Tab, but after the last ">" back to the left edge (no Shift+Tab on a phone)
+  const alignUnder = () => alignLine(editor, 1, true) && editor.commands.focus()
 
   // A check mark for a moment after "Copy link" or "Pin" (on the "⋯" button on a phone)
   const [done, setDone] = useState<'link' | 'pin' | null>(null)
@@ -138,6 +144,7 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
       onClick: toggleCodeBlock,
     },
     { label: 'Separate lines', show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
+    { label: 'Align under ">"', show: state.canAlign, onClick: alignUnder },
     { label: 'Table', show: true, onClick: insertTable },
     { label: 'Image', show: true, onClick: pickImage },
     { label: 'Copy link to this spot', show: true, onClick: copyLink },
@@ -227,6 +234,14 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
               onClick={() => splitLineBreaks(editor)}
             >
               <Rows3 size={ICON_SIZE} />
+            </ToolButton>
+            <ToolButton
+              title={'Line up this line under the next ">" of the line above (Tab, Shift+Tab to go back)'}
+              active={state.aligned}
+              disabled={!state.canAlign}
+              onClick={alignUnder}
+            >
+              <IndentIncrease size={ICON_SIZE} />
             </ToolButton>
   
             <span className="toolbar-separator" />
