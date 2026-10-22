@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- Typing "> " makes a quote only at the very start of a line, no longer after spaces (handy to line up text).
+
 ## [0.19.2] - 2026-10-22
 
 **Notes**

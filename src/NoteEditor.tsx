@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, useEditor, wrappingInputRule } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { Blockquote } from '@tiptap/extension-blockquote'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
@@ -36,7 +37,13 @@ const CHEVRON =
 
 // Also used by the Board's cards (Card.tsx), so they edit the same way as notes
 export const extensions = [
-  StarterKit.configure({ link: false, codeBlock: false }),
+  StarterKit.configure({ link: false, codeBlock: false, blockquote: false }),
+  // Typing "> " makes a quote only at the very start of a line (not after spaces)
+  Blockquote.extend({
+    addInputRules() {
+      return [wrappingInputRule({ find: /^>\s$/, type: this.type })]
+    },
+  }),
   CodeBlock,
   // Links: pasting an address makes a link (also over selected text). Clicks: see links.ts.
   // Not "inclusive": text typed right after a link doesn't become part of it.
