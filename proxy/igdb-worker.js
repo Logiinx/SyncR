@@ -13,6 +13,8 @@
 //                         and Google sign-in work, game prices don't (your GG.deals limit)
 //   GOOGLE_CLIENT_SECRET  console.cloud.google.com → Google Auth Platform → Clients → SyncR
 //   GGDEALS_KEY           gg.deals → Settings → API key (game prices, see /prices)
+//   STEAM_KEY             steamcommunity.com/dev/apikey (your Steam games and achievements,
+//                         see /steam/…; your profile's "Game details" must be public)
 //
 // The app sends: POST https://<worker>/<endpoint>, header "X-SyncR-Password", body = an IGDB
 // query (Apicalypse), e.g. 'search "Guild Wars"; fields name; limit 5;'.
@@ -128,6 +130,69 @@ async function gamePrices(env, request) {
   return result
 }
 
+// ---------- Steam (owner only) ----------
+// Body (JSON):
+//   steam/profile       { profile } → { steamId, name, games }: games = how many it owns, null
+//                       when the profile's game details are private
+//   steam/owned         { steamId } → { games: [{ appId, name, minutes }] } (minutes played),
+//                       or { private: true }
+//   steam/achievements  { steamId, appIds } → { "<appId>": { done, total } }, null for a game
+//                       without achievements. At most 40 games per request (a Worker may make
+//                       50 requests of its own per request).
+// profile: a profile link (…/profiles/7656… or …/id/name), or the number, or the custom name.
+const STEAM_API = 'https://api.steampowered.com'
+
+async function findSteamId(env, profile) {
+  const text = String(profile ?? '').trim()
+  const number = text.match(/(?:^|profiles\/)(\d{17})(?:\/|$)/)
+  if (number) return number[1]
+  const name = text.match(/\/id\/([^/?#]+)/)?.[1] ?? (/^[\w-]+$/.test(text) ? text : null)
+  if (!name) return null
+  const answer = await askJson(`${STEAM_API}/ISteamUser/ResolveVanityURL/v1/?key=${env.STEAM_KEY}&vanityurl=${encodeURIComponent(name)}`)
+  return answer.response?.success === 1 ? answer.response.steamid : null
+}
+
+async function ownedGames(env, steamId) {
+  const answer = await askJson(
+    `${STEAM_API}/IPlayerService/GetOwnedGames/v1/?key=${env.STEAM_KEY}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1`,
+  )
+  const games = answer.response?.games
+  return Array.isArray(games) ? games.map((g) => ({ appId: g.appid, name: g.name, minutes: g.playtime_forever ?? 0 })) : null
+}
+
+async function steam(env, endpoint, request) {
+  const body = await request.json()
+  if (endpoint === 'steam/profile') {
+    const steamId = await findSteamId(env, body.profile)
+    if (!steamId) return { error: 'Steam profile not found' }
+    const [summary, games] = await Promise.all([
+      askJson(`${STEAM_API}/ISteamUser/GetPlayerSummaries/v2/?key=${env.STEAM_KEY}&steamids=${steamId}`),
+      ownedGames(env, steamId),
+    ])
+    return { steamId, name: summary.response?.players?.[0]?.personaname ?? null, games: games ? games.length : null }
+  }
+  const steamId = String(body.steamId ?? '')
+  if (!/^\d{17}$/.test(steamId)) return { error: 'No Steam id' }
+  if (endpoint === 'steam/owned') {
+    const games = await ownedGames(env, steamId)
+    return games ? { games } : { private: true }
+  }
+  const apps = cleanIds(body.appIds, 40)
+  const answers = await Promise.all(
+    apps.map((appId) =>
+      askJson(`${STEAM_API}/ISteamUserStats/GetPlayerAchievements/v1/?key=${env.STEAM_KEY}&steamid=${steamId}&appid=${appId}`),
+    ),
+  )
+  const result = {}
+  apps.forEach((appId, i) => {
+    const list = answers[i].playerstats?.achievements
+    result[appId] = Array.isArray(list) && list.length > 0
+      ? { done: list.filter((a) => a.achieved === 1).length, total: list.length }
+      : null
+  })
+  return result
+}
+
 function askIgdb(env, endpoint, query, accessToken) {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
@@ -179,6 +244,15 @@ export default {
       if (!owner) return reply({}, 200) // the app then just shows no prices
       try {
         return reply(await gamePrices(env, request), 200)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    if (['steam/profile', 'steam/owned', 'steam/achievements'].includes(endpoint)) {
+      if (!owner) return reply({ error: 'Steam is only for the owner of this proxy' }, 403)
+      if (!env.STEAM_KEY) return reply({ error: 'STEAM_KEY is not set' }, 500)
+      try {
+        return reply(await steam(env, endpoint, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
       }

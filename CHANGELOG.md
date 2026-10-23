@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Settings → Games: link your Steam profile (shows "Connected as …" and how many games it owns).
+
 ## [0.20.0] - 2026-10-23
 
 **Games**

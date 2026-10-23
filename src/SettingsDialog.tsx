@@ -12,6 +12,7 @@ import {
   isConnected as isGoogleConnected,
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
+import { checkSteamProfile, saveSteamProfile, useSteamProfile, type SteamProfile } from './steam'
 import {
   loadBackground,
   saveBackground,
@@ -380,7 +381,73 @@ function GamesSettings() {
         {status.text === 'Checking…' && <Spinner size={12} />}
         {status.text}
       </p>
+      <SteamSetting proxyReady={status.ok} />
     </section>
+  )
+}
+
+// Your Steam profile (steam.ts), synced: checked like the proxy above, shortly after typing
+// stops and when Settings opens. Its id and name are saved once found.
+function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
+  const saved = useSteamProfile()
+  const [profile, setProfile] = useState<SteamProfile | null>(null) // null until loaded
+  const [status, setStatus] = useState({ ok: false, text: '' })
+
+  useEffect(() => {
+    if (saved) setProfile((current) => current ?? saved)
+  }, [saved])
+
+  useEffect(() => {
+    if (!profile) return
+    if (!profile.link.trim()) return setStatus({ ok: false, text: 'Not set up' })
+    if (!proxyReady) return setStatus({ ok: false, text: 'Needs the game search proxy (above)' })
+    if (profile.name) setStatus({ ok: true, text: `Connected as ${profile.name}` })
+    let current = true
+    const timer = window.setTimeout(async () => {
+      if (!profile.name) setStatus({ ok: false, text: 'Checking…' })
+      try {
+        const found = await checkSteamProfile(profile.link)
+        const name = found.name ?? found.steamId
+        if (found.steamId !== profile.steamId || name !== profile.name) {
+          await saveSteamProfile({ link: profile.link, steamId: found.steamId, name })
+        }
+        if (!current) return
+        if (found.games === null) setStatus({ ok: false, text: `${name}: game details are private (Steam → Profile → Privacy)` })
+        else setStatus({ ok: true, text: `Connected as ${name} · ${found.games} games` })
+      } catch (error) {
+        if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
+      }
+    }, CHECK_DELAY)
+    return () => {
+      current = false
+      window.clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.link, proxyReady])
+
+  return (
+    <>
+      <label className="setting">
+        <span className="setting-label">Steam profile</span>
+        <input
+          type="url"
+          placeholder="https://steamcommunity.com/id/…"
+          value={profile?.link ?? ''}
+          onChange={(e) => {
+            // A new link: the id and name come with its check
+            const next = { link: e.target.value.trim() }
+            setProfile(next)
+            saveSteamProfile(next)
+          }}
+          disabled={!profile}
+          spellCheck={false}
+        />
+      </label>
+      <p className={`setting-status${status.ok ? ' ok' : ''}`} title={status.text}>
+        {status.text === 'Checking…' && <Spinner size={12} />}
+        {status.text}
+      </p>
+    </>
   )
 }
 
