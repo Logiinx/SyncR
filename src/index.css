@@ -2859,22 +2859,34 @@ button {
   font-size: 0.8em;
 }
 
-/* "Import from Steam…" above the Library */
-.games-import {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-}
-
-.games-import button {
+/* "Import from Steam…": an icon before the Covers / list switch (Library only), and a link in
+   the empty list's hint */
+.games-status-tabs .games-import {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
+  margin: 0 0 4px auto;
+  padding: 6px 9px;
   border-radius: 6px;
-  background: rgb(255 255 255 / 6%);
-  color: color-mix(in srgb, var(--text) 85%, var(--text-dim));
-  font-size: 0.85em;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+}
+
+.games-status-tabs .games-import:hover {
+  color: var(--text);
+}
+
+/* 6px apart (the row's gap is 16px) */
+.games-status-tabs .games-import + .games-layouts {
+  margin-left: -10px;
+}
+
+.games-empty-import {
+  padding: 0;
+  color: var(--link);
+}
+
+.games-empty-import:hover {
+  text-decoration: underline;
 }
 
 /* Many versions skipped: the notes scroll, the OK button stays in view */

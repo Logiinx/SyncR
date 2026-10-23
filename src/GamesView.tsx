@@ -152,9 +152,21 @@ function GamesView() {
             <GameSearch inList={inList} onOpen={setOpenId} />
             {games && games.length === 0 && connected && (
               <p className="games-empty">
-                <Gamepad2 size={18} /> Search for a game above to start your list.
+                <Gamepad2 size={18} />
+                <span>
+                  Search for a game above to start your list
+                  {steam?.steamId ? (
+                    <>
+                      , or{' '}
+                      <button className="games-empty-import" onClick={() => setImporting(true)}>
+                        import from Steam…
+                      </button>
+                    </>
+                  ) : '.'}
+                </span>
               </p>
             )}
+            {importing && <SteamImport onClose={() => setImporting(false)} />}
             {games && games.length > 0 && (
               <>
                 {/* Underlined tabs (an empty status shows no count); as wide as the cover grid */}
@@ -171,6 +183,12 @@ function GamesView() {
                       )
                     })}
                   </div>
+                  {/* Library, with a Steam profile set (Settings → Games) */}
+                  {shown === 'library' && steam?.steamId && (
+                    <button className="games-import" onClick={() => setImporting(true)} title="Import from Steam…">
+                      <Download size={15} />
+                    </button>
+                  )}
                   <div className="calendar-layouts games-layouts">
                     <button className={shelf === 'grid' ? 'active' : ''} onClick={() => setShelf('grid')} title="Covers">
                       <LayoutGrid size={15} />
@@ -180,15 +198,6 @@ function GamesView() {
                     </button>
                   </div>
                 </div>
-                {/* Library, with a Steam profile set (Settings → Games) */}
-                {shown === 'library' && steam?.steamId && (
-                  <div className="games-import">
-                    <button onClick={() => setImporting(true)}>
-                      <Download size={15} /> Import from Steam…
-                    </button>
-                  </div>
-                )}
-                {importing && <SteamImport onClose={() => setImporting(false)} />}
                 <GameShelf
                   games={sortGames(games.filter((g) => g.status === shown))}
                   layout={shelf}
