@@ -2859,13 +2859,17 @@ button {
   font-size: 0.8em;
 }
 
-/* "Import from Steam…": an icon before the Covers / list switch (Library only), and a link in
+/* "Import from Steam…": a small button before the Covers / list switch (Library only), and a link in
    the empty list's hint */
 .games-status-tabs .games-import {
   display: flex;
   align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
   margin: 0 0 4px auto;
-  padding: 6px 9px;
+  padding: 5px 10px;
+  font-size: 0.85em;
+  white-space: nowrap;
   border-radius: 6px;
   background: var(--bg-raised);
   color: var(--text-dim);

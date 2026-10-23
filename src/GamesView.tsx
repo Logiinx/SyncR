@@ -185,8 +185,8 @@ function GamesView() {
                   </div>
                   {/* Library, with a Steam profile set (Settings → Games) */}
                   {shown === 'library' && steam?.steamId && (
-                    <button className="games-import" onClick={() => setImporting(true)} title="Import from Steam…">
-                      <Download size={15} />
+                    <button className="games-import" onClick={() => setImporting(true)}>
+                      <Download size={14} /> Import from Steam…
                     </button>
                   )}
                   <div className="calendar-layouts games-layouts">
