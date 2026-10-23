@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pin, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
-import { addGame, allPlatforms, isReleased, statusLabel, STATUSES } from './games'
+import { ADD_PLACES, addGame, allPlatforms, isReleased, statusLabel } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -26,9 +26,9 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
 
   // Only the list's own fields are saved (not the calendar's rank etc.). Its release date follows
   // the usual rule (PC first); a vague date keeps its label ("Q1 2027") and sorts last.
-  function add(to: GameStatus) {
+  function add(to: GameStatus, completed?: boolean) {
     const { igdbId, name, coverId, platforms, releaseDate, releaseLabel } = game
-    addGame({ igdbId, name, coverId, platforms, releaseDate, releaseLabel }, to)
+    addGame({ igdbId, name, coverId, platforms, releaseDate, releaseLabel }, to, completed)
   }
 
   if (trailerOpen && !narrow) {
@@ -99,7 +99,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
             <ContextMenu
               x={menu.x}
               y={menu.y}
-              items={STATUSES.map(({ status, label }) => ({ label, onClick: () => add(status) }))}
+              items={ADD_PLACES.map((place) => ({ label: place.label, onClick: () => add(place.status, place.completed) }))}
               onClose={() => setMenu(null)}
             />
           )}

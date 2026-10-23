@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { setWatch } from './priceWatch'
@@ -440,7 +440,11 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
                     {[releaseText(found, 'full'), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <AddOrInList status={status} onAdd={() => addGame(found)} />
+                <AddOrInList
+                  status={status}
+                  onAdd={() => addGame(found)}
+                  onAddTo={isReleased(found) ? (place) => addGame(found, place.status, place.completed) : undefined}
+                />
               </div>
             )
           })}

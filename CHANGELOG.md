@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 - Clearer rating: "Your rating" and a Completed pill in the game window. Tiles and rows: "★ 4.5", a check or trophy on the cover.
 - "Watch trailer" is there right away (pulses while loading, gray "No trailer" if none), so the buttons no longer jump.
 - Import from Steam: now next to the covers/list switch in Library (no own row), and a link when your game list is empty.
+- Search: "Add ▾" picks where a released game goes (To play, Playing, Library, Completed, Waiting); "Add" alone still adds to To play.
 
 ## [0.22.0] - 2026-10-23
 

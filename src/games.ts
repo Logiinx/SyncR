@@ -24,6 +24,17 @@ export const STATUSES: { status: GameStatus; label: string }[] = [
 ]
 export const statusLabel = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
 
+// Where a released game can be added (search's "Add ▾", the preview's "Add to list ▾"):
+// "Completed" = Library with Completed on
+export interface AddPlace { label: string; status: GameStatus; completed?: boolean }
+export const ADD_PLACES: AddPlace[] = [
+  { label: 'To play', status: 'toplay' },
+  { label: 'Playing', status: 'playing' },
+  { label: 'Library', status: 'library' },
+  { label: 'Completed', status: 'library', completed: true },
+  { label: 'Waiting', status: 'waiting' },
+]
+
 // Rating, heart, review and "Completed": only for games being played or in the Library (the
 // rating stays saved if the status changes back)
 export const isPlayed = (game: Game) => game.status === 'playing' || game.status === 'library'
@@ -44,7 +55,7 @@ export const isReleased = (game: { releaseDate?: number }) =>
 
 // Added from the search: Waiting if it isn't out yet, otherwise To play. The calendar's pin
 // always gives Waiting. A game removed earlier comes back with its note, review and rating.
-export async function addGame(found: FoundGame, status?: GameStatus) {
+export async function addGame(found: FoundGame, status?: GameStatus, completed?: boolean) {
   const id = gameId(found.igdbId)
   const before = await db.games.get(id)
   if (before && !before.deleted) return
@@ -59,6 +70,7 @@ export async function addGame(found: FoundGame, status?: GameStatus) {
     ...found,
     id,
     status: status ?? (isReleased(found) ? 'toplay' : 'waiting'),
+    ...(completed && { completed: true }),
     statusAt: now,
     deleted: false,
     ...(before && { restoredAt: now }), // added again after removing: beats the removal in sync

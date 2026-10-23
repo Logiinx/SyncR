@@ -4209,6 +4209,24 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
 }
 
+/* Search results: "Add" joined to a small "▾" (AddOrInList, released games) */
+.add-split {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.add-split .setting-button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.add-split .add-more {
+  display: flex;
+  align-items: center;
+  margin-left: -1px;
+  padding: 4px 6px;
+  border-radius: 0 6px 6px 0;
+}
+
 /* Search results: click for the preview (or the details when it's in your list) */
 .game-result {
   cursor: pointer;
