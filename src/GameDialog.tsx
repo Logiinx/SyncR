@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2 } from 'lucide-react'
+import { CalendarDays, CircleCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
-import { allPlatforms, releaseEventId, releaseText, STATUSES } from './games'
+import { allPlatforms, isPlayed, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -28,7 +28,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
   // The texts are kept here while typing (the saved game comes back a moment later)
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
-  const played = game.status === 'done' || game.status === 'dropped'
+  const played = isPlayed(game)
   const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
   const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
   const narrow = useNarrow()
@@ -151,6 +151,14 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                   >
                     <Heart size={20} />
                   </button>
+                  <button
+                    className={game.completed ? 'game-completed on' : 'game-completed'}
+                    onClick={() => updateGame(game.id, { completed: !game.completed })}
+                    aria-pressed={!!game.completed}
+                  >
+                    <CircleCheck size={18} />
+                    Completed
+                  </button>
                 </div>
                 <label className="gd-field">
                   <span>Review</span>
@@ -215,6 +223,19 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
         )
       })}
     </div>
+  )
+}
+
+// Stars, heart and the Completed check of a played game in the Games grid and list (only when
+// one of them is set: showsRated)
+export const showsRated = (game: Game) => isPlayed(game) && !!(game.rating || game.liked || game.completed)
+export function GameRated({ game }: { game: Game }) {
+  return (
+    <span className="game-rated">
+      <RatingStars rating={game.rating} />
+      {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
+      {game.completed && <CircleCheck size={12} className="game-done" aria-label="Completed" />}
+    </span>
   )
 }
 

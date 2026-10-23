@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- New tabs: Watched · Waiting · To play · Playing · Library. Done games moved to Library, marked Completed (green check by the stars).
+
 ## [0.19.7] - 2026-10-23
 
 **Notes**

@@ -4219,7 +4219,7 @@ h3.games-group-title {
   }
 }
 
-/* Stars and heart in a row (finished / dropped games) */
+/* Stars, heart and Completed in a row (Playing and Library games) */
 .game-rated {
   display: flex;
   align-items: center;
@@ -4233,6 +4233,10 @@ h3.games-group-title {
 .game-liked {
   color: var(--text-pink);
   fill: currentColor;
+}
+
+.game-done {
+  color: var(--text-green);
 }
 
 .games-group .game-row {
@@ -4560,6 +4564,20 @@ h3.games-group-title {
 
 .game-heart.on svg {
   fill: currentColor;
+}
+
+/* "Completed" next to the heart: dim until switched on, then green */
+.game-completed {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  color: var(--text-dim);
+}
+
+.game-completed:hover,
+.game-completed.on {
+  color: var(--text-green);
 }
 
 /* Reminders list: a Waiting game's small cover */

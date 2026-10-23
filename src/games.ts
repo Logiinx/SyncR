@@ -15,13 +15,17 @@ import { isConnected as googleConnected } from './google'
 export const GAMES_TAB = 'games' // its id among the open tabs (note ids never look like this)
 
 export const STATUSES: { status: GameStatus; label: string }[] = [
+  { status: 'watched', label: 'Watched' },
   { status: 'waiting', label: 'Waiting' },
   { status: 'toplay', label: 'To play' },
   { status: 'playing', label: 'Playing' },
-  { status: 'done', label: 'Done' },
-  { status: 'dropped', label: 'Dropped' },
+  { status: 'library', label: 'Library' },
 ]
 export const statusLabel = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
+
+// Rating, heart, review and "Completed": only for games being played or in the Library (the
+// rating stays saved if the status changes back)
+export const isPlayed = (game: Game) => game.status === 'playing' || game.status === 'library'
 
 export const gameId = (igdbId: number) => `igdb-${igdbId}`
 
@@ -71,7 +75,7 @@ export async function removeGameQuestion(game: Game, onRemoved: () => void): Pro
 }
 
 // Priority games first. Waiting: soonest release first, not announced (TBA) last.
-// The others: most recent first (Done: newest finish date first).
+// The others: most recent first (Library: newest added first).
 export function sortGames(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) =>
@@ -261,6 +265,15 @@ export async function syncReleaseEvents() {
   if (googleChanged) await refreshEvents()
 }
 
+// v0.20: "Done" became Library with Completed on, "Dropped" went (its games go to the Library,
+// not completed). After each sync, so it also catches games an older app version still marks.
+async function upgradeOldStatuses() {
+  const old = await db.games.filter((g) => !g.deleted && ['done', 'dropped'].includes(g.status as string)).toArray()
+  for (const game of old) {
+    await updateGame(game.id, { status: 'library', completed: (game.status as string) === 'done' || game.completed })
+  }
+}
+
 // Started once by the app. The refresh and the release events wait for a finished sync (when
 // Dropbox is set up): saving makes a record the newest copy, which must not win over an edit
 // made on the other device that hasn't arrived yet; and the release events must follow the
@@ -281,6 +294,7 @@ export function startGameChecks() {
   }
   const refresh = async () => {
     try {
+      await upgradeOldStatuses()
       await matchGamePriorities()
       await refreshGames()
       await moveReleased() // a date may have moved to today

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, Heart, LayoutGrid, List, Search, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { loadToPlayPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -10,7 +10,7 @@ import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import GameDialog, { RatingStars } from './GameDialog'
+import GameDialog, { GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
@@ -38,7 +38,9 @@ function GamesView() {
     [],
   )
   // The status shown (one at a time) and grid or list, remembered per device
-  const [shown, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
+  const [remembered, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
+  // Before v0.20 it could be "done" or "dropped", which became the Library
+  const shown: GameStatus = STATUSES.some((s) => s.status === remembered) ? remembered : 'library'
   const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
@@ -215,9 +217,8 @@ function GameShelf({
 }
 
 // One game in the grid: big cover, name (2 lines max), and one short line: the countdown while
-// waiting (or the vague date), stars and heart once played, else the release year
+// waiting (or the vague date), stars, heart and Completed once played, else the release year
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
-  const played = game.status === 'done' || game.status === 'dropped'
   const when = releaseText(game, 'short')
   return (
     <div
@@ -233,25 +234,18 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         <Cover coverId={game.coverId} big />
       </div>
       <div className="game-tile-name">{game.name}</div>
-      {played && (game.rating || game.liked) ? (
-        <span className="game-rated">
-          <RatingStars rating={game.rating} />
-          {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
-        </span>
-      ) : (
-        <div className="game-details">{when}</div>
-      )}
+      {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
       {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
     </div>
   )
 }
 
 // One game: cover, name, release (full date + countdown while waiting, else the year) and a preview of the
-// review (finished or dropped games) or the note. Stars and heart on the right, only for finished or
-// dropped games (like in the details; the rating stays saved if the status changes back).
+// review (Playing and Library games) or the note. Stars, heart and Completed on the right, only for
+// Playing and Library games (like in the details; the rating stays saved if the status changes back).
 // Platforms only show in the details (and in search results).
 function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
-  const played = game.status === 'done' || game.status === 'dropped'
+  const played = isPlayed(game)
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
   const details = [releaseText(game, 'year'), preview].filter(Boolean).join(' · ')
@@ -270,12 +264,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         <div className="game-details" title={details}>{details}</div>
         {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
       </div>
-      {played && (game.rating || game.liked) && (
-        <span className="game-rated">
-          <RatingStars rating={game.rating} />
-          {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
-        </span>
-      )}
+      {showsRated(game) && <GameRated game={game} />}
     </div>
   )
 }

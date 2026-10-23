@@ -111,7 +111,8 @@ export interface Card {
 // A game in the Games tab (GamesView.tsx), with its data from IGDB (igdb.ts).
 // Synced like a card: one file per game, newest wins, a removed game stays as a row with
 // deleted = true for a while. The id comes from IGDB's, so a game can't be in the list twice.
-export type GameStatus = 'waiting' | 'toplay' | 'playing' | 'done' | 'dropped'
+// Before v0.20 there were "done" and "dropped" (games.ts upgradeOldStatuses).
+export type GameStatus = 'watched' | 'waiting' | 'toplay' | 'playing' | 'library'
 
 export interface Game {
   id: string // "igdb-<IGDB id>"
@@ -131,6 +132,7 @@ export interface Game {
   review: string // with the rating, optional
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
+  completed?: boolean // "Completed" (finished it), next to the rating
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
