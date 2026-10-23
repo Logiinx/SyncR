@@ -6,8 +6,8 @@ import { openLink } from './links'
 import { formatEuros, useKnownPrice } from './prices'
 import { alertPrice, currentPrice, parseEuros, setWatch } from './priceWatch'
 
-// The "Price alert" part of a To play or Waiting game's window (GameDialog.tsx): which price
-// (Steam or the cheapest key) and when to alert (Off = not watched), what it looks like now,
+// The "Price alert" part of a To play or Waiting game's window (GameDialog.tsx): when to alert
+// (Off = not watched) on the cheaper of Steam and the cheapest key, what it looks like now,
 // "Stop watching" and a link to the game's GG.deals page to set an alert there too (store
 // filters, bundles, subscriptions). Uses the prices the window already loaded (GamePricesInfo).
 // Without prices (not on Steam, no prices for this connection) it says so.
@@ -25,17 +25,16 @@ const euroText = (cents?: number) => (cents === undefined ? '' : (cents / 100).t
 export function PriceWatchView({ game }: { game: Game }) {
   const prices = useKnownPrice(game.igdbId)
   const watch = game.watch
-  const [store, setStore] = useState<PriceWatch['store']>(watch?.store ?? 'steam') // kept while Off
   const [target, setTarget] = useState(euroText(watch?.target))
   const when: When = watch?.when ?? 'off'
 
-  const save = (change: { store?: PriceWatch['store']; when?: When; target?: number }) => {
-    const next = { store, when, target: watch?.target, ...change }
+  const save = (change: { when?: When; target?: number }) => {
+    const next = { when, target: watch?.target, ...change }
     if (next.when === 'off') return setWatch(game, null)
-    return setWatch(game, { store: next.store, when: next.when, target: next.target }, prices)
+    return setWatch(game, { when: next.when, target: next.target }, prices)
   }
 
-  const now = prices ? currentPrice(prices, store) : null
+  const now = prices ? currentPrice(prices) : null
   const limit = watch && alertPrice(watch, prices)
   const canWatch = !!prices || !!watch
 
@@ -44,20 +43,6 @@ export function PriceWatchView({ game }: { game: Game }) {
       <span>Price alert</span>
       {canWatch && (
         <div className="event-options watch-options">
-          <label>
-            <span>Price</span>
-            <select
-              value={store}
-              onChange={(e) => {
-                const value = e.target.value as PriceWatch['store']
-                setStore(value)
-                if (watch) save({ store: value })
-              }}
-            >
-              <option value="steam">Steam</option>
-              <option value="key">Key</option>
-            </select>
-          </label>
           <label>
             <span>Alert when</span>
             <select value={when} onChange={(e) => save({ when: e.target.value as When })}>
@@ -74,7 +59,7 @@ export function PriceWatchView({ game }: { game: Game }) {
               <input
                 inputMode="decimal"
                 value={target}
-                placeholder={now !== null ? euroText(now) : ''}
+                placeholder={now !== null ? euroText(now.price) : ''}
                 onChange={(e) => {
                   setTarget(e.target.value)
                   const cents = parseEuros(e.target.value)
@@ -96,7 +81,7 @@ export function PriceWatchView({ game }: { game: Game }) {
       ) : (
         watch && (
           <p className="watch-state">
-            {now !== null ? `Now ${formatEuros(now)}` : store === 'key' ? 'No key offer now' : 'No Steam price now'}
+            {now !== null ? `Now ${formatEuros(now.price)} ${now.store === 'steam' ? 'on Steam' : 'for a key'}` : 'Not sold now'}
             {limit != null && ` · alerts ${watch.when === 'record' ? `below ${formatEuros(limit)}` : `at ${formatEuros(limit)} or less`}`}
           </p>
         )

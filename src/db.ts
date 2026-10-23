@@ -124,10 +124,10 @@ export interface SteamStats {
   total?: number
 }
 
-// A To play or Waiting game's price alert (priceWatch.ts): which price, and when it alerts. It alerts once,
-// then stays off until it's changed or set again ("Watch again").
+// A To play or Waiting game's price alert (priceWatch.ts): when it alerts (the cheaper of Steam
+// and the cheapest key). It alerts once, then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
-  store: 'steam' | 'key' // the Steam price, or the cheapest key (GG.deals)
+  // Before v0.22 a watch also had store: 'steam' | 'key'; now it looks at the cheaper of both
   when: 'price' | 'low' | 'record' // at or below target / at its lowest ever / below the lowest ever when set
   target?: number // cents ('price')
   record?: number // cents: the lowest ever when set ('record'; filled at the first check if prices weren't known)
