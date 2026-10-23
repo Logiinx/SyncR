@@ -21,14 +21,22 @@ const WHEN: [When, string][] = [
 ]
 
 // A watched game in the Games grid and list: a round badge on the cover's left corner (the
-// check/trophy badge has the right one), a bell, ringing and green once the price was reached
+// check/trophy badge has the right one), a bell, ringing and green once the price was reached.
+// Hover: the alert that's set ("Alert at ≤ 10,00 €"), and the price that made it ring.
 export function WatchBell({ watch }: { watch: PriceWatch }) {
+  const alert =
+    watch.when === 'price' ? (watch.target !== undefined ? `Alert at ≤ ${formatEuros(watch.target)}` : 'Alert at my price')
+    : watch.when === 'record' ? (watch.record !== undefined ? `Alert below ${formatEuros(watch.record)} (lowest ever)` : 'Alert below lowest ever')
+    : 'Alert at lowest ever'
   return watch.firedAt ? (
-    <span className="game-badge watch reached" title="Price reached">
+    <span
+      className="game-badge watch reached"
+      title={`Price reached${watch.firedPrice !== undefined ? `: ${formatEuros(watch.firedPrice)}` : ''}\n${alert}`}
+    >
       <BellRing />
     </span>
   ) : (
-    <span className="game-badge watch" title="Price watched">
+    <span className="game-badge watch" title={alert}>
       <Bell />
     </span>
   )
