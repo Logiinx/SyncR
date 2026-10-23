@@ -48,6 +48,7 @@ export const checkSteamProfile = (link: string) =>
 // ---------- Hours played and achievements ----------
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000
+const RETRY_AFTER = 60 * 60 * 1000 // after a failed daily refresh
 const REFRESHED_KEY = 'syncr.steamRefreshedAt' // per device
 const OWNED_MS = 10 * 60_000 // the owned list is kept a few minutes (game windows opened in a row)
 const ACHIEVEMENTS_PER_ASK = 40 // the proxy's limit
@@ -79,14 +80,15 @@ export const isHundred = (stats?: SteamStats) => !!stats?.total && stats.done ==
 // Hours played and achievements of these games (all Playing and Library games when none are
 // given) that you own on Steam, saved on each game when they changed. Reaching 100% switches
 // Completed on (once: unticked later, it stays off). Quietly does nothing when it can't.
-export async function updateSteamStats(only?: Game[]) {
+// Answer: 'off' (no Steam profile or proxy), 'failed' or 'done'.
+export async function updateSteamStats(only?: Game[]): Promise<'off' | 'failed' | 'done'> {
   try {
     const profile = await loadSteamProfile()
-    if (!profile.steamId || !isComplete(await loadConnection())) return
+    if (!profile.steamId || !isComplete(await loadConnection())) return 'off'
     const games = only ?? (await db.games.filter((g) => !g.deleted && (g.status === 'playing' || g.status === 'library')).toArray())
-    if (games.length === 0) return
+    if (games.length === 0) return 'done'
     const minutes = await ownedMinutes(profile.steamId)
-    if (!minutes) return
+    if (!minutes) return 'failed' // private game details
     const refs = await steamRefs(games.map((g) => g.igdbId))
     const mine = games
       .map((game) => ({ game, appId: refs.get(game.igdbId)?.kind === 'app' ? refs.get(game.igdbId)!.id : undefined }))
@@ -107,16 +109,22 @@ export async function updateSteamStats(only?: Game[]) {
         await updateGame(game.id, { steamStats: stats, ...(reached && { completed: true }) })
       }
     }
+    return 'done'
   } catch (e) {
     console.warn('Steam stats failed', e)
+    return 'failed'
   }
 }
 
-// Once a day per device (games.ts: after a sync, like the game refresh)
+// Once a day per device (games.ts: after a sync, like the game refresh). Not set up: asks again
+// at the next sync (it may be set up meanwhile); failed: again in an hour.
 export async function refreshSteamStats() {
-  if (Date.now() - read<number>(REFRESHED_KEY, 0) < REFRESH_EVERY) return
-  write(REFRESHED_KEY, Date.now())
-  await updateSteamStats()
+  if (Date.now() < read<number>(REFRESHED_KEY, 0) + REFRESH_EVERY) return
+  const before = read<number>(REFRESHED_KEY, 0)
+  write(REFRESHED_KEY, Date.now()) // no second run while this one is going
+  const result = await updateSteamStats()
+  if (result === 'off') write(REFRESHED_KEY, before)
+  if (result === 'failed') write(REFRESHED_KEY, Date.now() - REFRESH_EVERY + RETRY_AFTER)
 }
 
 // "42 h played", "4.5 h played", "35 min played"

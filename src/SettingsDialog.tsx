@@ -408,10 +408,10 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
       try {
         const found = await checkSteamProfile(profile.link)
         const name = found.name ?? found.steamId
+        if (!current) return // another link was typed meanwhile: don't save over it
         if (found.steamId !== profile.steamId || name !== profile.name) {
           await saveSteamProfile({ link: profile.link, steamId: found.steamId, name })
         }
-        if (!current) return
         if (found.games === null) setStatus({ ok: false, text: `${name}: game details are private (Steam → Profile → Privacy)` })
         else setStatus({ ok: true, text: `Connected as ${name} · ${found.games} games` })
       } catch (error) {

@@ -77,17 +77,24 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
   async function confirm() {
     setBusy(true)
     const added = new Set<number>()
-    for (const row of chosen) {
-      if (added.has(row.game!.igdbId)) continue
-      added.add(row.game!.igdbId)
-      await addGame(row.game!, 'library')
+    try {
+      for (const row of chosen) {
+        if (added.has(row.game!.igdbId)) continue
+        added.add(row.game!.igdbId)
+        await addGame(row.game!, 'library')
+      }
+      const nextSkipped = new Set(skipped)
+      for (const row of shown) {
+        if (ticked.has(row.appId) && row.game) nextSkipped.delete(row.appId)
+        else nextSkipped.add(row.appId)
+      }
+      await saveSkipped([...nextSkipped])
+    } catch (e) {
+      // Shown in place of the list; games already added stay (a new import skips them)
+      setError(`Saving failed: ${e instanceof Error ? e.message : String(e)}`)
+      setBusy(false)
+      return
     }
-    const nextSkipped = new Set(skipped)
-    for (const row of shown) {
-      if (ticked.has(row.appId) && row.game) nextSkipped.delete(row.appId)
-      else nextSkipped.add(row.appId)
-    }
-    await saveSkipped([...nextSkipped])
     onClose()
     // Their hours and achievements, in the background
     const games = await db.games.filter((g) => added.has(g.igdbId) && !g.deleted).toArray()
@@ -162,7 +169,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
         )}
         <div className="dialog-buttons">
           <button onClick={onClose}>Cancel</button>
-          {rows && shown.length > 0 && (
+          {!error && rows && shown.length > 0 && (
             <button className="primary" onClick={confirm} disabled={busy}>
               {chosen.length > 0 ? `Add ${chosen.length} to Library` : 'Skip all'}
             </button>

@@ -237,7 +237,9 @@ function toFoundGame(game: IgdbGame): FoundGame {
 // ---------- Steam import (SteamImport.tsx) ----------
 
 const STEAM_SOURCE = 1 // IGDB external game source "Steam"
-const STEAM_PAGE = 200 // Steam ids per request (keeps the query short)
+// Steam ids per request: an id can match several IGDB games (editions, other stores using the
+// same number), so 100 ids leave room under the 500 answers per request
+const STEAM_PAGE = 100
 
 interface IgdbSteamGame extends IgdbGame {
   version_parent?: number

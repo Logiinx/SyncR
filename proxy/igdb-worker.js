@@ -142,20 +142,31 @@ async function gamePrices(env, request) {
 // profile: a profile link (…/profiles/7656… or …/id/name), or the number, or the custom name.
 const STEAM_API = 'https://api.steampowered.com'
 
+// Like askJson, but a failure is an error (not "private" or "not found"). The message leaves
+// out the URL: it holds the key.
+async function askSteam(url) {
+  const response = await fetch(url)
+  if (response.status === 401 || response.status === 403) throw new Error('Steam refused the key (check STEAM_KEY)')
+  if (!response.ok) throw new Error(`Steam didn't answer (${response.status})`)
+  return response.json()
+}
+
 async function findSteamId(env, profile) {
   const text = String(profile ?? '').trim()
   const number = text.match(/(?:^|profiles\/)(\d{17})(?:\/|$)/)
   if (number) return number[1]
   const name = text.match(/\/id\/([^/?#]+)/)?.[1] ?? (/^[\w-]+$/.test(text) ? text : null)
   if (!name) return null
-  const answer = await askJson(`${STEAM_API}/ISteamUser/ResolveVanityURL/v1/?key=${env.STEAM_KEY}&vanityurl=${encodeURIComponent(name)}`)
+  const answer = await askSteam(`${STEAM_API}/ISteamUser/ResolveVanityURL/v1/?key=${env.STEAM_KEY}&vanityurl=${encodeURIComponent(name)}`)
   return answer.response?.success === 1 ? answer.response.steamid : null
 }
 
 async function ownedGames(env, steamId) {
-  const answer = await askJson(
+  const answer = await askSteam(
     `${STEAM_API}/IPlayerService/GetOwnedGames/v1/?key=${env.STEAM_KEY}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1`,
   )
+  // Private game details: an empty answer. No games: a count of 0, no list.
+  if (answer.response?.game_count === 0) return []
   const games = answer.response?.games
   return Array.isArray(games) ? games.map((g) => ({ appId: g.appid, name: g.name, minutes: g.playtime_forever ?? 0 })) : null
 }
@@ -166,7 +177,7 @@ async function steam(env, endpoint, request) {
     const steamId = await findSteamId(env, body.profile)
     if (!steamId) return { error: 'Steam profile not found' }
     const [summary, games] = await Promise.all([
-      askJson(`${STEAM_API}/ISteamUser/GetPlayerSummaries/v2/?key=${env.STEAM_KEY}&steamids=${steamId}`),
+      askSteam(`${STEAM_API}/ISteamUser/GetPlayerSummaries/v2/?key=${env.STEAM_KEY}&steamids=${steamId}`),
       ownedGames(env, steamId),
     ])
     return { steamId, name: summary.response?.players?.[0]?.personaname ?? null, games: games ? games.length : null }

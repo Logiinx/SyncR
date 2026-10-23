@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Steam: when Steam doesn't answer, it says so (not "game details are private"); a failed daily update retries after an hour.
+
 ## [0.21.0] - 2026-10-23
 
 **Games**
