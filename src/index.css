@@ -4406,6 +4406,22 @@ h3.games-group-title {
   color: var(--text-green);
 }
 
+/* Price watched (WatchBell): the left corner, white; green and ringing once reached */
+.game-badge.watch {
+  right: auto;
+  left: 6px;
+  color: var(--text);
+}
+
+.game-row-cover .game-badge.watch {
+  right: auto;
+  left: -4px;
+}
+
+.game-badge.watch.reached {
+  color: var(--text-green);
+}
+
 .game-badge.hundred {
   color: var(--text-yellow);
 }
@@ -4833,24 +4849,6 @@ h3.games-group-title {
   min-width: 0;
   color: var(--text-dim);
   font-size: 0.85em;
-}
-
-/* A watched game in the Games grid and list (WatchBell): before the tile's date line, at the
-   row's end */
-.watch-bell {
-  display: inline-flex;
-  flex-shrink: 0;
-  margin-right: 4px;
-  vertical-align: -1px;
-  color: var(--text-dim);
-}
-
-.watch-bell.reached {
-  color: var(--accent);
-}
-
-.game-row > .watch-bell {
-  margin-right: 0;
 }
 
 /* A To play or Waiting game's price alert (PriceWatchView.tsx): the choices in a row like the event

@@ -20,15 +20,16 @@ const WHEN: [When, string][] = [
   ['record', 'Below lowest ever'],
 ]
 
-// A watched game in the Games grid and list: a bell, ringing (accent) once the price was reached
+// A watched game in the Games grid and list: a round badge on the cover's left corner (the
+// check/trophy badge has the right one), a bell, ringing and green once the price was reached
 export function WatchBell({ watch }: { watch: PriceWatch }) {
   return watch.firedAt ? (
-    <span className="watch-bell reached" title="Price reached">
-      <BellRing size={12} />
+    <span className="game-badge watch reached" title="Price reached">
+      <BellRing />
     </span>
   ) : (
-    <span className="watch-bell" title="Price watched">
-      <Bell size={12} />
+    <span className="game-badge watch" title="Price watched">
+      <Bell />
     </span>
   )
 }

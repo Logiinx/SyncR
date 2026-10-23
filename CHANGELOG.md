@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - "Watch trailer" is there right away (pulses while loading, gray "No trailer" if none), so the buttons no longer jump.
 - Import from Steam: now next to the covers/list switch in Library (no own row), and a link when your game list is empty.
 - Search: "Add ▾" picks where a released game goes (To play, Playing, Library or Completed); "Add" alone still adds to To play.
+- Price watch: the bell is now a badge on the cover's left corner, green and ringing once the price is reached.
 
 ## [0.22.0] - 2026-10-23
 
