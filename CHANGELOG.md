@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-23
+
 **Games**
 - Link your Steam profile (Settings → Games): game windows show achievements and hours played; a gold trophy at 100% (also ticks Completed).
 - Library: "Import from Steam…" lists your Steam games not in SyncR yet, most played first; tick the ones to add.
