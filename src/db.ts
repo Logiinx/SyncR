@@ -519,9 +519,17 @@ export async function updateGame(id: string, change: Partial<Game>) {
   changed()
 }
 
-// Playing or Library: owned now, so its price watch goes
+// Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
+// and Favorite mean different things, so the mark goes (games.ts isFavoriteTab).
 export async function setGameStatus(id: string, status: GameStatus) {
-  await updateGame(id, { status, statusAt: Date.now(), ...(!canWatch({ status }) && { watch: undefined }) })
+  const game = await db.games.get(id)
+  const leavesMark = game?.priority && (game.status === 'library') !== (status === 'library')
+  await updateGame(id, {
+    status,
+    statusAt: Date.now(),
+    ...(!canWatch({ status }) && { watch: undefined }),
+    ...(leavesMark && { priority: false }),
+  })
 }
 
 // ---------- Games on the Board ----------

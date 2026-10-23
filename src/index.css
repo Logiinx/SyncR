@@ -4316,11 +4316,11 @@ h3.games-group-title {
   }
 }
 
-/* Stars, heart and Completed in a row (Playing and Library games) */
+/* Rating, heart, Completed and trophy in a row (Playing and Library games) */
 .game-rated {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   color: var(--text-yellow);
   font-size: 0.9em;
@@ -4691,24 +4691,17 @@ h3.games-group-title {
   pointer-events: none;
 }
 
-/* The rating in the Games list (RatingStars): small filled stars, a half one cut in half */
-.rating-stars {
+/* The rating on grid tiles and list rows (GameRated): one filled star and the number */
+.rating-compact {
   display: flex;
-  gap: 1px;
+  align-items: center;
+  gap: 3px;
+  margin-right: 2px;
+  font-weight: 600;
 }
 
-.rating-star {
-  display: flex;
-  overflow: hidden;
-}
-
-.rating-star svg {
-  flex-shrink: 0;
+.rating-compact svg {
   fill: currentColor;
-}
-
-.rating-star.half {
-  width: 6px;
 }
 
 .star-half {
@@ -4728,30 +4721,26 @@ h3.games-group-title {
   right: 0;
 }
 
-.game-heart {
-  display: flex;
+.game-rating-number {
   color: var(--text-dim);
+  font-size: 0.9em;
 }
 
-.game-heart:hover {
-  color: var(--text-pink);
-}
-
-.game-heart.on {
-  color: var(--text-pink);
-}
-
-.game-heart.on svg {
-  fill: currentColor;
-}
-
-/* "Completed" next to the heart: dim until switched on, then green */
+/* A pill at the row's end: outlined and dim until switched on, then filled green */
 .game-completed {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: 8px;
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--text-dim);
+}
+
+.game-completed.on {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-green) 18%, transparent);
 }
 
 .game-completed:hover,

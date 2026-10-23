@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
-import { allPlatforms, isPlayed, releaseEventId, releaseText, STATUSES } from './games'
+import { allPlatforms, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -90,10 +90,12 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               <button
                 className={game.priority ? 'gd-action on' : 'gd-action'}
                 onClick={() => updateGame(game.id, { priority: !game.priority })}
-                title={game.priority ? 'Remove priority' : 'Mark as priority'}
+                title={priorityLabel(game)}
                 aria-pressed={game.priority}
               >
-                <Sparkles size={15} /> <span>Priority</span>
+                {isFavoriteTab(game)
+                  ? <><Heart size={15} /> <span>Favorite</span></>
+                  : <><Sparkles size={15} /> <span>Priority</span></>}
               </button>
               <button
                 className="gd-action"
@@ -151,24 +153,20 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
 
             {played && (
               <>
-                <div className="game-rating">
-                  <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
-                  <button
-                    className={game.liked ? 'game-heart on' : 'game-heart'}
-                    onClick={() => updateGame(game.id, { liked: !game.liked })}
-                    title={game.liked ? 'Liked' : 'Like'}
-                    aria-pressed={game.liked}
-                  >
-                    <Heart size={20} />
-                  </button>
-                  <button
-                    className={game.completed ? 'game-completed on' : 'game-completed'}
-                    onClick={() => updateGame(game.id, { completed: !game.completed })}
-                    aria-pressed={!!game.completed}
-                  >
-                    <CircleCheck size={18} />
-                    Completed
-                  </button>
+                <div className="gd-field">
+                  <span>Your rating</span>
+                  <div className="game-rating">
+                    <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
+                    {!!game.rating && <span className="game-rating-number">{game.rating} / 5</span>}
+                    <button
+                      className={game.completed ? 'game-completed on' : 'game-completed'}
+                      onClick={() => updateGame(game.id, { completed: !game.completed })}
+                      aria-pressed={!!game.completed}
+                    >
+                      <CircleCheck size={16} />
+                      Completed
+                    </button>
+                  </div>
                 </div>
                 {/* From Steam: hours played and achievements (gold at 100%) */}
                 {game.steamStats && <SteamStatsView stats={game.steamStats} />}
@@ -271,32 +269,22 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
   )
 }
 
-// Stars, heart, the Completed check and the 100% trophy (all Steam achievements) of a played game
+// "★ 4.5", the favorite heart (Library), the Completed check and the 100% trophy (all Steam
+// achievements) of a played game
 // in the Games grid and list (only when one of them is set: showsRated)
 export const showsRated = (game: Game) =>
-  isPlayed(game) && !!(game.rating || game.liked || game.completed || isHundred(game.steamStats))
+  isPlayed(game) && !!(game.rating || (isFavoriteTab(game) && game.priority) || game.completed || isHundred(game.steamStats))
 export function GameRated({ game }: { game: Game }) {
   return (
     <span className="game-rated">
-      <RatingStars rating={game.rating} />
-      {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
+      {!!game.rating && (
+        <span className="rating-compact" aria-label={`${game.rating} stars`}>
+          <Star size={12} /> {game.rating}
+        </span>
+      )}
+      {isFavoriteTab(game) && game.priority && <Heart size={12} className="game-liked" aria-label="Favorite" />}
       {game.completed && <CircleCheck size={12} className="game-done" aria-label="Completed" />}
       {isHundred(game.steamStats) && <Trophy size={12} className="game-hundred" aria-label="100%" />}
-    </span>
-  )
-}
-
-// The rating in the list's rows: only the stars given, the last one cut in half for a half star
-export function RatingStars({ rating }: { rating?: number }) {
-  if (!rating) return null
-  const stars = Math.ceil(rating)
-  return (
-    <span className="rating-stars" aria-label={`${rating} stars`}>
-      {Array.from({ length: stars }, (_, i) => (
-        <span key={i} className={i + 1 > rating ? 'rating-star half' : 'rating-star'}>
-          <Star size={12} />
-        </span>
-      ))}
     </span>
   )
 }

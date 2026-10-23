@@ -28,6 +28,14 @@ export const statusLabel = (status?: GameStatus) => STATUSES.find((s) => s.statu
 // rating stays saved if the status changes back)
 export const isPlayed = (game: Game) => game.status === 'playing' || game.status === 'library'
 
+// The priority switch is called Favorite (a heart) in the Library, Priority (sparkles) elsewhere.
+// Same stored value; moving into or out of the Library switches it off (setGameStatus).
+export const isFavoriteTab = (game: { status: GameStatus }) => game.status === 'library'
+export const priorityLabel = (game: { status: GameStatus; priority: boolean }) =>
+  isFavoriteTab(game)
+    ? (game.priority ? 'Remove favorite' : 'Mark as favorite')
+    : (game.priority ? 'Remove priority' : 'Mark as priority')
+
 export const gameId = (igdbId: number) => `igdb-${igdbId}`
 
 // Out from the start of its release day (local time). Only an exact date counts.
@@ -275,6 +283,9 @@ async function upgradeOldStatuses() {
     if ((game.status as string) === 'watched') await updateGame(game.id, { status: isReleased(game) ? 'toplay' : 'waiting' })
     else await updateGame(game.id, { status: 'library', completed: (game.status as string) === 'done' || game.completed })
   }
+  // v0.23: the heart became Favorite (the Library's priority). Elsewhere it's just dropped.
+  const hearts = await db.games.filter((g) => !g.deleted && g.liked).toArray()
+  for (const game of hearts) await updateGame(game.id, { liked: false, ...(isFavoriteTab(game) && { priority: true }) })
 }
 
 // Started once by the app. The refresh and the release events wait for a finished sync (when

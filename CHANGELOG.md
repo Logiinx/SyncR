@@ -6,6 +6,8 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - Steam hours and achievements in the game window: two clear blocks, with a progress bar and % for achievements (gold at 100%).
+- Library: the heart is now Favorite (replaces Priority there): favorites go first. Moving a game in or out of Library clears the mark.
+- Clearer rating: "Your rating" with the score and a Completed pill in the game window; tiles and rows show "★ 4.5".
 
 ## [0.22.0] - 2026-10-23
 

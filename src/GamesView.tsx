@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isPlayed, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { setWatch } from './priceWatch'
@@ -85,7 +85,7 @@ function GamesView() {
             },
           }]),
       {
-        label: game.priority ? 'Remove priority' : 'Mark as priority',
+        label: priorityLabel(game),
         onClick: () => updateGame(game.id, { priority: !game.priority }),
       },
       pinned?.has(game.id)
