@@ -5182,6 +5182,29 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--accent) 80%, #fff);
 }
 
+/* No trailer (or IGDB unreachable): gray like the other actions, not clickable */
+.gd-action.trailer-toggle:disabled {
+  background: rgb(255 255 255 / 6%);
+  color: var(--text-dim);
+  cursor: default;
+}
+
+/* Still asking IGDB: dim blue, softly pulsing */
+.gd-action.trailer-toggle.loading {
+  background: color-mix(in srgb, var(--accent) 50%, var(--bg-raised));
+  color: color-mix(in srgb, #fff 60%, transparent);
+  animation: trailer-loading 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes trailer-loading {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Open (phone: the panel is showing below) */
 .gd-action.trailer-toggle.open {
   background: color-mix(in srgb, var(--accent) 60%, var(--bg-raised));

@@ -46,11 +46,13 @@ async function fetchExtras(igdbId: number): Promise<GameExtras> {
 }
 
 const loaded = new Map<number, Promise<GameExtras>>() // this session only
+const known = new Map<number, GameExtras>() // the answers already in, shown right away
 
 function loadExtras(igdbId: number) {
   let extras = loaded.get(igdbId)
   if (!extras) {
     extras = fetchExtras(igdbId)
+    extras.then((result) => known.set(igdbId, result), () => {})
     extras.catch(() => loaded.delete(igdbId)) // failed (offline…): try again next time
     loaded.set(igdbId, extras)
   }
@@ -59,10 +61,11 @@ function loadExtras(igdbId: number) {
 
 // undefined while loading, null when there's nothing to show (game search not set up, offline)
 export function useGameExtras(igdbId: number): GameExtras | null | undefined {
-  const [extras, setExtras] = useState<GameExtras | null | undefined>(undefined)
+  const [extras, setExtras] = useState<GameExtras | null | undefined>(() => known.get(igdbId))
   useEffect(() => {
     let current = true
-    setExtras(undefined)
+    setExtras(known.get(igdbId))
+    if (known.has(igdbId)) return
     loadConnection()
       .then((connection) => (isComplete(connection) ? loadExtras(igdbId) : null))
       .then((result) => current && setExtras(result))

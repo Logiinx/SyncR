@@ -180,7 +180,16 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
 // when the game has a trailer.
 export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: () => void }) {
   const extras = useGameExtras(props.igdbId)
-  if (!extras?.trailer) return null
+  // Always in place, so nothing below it jumps: dim and pulsing while loading, gray when there's none
+  if (!extras?.trailer) {
+    const loading = extras === undefined
+    return (
+      <button className={`gd-action trailer-toggle${loading ? ' loading' : ''}`} disabled>
+        <Play size={15} fill="currentColor" />
+        <span>{loading ? 'Watch trailer' : extras ? 'No trailer' : 'Trailer unavailable'}</span>
+      </button>
+    )
+  }
   return (
     <button className={`gd-action trailer-toggle${props.open ? ' open' : ''}`} onClick={props.onToggle}>
       <Play size={15} fill="currentColor" /> <span>Watch trailer</span>
