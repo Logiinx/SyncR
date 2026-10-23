@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
-import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
+import { canWatch, db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
@@ -49,9 +49,9 @@ function GamesView() {
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
-  // To play and Watched: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  // To play and Waiting: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
-    if (hasPriceLine({ status: shown })) loadListPrices()
+    if (canWatch({ status: shown })) loadListPrices()
   }, [shown])
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only

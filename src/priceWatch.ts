@@ -1,14 +1,13 @@
-import { db, updateGame, type Game, type PriceWatch } from './db'
+import { canWatch, db, updateGame, type Game, type PriceWatch } from './db'
 import { formatEuros, gamePrices, type GamePrices } from './prices'
 import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
 import { savePriceAlertEvent } from './calendarEvents'
 import { gameId } from './games'
 
-// Price alerts of Watched games (set in the game window: PriceWatchView.tsx): which price a
-// watch looks at, when it alerts, and the check (games.ts: after the first sync, then every
-// CHECK_EVERY) that turns a reached price into a Google Calendar event (its alert card has
-// "Bought": dueReminders.ts).
+// Price alerts of To play and Waiting games (set in the game window: PriceWatchView.tsx): which
+// price a watch looks at, when it alerts, and the check (games.ts: after the first sync, then
+// every CHECK_EVERY) that turns a reached price into a Google Calendar event.
 
 const cents = (price: string | null | undefined) => (price == null ? null : Math.round(Number(price) * 100))
 
@@ -77,13 +76,13 @@ function alertText(game: Game, watch: PriceWatch, price: number, prices: GamePri
   }
 }
 
-// Every Watched game with a watch that hasn't alerted yet: when its price is reached, the event
+// Every To play or Waiting game with a watch that hasn't alerted yet: when its price is reached, the event
 // is made (with Google Calendar connected) and the watch marked as alerted, so it stays quiet
 // until set again. Google unreachable: nothing is marked, the next check tries again.
 export async function checkWatches() {
   try {
     if (!isComplete(await loadConnection())) return
-    const games = await db.games.filter((g) => !g.deleted && g.status === 'watched' && !!g.watch && !g.watch.firedAt).toArray()
+    const games = await db.games.filter((g) => !g.deleted && canWatch(g) && !!g.watch && !g.watch.firedAt).toArray()
     if (games.length === 0) return
     const allPrices = await gamePrices(games.map((g) => g.igdbId))
     for (const game of games) {
@@ -107,9 +106,6 @@ export async function checkWatches() {
     console.warn('Price alert check failed', e)
   }
 }
-
-// "Bought": the game moves to To play, its watch goes
-export const markBought = (game: Game) => updateGame(game.id, { status: 'toplay', statusAt: Date.now(), watch: undefined })
 
 // "12,5" or "12.50 €" → 1250 cents; null if it isn't a price
 export function parseEuros(text: string) {

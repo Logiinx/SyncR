@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, CircleCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
-import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
+import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { allPlatforms, isPlayed, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
 import { formatDue } from './reminders'
@@ -146,7 +146,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
               ))}
             </div>
 
-            {game.status === 'watched' && <PriceWatchView key={game.id} game={game} />}
+            {canWatch(game) && <PriceWatchView key={game.id} game={game} />}
 
             {played && (
               <>

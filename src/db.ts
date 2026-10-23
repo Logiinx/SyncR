@@ -111,8 +111,11 @@ export interface Card {
 // A game in the Games tab (GamesView.tsx), with its data from IGDB (igdb.ts).
 // Synced like a card: one file per game, newest wins, a removed game stays as a row with
 // deleted = true for a while. The id comes from IGDB's, so a game can't be in the list twice.
-// Before v0.20 there were "done" and "dropped" (games.ts upgradeOldStatuses).
-export type GameStatus = 'watched' | 'waiting' | 'toplay' | 'playing' | 'library'
+// Before v0.20 there were "done" and "dropped", before v0.22 "watched" (games.ts upgradeOldStatuses).
+export type GameStatus = 'waiting' | 'toplay' | 'playing' | 'library'
+
+// Games whose price can be watched (priceWatch.ts): not owned yet
+export const canWatch = (game: { status: GameStatus }) => game.status === 'toplay' || game.status === 'waiting'
 
 // From your Steam account, refreshed daily and when the game window opens (steam.ts)
 export interface SteamStats {
@@ -121,7 +124,7 @@ export interface SteamStats {
   total?: number
 }
 
-// A Watched game's price alert (priceWatch.ts): which price, and when it alerts. It alerts once,
+// A To play or Waiting game's price alert (priceWatch.ts): which price, and when it alerts. It alerts once,
 // then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
   store: 'steam' | 'key' // the Steam price, or the cheapest key (GG.deals)
@@ -152,7 +155,7 @@ export interface Game {
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
-  watch?: PriceWatch // Watched games only
+  watch?: PriceWatch // To play and Waiting games only (canWatch)
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
@@ -516,8 +519,9 @@ export async function updateGame(id: string, change: Partial<Game>) {
   changed()
 }
 
+// Playing or Library: owned now, so its price watch goes
 export async function setGameStatus(id: string, status: GameStatus) {
-  await updateGame(id, { status, statusAt: Date.now() })
+  await updateGame(id, { status, statusAt: Date.now(), ...(!canWatch({ status }) && { watch: undefined }) })
 }
 
 // ---------- Games on the Board ----------

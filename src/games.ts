@@ -17,7 +17,6 @@ import { isConnected as googleConnected } from './google'
 export const GAMES_TAB = 'games' // its id among the open tabs (note ids never look like this)
 
 export const STATUSES: { status: GameStatus; label: string }[] = [
-  { status: 'watched', label: 'Watched' },
   { status: 'waiting', label: 'Waiting' },
   { status: 'toplay', label: 'To play' },
   { status: 'playing', label: 'Playing' },
@@ -270,9 +269,10 @@ export async function syncReleaseEvents() {
 // v0.20: "Done" became Library with Completed on, "Dropped" went (its games go to the Library,
 // not completed). After each sync, so it also catches games an older app version still marks.
 async function upgradeOldStatuses() {
-  const old = await db.games.filter((g) => !g.deleted && ['done', 'dropped'].includes(g.status as string)).toArray()
+  const old = await db.games.filter((g) => !g.deleted && ['done', 'dropped', 'watched'].includes(g.status as string)).toArray()
   for (const game of old) {
-    await updateGame(game.id, { status: 'library', completed: (game.status as string) === 'done' || game.completed })
+    if ((game.status as string) === 'watched') await updateGame(game.id, { status: isReleased(game) ? 'toplay' : 'waiting' })
+    else await updateGame(game.id, { status: 'library', completed: (game.status as string) === 'done' || game.completed })
   }
 }
 
@@ -305,7 +305,7 @@ export function startGameChecks() {
     } catch (e) {
       console.warn('Game refresh failed', e)
     }
-    // To play and Watched prices, once per start, after the first sync brought the list up to date
+    // To play (and watched Waiting) prices, once per start, after the first sync brought the list up to date
     // and the price alerts then and every 6 hours
     if (!pricesLoaded) {
       pricesLoaded = true

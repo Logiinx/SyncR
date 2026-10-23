@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { ExternalLink, ShoppingBag } from 'lucide-react'
+import { BellOff, ExternalLink } from 'lucide-react'
 import type { Game, PriceWatch } from './db'
 import { shortDate } from './dates'
 import { openLink } from './links'
 import { formatEuros, useKnownPrice } from './prices'
-import { alertPrice, currentPrice, markBought, parseEuros, setWatch } from './priceWatch'
+import { alertPrice, currentPrice, parseEuros, setWatch } from './priceWatch'
 
-// The "Price alert" part of a Watched game's window (GameDialog.tsx): which price (Steam or the
-// cheapest key) and when to alert, what it looks like now, "Bought" (→ To play) and a link to the
-// game's GG.deals page to set an alert there too (store filters, bundles, subscriptions).
-// Uses the prices the window already loaded (GamePricesInfo). Without prices (not on Steam, no
-// prices for this connection) only "Bought" shows.
+// The "Price alert" part of a To play or Waiting game's window (GameDialog.tsx): which price
+// (Steam or the cheapest key) and when to alert (Off = not watched), what it looks like now,
+// "Stop watching" and a link to the game's GG.deals page to set an alert there too (store
+// filters, bundles, subscriptions). Uses the prices the window already loaded (GamePricesInfo).
+// Without prices (not on Steam, no prices for this connection) it says so.
 
 type When = PriceWatch['when'] | 'off'
 const WHEN: [When, string][] = [
@@ -101,10 +101,13 @@ export function PriceWatchView({ game }: { game: Game }) {
           </p>
         )
       )}
+      {prices === null && !watch && <p className="watch-state">No prices known for this game</p>}
       <div className="watch-actions">
-        <button className="gd-action" onClick={() => markBought(game)} title="Move it to To play">
-          <ShoppingBag size={15} /> <span>Bought</span>
-        </button>
+        {watch && (
+          <button className="gd-action" onClick={() => setWatch(game, null)}>
+            <BellOff size={15} /> <span>Stop watching</span>
+          </button>
+        )}
         {prices?.deals && (
           <button
             className="gd-action"

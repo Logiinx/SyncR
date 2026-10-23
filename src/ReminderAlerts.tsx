@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { ArrowLeft, Bell, ChevronDown } from 'lucide-react'
-import { isPriceAlert, openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
+import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
 import { useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
 
@@ -12,7 +12,7 @@ const EVENT_COLORS: Record<string, string> = {
 }
 
 // One due event alert: a strip in the event's color, time, title, note. A click on the text
-// opens the event in SyncR (a price alert: its game). Done (big), Bought for price alerts, and Snooze, which unfolds its choices in place of the
+// opens the event in SyncR (a price alert: its game). Done (big) and Snooze, which unfolds its choices in place of the
 // buttons (inside the card: a menu could be cut off by the pop-up window's edge).
 export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (action: ReminderAction) => void }) {
   const [snoozing, setSnoozing] = useState(false)
@@ -43,7 +43,6 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
           <button className="primary" onClick={() => onAction('done')}>
             Done
           </button>
-          {isPriceAlert(item.key) && <button onClick={() => onAction('bought')}>Bought</button>}
           <button onClick={() => setSnoozing(true)}>
             Snooze <ChevronDown size={14} />
           </button>

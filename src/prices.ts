@@ -123,10 +123,11 @@ export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
   return cache.get(igdbId)?.prices
 }
 
-// The lists that show prices: To play and Watched (their price alerts look at them too)
-export const hasPriceLine = (game: { status: string }) => game.status === 'toplay' || game.status === 'watched'
+// The games that show prices in the lists: To play, and watched Waiting games (pre-orders)
+export const hasPriceLine = (game: { status: string; watch?: object }) =>
+  game.status === 'toplay' || (game.status === 'waiting' && !!game.watch)
 
-// Prices of all To play and Watched games at once: at start (games.ts) and when one of those lists
+// Prices of all those games at once: at start (games.ts) and when the To play or Waiting list
 // opens. Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
 export async function loadListPrices() {
   try {

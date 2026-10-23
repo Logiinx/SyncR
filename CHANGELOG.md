@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Price alerts: the Watched tab is gone; watch any To play or Waiting game from its window. Bought → Stop watching.
+
 ## [0.21.1] - 2026-10-23
 
 **Games**
