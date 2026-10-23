@@ -52,14 +52,26 @@ const REFRESHED_KEY = 'syncr.steamRefreshedAt' // per device
 const OWNED_MS = 10 * 60_000 // the owned list is kept a few minutes (game windows opened in a row)
 const ACHIEVEMENTS_PER_ASK = 40 // the proxy's limit
 
-let owned: { steamId: string; minutes: Map<number, number>; time: number } | null = null
+export interface OwnedGame {
+  appId: number
+  name: string
+  minutes: number // played
+}
+
+let owned: { steamId: string; games: OwnedGame[]; time: number } | null = null
+
+// The games the account owns; null when its game details are private
+export async function ownedGames(steamId: string) {
+  if (owned?.steamId === steamId && Date.now() - owned.time < OWNED_MS) return owned.games
+  const answer = await steamApi<{ games?: OwnedGame[]; private?: boolean }>('owned', { steamId })
+  if (!answer.games) return null
+  owned = { steamId, games: answer.games, time: Date.now() }
+  return owned.games
+}
 
 async function ownedMinutes(steamId: string) {
-  if (owned?.steamId === steamId && Date.now() - owned.time < OWNED_MS) return owned.minutes
-  const answer = await steamApi<{ games?: { appId: number; minutes: number }[]; private?: boolean }>('owned', { steamId })
-  if (!answer.games) return null // game details are private
-  owned = { steamId, minutes: new Map(answer.games.map((g) => [g.appId, g.minutes])), time: Date.now() }
-  return owned.minutes
+  const games = await ownedGames(steamId)
+  return games && new Map(games.map((g) => [g.appId, g.minutes]))
 }
 
 export const isHundred = (stats?: SteamStats) => !!stats?.total && stats.done === stats.total
@@ -112,4 +124,20 @@ export function playedText(minutes: number) {
   if (minutes < 60) return `${minutes} min played`
   const hours = minutes / 60
   return `${hours < 10 ? hours.toFixed(1).replace(/\.0$/, '') : Math.round(hours)} h played`
+}
+
+// ---------- Skipped in the import (SteamImport.tsx) ----------
+
+// Steam games left unticked in an import: hidden next time ("Show skipped" brings them back).
+// Synced, so both devices skip the same.
+const SKIPPED_SETTING = 'steam-skipped'
+
+export async function loadSkipped(): Promise<number[]> {
+  return ((await db.settings.get(SKIPPED_SETTING))?.value as number[] | undefined) ?? []
+}
+
+export async function saveSkipped(appIds: number[]) {
+  const change = { value: appIds, updatedAt: Date.now() }
+  if (!(await db.settings.update(SKIPPED_SETTING, change))) await db.settings.put({ name: SKIPPED_SETTING, ...change })
+  changed()
 }

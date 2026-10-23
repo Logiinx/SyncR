@@ -234,6 +234,39 @@ function toFoundGame(game: IgdbGame): FoundGame {
   }
 }
 
+// ---------- Steam import (SteamImport.tsx) ----------
+
+const STEAM_SOURCE = 1 // IGDB external game source "Steam"
+const STEAM_PAGE = 200 // Steam ids per request (keeps the query short)
+
+interface IgdbSteamGame extends IgdbGame {
+  version_parent?: number
+  external_games?: { uid?: string; external_game_source?: number; category?: number }[]
+}
+
+// IGDB's game for each of these Steam app ids. Ids IGDB doesn't know are left out; when several
+// IGDB games list the same id (editions), the main game wins.
+export async function gamesBySteamIds(appIds: number[]): Promise<Map<number, FoundGame>> {
+  const result = new Map<number, { game: FoundGame; main: boolean }>()
+  for (let offset = 0; offset < appIds.length; offset += STEAM_PAGE) {
+    const ids = appIds.slice(offset, offset + STEAM_PAGE)
+    const games = await igdb<IgdbSteamGame>(
+      'games',
+      `fields ${GAME_FIELDS}, version_parent, external_games.uid, external_games.external_game_source, external_games.category; where external_games.uid = (${ids.map((id) => `"${id}"`).join(',')}); limit ${PAGE};`,
+    )
+    for (const game of games) {
+      const main = !game.version_parent
+      for (const link of game.external_games ?? []) {
+        const appId = Number(link.uid)
+        if ((link.external_game_source ?? link.category) !== STEAM_SOURCE || !ids.includes(appId)) continue
+        const before = result.get(appId)
+        if (!before || (main && !before.main)) result.set(appId, { game: toFoundGame(game), main })
+      }
+    }
+  }
+  return new Map([...result].map(([appId, { game }]) => [appId, game]))
+}
+
 // ---------- Calendar: upcoming PC games ----------
 
 // A game in the calendar: its first PC release inside the calendar's range

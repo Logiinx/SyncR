@@ -2780,6 +2780,103 @@ button {
   max-height: min(600px, 100%);
 }
 
+/* Import from Steam (SteamImport.tsx): the list scrolls, the buttons stay in view */
+.dialog.steam-import {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: min(680px, 100%);
+}
+
+.steam-import-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+}
+
+.steam-import-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.steam-import-head > button {
+  color: var(--accent);
+}
+
+.steam-import-head .dialog-check {
+  margin: 0 0 0 auto;
+}
+
+.steam-import-list {
+  overflow-y: auto;
+  margin: 0 -8px 16px;
+}
+
+.steam-import-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.steam-import-row:hover {
+  background: rgb(255 255 255 / 4%);
+}
+
+.dialog .steam-import-row input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.steam-import-row.unknown {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.steam-import-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.steam-import-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steam-import-details {
+  color: var(--text-dim);
+  font-size: 0.8em;
+}
+
+/* "Import from Steam…" above the Library */
+.games-import {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.games-import button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+  color: color-mix(in srgb, var(--text) 85%, var(--text-dim));
+  font-size: 0.85em;
+}
+
 /* Many versions skipped: the notes scroll, the OK button stays in view */
 .whats-new-body {
   overflow-y: auto;

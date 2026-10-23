@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
+import { useSteamProfile } from './steam'
+import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
@@ -45,6 +47,8 @@ function GamesView() {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
+  const steam = useSteamProfile()
+  const [importing, setImporting] = useState(false) // the Steam import window
   // To play and Watched: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
     if (hasPriceLine({ status: shown })) loadListPrices()
@@ -163,6 +167,15 @@ function GamesView() {
                     </button>
                   </div>
                 </div>
+                {/* Library, with a Steam profile set (Settings → Games) */}
+                {shown === 'library' && steam?.steamId && (
+                  <div className="games-import">
+                    <button onClick={() => setImporting(true)}>
+                      <Download size={15} /> Import from Steam…
+                    </button>
+                  </div>
+                )}
+                {importing && <SteamImport onClose={() => setImporting(false)} />}
                 <GameShelf
                   games={sortGames(games.filter((g) => g.status === shown))}
                   layout={shelf}
