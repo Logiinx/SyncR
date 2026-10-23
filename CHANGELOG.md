@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - New tabs: Watched · Waiting · To play · Playing · Library. Done games moved to Library, marked Completed (green check by the stars).
+- Watched games show their prices. In the game window: price alert settings, Bought (→ To play), link to set a GG.deals alert.
 
 ## [0.19.7] - 2026-10-23
 

@@ -114,6 +114,18 @@ export interface Card {
 // Before v0.20 there were "done" and "dropped" (games.ts upgradeOldStatuses).
 export type GameStatus = 'watched' | 'waiting' | 'toplay' | 'playing' | 'library'
 
+// A Watched game's price alert (priceWatch.ts): which price, and when it alerts. It alerts once,
+// then stays off until it's changed or set again ("Watch again").
+export interface PriceWatch {
+  store: 'steam' | 'key' // the Steam price, or the cheapest key (GG.deals)
+  when: 'price' | 'low' | 'record' // at or below target / at its lowest ever / below the lowest ever when set
+  target?: number // cents ('price')
+  record?: number // cents: the lowest ever when set ('record'; filled at the first check if prices weren't known)
+  setAt: number // when it was set: also names its Calendar event, so two devices make only one
+  firedAt?: number // when it alerted
+  firedPrice?: number // cents, the price that made it alert
+}
+
 export interface Game {
   id: string // "igdb-<IGDB id>"
   igdbId: number
@@ -133,6 +145,7 @@ export interface Game {
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
+  watch?: PriceWatch // Watched games only
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number

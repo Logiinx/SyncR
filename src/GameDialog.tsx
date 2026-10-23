@@ -8,6 +8,7 @@ import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
+import { PriceWatchView } from './PriceWatchView'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -138,6 +139,8 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                 </button>
               ))}
             </div>
+
+            {game.status === 'watched' && <PriceWatchView key={game.id} game={game} />}
 
             {played && (
               <>

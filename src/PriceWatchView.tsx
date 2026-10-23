@@ -1,0 +1,120 @@
+import { useState } from 'react'
+import { ExternalLink, ShoppingBag } from 'lucide-react'
+import type { Game, PriceWatch } from './db'
+import { shortDate } from './dates'
+import { openLink } from './links'
+import { formatEuros, useKnownPrice } from './prices'
+import { alertPrice, currentPrice, markBought, parseEuros, setWatch } from './priceWatch'
+
+// The "Price alert" part of a Watched game's window (GameDialog.tsx): which price (Steam or the
+// cheapest key) and when to alert, what it looks like now, "Bought" (→ To play) and a link to the
+// game's GG.deals page to set an alert there too (store filters, bundles, subscriptions).
+// Uses the prices the window already loaded (GamePricesInfo). Without prices (not on Steam, no
+// prices for this connection) only "Bought" shows.
+
+type When = PriceWatch['when'] | 'off'
+const WHEN: [When, string][] = [
+  ['off', 'Off'],
+  ['price', 'At my price'],
+  ['low', 'At lowest ever'],
+  ['record', 'Below lowest ever'],
+]
+
+const euroText = (cents?: number) => (cents === undefined ? '' : (cents / 100).toFixed(2).replace('.', ','))
+
+export function PriceWatchView({ game }: { game: Game }) {
+  const prices = useKnownPrice(game.igdbId)
+  const watch = game.watch
+  const [store, setStore] = useState<PriceWatch['store']>(watch?.store ?? 'steam') // kept while Off
+  const [target, setTarget] = useState(euroText(watch?.target))
+  const when: When = watch?.when ?? 'off'
+
+  const save = (change: { store?: PriceWatch['store']; when?: When; target?: number }) => {
+    const next = { store, when, target: watch?.target, ...change }
+    if (next.when === 'off') return setWatch(game, null)
+    return setWatch(game, { store: next.store, when: next.when, target: next.target }, prices)
+  }
+
+  const now = prices ? currentPrice(prices, store) : null
+  const limit = watch && alertPrice(watch, prices)
+  const canWatch = !!prices || !!watch
+
+  return (
+    <div className="gd-field">
+      <span>Price alert</span>
+      {canWatch && (
+        <div className="event-options watch-options">
+          <label>
+            <span>Price</span>
+            <select
+              value={store}
+              onChange={(e) => {
+                const value = e.target.value as PriceWatch['store']
+                setStore(value)
+                if (watch) save({ store: value })
+              }}
+            >
+              <option value="steam">Steam</option>
+              <option value="key">Key</option>
+            </select>
+          </label>
+          <label>
+            <span>Alert when</span>
+            <select value={when} onChange={(e) => save({ when: e.target.value as When })}>
+              {WHEN.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {when === 'price' && (
+            <label>
+              <span>My price (€)</span>
+              <input
+                inputMode="decimal"
+                value={target}
+                placeholder={now !== null ? euroText(now) : ''}
+                onChange={(e) => {
+                  setTarget(e.target.value)
+                  const cents = parseEuros(e.target.value)
+                  if (cents !== null) save({ target: cents })
+                }}
+              />
+            </label>
+          )}
+        </div>
+      )}
+      {watch?.firedAt ? (
+        <p className="watch-state">
+          Alert sent {shortDate(watch.firedAt)}
+          {watch.firedPrice !== undefined && `: ${formatEuros(watch.firedPrice)}`}
+          <button className="watch-again" onClick={() => save({})}>
+            Watch again
+          </button>
+        </p>
+      ) : (
+        watch && (
+          <p className="watch-state">
+            {now !== null ? `Now ${formatEuros(now)}` : store === 'key' ? 'No key offer now' : 'No Steam price now'}
+            {limit != null && ` · alerts ${watch.when === 'record' ? `below ${formatEuros(limit)}` : `at ${formatEuros(limit)} or less`}`}
+          </p>
+        )
+      )}
+      <div className="watch-actions">
+        <button className="gd-action" onClick={() => markBought(game)} title="Move it to To play">
+          <ShoppingBag size={15} /> <span>Bought</span>
+        </button>
+        {prices?.deals && (
+          <button
+            className="gd-action"
+            onClick={() => openLink(prices.deals!.url)}
+            title="Open its GG.deals page, to set an alert there (stores, bundles, subscriptions)"
+          >
+            <ExternalLink size={15} /> <span>GG.deals alert</span>
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

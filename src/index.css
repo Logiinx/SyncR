@@ -4460,6 +4460,11 @@ h3.games-group-title {
     display: none;
   }
 
+  /* The price alert's buttons keep their text */
+  .watch-actions .gd-action span {
+    display: inline;
+  }
+
   .gd-action,
   .gd-action.gd-remove {
     margin: 0;
@@ -4610,6 +4615,35 @@ h3.games-group-title {
   min-width: 0;
   color: var(--text-dim);
   font-size: 0.85em;
+}
+
+/* A Watched game's price alert (PriceWatchView.tsx): the choices in a row like the event
+   window's, then what it looks like now, then Bought and the GG.deals link */
+.watch-options {
+  margin-bottom: 0;
+}
+
+.watch-options input {
+  margin: 0;
+}
+
+.watch-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.watch-again {
+  color: var(--accent);
+}
+
+.watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dialog select {

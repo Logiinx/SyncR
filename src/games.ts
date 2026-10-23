@@ -3,7 +3,7 @@ import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
-import { loadToPlayPrices } from './prices'
+import { loadListPrices } from './prices'
 import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
@@ -302,10 +302,10 @@ export function startGameChecks() {
     } catch (e) {
       console.warn('Game refresh failed', e)
     }
-    // To play prices, once per start, after the first sync brought the list up to date
+    // To play and Watched prices, once per start, after the first sync brought the list up to date
     if (!pricesLoaded) {
       pricesLoaded = true
-      loadToPlayPrices()
+      loadListPrices()
     }
   }
   check()

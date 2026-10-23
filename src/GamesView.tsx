@@ -4,7 +4,7 @@ import { CalendarCheck, CalendarClock, CalendarDays, Gamepad2, LayoutGrid, List,
 import { db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
-import { loadToPlayPrices } from './prices'
+import { hasPriceLine, loadListPrices } from './prices'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
@@ -45,9 +45,9 @@ function GamesView() {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
-  // To play: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  // To play and Watched: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
-    if (shown === 'toplay') loadToPlayPrices()
+    if (hasPriceLine({ status: shown })) loadListPrices()
   }, [shown])
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
@@ -235,7 +235,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
       </div>
       <div className="game-tile-name">{game.name}</div>
       {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
-      {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
+      {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
     </div>
   )
 }
@@ -262,7 +262,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
         <div className="game-details" title={details}>{details}</div>
-        {game.status === 'toplay' && <GamePriceLine igdbId={game.igdbId} />}
+        {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
       </div>
       {showsRated(game) && <GameRated game={game} />}
     </div>

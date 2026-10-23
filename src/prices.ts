@@ -123,12 +123,15 @@ export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
   return cache.get(igdbId)?.prices
 }
 
-// Prices of all "To play" games at once: at start (games.ts) and when the To play list opens.
-// Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
-export async function loadToPlayPrices() {
+// The lists that show prices: To play and Watched (their price alerts look at them too)
+export const hasPriceLine = (game: { status: string }) => game.status === 'toplay' || game.status === 'watched'
+
+// Prices of all To play and Watched games at once: at start (games.ts) and when one of those lists
+// opens. Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
+export async function loadListPrices() {
   try {
     if (!isComplete(await loadConnection())) return
-    const games = await db.games.filter((g) => g.status === 'toplay' && !g.deleted).toArray()
+    const games = await db.games.filter((g) => hasPriceLine(g) && !g.deleted).toArray()
     if (games.length > 0) await gamePrices(games.map((g) => g.igdbId))
   } catch (e) {
     console.warn('Price lookup failed', e)
