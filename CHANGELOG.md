@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- Settings → Games: link your Steam profile (shows "Connected as …" and how many games it owns).
+- Link your Steam profile (Settings → Games): game windows show achievements and hours played; a gold trophy at 100% (also ticks Completed).
 
 ## [0.20.0] - 2026-10-23
 

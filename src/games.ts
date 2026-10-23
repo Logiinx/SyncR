@@ -5,6 +5,7 @@ import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { loadListPrices } from './prices'
 import { checkWatches, CHECK_EVERY as WATCH_EVERY } from './priceWatch'
+import { refreshSteamStats } from './steam'
 import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
@@ -298,6 +299,7 @@ export function startGameChecks() {
       await upgradeOldStatuses()
       await matchGamePriorities()
       await refreshGames()
+      await refreshSteamStats()
       await moveReleased() // a date may have moved to today
       await syncReleaseEvents()
     } catch (e) {

@@ -4239,6 +4239,22 @@ h3.games-group-title {
   color: var(--text-green);
 }
 
+/* All Steam achievements (GameRated, game window) */
+.game-hundred {
+  flex-shrink: 0;
+  color: var(--text-yellow);
+}
+
+/* Game window: "34 / 50 achievements · 42 h played" (steam.ts) */
+.gd-steam {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
 .games-group .game-row {
   cursor: pointer;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, CircleCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2 } from 'lucide-react'
+import { CalendarDays, CircleCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
 import { allPlatforms, isPlayed, releaseEventId, releaseText, STATUSES } from './games'
@@ -9,6 +9,7 @@ import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
+import { isHundred, playedText, updateSteamStats } from './steam'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -36,6 +37,11 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
   // Focused when it opens (so Escape works), without scrolling; again after the trailer view
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [trailerOpen])
+  // Fresh hours and achievements from Steam when it opens (steam.ts)
+  useEffect(() => {
+    if (played) updateSteamStats([game])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.id, played])
 
   if (trailerOpen && !narrow) {
     return (
@@ -163,6 +169,16 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
                     Completed
                   </button>
                 </div>
+                {/* From Steam: trophy at 100% */}
+                {game.steamStats && (
+                  <p className="gd-steam">
+                    {isHundred(game.steamStats) && <Trophy size={14} className="game-hundred" aria-label="100%" />}
+                    {[
+                      game.steamStats.total && `${game.steamStats.done} / ${game.steamStats.total} achievements`,
+                      playedText(game.steamStats.minutes),
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                )}
                 <label className="gd-field">
                   <span>Review</span>
                   <textarea
@@ -229,15 +245,17 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
   )
 }
 
-// Stars, heart and the Completed check of a played game in the Games grid and list (only when
-// one of them is set: showsRated)
-export const showsRated = (game: Game) => isPlayed(game) && !!(game.rating || game.liked || game.completed)
+// Stars, heart, the Completed check and the 100% trophy (all Steam achievements) of a played game
+// in the Games grid and list (only when one of them is set: showsRated)
+export const showsRated = (game: Game) =>
+  isPlayed(game) && !!(game.rating || game.liked || game.completed || isHundred(game.steamStats))
 export function GameRated({ game }: { game: Game }) {
   return (
     <span className="game-rated">
       <RatingStars rating={game.rating} />
       {game.liked && <Heart size={12} className="game-liked" aria-label="Liked" />}
       {game.completed && <CircleCheck size={12} className="game-done" aria-label="Completed" />}
+      {isHundred(game.steamStats) && <Trophy size={12} className="game-hundred" aria-label="100%" />}
     </span>
   )
 }

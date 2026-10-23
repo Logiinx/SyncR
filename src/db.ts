@@ -114,6 +114,13 @@ export interface Card {
 // Before v0.20 there were "done" and "dropped" (games.ts upgradeOldStatuses).
 export type GameStatus = 'watched' | 'waiting' | 'toplay' | 'playing' | 'library'
 
+// From your Steam account, refreshed daily and when the game window opens (steam.ts)
+export interface SteamStats {
+  minutes: number // played
+  done?: number // achievements unlocked, of total (none: the game has no achievements)
+  total?: number
+}
+
 // A Watched game's price alert (priceWatch.ts): which price, and when it alerts. It alerts once,
 // then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
@@ -146,6 +153,7 @@ export interface Game {
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
   watch?: PriceWatch // Watched games only
+  steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number

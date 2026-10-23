@@ -45,7 +45,7 @@ function findSteam(game: IgdbExternal): SteamRef | undefined {
   return page('app') ?? (linked && { kind: 'app', id: Number(linked.uid) }) ?? page('sub')
 }
 
-async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef>> {
+export async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef>> {
   const result = new Map<number, SteamRef>()
   for (let i = 0; i < igdbIds.length; i += 500) {
     const ids = igdbIds.slice(i, i + 500)
