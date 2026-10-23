@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, CircleCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { CalendarDays, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
-import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game } from './db'
+import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, isPlayed, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
-import { isHundred, playedText, updateSteamStats } from './steam'
+import { isHundred, playedTime, updateSteamStats } from './steam'
 import { coverUrl } from './igdb'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -170,16 +170,8 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                     Completed
                   </button>
                 </div>
-                {/* From Steam: trophy at 100% */}
-                {game.steamStats && (
-                  <p className="gd-steam">
-                    {isHundred(game.steamStats) && <Trophy size={14} className="game-hundred" aria-label="100%" />}
-                    {[
-                      game.steamStats.total && `${game.steamStats.done} / ${game.steamStats.total} achievements`,
-                      playedText(game.steamStats.minutes),
-                    ].filter(Boolean).join(' · ')}
-                  </p>
-                )}
+                {/* From Steam: hours played and achievements (gold at 100%) */}
+                {game.steamStats && <SteamStatsView stats={game.steamStats} />}
                 <label className="gd-field">
                   <span>Review</span>
                   <textarea
@@ -242,6 +234,39 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
           </span>
         )
       })}
+    </div>
+  )
+}
+
+// Game window: two blocks, hours played and achievements with a bar (gold at 100%)
+function SteamStatsView({ stats }: { stats: SteamStats }) {
+  const percent = stats.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
+  return (
+    <div className="gd-steam">
+      <div className="gd-stat">
+        <Clock size={18} />
+        <div>
+          <strong>{playedTime(stats.minutes)}</strong>
+          <span>played</span>
+        </div>
+      </div>
+      {!!stats.total && (
+        <div className={isHundred(stats) ? 'gd-stat gd-achievements hundred' : 'gd-stat gd-achievements'}>
+          <Trophy size={18} />
+          <div>
+            <div className="gd-stat-top">
+              <strong>
+                {stats.done ?? 0} / {stats.total}
+              </strong>
+              <span>achievements</span>
+              <span className="gd-percent">{percent}%</span>
+            </div>
+            <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
+              <div style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

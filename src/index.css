@@ -4342,14 +4342,75 @@ h3.games-group-title {
   color: var(--text-yellow);
 }
 
-/* Game window: "34 / 50 achievements · 42 h played" (steam.ts) */
+/* Game window: Steam hours played and achievements, two blocks (SteamStatsView) */
 .gd-steam {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gd-stat {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin: -4px 0 0;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
   color: var(--text-dim);
-  font-size: 0.85em;
+}
+
+.gd-stat strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.gd-stat span {
+  font-size: 0.8em;
+}
+
+.gd-achievements {
+  flex: 1;
+  min-width: 180px;
+}
+
+.gd-achievements > div {
+  flex: 1;
+}
+
+.gd-stat-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gd-percent {
+  margin-left: auto;
+}
+
+.gd-bar {
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.gd-bar > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-dim);
+}
+
+/* 100%: trophy and bar in the trophy's gold */
+.gd-achievements.hundred svg {
+  color: var(--text-yellow);
+}
+
+.gd-achievements.hundred .gd-bar > div {
+  background: var(--text-yellow);
 }
 
 .games-group .game-row {

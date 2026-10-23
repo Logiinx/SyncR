@@ -131,10 +131,13 @@ export async function refreshSteamStats() {
 }
 
 // "42 h played", "4.5 h played", "35 min played"
-export function playedText(minutes: number) {
-  if (minutes < 60) return `${minutes} min played`
+export const playedText = (minutes: number) => `${playedTime(minutes)} played`
+
+// "42 h", "4.5 h", "35 min"
+export function playedTime(minutes: number) {
+  if (minutes < 60) return `${minutes} min`
   const hours = minutes / 60
-  return `${hours < 10 ? hours.toFixed(1).replace(/\.0$/, '') : Math.round(hours)} h played`
+  return `${hours < 10 ? hours.toFixed(1).replace(/\.0$/, '') : Math.round(hours)} h`
 }
 
 // ---------- Skipped in the import (SteamImport.tsx) ----------
