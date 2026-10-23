@@ -337,6 +337,32 @@ export async function removeReleaseEvent(id: string): Promise<boolean> {
   return true
 }
 
+// ---------- Price alerts (priceWatch.ts) ----------
+
+// A short event a few minutes from now, in Grape like the release events, with an alert at its
+// start: the PC shows its card, Google notifies the phone (an event starting right now could be
+// past before the phone hears of it). Its id is fixed per watch: when both devices see the
+// price, the second one finds it already there (409) and makes no other.
+export async function savePriceAlertEvent(alert: { id: string; title: string; description: string; start: number }) {
+  try {
+    await calendarApi('calendars/primary/events', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: alert.id,
+        summary: alert.title,
+        description: alert.description,
+        start: googleTime(alert.start),
+        end: googleTime(alert.start + NEW_EVENT_MS),
+        colorId: GRAPE,
+        reminders: googleAlerts(0),
+      }),
+    })
+  } catch (e) {
+    if (!String(e).includes('(409)')) throw e
+  }
+  await refreshEvents()
+}
+
 // Started once by the app: keeps the events fresh in the background too, for their alerts
 // (eventAlerts.ts): at start, every 10 minutes, and when the app comes back to the front.
 // Errors (offline…) are only logged: the stored events stay.

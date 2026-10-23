@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { playChime } from './chime'
 import { eventId, listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
 import { REMINDERS_TAB } from './reminders'
+import { db } from './db'
+import { markBought, priceEventGame } from './priceWatch'
 
 // What is due right now, used by the cards (ReminderAlerts.tsx) and the desktop pop-up
 // (ReminderPopup.tsx): the alerts of Google Calendar events (eventAlerts.ts).
@@ -22,7 +24,16 @@ export interface DueItem {
 }
 
 // The buttons on a due item ('open': a click on the card's text)
-export type ReminderAction = 'done' | 'snooze10' | 'snooze60' | 'tomorrow' | 'open'
+export type ReminderAction = 'done' | 'bought' | 'snooze10' | 'snooze60' | 'tomorrow' | 'open'
+
+// A price alert's card also has "Bought" (priceWatch.ts): done, and the game moves to To play
+export const isPriceAlert = (key: string) => priceEventGame(eventId(key)) !== null
+
+async function bought(key: string) {
+  await markAlertDone(key)
+  const game = await db.games.get(priceEventGame(eventId(key)) ?? '')
+  if (game?.status === 'watched' && !game.deleted) await markBought(game)
+}
 
 // A click on a card: SyncR shows the Reminders tab with the event's preview. RemindersView takes
 // the event (takeAlertEvent) when it opens, or right away if it's already open.
@@ -40,6 +51,7 @@ export function takeAlertEvent() {
 
 export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) {
   if (action === 'done') return markAlertDone(key)
+  if (action === 'bought') return bought(key)
   if (action === 'snooze10') return snoozeAlert(key, 10)
   if (action === 'snooze60') return snoozeAlert(key, 60)
   return snoozeAlert(key, 'tomorrow')

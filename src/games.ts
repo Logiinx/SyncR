@@ -4,6 +4,7 @@ import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGa
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { loadListPrices } from './prices'
+import { checkWatches, CHECK_EVERY as WATCH_EVERY } from './priceWatch'
 import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
@@ -303,9 +304,11 @@ export function startGameChecks() {
       console.warn('Game refresh failed', e)
     }
     // To play and Watched prices, once per start, after the first sync brought the list up to date
+    // and the price alerts then and every 6 hours
     if (!pricesLoaded) {
       pricesLoaded = true
-      loadListPrices()
+      loadListPrices().then(checkWatches)
+      window.setInterval(checkWatches, WATCH_EVERY)
     }
   }
   check()

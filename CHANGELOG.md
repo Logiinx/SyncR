@@ -6,7 +6,8 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - New tabs: Watched · Waiting · To play · Playing · Library. Done games moved to Library, marked Completed (green check by the stars).
-- Watched games show their prices. In the game window: price alert settings, Bought (→ To play), link to set a GG.deals alert.
+- Price alerts for Watched games: Steam or key price, at my price or lowest ever, sent through Google Calendar. Bought → To play.
+- Watched games show their prices, and their window links to GG.deals to set an alert there.
 
 ## [0.19.7] - 2026-10-23
 

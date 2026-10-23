@@ -87,7 +87,7 @@ export function PriceWatchView({ game }: { game: Game }) {
       )}
       {watch?.firedAt ? (
         <p className="watch-state">
-          Alert sent {shortDate(watch.firedAt)}
+          Reached {shortDate(watch.firedAt)}
           {watch.firedPrice !== undefined && `: ${formatEuros(watch.firedPrice)}`}
           <button className="watch-again" onClick={() => save({})}>
             Watch again

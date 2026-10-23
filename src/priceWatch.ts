@@ -1,8 +1,14 @@
-import { updateGame, type Game, type PriceWatch } from './db'
-import type { GamePrices } from './prices'
+import { db, updateGame, type Game, type PriceWatch } from './db'
+import { formatEuros, gamePrices, type GamePrices } from './prices'
+import { isComplete, loadConnection } from './igdb'
+import { isConnected as googleConnected } from './google'
+import { savePriceAlertEvent } from './calendarEvents'
+import { gameId } from './games'
 
 // Price alerts of Watched games (set in the game window: PriceWatchView.tsx): which price a
-// watch looks at, and when it alerts.
+// watch looks at, when it alerts, and the check (games.ts: after the first sync, then every
+// CHECK_EVERY) that turns a reached price into a Google Calendar event (its alert card has
+// "Bought": dueReminders.ts).
 
 const cents = (price: string | null | undefined) => (price == null ? null : Math.round(Number(price) * 100))
 
@@ -43,6 +49,63 @@ export function setWatch(game: Game, fields: Pick<PriceWatch, 'store' | 'when' |
     if (low !== null) watch.record = low
   }
   return updateGame(game.id, { watch })
+}
+
+// ---------- The check ----------
+
+export const CHECK_EVERY = 6 * 60 * 60 * 1000
+const ALERT_IN = 5 * 60 * 1000 // the event starts (and alerts) this much later: see savePriceAlertEvent
+
+// The Calendar event of one watch, "price<IGDB id>t<setAt>" (Google allows only 0-9 and a-v)
+const priceEventId = (game: Game, watch: PriceWatch) => `price${game.igdbId}t${watch.setAt}`
+// The game of a price alert event ("igdb-..."), or null for other events
+export function priceEventGame(eventId: string) {
+  const match = eventId.match(/^price(\d+)t\d+$/)
+  return match ? gameId(Number(match[1])) : null
+}
+
+// What the event says: "Hollow Knight: 7,49 € on Steam", and why, with the shop's page
+function alertText(game: Game, watch: PriceWatch, price: number, prices: GamePrices) {
+  const why =
+    watch.when === 'price' ? `Your price: ${formatEuros(watch.target!)} or less`
+    : watch.when === 'low' ? 'Its lowest price ever'
+    : `Below its lowest ever (${formatEuros(watch.record!)})`
+  const link = watch.store === 'steam' ? prices.steamUrl : prices.deals?.url
+  return {
+    title: `${game.name}: ${formatEuros(price)} ${watch.store === 'steam' ? 'on Steam' : 'for a key'}`,
+    description: [why, link].filter(Boolean).join('\n'),
+  }
+}
+
+// Every Watched game with a watch that hasn't alerted yet: when its price is reached, the event
+// is made (with Google Calendar connected) and the watch marked as alerted, so it stays quiet
+// until set again. Google unreachable: nothing is marked, the next check tries again.
+export async function checkWatches() {
+  try {
+    if (!isComplete(await loadConnection())) return
+    const games = await db.games.filter((g) => !g.deleted && g.status === 'watched' && !!g.watch && !g.watch.firedAt).toArray()
+    if (games.length === 0) return
+    const allPrices = await gamePrices(games.map((g) => g.igdbId))
+    for (const game of games) {
+      const watch = game.watch!
+      const prices = allPrices.get(game.igdbId)
+      if (!prices) continue
+      // "Below lowest ever" set before the prices were known: today's lowest ever counts
+      if (watch.when === 'record' && watch.record === undefined) {
+        const low = lowestEver(prices, watch.store)
+        if (low !== null) await updateGame(game.id, { watch: { ...watch, record: low } })
+        continue
+      }
+      const price = watchMet(watch, prices)
+      if (price === null) continue
+      if (googleConnected()) {
+        await savePriceAlertEvent({ id: priceEventId(game, watch), start: Date.now() + ALERT_IN, ...alertText(game, watch, price, prices) })
+      }
+      await updateGame(game.id, { watch: { ...watch, firedAt: Date.now(), firedPrice: price } })
+    }
+  } catch (e) {
+    console.warn('Price alert check failed', e)
+  }
 }
 
 // "Bought": the game moves to To play, its watch goes

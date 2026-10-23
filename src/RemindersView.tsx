@@ -18,6 +18,7 @@ import { openLink } from './links'
 import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import { takeAlertEvent } from './dueReminders'
+import { priceEventGame } from './priceWatch'
 
 // The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
 // Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
@@ -53,12 +54,14 @@ function RemindersView() {
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
-  // A click on an alert card (dueReminders.ts): show its event (a Waiting game's release event:
-  // the game)
+  // A click on an alert card (dueReminders.ts): show its event (a Waiting game's release event or
+  // a price alert: the game)
   useEffect(() => {
     const show = async () => {
       const id = takeAlertEvent()
       if (!id) return
+      const priceGame = priceEventGame(id)
+      if (priceGame && (await db.games.get(priceGame))) return setOpenGame(priceGame)
       const games = await db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray()
       const game = games.find((g) => releaseEventId(g) === id)
       if (game) return setOpenGame(game.id)
