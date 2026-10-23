@@ -94,7 +94,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                 aria-pressed={game.priority}
               >
                 {isFavoriteTab(game)
-                  ? <><Heart size={15} /> <span>Favorite</span></>
+                  ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>Favorite</span></>
                   : <><Sparkles size={15} /> <span>Priority</span></>}
               </button>
               <button
