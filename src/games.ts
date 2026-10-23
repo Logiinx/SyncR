@@ -81,6 +81,7 @@ export function sortGames(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) =>
       Number(b.priority) - Number(a.priority) ||
+      Number(!!b.watch) - Number(!!a.watch) || // price watched (To play, Waiting)
       (a.status === 'waiting'
         ? (a.releaseDate ?? Infinity) - (b.releaseDate ?? Infinity) || a.name.localeCompare(b.name)
         : b.statusAt - a.statusAt),

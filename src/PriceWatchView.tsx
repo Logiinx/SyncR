@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BellOff, ExternalLink } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, BellOff, BellRing, ExternalLink } from 'lucide-react'
 import type { Game, PriceWatch } from './db'
 import { shortDate } from './dates'
 import { openLink } from './links'
@@ -20,11 +20,35 @@ const WHEN: [When, string][] = [
   ['record', 'Below lowest ever'],
 ]
 
+// A watched game in the Games grid and list: a bell, ringing (accent) once the price was reached
+export function WatchBell({ watch }: { watch: PriceWatch }) {
+  return watch.firedAt ? (
+    <span className="watch-bell reached" title="Price reached">
+      <BellRing size={12} />
+    </span>
+  ) : (
+    <span className="watch-bell" title="Price watched">
+      <Bell size={12} />
+    </span>
+  )
+}
+
 const euroText = (cents?: number) => (cents === undefined ? '' : (cents / 100).toFixed(2).replace('.', ','))
 
-export function PriceWatchView({ game }: { game: Game }) {
+// focus: opened by "Watch price…": scrolled into view, "Alert when" focused (after the window
+// focused itself, so Escape still closes it)
+export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean }) {
   const prices = useKnownPrice(game.igdbId)
   const watch = game.watch
+  const whenRef = useRef<HTMLSelectElement>(null)
+  useEffect(() => {
+    if (!focus) return
+    const timer = window.setTimeout(() => {
+      whenRef.current?.scrollIntoView({ block: 'nearest' })
+      whenRef.current?.focus({ preventScroll: true })
+    })
+    return () => window.clearTimeout(timer)
+  }, [focus])
   const [target, setTarget] = useState(euroText(watch?.target))
   const when: When = watch?.when ?? 'off'
 
@@ -45,7 +69,7 @@ export function PriceWatchView({ game }: { game: Game }) {
         <div className="event-options watch-options">
           <label>
             <span>Alert when</span>
-            <select value={when} onChange={(e) => save({ when: e.target.value as When })}>
+            <select ref={whenRef} value={when} onChange={(e) => save({ when: e.target.value as When })}>
               {WHEN.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}

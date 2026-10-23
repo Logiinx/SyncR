@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- Price alerts: the Watched tab is gone; watch any To play or Waiting game from its window. Bought → Stop watching.
+- Price alerts: no more Watched tab. Right-click a To play or Waiting game → Watch price…; watched games get a bell and come first.
 - Price alerts: one target for both prices; it alerts when Steam or the cheapest key reaches it (no Steam/Key choice).
 
 ## [0.21.1] - 2026-10-23

@@ -4730,6 +4730,24 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
+/* A watched game in the Games grid and list (WatchBell): before the tile's date line, at the
+   row's end */
+.watch-bell {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: var(--text-dim);
+}
+
+.watch-bell.reached {
+  color: var(--accent);
+}
+
+.game-row > .watch-bell {
+  margin-right: 0;
+}
+
 /* A To play or Waiting game's price alert (PriceWatchView.tsx): the choices in a row like the event
    window's, then what it looks like now, then Bought and the GG.deals link */
 .watch-options {

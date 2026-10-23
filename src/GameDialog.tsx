@@ -17,16 +17,17 @@ import { coverUrl } from './igdb'
 // right. Phone: stacked (CSS). Rating and review only for finished or dropped games.
 // Changes save right away; ✕, Escape or a click outside closes it.
 
-function GameDialog({ id, onClose, onRemove }: { id: string; onClose: () => void; onRemove: () => void }) {
+// focusWatch: opened by "Watch price…" (Games tab menu): shows the price alert settings
+function GameDialog({ id, focusWatch, onClose, onRemove }: { id: string; focusWatch?: boolean; onClose: () => void; onRemove: () => void }) {
   const game = useLiveQuery(() => db.games.get(id), [id])
   // Its release event in Google Calendar (games.ts), shown under the release date while it exists
   const releaseEvent = useLiveQuery(async () => (game ? db.events.get(releaseEventId(game)) : undefined), [game?.igdbId])
   if (!game) return null
-  return <GameDetails game={game} releaseEvent={releaseEvent} onClose={onClose} onRemove={onRemove} />
+  return <GameDetails game={game} releaseEvent={releaseEvent} focusWatch={focusWatch} onClose={onClose} onRemove={onRemove} />
 }
 
-function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose: () => void; onRemove: () => void }) {
-  const { game, releaseEvent, onClose, onRemove } = props
+function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWatch?: boolean; onClose: () => void; onRemove: () => void }) {
+  const { game, releaseEvent, focusWatch, onClose, onRemove } = props
   // The texts are kept here while typing (the saved game comes back a moment later)
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
@@ -146,7 +147,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; onClose:
               ))}
             </div>
 
-            {canWatch(game) && <PriceWatchView key={game.id} game={game} />}
+            {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
 
             {played && (
               <>

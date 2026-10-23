@@ -5,6 +5,8 @@ import { canWatch, db, pinGameToBoard, setGameStatus, unpinGameFromBoard, update
 import { addGame, formatRelease, gameId, isPlayed, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
+import { setWatch } from './priceWatch'
+import { WatchBell } from './PriceWatchView'
 import { useSteamProfile } from './steam'
 import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -47,6 +49,7 @@ function GamesView() {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
+  const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
   // To play and Waiting: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
@@ -71,6 +74,16 @@ function GamesView() {
         label: `Move to ${label}`,
         onClick: () => setGameStatus(game.id, status),
       })),
+      // To play and Waiting: the price alert, set in the game window
+      ...(!canWatch(game) ? [] : game.watch
+        ? [{ label: 'Stop watching', onClick: () => setWatch(game, null) }]
+        : [{
+            label: 'Watch price…',
+            onClick: () => {
+              setOpenWatch(game.id)
+              setOpenId(game.id)
+            },
+          }]),
       {
         label: game.priority ? 'Remove priority' : 'Mark as priority',
         onClick: () => updateGame(game.id, { priority: !game.priority }),
@@ -191,7 +204,11 @@ function GamesView() {
       {openId && (
         <GameDialog
           id={openId}
-          onClose={() => setOpenId(null)}
+          focusWatch={openWatch === openId}
+          onClose={() => {
+            setOpenId(null)
+            setOpenWatch(null)
+          }}
           onRemove={() => {
             const game = games?.find((g) => g.id === openId)
             if (game) askRemove(game)
@@ -247,7 +264,14 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         <Cover coverId={game.coverId} big />
       </div>
       <div className="game-tile-name">{game.name}</div>
-      {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
+      {showsRated(game) ? (
+        <GameRated game={game} />
+      ) : (
+        <div className="game-details">
+          {game.watch && <WatchBell watch={game.watch} />}
+          {when}
+        </div>
+      )}
       {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
     </div>
   )
@@ -278,6 +302,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
       </div>
       {showsRated(game) && <GameRated game={game} />}
+      {game.watch && <WatchBell watch={game.watch} />}
     </div>
   )
 }
