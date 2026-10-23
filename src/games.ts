@@ -24,15 +24,14 @@ export const STATUSES: { status: GameStatus; label: string }[] = [
 ]
 export const statusLabel = (status?: GameStatus) => STATUSES.find((s) => s.status === status)?.label
 
-// Where a released game can be added (search's "Add ▾", the preview's "Add to list ▾"):
-// "Completed" = Library with Completed on
+// Where a released game can be added (search's "Add ▾", the preview's "Add to list ▾"), in the
+// tabs' order. "Completed" = Library with Completed on. No Waiting: it's out already.
 export interface AddPlace { label: string; status: GameStatus; completed?: boolean }
 export const ADD_PLACES: AddPlace[] = [
   { label: 'To play', status: 'toplay' },
   { label: 'Playing', status: 'playing' },
   { label: 'Library', status: 'library' },
   { label: 'Completed', status: 'library', completed: true },
-  { label: 'Waiting', status: 'waiting' },
 ]
 
 // Rating, heart, review and "Completed": only for games being played or in the Library (the
