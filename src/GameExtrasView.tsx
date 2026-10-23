@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Flame, KeyRound, Play } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
-import { formatEuros, useGamePrices, useKnownPrice, type GamePrices } from './prices'
+import { updateGame, type Game } from './db'
+import { forgetPrices, formatEuros, parseSteamPage, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
 // the trailer (a button that opens a panel beside the window). Nothing shows when they can't
@@ -37,11 +38,23 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
 // logo + price + green discount badge (and the old price), key icon + the cheapest key that
 // works in France (GG.deals), then the all-time lows. A price opens its Steam or GG.deals page.
 // Nothing shows for games not on Steam or when prices can't load.
-export function GamePricesInfo({ igdbId }: { igdbId: number }) {
-  const prices = useGamePrices(igdbId)
+// When the prices are for another product than this game (IGDB linked the wrong Steam page):
+// "Prices for: …". Games in your list (game given) can get their Steam page set by hand.
+export function GamePricesInfo({ igdbId, name, game }: { igdbId: number; name: string; game?: Game }) {
+  const prices = useGamePrices(igdbId, game?.steamPage)
   if (prices === undefined) return <Spinner />
   if (!prices) return null
   const { steam, deals } = prices
+  const check = (
+    <>
+      {!pricesFit(name, prices) && (
+        <p className="price-mismatch">
+          <TriangleAlert size={13} /> Prices for: {prices.name}
+        </p>
+      )}
+      {game && <SteamPageFix game={game} />}
+    </>
+  )
   if (isFree(prices)) {
     return (
       <div className="game-prices">
@@ -50,6 +63,7 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
             <SteamIcon /> Free
           </button>
         </div>
+        {check}
       </div>
     )
   }
@@ -82,7 +96,54 @@ export function GamePricesInfo({ igdbId }: { igdbId: number }) {
         </div>
       )}
       {lows.length > 0 && <p className="price-lows">Lowest ever: {lows.join(' · ')}</p>}
+      {check}
     </div>
+  )
+}
+
+// "Wrong price? Set the Steam page…": paste the right Steam store link; it then wins over IGDB's
+// (Game.steamPage, synced). Once set: "Steam page set by you · Use IGDB's".
+function SteamPageFix({ game }: { game: Game }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+  const [wrong, setWrong] = useState(false)
+  async function save(steamPage?: string) {
+    forgetPrices(game.igdbId)
+    await updateGame(game.id, { steamPage })
+    setEditing(false)
+  }
+  if (editing) {
+    return (
+      <form
+        className="steam-page-fix"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const page = parseSteamPage(text)
+          if (page) save(page)
+          else setWrong(true)
+        }}
+      >
+        <input
+          autoFocus
+          value={text}
+          placeholder="Steam store link"
+          onChange={(e) => {
+            setText(e.target.value)
+            setWrong(false)
+          }}
+        />
+        <button type="submit" className="setting-button">Save</button>
+        <button type="button" className="setting-button" onClick={() => setEditing(false)}>Cancel</button>
+        {wrong && <span className="steam-page-wrong">Paste a link like store.steampowered.com/app/…</span>}
+      </form>
+    )
+  }
+  return game.steamPage ? (
+    <p className="steam-page-note">
+      Steam page set by you · <button onClick={() => save(undefined)}>Use IGDB's</button>
+    </p>
+  ) : (
+    <button className="steam-page-note" onClick={() => setEditing(true)}>Wrong price? Set the Steam page…</button>
   )
 }
 

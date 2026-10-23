@@ -4999,6 +4999,49 @@ h3.games-group-title {
   font-size: 1em; /* not shrunk again by .gd-title p */
 }
 
+/* The prices are for another product (IGDB linked the wrong Steam page) */
+.dialog .game-prices .price-mismatch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 0;
+  color: var(--text-yellow);
+  font-size: 1em;
+}
+
+/* "Wrong price? Set the Steam page…" / "Steam page set by you · Use IGDB's" */
+.dialog .game-prices .steam-page-note {
+  justify-self: start;
+  margin: 2px 0 0;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 1em;
+}
+
+.game-prices .steam-page-note button,
+button.steam-page-note:hover {
+  color: var(--link);
+}
+
+.steam-page-fix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.steam-page-fix input {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+
+.steam-page-wrong {
+  flex-basis: 100%;
+  color: var(--text-red);
+}
+
 .price-link {
   display: inline-flex;
   align-items: center;

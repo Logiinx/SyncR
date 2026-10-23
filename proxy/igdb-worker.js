@@ -79,8 +79,9 @@ async function googleToken(env, request) {
 // Game prices in euros, for up to 100 Steam games ("apps") and 20 Steam packages ("subs",
 // e.g. editions sold as a bundle). Body (JSON): { steamIds: [570, 1091500], subIds: [13435] }.
 // Steam's own price (with its discount) and GG.deals' cheapest prices on official stores and
-// key shops, with the all-time lows. Answer: { "<appId>": { steam, deals }, "sub<subId>": … },
-// each null if unknown.
+// key shops, with the all-time lows, and the product's name (so the app can tell when IGDB linked
+// the wrong Steam page). Answer: { "<appId>": { name, steam, deals }, "sub<subId>": … }, each
+// null if unknown.
 const askJson = (url) =>
   fetch(url)
     .then((response) => (response.ok ? response.json() : {}))
@@ -93,8 +94,9 @@ const askDeals = (env, kind, ids) =>
 
 const cleanIds = (ids, max) => (Array.isArray(ids) ? ids : []).map(Number).filter((id) => id > 0).slice(0, max)
 
-function priceEntry(price, game) {
+function priceEntry(price, game, name) {
   return {
+    name: game?.title ?? name ?? null,
     // Prices in cents; a free game has no price
     steam: price ? { final: price.final, initial: price.initial, discount: price.discount_percent } : null,
     deals: game
@@ -125,7 +127,8 @@ async function gamePrices(env, request) {
   const result = {}
   for (const id of apps) result[id] = priceEntry(steamApps[id]?.data?.price_overview, dealsApps.data?.[id])
   subs.forEach((id, i) => {
-    result[`sub${id}`] = priceEntry(steamSubs[i]?.[id]?.data?.price, dealsSubs.data?.[id])
+    const sub = steamSubs[i]?.[id]?.data
+    result[`sub${id}`] = priceEntry(sub?.price, dealsSubs.data?.[id], sub?.name)
   })
   return result
 }

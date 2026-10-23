@@ -69,7 +69,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
               {game.platforms.length > 0 && <p className="calendar-popup-info">{allPlatforms(game.platforms)}</p>}
               {label && <p className="calendar-popup-info">In {label}</p>}
               <GameExtrasInfo igdbId={game.igdbId} />
-              <GamePricesInfo igdbId={game.igdbId} />
+              <GamePricesInfo igdbId={game.igdbId} name={game.name} />
               <div className="calendar-popup-actions">
                 {!status && !released && (
                   <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>

@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 - Import from Steam: now next to the covers/list switch in Library (no own row), and a link when your game list is empty.
 - Search: "Add ▾" picks where a released game goes (To play, Playing, Library or Completed); "Add" alone still adds to To play.
 - Price watch: the bell is a badge on the cover's left corner (hover: your alert price), green and ringing once reached.
+- Prices: a warning when they're for another product (e.g. a DLC priced as an upgrade pack); "Set the Steam page" fixes it.
 
 ## [0.22.0] - 2026-10-23
 

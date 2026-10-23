@@ -5,6 +5,7 @@ import { db } from './db'
 import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
 export interface GamePrices {
+  name?: string | null // the product the prices are for (GG.deals, else Steam's package name)
   steamUrl: string // the Steam store page (a game, or a package for some editions)
   steam: { final: number; initial: number; discount: number } | null // cents; null = free or not sold
   deals: {
@@ -45,6 +46,30 @@ function findSteam(game: IgdbExternal): SteamRef | undefined {
   return page('app') ?? (linked && { kind: 'app', id: Number(linked.uid) }) ?? page('sub')
 }
 
+// A Steam page set by hand (Game.steamPage): "app/3531720", from a pasted store link or a number
+export function parseSteamPage(text: string): string | null {
+  const link = text.match(/store\.steampowered\.com\/(app|sub)\/(\d+)/)
+  if (link) return `${link[1]}/${link[2]}`
+  const number = text.trim().match(/^\d+$/)
+  return number ? `app/${number[0]}` : null
+}
+
+const steamRefOf = (page: string): SteamRef => {
+  const [kind, id] = page.split('/')
+  return { kind: kind as SteamRef['kind'], id: Number(id) }
+}
+
+// Do the prices fit the game? Every word of the game's name must be in the product's name, so a
+// DLC or an edition priced as another product (IGDB linked the wrong Steam page) is caught.
+// No name (proxy before v0.23): no warning.
+const words = (name: string) =>
+  name.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w && !['the', 'a', 'of', 'and'].includes(w))
+export function pricesFit(gameName: string, prices: GamePrices) {
+  if (!prices.name) return true
+  const product = new Set(words(prices.name))
+  return words(gameName).every((w) => product.has(w))
+}
+
 export async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef>> {
   const result = new Map<number, SteamRef>()
   for (let i = 0; i < igdbIds.length; i += 500) {
@@ -79,6 +104,9 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
   })
   if (missing.length === 0) return result
   const steam = await steamRefs(missing)
+  // A Steam page set by hand wins over IGDB's
+  const own = await db.games.bulkGet(missing.map((id) => `igdb-${id}`))
+  for (const game of own) if (game?.steamPage) steam.set(game.igdbId, steamRefOf(game.steamPage))
   let batch: number[] = [] // IGDB ids
   const ask = async () => {
     const refs = batch.map((id) => steam.get(id)!)
@@ -145,9 +173,12 @@ export function formatEuros(value: number | string): string {
   return euros.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 }
 
+// After a Steam page was set by hand: the next lookup asks again
+export const forgetPrices = (igdbId: number) => cache.delete(igdbId)
+
 // One game's prices for the game windows: undefined while loading, null when there's nothing
-// to show (not on Steam, game search not set up, offline)
-export function useGamePrices(igdbId: number): GamePrices | null | undefined {
+// to show (not on Steam, game search not set up, offline). steamPage: asks again when it changes.
+export function useGamePrices(igdbId: number, steamPage?: string): GamePrices | null | undefined {
   const [prices, setPrices] = useState<GamePrices | null | undefined>(undefined)
   useEffect(() => {
     let current = true
@@ -159,6 +190,6 @@ export function useGamePrices(igdbId: number): GamePrices | null | undefined {
     return () => {
       current = false
     }
-  }, [igdbId])
+  }, [igdbId, steamPage])
   return prices
 }

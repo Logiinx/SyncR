@@ -132,7 +132,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                   <p>Alert: {formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
                 )}
                 <GameExtrasInfo igdbId={game.igdbId} />
-                <GamePricesInfo igdbId={game.igdbId} />
+                <GamePricesInfo igdbId={game.igdbId} name={game.name} game={game} />
               </div>
               <CloseButton onClick={onClose} />
             </div>

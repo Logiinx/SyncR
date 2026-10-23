@@ -157,6 +157,7 @@ export interface Game {
   completed?: boolean // "Completed" (finished it), next to the rating
   watch?: PriceWatch // To play and Waiting games only (canWatch)
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
+  steamPage?: string // "app/3531720" or "sub/13435": set by hand when IGDB links the wrong Steam page (prices.ts)
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
