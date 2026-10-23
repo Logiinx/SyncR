@@ -269,24 +269,23 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
   )
 }
 
-// "★ 4.5", the favorite heart (Library), the Completed check and the 100% trophy (all Steam
-// achievements) of a played game
-// in the Games grid and list (only when one of them is set: showsRated)
-export const showsRated = (game: Game) =>
-  isPlayed(game) && !!(game.rating || (isFavoriteTab(game) && game.priority) || game.completed || isHundred(game.steamStats))
+// A played game's rating in the Games grid and list: "★ 4.5" (only when rated: showsRated)
+export const showsRated = (game: Game) => isPlayed(game) && !!game.rating
 export function GameRated({ game }: { game: Game }) {
   return (
-    <span className="game-rated">
-      {!!game.rating && (
-        <span className="rating-compact" aria-label={`${game.rating} stars`}>
-          <Star size={12} /> {game.rating}
-        </span>
-      )}
-      {isFavoriteTab(game) && game.priority && <Heart size={12} className="game-liked" aria-label="Favorite" />}
-      {game.completed && <CircleCheck size={12} className="game-done" aria-label="Completed" />}
-      {isHundred(game.steamStats) && <Trophy size={12} className="game-hundred" aria-label="100%" />}
+    <span className="game-rated" aria-label={`${game.rating} stars`}>
+      <Star size={12} /> {game.rating}
     </span>
   )
+}
+
+// A played game's badge in the cover's corner (grid and list): gold trophy at 100% Steam
+// achievements, else a green check when Completed. Favorites need none: the frame shows them.
+export function GameBadge({ game }: { game: Game }) {
+  if (!isPlayed(game)) return null
+  if (isHundred(game.steamStats)) return <span className="game-badge hundred" title="100% achievements"><Trophy /></span>
+  if (game.completed) return <span className="game-badge done" title="Completed"><CircleCheck /></span>
+  return null
 }
 
 export default GameDialog

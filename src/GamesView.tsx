@@ -14,7 +14,7 @@ import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import GameDialog, { GameRated, showsRated } from './GameDialog'
+import GameDialog, { GameBadge, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
@@ -247,7 +247,7 @@ function GameShelf({
 }
 
 // One game in the grid: big cover, name (2 lines max), and one short line: the countdown while
-// waiting (or the vague date), stars, heart and Completed once played, else the release year
+// waiting (or the vague date), "★ 4.5" once rated, else the release year. Badge: GameBadge
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const when = releaseText(game, 'short')
   return (
@@ -262,6 +262,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
     >
       <div className="game-tile-cover">
         <Cover coverId={game.coverId} big />
+        <GameBadge game={game} />
       </div>
       <div className="game-tile-name">{game.name}</div>
       {showsRated(game) ? (
@@ -278,7 +279,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
 }
 
 // One game: cover, name, release (full date + countdown while waiting, else the year) and a preview of the
-// review (Playing and Library games) or the note. Stars, heart and Completed on the right, only for
+// review (Playing and Library games) or the note. "★ 4.5" on the right (badge on the cover), only for
 // Playing and Library games (like in the details; the rating stays saved if the status changes back).
 // Platforms only show in the details (and in search results).
 function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
@@ -295,7 +296,10 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         onMenu(e.clientX, e.clientY)
       }}
     >
-      <Cover coverId={game.coverId} />
+      <span className="game-row-cover">
+        <Cover coverId={game.coverId} />
+        <GameBadge game={game} />
+      </span>
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
         <div className="game-details" title={details}>{details}</div>

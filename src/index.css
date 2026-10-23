@@ -4316,29 +4316,63 @@ h3.games-group-title {
   }
 }
 
-/* Rating, heart, Completed and trophy in a row (Playing and Library games) */
+/* "★ 4.5" on grid tiles and list rows (GameRated, Playing and Library games) */
 .game-rated {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   flex-shrink: 0;
   color: var(--text-yellow);
   font-size: 0.9em;
+  font-weight: 600;
   white-space: nowrap;
 }
 
-.game-liked {
-  color: var(--text-pink);
+.game-rated svg {
   fill: currentColor;
 }
 
-.game-done {
+/* Completed check or 100% trophy in the cover's top right corner (GameBadge): a dark round
+   badge so it reads on any cover */
+.game-row-cover {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.game-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  padding: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+}
+
+.game-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* List rows: small cover, so the badge sits on its bottom right corner */
+.game-row-cover .game-badge {
+  top: auto;
+  right: -4px;
+  bottom: -3px;
+  padding: 2px;
+}
+
+.game-row-cover .game-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.game-badge.done {
   color: var(--text-green);
 }
 
-/* All Steam achievements (GameRated, game window) */
-.game-hundred {
-  flex-shrink: 0;
+.game-badge.hundred {
   color: var(--text-yellow);
 }
 
@@ -4689,19 +4723,6 @@ h3.games-group-title {
   overflow: hidden;
   color: var(--text-yellow);
   pointer-events: none;
-}
-
-/* The rating on grid tiles and list rows (GameRated): one filled star and the number */
-.rating-compact {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  margin-right: 2px;
-  font-weight: 600;
-}
-
-.rating-compact svg {
-  fill: currentColor;
 }
 
 .star-half {
