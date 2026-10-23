@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - Steam: when Steam doesn't answer, it says so (not "game details are private"); a failed daily update retries after an hour.
+- Steam: updating hours and achievements can no longer overwrite a game edit (review, rating…) made on your other device.
 
 ## [0.21.0] - 2026-10-23
 

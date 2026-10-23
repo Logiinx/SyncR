@@ -105,8 +105,11 @@ export async function updateSteamStats(only?: Game[]): Promise<'off' | 'failed' 
         const got = achievements[appId] ?? (before?.total ? { done: before.done!, total: before.total } : null)
         const stats: SteamStats = { minutes: minutes.get(appId)!, ...(got && { done: got.done, total: got.total }) }
         if (before && before.minutes === stats.minutes && before.done === stats.done && before.total === stats.total) continue
-        const reached = isHundred(stats) && !isHundred(before)
-        await updateGame(game.id, { steamStats: stats, ...(reached && { completed: true }) })
+        // Reaching 100% ticks Completed: an edit, synced. Otherwise saved without counting as an
+        // edit (same updatedAt), so it never beats a real change from the other device in sync;
+        // each device gets its own stats from Steam.
+        if (isHundred(stats) && !isHundred(before)) await updateGame(game.id, { steamStats: stats, completed: true })
+        else await db.games.update(game.id, { steamStats: stats })
       }
     }
     return 'done'
