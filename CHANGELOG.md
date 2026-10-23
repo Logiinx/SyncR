@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-23
+
 **Games**
 - New tabs: Watched · Waiting · To play · Playing · Library. Done games moved to Library, marked Completed (green check by the stars).
 - Price alerts for Watched games: Steam or key price, at my price or lowest ever, sent through Google Calendar. Bought → To play.
