@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- Typing "> " on a line aligned under ">" no longer turns it into a quote.
+
 ## [0.19.6] - 2026-10-22
 
 **Notes**

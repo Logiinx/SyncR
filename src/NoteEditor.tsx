@@ -39,10 +39,15 @@ const CHEVRON =
 // Also used by the Board's cards (Card.tsx), so they edit the same way as notes
 export const extensions = [
   StarterKit.configure({ link: false, codeBlock: false, blockquote: false }),
-  // Typing "> " makes a quote only at the very start of a line (not after spaces)
+  // Typing "> " makes a quote only at the very start of a line (not after spaces, and not on
+  // a line aligned under ">", where it continues the path)
   Blockquote.extend({
     addInputRules() {
-      return [wrappingInputRule({ find: /^>\s$/, type: this.type })]
+      const rule = wrappingInputRule({ find: /^>\s$/, type: this.type })
+      const { handler } = rule
+      rule.handler = (props) =>
+        props.state.doc.resolve(props.range.from).parent.attrs.alignIndent ? null : handler(props)
+      return [rule]
     },
   }),
   CodeBlock,
