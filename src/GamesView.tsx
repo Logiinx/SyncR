@@ -68,12 +68,19 @@ function GamesView() {
     setDialog(await removeGameQuestion(game, () => setOpenId(null)))
   }
 
+  // Three groups: Move to … | priority, price alert, Board (priority first, like a Board card's
+  // menu) | Remove
   function menuItems(game: Game): MenuItem[] {
     return [
       ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
         label: `Move to ${label}`,
         onClick: () => setGameStatus(game.id, status),
       })),
+      {
+        label: priorityLabel(game),
+        divider: true,
+        onClick: () => updateGame(game.id, { priority: !game.priority }),
+      },
       // To play and Waiting: the price alert, set in the game window
       ...(!canWatch(game) ? [] : game.watch
         ? [{ label: 'Stop watching', onClick: () => setWatch(game, null) }]
@@ -84,10 +91,6 @@ function GamesView() {
               setOpenId(game.id)
             },
           }]),
-      {
-        label: priorityLabel(game),
-        onClick: () => updateGame(game.id, { priority: !game.priority }),
-      },
       pinned?.has(game.id)
         ? { label: 'Unpin from Board', onClick: () => unpinGameFromBoard(game.id) }
         : {

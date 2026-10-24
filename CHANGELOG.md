@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - Price alerts: "Below lowest ever" is gone ("At lowest ever" already covers it). Alerts that used it now alert at lowest ever.
+- Right-click menu on a game in groups: moves, then priority · Watch price… · Pin to Board, then Remove.
 
 ## [0.23.1] - 2026-10-24
 
