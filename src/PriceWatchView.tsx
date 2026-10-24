@@ -147,7 +147,8 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
 }
 
 // One row of the list (the game or an edition): a bell that turns its alert on (at my price,
-// filled with a suggested price (priceWatch.ts) unless one was typed, the cursor in the box) or off, its name, its price now and the alert ("· alerts at ≤
+// filled with a suggested price (priceWatch.ts) unless one was typed, or left empty with "Already
+// a good price"; the cursor in the box) or off, its name, its price now and the alert ("· alerts at ≤
 // 10,00 €", or "· reached 24 Oct: 9,50 €" with Watch again and a ringing green bell), and while on,
 // when to alert and my price. prices null: not sold on Steam now. bundle: no price history, so
 // no "At lowest ever".
@@ -183,10 +184,10 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
     const typed = parseEuros(target)
     const suggestion = typed === null && prices ? suggestedTarget(prices) : null
     if (suggestion) {
-      setTarget(euroText(suggestion.target))
+      if (suggestion.target !== null) setTarget(euroText(suggestion.target))
       setSuggested(suggestion.why)
     }
-    save({ target: typed ?? suggestion?.target })
+    save({ target: typed ?? suggestion?.target ?? undefined })
   }
 
   return (
@@ -218,7 +219,7 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
             limit != null && ` · alerts at ≤ ${formatEuros(limit)}`
           )}
         </span>
-        {suggested && when === 'price' && <span>Suggested: {suggested}</span>}
+        {suggested && when === 'price' && <span>{suggested}</span>}
       </div>
       {when && (
         <div className="watch-row-choices">

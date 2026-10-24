@@ -33,17 +33,24 @@ export function lowestEver(prices: GamePrices) {
 // low was a rare deep sale), but never more than 30% under today's price (a low can be a giveaway
 // or a fluke: Fallout: New Vegas 0 € / 0,13 € key, which two prices can't tell from a real deep
 // sale like Witcher 3's). No history (Steam bundles): 30% under today's price. Never above
-// today's price. null: not sold now.
+// today's price. Saving less than MIN_SAVING: no price (target null), it's already a good price
+// (Fallout: New Vegas at 2,52 €). why: the dim line under the row. null: not sold now.
 const MAX_DROP = 0.3
-export function suggestedTarget(prices: GamePrices): { target: number; why: string } | null {
+const MIN_SAVING = 200 // cents
+export function suggestedTarget(prices: GamePrices): { target: number | null; why: string } | null {
   const now = currentPrice(prices)?.price
   if (now === undefined) return null
   const low = lowestEver(prices)
   const near = low === null ? 0 : low + (now - low) / 3
   const floor = now * (1 - MAX_DROP)
-  const why = near >= floor ? `near the lowest ever (${formatEuros(low!)})` : '30% under today\'s price'
   const target = Math.min(Math.round(Math.max(near, floor) / 100) * 100, Math.floor(now / 100) * 100)
-  return { target: target > 0 ? target : now, why }
+  if (now - target < MIN_SAVING) {
+    // A 0 € low (a giveaway) says "free", like the price lines
+    const lowText = low === null ? '' : ` (lowest ever ${low === 0 ? 'free' : formatEuros(low)})`
+    return { target: null, why: `Already a good price${lowText}` }
+  }
+  const why = near >= floor ? `near the lowest ever (${formatEuros(low!)})` : '30% under today\'s price'
+  return { target, why: `Suggested: ${why}` }
 }
 
 // The price that makes the watch alert: at or below it. null = not known. Anything but 'price'

@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- Turning a price alert on suggests a price from the game's lowest ever and today's price (whole euros). Change it as you like.
+- Turning a price alert on suggests a price from its lowest ever and today's price, or says it's already a good price.
 
 ## [0.24.1] - 2026-10-24
 
