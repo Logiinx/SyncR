@@ -137,7 +137,7 @@ async function gamePrices(env, request) {
 // games. Body (JSON): { steamIds: [1245620] }. Answer: { "<appId>": [{ kind, id, name, steam }] }:
 // kind "sub" (a package: GG.deals has its prices, see /prices) or "bundle" (several products
 // sold together: Steam's price only), steam = price in cents like /prices. Steam lists the game
-// itself first: left out. No key needed.
+// itself first: left out, and so are options with other games in them. No key needed.
 async function gameEditions(request) {
   const apps = cleanIds((await request.json()).steamIds, 100)
   if (apps.length === 0) return {}
@@ -149,7 +149,9 @@ async function gameEditions(request) {
   const answer = await askJson(`https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`)
   const result = {}
   for (const item of answer.response?.store_items ?? []) {
-    result[item.appid] = (item.purchase_options ?? []).slice(1).map((option) => ({
+    // Options with other games in them ("Dead Space + Cronos", franchise bundles) aren't editions
+    const options = (item.purchase_options ?? []).slice(1).filter((option) => (option.included_game_count ?? 1) <= 1)
+    result[item.appid] = options.map((option) => ({
       kind: option.packageid ? 'sub' : 'bundle',
       id: Number(option.packageid ?? option.bundleid),
       name: option.purchase_option_name,
