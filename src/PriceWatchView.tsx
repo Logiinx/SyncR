@@ -7,15 +7,14 @@ import { editionLabel, gameEditions, knownEditions, type Edition } from './editi
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
 import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching } from './priceWatch'
 
-// The "Price alert" part of a To play or Waiting game's window (GameDialog.tsx): when to alert
-// (Off = not watched) on the cheaper of Steam and the cheapest key, what it looks like now,
+// The "Price alerts" part of a To play or Waiting game's window (GameDialog.tsx): per row (the
+// game, its editions) a bell turns the alert on or off, then when to alert on the cheaper of Steam
+// and the cheapest key, what it looks like now,
 // "Stop watching" and a link to the game's GG.deals page to set an alert there too (store
 // filters, bundles, subscriptions). Uses the prices the window already loaded (GamePricesInfo).
 // Without prices (not on Steam, no prices for this connection) it says so.
 
-type When = PriceWatch['when'] | 'off'
-const WHEN: [When, string][] = [
-  ['off', 'Off'],
+const WHEN: [PriceWatch['when'], string][] = [
   ['price', 'At my price'],
   ['low', 'At lowest ever'],
 ]
@@ -58,12 +57,12 @@ type WatchFields = Pick<PriceWatch, 'when' | 'target'>
 // other editions on Steam (editions.ts), each row with its own alert (an edition is watched only
 // when the user sets one). The editions known from the start lookup show at once and are asked
 // again quietly; before any are known a dim line keeps their place, so nothing jumps.
-// focus: opened by "Watch price…": scrolled into view, the game's "Alert when" focused (after the
+// focus: opened by "Watch price…": scrolled into view, the game's bell focused (after the
 // window focused itself, so Escape still closes it).
 export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean }) {
   const prices = useKnownPrice(game.igdbId)
   const watch = game.watch
-  const whenRef = useRef<HTMLSelectElement>(null)
+  const whenRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!focus) return
     const timer = window.setTimeout(() => {
@@ -147,9 +146,11 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
   )
 }
 
-// One row of the list (the game or an edition): its name and price now, when to alert and my
-// price, and under it the alert's state ("Alerts at … or less", or "Reached … · Watch again").
-// prices null: not sold on Steam now. bundle: no price history, so no "At lowest ever".
+// One row of the list (the game or an edition): a bell that turns its alert on (at my price,
+// the cursor in the price box) or off, its name, its price now and the alert ("· alerts at ≤
+// 10,00 €", or "· reached 24 Oct: 9,50 €" with Watch again and a ringing green bell), and while on,
+// when to alert and my price. prices null: not sold on Steam now. bundle: no price history, so
+// no "At lowest ever".
 function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }: {
   name: string
   note?: string // dim, after the name
@@ -157,59 +158,83 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
   watch?: PriceWatch
   prices: GamePrices | null | undefined
   bundle?: boolean
-  whenRef?: RefObject<HTMLSelectElement | null>
+  whenRef?: RefObject<HTMLButtonElement | null>
   onSave: (fields: WatchFields | null) => void
 }) {
   const [target, setTarget] = useState(euroText(watch?.target))
-  const when: When = !watch ? 'off' : watch.when === 'price' || bundle ? 'price' : 'low' // an old 'record' watch: 'low'
-  const save = (change: { when?: When; target?: number }) => {
-    const next = { when, target: watch?.target, ...change }
-    onSave(next.when === 'off' ? null : { when: next.when, target: next.target })
-  }
+  const priceRef = useRef<HTMLInputElement>(null)
+  const [focusPrice, setFocusPrice] = useState(false)
+  useEffect(() => {
+    if (focusPrice && watch) {
+      priceRef.current?.focus()
+      setFocusPrice(false)
+    }
+  }, [focusPrice, watch])
+  const when = !watch ? null : watch.when === 'price' || bundle ? 'price' : 'low' // an old 'record' watch: 'low'
+  const save = (change: Partial<WatchFields>) =>
+    onSave({ when: when ?? 'price', target: watch?.target, ...change })
   const now = prices ? currentPrice(prices) : null
   const limit = watch && alertPrice(watch, prices)
+  const toggle = () => {
+    if (watch) return onSave(null)
+    setFocusPrice(true)
+    save(parseEuros(target) !== null ? { target: parseEuros(target)! } : {})
+  }
 
   return (
-    <div className="watch-row">
+    <div className={watch ? 'watch-row on' : 'watch-row'}>
+      <button
+        ref={whenRef}
+        className={watch?.firedAt ? 'watch-toggle reached' : watch ? 'watch-toggle on' : 'watch-toggle'}
+        onClick={toggle}
+        aria-pressed={!!watch}
+        title={watch ? 'Stop this alert' : 'Alert me when the price drops'}
+      >
+        {watch?.firedAt ? <BellRing size={15} /> : <Bell size={15} />}
+      </button>
       <div className="watch-row-name">
         <span title={title ?? name}>
           {name}
           {note && <span className="watch-row-note"> {note}</span>}
         </span>
-        <span>{prices === null ? 'Not on Steam now' : prices === undefined ? '' : nowText(now)}</span>
+        <span>
+          {prices === null ? 'Not on Steam now' : prices === undefined ? '' : nowText(now)}
+          {watch?.firedAt ? (
+            <>
+              {` · reached ${shortDate(watch.firedAt)}${watch.firedPrice !== undefined ? `: ${formatEuros(watch.firedPrice)}` : ''}`}
+              <button className="watch-again" onClick={() => save({})}>
+                Watch again
+              </button>
+            </>
+          ) : (
+            limit != null && ` · alerts at ≤ ${formatEuros(limit)}`
+          )}
+        </span>
       </div>
-      <select ref={whenRef} value={when} aria-label="Alert when" onChange={(e) => save({ when: e.target.value as When })}>
-        {WHEN.map(([value, label]) => (
-          <option key={value} value={value} disabled={bundle && value === 'low'}>
-            {label}
-          </option>
-        ))}
-      </select>
-      {when === 'price' ? (
-        <input
-          inputMode="decimal"
-          value={target}
-          aria-label="My price (€)"
-          placeholder="My price"
-          onChange={(e) => {
-            setTarget(e.target.value)
-            const cents = parseEuros(e.target.value)
-            if (cents !== null) save({ target: cents })
-          }}
-        />
-      ) : (
-        <span />
-      )}
-      {watch?.firedAt ? (
-        <p className="watch-state">
-          Reached {shortDate(watch.firedAt)}
-          {watch.firedPrice !== undefined && `: ${formatEuros(watch.firedPrice)}`}
-          <button className="watch-again" onClick={() => save({})}>
-            Watch again
-          </button>
-        </p>
-      ) : (
-        watch && limit != null && <p className="watch-state">Alerts at {formatEuros(limit)} or less</p>
+      {when && (
+        <div className="watch-row-choices">
+          <select value={when} aria-label="Alert when" onChange={(e) => save({ when: e.target.value as PriceWatch['when'] })}>
+            {WHEN.map(([value, label]) => (
+              <option key={value} value={value} disabled={bundle && value === 'low'}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {when === 'price' && (
+            <input
+              ref={priceRef}
+              inputMode="decimal"
+              value={target}
+              aria-label="My price (€)"
+              placeholder="€"
+              onChange={(e) => {
+                setTarget(e.target.value)
+                const cents = parseEuros(e.target.value)
+                if (cents !== null) save({ target: cents })
+              }}
+            />
+          )}
+        </div>
       )}
     </div>
   )
