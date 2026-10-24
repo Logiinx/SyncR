@@ -5,7 +5,7 @@ import { shortDate } from './dates'
 import { openLink } from './links'
 import { editionLabel, gameEditions, knownEditions, type Edition } from './editions'
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
-import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching } from './priceWatch'
+import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
 
 // The "Price alerts" part of a To play or Waiting game's window (GameDialog.tsx): per row (the
 // game, its editions) a bell turns the alert on or off, then when to alert on the cheaper of Steam
@@ -147,7 +147,7 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
 }
 
 // One row of the list (the game or an edition): a bell that turns its alert on (at my price,
-// the cursor in the price box) or off, its name, its price now and the alert ("· alerts at ≤
+// filled with a suggested price (priceWatch.ts) unless one was typed, the cursor in the box) or off, its name, its price now and the alert ("· alerts at ≤
 // 10,00 €", or "· reached 24 Oct: 9,50 €" with Watch again and a ringing green bell), and while on,
 // when to alert and my price. prices null: not sold on Steam now. bundle: no price history, so
 // no "At lowest ever".
@@ -175,10 +175,18 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
     onSave({ when: when ?? 'price', target: watch?.target, ...change })
   const now = prices ? currentPrice(prices) : null
   const limit = watch && alertPrice(watch, prices)
+  // Where the suggested price came from, shown until the price is changed
+  const [suggested, setSuggested] = useState<string | null>(null)
   const toggle = () => {
     if (watch) return onSave(null)
     setFocusPrice(true)
-    save(parseEuros(target) !== null ? { target: parseEuros(target)! } : {})
+    const typed = parseEuros(target)
+    const suggestion = typed === null && prices ? suggestedTarget(prices) : null
+    if (suggestion) {
+      setTarget(euroText(suggestion.target))
+      setSuggested(suggestion.why)
+    }
+    save({ target: typed ?? suggestion?.target })
   }
 
   return (
@@ -210,6 +218,7 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
             limit != null && ` · alerts at ≤ ${formatEuros(limit)}`
           )}
         </span>
+        {suggested && when === 'price' && <span>Suggested: {suggested}</span>}
       </div>
       {when && (
         <div className="watch-row-choices">
@@ -229,6 +238,7 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
               placeholder="€"
               onChange={(e) => {
                 setTarget(e.target.value)
+                setSuggested(null)
                 const cents = parseEuros(e.target.value)
                 if (cents !== null) save({ target: cents })
               }}

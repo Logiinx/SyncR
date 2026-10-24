@@ -28,6 +28,24 @@ export function lowestEver(prices: GamePrices) {
   return lows.length > 0 ? Math.min(...lows) : null
 }
 
+// The price suggested when an alert is turned on, rounded down to a whole euro, and where it came
+// from: a third of the way from the lowest ever up to today's price (close to the low, still
+// reachable when the low was a rare deep sale); a low under a quarter of today's price (a
+// giveaway, a fluke): halfway; no history (Steam bundles): half the normal Steam price, at most
+// today's. null: not sold now.
+export function suggestedTarget(prices: GamePrices): { target: number; why: string } | null {
+  const now = currentPrice(prices)?.price
+  if (now === undefined) return null
+  const low = lowestEver(prices)
+  const normal = prices.steam?.initial ?? now
+  const [price, why] =
+    low === null ? [normal / 2, `half the normal price (${formatEuros(normal)})`]
+    : low < now / 4 ? [(now + low) / 2, `halfway to the lowest ever (${formatEuros(low)})`]
+    : [low + (now - low) / 3, `near the lowest ever (${formatEuros(low)})`]
+  // Never above today's price (a bundle on a deep sale now): then it alerts at the next check
+  return { target: Math.max(100, Math.floor(Math.min(price, now) / 100) * 100), why }
+}
+
 // The price that makes the watch alert: at or below it. null = not known. Anything but 'price'
 // is "at lowest ever" (also an old 'record' watch).
 export function alertPrice(watch: PriceWatch, prices: GamePrices | null | undefined) {

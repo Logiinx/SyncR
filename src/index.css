@@ -4924,7 +4924,7 @@ h3.games-group-title {
   white-space: nowrap;
 }
 
-.watch-row-name > span:last-child,
+.watch-row-name > span:not(:first-child),
 .watch-row-note {
   color: var(--text-dim);
   font-size: 0.9em;
