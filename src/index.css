@@ -4851,14 +4851,58 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
-/* A To play or Waiting game's price alert (PriceWatchView.tsx): the choices in a row like the event
-   window's, then what it looks like now, then Bought and the GG.deals link */
-.watch-options {
-  margin-bottom: 0;
+/* A To play or Waiting game's price alerts (PriceWatchView.tsx): one list, a row per item (the
+   game, then its editions): name and price now | when | my price, the alert's state under it.
+   Phone: name on its own line. Then Stop watching and the GG.deals link. */
+.watch-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px 84px;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 0;
 }
 
-.watch-options input {
+.watch-row + .watch-row {
+  border-top: 1px solid var(--border);
+}
+
+.dialog .watch-row input {
   margin: 0;
+  padding: 7px 8px; /* as tall as the select */
+}
+
+.watch-row-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9em;
+}
+
+.watch-row-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-row-name > span:last-child,
+.watch-row-note {
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.dialog .watch-row .watch-state {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 699px) {
+  .watch-row {
+    grid-template-columns: minmax(0, 1fr) 96px;
+  }
+
+  .watch-row-name {
+    grid-column: 1 / -1;
+  }
 }
 
 .watch-state {
@@ -4870,42 +4914,10 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
-/* Its editions on Steam: per edition, its name and price now, then the same choices */
-.watch-editions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.watch-editions > span {
-  color: var(--text-dim);
-  font-size: 0.85em;
-}
-
-.watch-edition {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.watch-edition .watch-edition-name {
-  display: flex;
-  gap: 8px;
+.dialog .watch-looking {
   margin: 0;
-  font-size: 0.9em;
-}
-
-.watch-edition-name span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.watch-edition-name span:last-child {
-  flex-shrink: 0;
-  margin-left: auto;
-  color: var(--text-dim);
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
 }
 
 .watch-again {

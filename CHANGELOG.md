@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Game window: price alerts are one list, the game first, then its editions. Editions show right away instead of appearing late.
+
 ## [0.24.0] - 2026-10-24
 
 **Games**

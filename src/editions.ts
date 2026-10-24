@@ -2,7 +2,8 @@
 // page, through our proxy's /editions route (proxy/igdb-worker.js). Only for games with a Steam
 // game page; options whose name lacks the game's name (franchise bundles like "The Witcher
 // Trilogy") are left out. Looked up live, never saved; a watched edition keeps its id and name.
-import { igdbProxyFetch } from './igdb'
+import { canWatch, db } from './db'
+import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices } from './prices'
 
 export interface Edition {
@@ -68,4 +69,19 @@ export function editionLabel(gameName: string, name: string) {
   let start = 0
   while (start < parts.length && words(parts[start]).every((w) => game.has(w))) start++
   return parts.slice(start).join(' ') || name
+}
+
+// The last known editions of a game, however old: a game window shows them at once, then asks again
+export const knownEditions = (igdbId: number) => cache.get(igdbId)?.editions
+
+// Editions of all To play and Waiting games, once per start (games.ts, a minute after the
+// prices, so both don't share GG.deals' per-minute limit). Quietly does nothing when it can't.
+export async function loadListEditions() {
+  try {
+    if (!isComplete(await loadConnection())) return
+    const games = await db.games.filter((g) => !g.deleted && canWatch(g)).toArray()
+    if (games.length > 0) await gameEditions(games)
+  } catch (e) {
+    console.warn('Edition lookup failed', e)
+  }
 }
