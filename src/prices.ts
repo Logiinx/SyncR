@@ -27,7 +27,7 @@ interface IgdbExternal {
 
 // Where a game is sold on Steam: a game page ("app"), or a package ("sub") for editions sold as
 // a bundle of the game and its add-ons (e.g. Fallout: New Vegas Ultimate Edition)
-interface SteamRef {
+export interface SteamRef {
   kind: 'app' | 'sub'
   id: number
 }
@@ -52,8 +52,10 @@ function findSteam(game: IgdbExternal): SteamRef | undefined {
 const words = (name: string) =>
   name.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w && !['the', 'a', 'of', 'and'].includes(w))
 export function pricesFit(gameName: string, prices: GamePrices) {
-  if (!prices.name) return true
-  const product = new Set(words(prices.name))
+  return !prices.name || nameFits(gameName, prices.name)
+}
+export function nameFits(gameName: string, productName: string) {
+  const product = new Set(words(productName))
   return words(gameName).every((w) => product.has(w))
 }
 
@@ -91,34 +93,43 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
   })
   if (missing.length === 0) return result
   const steam = await steamRefs(missing)
-  let batch: number[] = [] // IGDB ids
+  const found = await steamPrices([...steam.values()])
+  for (const id of missing) {
+    const ref = steam.get(id)
+    result.set(id, ref ? found.get(refKey(ref)) ?? null : null)
+    cache.set(id, { prices: result.get(id)!, time: Date.now() })
+  }
+  listeners.forEach((listener) => listener())
+  return result
+}
+
+export const refKey = (ref: SteamRef) => `${ref.kind}${ref.id}`
+
+// Prices of Steam pages (games and packages), by refKey; null = not known. No cache.
+export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePrices | null>> {
+  const result = new Map<string, GamePrices | null>()
+  let batch: SteamRef[] = []
   const ask = async () => {
-    const refs = batch.map((id) => steam.get(id)!)
     const body = {
-      steamIds: refs.filter((r) => r.kind === 'app').map((r) => r.id),
-      subIds: refs.filter((r) => r.kind === 'sub').map((r) => r.id),
+      steamIds: batch.filter((r) => r.kind === 'app').map((r) => r.id),
+      subIds: batch.filter((r) => r.kind === 'sub').map((r) => r.id),
     }
     const response = await igdbProxyFetch('prices', JSON.stringify(body), 20_000)
     if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
     const answer: Record<string, Omit<GamePrices, 'steamUrl'>> = await response.json()
-    for (const id of batch) {
-      const { kind, id: steamId } = steam.get(id)!
-      const found = answer[kind === 'app' ? steamId : `sub${steamId}`]
-      result.set(id, found ? { steamUrl: `https://store.steampowered.com/${kind}/${steamId}/`, ...found } : null)
+    for (const ref of batch) {
+      const found = answer[ref.kind === 'app' ? ref.id : `sub${ref.id}`]
+      result.set(refKey(ref), found ? { steamUrl: `https://store.steampowered.com/${ref.kind}/${ref.id}/`, ...found } : null)
     }
     batch = []
   }
-  for (const id of missing.filter((id) => steam.has(id))) {
-    batch.push(id)
-    const kinds = batch.map((b) => steam.get(b)!.kind)
+  for (const ref of refs) {
+    if (result.has(refKey(ref)) || batch.some((b) => refKey(b) === refKey(ref))) continue // asked already
+    batch.push(ref)
+    const kinds = batch.map((b) => b.kind)
     if (kinds.filter((k) => k === 'app').length === MAX_APPS || kinds.filter((k) => k === 'sub').length === MAX_SUBS) await ask()
   }
   if (batch.length > 0) await ask()
-  for (const id of missing) {
-    if (!result.has(id)) result.set(id, null)
-    cache.set(id, { prices: result.get(id)!, time: Date.now() })
-  }
-  listeners.forEach((listener) => listener())
   return result
 }
 

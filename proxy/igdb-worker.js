@@ -133,6 +133,38 @@ async function gamePrices(env, request) {
   return result
 }
 
+// A game's other editions on Steam: the purchase options of its store page, for up to 100 Steam
+// games. Body (JSON): { steamIds: [1245620] }. Answer: { "<appId>": [{ kind, id, name, steam }] }:
+// kind "sub" (a package: GG.deals has its prices, see /prices) or "bundle" (several products
+// sold together: Steam's price only), steam = price in cents like /prices. Steam lists the game
+// itself first: left out. No key needed.
+async function gameEditions(request) {
+  const apps = cleanIds((await request.json()).steamIds, 100)
+  if (apps.length === 0) return {}
+  const input = {
+    ids: apps.map((appid) => ({ appid })),
+    context: { language: 'english', country_code: 'FR' },
+    data_request: { include_all_purchase_options: true },
+  }
+  const answer = await askJson(`https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`)
+  const result = {}
+  for (const item of answer.response?.store_items ?? []) {
+    result[item.appid] = (item.purchase_options ?? []).slice(1).map((option) => ({
+      kind: option.packageid ? 'sub' : 'bundle',
+      id: Number(option.packageid ?? option.bundleid),
+      name: option.purchase_option_name,
+      steam: option.final_price_in_cents
+        ? {
+            final: Number(option.final_price_in_cents),
+            initial: Number(option.original_price_in_cents ?? option.final_price_in_cents), // none without a discount
+            discount: option.discount_pct ?? 0,
+          }
+        : null,
+    }))
+  }
+  return result
+}
+
 // ---------- Steam (owner only) ----------
 // Body (JSON):
 //   steam/profile       { profile } → { steamId, name, games }: games = how many it owns, null
@@ -254,10 +286,10 @@ export default {
         return reply({ error: String(error.message ?? error) }, 502)
       }
     }
-    if (endpoint === 'prices') {
+    if (endpoint === 'prices' || endpoint === 'editions') {
       if (!owner) return reply({}, 200) // the app then just shows no prices
       try {
-        return reply(await gamePrices(env, request), 200)
+        return reply(endpoint === 'prices' ? await gamePrices(env, request) : await gameEditions(request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
       }
