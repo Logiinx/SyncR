@@ -128,9 +128,9 @@ export interface SteamStats {
 // and the cheapest key). It alerts once, then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
   // Before v0.22 a watch also had store: 'steam' | 'key'; now it looks at the cheaper of both
-  when: 'price' | 'low' | 'record' // at or below target / at its lowest ever / below the lowest ever when set
+  // Before v0.23.2 also 'record' (below the lowest ever when set, with record: cents): now read as 'low'
+  when: 'price' | 'low' // at or below target / at its lowest ever (or below)
   target?: number // cents ('price')
-  record?: number // cents: the lowest ever when set ('record'; filled at the first check if prices weren't known)
   setAt: number // when it was set: also names its Calendar event, so two devices make only one
   firedAt?: number // when it alerted
   firedPrice?: number // cents, the price that made it alert

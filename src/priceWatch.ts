@@ -27,10 +27,10 @@ export function lowestEver(prices: GamePrices) {
   return lows.length > 0 ? Math.min(...lows) : null
 }
 
-// The price that makes the watch alert: at or below it ('record': below it). null = not known.
+// The price that makes the watch alert: at or below it. null = not known. Anything but 'price'
+// is "at lowest ever" (also an old 'record' watch).
 export function alertPrice(watch: PriceWatch, prices: GamePrices | null | undefined) {
   if (watch.when === 'price') return watch.target ?? null
-  if (watch.when === 'record') return watch.record ?? null
   return prices ? lowestEver(prices) : null
 }
 
@@ -39,19 +39,15 @@ export function watchMet(watch: PriceWatch, prices: GamePrices) {
   const now = currentPrice(prices)
   const limit = alertPrice(watch, prices)
   if (now === null || limit === null) return null
-  return (watch.when === 'record' ? now.price < limit : now.price <= limit) ? now : null
+  return now.price <= limit ? now : null
 }
 
 // Sets the watch (again), or removes it (null). Every change starts a new watch: it can alert
-// again. 'record' remembers today's lowest ever.
-export function setWatch(game: Game, fields: Pick<PriceWatch, 'when' | 'target'> | null, prices?: GamePrices | null) {
+// again.
+export function setWatch(game: Game, fields: Pick<PriceWatch, 'when' | 'target'> | null) {
   if (!fields) return updateGame(game.id, { watch: undefined })
   const watch: PriceWatch = { ...fields, setAt: Date.now() }
   if (fields.target === undefined) delete watch.target
-  if (fields.when === 'record' && prices) {
-    const low = lowestEver(prices)
-    if (low !== null) watch.record = low
-  }
   return updateGame(game.id, { watch })
 }
 
@@ -71,10 +67,7 @@ export function priceEventGame(eventId: string) {
 // What the event says: "Hollow Knight: 7,49 € on Steam" (or "for a key"), and why, with the
 // shop's page
 function alertText(game: Game, watch: PriceWatch, { price, store }: { price: number; store: 'steam' | 'key' }, prices: GamePrices) {
-  const why =
-    watch.when === 'price' ? `Your price: ${formatEuros(watch.target!)} or less`
-    : watch.when === 'low' ? 'Its lowest price ever'
-    : `Below its lowest ever (${formatEuros(watch.record!)})`
+  const why = watch.when === 'price' ? `Your price: ${formatEuros(watch.target!)} or less` : 'Its lowest price ever'
   const link = store === 'steam' ? prices.steamUrl : prices.deals?.url
   return {
     title: `${game.name}: ${formatEuros(price)} ${store === 'steam' ? 'on Steam' : 'for a key'}`,
@@ -95,12 +88,6 @@ export async function checkWatches() {
       const watch = game.watch!
       const prices = allPrices.get(game.igdbId)
       if (!prices) continue
-      // "Below lowest ever" set before the prices were known: today's lowest ever counts
-      if (watch.when === 'record' && watch.record === undefined) {
-        const low = lowestEver(prices)
-        if (low !== null) await updateGame(game.id, { watch: { ...watch, record: low } })
-        continue
-      }
       const met = watchMet(watch, prices)
       if (met === null) continue
       if (googleConnected()) {

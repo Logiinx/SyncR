@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Price alerts: "Below lowest ever" is gone ("At lowest ever" already covers it). Alerts that used it now alert at lowest ever.
+
 ## [0.23.1] - 2026-10-24
 
 **Board**

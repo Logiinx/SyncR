@@ -17,7 +17,6 @@ const WHEN: [When, string][] = [
   ['off', 'Off'],
   ['price', 'At my price'],
   ['low', 'At lowest ever'],
-  ['record', 'Below lowest ever'],
 ]
 
 // A watched game in the Games grid and list: a round badge on the cover's left corner (the
@@ -26,7 +25,6 @@ const WHEN: [When, string][] = [
 export function WatchBell({ watch }: { watch: PriceWatch }) {
   const alert =
     watch.when === 'price' ? (watch.target !== undefined ? `Alert at ≤ ${formatEuros(watch.target)}` : 'Alert at my price')
-    : watch.when === 'record' ? (watch.record !== undefined ? `Alert below ${formatEuros(watch.record)} (lowest ever)` : 'Alert below lowest ever')
     : 'Alert at lowest ever'
   return watch.firedAt ? (
     <span
@@ -59,12 +57,12 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
     return () => window.clearTimeout(timer)
   }, [focus])
   const [target, setTarget] = useState(euroText(watch?.target))
-  const when: When = watch?.when ?? 'off'
+  const when: When = !watch ? 'off' : watch.when === 'price' ? 'price' : 'low' // an old 'record' watch: 'low'
 
   const save = (change: { when?: When; target?: number }) => {
     const next = { when, target: watch?.target, ...change }
     if (next.when === 'off') return setWatch(game, null)
-    return setWatch(game, { when: next.when, target: next.target }, prices)
+    return setWatch(game, { when: next.when, target: next.target })
   }
 
   const now = prices ? currentPrice(prices) : null
@@ -115,7 +113,7 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
         watch && (
           <p className="watch-state">
             {now !== null ? `Now ${formatEuros(now.price)} ${now.store === 'steam' ? 'on Steam' : 'for a key'}` : 'Not sold now'}
-            {limit != null && ` · alerts ${watch.when === 'record' ? `below ${formatEuros(limit)}` : `at ${formatEuros(limit)} or less`}`}
+            {limit != null && ` · alerts at ${formatEuros(limit)} or less`}
           </p>
         )
       )}
