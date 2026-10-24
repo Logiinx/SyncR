@@ -17,7 +17,7 @@ import { Image } from './image'
 import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
-import { ListAfterBreak, ListEnter } from './lists'
+import { EmptyLineAbove, ListAfterBreak, ListEnter } from './lists'
 import { LineBreaks } from './lineBreaks'
 import { SmartTypography } from './typography'
 import { CodeBlock } from './codeBlock'
@@ -68,6 +68,7 @@ export const extensions = [
   ColorRules,
   ListEnter,
   ListAfterBreak,
+  EmptyLineAbove,
   LineBreaks,
   AlignPaths,
   TabStaysInNote,

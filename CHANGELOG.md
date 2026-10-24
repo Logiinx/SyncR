@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- An empty line above a list (left after removing its first item) can now be removed with Backspace or Delete. Same in notes.
+
 ## [0.23.0] - 2026-10-23
 
 **Games**

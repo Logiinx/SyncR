@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { Plugin, TextSelection } from '@tiptap/pm/state'
+import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
 
 // Adds an empty item after the (empty) first item the cursor is in, and moves there
 function addSecondItem(editor: Editor) {
@@ -107,4 +107,31 @@ function listAfterBreak(editor: Editor) {
   if (number) return chain.toggleOrderedList().updateAttributes('orderedList', { start: Number(number[1]) }).run()
   if (task) return chain.toggleTaskList().updateAttributes('taskItem', { checked: marker === '[x]' }).run()
   return chain.toggleBulletList().run()
+}
+
+// An empty line above a list (e.g. left after Backspace took the list's first item out):
+// Backspace there at the very start, or Delete, removes the line. Normally Backspace does
+// nothing at the start (nothing before it) and Delete pulls the next item out of its list.
+export const EmptyLineAbove = Extension.create({
+  name: 'emptyLineAbove',
+  priority: 200, // before the editor's own Backspace and Delete
+
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }) => removeEmptyLine(editor, true),
+      Delete: ({ editor }) => removeEmptyLine(editor, false),
+    }
+  },
+})
+
+function removeEmptyLine(editor: Editor, onlyFirstLine: boolean) {
+  const { state, view } = editor
+  const { $from, empty } = state.selection
+  if (!empty || $from.depth !== 1 || $from.parent.type.name !== 'paragraph' || $from.parent.content.size) return false
+  const index = $from.index(0)
+  if (index + 1 >= state.doc.childCount || (onlyFirstLine && index > 0)) return false
+  const start = $from.before()
+  const tr = state.tr.delete(start, $from.after())
+  view.dispatch(tr.setSelection(Selection.near(tr.doc.resolve(start))).scrollIntoView())
+  return true
 }
