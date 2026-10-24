@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { CalendarDays, ChevronDown, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
@@ -170,38 +170,65 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                 </div>
                 {/* From Steam: hours played and achievements (gold at 100%) */}
                 {game.steamStats && <SteamStatsView stats={game.steamStats} />}
-                <label className="gd-field">
-                  <span>Review</span>
-                  <textarea
-                    rows={3}
-                    value={review}
-                    placeholder="What did you think?"
-                    onChange={(e) => {
-                      setReview(e.target.value)
-                      updateGame(game.id, { review: e.target.value })
-                    }}
-                  />
-                </label>
+                <HiddenText
+                  label="Review"
+                  rows={3}
+                  value={review}
+                  placeholder="What did you think?"
+                  onChange={(text) => {
+                    setReview(text)
+                    updateGame(game.id, { review: text })
+                  }}
+                />
               </>
             )}
 
-            <label className="gd-field">
-              <span>Note</span>
-              <textarea
-                rows={2}
-                value={note}
-                placeholder="Optional"
-                onChange={(e) => {
-                  setNote(e.target.value)
-                  updateGame(game.id, { note: e.target.value })
-                }}
-              />
-            </label>
+            <HiddenText
+              label="Note"
+              rows={2}
+              value={note}
+              placeholder="Optional"
+              onChange={(text) => {
+                setNote(text)
+                updateGame(game.id, { note: text })
+              }}
+            />
           </div>
         </div>
         {trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
       </div>
     </div>
+  )
+}
+
+// Review and note: an empty one is only a small "Note ⌄" button (keeps the window calm); a click
+// shows the box and puts the cursor in it. One with text shows open.
+function HiddenText({ label, rows, value, placeholder, onChange }: {
+  label: string
+  rows: number
+  value: string
+  placeholder: string
+  onChange: (text: string) => void
+}) {
+  const [open, setOpen] = useState(() => value.trim() !== '')
+  if (!open) {
+    return (
+      <button className="gd-reveal" onClick={() => setOpen(true)} aria-expanded={false}>
+        {label} <ChevronDown size={14} />
+      </button>
+    )
+  }
+  return (
+    <label className="gd-field">
+      <span>{label}</span>
+      <textarea
+        rows={rows}
+        value={value}
+        placeholder={placeholder}
+        autoFocus={value === ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   )
 }
 

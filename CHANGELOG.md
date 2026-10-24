@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - Game window: price alerts are one list, the game first, then its editions. Editions show right away instead of appearing late.
+- Game window: an empty note or review is folded into a small label; click it to write. One with text shows open.
 
 ## [0.24.0] - 2026-10-24
 

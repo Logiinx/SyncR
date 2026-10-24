@@ -4679,6 +4679,23 @@ h3.games-group-title {
   text-transform: uppercase;
 }
 
+/* An empty review or note: only its label with a chevron (GameDialog HiddenText); a click shows the box */
+.gd-reveal {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  color: var(--text-dim);
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gd-reveal:hover {
+  color: var(--text);
+}
+
 .dialog .gd-field textarea {
   margin: 0;
 }
