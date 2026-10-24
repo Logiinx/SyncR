@@ -3,7 +3,7 @@
 // game page; options whose name lacks the game's name (franchise bundles like "The Witcher
 // Trilogy") are left out. Looked up live, never saved; a watched edition keeps its id and name.
 import { igdbProxyFetch } from './igdb'
-import { nameFits, refKey, steamPrices, steamRefs, type GamePrices } from './prices'
+import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices } from './prices'
 
 export interface Edition {
   kind: 'sub' | 'bundle' // a package (GG.deals knows it: key price + lows), or a bundle (Steam's price only)
@@ -58,4 +58,14 @@ export async function gameEditions(games: { igdbId: number; name: string }[]): P
   }
   for (const game of missing) cache.set(game.igdbId, { editions: result.get(game.igdbId)!, time: Date.now() })
   return result
+}
+
+// The edition's name without the game's name in front: "ELDEN RING Shadow of the Erdtree
+// Edition" → "Shadow of the Erdtree Edition" (all of it if nothing is left)
+export function editionLabel(gameName: string, name: string) {
+  const game = new Set(words(gameName))
+  const parts = name.split(/\s+/)
+  let start = 0
+  while (start < parts.length && words(parts[start]).every((w) => game.has(w))) start++
+  return parts.slice(start).join(' ') || name
 }

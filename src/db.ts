@@ -136,6 +136,14 @@ export interface PriceWatch {
   firedPrice?: number // cents, the price that made it alert
 }
 
+// A watched edition of a To play or Waiting game (editions.ts): its own watch, on its Steam
+// package or bundle. A bundle has no price history, so only 'price'.
+export interface EditionWatch extends PriceWatch {
+  kind: 'sub' | 'bundle'
+  id: number // Steam's package or bundle id
+  name: string // Steam's name, for the alert
+}
+
 export interface Game {
   id: string // "igdb-<IGDB id>"
   igdbId: number
@@ -156,6 +164,7 @@ export interface Game {
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
   watch?: PriceWatch // To play and Waiting games only (canWatch)
+  editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)

@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - Price alerts: "Below lowest ever" is gone ("At lowest ever" already covers it). Alerts that used it now alert at lowest ever.
+- Price alerts for a game's other editions on Steam (Deluxe, Ultimate…), each with its own price, listed under the game's alert.
 - Right-click menu on a game in groups: moves, then priority · Watch price… · Pin to Board, then Remove.
 
 ## [0.23.1] - 2026-10-24

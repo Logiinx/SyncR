@@ -4870,6 +4870,44 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
+/* Its editions on Steam: per edition, its name and price now, then the same choices */
+.watch-editions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.watch-editions > span {
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.watch-edition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.watch-edition .watch-edition-name {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.watch-edition-name span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-edition-name span:last-child {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
 .watch-again {
   color: var(--accent);
 }

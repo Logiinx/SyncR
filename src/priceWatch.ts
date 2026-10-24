@@ -1,4 +1,4 @@
-import { canWatch, db, updateGame, type Game, type PriceWatch } from './db'
+import { canWatch, db, updateGame, type EditionWatch, type Game, type PriceWatch } from './db'
 import { formatEuros, gamePrices, type GamePrices } from './prices'
 import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
@@ -50,6 +50,26 @@ export function setWatch(game: Game, fields: Pick<PriceWatch, 'when' | 'target'>
   if (fields.target === undefined) delete watch.target
   return updateGame(game.id, { watch })
 }
+
+// Sets an edition's watch (again), or removes it (null), like setWatch. Reads the game again, so
+// a quick change to another edition isn't lost.
+export async function setEditionWatch(
+  game: Game,
+  edition: Pick<EditionWatch, 'kind' | 'id' | 'name'>,
+  fields: Pick<PriceWatch, 'when' | 'target'> | null,
+) {
+  const current = (await db.games.get(game.id))?.editionWatches ?? []
+  const list = current.filter((w) => !(w.kind === edition.kind && w.id === edition.id))
+  if (fields) {
+    const watch: EditionWatch = { kind: edition.kind, id: edition.id, name: edition.name, ...fields, setAt: Date.now() }
+    if (fields.target === undefined) delete watch.target
+    list.push(watch)
+  }
+  return updateGame(game.id, { editionWatches: list.length > 0 ? list : undefined })
+}
+
+// "Stop watching": the game and all its editions
+export const stopWatching = (game: Game) => updateGame(game.id, { watch: undefined, editionWatches: undefined })
 
 // ---------- The check ----------
 

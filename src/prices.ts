@@ -49,7 +49,7 @@ function findSteam(game: IgdbExternal): SteamRef | undefined {
 // Do the prices fit the game? Every word of the game's name must be in the product's name, so a
 // DLC or an edition priced as another product (IGDB linked the wrong Steam page) is caught.
 // No name (proxy before v0.23): no warning.
-const words = (name: string) =>
+export const words = (name: string) =>
   name.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w && !['the', 'a', 'of', 'and'].includes(w))
 export function pricesFit(gameName: string, prices: GamePrices) {
   return !prices.name || nameFits(gameName, prices.name)
