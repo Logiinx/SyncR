@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
-import { canWatch, db, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
+import { canWatch, db, isWatched, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
-import { setWatch } from './priceWatch'
+import { stopWatching } from './priceWatch'
 import { WatchBell } from './PriceWatchView'
 import { useSteamProfile } from './steam'
 import SteamImport from './SteamImport'
@@ -82,8 +82,8 @@ function GamesView() {
         onClick: () => updateGame(game.id, { priority: !game.priority }),
       },
       // To play and Waiting: the price alert, set in the game window
-      ...(!canWatch(game) ? [] : game.watch
-        ? [{ label: 'Stop watching', onClick: () => setWatch(game, null) }]
+      ...(!canWatch(game) ? [] : isWatched(game)
+        ? [{ label: 'Stop watching', onClick: () => stopWatching(game) }]
         : [{
             label: 'Watch price…',
             onClick: () => {
@@ -275,7 +275,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
       <div className="game-tile-cover">
         <Cover coverId={game.coverId} big />
         <GameBadge game={game} />
-        {game.watch && <WatchBell watch={game.watch} />}
+        {isWatched(game) && <WatchBell game={game} />}
       </div>
       <div className="game-tile-name">{game.name}</div>
       {showsRated(game) ? (
@@ -309,7 +309,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       <span className="game-row-cover">
         <Cover coverId={game.coverId} />
         <GameBadge game={game} />
-        {game.watch && <WatchBell watch={game.watch} />}
+        {isWatched(game) && <WatchBell game={game} />}
       </span>
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>

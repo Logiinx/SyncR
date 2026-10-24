@@ -4,6 +4,7 @@ import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
 import { savePriceAlertEvent } from './calendarEvents'
 import { gameId } from './games'
+import { gameEditions } from './editions'
 
 // Price alerts of To play and Waiting games (set in the game window: PriceWatchView.tsx): one
 // target for the cheaper of Steam and the cheapest key, when it alerts, and the check (games.ts: after the first sync, then
@@ -76,44 +77,72 @@ export const stopWatching = (game: Game) => updateGame(game.id, { watch: undefin
 export const CHECK_EVERY = 6 * 60 * 60 * 1000
 const ALERT_IN = 5 * 60 * 1000 // the event starts (and alerts) this much later: see savePriceAlertEvent
 
-// The Calendar event of one watch, "price<IGDB id>t<setAt>" (Google allows only 0-9 and a-v)
-const priceEventId = (game: Game, watch: PriceWatch) => `price${game.igdbId}t${watch.setAt}`
+// The Calendar event of one watch, "price<IGDB id>t<setAt>", "…e<Steam id>" for an edition
+// (Google allows only 0-9 and a-v)
+const priceEventId = (game: Game, watch: PriceWatch | EditionWatch) =>
+  `price${game.igdbId}t${watch.setAt}${'kind' in watch ? `e${watch.id}` : ''}`
 // The game of a price alert event ("igdb-..."), or null for other events
 export function priceEventGame(eventId: string) {
-  const match = eventId.match(/^price(\d+)t\d+$/)
+  const match = eventId.match(/^price(\d+)t\d+(e\d+)?$/)
   return match ? gameId(Number(match[1])) : null
 }
 
-// What the event says: "Hollow Knight: 7,49 € on Steam" (or "for a key"), and why, with the
-// shop's page
-function alertText(game: Game, watch: PriceWatch, { price, store }: { price: number; store: 'steam' | 'key' }, prices: GamePrices) {
+// What the event says: "Hollow Knight: 7,49 € on Steam" (or "for a key"; an edition: Steam's
+// name for it), and why, with the shop's page
+function alertText(name: string, watch: PriceWatch, { price, store }: { price: number; store: 'steam' | 'key' }, prices: GamePrices) {
   const why = watch.when === 'price' ? `Your price: ${formatEuros(watch.target!)} or less` : 'Its lowest price ever'
   const link = store === 'steam' ? prices.steamUrl : prices.deals?.url
   return {
-    title: `${game.name}: ${formatEuros(price)} ${store === 'steam' ? 'on Steam' : 'for a key'}`,
+    title: `${name}: ${formatEuros(price)} ${store === 'steam' ? 'on Steam' : 'for a key'}`,
     description: [why, link].filter(Boolean).join('\n'),
   }
 }
 
-// Every To play or Waiting game with a watch that hasn't alerted yet: when its price is reached, the event
-// is made (with Google Calendar connected) and the watch marked as alerted, so it stays quiet
-// until set again. Google unreachable: nothing is marked, the next check tries again.
+// The event (with Google Calendar connected). Google unreachable: throws, nothing gets marked.
+async function sendAlert(game: Game, watch: PriceWatch | EditionWatch, met: { price: number; store: 'steam' | 'key' }, prices: GamePrices) {
+  if (!googleConnected()) return
+  const name = 'kind' in watch ? watch.name : game.name
+  await savePriceAlertEvent({ id: priceEventId(game, watch), start: Date.now() + ALERT_IN, ...alertText(name, watch, met, prices) })
+}
+
+const waiting = (watch?: PriceWatch) => !!watch && !watch.firedAt
+
+// Every To play or Waiting game with a watch (its own or an edition's) that hasn't alerted yet:
+// when its price is reached, the event is made and the watch marked as alerted, so it stays
+// quiet until set again. Each edition alerts on its own. Google unreachable: nothing is
+// marked, the next check tries again.
 export async function checkWatches() {
   try {
     if (!isComplete(await loadConnection())) return
-    const games = await db.games.filter((g) => !g.deleted && canWatch(g) && !!g.watch && !g.watch.firedAt).toArray()
+    const games = await db.games
+      .filter((g) => !g.deleted && canWatch(g) && (waiting(g.watch) || !!g.editionWatches?.some(waiting)))
+      .toArray()
     if (games.length === 0) return
-    const allPrices = await gamePrices(games.map((g) => g.igdbId))
+    const allPrices = await gamePrices(games.filter((g) => waiting(g.watch)).map((g) => g.igdbId))
+    const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)))
     for (const game of games) {
-      const watch = game.watch!
+      const watch = game.watch
       const prices = allPrices.get(game.igdbId)
-      if (!prices) continue
-      const met = watchMet(watch, prices)
-      if (met === null) continue
-      if (googleConnected()) {
-        await savePriceAlertEvent({ id: priceEventId(game, watch), start: Date.now() + ALERT_IN, ...alertText(game, watch, met, prices) })
+      const met = waiting(watch) && prices ? watchMet(watch!, prices) : null
+      if (met) {
+        await sendAlert(game, watch!, met, prices!)
+        await updateGame(game.id, { watch: { ...watch!, firedAt: Date.now(), firedPrice: met.price } })
       }
-      await updateGame(game.id, { watch: { ...watch, firedAt: Date.now(), firedPrice: met.price } })
+      for (const edition of game.editionWatches?.filter(waiting) ?? []) {
+        const editionPrices = allEditions.get(game.igdbId)?.find((e) => e.kind === edition.kind && e.id === edition.id)?.prices
+        const editionMet = editionPrices ? watchMet(edition, editionPrices) : null
+        if (!editionMet) continue
+        await sendAlert(game, edition, editionMet, editionPrices!)
+        // Read again: the game's own alert (or another edition's) may have just been marked
+        const list = (await db.games.get(game.id))?.editionWatches ?? []
+        await updateGame(game.id, {
+          editionWatches: list.map((w) =>
+            w.kind === edition.kind && w.id === edition.id && w.setAt === edition.setAt
+              ? { ...w, firedAt: Date.now(), firedPrice: editionMet.price }
+              : w,
+          ),
+        })
+      }
     }
   } catch (e) {
     console.warn('Price alert check failed', e)

@@ -1,7 +1,7 @@
 // Game prices in euros: Steam's own price and the cheapest key (GG.deals), through our proxy's
 // /prices route (proxy/igdb-worker.js). Looked up live, never saved or synced.
 import { useEffect, useState } from 'react'
-import { db } from './db'
+import { db, isWatched, type Game } from './db'
 import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
 export interface GamePrices {
@@ -147,8 +147,7 @@ export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
 }
 
 // The games that show prices in the lists: To play, and watched Waiting games (pre-orders)
-export const hasPriceLine = (game: { status: string; watch?: object }) =>
-  game.status === 'toplay' || (game.status === 'waiting' && !!game.watch)
+export const hasPriceLine = (game: Game) => game.status === 'toplay' || (game.status === 'waiting' && isWatched(game))
 
 // Prices of all those games at once: at start (games.ts) and when the To play or Waiting list
 // opens. Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.

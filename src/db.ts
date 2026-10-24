@@ -116,6 +116,9 @@ export type GameStatus = 'waiting' | 'toplay' | 'playing' | 'library'
 
 // Games whose price can be watched (priceWatch.ts): not owned yet
 export const canWatch = (game: { status: GameStatus }) => game.status === 'toplay' || game.status === 'waiting'
+// A price alert on the game or on one of its editions
+export const isWatched = (game: { watch?: PriceWatch; editionWatches?: EditionWatch[] }) =>
+  !!game.watch || !!game.editionWatches?.length
 
 // From your Steam account, refreshed daily and when the game window opens (steam.ts)
 export interface SteamStats {
@@ -536,7 +539,7 @@ export async function setGameStatus(id: string, status: GameStatus) {
   await updateGame(id, {
     status,
     statusAt: Date.now(),
-    ...(!canWatch({ status }) && { watch: undefined }),
+    ...(!canWatch({ status }) && { watch: undefined, editionWatches: undefined }),
     ...(leavesMark && { priority: false }),
   })
 }

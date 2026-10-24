@@ -20,22 +20,29 @@ const WHEN: [When, string][] = [
   ['low', 'At lowest ever'],
 ]
 
-// A watched game in the Games grid and list: a round badge on the cover's left corner (the
-// check/trophy badge has the right one), a bell, ringing and green once the price was reached.
-// Hover: the alert that's set ("Alert at ≤ 10,00 €"), and the price that made it ring.
-export function WatchBell({ watch }: { watch: PriceWatch }) {
-  const alert =
-    watch.when === 'price' ? (watch.target !== undefined ? `Alert at ≤ ${formatEuros(watch.target)}` : 'Alert at my price')
-    : 'Alert at lowest ever'
-  return watch.firedAt ? (
-    <span
-      className="game-badge watch reached"
-      title={`Price reached${watch.firedPrice !== undefined ? `: ${formatEuros(watch.firedPrice)}` : ''}\n${alert}`}
-    >
+// A watched game (or edition) in the Games grid and list: a round badge on the cover's left
+// corner (the check/trophy badge has the right one), a bell, ringing and green once a price was
+// reached. Hover: one line per alert ("Alert at ≤ 10,00 €", "Deluxe Edition: alert at ≤ 25,00 €",
+// "· reached 9,50 €" once it rang).
+export function WatchBell({ game }: { game: Game }) {
+  const watches = [
+    ...(game.watch ? [{ watch: game.watch as PriceWatch, name: '' }] : []),
+    ...(game.editionWatches ?? []).map((watch) => ({ watch, name: editionLabel(game.name, watch.name) })),
+  ]
+  const lines = watches.map(({ watch, name }) => {
+    const alert =
+      watch.when === 'price' ? (watch.target !== undefined ? `alert at ≤ ${formatEuros(watch.target)}` : 'alert at my price')
+      : 'alert at lowest ever'
+    const reached = watch.firedAt ? ` · reached${watch.firedPrice !== undefined ? ` ${formatEuros(watch.firedPrice)}` : ''}` : ''
+    const line = `${alert}${reached}`
+    return name ? `${name}: ${line}` : line[0].toUpperCase() + line.slice(1)
+  })
+  return watches.some(({ watch }) => watch.firedAt) ? (
+    <span className="game-badge watch reached" title={lines.join('\n')}>
       <BellRing />
     </span>
   ) : (
-    <span className="game-badge watch" title={alert}>
+    <span className="game-badge watch" title={lines.join('\n')}>
       <Bell />
     </span>
   )

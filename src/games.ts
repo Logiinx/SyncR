@@ -1,4 +1,4 @@
-import { changed, db, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
+import { changed, db, isWatched, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
 import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
@@ -100,7 +100,7 @@ export function sortGames(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) =>
       Number(b.priority) - Number(a.priority) ||
-      Number(!!b.watch) - Number(!!a.watch) || // price watched (To play, Waiting)
+      Number(isWatched(b)) - Number(isWatched(a)) || // price watched (To play, Waiting)
       (a.status === 'waiting'
         ? (a.releaseDate ?? Infinity) - (b.releaseDate ?? Infinity) || a.name.localeCompare(b.name)
         : b.statusAt - a.statusAt),
