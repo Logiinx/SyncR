@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-10-24
+
 **Games**
 - Turning a price alert on suggests a price from its lowest ever and today's price, or says it's already a good price.
 
