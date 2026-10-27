@@ -32,6 +32,20 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
   // the text colors. The slash menu and the note picker: see closeCopy().
   ['.menu-backdrop, .slash-menu-popup', (el) => [play(el.firstElementChild, FOLD)]],
   ['.color-popover', (el) => [play(el, FOLD)]],
+  // Side panels (index.css): PC: the Board slides out to the right and the page takes the room
+  // back (the sidebar to the left). Phone: they slide out over the page, the shade fades.
+  [
+    '.board, .sidebar',
+    (el) => {
+      const right = el.matches('.board')
+      if (matchMedia('(max-width: 699px)').matches) {
+        return [play(el, [{ transform: 'none' }, { transform: `translateX(${right ? 100 : -100}%)` }])]
+      }
+      const margin = right ? 'marginRight' : 'marginLeft'
+      return [play(el, [{ [margin]: '0px' }, { [margin]: `${-el.offsetWidth}px` }])]
+    },
+  ],
+  ['.backdrop', (el) => [play(el, [{ opacity: 1 }, { opacity: 0 }])]],
 ]
 
 // Started once (main.tsx)

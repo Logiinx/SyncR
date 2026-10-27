@@ -20,6 +20,8 @@ else document.documentElement.classList.add('popup-page')
 setUpScrollbars()
 setUpBoardTab()
 startClosingAnimations()
+// Side panels slide in only when opened, not when the app starts with them open (index.css)
+setTimeout(() => document.documentElement.classList.add('ready'), 1000)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,

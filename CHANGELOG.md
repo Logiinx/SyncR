@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - The blue line under the open tab (and the blue of switches like My games | Calendar) slides to your pick; a faint one follows the mouse.
-- Windows fade in and out (rising a little), menus unfold and fold up, instead of popping up and vanishing.
+- Windows fade in and out, menus unfold, the Board and note list slide in and out, instead of popping up and vanishing.
 - New "Animations" switch in Settings → Appearance (on by default) to turn off slides and fades.
 
 ## [0.24.3] - 2026-10-28

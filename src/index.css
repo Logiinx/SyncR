@@ -670,14 +670,6 @@ button {
   flex-shrink: 0;
   background: var(--bg);
   border-left: 1px solid var(--border);
-  animation: board-in 0.15s ease-out;
-}
-
-@keyframes board-in {
-  from {
-    transform: translateX(24px);
-    opacity: 0;
-  }
 }
 
 /* Drag to resize: a thin invisible strip over the left border, lit on hover */
@@ -3173,6 +3165,58 @@ button {
 .color-popover,
 .slash-menu {
   animation: menu-in 0.16s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Side panels (opening; closing: animations.ts). PC: the Board slides in from the right and
+   the page makes room; the sidebar the same from the left. Phone: they slide over the page from
+   their edge, the shade fades in. Not while the app starts (.ready, main.tsx). */
+@media (min-width: 700px) {
+  .ready .board {
+    animation: board-push 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .ready .sidebar {
+    animation: sidebar-push 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+@media (max-width: 699px) {
+  .ready .board {
+    animation: from-right 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .ready .sidebar {
+    animation: from-left 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .ready .backdrop {
+    animation: fade-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+/* Their width plus the 1px border */
+@keyframes board-push {
+  from {
+    margin-right: calc(-1px - var(--board-width, 280px));
+  }
+}
+
+@keyframes sidebar-push {
+  from {
+    margin-left: -261px;
+  }
+}
+
+@keyframes from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes from-left {
+  from {
+    transform: translateX(-100%);
+  }
 }
 
 @keyframes menu-in {
