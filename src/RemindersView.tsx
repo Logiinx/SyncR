@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, List, Plus, RefreshCw, Repeat } from 'lucide-react'
+import { Plus, RefreshCw, Repeat } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import GameDialog from './GameDialog'
 import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
-import type { CalendarLayout } from './GameCalendar'
+import { CALENDAR_LAYOUTS, type CalendarLayout } from './GameCalendar'
+import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
 import { db, type CalendarEvent, type Game } from './db'
@@ -206,14 +207,7 @@ function RemindersView() {
                 )}
               </button>
             )}
-            <div className="calendar-layouts">
-              <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
-                <CalendarDays size={15} />
-              </button>
-              <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
-                <List size={15} />
-              </button>
-            </div>
+            <FillSwitch className="calendar-layouts" options={CALENDAR_LAYOUTS} value={layout} onChange={setLayout} />
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { currentZoom } from './appearance'
 
 // Tab rows (note tabs, Games' status tabs): the open tab's blue line, and a faint one under
@@ -6,6 +6,8 @@ import { currentZoom } from './appearance'
 // shown by the tab's classes). While one slides, a copy of it moves over the row, following
 // the new tab as it moves (tabs widen or narrow while their ✕ shows), and the tab's own line
 // waits hidden until the copy arrives.
+// Filled switches (My games | Calendar, grid / list…) do the same with the chosen button's blue
+// fill (<TabLines fill />). Their copy moves inside the row, behind the buttons' text.
 
 const SLIDE_MS = 200
 const FADE_MS = 150
@@ -16,23 +18,25 @@ export function animationsOn() {
 }
 
 // Put inside each tab, in the element the line should be as wide as (position: relative)
-export function TabLines() {
+export function TabLines({ fill = false }: { fill?: boolean }) {
+  const className = fill ? 'tab-fill' : 'tab-line'
   return (
     <>
-      <span className="tab-line ghost" />
-      <span className="tab-line" />
+      <span className={`${className} ghost`} />
+      <span className={className} />
     </>
   )
 }
 
 // row: the row of tabs. active: the open tab's key. Each tab gets tabProps(key) and the
-// class "hovered" when its key is `hovered`.
-export function useTabLines(row: RefObject<HTMLElement | null>, active: string | null) {
+// class "hovered" when its key is `hovered`. fill: a filled switch (<TabLines fill />).
+export function useTabLines(row: RefObject<HTMLElement | null>, active: string | null, fill = false) {
   const [hovered, setHovered] = useState<string | null>(null)
+  const kind = fill ? '.tab-fill' : '.tab-line'
   const find = (selector: string) => (key: string) =>
     row.current?.querySelector<HTMLElement>(`[data-line="${CSS.escape(key)}"] ${selector}`)
-  useSlidingLine(row, active, find('.tab-line:not(.ghost)'))
-  useSlidingLine(row, hovered, find('.tab-line.ghost'))
+  useSlidingLine(row, active, find(`${kind}:not(.ghost)`), fill)
+  useSlidingLine(row, hovered, find(`${kind}.ghost`), fill)
   return {
     hovered,
     // Only a mouse: a finger has no hover
@@ -42,6 +46,54 @@ export function useTabLines(row: RefObject<HTMLElement | null>, active: string |
     }),
     onRowLeave: () => setHovered(null),
   }
+}
+
+interface SwitchOption<T> {
+  value: T
+  label: ReactNode
+  title?: string
+}
+
+// A filled switch: the chosen button is blue (My games | Calendar, Top 100…, grid / list).
+// before: shown in the row before the buttons ("Top").
+export function FillSwitch<T extends string | number>({
+  className,
+  options,
+  value,
+  onChange,
+  before,
+  title,
+}: {
+  className: string
+  options: SwitchOption<T>[]
+  value: T
+  onChange: (value: T) => void
+  before?: ReactNode
+  title?: string
+}) {
+  const row = useRef<HTMLDivElement>(null)
+  const lines = useTabLines(row, String(value), true)
+  return (
+    <div className={`${className} fill-switch`} ref={row} onPointerLeave={lines.onRowLeave} title={title}>
+      {before}
+      {options.map((option) => {
+        let buttonClass = option.value === value ? 'active' : ''
+        if (lines.hovered === String(option.value)) buttonClass += ' hovered'
+        return (
+          <button
+            key={option.value}
+            {...lines.tabProps(String(option.value))}
+            className={buttonClass}
+            onClick={() => onChange(option.value)}
+            title={option.title}
+          >
+            <TabLines fill />
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 interface Box {
@@ -75,6 +127,7 @@ function useSlidingLine(
   row: RefObject<HTMLElement | null>,
   key: string | null,
   line: (key: string) => HTMLElement | null | undefined,
+  fill: boolean,
 ) {
   const last = useRef(key)
   const slide = useRef<Slide | null>(null)
@@ -88,17 +141,25 @@ function useSlidingLine(
     slide.current = null
   }
 
-  // Screen pixels → the zoomed page's pixels (Settings → App scaling); never outside the row
+  // Screen pixels → the zoomed page's pixels (Settings → App scaling). A line: on the page,
+  // never outside the row. A fill: inside the row (from its top left corner).
   function draw(s: Slide) {
     const zoom = currentZoom()
     const bounds = row.current?.getBoundingClientRect()
-    const left = Math.max(s.now.left, bounds?.left ?? -Infinity)
-    const right = Math.min(s.now.left + s.now.width, bounds?.right ?? Infinity)
+    let { left, top, width } = s.now
+    if (fill && bounds) {
+      left -= bounds.left
+      top -= bounds.top
+    } else if (bounds) {
+      const right = Math.min(left + width, bounds.right)
+      left = Math.max(left, bounds.left)
+      width = right - left
+    }
     const style = s.copy.style
-    style.display = right > left ? '' : 'none'
+    style.display = width > 0 ? '' : 'none'
     style.left = `${left / zoom}px`
-    style.top = `${s.now.top / zoom}px`
-    style.width = `${(right - left) / zoom}px`
+    style.top = `${top / zoom}px`
+    style.width = `${width / zoom}px`
     style.height = `${s.now.height / zoom}px`
   }
 
@@ -125,14 +186,15 @@ function useSlidingLine(
     const from = running ? running.now : old && box(old)
     const look = target ?? old
     stop()
-    if (!from || !look || !animationsOn()) return
+    if (!from || !look || !row.current || !animationsOn()) return
 
     const copy = document.createElement('div')
     const { backgroundColor, borderRadius } = getComputedStyle(look)
-    copy.className = 'tab-line-copy'
+    copy.className = fill ? 'tab-fill-copy' : 'tab-line-copy'
     copy.style.backgroundColor = backgroundColor
     copy.style.borderRadius = borderRadius
-    document.body.append(copy)
+    if (fill) row.current.prepend(copy) // first: the buttons cover it
+    else document.body.append(copy)
     target?.classList.add('sliding')
     const s: Slide = { copy, target, from, now: from, start: performance.now(), frame: 0 }
     slide.current = s

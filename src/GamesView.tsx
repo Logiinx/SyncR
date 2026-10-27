@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, CalendarDays, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
@@ -12,13 +12,13 @@ import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
-import GameCalendar, { DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
+import GameCalendar, { CALENDAR_LAYOUTS, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { GameBadge, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
-import { TabLines, useTabLines } from './tabLines'
+import { FillSwitch, TabLines, useTabLines } from './tabLines'
 import GamePreview from './GamePreview'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
@@ -31,6 +31,10 @@ type ShelfLayout = 'grid' | 'list'
 const VIEWS: { value: GamesViewName; label: string }[] = [
   { value: 'mine', label: 'My games' },
   { value: 'calendar', label: 'Calendar' },
+]
+const SHELF_LAYOUTS: { value: ShelfLayout; label: React.ReactNode; title: string }[] = [
+  { value: 'grid', label: <LayoutGrid size={15} />, title: 'Covers' },
+  { value: 'list', label: <List size={15} />, title: 'List' },
 ]
 
 function GamesView() {
@@ -114,33 +118,20 @@ function GamesView() {
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
         <div className="games-views">
-          <div className="games-views-switch">
-            {VIEWS.map(({ value, label }) => (
-              <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value)}>
-                {label}
-              </button>
-            ))}
-          </div>
+          <FillSwitch className="games-views-switch" options={VIEWS} value={view} onChange={setView} />
           {/* Only with the game search set up: otherwise they do nothing, and the taller header
               put the "set up the game search" text lower than in My games */}
           {view === 'calendar' && connected && (
             <div className="calendar-controls">
-              <div className="calendar-top" title="How many of Steam's most wishlisted upcoming games to show">
-                Top
-                {TOP_LEVELS.map((level) => (
-                  <button key={level} className={top === level ? 'active' : ''} onClick={() => setTop(level)}>
-                    {level}
-                  </button>
-                ))}
-              </div>
-              <div className="calendar-layouts">
-                <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')} title="Month grid">
-                  <CalendarDays size={15} />
-                </button>
-                <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')} title="List">
-                  <List size={15} />
-                </button>
-              </div>
+              <FillSwitch
+                className="calendar-top"
+                title="How many of Steam's most wishlisted upcoming games to show"
+                before="Top"
+                options={TOP_LEVELS.map((level) => ({ value: level, label: level }))}
+                value={top}
+                onChange={setTop}
+              />
+              <FillSwitch className="calendar-layouts" options={CALENDAR_LAYOUTS} value={layout} onChange={setLayout} />
             </div>
           )}
         </div>
@@ -198,14 +189,7 @@ function GamesView() {
                       <Download size={14} /> Import from Steam…
                     </button>
                   )}
-                  <div className="calendar-layouts games-layouts">
-                    <button className={shelf === 'grid' ? 'active' : ''} onClick={() => setShelf('grid')} title="Covers">
-                      <LayoutGrid size={15} />
-                    </button>
-                    <button className={shelf === 'list' ? 'active' : ''} onClick={() => setShelf('list')} title="List">
-                      <List size={15} />
-                    </button>
-                  </div>
+                  <FillSwitch className="calendar-layouts games-layouts" options={SHELF_LAYOUTS} value={shelf} onChange={setShelf} />
                 </div>
                 <GameShelf
                   games={sortGames(games.filter((g) => g.status === shown))}

@@ -432,6 +432,50 @@ button {
   pointer-events: none;
 }
 
+/* Filled switches (FillSwitch in tabLines.tsx): the chosen button's blue fill and a faint one
+   under the mouse, behind the text. They slide the same way; the moving copy sits in the row
+   (first, so the buttons and their text cover it). */
+.fill-switch {
+  position: relative;
+}
+
+.fill-switch > button {
+  position: relative;
+  z-index: 0; /* keeps its fill (z-index -1) behind its text but above the row */
+}
+
+.tab-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tab-fill.ghost {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.active > .tab-fill:not(.ghost),
+.hovered > .tab-fill.ghost {
+  opacity: 1;
+}
+
+.hovered > .tab-fill.ghost {
+  animation: fade-in 0.15s;
+}
+
+.tab-fill.sliding {
+  visibility: hidden;
+}
+
+.tab-fill-copy {
+  position: absolute;
+  pointer-events: none;
+}
+
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
 .tab {
   -webkit-touch-callout: none;
@@ -3736,10 +3780,13 @@ h3.games-group-title {
   color: var(--text);
 }
 
+/* The blue fill: .tab-fill (FillSwitch), over the border */
 .games-views button.active {
-  border-color: var(--accent);
-  background: var(--accent);
   color: var(--text);
+}
+
+.games-views .tab-fill {
+  inset: -1px;
 }
 
 /* Calendar: "Top 100 300 500 1000" on the right of the view buttons */
@@ -3859,8 +3906,8 @@ h3.games-group-title {
   color: var(--text);
 }
 
+/* The blue fill: .tab-fill (FillSwitch) */
 .games-status-tabs .games-layouts button.active {
-  background: var(--accent);
   color: var(--text);
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CalendarDays, List } from 'lucide-react'
 import { addGame, gameId, releaseText } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
@@ -19,6 +20,11 @@ import Spinner from './Spinner'
 // Waiting; games already in your list show where they are instead (grid: a blue tint).
 
 export type CalendarLayout = 'grid' | 'list'
+// The grid / list switch (Games → Calendar, Reminders)
+export const CALENDAR_LAYOUTS: { value: CalendarLayout; label: React.ReactNode; title: string }[] = [
+  { value: 'grid', label: <CalendarDays size={15} />, title: 'Month grid' },
+  { value: 'list', label: <List size={15} />, title: 'List' },
+]
 
 // How many of Steam's most wishlisted upcoming games to show (buttons in GamesView.tsx)
 export const TOP_LEVELS = [100, 300, 500, 1000]
