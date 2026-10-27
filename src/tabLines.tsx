@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { currentZoom } from './appearance'
+import { animationsOn } from './animations'
 
 // Tab rows (note tabs, Games' status tabs): the open tab's blue line, and a faint one under
 // the mouse, slide to their new tab instead of jumping. Each tab holds both lines (<TabLines />,
@@ -11,11 +12,6 @@ import { currentZoom } from './appearance'
 
 const SLIDE_MS = 200
 const FADE_MS = 150
-
-// Settings → Animations (see appearance.ts)
-export function animationsOn() {
-  return !document.documentElement.classList.contains('no-animations')
-}
 
 // Put inside each tab, in the element the line should be as wide as (position: relative)
 export function TabLines({ fill = false }: { fill?: boolean }) {

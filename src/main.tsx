@@ -8,6 +8,7 @@ import { isPopupPage } from './popupWindow'
 import ReminderPopup from './ReminderPopup'
 import { setUpScrollbars } from './scrollbars'
 import { setUpBoardTab } from './boardTab'
+import { startClosingAnimations } from './animations'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -18,6 +19,7 @@ if (!isPopup) applyAppearance(loadAppearance())
 else document.documentElement.classList.add('popup-page')
 setUpScrollbars()
 setUpBoardTab()
+startClosingAnimations()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,

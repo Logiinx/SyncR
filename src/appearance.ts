@@ -59,6 +59,6 @@ export function applyAppearance({ scale, font, fontSize, showDates, animations }
   root.style.setProperty('--note-size', `${fontSize}px`)
   // Dates in the note list (see .hide-note-dates in index.css)
   root.classList.toggle('hide-note-dates', !showDates)
-  // Animations off (see .no-animations in index.css, animationsOn() in tabLines.tsx)
+  // Animations off (see .no-animations in index.css, animations.ts)
   root.classList.toggle('no-animations', !animations)
 }
