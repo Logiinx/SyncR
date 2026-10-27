@@ -4,7 +4,7 @@
 // Trilogy") are left out. Looked up live, never saved; a watched edition keeps its id and name.
 import { canWatch, db } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
-import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices } from './prices'
+import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices, type LookupOptions } from './prices'
 
 export interface Edition {
   kind: 'sub' | 'bundle' // a package, or a bundle (several products sold together)
@@ -20,7 +20,7 @@ const CACHE_MS = 10 * 60_000
 const cache = new Map<number, { editions: Edition[]; time: number }>()
 
 // Editions by IGDB id (games without any: an empty list). Throws when the proxy can't be reached.
-export async function gameEditions(games: { igdbId: number; name: string }[]): Promise<Map<number, Edition[]>> {
+export async function gameEditions(games: { igdbId: number; name: string }[], options: LookupOptions = {}): Promise<Map<number, Edition[]>> {
   const result = new Map<number, Edition[]>()
   const missing = games.filter((game) => {
     const cached = cache.get(game.igdbId)
@@ -42,15 +42,15 @@ export async function gameEditions(games: { igdbId: number; name: string }[]): P
   // Their key price and lows from GG.deals (/prices). Packages: with Steam's price again.
   // Bundles: Steam's price stays the one from the game's page (Steam's own bundle lookup leaves
   // out today's discount).
-  const options = missing.flatMap((game) => {
+  const listed = missing.flatMap((game) => {
     const ref = refs.get(game.igdbId)
     const list = ref?.kind === 'app' ? found[ref.id] ?? [] : []
     return list.filter((o) => nameFits(game.name, o.name)).map((option) => ({ game, option }))
   })
-  const known = await steamPrices(options.map(({ option }) => ({ kind: option.kind, id: option.id })))
+  const known = await steamPrices(listed.map(({ option }) => ({ kind: option.kind, id: option.id })), options)
 
   for (const game of missing) result.set(game.igdbId, [])
-  for (const { game, option } of options) {
+  for (const { game, option } of listed) {
     const asked = known.get(refKey({ kind: option.kind, id: option.id }))
     const prices: GamePrices = option.kind === 'sub' && asked ? asked : {
       name: asked?.name ?? option.name,
@@ -83,7 +83,7 @@ export async function loadListEditions() {
   try {
     if (!isComplete(await loadConnection())) return
     const games = await db.games.filter((g) => !g.deleted && canWatch(g)).toArray()
-    if (games.length > 0) await gameEditions(games)
+    if (games.length > 0) await gameEditions(games, { background: true })
   } catch (e) {
     console.warn('Edition lookup failed', e)
   }

@@ -90,12 +90,19 @@ const MAX_SUBS = 20
 let minute: { remaining: number; reset: number } | null = null
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Background lookups (price checks, the start lookup of editions) give way to what's on screen:
+// at most 50 at a time, and only while 50 more stay free this minute; else they wait for the next
+const BACKGROUND_SHARE = 50
+export interface LookupOptions {
+  background?: boolean
+}
+
 // How many lookups this device has asked GG.deals for (priceWatch.ts paces its checks with it)
 let asked = 0
 export const lookupsAsked = () => asked
 
 // Prices by IGDB id; null = not on Steam
-export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePrices | null>> {
+export async function gamePrices(igdbIds: number[], options: LookupOptions = {}): Promise<Map<number, GamePrices | null>> {
   const result = new Map<number, GamePrices | null>()
   const missing = igdbIds.filter((id) => {
     const cached = cache.get(id)
@@ -104,7 +111,7 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
   })
   if (missing.length === 0) return result
   const steam = await steamRefs(missing)
-  const found = await steamPrices([...steam.values()])
+  const found = await steamPrices([...steam.values()], options)
   for (const id of missing) {
     const ref = steam.get(id)
     result.set(id, ref ? found.get(refKey(ref)) ?? null : null)
@@ -125,7 +132,9 @@ interface Rate {
 }
 
 // Prices of Steam pages (games, packages, bundles), by refKey; null = not known. No cache.
-export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePrices | null>> {
+export async function steamPrices(refs: SteamRef[], { background }: LookupOptions = {}): Promise<Map<string, GamePrices | null>> {
+  const maxBatch = background ? BACKGROUND_SHARE : MAX_LOOKUPS
+  const keepFree = background ? BACKGROUND_SHARE : 0
   const result = new Map<string, GamePrices | null>()
   let batch: SteamRef[] = []
   const ask = async () => {
@@ -134,7 +143,7 @@ export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePri
       subIds: batch.filter((r) => r.kind === 'sub').map((r) => r.id),
       bundleIds: batch.filter((r) => r.kind === 'bundle').map((r) => r.id),
     }
-    if (minute && minute.remaining < batch.length && Date.now() < minute.reset) await sleep(minute.reset - Date.now() + 1000)
+    if (minute && minute.remaining < batch.length + keepFree && Date.now() < minute.reset) await sleep(minute.reset - Date.now() + 1000)
     asked += batch.length
     const response = await igdbProxyFetch('prices', JSON.stringify(body), 20_000)
     if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
@@ -151,7 +160,7 @@ export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePri
   for (const ref of refs) {
     if (result.has(refKey(ref)) || batch.some((b) => refKey(b) === refKey(ref))) continue // asked already
     batch.push(ref)
-    if (batch.length === MAX_LOOKUPS || batch.filter((b) => b.kind === 'sub').length === MAX_SUBS) await ask()
+    if (batch.length === maxBatch || batch.filter((b) => b.kind === 'sub').length === MAX_SUBS) await ask()
   }
   if (batch.length > 0) await ask()
   return result

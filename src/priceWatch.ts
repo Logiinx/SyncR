@@ -152,8 +152,8 @@ async function checkWatches(): Promise<boolean> {
       .filter((g) => !g.deleted && canWatch(g) && (waiting(g.watch) || !!g.editionWatches?.some(waiting)))
       .toArray()
     if (games.length === 0) return true
-    const allPrices = await gamePrices(games.filter((g) => waiting(g.watch)).map((g) => g.igdbId))
-    const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)))
+    const allPrices = await gamePrices(games.filter((g) => waiting(g.watch)).map((g) => g.igdbId), { background: true })
+    const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)), { background: true })
     for (const game of games) {
       const watch = game.watch
       const prices = allPrices.get(game.igdbId)
