@@ -7,6 +7,7 @@ export interface Appearance {
   font: FontId // note text only
   fontSize: number // note text only, in px
   showDates: boolean // dates in the note list
+  animations: boolean // slides and fades (off: things just appear)
 }
 
 // Fonts for the note text. The four named ones are built into the app (fonts.css),
@@ -27,7 +28,7 @@ export const FONT_SIZE_MIN = 12
 export const FONT_SIZE_MAX = 24
 
 const KEY = 'syncr.appearance'
-export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true }
+export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true, animations: true }
 
 export function loadAppearance(): Appearance {
   const saved = { ...DEFAULTS, ...read<Partial<Appearance>>(KEY, {}) }
@@ -46,7 +47,7 @@ export function currentZoom() {
   return Number(document.documentElement.style.getPropertyValue('--zoom')) || 1
 }
 
-export function applyAppearance({ scale, font, fontSize, showDates }: Appearance) {
+export function applyAppearance({ scale, font, fontSize, showDates, animations }: Appearance) {
   const root = document.documentElement
   // Scaling: CSS zoom on the whole page. --zoom lets heights based on the window (100vh)
   // be divided back, otherwise the app would be taller than the window (see index.css).
@@ -58,4 +59,6 @@ export function applyAppearance({ scale, font, fontSize, showDates }: Appearance
   root.style.setProperty('--note-size', `${fontSize}px`)
   // Dates in the note list (see .hide-note-dates in index.css)
   root.classList.toggle('hide-note-dates', !showDates)
+  // Animations off (see .no-animations in index.css, animationsOn() in tabLines.tsx)
+  root.classList.toggle('no-animations', !animations)
 }

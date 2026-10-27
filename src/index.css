@@ -252,6 +252,18 @@ button {
   animation: spin 1s linear infinite;
 }
 
+/* Settings → Animations off: no slides or fades anywhere. They still end at once (1ms),
+   so code waiting for an animation's end goes on. Kept: what shows that something is loading
+   (spinners, the pulsing trailer button) and the flash on a block you jumped to. */
+.no-animations
+  :not(.sync-button .ring, .spinner circle, .trailer-toggle.loading, .link-flash, .search-flash),
+.no-animations ::before,
+.no-animations ::after {
+  transition: none !important;
+  animation-duration: 1ms !important;
+  animation-delay: 0s !important;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -371,23 +383,53 @@ button {
   color: var(--text);
 }
 
-/* The line: 2px in blue at the bottom of the title (like the games' status tabs), as wide as
-   the text, 2px below it. The same space above (margin) and below (padding), so the title
-   stays centered. */
-.tab.active .tab-title {
+/* The lines (.tab-line, below) at the bottom of the title, as wide as the text, 2px below it.
+   The same space above (margin) and below (padding), so the title stays centered. */
+.tab-title {
   position: relative;
   margin-top: 4px;
   padding-bottom: 4px;
 }
 
-.tab.active .tab-title::after {
-  content: '';
+/* Tab rows' lines (tabLines.tsx; note tabs, Games' status tabs): the open tab's in blue, a faint
+   one under the mouse. Every tab has both, shown by its classes. They slide from tab to tab: a
+   copy moves (.tab-line-copy) while the tab's own line waits hidden (.sliding). */
+.tab-line {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   height: 2px;
   background: var(--link);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tab-line.ghost {
+  background: color-mix(in srgb, var(--link) 40%, transparent);
+}
+
+.active > .tab-line:not(.ghost),
+.active > * > .tab-line:not(.ghost),
+.hovered > .tab-line.ghost,
+.hovered > * > .tab-line.ghost {
+  opacity: 1;
+}
+
+/* Into the row from outside: the faint line fades in */
+.hovered > .tab-line.ghost,
+.hovered > * > .tab-line.ghost {
+  animation: fade-in 0.15s;
+}
+
+.tab-line.sliding {
+  visibility: hidden;
+}
+
+.tab-line-copy {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
 }
 
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
@@ -3764,6 +3806,7 @@ h3.games-group-title {
 }
 
 .games-status-list > button {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: 5px;
@@ -3779,8 +3822,12 @@ h3.games-group-title {
 }
 
 .games-status-list > button.active {
-  border-bottom-color: var(--link);
   color: var(--text);
+}
+
+/* The lines (.tab-line) on the row's line, over the button's empty bottom border */
+.games-status-list .tab-line {
+  bottom: -2px;
 }
 
 .games-status-tabs .games-count {

@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- The blue line under the open tab slides to the next tab you open, and a faint line follows the mouse over the tabs.
+- New "Animations" switch in Settings → Appearance (on by default) to turn off slides and fades.
+
 ## [0.24.3] - 2026-10-28
 
 **Games**

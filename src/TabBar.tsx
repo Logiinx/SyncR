@@ -1,6 +1,7 @@
 import { Plus, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { currentZoom } from './appearance'
+import { TabLines, useTabLines } from './tabLines'
 
 // An open tab: a note, or the Games tab
 export interface Tab {
@@ -64,6 +65,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
 
   // While dragging with a finger, stop the tab row from scrolling
   const navRef = useRef<HTMLElement>(null)
+  const lines = useTabLines(navRef, activeId)
   useEffect(() => {
     const nav = navRef.current!
     const onTouchMove = (e: TouchEvent) => {
@@ -167,17 +169,24 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
 
   return (
     <>
-      <nav className={drag ? 'tabs dragging' : 'tabs'} data-tauri-drag-region ref={navRef}>
+      <nav
+        className={drag ? 'tabs dragging' : 'tabs'}
+        data-tauri-drag-region
+        ref={navRef}
+        onPointerLeave={lines.onRowLeave}
+      >
         {tabs.map((tab, index) => {
           const isDragged = drag?.id === tab.id
           // Measured in screen pixels; the page is scaled by the app scaling setting
           const offset = (drag ? (isDragged ? drag.dx : drag.shifts[index]) : 0) / currentZoom()
           let className = tab.id === activeId ? 'tab active' : 'tab'
+          if (lines.hovered === tab.id) className += ' hovered'
           if (isDragged) className += ' drag-source'
           if (lifted === tab.id) className += ' lifted'
           return (
             <div
               key={tab.id}
+              {...lines.tabProps(tab.id)}
               ref={(el) => {
                 if (el) tabRefs.current.set(tab.id, el)
                 else tabRefs.current.delete(tab.id)
@@ -200,7 +209,10 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
               title={tab.title}
             >
               {tab.icon}
-              <span className="tab-title">{tab.title}</span>
+              <span className="tab-title">
+                {tab.title}
+                <TabLines />
+              </span>
               <button
                 className="tab-close"
                 onClick={(e) => {

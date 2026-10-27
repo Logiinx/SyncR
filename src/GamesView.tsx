@@ -18,6 +18,7 @@ import GameDialog, { GameBadge, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
+import { TabLines, useTabLines } from './tabLines'
 import GamePreview from './GamePreview'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
@@ -46,6 +47,8 @@ function GamesView() {
   // Before v0.20 it could be "done" or "dropped", which became the Library
   const shown: GameStatus = STATUSES.some((s) => s.status === remembered) ? remembered : 'library'
   const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
+  const statusList = useRef<HTMLDivElement>(null)
+  const lines = useTabLines(statusList, shown)
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
@@ -175,13 +178,16 @@ function GamesView() {
                 {/* Underlined tabs (an empty status shows no count); as wide as the cover grid */}
                 <div className={shelf === 'grid' ? 'games-status-tabs wide' : 'games-status-tabs'}>
                   {/* Scrolls sideways when the screen is too narrow (phone) */}
-                  <div className="games-status-list">
+                  <div className="games-status-list" ref={statusList} onPointerLeave={lines.onRowLeave}>
                     {STATUSES.map(({ status, label }) => {
                       const count = games.filter((g) => g.status === status).length
+                      let className = shown === status ? 'active' : ''
+                      if (lines.hovered === status) className += ' hovered'
                       return (
-                        <button key={status} className={shown === status ? 'active' : ''} onClick={() => setShown(status)}>
+                        <button key={status} {...lines.tabProps(status)} className={className} onClick={() => setShown(status)}>
                           {label}
                           {count > 0 && <span className="games-count">{count}</span>}
+                          <TabLines />
                         </button>
                       )
                     })}

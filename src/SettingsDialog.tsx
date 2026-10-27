@@ -171,6 +171,15 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onBlur={applyScale}
               />
             </label>
+
+            <label className="setting setting-toggle">
+              <span>Animations</span>
+              <input
+                type="checkbox"
+                checked={appearance.animations}
+                onChange={(e) => update({ animations: e.target.checked })}
+              />
+            </label>
           </section>
           <section className="settings-group">
             <SectionTitle title="Note list" scope="this device" />
