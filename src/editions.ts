@@ -7,7 +7,7 @@ import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices } from './prices'
 
 export interface Edition {
-  kind: 'sub' | 'bundle' // a package (GG.deals knows it: key price + lows), or a bundle (Steam's price only)
+  kind: 'sub' | 'bundle' // a package, or a bundle (several products sold together)
   id: number // Steam's package or bundle id
   name: string
   prices: GamePrices
@@ -39,21 +39,24 @@ export async function gameEditions(games: { igdbId: number; name: string }[]): P
     if (!response.ok) throw new Error(`Edition lookup failed (${response.status})`)
     Object.assign(found, await response.json())
   }
-  // Packages: their key price and lows from GG.deals (with Steam's price again)
+  // Their key price and lows from GG.deals (/prices). Packages: with Steam's price again.
+  // Bundles: Steam's price stays the one from the game's page (Steam's own bundle lookup leaves
+  // out today's discount).
   const options = missing.flatMap((game) => {
     const ref = refs.get(game.igdbId)
     const list = ref?.kind === 'app' ? found[ref.id] ?? [] : []
     return list.filter((o) => nameFits(game.name, o.name)).map((option) => ({ game, option }))
   })
-  const packagePrices = await steamPrices(options.filter((o) => o.option.kind === 'sub').map((o) => ({ kind: 'sub' as const, id: o.option.id })))
+  const known = await steamPrices(options.map(({ option }) => ({ kind: option.kind, id: option.id })))
 
   for (const game of missing) result.set(game.igdbId, [])
   for (const { game, option } of options) {
-    const prices: GamePrices = (option.kind === 'sub' && packagePrices.get(refKey({ kind: 'sub', id: option.id }))) || {
-      name: option.name,
+    const asked = known.get(refKey({ kind: option.kind, id: option.id }))
+    const prices: GamePrices = option.kind === 'sub' && asked ? asked : {
+      name: asked?.name ?? option.name,
       steamUrl: `https://store.steampowered.com/${option.kind}/${option.id}/`,
       steam: option.steam,
-      deals: null,
+      deals: asked?.deals ?? null,
     }
     result.get(game.igdbId)!.push({ kind: option.kind, id: option.id, name: option.name, prices })
   }

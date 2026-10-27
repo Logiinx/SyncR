@@ -1,5 +1,5 @@
 import { canWatch, db, updateGame, type EditionWatch, type Game, type PriceWatch } from './db'
-import { formatEuros, gamePrices, type GamePrices } from './prices'
+import { formatEuros, gamePrices, lookupsAsked, type GamePrices } from './prices'
 import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
 import { savePriceAlertEvent } from './calendarEvents'
@@ -32,7 +32,7 @@ export function lowestEver(prices: GamePrices) {
 // of the way from the lowest ever up to today's price (close to the low, still reachable when the
 // low was a rare deep sale), but never more than 30% under today's price (a low can be a giveaway
 // or a fluke: Fallout: New Vegas 0 € / 0,13 € key, which two prices can't tell from a real deep
-// sale like Witcher 3's). No history (Steam bundles): 30% under today's price. Never above
+// sale like Witcher 3's). No history (unknown to GG.deals): 30% under today's price. Never above
 // today's price. Saving less than MIN_SAVING: no price (target null), it's already a good price
 // (Fallout: New Vegas at 2,52 €). why: the dim line under the row. null: not sold now.
 const MAX_DROP = 0.3
@@ -99,7 +99,15 @@ export const stopWatching = (game: Game) => updateGame(game.id, { watch: undefin
 
 // ---------- The check ----------
 
-const CHECK_EVERY = 60 * 60 * 1000
+// How often: as often as GG.deals' limit allows, so a check every 15 min to every hour. The
+// checks of one device may use 250 lookups an hour: half of GG.deals' 1000 stays free (start
+// lookup, lists, game windows), the rest is split with the other device. E.g. a check of up to
+// 62 lookups: every 15 min; 125: every 30 min; 250 or more: every hour.
+const FASTEST = 15 * 60 * 1000
+const SLOWEST = 60 * 60 * 1000
+const LOOKUPS_PER_HOUR = 250
+const checkEvery = (lookups: number) =>
+  Math.min(SLOWEST, Math.max(FASTEST, (lookups / LOOKUPS_PER_HOUR) * 60 * 60 * 1000))
 const RETRY_IN = 15 * 60 * 1000 // after a failed check
 const ALERT_IN = 5 * 60 * 1000 // the event starts (and alerts) this much later: see savePriceAlertEvent
 
@@ -177,21 +185,26 @@ async function checkWatches(): Promise<boolean> {
   }
 }
 
-// When the checks run (started once by games.ts, after the first sync): now, then every hour; a
-// failed one again after 15 min. Timers can be late (PC asleep, phone app in the background),
+// When the checks run (started once by games.ts, after the first sync): now, then every 15 min
+// to 1 hour (checkEvery); a failed one again after 15 min. Timers can be late (PC asleep, phone app in the background),
 // so it also looks when the PC wakes up, the app comes back to the front or the internet returns,
 // and checks if one is due.
 let lastTry = 0
 let lastOk = true
+let lastLookups = Infinity // the last check's lookups (before the first one: as slow as can be)
 let running = false
 async function checkIfDue() {
-  const wait = lastOk ? CHECK_EVERY : RETRY_IN
+  const wait = lastOk ? checkEvery(lastLookups) : RETRY_IN
   if (running || Date.now() - lastTry < wait) return
   running = true
   lastTry = Date.now()
+  const before = lookupsAsked()
   try {
     lastOk = await checkWatches()
   } finally {
+    // Prices a game window asked for just before are kept 10 min, so a check can count low once;
+    // the next one counts right again
+    lastLookups = lookupsAsked() - before
     running = false
   }
 }

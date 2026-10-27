@@ -140,7 +140,7 @@ export interface PriceWatch {
 }
 
 // A watched edition of a To play or Waiting game (editions.ts): its own watch, on its Steam
-// package or bundle. A bundle has no price history, so only 'price'.
+// package or bundle.
 export interface EditionWatch extends PriceWatch {
   kind: 'sub' | 'bundle'
   id: number // Steam's package or bundle id

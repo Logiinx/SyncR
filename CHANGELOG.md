@@ -5,7 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- Price alerts are checked every hour (was 6 h) and when the PC wakes up or the app comes back. A failed check retries after 15 min.
+- Price alerts are checked every 15 min to 1 h (fewer watches: more often), and when the PC wakes up or the app comes back.
+- Editions sold as Steam bundles (like Cyberpunk Ultimate) now show key prices and can alert at their lowest ever.
 
 ## [0.24.2] - 2026-10-24
 

@@ -76,21 +76,34 @@ async function googleToken(env, request) {
   return fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: params })
 }
 
-// Game prices in euros, for up to 100 Steam games ("apps") and 20 Steam packages ("subs",
-// e.g. editions sold as a bundle). Body (JSON): { steamIds: [570, 1091500], subIds: [13435] }.
+// Game prices in euros, for up to 100 Steam games ("apps"), 20 Steam packages ("subs", e.g.
+// editions) and 100 Steam bundles (GG.deals' prices only, see below). Body (JSON):
+// { steamIds: [570, 1091500], subIds: [13435], bundleIds: [32470] }.
 // Steam's own price (with its discount) and GG.deals' cheapest prices on official stores and
 // key shops, with the all-time lows, and the product's name (so the app can tell when IGDB linked
-// the wrong Steam page). Answer: { "<appId>": { name, steam, deals }, "sub<subId>": … }, each
+// the wrong Steam page). Answer: { "<appId>": { name, steam, deals }, "sub<subId>": …,
+// "bundle<bundleId>": …, _rate:
+// GG.deals' limit counters (see askDeals) }, each
 // null if unknown.
 const askJson = (url) =>
   fetch(url)
     .then((response) => (response.ok ? response.json() : {}))
     .catch(() => ({}))
 
-const askDeals = (env, kind, ids) =>
-  env.GGDEALS_KEY && ids.length > 0
-    ? askJson(`https://api.gg.deals/v1/prices/by-steam-${kind}-id/?ids=${ids.join(',')}&region=fr&key=${env.GGDEALS_KEY}`)
-    : {}
+// GG.deals' answer, with its limit counters from the answer's headers (x-ratelimit-limit,
+// -remaining, -reset, as GG.deals sends them; limited: over the limit, no data), so the app can pace
+// its price checks
+async function askDeals(env, kind, ids) {
+  if (!env.GGDEALS_KEY || ids.length === 0) return {}
+  try {
+    const response = await fetch(`https://api.gg.deals/v1/prices/by-steam-${kind}-id/?ids=${ids.join(',')}&region=fr&key=${env.GGDEALS_KEY}`)
+    const header = (name) => response.headers.get(`x-ratelimit-${name}`)
+    const rate = { limit: header('limit'), remaining: header('remaining'), reset: header('reset'), limited: response.status === 429 }
+    return { ...(response.ok ? await response.json() : {}), rate }
+  } catch {
+    return {}
+  }
+}
 
 const cleanIds = (ids, max) => (Array.isArray(ids) ? ids : []).map(Number).filter((id) => id > 0).slice(0, max)
 
@@ -115,7 +128,8 @@ async function gamePrices(env, request) {
   const body = await request.json()
   const apps = cleanIds(body.steamIds, 100)
   const subs = cleanIds(body.subIds, 20)
-  const [steamApps, steamSubs, dealsApps, dealsSubs] = await Promise.all([
+  const bundles = cleanIds(body.bundleIds, 100)
+  const [steamApps, steamSubs, dealsApps, dealsSubs, dealsBundles] = await Promise.all([
     apps.length > 0
       ? askJson(`https://store.steampowered.com/api/appdetails?appids=${apps.join(',')}&cc=fr&filters=price_overview`)
       : {},
@@ -123,6 +137,7 @@ async function gamePrices(env, request) {
     Promise.all(subs.map((id) => askJson(`https://store.steampowered.com/api/packagedetails?packageids=${id}&cc=fr`))),
     askDeals(env, 'app', apps),
     askDeals(env, 'sub', subs),
+    askDeals(env, 'bundle', bundles),
   ])
   const result = {}
   for (const id of apps) result[id] = priceEntry(steamApps[id]?.data?.price_overview, dealsApps.data?.[id])
@@ -130,13 +145,23 @@ async function gamePrices(env, request) {
     const sub = steamSubs[i]?.[id]?.data
     result[`sub${id}`] = priceEntry(sub?.price, dealsSubs.data?.[id], sub?.name)
   })
+  // Bundles: GG.deals only. Steam's own bundle lookup gives the full price without today's
+  // discount; the app has the right one from /editions.
+  for (const id of bundles) result[`bundle${id}`] = priceEntry(null, dealsBundles.data?.[id])
+  // GG.deals' counters after this answer (of the asks, the one with fewer left). Not a
+  // game: apps before v0.24.3 ignore it.
+  const rates = [dealsApps.rate, dealsSubs.rate, dealsBundles.rate].filter(Boolean)
+  if (rates.length > 0) {
+    const fewest = rates.reduce((a, b) => (Number(b.remaining ?? Infinity) < Number(a.remaining ?? Infinity) ? b : a))
+    result._rate = { ...fewest, limited: rates.some((r) => r.limited) }
+  }
   return result
 }
 
 // A game's other editions on Steam: the purchase options of its store page, for up to 100 Steam
 // games. Body (JSON): { steamIds: [1245620] }. Answer: { "<appId>": [{ kind, id, name, steam }] }:
-// kind "sub" (a package: GG.deals has its prices, see /prices) or "bundle" (several products
-// sold together: Steam's price only), steam = price in cents like /prices. Steam lists the game
+// kind "sub" (a package) or "bundle" (several products sold together); GG.deals' prices for both
+// via /prices. steam = price in cents like /prices. Steam lists the game
 // itself first: left out, and so are options with other games in them. No key needed.
 async function gameEditions(request) {
   const apps = cleanIds((await request.json()).steamIds, 100)

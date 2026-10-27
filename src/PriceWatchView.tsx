@@ -121,7 +121,7 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
           title={edition.name}
           watch={watched.find((w) => w.kind === edition.kind && w.id === edition.id)}
           prices={edition.prices}
-          bundle={edition.kind === 'bundle'}
+          noHistory={!!edition.prices && !edition.prices.deals}
           onSave={(fields) => setEditionWatch(game, edition, fields)}
         />
       ))}
@@ -150,15 +150,15 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
 // filled with a suggested price (priceWatch.ts) unless one was typed, or left empty with "Already
 // a good price"; the cursor in the box) or off, its name, its price now and the alert ("· alerts at ≤
 // 10,00 €", or "· reached 24 Oct: 9,50 €" with Watch again and a ringing green bell), and while on,
-// when to alert and my price. prices null: not sold on Steam now. bundle: no price history, so
+// when to alert and my price. prices null: not sold on Steam now. noHistory: GG.deals doesn't know it, so
 // no "At lowest ever".
-function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }: {
+function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave }: {
   name: string
   note?: string // dim, after the name
   title?: string // the full name, on hover
   watch?: PriceWatch
   prices: GamePrices | null | undefined
-  bundle?: boolean
+  noHistory?: boolean
   whenRef?: RefObject<HTMLButtonElement | null>
   onSave: (fields: WatchFields | null) => void
 }) {
@@ -171,7 +171,7 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
       setFocusPrice(false)
     }
   }, [focusPrice, watch])
-  const when = !watch ? null : watch.when === 'price' || bundle ? 'price' : 'low' // an old 'record' watch: 'low'
+  const when = !watch ? null : watch.when === 'price' || noHistory ? 'price' : 'low' // an old 'record' watch: 'low'
   const save = (change: Partial<WatchFields>) =>
     onSave({ when: when ?? 'price', target: watch?.target, ...change })
   const now = prices ? currentPrice(prices) : null
@@ -225,7 +225,7 @@ function WatchRow({ name, note, title, watch, prices, bundle, whenRef, onSave }:
         <div className="watch-row-choices">
           <select value={when} aria-label="Alert when" onChange={(e) => save({ when: e.target.value as PriceWatch['when'] })}>
             {WHEN.map(([value, label]) => (
-              <option key={value} value={value} disabled={bundle && value === 'low'}>
+              <option key={value} value={value} disabled={noHistory && value === 'low'}>
                 {label}
               </option>
             ))}

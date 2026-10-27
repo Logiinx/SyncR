@@ -28,7 +28,7 @@ interface IgdbExternal {
 // Where a game is sold on Steam: a game page ("app"), or a package ("sub") for editions sold as
 // a bundle of the game and its add-ons (e.g. Fallout: New Vegas Ultimate Edition)
 export interface SteamRef {
-  kind: 'app' | 'sub'
+  kind: 'app' | 'sub' | 'bundle' // bundle: only editions (editions.ts), GG.deals' prices only
   id: number
 }
 
@@ -79,9 +79,20 @@ export async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef
 const CACHE_MS = 10 * 60_000
 const cache = new Map<number, { prices: GamePrices | null; time: number }>()
 
-// Per request: GG.deals allows 100 games (and 100 per minute); Steam answers one package at a time
-const MAX_APPS = 100
+// Per request: GG.deals allows 100 lookups a minute (games, packages and bundles together) and
+// 1000 an hour; the worker asks Steam one package at a time (Workers: 50 own requests)
+const MAX_LOOKUPS = 100
 const MAX_SUBS = 20
+
+// GG.deals' minute counter, from the last answer (the worker passes it as _rate; GG.deals reports
+// only the minute, not the hour): a request that wouldn't fit waits for the reset instead of
+// failing (over the limit = no data at all)
+let minute: { remaining: number; reset: number } | null = null
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// How many lookups this device has asked GG.deals for (priceWatch.ts paces its checks with it)
+let asked = 0
+export const lookupsAsked = () => asked
 
 // Prices by IGDB id; null = not on Steam
 export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePrices | null>> {
@@ -105,7 +116,15 @@ export async function gamePrices(igdbIds: number[]): Promise<Map<number, GamePri
 
 export const refKey = (ref: SteamRef) => `${ref.kind}${ref.id}`
 
-// Prices of Steam pages (games and packages), by refKey; null = not known. No cache.
+// GG.deals' limit counters as the worker passes them (strings; reset in seconds since 1970)
+interface Rate {
+  limit: string | null
+  remaining: string | null
+  reset: string | null
+  limited: boolean
+}
+
+// Prices of Steam pages (games, packages, bundles), by refKey; null = not known. No cache.
 export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePrices | null>> {
   const result = new Map<string, GamePrices | null>()
   let batch: SteamRef[] = []
@@ -113,12 +132,18 @@ export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePri
     const body = {
       steamIds: batch.filter((r) => r.kind === 'app').map((r) => r.id),
       subIds: batch.filter((r) => r.kind === 'sub').map((r) => r.id),
+      bundleIds: batch.filter((r) => r.kind === 'bundle').map((r) => r.id),
     }
+    if (minute && minute.remaining < batch.length && Date.now() < minute.reset) await sleep(minute.reset - Date.now() + 1000)
+    asked += batch.length
     const response = await igdbProxyFetch('prices', JSON.stringify(body), 20_000)
     if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
-    const answer: Record<string, Omit<GamePrices, 'steamUrl'>> = await response.json()
+    const { _rate: rate, ...answer }: Record<string, Omit<GamePrices, 'steamUrl'>> & { _rate?: Rate } = await response.json()
+    if (rate?.remaining != null && rate.reset != null) minute = { remaining: Number(rate.remaining), reset: Number(rate.reset) * 1000 }
+    // Over GG.deals' limit: no key prices came. Fail, rather than show (and keep) prices without them.
+    if (rate?.limited) throw new Error('GG.deals limit reached, try again later')
     for (const ref of batch) {
-      const found = answer[ref.kind === 'app' ? ref.id : `sub${ref.id}`]
+      const found = answer[ref.kind === 'app' ? ref.id : `${ref.kind}${ref.id}`]
       result.set(refKey(ref), found ? { steamUrl: `https://store.steampowered.com/${ref.kind}/${ref.id}/`, ...found } : null)
     }
     batch = []
@@ -126,8 +151,7 @@ export async function steamPrices(refs: SteamRef[]): Promise<Map<string, GamePri
   for (const ref of refs) {
     if (result.has(refKey(ref)) || batch.some((b) => refKey(b) === refKey(ref))) continue // asked already
     batch.push(ref)
-    const kinds = batch.map((b) => b.kind)
-    if (kinds.filter((k) => k === 'app').length === MAX_APPS || kinds.filter((k) => k === 'sub').length === MAX_SUBS) await ask()
+    if (batch.length === MAX_LOOKUPS || batch.filter((b) => b.kind === 'sub').length === MAX_SUBS) await ask()
   }
   if (batch.length > 0) await ask()
   return result
