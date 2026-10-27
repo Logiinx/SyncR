@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { currentZoom } from './appearance'
+import { closeCopy } from './animations'
 
 // Type "/" at the start of a line or after a space: a menu to insert a block. Typing more
 // filters it ("/tab" → Table), ↑ ↓ choose, Enter inserts, Esc closes. Not inside code.
@@ -117,6 +118,7 @@ export const SlashMenu = Extension.create({
               return component?.ref?.onKeyDown(props) ?? false
             },
             onExit: () => {
+              if (component) closeCopy(component.element as HTMLElement)
               unmount?.()
               component?.destroy()
               component = null

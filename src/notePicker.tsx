@@ -6,6 +6,7 @@ import { ChevronRight, FileText, FoldVertical, Heading } from 'lucide-react'
 import { db, noteTitle, saveNoteContent } from './db'
 import { noteLinkHref } from './noteLinks'
 import { mountPopup } from './slashMenu'
+import { closeCopy } from './animations'
 
 // Type [[ to link to another note: a list of notes, filtered by what you type next.
 // Enter links to the whole note. Tab, → or the › button shows the note's headings and
@@ -171,6 +172,7 @@ export const NotePicker = Extension.create({
               return component?.ref?.onKeyDown(props) ?? false
             },
             onExit: () => {
+              if (component) closeCopy(component.element as HTMLElement)
               unmount?.()
               component?.destroy()
               component = null

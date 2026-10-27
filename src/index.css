@@ -3167,6 +3167,23 @@ button {
   }
 }
 
+/* Menus (right-click, "▾" lists, phone "⋯", table menu, text colors, slash menu, note picker)
+   unfold from the top. Their shadow (up to 24px around) stays visible. */
+.context-menu,
+.color-popover,
+.slash-menu {
+  animation: menu-in 0.16s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes menu-in {
+  from {
+    clip-path: inset(0 -24px 100% -24px);
+  }
+  to {
+    clip-path: inset(-24px);
+  }
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;
