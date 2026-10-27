@@ -8,7 +8,7 @@ import { gameEditions } from './editions'
 
 // Price alerts of To play and Waiting games (set in the game window: PriceWatchView.tsx): one
 // target for the cheaper of Steam and the cheapest key, when it alerts, and the check (games.ts: after the first sync, then
-// every CHECK_EVERY) that turns a reached price into a Google Calendar event.
+// every hour, see startWatchChecks) that turns a reached price into a Google Calendar event.
 
 const cents = (price: string | null | undefined) => (price == null ? null : Math.round(Number(price) * 100))
 
@@ -99,7 +99,8 @@ export const stopWatching = (game: Game) => updateGame(game.id, { watch: undefin
 
 // ---------- The check ----------
 
-export const CHECK_EVERY = 6 * 60 * 60 * 1000
+const CHECK_EVERY = 60 * 60 * 1000
+const RETRY_IN = 15 * 60 * 1000 // after a failed check
 const ALERT_IN = 5 * 60 * 1000 // the event starts (and alerts) this much later: see savePriceAlertEvent
 
 // The Calendar event of one watch, "price<IGDB id>t<setAt>", "…e<Steam id>" for an edition
@@ -135,14 +136,14 @@ const waiting = (watch?: PriceWatch) => !!watch && !watch.firedAt
 // Every To play or Waiting game with a watch (its own or an edition's) that hasn't alerted yet:
 // when its price is reached, the event is made and the watch marked as alerted, so it stays
 // quiet until set again. Each edition alerts on its own. Google unreachable: nothing is
-// marked, the next check tries again.
-export async function checkWatches() {
+// marked, the next check tries again. false: it failed (offline, proxy or Google unreachable).
+async function checkWatches(): Promise<boolean> {
   try {
-    if (!isComplete(await loadConnection())) return
+    if (!isComplete(await loadConnection())) return true
     const games = await db.games
       .filter((g) => !g.deleted && canWatch(g) && (waiting(g.watch) || !!g.editionWatches?.some(waiting)))
       .toArray()
-    if (games.length === 0) return
+    if (games.length === 0) return true
     const allPrices = await gamePrices(games.filter((g) => waiting(g.watch)).map((g) => g.igdbId))
     const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)))
     for (const game of games) {
@@ -169,9 +170,42 @@ export async function checkWatches() {
         })
       }
     }
+    return true
   } catch (e) {
     console.warn('Price alert check failed', e)
+    return false
   }
+}
+
+// When the checks run (started once by games.ts, after the first sync): now, then every hour; a
+// failed one again after 15 min. Timers can be late (PC asleep, phone app in the background),
+// so it also looks when the PC wakes up, the app comes back to the front or the internet returns,
+// and checks if one is due.
+let lastTry = 0
+let lastOk = true
+let running = false
+async function checkIfDue() {
+  const wait = lastOk ? CHECK_EVERY : RETRY_IN
+  if (running || Date.now() - lastTry < wait) return
+  running = true
+  lastTry = Date.now()
+  try {
+    lastOk = await checkWatches()
+  } finally {
+    running = false
+  }
+}
+
+let started = false
+export function startWatchChecks() {
+  if (started) return
+  started = true
+  lastTry = 0
+  checkIfDue()
+  window.setInterval(checkIfDue, 5 * 60 * 1000) // after sleep it fires soon, so no long gaps
+  window.addEventListener('focus', checkIfDue)
+  window.addEventListener('online', checkIfDue)
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkIfDue())
 }
 
 // "12,5" or "12.50 €" → 1250 cents; null if it isn't a price

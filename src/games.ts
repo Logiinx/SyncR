@@ -5,7 +5,7 @@ import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
 import { loadListPrices } from './prices'
 import { loadListEditions } from './editions'
-import { checkWatches, CHECK_EVERY as WATCH_EVERY } from './priceWatch'
+import { startWatchChecks } from './priceWatch'
 import { refreshSteamStats } from './steam'
 import { shortDate } from './dates'
 import { read, write } from './localState'
@@ -330,12 +330,11 @@ export function startGameChecks() {
       console.warn('Game refresh failed', e)
     }
     // To play (and watched Waiting) prices, once per start, after the first sync brought the list up to date
-    // and the price alerts then and every 6 hours; a minute later the editions (game windows)
+    // and the price alert checks (every hour, see startWatchChecks); a minute later the editions (game windows)
     if (!pricesLoaded) {
       pricesLoaded = true
-      loadListPrices().then(checkWatches)
+      loadListPrices().then(startWatchChecks)
       window.setTimeout(loadListEditions, 60_000)
-      window.setInterval(checkWatches, WATCH_EVERY)
     }
   }
   check()

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Price alerts are checked every hour (was 6 h) and when the PC wakes up or the app comes back. A failed check retries after 15 min.
+
 ## [0.24.2] - 2026-10-24
 
 **Games**
