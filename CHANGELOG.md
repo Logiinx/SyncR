@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-10-28
+
 **App**
 - Settings fit in one view: four cards (Notes, Alerts, Accounts, App) with dropdowns; account details under "Manage accounts…".
 
