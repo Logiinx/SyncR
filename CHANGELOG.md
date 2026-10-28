@@ -15,6 +15,7 @@ All notable changes to SyncR. Newest version first.
 - The "‹ Back" buttons of the trailer view and of an open email now look the same.
 - Cut-off text shows in full on hover: Mail tab subjects and previews, Steam import names, Gmail addresses in Settings.
 - Real icons instead of text symbols in the empty page's hint and the Board's "Priority" / "Normal" drop zones.
+- Mail tab: "Open in Gmail" moved down in the right-click menu, just above Delete (like "Open in Google Calendar").
 
 ## [0.30.1] - 2026-10-28
 

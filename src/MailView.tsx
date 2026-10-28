@@ -147,15 +147,16 @@ function MailView() {
           y={menu.y}
           onClose={() => setMenu(null)}
           header={{ title: menu.mail.from, subtitle: menu.mail.subject }}
+          // "Open in …" after the mail's own actions, like a Reminders event's menu
           items={[
-            { label: 'Open in Gmail', icon: ExternalLink, onClick: () => openLink(gmailLink(menu.mail)) },
             isUnread(menu.mail)
-              ? { label: 'Mark as read', icon: MailOpen, divider: true, onClick: () => change(menu.mail, 'read') }
-              : { label: 'Mark as unread', icon: Mail, divider: true, onClick: () => change(menu.mail, 'unread') },
+              ? { label: 'Mark as read', icon: MailOpen, onClick: () => change(menu.mail, 'read') }
+              : { label: 'Mark as unread', icon: Mail, onClick: () => change(menu.mail, 'unread') },
             ...(missedRows.includes(menu.mail)
               ? [{ label: 'Remove from Missed', icon: BellOff, onClick: () => change(menu.mail, 'keep') }]
               : []),
             { label: 'Archive', icon: Archive, onClick: () => change(menu.mail, 'archive') },
+            { label: 'Open in Gmail', icon: ExternalLink, onClick: () => openLink(gmailLink(menu.mail)) },
             { label: 'Delete', icon: Trash2, danger: true, onClick: () => change(menu.mail, 'trash') },
           ]}
         />
