@@ -105,6 +105,47 @@ export function useList(ref: RefObject<HTMLElement | null>) {
   })
 }
 
+// Pages (a note, Games, Reminders, the empty page) crossfade when switching tabs: the new one
+// fades in while a copy of the old one (made before React empties it), on top, fades out. Not
+// when the app starts.
+export function usePage(ref: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    const body = el?.parentElement
+    if (!el || !body) return
+    if (document.documentElement.classList.contains('ready') && animationsOn()) {
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: OPEN_MS, easing: EASE_OUT })
+    }
+    return () => {
+      if (!animationsOn()) return
+      const copy = el.cloneNode(true) as HTMLElement
+      const scroller = el.matches('.page') ? el : el.querySelector('.page')
+      const scroll = scroller?.scrollTop ?? 0
+      const place = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight }
+      const next = el.nextSibling
+      queueMicrotask(() => {
+        if (el.isConnected || !body.isConnected) return
+        // Where it was, over the new page (.body is position: relative)
+        Object.assign(copy.style, {
+          position: 'absolute',
+          left: `${place.left}px`,
+          top: `${place.top}px`,
+          width: `${place.width}px`,
+          height: `${place.height}px`,
+        })
+        copy.classList.add('closing')
+        copy.inert = true
+        body.insertBefore(copy, next?.parentNode === body ? next : null)
+        const copyScroller = copy.matches('.page') ? copy : copy.querySelector('.page')
+        if (copyScroller) copyScroller.scrollTop = scroll
+        copy
+          .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: EASE_IN, fill: 'forwards' })
+          .finished.finally(() => copy.remove())
+      })
+    }
+  }, [])
+}
+
 function isGrid(list: Element) {
   return getComputedStyle(list).display === 'grid'
 }

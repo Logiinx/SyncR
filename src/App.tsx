@@ -23,6 +23,7 @@ import UpdateBanner from './UpdateBanner'
 import WhatsNew from './WhatsNew'
 import SyncButton from './SyncButton'
 import WindowControls from './WindowControls'
+import { usePage } from './animations'
 
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
@@ -231,14 +232,14 @@ function App() {
           // key: a fresh view and editor for each note
           <NoteView key={activeNote.id} note={activeNote} autoFocus={activeNote.id === newNoteId} />
         ) : (
-          <main className="page">
+          <EmptyPage>
             <div className="empty">
               <button className="empty-new" onClick={newNote}>
                 <Plus size={16} /> New note
               </button>
               <p>or open one with ☰</p>
             </div>
-          </main>
+          </EmptyPage>
         )}
         {boardOpen ? (
           <Board onClose={() => setBoardOpen(false)} />
@@ -274,6 +275,17 @@ function App() {
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       <WhatsNew />
     </div>
+  )
+}
+
+// The page when no tab is open; crossfades like the others (animations.ts)
+function EmptyPage({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLElement>(null)
+  usePage(ref)
+  return (
+    <main className="page" ref={ref}>
+      {children}
+    </main>
   )
 }
 

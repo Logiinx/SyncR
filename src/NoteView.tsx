@@ -3,6 +3,7 @@ import type { Note } from './db'
 import { getScroll, setScroll } from './localState'
 import NoteEditor from './NoteEditor'
 import { ConflictBanner } from './ConflictCompare'
+import { usePage } from './animations'
 
 const SAVE_SCROLL_MS = 200
 
@@ -16,6 +17,8 @@ const isAtBottom = (page: HTMLElement) => page.scrollHeight - page.scrollTop - p
 // "Compare" opening the comparison over the note (ConflictCompare.tsx).
 function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const pageRef = useRef<HTMLElement>(null)
+  const columnRef = useRef<HTMLDivElement>(null)
+  usePage(columnRef)
   const saveTimer = useRef<number | undefined>(undefined)
   const atBottom = useRef(false)
 
@@ -55,7 +58,7 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   }
 
   return (
-    <div className="note-column">
+    <div className="note-column" ref={columnRef}>
       {note.conflictOf && <ConflictBanner note={note} />}
       <main className="page" ref={pageRef} onScroll={onScroll}>
         <NoteEditor note={note} autoFocus={autoFocus} />

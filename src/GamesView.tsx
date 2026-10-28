@@ -19,7 +19,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch, TabLines, useTabLines } from './tabLines'
-import { useListItem } from './animations'
+import { useListItem, usePage } from './animations'
 import GamePreview from './GamePreview'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
@@ -39,6 +39,8 @@ const SHELF_LAYOUTS: { value: ShelfLayout; label: React.ReactNode; title: string
 ]
 
 function GamesView() {
+  const pageRef = useRef<HTMLElement>(null)
+  usePage(pageRef)
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
@@ -114,7 +116,7 @@ function GamesView() {
 
   const inList = new Map(games?.map((g) => [g.id, g.status]))
   return (
-    <main className="page games-page">
+    <main className="page games-page" ref={pageRef}>
       {/* Wide only for the month grid (not for the "set up the game search" text, which then
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>

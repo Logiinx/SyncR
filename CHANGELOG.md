@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - The blue line under the open tab (and the blue of switches like My games | Calendar) slides to your pick; a faint one follows the mouse.
-- Smoother app: windows fade, menus unfold, panels slide, sections grow open, cards and games shrink away or grow in, instead of popping.
+- Smoother app: windows and pages fade, menus unfold, panels slide, sections grow, cards and games shrink away or grow in.
 - New "Animations" switch in Settings → Appearance (on by default) to turn off slides and fades.
 
 ## [0.24.3] - 2026-10-28

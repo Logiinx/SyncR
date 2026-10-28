@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Plus, RefreshCw, Repeat } from 'lucide-react'
 import ContextMenu from './ContextMenu'
@@ -20,6 +20,7 @@ import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import { takeAlertEvent } from './dueReminders'
 import { priceEventGame } from './priceWatch'
+import { usePage } from './animations'
 
 // The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
 // Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
@@ -31,6 +32,8 @@ const MIN_MONTHS = 3 // the grid shows at least this month and the next two...
 const MAX_MONTHS = 12 // ...and at most a year, up to the last upcoming event or release
 
 function RemindersView() {
+  const pageRef = useRef<HTMLElement>(null)
+  usePage(pageRef)
   const waitingGames = useLiveQuery(
     () => db.games.filter((g) => !g.deleted && g.status === 'waiting' && !!g.releaseDate).toArray(),
     [],
@@ -175,7 +178,7 @@ function RemindersView() {
   }
 
   return (
-    <main className="page games-page">
+    <main className="page games-page" ref={pageRef}>
       <div className={grid ? 'games wide' : 'games'}>
         {/* One row: New event on the left; refresh and grid / list on the right (the phone has
             no grid: only refresh there) */}
