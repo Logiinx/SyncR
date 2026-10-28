@@ -3926,7 +3926,7 @@ button {
   font-weight: 600;
 }
 
-/* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, like Gmail */
+/* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, read mail dimmed */
 .mail-row .menu-swatch {
   align-self: flex-start;
   margin-top: 5px;
@@ -3934,6 +3934,10 @@ button {
 
 .mail-row.unread .reminder-text {
   font-weight: 600;
+}
+
+.mail-row:not(.unread) {
+  opacity: 0.55;
 }
 
 /* A mail read in the Mail tab: the pop-up's reader, filling the page (no card shadow) */
