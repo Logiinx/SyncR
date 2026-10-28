@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- "Move to group…" works reliably when two groups have the same name.
+
 **Reminders**
 - After removing a game opened with "Watch price…", the next game you open no longer jumps to its price alert.
 

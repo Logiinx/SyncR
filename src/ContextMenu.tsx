@@ -54,7 +54,8 @@ function ContextMenu({ x, y, items, header, onClose }: Props) {
           </>
         )}
         {items.map((item, index) => (
-          <Fragment key={item.label}>
+          // Labels can repeat (two Board groups with the same name): the place makes it unique
+          <Fragment key={`${index}:${item.label}`}>
             {(item.divider || item.danger) && index > 0 && <div className="context-menu-divider" />}
             <button
               className={item.danger ? 'danger' : ''}
