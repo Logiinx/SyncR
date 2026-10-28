@@ -22,12 +22,12 @@ setUpScrollbars()
 setUpBoardTab()
 // Not in the pop-up: it sizes its window from its cards, a closing one would still count
 if (!isPopup) startClosingAnimations()
-// Side panels slide in only when opened, not when the app starts with them open (index.css)
-setTimeout(() => document.documentElement.classList.add('ready'), 1000)
-
-// The sign-ins are decrypted first (on the PC: a few milliseconds), both windows read them
-void loadSecrets().then(() =>
+// The sign-ins are decrypted first, both windows read them. On the PC that can take a moment
+// at start (Windows), so the side panels' second without animation counts from the first draw
+void loadSecrets().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
-  ),
-)
+  )
+  // Side panels slide in only when opened, not when the app starts with them open (index.css)
+  setTimeout(() => document.documentElement.classList.add('ready'), 1000)
+})
