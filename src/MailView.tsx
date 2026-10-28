@@ -7,16 +7,17 @@ import { openLink } from './links'
 import { accountColor } from './MailCards'
 import MailReader from './MailReader'
 import { changeMail, gmailLink, useMissed, type MailAlert } from './mailAlerts'
-import { useMailbox } from './mailbox'
+import { useMailbox, type MailboxRow } from './mailbox'
+import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
-// The Mail tab (PC): unread mail in Primary of all Gmail accounts (mailbox.ts), laid out like
-// the Reminders tab. "Missed" on top: emails whose pop-up faded by itself; then the others.
-// A click reads the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ←
-// Back, Done or Escape return to the list. Right-click: Mark as read / unread, Remove from
-// Missed, Archive, Open in Gmail. A mail marked read here stays in the list (dimmed) while the
-// tab is open, so "Mark as unread" can undo it.
+// The Mail tab (PC): the last mails in Primary of all Gmail accounts, read or not (mailbox.ts),
+// laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others.
+// "Missed" on top: unread emails whose pop-up faded by itself; then the others. A click reads
+// the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ← Back, Done or
+// Escape return to the list. Right-click: Mark as read / unread, Remove from Missed, Archive,
+// Open in Gmail.
 function MailView() {
   const pageRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -25,10 +26,14 @@ function MailView() {
   const accounts = useGmailAccounts()
   const missed = useMissed()
   const { rows, errors, loading, refresh } = useMailbox()
-  const [readHere, setReadHere] = useState<MailAlert[]>([]) // marked read in this tab
+  const [unreadOnly, setUnreadOnly] = useLocalState('syncr.mail.unreadOnly', false)
+  // Marked read / unread here: shown right away, until the list comes back from Gmail
+  const [marked, setMarked] = useState<Map<string, boolean>>(new Map())
   const [archived, setArchived] = useState<Set<string>>(new Set())
-  const [menu, setMenu] = useState<{ mail: MailAlert; x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ mail: MailboxRow; x: number; y: number } | null>(null)
   const [reading, setReading] = useState<MailAlert | null>(null)
+
+  useEffect(() => setMarked(new Map()), [rows])
 
   useEffect(() => {
     if (!reading) return
@@ -37,33 +42,30 @@ function MailView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [reading])
 
-  const isRead = (mail: MailAlert) => readHere.some((m) => m.key === mail.key)
-  const shown = [...(rows ?? []), ...readHere.filter((m) => !rows?.some((r) => r.key === m.key))]
-    .filter((mail) => !archived.has(mail.key))
-    .sort((a, b) => b.date - a.date)
-  const missedRows = shown.filter((mail) => missed.includes(mail.key) && !isRead(mail))
-  const otherRows = shown.filter((mail) => !missedRows.includes(mail))
+  const isUnread = (mail: MailboxRow) => marked.get(mail.key) ?? mail.unread
+  const shown = (rows ?? []).filter((mail) => !archived.has(mail.key))
+  const missedRows = shown.filter((mail) => missed.includes(mail.key) && isUnread(mail))
+  const otherRows = shown.filter((mail) => !missedRows.includes(mail) && (!unreadOnly || isUnread(mail)))
 
   // Shown right away; if Gmail can't be reached, the next refresh shows the real state
   function change(mail: MailAlert, what: 'read' | 'unread' | 'archive' | 'keep') {
-    if (what === 'read') setReadHere((list) => [...list, mail])
-    if (what === 'unread') setReadHere((list) => list.filter((m) => m.key !== mail.key))
+    if (what === 'read' || what === 'unread') setMarked((map) => new Map(map).set(mail.key, what === 'unread'))
     if (what === 'archive') setArchived((keys) => new Set(keys).add(mail.key))
     changeMail(mail.key, what).catch((error) => console.error(error))
   }
 
-  function read(mail: MailAlert) {
+  function read(mail: MailboxRow) {
     listScroll.current = pageRef.current?.scrollTop ?? 0
     setReading(mail)
-    if (!isRead(mail)) change(mail, 'read')
+    if (isUnread(mail)) change(mail, 'read')
   }
 
-  function row(mail: MailAlert) {
+  function row(mail: MailboxRow) {
     return (
       <button
         key={mail.key}
         data-item={mail.key}
-        className={`reminder-row mail-row${isRead(mail) ? ' read' : ''}`}
+        className={`reminder-row mail-row${isUnread(mail) ? ' unread' : ''}`}
         onClick={() => read(mail)}
         onContextMenu={(e) => {
           e.preventDefault()
@@ -74,16 +76,16 @@ function MailView() {
         <span className="menu-swatch" style={{ background: accountColor(mail.account) ?? 'var(--link)' }} />
         <span className="reminder-row-text">
           <span className="reminder-text">
-            <span className="mail-row-from">{mail.from}</span> · {mail.subject}
+            {mail.from} · {mail.subject}
           </span>
           {mail.snippet && <span className="reminder-row-note">{mail.snippet}</span>}
         </span>
-        <span className="reminder-due">{isRead(mail) ? 'Read' : formatDue(mail.date)}</span>
+        <span className="reminder-due">{formatDue(mail.date)}</span>
       </button>
     )
   }
 
-  function group(title: string, list: MailAlert[]) {
+  function group(title: string, list: MailboxRow[]) {
     if (list.length === 0) return null
     return (
       <section className="games-group">
@@ -120,6 +122,10 @@ function MailView() {
       <div className="games" ref={listRef} hidden={reading !== null}>
         <div className="games-views reminders-toolbar">
           <div className="reminders-tools">
+            <label className="reminders-hide-repeating" title="Show only unread mail">
+              <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
+              Unread only
+            </label>
             <button className="reminders-refresh" onClick={refresh} disabled={loading} title="Refresh from Gmail">
               {loading ? <Spinner label="Refreshing" /> : <RefreshCw size={15} />}
             </button>
@@ -129,9 +135,11 @@ function MailView() {
         {errors.length > 0 && (
           <p className="games-empty">Couldn't reach Gmail for {errors.join(', ')} (offline?)</p>
         )}
-        {rows && accounts.length > 0 && shown.length === 0 && <p className="games-empty">No unread mail in Primary</p>}
+        {rows && accounts.length > 0 && missedRows.length + otherRows.length === 0 && (
+          <p className="games-empty">{unreadOnly ? 'No unread mail in Primary' : 'No mail in Primary'}</p>
+        )}
         {group('Missed', missedRows)}
-        {group('Unread', otherRows)}
+        {group(unreadOnly ? 'Unread' : 'Inbox', otherRows)}
       </div>
       {menu && (
         <ContextMenu
@@ -140,9 +148,9 @@ function MailView() {
           onClose={() => setMenu(null)}
           items={[
             { label: 'Open in Gmail', onClick: () => openLink(gmailLink(menu.mail)) },
-            isRead(menu.mail)
-              ? { label: 'Mark as unread', onClick: () => change(menu.mail, 'unread') }
-              : { label: 'Mark as read', onClick: () => change(menu.mail, 'read') },
+            isUnread(menu.mail)
+              ? { label: 'Mark as read', onClick: () => change(menu.mail, 'read') }
+              : { label: 'Mark as unread', onClick: () => change(menu.mail, 'unread') },
             ...(missedRows.includes(menu.mail)
               ? [{ label: 'Remove from Missed', onClick: () => change(menu.mail, 'keep') }]
               : []),

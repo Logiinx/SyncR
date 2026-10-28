@@ -34,6 +34,10 @@ const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
 const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that faded unread (until read anywhere)
 const HISTORY_KEY = 'syncr.gmail.history' // per account: Gmail's history id at the last full check
+const CHECKED_KEY = 'syncr.gmail.checked' // per account: when the unread list was last read (ms)
+// A card only for mail that arrived since the last check (minus this): an older mail marked
+// unread again in Gmail shows in the Mail tab only
+const ARRIVAL_MARGIN_MS = 10 * 60_000
 const CHECK_EVERY_MS = 60_000
 export const QUERY = 'in:inbox is:unread category:primary'
 const MAX_SEEN = 500 // per account; new mail always has a new id, so older ones can go
@@ -95,6 +99,9 @@ export function forgetAccountMail(email: string) {
   const history = read<Record<string, string>>(HISTORY_KEY, {})
   delete history[email]
   write(HISTORY_KEY, history)
+  const checked = read<Record<string, number>>(CHECKED_KEY, {})
+  delete checked[email]
+  write(CHECKED_KEY, checked)
   saveMissed(loadMissed().filter((key) => !key.startsWith(prefix)))
 }
 
@@ -134,9 +141,11 @@ export async function checkMail() {
     const accounts = loadAccounts().filter((a) => a.enabled && !a.expired)
     const seen = read<Record<string, string[]>>(SEEN_KEY, {})
     const history = read<Record<string, string>>(HISTORY_KEY, {})
+    const checked = read<Record<string, number>>(CHECKED_KEY, {})
     // Cards of accounts that were removed, turned off or signed out go
     let alerts = loadMailAlerts().filter((alert) => accounts.some((a) => a.email === alert.account))
     let missed = loadMissed().filter((key) => accounts.some((a) => key.startsWith(`mail:${a.email}:`)))
+    let anyChange = false
     for (const { email } of accounts) {
       try {
         const { changed, historyId } = await mailboxChange(email, history[email])
@@ -144,12 +153,15 @@ export async function checkMail() {
           history[email] = historyId
           continue
         }
+        anyChange = true
+        const startedAt = Date.now()
         const list = await gmailApi(email, `messages?q=${encodeURIComponent(QUERY)}&maxResults=50`)
         const unread: { id: string; threadId: string }[] = list?.messages ?? []
         const unreadIds = new Set(unread.map((m) => m.id))
         const known = seen[email]
         const fresh = known ? unread.filter((m) => !known.includes(m.id)).slice(0, MAX_NEW) : [] // first check: none
-        const added = await Promise.all(fresh.map((m) => fetchAlert(email, m.id)))
+        const since = checked[email] ? checked[email] - ARRIVAL_MARGIN_MS : 0
+        const added = (await Promise.all(fresh.map((m) => fetchAlert(email, m.id)))).filter((a) => a.date > since)
         alerts = [
           ...added,
           // Read since (anywhere): its card goes, unless it's open to read
@@ -158,6 +170,7 @@ export async function checkMail() {
         missed = missed.filter((key) => !key.startsWith(`mail:${email}:`) || unreadIds.has(key.split(':')[2]))
         seen[email] = [...new Set([...unreadIds, ...(known ?? [])])].slice(0, MAX_SEEN)
         history[email] = historyId
+        checked[email] = startedAt
       } catch (error) {
         console.error(error)
       }
@@ -168,11 +181,16 @@ export async function checkMail() {
     for (const email of Object.keys(history)) {
       if (!loadAccounts().some((a) => a.email === email)) delete history[email]
     }
+    for (const email of Object.keys(checked)) {
+      if (!loadAccounts().some((a) => a.email === email)) delete checked[email]
+    }
     write(SEEN_KEY, seen)
     write(HISTORY_KEY, history)
+    write(CHECKED_KEY, checked)
     saveMissed(missed)
     alerts = alerts.filter((alert) => !closed.has(alert.key)).sort((a, b) => b.date - a.date)
     if (JSON.stringify(alerts) !== JSON.stringify(loadMailAlerts())) saveMailAlerts(alerts)
+    if (anyChange) window.dispatchEvent(new Event('mailbox-change')) // the Mail tab reloads
   } finally {
     checking = false
     if (again) {

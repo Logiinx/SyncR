@@ -3926,19 +3926,14 @@ button {
   font-weight: 600;
 }
 
-/* Mail tab (MailView.tsx): sender in bold before the subject; a mail marked read there is
-   dimmed until the tab closes */
+/* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, like Gmail */
 .mail-row .menu-swatch {
   align-self: flex-start;
   margin-top: 5px;
 }
 
-.mail-row-from {
+.mail-row.unread .reminder-text {
   font-weight: 600;
-}
-
-.mail-row.read {
-  opacity: 0.55;
 }
 
 /* A mail read in the Mail tab: the pop-up's reader, filling the page (no card shadow) */
