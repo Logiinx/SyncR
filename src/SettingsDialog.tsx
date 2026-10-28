@@ -19,7 +19,9 @@ import {
   setStartWithWindows,
   startsWithWindows,
   type Background,
+  type PopupCorner,
 } from './desktop'
+import { availableMonitors, primaryMonitor, type Monitor } from '@tauri-apps/api/window'
 import {
   DEFAULTS,
   FONT_SIZE_MAX,
@@ -125,7 +127,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <div className="setting">
               <span className="setting-label">Font</span>
               {/* Each choice is shown in its own font */}
-              <div className="font-choices">
+              <div className="setting-choices">
                 {(Object.keys(FONTS) as FontId[]).map((id) => (
                   <button
                     key={id}
@@ -219,6 +221,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
               />
             </label>
           </section>
+          {isTauri() && <PopupSettings background={background} onChange={updateBackground} />}
           {isTauri() && (
             <section className="settings-group">
               <SectionTitle title="Window" scope="this device" />
@@ -598,6 +601,82 @@ function RulerSlider({ min, max, step, value, mark, ...input }: RulerSliderProps
         ))}
       </div>
     </div>
+  )
+}
+
+const CORNERS: { id: PopupCorner; name: string }[] = [
+  { id: 'top-left', name: 'Top left' },
+  { id: 'top-right', name: 'Top right' },
+  { id: 'bottom-left', name: 'Bottom left' },
+  { id: 'bottom-right', name: 'Bottom right' },
+]
+
+// PC: where the pop-up shows (screen + corner), e.g. on a second screen, away from a game.
+// The screens are read from Windows when Settings opens; a chosen screen that isn't plugged
+// in is kept, and the pop-up uses the main screen meanwhile.
+function PopupSettings({
+  background,
+  onChange,
+}: {
+  background: Background
+  onChange: (change: Partial<Background>) => void
+}) {
+  const [screens, setScreens] = useState<{ name: string | null; label: string; size: string }[]>([])
+  useEffect(() => {
+    Promise.all([availableMonitors(), primaryMonitor()])
+      .then(([monitors, main]) => {
+        const others = monitors.filter((m) => m.name !== main?.name).sort((a, b) => a.position.x - b.position.x)
+        const size = (m: Monitor) => `${m.size.width} × ${m.size.height}`
+        setScreens([
+          { name: null, label: 'Main screen', size: main ? size(main) : '' },
+          ...others.map((m, i) => ({ name: m.name, label: `Screen ${i + 2}`, size: size(m) })),
+        ])
+      })
+      .catch((error) => console.error(error))
+  }, [])
+  const unplugged =
+    background.popupScreen !== null && screens.length > 0 && !screens.some((s) => s.name === background.popupScreen)
+  return (
+    <section className="settings-group">
+      <SectionTitle title="Pop-up" scope="this device" />
+      <div className="setting">
+        <span className="setting-label">
+          Screen{' '}
+          {unplugged && <span className="setting-value">the chosen screen isn't plugged in: main screen meanwhile</span>}
+        </span>
+        <div className="setting-choices">
+          {screens.map((screen) => {
+            const selected = screen.name === background.popupScreen
+            return (
+              <button
+                key={screen.name ?? ''}
+                className={selected ? 'selected' : ''}
+                aria-pressed={selected}
+                title={screen.size}
+                onClick={() => onChange({ popupScreen: screen.name })}
+              >
+                {screen.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="setting">
+        <span className="setting-label">Corner</span>
+        <div className="setting-choices">
+          {CORNERS.map(({ id, name }) => (
+            <button
+              key={id}
+              className={id === background.popupCorner ? 'selected' : ''}
+              aria-pressed={id === background.popupCorner}
+              onClick={() => onChange({ popupCorner: id })}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 

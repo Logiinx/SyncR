@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- PC: choose the screen and corner where the reminder pop-up shows (Settings → Pop-up), e.g. on a second screen, away from a game.
+
 ## [0.25.1] - 2026-10-28
 
 **App**

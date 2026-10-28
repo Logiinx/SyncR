@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { getCurrentWindow, primaryMonitor } from '@tauri-apps/api/window'
+import { PhysicalPosition } from '@tauri-apps/api/dpi'
+import { availableMonitors, getCurrentWindow, primaryMonitor, type Monitor } from '@tauri-apps/api/window'
+import { loadBackground } from './desktop'
 import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
 
-// The desktop reminder pop-up: a small always-on-top window in the bottom-right corner of the
-// screen, shown while reminders are due, even when SyncR's window is hidden in the tray.
+// The desktop reminder pop-up: a small always-on-top window in a corner of the screen (both
+// chosen in Settings), shown while reminders are due, even when SyncR's window is hidden in the tray.
 // The main window opens and closes it; the pop-up (ReminderPopup.tsx) shows the reminders
 // itself (same database) and sends its button clicks back here, so all changes and syncing
 // happen in the main window.
@@ -48,16 +50,31 @@ export const isPopupPage = () =>
   new URLSearchParams(location.search).get('view') === POPUP_LABEL ||
   (isTauri() && getCurrentWindow().label === POPUP_LABEL)
 
-// Top-left corner for a pop-up of this height: bottom-right of the main screen's work area
-// (the screen without the taskbar). In logical pixels, like the window sizes.
-export async function popupPosition(height: number) {
-  const monitor = await primaryMonitor()
-  if (!monitor) return { x: 100, y: 100 }
+// The screen the pop-up shows on (Settings): the chosen one while it's plugged in, else the
+// main one
+export async function popupMonitor(): Promise<Monitor | null> {
+  const { popupScreen } = loadBackground()
+  const monitors = popupScreen ? await availableMonitors() : []
+  return monitors.find((monitor) => monitor.name === popupScreen) ?? (await primaryMonitor())
+}
+
+// Where a pop-up of this height (logical pixels) goes: the chosen corner of its screen's work
+// area (the screen without the taskbar). In physical pixels with that screen's scale, so it
+// also lands right on a second screen with another scale than the main one.
+// maxHeight: the most it may grow (logical pixels), the work area's height.
+export async function popupPlace(height: number) {
+  const monitor = await popupMonitor()
+  if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600 }
   const { position, size } = monitor.workArea
   const scale = monitor.scaleFactor
+  const { popupCorner } = loadBackground()
+  const margin = MARGIN * scale
+  const x = popupCorner.endsWith('left') ? position.x + margin : position.x + size.width - POPUP_WIDTH * scale - margin
+  const y = popupCorner.startsWith('top') ? position.y + margin : position.y + size.height - height * scale - margin
   return {
-    x: (position.x + size.width) / scale - POPUP_WIDTH - MARGIN,
-    y: (position.y + size.height) / scale - height - MARGIN,
+    position: new PhysicalPosition(Math.round(x), Math.round(y)),
+    scale,
+    maxHeight: size.height / scale - 2 * MARGIN,
   }
 }
 
@@ -67,12 +84,12 @@ async function openPopup(onError: () => void) {
   if (opening || (await WebviewWindow.getByLabel(POPUP_LABEL))) return
   opening = true
   const height = 150 // first guess; the pop-up resizes itself to fit
-  const { x, y } = await popupPosition(height)
+  const { position, scale } = await popupPlace(height)
   const popup = new WebviewWindow(POPUP_LABEL, {
     url: 'index.html?view=reminder-popup',
     title: 'SyncR reminder',
-    x,
-    y,
+    x: position.x / scale, // the window options take logical pixels
+    y: position.y / scale,
     width: POPUP_WIDTH,
     height,
     decorations: false,
@@ -81,7 +98,9 @@ async function openPopup(onError: () => void) {
     resizable: false,
     maximizable: false,
     minimizable: false,
-    focus: false, // don't take the keyboard away from what the user is doing
+    // Never takes the keyboard away from what the user is doing (e.g. a fullscreen game: no
+    // jump out of it). Nothing else may focus it either: only a click on a card brings SyncR.
+    focus: false,
     backgroundColor: '#202020',
     // Same origin as the main window (https://tauri.localhost, tauri.conf.json), so the pop-up
     // sees the same database. Without it, it loaded from http://… and found no reminders.
