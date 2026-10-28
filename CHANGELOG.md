@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-10-28
+
 **App**
 - PC: Mail tab: your last 50 emails, read or not (read ones dimmed, "Unread only" filter); updates when you mark one unread in Gmail.
 - PC: Mail tab: a cleaner right-click menu with icons, the mail's sender and subject on top, and Delete (moves it to Gmail's Trash).
