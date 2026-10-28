@@ -51,7 +51,8 @@ interface SwitchOption<T> {
 }
 
 // A filled switch: the chosen button is blue (My games | Calendar, Top 100…, grid / list).
-// before: shown in the row before the buttons ("Top").
+// before: shown in the row before the buttons ("Top"). label: what the buttons choose, for
+// screen readers ("Status").
 export function FillSwitch<T extends string | number>({
   className,
   options,
@@ -59,6 +60,7 @@ export function FillSwitch<T extends string | number>({
   onChange,
   before,
   title,
+  label,
 }: {
   className: string
   options: SwitchOption<T>[]
@@ -66,11 +68,19 @@ export function FillSwitch<T extends string | number>({
   onChange: (value: T) => void
   before?: ReactNode
   title?: string
+  label?: string
 }) {
   const row = useRef<HTMLDivElement>(null)
   const lines = useTabLines(row, String(value), true)
   return (
-    <div className={`${className} fill-switch`} ref={row} onPointerLeave={lines.onRowLeave} title={title}>
+    <div
+      className={`${className} fill-switch`}
+      ref={row}
+      onPointerLeave={lines.onRowLeave}
+      title={title}
+      role={label ? 'group' : undefined}
+      aria-label={label}
+    >
       {before}
       {options.map((option) => {
         let buttonClass = option.value === value ? 'active' : ''

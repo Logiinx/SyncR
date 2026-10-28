@@ -139,6 +139,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
           value={game.status}
           onChange={(status) => status !== game.status && setGameStatus(game.id, status)}
+          label="Status"
         />
 
         {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
