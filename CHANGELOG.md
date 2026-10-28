@@ -4,62 +4,62 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**App**
-- Mail tab: when Gmail can't be reached (e.g. right at start), it tries again by itself instead of also saying "No mail".
+**Mail**
+- **Fixed:** If Gmail can't be reached right at start, the Mail tab tries again by itself.
 
 ## [0.31.2] - 2026-10-28
 
 **App**
-- The note list and the Board no longer slide in a second after the app starts when they were already open.
+- **Fixed:** The note list and the Board no longer slide in a second after the app starts.
 
 ## [0.31.1] - 2026-10-28
 
 **Notes**
-- Note list: a note last edited on a device whose clock runs fast shows its date again, not "Tomorrow".
+- **Fixed:** The note list no longer shows "Tomorrow" as a note's last edit.
 
 **Board**
-- "Move to group…" works reliably when two groups have the same name.
+- **Fixed:** "Move to group…" picks the right group when two have the same name.
 
 **Reminders**
-- After removing a game opened with "Watch price…", the next game you open no longer jumps to its price alert.
+- **Fixed:** After removing a game, the next one you open no longer jumps to its price alert.
 
 **Sync**
-- PC: if Windows can't store the sync key, a message says so, instead of the passphrase being asked again at each start without a reason.
+- **Fixed:** PC: if Windows can't keep the sync key, a message says so (no asking at each start).
 
-**App**
-- Instant mail: signing the instant mail account in again keeps it on (or says it's off). One failing account no longer stops it for all.
-- Gmail: the pop-up can no longer undo an account change just made in Settings. The Mail tab no longer reloads each hour by itself.
-- Mail tab: a mail marked read no longer flips back for a moment. An archived mail shows again once moved back to the inbox in Gmail.
+**Mail**
+- **Fixed:** Instant mail stays on after signing in again; one bad account no longer stops it.
+- **Fixed:** Small fixes: read marks, archived mail, account changes, hourly reloads.
 
 ## [0.31.0] - 2026-10-28
 
 **Board**
-- A priority group shows only its blue frame: its group icon no longer turns blue too (like cards).
+- **Improved:** A priority group shows only its blue frame, like cards (no blue icon).
 
 **Reminders**
-- Right-click a game (list or month grid) for the same menu as in Games: move, priority, watch price, pin to Board, remove.
-- Events show their Google Calendar color: a dot in the list, the stripe in the month grid (blue when they have none).
+- **New:** Right-click a game for the same menu as in Games (move, priority, price, pin…).
+- **New:** Events show their Google Calendar color: a dot in the list, a stripe in the month.
 
 **Games**
-- Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.
-- Game preview: release date and platforms on one line, like in the game window.
+- **Improved:** Game window: the status switch slides to the chosen status.
+- **Improved:** Game preview: release date and platforms on one line.
+
+**Mail**
+- **Improved:** "Open in Gmail" moved down in the right-click menu, just above Delete.
 
 **App**
-- The "‹ Back" buttons of the trailer view and of an open email now look the same.
-- Cut-off text shows in full on hover: Mail tab subjects and previews, Steam import names, Gmail addresses in Settings.
-- Real icons instead of text symbols in the empty page's hint and the Board's "Priority" / "Normal" drop zones.
-- Mail tab: "Open in Gmail" moved down in the right-click menu, just above Delete (like "Open in Google Calendar").
+- **Improved:** Cut-off text shows in full on hover (mail subjects, Steam names, Gmail).
+- **Improved:** Real icons instead of text symbols in a few places; matching "‹ Back" buttons.
 
 ## [0.30.1] - 2026-10-28
 
-**App**
-- PC: opening an email in the pop-up now grows smoothly. The pop-up has a thin border instead of a shadow.
-- The back button of an open email now says "‹ Back".
+**Mail**
+- **Improved:** PC: an email opened in the pop-up grows smoothly, with a thin border.
+- **Improved:** An open email's back button now says "‹ Back".
 
 ## [0.30.0] - 2026-10-28
 
 **App**
-- Settings fit in one view: four cards (Notes, Alerts, Accounts, App) with dropdowns; account details under "Manage accounts…".
+- **Improved:** Settings fit in one view: four cards; account details under "Manage accounts…".
 
 ## [0.29.0] - 2026-10-28
 
