@@ -153,7 +153,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
                   />
                   <Cover coverId={row.game?.coverId} />
                   <span className="steam-import-text">
-                    <span className="steam-import-name">{row.name}</span>
+                    <span className="steam-import-name" title={row.name}>{row.name}</span>
                     <span className="steam-import-details">
                       {[
                         row.minutes > 0 ? playedText(row.minutes) : 'Never played',

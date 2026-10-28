@@ -75,10 +75,10 @@ function MailView() {
       >
         <span className="menu-swatch" style={{ background: accountColor(mail.account) ?? 'var(--link)' }} />
         <span className="reminder-row-text">
-          <span className="reminder-text">
+          <span className="reminder-text" title={`${mail.from} · ${mail.subject}`}>
             {mail.from} · {mail.subject}
           </span>
-          {mail.snippet && <span className="reminder-row-note">{mail.snippet}</span>}
+          {mail.snippet && <span className="reminder-row-note" title={mail.snippet}>{mail.snippet}</span>}
         </span>
         <span className="reminder-due">{formatDue(mail.date)}</span>
       </button>

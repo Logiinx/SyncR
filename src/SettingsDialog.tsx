@@ -657,7 +657,7 @@ function GmailSettings() {
             >
               <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
             </button>
-            <span className="gmail-account-email">{account.email}</span>
+            <span className="gmail-account-email" title={account.email}>{account.email}</span>
             {account.expired && <span className="setting-value">signed out</span>}
           </span>
           {account.expired ? (
