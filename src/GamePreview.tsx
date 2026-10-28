@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pin, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
+import Window from './Window'
 import { ADD_PLACES, addGame, allPlatforms, isReleased, statusLabel } from './games'
 import { coverUrl, type FoundGame } from './igdb'
 import type { GameStatus } from './db'
@@ -33,83 +34,76 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
 
   if (trailerOpen && !narrow) {
     return (
-      <div className="dialog-backdrop" onMouseDown={() => setTrailerOpen(false)}>
-        <TrailerTheater
-          igdbId={game.igdbId}
-          title={game.name}
-          release={release}
-          platforms={allPlatforms(game.platforms)}
-          onBack={() => setTrailerOpen(false)}
-          onClose={onClose}
-        />
-      </div>
+      <TrailerTheater
+        igdbId={game.igdbId}
+        title={game.name}
+        release={release}
+        platforms={allPlatforms(game.platforms)}
+        onBack={() => setTrailerOpen(false)}
+        onClose={onClose}
+      />
     )
   }
   const released = isReleased(game)
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div className="game-window">
-        <div
-          ref={popupRef}
-          className="dialog calendar-popup"
-          role="dialog"
-          aria-label={game.name}
-          tabIndex={-1}
-          onMouseDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.key === 'Escape' && !menu && onClose()} // Escape first closes the menu
-        >
-          <div className="calendar-popup-head">
-            {game.coverId && <img className="calendar-popup-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
-            <div className="calendar-popup-main">
-              <div className="gd-head">
-                <h2>{game.name}</h2>
-                <CloseButton onClick={onClose} />
-              </div>
-              {/* One line, like the game window: "12 Mar 2027 · in 4 months · PC, Android" */}
-              <p className="calendar-popup-info">
-                {release}
-                {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
-              </p>
-              {label && <p className="calendar-popup-info">In {label}</p>}
-              <GameExtrasInfo igdbId={game.igdbId} />
-              <GamePricesInfo igdbId={game.igdbId} name={game.name} />
-              <div className="calendar-popup-actions">
-                {!status && !released && (
-                  <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>
-                    <Pin size={15} /> <span>Add to Waiting</span>
-                  </button>
-                )}
-                {!status && released && (
-                  <button
-                    className="gd-action calendar-popup-pin"
-                    onClick={(e) => {
-                      const box = e.currentTarget.getBoundingClientRect()
-                      setMenu({ x: box.left, y: box.bottom + 4 })
-                    }}
-                  >
-                    <Plus size={15} /> <span>Add to list</span> <ChevronDown size={14} />
-                  </button>
-                )}
-                <TrailerButton
-                  igdbId={game.igdbId}
-                  open={trailerOpen}
-                  onToggle={() => setTrailerOpen(!trailerOpen)}
-                />
-              </div>
-            </div>
+    <Window
+      className="dialog calendar-popup"
+      label={game.name}
+      onClose={onClose}
+      escapeCloses={!menu} // Escape first closes the menu
+      ref={popupRef}
+      inRow
+      beside={trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
+    >
+      <div className="calendar-popup-head">
+        {game.coverId && <img className="calendar-popup-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />}
+        <div className="calendar-popup-main">
+          <div className="gd-head">
+            <h2>{game.name}</h2>
+            <CloseButton onClick={onClose} />
           </div>
-          {menu && (
-            <ContextMenu
-              x={menu.x}
-              y={menu.y}
-              items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => add(place.status, place.completed) }))}
-              onClose={() => setMenu(null)}
+          {/* One line, like the game window: "12 Mar 2027 · in 4 months · PC, Android" */}
+          <p className="calendar-popup-info">
+            {release}
+            {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
+          </p>
+          {label && <p className="calendar-popup-info">In {label}</p>}
+          <GameExtrasInfo igdbId={game.igdbId} />
+          <GamePricesInfo igdbId={game.igdbId} name={game.name} />
+          <div className="calendar-popup-actions">
+            {!status && !released && (
+              <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>
+                <Pin size={15} /> <span>Add to Waiting</span>
+              </button>
+            )}
+            {!status && released && (
+              <button
+                className="gd-action calendar-popup-pin"
+                onClick={(e) => {
+                  const box = e.currentTarget.getBoundingClientRect()
+                  setMenu({ x: box.left, y: box.bottom + 4 })
+                }}
+              >
+                <Plus size={15} /> <span>Add to list</span> <ChevronDown size={14} />
+              </button>
+            )}
+            <TrailerButton
+              igdbId={game.igdbId}
+              open={trailerOpen}
+              onToggle={() => setTrailerOpen(!trailerOpen)}
             />
-          )}
+          </div>
         </div>
-        {trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
       </div>
-    </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => add(place.status, place.completed) }))}
+          onClose={() => setMenu(null)}
+        />
+      )}
+    </Window>
   )
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import changelog from '../CHANGELOG.md?raw'
 import { read, write } from './localState'
+import Window from './Window'
 import CloseButton from './CloseButton'
 
 // After an update, shows once what changed since the version last used on this device.
@@ -95,33 +96,24 @@ export function WhatsNewDialog(props: {
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), []) // so Escape works
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog whats-new"
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      >
-        <div className="dialog-head">
-          <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
-          <CloseButton onClick={onClose} />
-        </div>
-        <div className="whats-new-body">
-          {releases.map((r) => (
-            <ReleaseNotes key={r.version} release={r} showVersion={releases.length > 1} />
-          ))}
-        </div>
-        {onUpdate && (
-          <div className="dialog-buttons">
-            <button className="primary" onClick={onUpdate}>
-              Update now
-            </button>
-          </div>
-        )}
+    <Window className="dialog whats-new" label="What's new" onClose={onClose} ref={dialogRef}>
+      <div className="dialog-head">
+        <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
+        <CloseButton onClick={onClose} />
       </div>
-    </div>
+      <div className="whats-new-body">
+        {releases.map((r) => (
+          <ReleaseNotes key={r.version} release={r} showVersion={releases.length > 1} />
+        ))}
+      </div>
+      {onUpdate && (
+        <div className="dialog-buttons">
+          <button className="primary" onClick={onUpdate}>
+            Update now
+          </button>
+        </div>
+      )}
+    </Window>
   )
 }
 

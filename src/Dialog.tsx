@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Window from './Window'
 
 export interface DialogRequest {
   title: string
@@ -32,45 +33,40 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
   }
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog"
-        role="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-          // In the text field, Enter confirms. On buttons, Enter just presses the focused button.
-          if (e.key === 'Enter' && e.target === inputRef.current) confirm()
-        }}
-      >
-        <h2>{request.title}</h2>
-        {request.message && <p>{request.message}</p>}
-        {request.input && (
-          <input
-            ref={inputRef}
-            value={value}
-            placeholder={request.input.placeholder}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        )}
-        {request.checkbox && (
-          <label className="dialog-check">
-            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-            {request.checkbox}
-          </label>
-        )}
-        <div className="dialog-buttons">
-          {!request.noCancel && (
-            <button ref={cancelRef} onClick={onClose}>
-              Cancel
-            </button>
-          )}
-          <button ref={confirmRef} className={request.danger ? 'danger' : 'primary'} onClick={confirm}>
-            {request.confirmLabel}
+    <Window
+      className="dialog"
+      label={request.title}
+      onClose={onClose}
+      // In the text field, Enter confirms. On buttons, Enter just presses the focused button.
+      onKeyDown={(e) => e.key === 'Enter' && e.target === inputRef.current && confirm()}
+    >
+      <h2>{request.title}</h2>
+      {request.message && <p>{request.message}</p>}
+      {request.input && (
+        <input
+          ref={inputRef}
+          value={value}
+          placeholder={request.input.placeholder}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      )}
+      {request.checkbox && (
+        <label className="dialog-check">
+          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+          {request.checkbox}
+        </label>
+      )}
+      <div className="dialog-buttons">
+        {!request.noCancel && (
+          <button ref={cancelRef} onClick={onClose}>
+            Cancel
           </button>
-        </div>
+        )}
+        <button ref={confirmRef} className={request.danger ? 'danger' : 'primary'} onClick={confirm}>
+          {request.confirmLabel}
+        </button>
       </div>
-    </div>
+    </Window>
   )
 }
 

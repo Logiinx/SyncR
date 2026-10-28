@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, ChevronDown, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
+import Window from './Window'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
 import { openLink } from './links'
@@ -47,153 +48,145 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
 
   if (trailerOpen && !narrow) {
     return (
-      <div className="dialog-backdrop" onMouseDown={() => setTrailerOpen(false)}>
-        <TrailerTheater
-          igdbId={game.igdbId}
-          title={game.name}
-          release={releaseText(game, 'full')}
-          platforms={allPlatforms(game.platforms)}
-          onBack={() => setTrailerOpen(false)}
-          onClose={onClose}
-        />
-      </div>
+      <TrailerTheater
+        igdbId={game.igdbId}
+        title={game.name}
+        release={releaseText(game, 'full')}
+        platforms={allPlatforms(game.platforms)}
+        onBack={() => setTrailerOpen(false)}
+        onClose={onClose}
+      />
     )
   }
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div className="game-window">
-        <div
-          className="dialog game-dialog"
-          role="dialog"
-          aria-label={game.name}
-          ref={dialogRef}
-          tabIndex={-1}
-          onMouseDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-        >
-          {/* Left (PC): the cover and the actions. Phone: the cover beside the title, actions as icons */}
-          <div className="gd-side">
-            {game.coverId ? (
-              <img className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />
-            ) : (
-              <span className="gd-cover gd-cover-none">
-                <Gamepad2 size={28} />
-              </span>
+    <Window
+      className="dialog game-dialog"
+      label={game.name}
+      onClose={onClose}
+      ref={dialogRef}
+      inRow
+      beside={trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
+    >
+      {/* Left (PC): the cover and the actions. Phone: the cover beside the title, actions as icons */}
+      <div className="gd-side">
+        {game.coverId ? (
+          <img className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />
+        ) : (
+          <span className="gd-cover gd-cover-none">
+            <Gamepad2 size={28} />
+          </span>
+        )}
+        <div className="gd-actions">
+          {/* The main action, in blue, first */}
+          <TrailerButton
+            igdbId={game.igdbId}
+            open={trailerOpen}
+            onToggle={() => setTrailerOpen(!trailerOpen)}
+          />
+          <button
+            className={game.priority ? 'gd-action on' : 'gd-action'}
+            onClick={() => updateGame(game.id, { priority: !game.priority })}
+            title={priorityLabel(game)}
+            aria-pressed={game.priority}
+          >
+            {isFavoriteTab(game)
+              ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>Favorite</span></>
+              : <><Sparkles size={15} /> <span>Priority</span></>}
+          </button>
+          <button
+            className="gd-action"
+            onClick={async () => {
+              if (pinned) return unpinGameFromBoard(game.id)
+              await pinGameToBoard(game)
+              window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
+            }}
+            title={pinned ? 'Unpin from Board' : 'Pin to Board'}
+          >
+            {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? 'Unpin from Board' : 'Pin to Board'}</span>
+          </button>
+          {/* Its release event (made by SyncR for Waiting games, games.ts) */}
+          {releaseEvent && (
+            <button className="gd-action" title="Open in Google Calendar" onClick={() => openLink(releaseEvent.link)}>
+              <CalendarDays size={15} /> <span>Google Calendar</span>
+            </button>
+          )}
+          <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
+            <Trash2 size={15} /> <span>Remove from list</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="gd-main">
+        <div className="gd-head">
+          <div className="gd-title">
+            <h2>{game.name}</h2>
+            <p>
+              {releaseText(game, 'full')}
+              {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
+            </p>
+            {releaseEvent && releaseEvent.alerts.length > 0 && (
+              <p>Alert: {formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
             )}
-            <div className="gd-actions">
-              {/* The main action, in blue, first */}
-              <TrailerButton
-                igdbId={game.igdbId}
-                open={trailerOpen}
-                onToggle={() => setTrailerOpen(!trailerOpen)}
-              />
-              <button
-                className={game.priority ? 'gd-action on' : 'gd-action'}
-                onClick={() => updateGame(game.id, { priority: !game.priority })}
-                title={priorityLabel(game)}
-                aria-pressed={game.priority}
-              >
-                {isFavoriteTab(game)
-                  ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>Favorite</span></>
-                  : <><Sparkles size={15} /> <span>Priority</span></>}
-              </button>
-              <button
-                className="gd-action"
-                onClick={async () => {
-                  if (pinned) return unpinGameFromBoard(game.id)
-                  await pinGameToBoard(game)
-                  window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
-                }}
-                title={pinned ? 'Unpin from Board' : 'Pin to Board'}
-              >
-                {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? 'Unpin from Board' : 'Pin to Board'}</span>
-              </button>
-              {/* Its release event (made by SyncR for Waiting games, games.ts) */}
-              {releaseEvent && (
-                <button className="gd-action" title="Open in Google Calendar" onClick={() => openLink(releaseEvent.link)}>
-                  <CalendarDays size={15} /> <span>Google Calendar</span>
-                </button>
-              )}
-              <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
-                <Trash2 size={15} /> <span>Remove from list</span>
-              </button>
-            </div>
+            <GameExtrasInfo igdbId={game.igdbId} />
+            <GamePricesInfo igdbId={game.igdbId} name={game.name} />
           </div>
+          <CloseButton onClick={onClose} />
+        </div>
 
-          <div className="gd-main">
-            <div className="gd-head">
-              <div className="gd-title">
-                <h2>{game.name}</h2>
-                <p>
-                  {releaseText(game, 'full')}
-                  {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
-                </p>
-                {releaseEvent && releaseEvent.alerts.length > 0 && (
-                  <p>Alert: {formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
-                )}
-                <GameExtrasInfo igdbId={game.igdbId} />
-                <GamePricesInfo igdbId={game.igdbId} name={game.name} />
+        <FillSwitch
+          className="gd-status"
+          options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
+          value={game.status}
+          onChange={(status) => status !== game.status && setGameStatus(game.id, status)}
+        />
+
+        {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
+
+        {played && (
+          <>
+            <div className="gd-field">
+              <span>Your rating</span>
+              <div className="game-rating">
+                <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
+                {!!game.rating && <span className="game-rating-number">{game.rating} / 5</span>}
+                <button
+                  className={game.completed ? 'game-completed on' : 'game-completed'}
+                  onClick={() => updateGame(game.id, { completed: !game.completed })}
+                  aria-pressed={!!game.completed}
+                >
+                  <CircleCheck size={16} />
+                  Completed
+                </button>
               </div>
-              <CloseButton onClick={onClose} />
             </div>
-
-            <FillSwitch
-              className="gd-status"
-              options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
-              value={game.status}
-              onChange={(status) => status !== game.status && setGameStatus(game.id, status)}
-            />
-
-            {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
-
-            {played && (
-              <>
-                <div className="gd-field">
-                  <span>Your rating</span>
-                  <div className="game-rating">
-                    <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
-                    {!!game.rating && <span className="game-rating-number">{game.rating} / 5</span>}
-                    <button
-                      className={game.completed ? 'game-completed on' : 'game-completed'}
-                      onClick={() => updateGame(game.id, { completed: !game.completed })}
-                      aria-pressed={!!game.completed}
-                    >
-                      <CircleCheck size={16} />
-                      Completed
-                    </button>
-                  </div>
-                </div>
-                {/* From Steam: hours played and achievements (gold at 100%) */}
-                {game.steamStats && <SteamStatsView stats={game.steamStats} />}
-                <HiddenText
-                  label="Review"
-                  rows={3}
-                  value={review}
-                  placeholder="What did you think?"
-                  onChange={(text) => {
-                    setReview(text)
-                    updateGame(game.id, { review: text })
-                  }}
-                />
-              </>
-            )}
-
+            {/* From Steam: hours played and achievements (gold at 100%) */}
+            {game.steamStats && <SteamStatsView stats={game.steamStats} />}
             <HiddenText
-              label="Note"
-              rows={2}
-              value={note}
-              placeholder="Optional"
+              label="Review"
+              rows={3}
+              value={review}
+              placeholder="What did you think?"
               onChange={(text) => {
-                setNote(text)
-                updateGame(game.id, { note: text })
+                setReview(text)
+                updateGame(game.id, { review: text })
               }}
             />
-          </div>
-        </div>
-        {trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
+          </>
+        )}
+
+        <HiddenText
+          label="Note"
+          rows={2}
+          value={note}
+          placeholder="Optional"
+          onChange={(text) => {
+            setNote(text)
+            updateGame(game.id, { note: text })
+          }}
+        />
       </div>
-    </div>
+    </Window>
   )
 }
 

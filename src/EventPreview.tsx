@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Bell, Repeat } from 'lucide-react'
 import type { CalendarEvent } from './db'
+import Window from './Window'
 import CloseButton from './CloseButton'
 
 // A calendar event, shown big (left click on an event in the Reminders tab): the whole title
@@ -36,39 +37,32 @@ function EventPreview(props: {
   useEffect(() => editRef.current?.focus(), []) // so Enter edits
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog event-preview"
-        role="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      >
-        <div className="dialog-head">
-          <h2 className="event-preview-title">{event.title}</h2>
-          <CloseButton onClick={onClose} />
-        </div>
-        <p className="event-preview-when">{whenText(event)}</p>
-        <p className="event-preview-info">
-          <Bell size={14} />
-          {event.alerts.length === 0 ? 'No alert' : event.alerts.map(alertText).join(', ')}
-        </p>
-        {event.seriesId && (
-          <p className="event-preview-info">
-            <Repeat size={14} />
-            Repeating event
-          </p>
-        )}
-        {event.description && <p className="event-preview-notes">{event.description}</p>}
-        <div className="dialog-buttons">
-          <button className="danger event-delete" onClick={props.onDelete}>
-            Delete
-          </button>
-          <button ref={editRef} className="primary" onClick={props.onEdit}>
-            Edit
-          </button>
-        </div>
+    <Window className="dialog event-preview" label={event.title} onClose={onClose}>
+      <div className="dialog-head">
+        <h2 className="event-preview-title">{event.title}</h2>
+        <CloseButton onClick={onClose} />
       </div>
-    </div>
+      <p className="event-preview-when">{whenText(event)}</p>
+      <p className="event-preview-info">
+        <Bell size={14} />
+        {event.alerts.length === 0 ? 'No alert' : event.alerts.map(alertText).join(', ')}
+      </p>
+      {event.seriesId && (
+        <p className="event-preview-info">
+          <Repeat size={14} />
+          Repeating event
+        </p>
+      )}
+      {event.description && <p className="event-preview-notes">{event.description}</p>}
+      <div className="dialog-buttons">
+        <button className="danger event-delete" onClick={props.onDelete}>
+          Delete
+        </button>
+        <button ref={editRef} className="primary" onClick={props.onEdit}>
+          Edit
+        </button>
+      </div>
+    </Window>
   )
 }
 

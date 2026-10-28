@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CalendarEvent } from './db'
+import Window from './Window'
 import {
   createEvent,
   loadSeriesRepeat,
@@ -130,102 +131,99 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
   }
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog reminder-dialog event-dialog"
-        role="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-          if (e.key === 'Enter' && e.target === titleRef.current && !e.shiftKey && !touchScreen) {
-            e.preventDefault() // no new line
-            save()
-          }
-        }}
-      >
-        <h2>{event ? 'Edit event' : 'New event'}</h2>
-        <textarea
-          ref={titleRef}
-          className="event-title"
-          rows={1}
-          value={title}
-          placeholder="Title"
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <input type={allDay ? 'date' : 'datetime-local'} value={when} onChange={(e) => setWhen(e.target.value)} />
-        <div className="event-options">
-          {!allDay && (
-            <label>
-              <span>Alert</span>
-              <select
-                value={alert === null ? 'none' : String(alert)}
-                onChange={(e) => setAlert(e.target.value === 'none' ? null : e.target.value === 'keep' ? 'keep' : Number(e.target.value))}
-              >
-                {alertChoice(event) === 'keep' && <option value="keep">Keep current alerts</option>}
-                {ALERTS.map(([minutes, label]) => (
-                  <option key={label} value={minutes === null ? 'none' : String(minutes)}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {/* New events, or all events of a series (no "Doesn't repeat" there: to end a series,
-              delete it). A rule SyncR can't show is kept as it is ("Custom") */}
-          {(!event || wholeSeries) && (
-            <label>
-              <span>Repeat</span>
-              <select
-                value={loadingSeries ? 'loading' : repeat}
-                disabled={loadingSeries}
-                onChange={(e) => setRepeat(e.target.value as Repeat | SeriesRepeat)}
-              >
-                {loadingSeries && <option value="loading">Loading…</option>}
-                {seriesRule === 'custom' && <option value="custom">Custom (kept as is)</option>}
-                {REPEATS.filter(([value]) => !event || value !== 'none').map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        {event?.seriesId && (
-          <label className="dialog-check">
-            <input type="checkbox" checked={wholeSeries} onChange={(e) => toggleSeries(e.target.checked)} />
-            All events in the series
+    <Window
+      className="dialog reminder-dialog event-dialog"
+      label={event ? 'Edit event' : 'New event'}
+      onClose={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.target === titleRef.current && !e.shiftKey && !touchScreen) {
+          e.preventDefault() // no new line
+          save()
+        }
+      }}
+    >
+      <h2>{event ? 'Edit event' : 'New event'}</h2>
+      <textarea
+        ref={titleRef}
+        className="event-title"
+        rows={1}
+        value={title}
+        placeholder="Title"
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <input type={allDay ? 'date' : 'datetime-local'} value={when} onChange={(e) => setWhen(e.target.value)} />
+      <div className="event-options">
+        {!allDay && (
+          <label>
+            <span>Alert</span>
+            <select
+              value={alert === null ? 'none' : String(alert)}
+              onChange={(e) => setAlert(e.target.value === 'none' ? null : e.target.value === 'keep' ? 'keep' : Number(e.target.value))}
+            >
+              {alertChoice(event) === 'keep' && <option value="keep">Keep current alerts</option>}
+              {ALERTS.map(([minutes, label]) => (
+                <option key={label} value={minutes === null ? 'none' : String(minutes)}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </label>
         )}
-        {showNotes ? (
-          <textarea value={description} placeholder="Notes" rows={3} onChange={(e) => setDescription(e.target.value)} />
-        ) : (
-          <button className="event-add-notes" onClick={() => setShowNotes(true)}>
-            + Add notes
+        {/* New events, or all events of a series (no "Doesn't repeat" there: to end a series,
+            delete it). A rule SyncR can't show is kept as it is ("Custom") */}
+        {(!event || wholeSeries) && (
+          <label>
+            <span>Repeat</span>
+            <select
+              value={loadingSeries ? 'loading' : repeat}
+              disabled={loadingSeries}
+              onChange={(e) => setRepeat(e.target.value as Repeat | SeriesRepeat)}
+            >
+              {loadingSeries && <option value="loading">Loading…</option>}
+              {seriesRule === 'custom' && <option value="custom">Custom (kept as is)</option>}
+              {REPEATS.filter(([value]) => !event || value !== 'none').map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {event?.seriesId && (
+        <label className="dialog-check">
+          <input type="checkbox" checked={wholeSeries} onChange={(e) => toggleSeries(e.target.checked)} />
+          All events in the series
+        </label>
+      )}
+      {showNotes ? (
+        <textarea value={description} placeholder="Notes" rows={3} onChange={(e) => setDescription(e.target.value)} />
+      ) : (
+        <button className="event-add-notes" onClick={() => setShowNotes(true)}>
+          + Add notes
+        </button>
+      )}
+      {error && <p className="event-error">{error}</p>}
+      <div className="dialog-buttons">
+        {event && (
+          <button className="danger event-delete" disabled={saving} onClick={() => props.onDelete(event)}>
+            Delete
           </button>
         )}
-        {error && <p className="event-error">{error}</p>}
-        <div className="dialog-buttons">
-          {event && (
-            <button className="danger event-delete" disabled={saving} onClick={() => props.onDelete(event)}>
-              Delete
-            </button>
+        <button onClick={onClose}>Cancel</button>
+        <button className="primary" disabled={!canSave} onClick={save}>
+          {saving ? (
+            <span className="loading-line">
+              <Spinner size={13} /> Saving…
+            </span>
+          ) : event ? (
+            'Save'
+          ) : (
+            'Add'
           )}
-          <button onClick={onClose}>Cancel</button>
-          <button className="primary" disabled={!canSave} onClick={save}>
-            {saving ? (
-              <span className="loading-line">
-                <Spinner size={13} /> Saving…
-              </span>
-            ) : event ? (
-              'Save'
-            ) : (
-              'Add'
-            )}
-          </button>
-        </div>
+        </button>
       </div>
-    </div>
+    </Window>
   )
 }
 

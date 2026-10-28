@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CloseButton from './CloseButton'
+import Window from './Window'
 import Cover from './GameCover'
 import Spinner from './Spinner'
 import { db } from './db'
@@ -102,80 +103,71 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog steam-import"
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      >
-        <div className="dialog-head">
-          <h2>Import from Steam</h2>
-          <CloseButton onClick={onClose} />
-        </div>
-        {error ? (
-          <p className="steam-import-note">{error}</p>
-        ) : !rows ? (
-          <p className="steam-import-note">
-            <Spinner size={14} /> Loading your Steam games…
-          </p>
-        ) : (
-          <>
-            <div className="steam-import-head">
-              <span>
-                {shown.length > 0
-                  ? `${shown.length} not in SyncR yet`
-                  : skippedCount > 0 ? 'Nothing new: the rest is skipped' : 'All your Steam games are in SyncR'}
-              </span>
-              {shown.length > 0 && (
-                <>
-                  <button onClick={() => setTicked(new Set(shown.filter((r) => r.game).map((r) => r.appId)))}>All</button>
-                  <button onClick={() => setTicked(new Set())}>None</button>
-                </>
-              )}
-              {skippedCount > 0 && (
-                <label className="dialog-check">
-                  <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} />
-                  Show skipped ({skippedCount})
-                </label>
-              )}
-            </div>
-            <div className="steam-import-list">
-              {shown.map((row) => (
-                <label key={row.appId} className={row.game ? 'steam-import-row' : 'steam-import-row unknown'} title={row.name}>
-                  <input
-                    type="checkbox"
-                    checked={!!row.game && ticked.has(row.appId)}
-                    disabled={!row.game}
-                    onChange={(e) => tick(row.appId, e.target.checked)}
-                  />
-                  <Cover coverId={row.game?.coverId} />
-                  <span className="steam-import-text">
-                    <span className="steam-import-name" title={row.name}>{row.name}</span>
-                    <span className="steam-import-details">
-                      {[
-                        row.minutes > 0 ? playedText(row.minutes) : 'Never played',
-                        !row.game && 'Not found on IGDB',
-                        skipped.has(row.appId) && 'Skipped',
-                      ].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </>
-        )}
-        <div className="dialog-buttons">
-          <button onClick={onClose}>Cancel</button>
-          {!error && rows && shown.length > 0 && (
-            <button className="primary" onClick={confirm} disabled={busy}>
-              {chosen.length > 0 ? `Add ${chosen.length} to Library` : 'Skip all'}
-            </button>
-          )}
-        </div>
+    <Window className="dialog steam-import" label="Import from Steam" onClose={onClose} ref={dialogRef}>
+      <div className="dialog-head">
+        <h2>Import from Steam</h2>
+        <CloseButton onClick={onClose} />
       </div>
-    </div>
+      {error ? (
+        <p className="steam-import-note">{error}</p>
+      ) : !rows ? (
+        <p className="steam-import-note">
+          <Spinner size={14} /> Loading your Steam games…
+        </p>
+      ) : (
+        <>
+          <div className="steam-import-head">
+            <span>
+              {shown.length > 0
+                ? `${shown.length} not in SyncR yet`
+                : skippedCount > 0 ? 'Nothing new: the rest is skipped' : 'All your Steam games are in SyncR'}
+            </span>
+            {shown.length > 0 && (
+              <>
+                <button onClick={() => setTicked(new Set(shown.filter((r) => r.game).map((r) => r.appId)))}>All</button>
+                <button onClick={() => setTicked(new Set())}>None</button>
+              </>
+            )}
+            {skippedCount > 0 && (
+              <label className="dialog-check">
+                <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} />
+                Show skipped ({skippedCount})
+              </label>
+            )}
+          </div>
+          <div className="steam-import-list">
+            {shown.map((row) => (
+              <label key={row.appId} className={row.game ? 'steam-import-row' : 'steam-import-row unknown'} title={row.name}>
+                <input
+                  type="checkbox"
+                  checked={!!row.game && ticked.has(row.appId)}
+                  disabled={!row.game}
+                  onChange={(e) => tick(row.appId, e.target.checked)}
+                />
+                <Cover coverId={row.game?.coverId} />
+                <span className="steam-import-text">
+                  <span className="steam-import-name" title={row.name}>{row.name}</span>
+                  <span className="steam-import-details">
+                    {[
+                      row.minutes > 0 ? playedText(row.minutes) : 'Never played',
+                      !row.game && 'Not found on IGDB',
+                      skipped.has(row.appId) && 'Skipped',
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="dialog-buttons">
+        <button onClick={onClose}>Cancel</button>
+        {!error && rows && shown.length > 0 && (
+          <button className="primary" onClick={confirm} disabled={busy}>
+            {chosen.length > 0 ? `Add ${chosen.length} to Library` : 'Skip all'}
+          </button>
+        )}
+      </div>
+    </Window>
   )
 }

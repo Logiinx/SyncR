@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
 import BackButton from './BackButton'
+import Window from './Window'
 import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
@@ -231,15 +232,8 @@ export function TrailerTheater(props: {
     extras.publishers.length > 0 && `Publisher: ${extras.publishers.join(', ')}`,
   ].filter(Boolean)
   return (
-    <div
-      ref={theaterRef}
-      className="trailer-theater"
-      role="dialog"
-      aria-label={`${props.title}: ${trailer.name}`}
-      tabIndex={-1}
-      onMouseDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.key === 'Escape' && props.onBack()}
-    >
+    // A click outside or Escape goes back to the game; ✕ closes it
+    <Window className="trailer-theater" label={`${props.title}: ${trailer.name}`} onClose={props.onBack} ref={theaterRef}>
       <header className="trailer-theater-bar">
         <BackButton onClick={props.onBack} title="Back to the game" />
         <div className="trailer-theater-info">
@@ -259,7 +253,7 @@ export function TrailerTheater(props: {
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
       />
-    </div>
+    </Window>
   )
 }
 

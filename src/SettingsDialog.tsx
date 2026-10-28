@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, type LucideIcon } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
+import Window from './Window'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
@@ -289,41 +290,31 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   )
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <div
-        className="dialog settings"
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-label="Settings"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      >
-        <div className="dialog-head">
-          {manage ? (
-            <button className="settings-back" onClick={() => showManage(false)}>
-              <ChevronLeft size={18} /> Accounts
-            </button>
-          ) : (
-            <h2>Settings</h2>
-          )}
-          <CloseButton onClick={onClose} />
-        </div>
+    <Window className="dialog settings" label="Settings" onClose={onClose} ref={dialogRef}>
+      <div className="dialog-head">
         {manage ? (
-          <div className="settings-manage">
-            <div>
-              <GamesSettings />
-            </div>
-            <div>
-              <GoogleSettings />
-              {mail && <GmailSettings />}
-            </div>
-          </div>
+          <button className="settings-back" onClick={() => showManage(false)}>
+            <ChevronLeft size={18} /> Accounts
+          </button>
         ) : (
-          cards
+          <h2>Settings</h2>
         )}
+        <CloseButton onClick={onClose} />
       </div>
-    </div>
+      {manage ? (
+        <div className="settings-manage">
+          <div>
+            <GamesSettings />
+          </div>
+          <div>
+            <GoogleSettings />
+            {mail && <GmailSettings />}
+          </div>
+        </div>
+      ) : (
+        cards
+      )}
+    </Window>
   )
 }
 
