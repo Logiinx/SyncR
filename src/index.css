@@ -4101,8 +4101,9 @@ button {
   font-weight: 600;
 }
 
-/* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, read mail dimmed */
-.mail-row .menu-swatch {
+/* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, read mail dimmed.
+   The color dot (also on Reminders' event rows) sits on the first line. */
+.reminder-row > .menu-swatch {
   align-self: flex-start;
   margin-top: 5px;
 }
@@ -4649,15 +4650,16 @@ h3.games-group-title {
 }
 
 /* A reminder in a day: "14:30 Text", up to 3 lines */
+/* --event: the event's Google color (RemindersView.tsx), else blue */
 .calendar-reminder {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   padding: 2px 4px;
-  border-left: 2px solid var(--link);
+  border-left: 2px solid var(--event, var(--link));
   border-radius: 3px;
-  background: color-mix(in srgb, var(--link) 10%, var(--bg));
+  background: color-mix(in srgb, var(--event, var(--link)) 10%, var(--bg));
   color: var(--text);
   font-size: 0.75em;
   line-height: 1.3;
@@ -4666,7 +4668,7 @@ h3.games-group-title {
 }
 
 .calendar-reminder:hover {
-  background: color-mix(in srgb, var(--link) 18%, var(--bg));
+  background: color-mix(in srgb, var(--event, var(--link)) 18%, var(--bg));
 }
 
 .calendar-reminder-time {

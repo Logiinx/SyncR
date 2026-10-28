@@ -12,7 +12,7 @@ import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
 import { gameMenuItems, usePinnedGames } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
-import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
+import { deleteEvent, deleteSeries, eventColor, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
 import EventPreview from './EventPreview'
 import Spinner from './Spinner'
@@ -156,6 +156,8 @@ function RemindersView() {
         setEventMenu({ event, x: e.clientX, y: e.clientY })
       }}
     >
+      {/* A dot in the event's Google color (blue without one), like a Mail row's account dot */}
+      <span className="menu-swatch" style={{ background: eventColor(event.colorId) ?? 'var(--link)' }} />
       <span className="reminder-row-text">
         <span className="reminder-text" title={event.title}>{event.title}</span>
         {event.description && <span className="reminder-row-note" title={event.description}>{event.description}</span>}
@@ -384,6 +386,7 @@ function ReminderGrid(props: {
                 props.onEventMenu(event, e.clientX, e.clientY)
               }}
               title={event.description ? `${event.title}\n${event.description}` : event.title}
+              style={{ '--event': eventColor(event.colorId) } as React.CSSProperties}
             >
               {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>}
               {event.seriesId && <Repeat size={11} className="calendar-repeat" aria-label="Repeating event" />} {event.title}

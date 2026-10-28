@@ -6,19 +6,14 @@ import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useInstantMail } from './instantMail'
 import { useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
+import { eventColor } from './calendarEvents'
 
-// Google Calendar's event colors (colorId "1" to "11"), for the card's strip. None: the accent.
-const EVENT_COLORS: Record<string, string> = {
-  1: '#7986cb', 2: '#33b679', 3: '#8e24aa', 4: '#e67c73', 5: '#f6bf26', 6: '#f4511e',
-  7: '#039be5', 8: '#616161', 9: '#3f51b5', 10: '#0b8043', 11: '#d50000',
-}
-
-// One due event alert: a strip in the event's color, time, title, note. A click on the text
+// One due event alert: a strip in the event's color (none: the accent), time, title, note. A click on the text
 // opens the event in SyncR (a price alert: its game). Done (big) and Snooze, which unfolds its choices in place of the
 // buttons (inside the card: a menu could be cut off by the pop-up window's edge).
 export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (action: ReminderAction) => void }) {
   const [snoozing, setSnoozing] = useState(false)
-  const color = item.colorId && EVENT_COLORS[item.colorId]
+  const color = eventColor(item.colorId)
   return (
     <div className="reminder-alert" style={color ? { borderLeftColor: color } : undefined}>
       <button className="reminder-alert-body" onClick={() => onAction('open')} title="Show in SyncR">

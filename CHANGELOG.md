@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 
 **Reminders**
 - Right-click a game (list or month grid) for the same menu as in Games: move, priority, watch price, pin to Board, remove.
+- Events show their Google Calendar color: a dot in the list, the stripe in the month grid (blue when they have none).
 
 **Games**
 - Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.

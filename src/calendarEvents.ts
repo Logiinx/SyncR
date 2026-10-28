@@ -12,6 +12,15 @@ const MONTHS_AHEAD = 11 // like the grid's MAX_MONTHS (RemindersView.tsx): 12 mo
 const REFRESH_MS = 5 * 60 * 1000 // while the Reminders tab is open
 const MIN_SPIN_MS = 600 // the refresh button's ring, at least
 
+// Google Calendar's event colors (colorId "1" to "11"): the alert card's strip, the Reminders
+// list's dot and the month grid's stripe. No color (the calendar's own): undefined, each
+// place has its default.
+const EVENT_COLORS: Record<string, string> = {
+  1: '#7986cb', 2: '#33b679', 3: '#8e24aa', 4: '#e67c73', 5: '#f6bf26', 6: '#f4511e',
+  7: '#039be5', 8: '#616161', 9: '#3f51b5', 10: '#0b8043', 11: '#d50000',
+}
+export const eventColor = (colorId?: string): string | undefined => (colorId ? EVENT_COLORS[colorId] : undefined)
+
 // Google's event, the parts we use
 interface GoogleEvent {
   id: string
