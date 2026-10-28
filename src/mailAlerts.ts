@@ -271,12 +271,13 @@ export async function runMailAction(key: string, action: MailAction) {
 const setUnread = (alert: MailAlert, unread: boolean) => changeMail(alert.key, unread ? 'unread' : 'read')
 
 // A change to a mail from the pop-up or the Mail tab (key: "mail:<account>:<id>"). Its card
-// and its "missed" mark go (Keep unread: only the mark).
-export async function changeMail(key: string, change: 'read' | 'unread' | 'archive' | 'keep') {
+// and its "missed" mark go (Keep unread: only the mark). Delete = Gmail's Trash (30 days).
+export async function changeMail(key: string, change: 'read' | 'unread' | 'archive' | 'trash' | 'keep') {
   saveMissed(loadMissed().filter((k) => k !== key))
   if (change === 'keep') return
   if (loadMailAlerts().some((a) => a.key === key && !a.opened)) removeAlert(key)
   const [, account, id] = key.split(':')
+  if (change === 'trash') return void (await gmailApi(account, `messages/${id}/trash`, { method: 'POST' }))
   const labels =
     change === 'read' ? { removeLabelIds: ['UNREAD'] }
     : change === 'unread' ? { addLabelIds: ['UNREAD'] }

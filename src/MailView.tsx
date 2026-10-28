@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { Archive, BellOff, ExternalLink, Mail, MailOpen, RefreshCw, Trash2 } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
 import { useGmailAccounts } from './gmail'
@@ -16,8 +16,8 @@ import Spinner from './Spinner'
 // laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others.
 // "Missed" on top: unread emails whose pop-up faded by itself; then the others. A click reads
 // the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ← Back, Done or
-// Escape return to the list. Right-click: Mark as read / unread, Remove from Missed, Archive,
-// Open in Gmail.
+// Escape return to the list. Right-click (sender and subject on top): Open in Gmail, Mark as
+// read / unread, Remove from Missed, Archive, Delete (to Gmail's Trash, without asking).
 function MailView() {
   const pageRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -29,7 +29,7 @@ function MailView() {
   const [unreadOnly, setUnreadOnly] = useLocalState('syncr.mail.unreadOnly', false)
   // Marked read / unread here: shown right away, until the list comes back from Gmail
   const [marked, setMarked] = useState<Map<string, boolean>>(new Map())
-  const [archived, setArchived] = useState<Set<string>>(new Set())
+  const [removed, setRemoved] = useState<Set<string>>(new Set()) // archived or deleted here
   const [menu, setMenu] = useState<{ mail: MailboxRow; x: number; y: number } | null>(null)
   const [reading, setReading] = useState<MailAlert | null>(null)
 
@@ -43,14 +43,14 @@ function MailView() {
   }, [reading])
 
   const isUnread = (mail: MailboxRow) => marked.get(mail.key) ?? mail.unread
-  const shown = (rows ?? []).filter((mail) => !archived.has(mail.key))
+  const shown = (rows ?? []).filter((mail) => !removed.has(mail.key))
   const missedRows = shown.filter((mail) => missed.includes(mail.key) && isUnread(mail))
   const otherRows = shown.filter((mail) => !missedRows.includes(mail) && (!unreadOnly || isUnread(mail)))
 
   // Shown right away; if Gmail can't be reached, the next refresh shows the real state
-  function change(mail: MailAlert, what: 'read' | 'unread' | 'archive' | 'keep') {
+  function change(mail: MailAlert, what: 'read' | 'unread' | 'archive' | 'trash' | 'keep') {
     if (what === 'read' || what === 'unread') setMarked((map) => new Map(map).set(mail.key, what === 'unread'))
-    if (what === 'archive') setArchived((keys) => new Set(keys).add(mail.key))
+    if (what === 'archive' || what === 'trash') setRemoved((keys) => new Set(keys).add(mail.key))
     changeMail(mail.key, what).catch((error) => console.error(error))
   }
 
@@ -146,15 +146,17 @@ function MailView() {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
+          header={{ title: menu.mail.from, subtitle: menu.mail.subject }}
           items={[
-            { label: 'Open in Gmail', onClick: () => openLink(gmailLink(menu.mail)) },
+            { label: 'Open in Gmail', icon: ExternalLink, onClick: () => openLink(gmailLink(menu.mail)) },
             isUnread(menu.mail)
-              ? { label: 'Mark as read', onClick: () => change(menu.mail, 'read') }
-              : { label: 'Mark as unread', onClick: () => change(menu.mail, 'unread') },
+              ? { label: 'Mark as read', icon: MailOpen, divider: true, onClick: () => change(menu.mail, 'read') }
+              : { label: 'Mark as unread', icon: Mail, divider: true, onClick: () => change(menu.mail, 'unread') },
             ...(missedRows.includes(menu.mail)
-              ? [{ label: 'Remove from Missed', onClick: () => change(menu.mail, 'keep') }]
+              ? [{ label: 'Remove from Missed', icon: BellOff, onClick: () => change(menu.mail, 'keep') }]
               : []),
-            { label: 'Archive', divider: true, onClick: () => change(menu.mail, 'archive') },
+            { label: 'Archive', icon: Archive, onClick: () => change(menu.mail, 'archive') },
+            { label: 'Delete', icon: Trash2, danger: true, onClick: () => change(menu.mail, 'trash') },
           ]}
         />
       )}

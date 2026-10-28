@@ -2845,7 +2845,10 @@ button {
 }
 
 .context-menu button {
-  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: 5px;
   text-align: left;
 }
@@ -2854,11 +2857,39 @@ button {
   background: var(--border);
 }
 
-/* "Color…" lists: a dot before the name, a ✓ after the current one */
-.context-menu button:has(.menu-swatch, .menu-check) {
+/* An icon before the label; "Color…" lists: a dot before the name, a ✓ after the current one */
+.menu-icon {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.context-menu .danger .menu-icon {
+  color: inherit;
+}
+
+/* What was right-clicked (e.g. a mail's sender and subject), above the actions */
+.context-menu-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  padding: 6px 10px 4px;
+}
+
+.context-menu-title,
+.context-menu-subtitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.context-menu-title {
+  font-weight: 600;
+}
+
+.context-menu-subtitle {
+  color: var(--text-dim);
+  font-size: 0.9em;
 }
 
 .menu-swatch {
