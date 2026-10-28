@@ -137,7 +137,7 @@ function useSlidingLine(
     slide.current = null
   }
 
-  // Screen pixels → the zoomed page's pixels (Settings → App scaling). A line: on the page,
+  // Screen pixels → the zoomed page's pixels (Settings → App → App scaling). A line: on the page,
   // never outside the row. A fill: inside the row (from its top left corner).
   function draw(s: Slide) {
     const zoom = currentZoom()

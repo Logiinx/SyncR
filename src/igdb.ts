@@ -52,7 +52,7 @@ function proxyUrl(typed: string) {
 // Another request to the same proxy, e.g. Google Calendar's sign-in (google.ts)
 export async function igdbProxyFetch(path: string, body: string, timeoutMs: number) {
   const connection = await loadConnection()
-  if (!isComplete(connection)) throw new Error('Set up the game search proxy first (Settings → Games)')
+  if (!isComplete(connection)) throw new Error('Set up the game search proxy first (Settings → Accounts)')
   try {
     return await fetch(`${proxyUrl(connection.url)}/${path}`, {
       method: 'POST',
@@ -69,7 +69,7 @@ export async function igdbProxyFetch(path: string, body: string, timeoutMs: numb
 // connection: to check one that isn't saved yet (Settings); otherwise the saved one.
 export async function igdb<T>(endpoint: string, query: string, connection?: IgdbConnection): Promise<T[]> {
   connection ??= await loadConnection()
-  if (!isComplete(connection)) throw new Error('Game search is not set up (Settings → Games)')
+  if (!isComplete(connection)) throw new Error('Game search is not set up (Settings → Accounts)')
   let response: Response
   try {
     response = await fetch(`${proxyUrl(connection.url)}/${endpoint}`, {

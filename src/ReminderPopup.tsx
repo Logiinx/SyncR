@@ -121,7 +121,7 @@ function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[]) {
   }, [due, mails])
 }
 
-// Emails fade by themselves after the delay chosen in Settings → Gmail (never by default),
+// Emails fade by themselves after the delay chosen in Settings → Alerts → Emails (never by default),
 // counted from when each card appeared. Not while the mouse is over the pop-up or a mail is
 // open to read: then every card starts its delay again afterwards. Opened (read) cards don't
 // fade. A faded card goes as "missed" (mailAlerts.ts); its mail stays unread.

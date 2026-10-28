@@ -147,7 +147,7 @@ function GamesView() {
             <GameCalendar inList={inList} layout={layout} top={top} onOpen={setOpenId} />
           ) : (
             connection && (
-              <p className="games-empty">To see upcoming games, set up the game search in Settings → Games.</p>
+              <p className="games-empty">To see upcoming games, set up the game search in Settings → Accounts.</p>
             )
           )
         ) : (
@@ -190,7 +190,7 @@ function GamesView() {
                       )
                     })}
                   </div>
-                  {/* Library, with a Steam profile set (Settings → Games) */}
+                  {/* Library, with a Steam profile set (Settings → Accounts) */}
                   {shown === 'library' && steam?.steamId && (
                     <button className="games-import" onClick={() => setImporting(true)}>
                       <Download size={14} /> Import from Steam…
@@ -401,7 +401,7 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
 
   if (connection === undefined) return null
   if (!connected) {
-    return <p className="games-empty">To search for games, set up the game search in Settings → Games.</p>
+    return <p className="games-empty">To search for games, set up the game search in Settings → Accounts.</p>
   }
 
   return (

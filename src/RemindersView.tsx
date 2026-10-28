@@ -101,7 +101,7 @@ function RemindersView() {
     else
       setDialog({
         title: 'Connect Google Calendar',
-        message: 'New events go to your Google Calendar. Connect it first in Settings → Google Calendar.',
+        message: 'New events go to your Google Calendar. Connect it first in Settings → Accounts.',
         confirmLabel: 'OK',
         noCancel: true,
         onConfirm: () => {},

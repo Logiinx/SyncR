@@ -11,7 +11,7 @@ import { read, write } from './localState'
 // then doesn't pop up. A card goes when its mail is read (here, in Gmail or on the phone), or
 // with "Keep unread" (the mail stays unread). A card opened to read the mail (MailReader.tsx)
 // marks it read and stays until closed (Done, Mark as unread). A card that faded by itself
-// (Settings → Gmail) leaves its mail unread and "missed", for the Mail tab.
+// (Settings → Alerts → Emails) leaves its mail unread and "missed", for the Mail tab.
 
 export interface MailAlert {
   key: string // "mail:<account>:<message id>"

@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { AppWindow, Bell, ChevronLeft, NotebookPen, Plug, type LucideIcon } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -41,13 +42,33 @@ import {
 } from './appearance'
 import Spinner from './Spinner'
 import CloseButton from './CloseButton'
+import { useLocalState } from './localState'
 
-// Settings. Changes are saved right away. Closed with Escape or a click outside it.
+// Settings, in four categories (the list on the left, one shown at a time; the last one used
+// opens again). Phone: the list first, a tap opens a category, ← Back returns. Changes are
+// saved right away. Closed with Escape or a click outside it.
+type Category = 'notes' | 'alerts' | 'accounts' | 'app'
+
+const CATEGORIES: { id: Category; name: string; icon: LucideIcon }[] = [
+  { id: 'notes', name: 'Notes', icon: NotebookPen },
+  { id: 'alerts', name: 'Alerts', icon: Bell },
+  { id: 'accounts', name: 'Accounts', icon: Plug },
+  { id: 'app', name: 'App', icon: AppWindow },
+]
+
 function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
-  useSettingsColumns(dialogRef)
+  const [category, setCategory] = useLocalState<Category>('syncr.settingsCategory', 'notes')
+  const [showList, setShowList] = useState(true) // phone: the list, not a category
+  const pageRef = useRef<HTMLDivElement>(null)
+  function open(id: Category) {
+    setCategory(id)
+    setShowList(false)
+    if (pageRef.current) pageRef.current.scrollTop = 0
+  }
+
   const [appearance, setAppearance] = useState(loadAppearance)
   function update(change: Partial<Appearance>) {
     // Start from the saved settings (always current), not from `appearance`, which may not
@@ -105,13 +126,235 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // "What's new" also opens in place of Settings, like the color rules
   const [showWhatsNew, setShowWhatsNew] = useState(false)
 
+  const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
+  const gmailAccounts = useGmailAccounts()
+
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
+
+  const notes = (
+    <>
+      <section className="settings-group">
+        <SectionTitle title="Text" />
+        <div className="setting">
+          <span className="setting-label">Font</span>
+          {/* Each choice is shown in its own font */}
+          <div className="setting-choices">
+            {(Object.keys(FONTS) as FontId[]).map((id) => (
+              <button
+                key={id}
+                className={id === appearance.font ? 'selected' : ''}
+                style={{ fontFamily: FONTS[id].css }}
+                aria-pressed={id === appearance.font}
+                onClick={() => update({ font: id })}
+              >
+                {FONTS[id].name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* The note behind the dialog changes while dragging */}
+        <label className="setting">
+          <span className="setting-label">
+            Text size <span className="setting-value">{appearance.fontSize} px</span>
+          </span>
+          <RulerSlider
+            min={FONT_SIZE_MIN}
+            max={FONT_SIZE_MAX}
+            step={1}
+            mark={DEFAULTS.fontSize}
+            value={appearance.fontSize}
+            onChange={(e) => update({ fontSize: Number(e.target.value) })}
+          />
+        </label>
+
+        <label className="setting setting-toggle">
+          <span>
+            Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={editing.smartTypography}
+            onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
+          />
+        </label>
+
+        <div className="setting setting-toggle">
+          <span>
+            Color rules <Synced /> <span className="setting-value">{rulesSummary}</span>
+          </span>
+          <button className="setting-button" onClick={() => setShowRules(true)}>
+            Edit…
+          </button>
+        </div>
+      </section>
+      <section className="settings-group">
+        <SectionTitle title="Note list" />
+        <label className="setting setting-toggle">
+          <span>Show dates</span>
+          <input
+            type="checkbox"
+            checked={appearance.showDates}
+            onChange={(e) => update({ showDates: e.target.checked })}
+          />
+        </label>
+      </section>
+    </>
+  )
+
+  const alerts = (
+    <>
+      {isTauri() && <PopupSettings background={background} onChange={updateBackground} />}
+      <section className="settings-group">
+        <SectionTitle title="Reminders" />
+        <div className="setting">
+          <span className="setting-label">Sound when a reminder is due</span>
+          <SoundChoices value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
+        </div>
+      </section>
+      {mail && (
+        <section className="settings-group">
+          <SectionTitle title="Emails" />
+          {gmailAccounts.length === 0 ? (
+            <p className="setting-status">
+              Add a Gmail account in{' '}
+              <button className="version-link" onClick={() => open('accounts')}>
+                Accounts
+              </button>
+            </p>
+          ) : (
+            <>
+              <div className="setting">
+                <span className="setting-label">Sound for new emails</span>
+                <SoundChoices value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
+              </div>
+              <div className="setting">
+                <span className="setting-label">
+                  Email pop-ups fade after <span className="setting-value">they stay unread, as missed</span>
+                </span>
+                <div className="setting-choices">
+                  {FADE_CHOICES.map(({ seconds, name }) => (
+                    <button
+                      key={seconds}
+                      className={seconds === background.emailFade ? 'selected' : ''}
+                      aria-pressed={seconds === background.emailFade}
+                      onClick={() => updateBackground({ emailFade: seconds })}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+    </>
+  )
+
+  const accounts = (
+    <>
+      <GamesSettings />
+      <GoogleSettings />
+      {mail && <GmailSettings />}
+    </>
+  )
+
+  const app = (
+    <>
+      <section className="settings-group">
+        <SectionTitle title="Look" />
+        <label className="setting">
+          <span className="setting-label">
+            App scaling <span className="setting-value">{scale} %</span>
+          </span>
+          <RulerSlider
+            min={SCALE_MIN}
+            max={SCALE_MAX}
+            step={5}
+            mark={DEFAULTS.scale}
+            value={scale}
+            onChange={(e) => setScale(Number(e.target.value))}
+            onPointerUp={applyScale}
+            onKeyUp={applyScale}
+            onBlur={applyScale}
+          />
+        </label>
+        <label className="setting setting-toggle">
+          <span>Animations</span>
+          <input
+            type="checkbox"
+            checked={appearance.animations}
+            onChange={(e) => update({ animations: e.target.checked })}
+          />
+        </label>
+      </section>
+      {isTauri() && (
+        <section className="settings-group">
+          <SectionTitle title="Window" />
+          <label className="setting setting-toggle">
+            <span>
+              ✕ hides SyncR in the tray{' '}
+              <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={background.closeToTray}
+              onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+            />
+          </label>
+          <label className="setting setting-toggle">
+            <span>
+              Start with Windows <span className="setting-value">when you sign in</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={autostart ?? false}
+              disabled={autostart === null}
+              onChange={(e) => toggleAutostart(e.target.checked)}
+            />
+          </label>
+          <label className="setting setting-toggle">
+            <span>
+              Start hidden in the tray{' '}
+              <span className="setting-value">when started with Windows; otherwise the window shows</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={background.startHidden}
+              disabled={!autostart}
+              onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+            />
+          </label>
+        </section>
+      )}
+      <section className="settings-group">
+        <SectionTitle title="About" />
+        {/* Check for updates: the icon next to Settings in the sidebar */}
+        <div className="setting">
+          <span>
+            SyncR{' '}
+            <span className="setting-value">
+              {/* Click the version: what's new in it */}
+              <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
+                v{__APP_VERSION__}
+              </button>{' '}
+              · by Logiinx
+            </span>
+          </span>
+        </div>
+      </section>
+    </>
+  )
+
+  const pages = { notes, alerts, accounts, app }
+  const current = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0]
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
-        className="dialog settings"
+        className={`dialog settings${showList ? ' show-list' : ''}`}
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"
@@ -123,176 +366,30 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <h2>Settings</h2>
           <CloseButton onClick={onClose} />
         </div>
-
-        {/* As many columns as the window needs to show everything without scrolling (PC,
-            useSettingsColumns); one on the phone */}
-        <div className="settings-columns">
-          <section className="settings-group">
-            <SectionTitle title="Appearance" scope="this device" />
-            <div className="setting">
-              <span className="setting-label">Font</span>
-              {/* Each choice is shown in its own font */}
-              <div className="setting-choices">
-                {(Object.keys(FONTS) as FontId[]).map((id) => (
-                  <button
-                    key={id}
-                    className={id === appearance.font ? 'selected' : ''}
-                    style={{ fontFamily: FONTS[id].css }}
-                    aria-pressed={id === appearance.font}
-                    onClick={() => update({ font: id })}
-                  >
-                    {FONTS[id].name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* The note behind the dialog changes while dragging */}
-            <label className="setting">
-              <span className="setting-label">
-                Text size <span className="setting-value">{appearance.fontSize} px</span>
-              </span>
-              <RulerSlider
-                min={FONT_SIZE_MIN}
-                max={FONT_SIZE_MAX}
-                step={1}
-                mark={DEFAULTS.fontSize}
-                value={appearance.fontSize}
-                onChange={(e) => update({ fontSize: Number(e.target.value) })}
-              />
-            </label>
-
-            <label className="setting">
-              <span className="setting-label">
-                App scaling <span className="setting-value">{scale} %</span>
-              </span>
-              <RulerSlider
-                min={SCALE_MIN}
-                max={SCALE_MAX}
-                step={5}
-                mark={DEFAULTS.scale}
-                value={scale}
-                onChange={(e) => setScale(Number(e.target.value))}
-                onPointerUp={applyScale}
-                onKeyUp={applyScale}
-                onBlur={applyScale}
-              />
-            </label>
-
-            <label className="setting setting-toggle">
-              <span>Animations</span>
-              <input
-                type="checkbox"
-                checked={appearance.animations}
-                onChange={(e) => update({ animations: e.target.checked })}
-              />
-            </label>
-          </section>
-          <section className="settings-group">
-            <SectionTitle title="Note list" scope="this device" />
-            <label className="setting setting-toggle">
-              <span>Show dates</span>
-              <input
-                type="checkbox"
-                checked={appearance.showDates}
-                onChange={(e) => update({ showDates: e.target.checked })}
-              />
-            </label>
-          </section>
-          <section className="settings-group">
-            <SectionTitle title="Typing" scope="this device" />
-            <label className="setting setting-toggle">
-              <span>
-                Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={editing.smartTypography}
-                onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
-              />
-            </label>
-          </section>
-          <section className="settings-group">
-            <SectionTitle title="Reminders" scope="this device" />
-            <div className="setting">
-              <span className="setting-label">Sound when a reminder is due</span>
-              <SoundChoices value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
-            </div>
-          </section>
-          {isTauri() && <PopupSettings background={background} onChange={updateBackground} />}
-          {isTauri() && (
-            <section className="settings-group">
-              <SectionTitle title="Window" scope="this device" />
-              <label className="setting setting-toggle">
-                <span>
-                  ✕ hides SyncR in the tray{' '}
-                  <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={background.closeToTray}
-                  onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
-                />
-              </label>
-              <label className="setting setting-toggle">
-                <span>
-                  Start with Windows <span className="setting-value">when you sign in</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={autostart ?? false}
-                  disabled={autostart === null}
-                  onChange={(e) => toggleAutostart(e.target.checked)}
-                />
-              </label>
-              <label className="setting setting-toggle">
-                <span>
-                  Start hidden in the tray{' '}
-                  <span className="setting-value">when started with Windows; otherwise the window shows</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={background.startHidden}
-                  disabled={!autostart}
-                  onChange={(e) => updateBackground({ startHidden: e.target.checked })}
-                />
-              </label>
-            </section>
-          )}
-          <section className="settings-group">
-            <SectionTitle title="Notes" scope="all devices" />
-            <div className="setting setting-toggle">
-              <span>
-                Color rules <span className="setting-value">{rulesSummary}</span>
-              </span>
-              <button className="setting-button" onClick={() => setShowRules(true)}>
-                Edit…
+        <div className="settings-body">
+          <nav className="settings-nav">
+            {CATEGORIES.map(({ id, name, icon: Icon }) => (
+              <button key={id} className={id === current.id ? 'active' : ''} onClick={() => open(id)}>
+                <Icon size={15} /> {name}
               </button>
-            </div>
-          </section>
-          <GamesSettings />
-          <GoogleSettings />
-          {(isTauri() || import.meta.env.DEV) && <GmailSettings />}
-          <section className="settings-group">
-            <SectionTitle title="About" />
-            {/* Check for updates: the icon next to Settings in the sidebar */}
-            <div className="setting">
-              <span>
-                SyncR{' '}
-                <span className="setting-value">
-                  {/* Click the version: what's new in it */}
-                  <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
-                    v{__APP_VERSION__}
-                  </button>{' '}
-                  · by Logiinx
-                </span>
-              </span>
-            </div>
-          </section>
+            ))}
+          </nav>
+          <div className="settings-page" ref={pageRef}>
+            {/* Phone: the category's name, and back to the list */}
+            <button className="settings-back" onClick={() => setShowList(true)}>
+              <ChevronLeft size={16} /> {current.name}
+            </button>
+            {pages[current.id]}
+          </div>
         </div>
       </div>
     </div>
   )
+}
+
+// Shared by all devices (synced through Dropbox); everything else is for this device only
+function Synced() {
+  return <span className="settings-synced">synced</span>
 }
 
 // Game search: the address and password of SyncR's IGDB proxy (igdb.ts), synced to all devices.
@@ -360,7 +457,7 @@ function GamesSettings() {
 
   return (
     <section className="settings-group">
-      <SectionTitle title="Games" scope="all devices" />
+      <SectionTitle title="Games" synced />
       <label className="setting">
         <span className="setting-label">Game search proxy address</span>
         <input
@@ -500,7 +597,7 @@ function GoogleSettings() {
 
   return (
     <section className="settings-group">
-      <SectionTitle title="Google Calendar" scope="this device" />
+      <SectionTitle title="Google Calendar" />
       <div className="setting setting-toggle">
         <span>Main calendar</span>
         <button
@@ -529,8 +626,8 @@ const FADE_CHOICES = [
 ]
 
 // Gmail accounts (gmail.ts): PC only (the phone has the Gmail app); also in the browser while
-// developing, to test. Each account: its color (the strip on its pop-ups), address, on/off,
-// Remove. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
+// developing, to test. Each account: its color (the strip on its pop-ups), address, on/off
+// (off: no pop-ups, not in the Mail tab), Remove. Sound and fading: in Alerts. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
 // Instant mail (instantMail.ts): the Google Cloud project ID, and a sign-in of the project's
 // owner (one of the accounts) with the Pub/Sub permission.
 function GmailSettings() {
@@ -538,7 +635,6 @@ function GmailSettings() {
   const [projectId, setProjectId] = useState(loadProjectId)
   const instant = useInstantStatus()
   const collector = accounts.find((a) => a.pubsub && !a.expired)
-  const [background, setBackground] = useState(loadBackground)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [colorMenu, setColorMenu] = useState<{ email: string; color: string; x: number; y: number } | null>(null)
@@ -555,17 +651,12 @@ function GmailSettings() {
     setBusy(false)
   }
 
-  function update(change: Partial<Background>) {
-    const next = { ...loadBackground(), ...change }
-    setBackground(next)
-    saveBackground(next)
-  }
-
   const status = message?.text ??
     (!isComplete(proxy) ? 'Needs the game search proxy (above)' : accounts.length === 0 ? 'No account yet' : null)
   return (
+    <>
     <section className="settings-group">
-      <SectionTitle title="Gmail" scope="this device" />
+      <SectionTitle title="Gmail" />
       {accounts.map((account) => (
         <div key={account.email} className="setting setting-toggle gmail-account">
           <span className="gmail-account-name" title={account.email}>
@@ -590,7 +681,7 @@ function GmailSettings() {
             <input
               type="checkbox"
               checked={account.enabled}
-              title="Show pop-ups for new emails"
+              title="On: pop-ups for new emails, and in the Mail tab"
               onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
             />
           )}
@@ -617,12 +708,6 @@ function GmailSettings() {
           {status}
         </p>
       )}
-      {accounts.length > 0 && (
-        <div className="setting">
-          <span className="setting-label">Sound for new emails</span>
-          <SoundChoices value={background.emailSoundId} onChange={(id) => update({ emailSoundId: id })} />
-        </div>
-      )}
       {colorMenu && (
         <ContextMenu
           x={colorMenu.x}
@@ -631,29 +716,12 @@ function GmailSettings() {
           items={colorMenuItems(colorMenu.color, (color) => color && setAccountColor(colorMenu.email, color), false)}
         />
       )}
+    </section>
       {accounts.length > 0 && (
-        <div className="setting">
-          <span className="setting-label">
-            Email pop-ups fade after <span className="setting-value">they stay unread, as missed</span>
-          </span>
-          <div className="setting-choices">
-            {FADE_CHOICES.map(({ seconds, name }) => (
-              <button
-                key={seconds}
-                className={seconds === background.emailFade ? 'selected' : ''}
-                aria-pressed={seconds === background.emailFade}
-                onClick={() => update({ emailFade: seconds })}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {accounts.length > 0 && (
-        <>
+        <section className="settings-group">
+          <SectionTitle title="Instant mail" />
           <label className="setting">
-            <span className="setting-label">Instant mail: Google Cloud project ID</span>
+            <span className="setting-label">Google Cloud project ID</span>
             <input
               type="text"
               placeholder="e.g. syncr-123456"
@@ -678,71 +746,10 @@ function GmailSettings() {
               {instant.text}
             </p>
           )}
-        </>
+        </section>
       )}
-    </section>
+    </>
   )
-}
-
-// PC: the fewest columns (2 or more) that show all settings without scrolling, as long as each
-// column stays at least MIN_COLUMN wide. Still too tall (a small window): tighter spacing
-// ("compact" in index.css). Sets --columns on the dialog (index.css sizes it from that) and marks
-// the section at the top of each column (no line above it). Again when the window, the app scaling or the settings' content change.
-// Phone: one column.
-const MIN_COLUMN = 320 // px: narrower cuts the font names ("JetBrains Mono")
-const COLUMN_GAP = 36 // px, as in index.css
-
-function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
-  useLayoutEffect(() => {
-    const dialog = dialogRef.current
-    const columns = dialog?.querySelector<HTMLElement>('.settings-columns')
-    if (!dialog || !columns) return
-
-    function apply(count: number) {
-      dialog!.style.setProperty('--columns', String(count))
-      // Twice: removing the line can move a section to the top of the next column
-      for (let i = 0; i < 2; i++) {
-        const top = columns!.getBoundingClientRect().top
-        for (const group of columns!.children) {
-          group.classList.toggle('column-top', group.getBoundingClientRect().top - top < 24)
-        }
-      }
-    }
-
-    function fit() {
-      // The tries below briefly make the dialog shorter, which pulls its scroll position up: put
-      // it back after (a status line changing made Settings jump to the top)
-      const scrollTop = dialog!.scrollTop
-      const narrow = matchMedia('(max-width: 699px)').matches
-      let count = narrow ? 1 : 2
-      dialog!.classList.remove('compact')
-      apply(count)
-      while (!narrow && dialog!.scrollHeight > dialog!.clientHeight) {
-        apply(count + 1)
-        if (columns!.clientWidth < (count + 1) * MIN_COLUMN + count * COLUMN_GAP) {
-          apply(count) // too narrow: keep scrolling instead
-          break
-        }
-        count++
-      }
-      if (!narrow && dialog!.scrollHeight > dialog!.clientHeight) {
-        dialog!.classList.add('compact')
-        apply(count) // the tops again, with the new spacing
-      }
-      dialog!.scrollTop = scrollTop
-    }
-
-    fit()
-    window.addEventListener('resize', fit)
-    // Content (a status line, Google connected) and the app scaling (--zoom on <html>)
-    const observer = new MutationObserver(fit)
-    observer.observe(columns, { childList: true, subtree: true, characterData: true })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
-    return () => {
-      window.removeEventListener('resize', fit)
-      observer.disconnect()
-    }
-  }, [dialogRef])
 }
 
 // A slider with a ruler under it: one tick per value you can pick, a longer one at the
@@ -826,7 +833,7 @@ function PopupSettings({
     background.popupScreen !== null && screens.length > 0 && !screens.some((s) => s.name === background.popupScreen)
   return (
     <section className="settings-group">
-      <SectionTitle title="Pop-up" scope="this device" />
+      <SectionTitle title="Pop-up" />
       <div className="setting">
         <span className="setting-label">
           Screen{' '}
@@ -868,12 +875,12 @@ function PopupSettings({
   )
 }
 
-// A group of settings: small title, and whether it applies to this device or all of them
-function SectionTitle({ title, scope }: { title: string; scope?: string }) {
+// A group of settings: small title, "synced" if it applies to all devices
+function SectionTitle({ title, synced }: { title: string; synced?: boolean }) {
   return (
     <h3 className="settings-section">
       {title}
-      {scope && <span className="settings-scope"> · {scope}</span>}
+      {synced && <> <Synced /></>}
     </h3>
   )
 }

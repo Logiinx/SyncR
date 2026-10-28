@@ -80,7 +80,7 @@ export function ReminderCards({ due, onAction }: {
 function ReminderAlerts() {
   const due = useDueReminders()
   useMailCheck() // PC: new emails go to the pop-up too
-  useInstantMail() // PC: and within seconds, once set up (Settings → Gmail)
+  useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
   const popupFailed = useReminderPopup(due, mails)
   const showCards = !isTauri() || popupFailed
