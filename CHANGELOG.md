@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-28
+
 **Board**
 - A priority group shows only its blue frame: its group icon no longer turns blue too (like cards).
 
