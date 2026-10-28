@@ -3,7 +3,7 @@
 // element back for a moment, plays its closing animation, then removes it. It no longer belongs
 // to React, and nothing in it can be clicked (inert).
 
-import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { currentZoom } from './appearance'
 
 export const CLOSE_MS = 130
@@ -14,6 +14,14 @@ const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)' // starts fast, slows down: things
 // Settings → Animations (see appearance.ts)
 export function animationsOn() {
   return !document.documentElement.classList.contains('no-animations')
+}
+
+// Side panels: "slide-in" when opened after the app started (index.css). Decided once, when
+// the panel appears: a panel already open at start never gets the slide. (Adding the class later,
+// or switching the animation on with .ready, would start the slide right then.)
+export function useSlideIn() {
+  const [later] = useState(() => document.documentElement.classList.contains('ready'))
+  return later ? ' slide-in' : ''
 }
 
 // A menu folds up from the bottom (its shadow, up to 24px around, stays visible)

@@ -28,6 +28,6 @@ void loadSecrets().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
   )
-  // Side panels slide in only when opened, not when the app starts with them open (index.css)
+  // Side panels slide in only when opened, not when the app starts with them open (useSlideIn)
   setTimeout(() => document.documentElement.classList.add('ready'), 1000)
 })

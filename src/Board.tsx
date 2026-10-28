@@ -19,7 +19,7 @@ import ContextMenu from './ContextMenu'
 import GameDialog from './GameDialog'
 import { removeGameQuestion } from './games'
 import Dialog, { type DialogRequest } from './Dialog'
-import { useList } from './animations'
+import { useList, useSlideIn } from './animations'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
 // visible whatever note is open. Opened with the small tab in the middle of the window's right
@@ -48,6 +48,7 @@ interface Props {
 }
 
 function Board({ onClose }: Props) {
+  const slideIn = useSlideIn()
   const [width, setWidth] = useLocalState('syncr.boardWidth', 280)
   const drag = useRef<{ startX: number; startWidth: number } | null>(null)
   const rows = useLiveQuery(async () => (await db.cards.toArray()).filter((card) => !card.deleted), [])
@@ -421,8 +422,8 @@ function Board({ onClose }: Props) {
 
   return (
     <>
-      <div className="backdrop" onClick={onClose} />
-      <aside className="board" style={{ '--board-width': `${width}px` } as React.CSSProperties}>
+      <div className={'backdrop' + slideIn} onClick={onClose} />
+      <aside className={'board' + slideIn} style={{ '--board-width': `${width}px` } as React.CSSProperties}>
         <div
           className="board-resize"
           onPointerDown={startResize}

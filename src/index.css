@@ -3364,27 +3364,27 @@ button {
 
 /* Side panels (opening; closing: animations.ts). PC: the Board slides in from the right and
    the page makes room; the sidebar the same from the left. Phone: they slide over the page from
-   their edge, the shade fades in. Not while the app starts (.ready, main.tsx). */
+   their edge, the shade fades in. Not when already open at start (.slide-in: animations.ts). */
 @media (min-width: 700px) {
-  .ready .board {
+  .board.slide-in {
     animation: board-push 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .ready .sidebar {
+  .sidebar.slide-in {
     animation: sidebar-push 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 }
 
 @media (max-width: 699px) {
-  .ready .board {
+  .board.slide-in {
     animation: from-right 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .ready .sidebar {
+  .sidebar.slide-in {
     animation: from-left 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .ready .backdrop {
+  .backdrop.slide-in {
     animation: fade-in 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 }

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- The note list and the Board no longer slide in a second after the app starts when they were already open.
+
 ## [0.31.1] - 2026-10-28
 
 **Notes**

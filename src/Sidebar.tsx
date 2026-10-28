@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
-import { useListItems } from './animations'
+import { useListItems, useSlideIn } from './animations'
 import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
 import { useGmailAccounts } from './gmail'
@@ -51,6 +51,7 @@ function notePreview(note: Note) {
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
 function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, query, onQuery, focusSearch, onSearchFocused }: Props) {
+  const slideIn = useSlideIn()
   const accounts = useGmailAccounts()
   const missed = useMissed()
   const [checking, setChecking] = useState(false)
@@ -71,8 +72,8 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
 
   return (
     <>
-      <div className="backdrop" onClick={onClose} />
-      <aside className="sidebar">
+      <div className={'backdrop' + slideIn} onClick={onClose} />
+      <aside className={'sidebar' + slideIn}>
         <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
           <Gamepad2 size={15} /> Games
         </button>
