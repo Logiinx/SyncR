@@ -989,11 +989,7 @@ button {
   color: var(--text-dim);
 }
 
-/* In the group's color (blue for a priority group without one) */
-.card-group.priority .card-group-icon {
-  color: var(--text-blue);
-}
-
+/* In the group's color (priority shows only as the frame) */
 .card-group.colored .card-group-icon {
   color: var(--tint);
 }

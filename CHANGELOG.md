@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- A priority group shows only its blue frame: its group icon no longer turns blue too (like cards).
+
 **Games**
 - Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.
 
