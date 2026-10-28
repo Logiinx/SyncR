@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-28
+
 **App**
 - Tabs you open or close, and notes and reminders you add or delete, now grow in and shrink away like Board cards.
 
