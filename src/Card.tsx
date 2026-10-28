@@ -16,6 +16,7 @@ import { extensions } from './NoteEditor'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import ColorPicker from './ColorPicker'
+import { useFoldAnimation } from './animations'
 
 const SAVE_DELAY_MS = 500
 
@@ -214,6 +215,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   }
 
   const folded = !!card.title && card.folded
+  useFoldAnimation(!!folded, () => document.querySelector(`[data-card-id="${CSS.escape(card.id)}"] > .card-editor`))
   const className = [
     'card',
     card.priority && 'priority',

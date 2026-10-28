@@ -1,4 +1,5 @@
 :root {
+  interpolate-size: allow-keywords; /* heights can grow from 0 to "auto" (animations.ts) */
   --bg: #161616;
   --bg-raised: #202020;
   --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
@@ -830,6 +831,8 @@ button {
   font-family: var(--note-font, system-ui, sans-serif);
   font-size: calc(var(--note-size, 16px) * 0.875);
   overflow-wrap: anywhere;
+  /* Its space below eases in and out with the fold (the text shrinks shut: animations.ts) */
+  transition: padding-bottom 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .card-title input {
@@ -873,6 +876,8 @@ button {
 
 .card.folded .card-title {
   padding-bottom: 8px;
+  transition-duration: 0.13s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* A game pinned to the Board (GameCard.tsx): cover and name, buttons centered on the right */

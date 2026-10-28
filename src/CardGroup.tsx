@@ -3,6 +3,7 @@ import { ChevronDown, Ellipsis, Layers } from 'lucide-react'
 import { deleteGroup, setCardPriority, setGroupColor, updateCardTitle, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
+import { closeCopy, useFoldAnimation } from './animations'
 import type { DialogRequest } from './Dialog'
 
 interface Props {
@@ -55,6 +56,10 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
     return colorMenuItems(current, (color) => setGroupColor(group.id, color, withCards))
   }
 
+  const cardsElement = () =>
+    document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(group.id)}"] > .card-group-cards`)
+  useFoldAnimation(!!group.folded, cardsElement)
+
   const className = ['card-group', group.priority && 'priority', group.color && 'colored', group.folded && 'folded']
     .filter(Boolean)
     .join(' ')
@@ -67,6 +72,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
         }}
         onClick={(event) => {
           if (!(event.target as HTMLElement).closest('button')) {
+            if (!group.folded) closeCopy(cardsElement())
             updateCardTitle(group.id, { folded: group.folded ? undefined : true })
           }
         }}
