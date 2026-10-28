@@ -8,7 +8,8 @@ import MailReader from './MailReader'
 import { MailCards } from './MailCards'
 import { playEmailSound, playReminderSound } from './sounds'
 import { ReminderCards } from './ReminderAlerts'
-import { POPUP_WIDTH, popupPlace, READER_WIDTH, sendFromPopup } from './popupWindow'
+import { loadAppearance } from './appearance'
+import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWindow'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
 // ?view=reminder-popup, see main.tsx). Shows the due reminders and new emails, plays a sound
@@ -33,23 +34,43 @@ function ReminderPopup() {
 
   // Fit the window to the cards (at most the screen's height) and keep it in its corner. Also
   // when the screen or corner is changed in Settings (main window, same storage), and when an
-  // email opens or closes.
+  // email opens or closes: then it grows or shrinks smoothly from its corner (unless
+  // Animations are off). Fits asked for during that animation wait for its end.
   const refitRef = useRef(() => {})
   useEffect(() => {
     const list = listRef.current
     if (!list) return
+    let wasReading = false
+    let animating = false
+    let again = false
     const fit = async () => {
-      const { maxHeight } = await popupPlace(0)
-      const width = readingRef.current ? READER_WIDTH : POPUP_WIDTH
-      const height = readingRef.current
-        ? Math.round(maxHeight * 0.8)
-        : Math.min(Math.ceil(list.scrollHeight), maxHeight)
+      if (animating) return void (again = true)
+      const place = await popupPlacer()
+      const { maxHeight } = place(0)
+      const reading = readingRef.current
+      const width = reading ? READER_WIDTH : POPUP_WIDTH
+      const height = reading ? Math.round(maxHeight * 0.8) : Math.min(Math.ceil(list.scrollHeight), maxHeight)
       if (height === 0) return
       const win = getCurrentWindow()
+      if (reading !== wasReading && loadAppearance().animations) {
+        wasReading = reading
+        animating = true
+        try {
+          await resizeSmoothly(place, width, height)
+        } finally {
+          animating = false
+        }
+        if (again) {
+          again = false
+          await fit()
+        }
+        return
+      }
+      wasReading = reading
       // Size first (in the scale of the screen it's on now), then the place for that height.
       // Moving to a screen with another scale makes Windows rescale it to the same logical size.
       await win.setSize(new LogicalSize(width, height))
-      await win.setPosition((await popupPlace(height, width)).position)
+      await win.setPosition(place(height, width).position)
     }
     const refit = () => void fit().catch((error) => console.error(error))
     refitRef.current = refit
@@ -95,6 +116,23 @@ function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[]) {
     else if (keys.some((key) => !heard.current.has(key))) playEmailSound()
     heard.current = new Set(keys)
   }, [due, mails])
+}
+
+// Grows or shrinks the window to this size in steps (about 0.2 s, slowing down at the end),
+// keeping it in its corner: from a bottom corner it grows upward. Each step moves and sizes
+// it together (Tauri has no single call for both).
+const STEPS = 12
+
+async function resizeSmoothly(place: Awaited<ReturnType<typeof popupPlacer>>, width: number, height: number) {
+  const win = getCurrentWindow()
+  const start = (await win.innerSize()).toLogical(await win.scaleFactor())
+  for (let i = 1; i <= STEPS; i++) {
+    const t = 1 - (1 - i / STEPS) ** 2 // ease out
+    const w = Math.round(start.width + (width - start.width) * t)
+    const h = Math.round(start.height + (height - start.height) * t)
+    await Promise.all([win.setPosition(place(h, w).position), win.setSize(new LogicalSize(w, h))])
+    await new Promise((resolve) => setTimeout(resolve, 16))
+  }
 }
 
 export default ReminderPopup

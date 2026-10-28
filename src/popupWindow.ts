@@ -66,18 +66,25 @@ export async function popupMonitor(): Promise<Monitor | null> {
 // also lands right on a second screen with another scale than the main one.
 // maxHeight: the most it may grow (logical pixels), the work area's height.
 export async function popupPlace(height: number, width = POPUP_WIDTH) {
+  return (await popupPlacer())(height, width)
+}
+
+// The same, with the screen and corner looked up once: for the many steps of an animation
+export async function popupPlacer() {
   const monitor = await popupMonitor()
-  if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600 }
-  const { position, size } = monitor.workArea
-  const scale = monitor.scaleFactor
   const { popupCorner } = loadBackground()
-  const margin = MARGIN * scale
-  const x = popupCorner.endsWith('left') ? position.x + margin : position.x + size.width - width * scale - margin
-  const y = popupCorner.startsWith('top') ? position.y + margin : position.y + size.height - height * scale - margin
-  return {
-    position: new PhysicalPosition(Math.round(x), Math.round(y)),
-    scale,
-    maxHeight: size.height / scale - 2 * MARGIN,
+  return (height: number, width = POPUP_WIDTH) => {
+    if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600 }
+    const { position, size } = monitor.workArea
+    const scale = monitor.scaleFactor
+    const margin = MARGIN * scale
+    const x = popupCorner.endsWith('left') ? position.x + margin : position.x + size.width - width * scale - margin
+    const y = popupCorner.startsWith('top') ? position.y + margin : position.y + size.height - height * scale - margin
+    return {
+      position: new PhysicalPosition(Math.round(x), Math.round(y)),
+      scale,
+      maxHeight: size.height / scale - 2 * MARGIN,
+    }
   }
 }
 
