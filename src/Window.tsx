@@ -13,10 +13,16 @@ function Window(props: {
   onSubmit?: (event: FormEvent) => void // the box is a form: Enter in a field submits
   inRow?: boolean
   beside?: ReactNode
-  ref?: Ref<HTMLDivElement>
+  ref?: Ref<HTMLElement> // the box, a <div> or (onSubmit) a <form>
   children: ReactNode
 }) {
+  // The box to the window's `ref`, whether it's a <div> or a <form>
+  const setBox = (box: HTMLElement | null) => {
+    if (typeof props.ref === 'function') props.ref(box)
+    else if (props.ref) props.ref.current = box
+  }
   const boxProps = {
+    ref: setBox,
     className: props.className,
     role: 'dialog',
     'aria-label': props.label,
@@ -30,7 +36,7 @@ function Window(props: {
   const box = props.onSubmit ? (
     <form {...boxProps} onSubmit={props.onSubmit}>{props.children}</form>
   ) : (
-    <div {...boxProps} ref={props.ref}>{props.children}</div>
+    <div {...boxProps}>{props.children}</div>
   )
   return (
     <div className="dialog-backdrop" onMouseDown={props.onClose}>
