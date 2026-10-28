@@ -22,15 +22,15 @@ All notable changes to SyncR. Newest version first.
 **Board**
 - **Fixed:** "Move to group…" picks the right group when two have the same name.
 
-**Reminders**
+**Games**
 - **Fixed:** After removing a game, the next one you open no longer jumps to its price alert.
-
-**Sync**
-- **Fixed:** PC: if Windows can't keep the sync key, a message says so (no asking at each start).
 
 **Mail**
 - **Fixed:** Instant mail stays on after signing in again; one bad account no longer stops it.
 - **Fixed:** Small fixes: read marks, archived mail, account changes, hourly reloads.
+
+**Sync**
+- **Fixed:** PC: if Windows can't keep the sync key, a message says so (no asking at each start).
 
 ## [0.31.0] - 2026-10-28
 
