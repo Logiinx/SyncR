@@ -77,6 +77,78 @@ fn wait_for_google(listener: std::net::TcpListener) -> Result<String, String> {
   Err("Google sign-in timed out. Please try again.".to_string())
 }
 
+// Secrets on the PC (secrets.ts): Windows DPAPI encrypts them with a key tied to this Windows
+// user, so another user (or the files copied to another PC) can't read them. Windows keeps
+// the key itself; nothing to store or type. The extra "entropy" bytes must be the same to
+// decrypt, so other programs can't just ask Windows to decrypt SyncR's secrets.
+#[cfg(windows)]
+mod dpapi {
+  use std::ptr::{null, null_mut};
+  use windows_sys::Win32::Foundation::LocalFree;
+  use windows_sys::Win32::Security::Cryptography::{
+    CRYPT_INTEGER_BLOB, CRYPTPROTECT_UI_FORBIDDEN, CryptProtectData, CryptUnprotectData,
+  };
+
+  const ENTROPY: &[u8] = b"SyncR secrets";
+
+  fn blob(bytes: &[u8]) -> CRYPT_INTEGER_BLOB {
+    CRYPT_INTEGER_BLOB { cbData: bytes.len() as u32, pbData: bytes.as_ptr() as *mut u8 }
+  }
+
+  // Copies Windows' result out and frees it
+  fn take(output: CRYPT_INTEGER_BLOB) -> Vec<u8> {
+    let bytes = unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize) }.to_vec();
+    unsafe { LocalFree(output.pbData as _) };
+    bytes
+  }
+
+  pub fn protect(data: &[u8]) -> Result<Vec<u8>, String> {
+    let input = blob(data);
+    let entropy = blob(ENTROPY);
+    let mut output = CRYPT_INTEGER_BLOB { cbData: 0, pbData: null_mut() };
+    let ok = unsafe {
+      CryptProtectData(&input, null(), &entropy, null(), null(), CRYPTPROTECT_UI_FORBIDDEN, &mut output)
+    };
+    if ok == 0 {
+      return Err(format!("Windows couldn't encrypt: {}", std::io::Error::last_os_error()));
+    }
+    Ok(take(output))
+  }
+
+  pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, String> {
+    let input = blob(data);
+    let entropy = blob(ENTROPY);
+    let mut output = CRYPT_INTEGER_BLOB { cbData: 0, pbData: null_mut() };
+    let ok = unsafe {
+      CryptUnprotectData(&input, null_mut(), &entropy, null(), null(), CRYPTPROTECT_UI_FORBIDDEN, &mut output)
+    };
+    if ok == 0 {
+      return Err(format!("Windows couldn't decrypt: {}", std::io::Error::last_os_error()));
+    }
+    Ok(take(output))
+  }
+}
+
+#[cfg(not(windows))]
+mod dpapi {
+  pub fn protect(_: &[u8]) -> Result<Vec<u8>, String> {
+    Err("Only on Windows".to_string())
+  }
+  pub fn unprotect(_: &[u8]) -> Result<Vec<u8>, String> {
+    Err("Only on Windows".to_string())
+  }
+}
+
+#[tauri::command]
+fn protect_secret(text: String) -> Result<Vec<u8>, String> {
+  dpapi::protect(text.as_bytes())
+}
+
+#[tauri::command]
+fn unprotect_secret(data: Vec<u8>) -> Result<String, String> {
+  String::from_utf8(dpapi::unprotect(&data)?).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default();
@@ -96,7 +168,7 @@ pub fn run() {
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser
     .plugin(tauri_plugin_opener::init())
-    .invoke_handler(tauri::generate_handler![started_hidden, google_sign_in]);
+    .invoke_handler(tauri::generate_handler![started_hidden, google_sign_in, protect_secret, unprotect_secret]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
   // saved when the app closes and restored at the next start.

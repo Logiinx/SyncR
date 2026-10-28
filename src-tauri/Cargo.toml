@@ -35,3 +35,7 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["r
 tauri-plugin-window-state = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+
+# Windows DPAPI for secrets (lib.rs, dpapi). Same version Tauri already uses.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }

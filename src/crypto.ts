@@ -21,11 +21,11 @@ export const MIN_PASSPHRASE_LENGTH = 8
 
 // ---------- Helpers ----------
 
-function toBase64(bytes: Uint8Array) {
+export function toBase64(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes))
 }
 
-function fromBase64(text: string) {
+export function fromBase64(text: string) {
   return Uint8Array.from(atob(text), (c) => c.charCodeAt(0))
 }
 
