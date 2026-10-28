@@ -10,15 +10,22 @@ export function tintStyle(color: string | undefined): React.CSSProperties | unde
   return color ? ({ '--tint': `var(--text-${color})` } as React.CSSProperties) : undefined
 }
 
-// The "Color…" list: Default, then the colors by name, the current one checked (null: none checked)
-export function colorMenuItems(current: string | undefined | null, pick: (color: string | undefined) => void): MenuItem[] {
+// The "Color…" list: Default, then the colors by name, the current one checked (null: none checked).
+// withDefault false: the colors only (something that always has one, e.g. a Gmail account).
+export function colorMenuItems(
+  current: string | undefined | null,
+  pick: (color: string | undefined) => void,
+  withDefault = true,
+): MenuItem[] {
   return [
-    { label: 'Default', swatch: 'var(--bg)', checked: current === undefined, onClick: () => pick(undefined) },
+    ...(withDefault
+      ? [{ label: 'Default', swatch: 'var(--bg)', checked: current === undefined, onClick: () => pick(undefined) }]
+      : []),
     ...CARD_COLORS.map((color, index) => ({
       label: color[0].toUpperCase() + color.slice(1),
       swatch: `var(--text-${color})`,
       checked: current === color,
-      divider: index === 0,
+      divider: withDefault && index === 0,
       onClick: () => pick(color),
     })),
   ]

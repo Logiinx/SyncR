@@ -5,6 +5,7 @@ import { BACKGROUND_KEY, loadBackground } from './desktop'
 import { useDueReminders, type DueItem } from './dueReminders'
 import { useMailAlerts, type MailAction, type MailAlert } from './mailAlerts'
 import MailReader from './MailReader'
+import { useGmailAccounts } from './gmail'
 import { MailCards } from './MailCards'
 import { playEmailSound, playReminderSound } from './sounds'
 import { ReminderCards } from './ReminderAlerts'
@@ -17,6 +18,7 @@ import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWi
 function ReminderPopup() {
   const due = useDueReminders()
   const mails = useMailAlerts()
+  useGmailAccounts() // redraws the cards when an account's color changes
   usePopupSounds(due, mails)
   const listRef = useRef<HTMLDivElement>(null)
 

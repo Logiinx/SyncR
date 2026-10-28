@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- PC: click a Gmail account's dot in Settings → Gmail to pick its color (its pop-ups' strip and its dot in the Mail tab).
+
 ## [0.26.0] - 2026-10-28
 
 **Reminders**

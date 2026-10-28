@@ -12,7 +12,10 @@ import {
   isConnected as isGoogleConnected,
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
-import { connectGmail, removeAccount, setAccountEnabled, useGmailAccounts } from './gmail'
+import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
+import { forgetAccountMail } from './mailAlerts'
+import { colorMenuItems } from './cardColors'
+import ContextMenu from './ContextMenu'
 import { checkSteamProfile, saveSteamProfile, useSteamProfile, type SteamProfile } from './steam'
 import {
   loadBackground,
@@ -532,6 +535,7 @@ function GmailSettings() {
   const [background, setBackground] = useState(loadBackground)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [colorMenu, setColorMenu] = useState<{ email: string; color: string; x: number; y: number } | null>(null)
   const proxy = useConnection()
 
   async function add() {
@@ -559,7 +563,16 @@ function GmailSettings() {
       {accounts.map((account) => (
         <div key={account.email} className="setting setting-toggle gmail-account">
           <span className="gmail-account-name" title={account.email}>
-            <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
+            {/* The account's color (its pop-ups' strip, its dot in the Mail tab): a click
+                opens the color list, like Board cards' "Color…" */}
+            <button
+              className="gmail-account-color"
+              title="Color"
+              aria-label="Color"
+              onClick={(e) => setColorMenu({ email: account.email, color: account.color, x: e.clientX, y: e.clientY })}
+            >
+              <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
+            </button>
             <span className="gmail-account-email">{account.email}</span>
             {account.expired && <span className="setting-value">signed out</span>}
           </span>
@@ -575,7 +588,13 @@ function GmailSettings() {
               onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
             />
           )}
-          <button className="setting-button" onClick={() => removeAccount(account.email)}>
+          <button
+            className="setting-button"
+            onClick={() => {
+              removeAccount(account.email)
+              forgetAccountMail(account.email) // its stored emails go too (privacy page)
+            }}
+          >
             Remove
           </button>
         </div>
@@ -597,6 +616,14 @@ function GmailSettings() {
           <span className="setting-label">Sound for new emails</span>
           <SoundChoices value={background.emailSoundId} onChange={(id) => update({ emailSoundId: id })} />
         </div>
+      )}
+      {colorMenu && (
+        <ContextMenu
+          x={colorMenu.x}
+          y={colorMenu.y}
+          onClose={() => setColorMenu(null)}
+          items={colorMenuItems(colorMenu.color, (color) => color && setAccountColor(colorMenu.email, color), false)}
+        />
       )}
       {accounts.length > 0 && (
         <div className="setting">

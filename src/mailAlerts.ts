@@ -84,6 +84,16 @@ export function useMailAlerts() {
   return alerts
 }
 
+// A removed account: its cards, known ids and missed marks go from this device right away
+export function forgetAccountMail(email: string) {
+  const prefix = `mail:${email}:`
+  saveMailAlerts(loadMailAlerts().filter((alert) => alert.account !== email))
+  const seen = read<Record<string, string[]>>(SEEN_KEY, {})
+  delete seen[email]
+  write(SEEN_KEY, seen)
+  saveMissed(loadMissed().filter((key) => !key.startsWith(prefix)))
+}
+
 // ---------- Checking ----------
 
 let checking = false

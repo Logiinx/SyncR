@@ -48,8 +48,10 @@ function updateAccount(email: string, change: Partial<GmailAccount>) {
 }
 
 export const setAccountEnabled = (email: string, enabled: boolean) => updateAccount(email, { enabled })
+export const setAccountColor = (email: string, color: string) => updateAccount(email, { color })
 
-// Forgets the account on this device. Its access isn't revoked at Google: Google would revoke
+// Forgets the account on this device (its stored emails: forgetAccountMail in mailAlerts.ts).
+// Its access isn't revoked at Google: Google would revoke
 // SyncR's whole access for that Google account, so a Calendar sign-in with the same account
 // would stop too. It can be removed by hand in the Google account (Security → Third-party
 // access).
@@ -57,13 +59,19 @@ export function removeAccount(email: string) {
   saveAccounts(loadAccounts().filter((a) => a.email !== email))
 }
 
-// The accounts, kept current when they change (Settings, sign-in)
+// The accounts, kept current when they change (Settings, sign-in; also from the other window,
+// e.g. the pop-up following a color change)
 export function useGmailAccounts() {
   const [accounts, setAccounts] = useState(loadAccounts)
   useEffect(() => {
     const refresh = () => setAccounts(loadAccounts())
+    const onStorage = (e: StorageEvent) => e.key === KEY && refresh()
     window.addEventListener('gmail-change', refresh)
-    return () => window.removeEventListener('gmail-change', refresh)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('gmail-change', refresh)
+      window.removeEventListener('storage', onStorage)
+    }
   }, [])
   return accounts
 }

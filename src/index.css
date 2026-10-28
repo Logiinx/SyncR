@@ -3640,6 +3640,16 @@ button {
   gap: 8px;
 }
 
+.gmail-account-color {
+  display: flex;
+  padding: 3px;
+  border-radius: 50%;
+}
+
+.gmail-account-color:hover {
+  background: var(--border);
+}
+
 .gmail-account-email {
   overflow: hidden;
   white-space: nowrap;
