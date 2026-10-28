@@ -129,7 +129,8 @@ export async function connect() {
 // Returns an error message if the sign-in failed.
 export async function finishConnect(): Promise<string | null> {
   const url = new URL(location.href)
-  if (url.searchParams.get('state') === 'google') return null // Google Calendar's sign-in (google.ts)
+  // Google Calendar's or a Gmail account's sign-in (google.ts, gmail.ts)
+  if (['google', 'gmail'].includes(url.searchParams.get('state') ?? '')) return null
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error_description') ?? url.searchParams.get('error')
   if (!code && !error) return null

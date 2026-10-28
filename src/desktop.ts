@@ -10,6 +10,7 @@ import type { SoundId } from './sounds'
 export interface Background {
   closeToTray: boolean // ✕ hides SyncR in the tray (it keeps running for reminders) instead of quitting
   reminderSoundId: SoundId // played when a reminder comes due (sounds.ts)
+  emailSoundId: SoundId // played for new emails (Gmail, gmail.ts)
   startHidden: boolean // started by Windows at sign-in: stay in the tray instead of showing the window
   popupScreen: string | null // the screen the pop-up shows on (its Windows name); null = the main screen
   popupCorner: PopupCorner
@@ -21,6 +22,7 @@ export const BACKGROUND_KEY = 'syncr.background'
 const DEFAULTS: Background = {
   closeToTray: false,
   reminderSoundId: 'chime',
+  emailSoundId: 'double',
   startHidden: false,
   popupScreen: null,
   popupCorner: 'bottom-right',

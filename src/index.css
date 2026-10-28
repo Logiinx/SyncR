@@ -3509,6 +3509,30 @@ button {
   background: var(--accent);
 }
 
+/* Settings → Gmail: one row per account: color dot + address (cut with … if long), on/off,
+   Remove */
+.gmail-account {
+  gap: 10px;
+}
+
+.gmail-account-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gmail-account-email {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gmail-account-name .setting-value {
+  white-space: nowrap;
+}
+
 /* Settings sliders (RulerSlider in SettingsDialog.tsx): a vertical-bar handle on a thin
    track, blue up to the handle, and a ruler with one tick per value underneath */
 .ruler input[type='range'] {

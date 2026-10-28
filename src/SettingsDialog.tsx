@@ -12,6 +12,7 @@ import {
   isConnected as isGoogleConnected,
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
+import { connectGmail, removeAccount, setAccountEnabled, useGmailAccounts } from './gmail'
 import { checkSteamProfile, saveSteamProfile, useSteamProfile, type SteamProfile } from './steam'
 import {
   loadBackground,
@@ -267,6 +268,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </section>
           <GamesSettings />
           <GoogleSettings />
+          {(isTauri() || import.meta.env.DEV) && <GmailSettings />}
           <section className="settings-group">
             <SectionTitle title="About" />
             {/* Check for updates: the icon next to Settings in the sidebar */}
@@ -510,6 +512,84 @@ function GoogleSettings() {
         {busy && !connected && isTauri() && <Spinner size={12} />}
         {status}
       </p>
+    </section>
+  )
+}
+
+// Gmail accounts (gmail.ts): PC only (the phone has the Gmail app); also in the browser while
+// developing, to test. Each account: its color (the strip on its pop-ups), address, on/off,
+// Remove. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
+function GmailSettings() {
+  const accounts = useGmailAccounts()
+  const [background, setBackground] = useState(loadBackground)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const proxy = useConnection()
+
+  async function add() {
+    setBusy(true)
+    setMessage(isTauri() ? { text: 'Finish the sign-in in your browser…', ok: false } : null)
+    try {
+      setMessage(await connectGmail()) // browser: leaves the app
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : String(error), ok: false })
+    }
+    setBusy(false)
+  }
+
+  function setSound(id: SoundId) {
+    const next = { ...loadBackground(), emailSoundId: id }
+    setBackground(next)
+    saveBackground(next)
+  }
+
+  const status = message?.text ??
+    (!isComplete(proxy) ? 'Needs the game search proxy (above)' : accounts.length === 0 ? 'No account yet' : null)
+  return (
+    <section className="settings-group">
+      <SectionTitle title="Gmail" scope="this device" />
+      {accounts.map((account) => (
+        <div key={account.email} className="setting setting-toggle gmail-account">
+          <span className="gmail-account-name" title={account.email}>
+            <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
+            <span className="gmail-account-email">{account.email}</span>
+            {account.expired && <span className="setting-value">signed out</span>}
+          </span>
+          {account.expired ? (
+            <button className="setting-button" disabled={busy} onClick={add}>
+              Sign in…
+            </button>
+          ) : (
+            <input
+              type="checkbox"
+              checked={account.enabled}
+              title="Show pop-ups for new emails"
+              onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
+            />
+          )}
+          <button className="setting-button" onClick={() => removeAccount(account.email)}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <div className="setting setting-toggle">
+        <span>New emails in Primary</span>
+        <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={add}>
+          Add account…
+        </button>
+      </div>
+      {status && (
+        <p className={`setting-status${message?.ok ? ' ok' : ''}`} title={status}>
+          {busy && isTauri() && <Spinner size={12} />}
+          {status}
+        </p>
+      )}
+      {accounts.length > 0 && (
+        <div className="setting">
+          <span className="setting-label">Sound for new emails</span>
+          <SoundChoices value={background.emailSoundId} onChange={setSound} />
+        </div>
+      )}
     </section>
   )
 }

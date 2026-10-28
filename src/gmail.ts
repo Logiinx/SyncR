@@ -1,0 +1,153 @@
+import { invoke, isTauri } from '@tauri-apps/api/core'
+import { useEffect, useState } from 'react'
+import {
+  appAddress,
+  base64Url,
+  challengeFor,
+  CLIENT_ID,
+  idTokenClaims,
+  redirectUri,
+  tokenRequest,
+} from './google'
+
+// Gmail accounts (PC: pop-ups for new mail). Each account has its own Google sign-in, apart
+// from the Google Calendar one (google.ts): adding or removing a Gmail account never touches
+// Reminders. Same client, proxy and PC sign-in as Calendar. Remembered per device in
+// localStorage (not synced).
+
+const SCOPE = 'https://www.googleapis.com/auth/gmail.modify' // read, mark as read/unread
+const KEY = 'syncr.gmail'
+const VERIFIER_KEY = 'syncr.gmail.verifier'
+const STATE = 'gmail' // tells this sign-in's return apart from Calendar's and Dropbox's
+
+export interface GmailAccount {
+  email: string
+  refreshToken: string
+  accessToken?: string
+  expiresAt?: number // ms since epoch
+  color: string // a palette name (var(--text-<name>)): the strip on its pop-up cards
+  enabled: boolean // off: not checked for new mail
+  expired?: boolean // Google refused the sign-in (e.g. access removed): sign in again
+}
+
+export function loadAccounts(): GmailAccount[] {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveAccounts(accounts: GmailAccount[]) {
+  localStorage.setItem(KEY, JSON.stringify(accounts))
+  window.dispatchEvent(new Event('gmail-change'))
+}
+
+function updateAccount(email: string, change: Partial<GmailAccount>) {
+  saveAccounts(loadAccounts().map((a) => (a.email === email ? { ...a, ...change } : a)))
+}
+
+export const setAccountEnabled = (email: string, enabled: boolean) => updateAccount(email, { enabled })
+
+// Forgets the account on this device. Its access isn't revoked at Google: Google would revoke
+// SyncR's whole access for that Google account, so a Calendar sign-in with the same account
+// would stop too. It can be removed by hand in the Google account (Security → Third-party
+// access).
+export function removeAccount(email: string) {
+  saveAccounts(loadAccounts().filter((a) => a.email !== email))
+}
+
+// The accounts, kept current when they change (Settings, sign-in)
+export function useGmailAccounts() {
+  const [accounts, setAccounts] = useState(loadAccounts)
+  useEffect(() => {
+    const refresh = () => setAccounts(loadAccounts())
+    window.addEventListener('gmail-change', refresh)
+    return () => window.removeEventListener('gmail-change', refresh)
+  }, [])
+  return accounts
+}
+
+// ---------- Sign in ----------
+
+type Result = { ok: boolean; text: string }
+
+export const isGmailReturn = () => new URL(location.href).searchParams.get('state') === STATE
+
+// Opens Google's sign-in page, where the user picks the account to add (or one already added:
+// it's signed in again). PC app: the page opens in the normal browser and this waits for its
+// return. Browser (only for testing, see SettingsDialog): leaves the app; finishGmailConnect()
+// completes it on return.
+export async function connectGmail(): Promise<Result | null> {
+  const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)))
+  localStorage.setItem(VERIFIER_KEY, verifier)
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'code',
+    scope: `${SCOPE} openid email`, // email: which account it is
+    state: STATE,
+    code_challenge: await challengeFor(verifier),
+    code_challenge_method: 'S256',
+    redirect_uri: redirectUri(),
+    access_type: 'offline', // gives a refresh token, so no re-login
+    prompt: 'select_account consent', // always asks which account; consent: see google.ts
+  })
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  if (!isTauri()) {
+    location.href = url
+    return null
+  }
+  const query = await invoke<string>('google_sign_in', { url })
+  return finish(new URLSearchParams(query))
+}
+
+// Call once at startup (browser). If we just came back from Google, finish the sign-in.
+export async function finishGmailConnect(): Promise<Result | null> {
+  if (!isGmailReturn()) return null
+  const params = new URL(location.href).searchParams
+  history.replaceState(null, '', appAddress()) // removes ?code=… from the address bar
+  return finish(params)
+}
+
+async function finish(params: URLSearchParams): Promise<Result> {
+  const fail = (text: string) => ({ ok: false, text })
+  const code = params.get('code')
+  const error = params.get('error')
+  const granted = params.get('scope') ?? ''
+  const verifier = localStorage.getItem(VERIFIER_KEY)
+  localStorage.removeItem(VERIFIER_KEY)
+  if (error) return fail(error === 'access_denied' ? 'Gmail: sign-in cancelled.' : `Gmail: ${error}`)
+  if (!verifier || !code) return fail('Gmail sign-in expired. Please try again.')
+  // Google's consent page lets the user untick the Gmail permission
+  if (!granted.split(' ').includes(SCOPE)) {
+    return fail('Gmail: SyncR needs the permission to read your emails. Add the account again and keep it ticked.')
+  }
+  const res = await tokenRequest({ code, code_verifier: verifier, redirect_uri: redirectUri() })
+  if (!res.ok) return fail(`Gmail sign-in failed (${res.status}): ${await res.text()}`)
+  const data = await res.json()
+  const email = idTokenClaims(data.id_token).email
+  if (!email) return fail('Gmail: Google didn’t say which account it is. Please try again.')
+
+  const tokens = {
+    refreshToken: data.refresh_token,
+    accessToken: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+  }
+  const accounts = loadAccounts()
+  if (accounts.some((a) => a.email === email)) {
+    // Already added: new tokens, keeps its color and on/off
+    saveAccounts(accounts.map((a) => (a.email === email ? { ...a, ...tokens, expired: false } : a)))
+    return { ok: true, text: `${email} signed in again.` }
+  }
+  saveAccounts([...accounts, { email, ...tokens, color: nextColor(accounts), enabled: true }])
+  return { ok: true, text: `${email} added.` }
+}
+
+// Account colors, in the order new accounts get them (calm ones first; red looks urgent)
+const ACCOUNT_COLORS = ['blue', 'green', 'purple', 'orange', 'pink', 'yellow', 'red', 'gray']
+
+// A new account's color: the first one no account has yet (then they repeat)
+function nextColor(accounts: GmailAccount[]) {
+  const used = new Set(accounts.map((a) => a.color))
+  return ACCOUNT_COLORS.find((c) => !used.has(c)) ?? ACCOUNT_COLORS[accounts.length % ACCOUNT_COLORS.length]
+}

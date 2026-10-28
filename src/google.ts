@@ -7,8 +7,9 @@ import { igdbProxyFetch } from './igdb'
 // (public code): the token requests go through SyncR's proxy (proxy/igdb-worker.js,
 // /google/token), which adds it. The client id is public by design.
 // The sign-in is remembered per device in localStorage (not synced).
+// Gmail accounts (gmail.ts) use the same client and helpers, with sign-ins of their own.
 
-const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com'
+export const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com'
 const SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 const AUTH_KEY = 'syncr.google'
 const VERIFIER_KEY = 'syncr.google.verifier'
@@ -25,13 +26,13 @@ interface Auth {
 
 // The app's own address: http://localhost:5173/, http://localhost:4173/SyncR/,
 // https://logiinx.github.io/SyncR/
-const appAddress = () => new URL(import.meta.env.BASE_URL, location.origin).href
+export const appAddress = () => new URL(import.meta.env.BASE_URL, location.origin).href
 
 // Where Google sends the user back; must be a redirect URI of the client in Google Cloud. The
 // app's own address, except in the PC app: there the sign-in runs in the normal browser, and
 // SyncR listens for the return on this address (src-tauri/src/lib.rs, google_sign_in).
 const PC_ADDRESS = 'http://localhost:47615/'
-const redirectUri = () => (isTauri() ? PC_ADDRESS : appAddress())
+export const redirectUri = () => (isTauri() ? PC_ADDRESS : appAddress())
 
 function loadAuth(): Auth | null {
   try {
@@ -58,14 +59,14 @@ export const isGoogleReturn = () => new URL(location.href).searchParams.get('sta
 
 // ---------- PKCE helpers (like dropbox.ts) ----------
 
-function base64Url(bytes: Uint8Array) {
+export function base64Url(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '')
 }
 
-async function challengeFor(verifier: string) {
+export async function challengeFor(verifier: string) {
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
   return base64Url(new Uint8Array(hash))
 }
@@ -102,7 +103,7 @@ export async function connect(): Promise<Result | null> {
 }
 
 // Asks Google for tokens through the proxy (it adds the client secret)
-async function tokenRequest(body: Record<string, string>) {
+export async function tokenRequest(body: Record<string, string>) {
   return igdbProxyFetch('google/token', JSON.stringify(body), REQUEST_TIMEOUT_MS)
 }
 
@@ -155,18 +156,21 @@ async function finish(params: URLSearchParams): Promise<Result> {
   return { ok: true, text: 'Google Calendar connected.' }
 }
 
-// The Google profile's name, from the "ID token" Google sends with the "profile" permission.
-// It's a signed JSON; its middle part (base64url) holds the name. Not checking the signature
-// is fine: it came straight from Google (through our proxy) and only labels Settings.
-function profileName(idToken?: string): string | undefined {
+// What the "ID token" says (Google sends it with the "openid" permission): the profile's name
+// ("profile"), the address ("email"). It's a signed JSON; its middle part (base64url) holds
+// them. Not checking the signature is fine: it came straight from Google (through our proxy).
+export function idTokenClaims(idToken?: string): { name?: string; email?: string } {
   try {
     const base64 = idToken!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-    return JSON.parse(new TextDecoder().decode(bytes)).name || undefined // UTF-8, e.g. accents
+    return JSON.parse(new TextDecoder().decode(bytes)) // UTF-8, e.g. accents
   } catch {
-    return undefined
+    return {}
   }
 }
+
+// The Google profile's name, for Settings ("Connected as …")
+const profileName = (idToken?: string) => idTokenClaims(idToken).name || undefined
 
 export async function disconnect() {
   const auth = loadAuth()
