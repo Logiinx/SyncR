@@ -9,14 +9,14 @@ import {
   redirectUri,
   tokenRequest,
 } from './google'
+import { getSecret, GMAIL_SECRET, setSecret } from './secrets'
 
 // Gmail accounts (PC: pop-ups for new mail). Each account has its own Google sign-in, apart
 // from the Google Calendar one (google.ts): adding or removing a Gmail account never touches
-// Reminders. Same client, proxy and PC sign-in as Calendar. Remembered per device in
-// localStorage (not synced).
+// Reminders. Same client, proxy and PC sign-in as Calendar. Remembered per device, not synced
+// (secrets.ts: encrypted on the PC).
 
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify' // read, mark as read/unread
-const KEY = 'syncr.gmail'
 const VERIFIER_KEY = 'syncr.gmail.verifier'
 const STATE = 'gmail' // tells this sign-in's return apart from Calendar's and Dropbox's
 
@@ -32,14 +32,14 @@ export interface GmailAccount {
 
 export function loadAccounts(): GmailAccount[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '[]')
+    return JSON.parse(getSecret(GMAIL_SECRET) ?? '[]')
   } catch {
     return []
   }
 }
 
 function saveAccounts(accounts: GmailAccount[]) {
-  localStorage.setItem(KEY, JSON.stringify(accounts))
+  void setSecret(GMAIL_SECRET, JSON.stringify(accounts))
   window.dispatchEvent(new Event('gmail-change'))
 }
 
@@ -65,12 +65,12 @@ export function useGmailAccounts() {
   const [accounts, setAccounts] = useState(loadAccounts)
   useEffect(() => {
     const refresh = () => setAccounts(loadAccounts())
-    const onStorage = (e: StorageEvent) => e.key === KEY && refresh()
+    const onOtherWindow = (e: Event) => (e as CustomEvent).detail === GMAIL_SECRET && refresh()
     window.addEventListener('gmail-change', refresh)
-    window.addEventListener('storage', onStorage)
+    window.addEventListener('secret-change', onOtherWindow) // secrets.ts
     return () => {
       window.removeEventListener('gmail-change', refresh)
-      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('secret-change', onOtherWindow)
     }
   }, [])
   return accounts

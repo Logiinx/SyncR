@@ -1,17 +1,17 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { db } from './db'
 import { igdbProxyFetch } from './igdb'
+import { getSecret, GOOGLE_SECRET, setSecret } from './secrets'
 
 // Google Calendar sign-in (OAuth 2 with PKCE). Google only gives a lasting sign-in (refresh
 // token) to a web app when the request includes the client secret, which can't be in the app
 // (public code): the token requests go through SyncR's proxy (proxy/igdb-worker.js,
 // /google/token), which adds it. The client id is public by design.
-// The sign-in is remembered per device in localStorage (not synced).
+// The sign-in is remembered per device, not synced (secrets.ts: encrypted on the PC).
 // Gmail accounts (gmail.ts) use the same client and helpers, with sign-ins of their own.
 
 export const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com'
 const SCOPE = 'https://www.googleapis.com/auth/calendar.events'
-const AUTH_KEY = 'syncr.google'
 const VERIFIER_KEY = 'syncr.google.verifier'
 const STATE = 'google' // tells Google's return apart from Dropbox's (both come back with ?code=…)
 
@@ -36,16 +36,15 @@ export const redirectUri = () => (isTauri() ? PC_ADDRESS : appAddress())
 
 function loadAuth(): Auth | null {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_KEY) ?? 'null')
+    return JSON.parse(getSecret(GOOGLE_SECRET) ?? 'null')
   } catch {
     return null
   }
 }
 
 function saveAuth(auth: Auth | null) {
-  if (auth) localStorage.setItem(AUTH_KEY, JSON.stringify(auth))
-  else {
-    localStorage.removeItem(AUTH_KEY)
+  void setSecret(GOOGLE_SECRET, auth ? JSON.stringify(auth) : null)
+  if (!auth) {
     db.events.clear() // signed out: the stored events go too (calendarEvents.ts)
   }
   window.dispatchEvent(new Event('google-change'))

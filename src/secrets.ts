@@ -1,11 +1,17 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { fromBase64, toBase64 } from './crypto'
 
-// Secrets kept per device in localStorage (sign-in keys, …). On the PC they're stored
-// encrypted with Windows DPAPI (lib.rs, dpapi): only this Windows user can read them.
-// They're decrypted once at start (loadSecrets, before the app needs them) and kept in
-// memory, so reading them stays instant; saving one stores it encrypted again.
-// On the phone and in a browser: plain localStorage as before (no DPAPI there).
+// Secrets kept per device in localStorage: the sign-ins (with their keys) of Dropbox, Google
+// Calendar and Gmail. On the PC they're stored encrypted with Windows DPAPI (lib.rs, dpapi):
+// only this Windows user can read them. They're decrypted once at start (loadSecrets, before
+// the app shows) and kept in memory, so reading them stays instant; saving one stores it
+// encrypted again. On the phone and in a browser: plain localStorage (no DPAPI there).
+// The PKCE "verifiers" stay plain: they only live for one sign-in and are useless alone.
+
+export const DROPBOX_SECRET = 'syncr.dropbox'
+export const GOOGLE_SECRET = 'syncr.google'
+export const GMAIL_SECRET = 'syncr.gmail'
+const KEYS = [DROPBOX_SECRET, GOOGLE_SECRET, GMAIL_SECRET]
 
 const MARK = 'dpapi:' // a stored value = MARK + base64 of the encrypted bytes
 const memory = new Map<string, string | null>()
@@ -23,16 +29,25 @@ async function decrypt(stored: string | null) {
   }
 }
 
-// At start, before the secrets are read. Only these keys are kept in memory.
-export async function loadSecrets(keys: string[]) {
-  if (!isTauri()) return
-  await Promise.all(keys.map(async (key) => memory.set(key, await decrypt(localStorage.getItem(key)))))
-  // Another SyncR window (the reminder pop-up) saved one: take it over, then tell this window
+// At start, before anything reads a secret (main.tsx). Secrets stored plain by an older
+// version get encrypted here.
+export async function loadSecrets() {
+  // Another SyncR window (the reminder pop-up, another browser tab) saved one: take it over,
+  // then tell this window ("secret-change", the key in detail)
   window.addEventListener('storage', async (event) => {
-    if (event.key === null || !memory.has(event.key)) return
-    memory.set(event.key, await decrypt(event.newValue))
+    if (event.key === null || !KEYS.includes(event.key)) return
+    if (isTauri()) memory.set(event.key, await decrypt(event.newValue))
     window.dispatchEvent(new CustomEvent('secret-change', { detail: event.key }))
   })
+  if (!isTauri()) return
+  await Promise.all(
+    KEYS.map(async (key) => {
+      const stored = localStorage.getItem(key)
+      const value = await decrypt(stored)
+      memory.set(key, value)
+      if (value !== null && value === stored) void setSecret(key, value) // still plain
+    }),
+  )
 }
 
 export function getSecret(key: string): string | null {

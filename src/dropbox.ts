@@ -1,8 +1,10 @@
 // Dropbox sign-in (OAuth 2 with PKCE, no secret, no server).
-// The App key is public by design. The sign-in is remembered per device in localStorage.
+// The App key is public by design. The sign-in is remembered per device (secrets.ts: encrypted
+// on the PC).
+
+import { DROPBOX_SECRET, getSecret, setSecret } from './secrets'
 
 const APP_KEY = '5600l0im00ni2so'
-const AUTH_KEY = 'syncr.dropbox'
 const VERIFIER_KEY = 'syncr.dropbox.verifier'
 
 // A request that hangs longer than this fails, so a dead connection (e.g. after the PC slept)
@@ -74,15 +76,14 @@ function redirectUri() {
 
 function loadAuth(): Auth | null {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_KEY) ?? 'null')
+    return JSON.parse(getSecret(DROPBOX_SECRET) ?? 'null')
   } catch {
     return null
   }
 }
 
 function saveAuth(auth: Auth | null) {
-  if (auth) localStorage.setItem(AUTH_KEY, JSON.stringify(auth))
-  else localStorage.removeItem(AUTH_KEY)
+  void setSecret(DROPBOX_SECRET, auth ? JSON.stringify(auth) : null)
   window.dispatchEvent(new Event('dropbox-change'))
 }
 

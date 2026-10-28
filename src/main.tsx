@@ -9,6 +9,7 @@ import ReminderPopup from './ReminderPopup'
 import { setUpScrollbars } from './scrollbars'
 import { setUpBoardTab } from './boardTab'
 import { startClosingAnimations } from './animations'
+import { loadSecrets } from './secrets'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -24,6 +25,9 @@ if (!isPopup) startClosingAnimations()
 // Side panels slide in only when opened, not when the app starts with them open (index.css)
 setTimeout(() => document.documentElement.classList.add('ready'), 1000)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
+// The sign-ins are decrypted first (on the PC: a few milliseconds), both windows read them
+void loadSecrets().then(() =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
+  ),
 )
