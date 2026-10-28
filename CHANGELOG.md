@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Board**
 - A priority group shows only its blue frame: its group icon no longer turns blue too (like cards).
 
+**Reminders**
+- Right-click a game (list or month grid) for the same menu as in Games: move, priority, watch price, pin to Board, remove.
+
 **Games**
 - Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.
 - Game preview: release date and platforms on one line, like in the game window.

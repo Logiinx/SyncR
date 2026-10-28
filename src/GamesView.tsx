@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, Bell, BellOff, CalendarCheck, CalendarClock, Download, Gamepad2, Heart, LayoutGrid, List, Pin, PinOff, Search, Sparkles, Trash2, X } from 'lucide-react'
-import { canWatch, db, isWatched, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isFavoriteTab, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { gameMenuItems, usePinnedGames } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
-import { stopWatching } from './priceWatch'
 import { WatchBell } from './PriceWatchView'
 import { useSteamProfile } from './steam'
 import SteamImport from './SteamImport'
@@ -44,11 +44,7 @@ function GamesView() {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
-  // Games that have a card on the Board (for "Pin to Board" / "Unpin from Board")
-  const pinned = useLiveQuery(
-    async () => new Set((await db.cards.toArray()).filter((c) => !c.deleted && c.game).map((c) => c.game!.id)),
-    [],
-  )
+  const pinned = usePinnedGames()
   // The status shown (one at a time) and grid or list, remembered per device
   const [remembered, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
   // Before v0.20 it could be "done" or "dropped", which became the Library
@@ -78,44 +74,16 @@ function GamesView() {
     setDialog(await removeGameQuestion(game, () => setOpenId(null)))
   }
 
-  // Three groups: Move to … | priority, price alert, Board (priority first, like a Board card's
-  // menu) | Remove
+  // The shared game menu (gameMenu.ts)
   function menuItems(game: Game): MenuItem[] {
-    return [
-      ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
-        label: `Move to ${label}`,
-        icon: ArrowRight,
-        onClick: () => setGameStatus(game.id, status),
-      })),
-      {
-        label: priorityLabel(game),
-        icon: isFavoriteTab(game) ? Heart : Sparkles,
-        divider: true,
-        onClick: () => updateGame(game.id, { priority: !game.priority }),
+    return gameMenuItems(game, {
+      pinned: !!pinned?.has(game.id),
+      onWatch: () => {
+        setOpenWatch(game.id)
+        setOpenId(game.id)
       },
-      // To play and Waiting: the price alert, set in the game window
-      ...(!canWatch(game) ? [] : isWatched(game)
-        ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]
-        : [{
-            label: 'Watch price…',
-            icon: Bell,
-            onClick: () => {
-              setOpenWatch(game.id)
-              setOpenId(game.id)
-            },
-          }]),
-      pinned?.has(game.id)
-        ? { label: 'Unpin from Board', icon: PinOff, onClick: () => unpinGameFromBoard(game.id) }
-        : {
-            label: 'Pin to Board',
-            icon: Pin,
-            onClick: async () => {
-              await pinGameToBoard(game)
-              window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
-            },
-          },
-      { label: 'Remove from list', icon: Trash2, danger: true, onClick: () => askRemove(game) },
-    ]
+      onRemove: () => askRemove(game),
+    })
   }
 
   const inList = new Map(games?.map((g) => [g.id, g.status]))

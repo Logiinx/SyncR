@@ -10,6 +10,7 @@ import { CALENDAR_LAYOUTS, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
+import { gameMenuItems, usePinnedGames } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
@@ -57,6 +58,9 @@ function RemindersView() {
   const listRef = useRef<HTMLDivElement>(null)
   useListItems(listRef, `${grid}-${hideRepeating}`)
   const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
+  const [openWatch, setOpenWatch] = useState(false) // opened by "Watch price…": its price alerts first
+  const [gameMenu, setGameMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
+  const pinned = usePinnedGames()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
@@ -165,10 +169,20 @@ function RemindersView() {
 
   // A Waiting game in the list: small cover, name, release day and countdown ("in 12 days"; not
   // for Today / Tomorrow, which already say it). Its release event's alert is in its details.
+  // Right-click: the same menu as in Games.
   const gameRow = (game: Game) => {
     const countdown = releaseCountdown(game.releaseDate)
     return (
-      <button key={game.id} data-item={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
+      <button
+        key={game.id}
+        data-item={game.id}
+        className="reminder-row"
+        onClick={() => setOpenGame(game.id)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setGameMenu({ game, x: e.clientX, y: e.clientY })
+        }}
+      >
         <Cover coverId={game.coverId} />
         <span className="reminder-row-text">
           <span className="reminder-text" title={game.name}>{game.name}</span>
@@ -231,6 +245,7 @@ function RemindersView() {
             onOpenEvent={setPreviewEvent}
             onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
             onGame={setOpenGame}
+            onGameMenu={(game, x, y) => setGameMenu({ game, x, y })}
           />
         )}
         {!grid && waitingGames && events.length + waitingGames.length === 0 && (
@@ -280,7 +295,32 @@ function RemindersView() {
           ]}
         />
       )}
-      {openGame && <GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
+      {gameMenu && (
+        <ContextMenu
+          x={gameMenu.x}
+          y={gameMenu.y}
+          onClose={() => setGameMenu(null)}
+          items={gameMenuItems(gameMenu.game, {
+            pinned: !!pinned?.has(gameMenu.game.id),
+            onWatch: () => {
+              setOpenWatch(true)
+              setOpenGame(gameMenu.game.id)
+            },
+            onRemove: () => askRemoveGame(gameMenu.game.id),
+          })}
+        />
+      )}
+      {openGame && (
+        <GameDialog
+          id={openGame}
+          focusWatch={openWatch}
+          onClose={() => {
+            setOpenGame(null)
+            setOpenWatch(false)
+          }}
+          onRemove={() => askRemoveGame(openGame)}
+        />
+      )}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
   )
@@ -309,6 +349,7 @@ function ReminderGrid(props: {
   onOpenEvent: (event: CalendarEvent) => void
   onEventMenu: (event: CalendarEvent, x: number, y: number) => void
   onGame: (id: string) => void
+  onGameMenu: (game: Game, x: number, y: number) => void
 }) {
   const { events, games } = props
   const today = new Date()
@@ -349,7 +390,16 @@ function ReminderGrid(props: {
             </button>
           ))}
           {(gamesByDay.get(dayKey(date)) ?? []).map((game) => (
-            <button key={game.id} className="calendar-game" onClick={() => props.onGame(game.id)} title={game.name}>
+            <button
+              key={game.id}
+              className="calendar-game"
+              onClick={() => props.onGame(game.id)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                props.onGameMenu(game, e.clientX, e.clientY)
+              }}
+              title={game.name}
+            >
               <Cover coverId={game.coverId} />
               <span>{game.name}</span>
             </button>
