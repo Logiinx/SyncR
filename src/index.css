@@ -1549,6 +1549,102 @@ button {
   text-overflow: ellipsis;
 }
 
+/* An email open to read (MailReader.tsx): fills the grown pop-up below any reminders; the
+   mail scrolls in its frame. Sizes from the window's height: see "App scale" in CLAUDE.md. */
+.reminder-popup.reading {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh / var(--zoom, 1));
+}
+
+.mail-reader {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mail-reader-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mail-reader-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mail-reader-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.mail-reader-icon:hover {
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+}
+
+/* "Images from the web are blocked. Show images" */
+.mail-reader-images {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.mail-reader-images button {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.mail-reader-images button:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.mail-reader-frame,
+.mail-reader-status {
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.mail-reader-frame {
+  width: 100%;
+  background: var(--bg-raised);
+}
+
+/* An HTML mail is made for a white page */
+.mail-reader-frame.html {
+  background: #fff;
+}
+
+.mail-reader-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 /* Done: twice as wide as Snooze */
 .reminder-alert-buttons .primary {
   flex: 2;

@@ -9,7 +9,8 @@ import { read, write } from './localState'
 // reads too (same origin) and follows through "storage" events.
 // Only mail that's new since the account was first checked shows: unread mail already there
 // then doesn't pop up. A card goes when its mail is read (here, in Gmail or on the phone), or
-// with "Keep unread" (the mail stays unread).
+// with "Keep unread" (the mail stays unread). A card opened to read the mail (MailReader.tsx)
+// marks it read and stays until closed (Done, Mark as unread).
 
 export interface MailAlert {
   key: string // "mail:<account>:<message id>"
@@ -20,9 +21,13 @@ export interface MailAlert {
   subject: string
   snippet: string // the start of the text, from Gmail
   date: number // ms since epoch
+  opened?: boolean // opened to read (marked read): stays until closed
 }
 
-export type MailAction = 'mail-read' | 'mail-keep' | 'mail-open'
+// mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Keep unread,
+// Done after reading) · mail-open: in Gmail · mail-opened: opened to read (marks it read) ·
+// mail-unread: Mark as unread (the card goes)
+export type MailAction = 'mail-read' | 'mail-close' | 'mail-open' | 'mail-opened' | 'mail-unread'
 
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
@@ -80,8 +85,8 @@ export async function checkMail() {
         const added = await Promise.all(fresh.map((m) => fetchAlert(email, m.id)))
         alerts = [
           ...added,
-          // Read since (anywhere): its card goes
-          ...alerts.filter((alert) => alert.account !== email || unreadIds.has(alert.id)),
+          // Read since (anywhere): its card goes, unless it's open to read
+          ...alerts.filter((alert) => alert.account !== email || alert.opened || unreadIds.has(alert.id)),
         ]
         seen[email] = [...new Set([...unreadIds, ...(known ?? [])])].slice(0, MAX_SEEN)
       } catch (error) {
@@ -150,22 +155,99 @@ function removeAlert(key: string) {
   saveMailAlerts(loadMailAlerts().filter((a) => a.key !== key))
 }
 
-// Mark as read (in Gmail), Keep unread (only the card goes), or open it in Gmail in the
-// browser (Gmail marks it read; the next check then removes the card).
+// Runs a card's button (MailAction). Open in Gmail: in the browser (Gmail marks it read; the
+// next check then removes the card).
 export async function runMailAction(key: string, action: MailAction) {
   const alert = loadMailAlerts().find((a) => a.key === key)
   if (!alert) return
   if (action === 'mail-open') return openInGmail(alert)
-  removeAlert(key) // right away; a failed "mark as read" just leaves it unread
-  if (action === 'mail-read') {
-    await gmailApi(alert.account, `messages/${alert.id}/modify`, {
-      method: 'POST',
-      body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
-    })
+  if (action === 'mail-opened') {
+    saveMailAlerts(loadMailAlerts().map((a) => (a.key === key ? { ...a, opened: true } : a)))
+    return setUnread(alert, false)
   }
+  removeAlert(key) // right away; if Gmail can't be reached, the mail just stays as it was
+  if (action === 'mail-read') await setUnread(alert, false)
+  if (action === 'mail-unread') await setUnread(alert, true)
 }
+
+const setUnread = (alert: MailAlert, unread: boolean) =>
+  gmailApi(alert.account, `messages/${alert.id}/modify`, {
+    method: 'POST',
+    body: JSON.stringify(unread ? { addLabelIds: ['UNREAD'] } : { removeLabelIds: ['UNREAD'] }),
+  })
 
 // The conversation in Gmail, signed in as the right account
 function openInGmail(alert: MailAlert) {
   openLink(`https://mail.google.com/mail/?authuser=${encodeURIComponent(alert.account)}#all/${alert.threadId}`)
 }
+
+// ---------- Reading ----------
+
+export interface MailBody {
+  html: string // the mail as HTML (a plain-text mail: escaped, links made clickable)
+  plain: boolean // it was plain text (shown in the app's colors; HTML mails on white)
+  remoteImages: boolean // it loads images from the web (blocked until "Show images")
+}
+
+interface Part {
+  mimeType?: string
+  filename?: string
+  headers?: { name: string; value: string }[]
+  body?: { data?: string; attachmentId?: string }
+  parts?: Part[]
+}
+
+// The mail's text, read in the pop-up (MailReader.tsx): its HTML part, else its plain text
+export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
+  const message = await gmailApi(alert.account, `messages/${alert.id}?format=full`)
+  const part = findPart(message.payload, 'text/html') ?? findPart(message.payload, 'text/plain')
+  if (!part) return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false }
+  let data = part.body?.data
+  if (!data && part.body?.attachmentId) {
+    // A long text comes apart from the message, like an attachment
+    data = (await gmailApi(alert.account, `messages/${alert.id}/attachments/${part.body.attachmentId}`)).data
+  }
+  const charset = /charset="?([^";\s]+)/i.exec(
+    part.headers?.find((h) => h.name.toLowerCase() === 'content-type')?.value ?? '',
+  )?.[1]
+  const text = decodePart(data ?? '', charset)
+  if (part.mimeType === 'text/html') {
+    return { html: text, plain: false, remoteImages: REMOTE_IMAGE.test(text) }
+  }
+  return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false }
+}
+
+// The first part of this type that isn't an attached file (mails nest parts: alternatives,
+// related images, attachments)
+function findPart(part: Part | undefined, type: string): Part | undefined {
+  if (!part) return undefined
+  if (part.mimeType === type && !part.filename) return part
+  for (const child of part.parts ?? []) {
+    const found = findPart(child, type)
+    if (found) return found
+  }
+  return undefined
+}
+
+// Gmail gives each part as base64url bytes, in the mail's own character set
+function decodePart(data: string, charset = 'utf-8') {
+  const bytes = Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+  try {
+    return new TextDecoder(charset).decode(bytes)
+  } catch {
+    return new TextDecoder().decode(bytes) // a character set the browser doesn't know
+  }
+}
+
+// An image from the web: <img src="https://…">, a CSS url(https://…), background="https://…"
+const REMOTE_IMAGE = /<img[^>]+src\s*=\s*["']?https?:|url\(\s*["']?https?:|background\s*=\s*["']?https?:/i
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+// Web addresses in a plain-text mail become links (after escaping, so no other HTML)
+const linkify = (html: string) =>
+  html.replace(/https?:\/\/(?:(?!&gt;|&quot;)[^\s<])+/g, (match) => {
+    const url = match.replace(/[.,;:!?)\]']+$/, '') // a sentence's end isn't part of it
+    return `<a href="${url}">${url}</a>${match.slice(url.length)}`
+  })

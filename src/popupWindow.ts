@@ -17,6 +17,7 @@ import { runMailAction, type MailAction, type MailAlert } from './mailAlerts'
 
 export const POPUP_LABEL = 'reminder-popup'
 export const POPUP_WIDTH = 390
+export const READER_WIDTH = 600 // while an email is open to read (MailReader.tsx)
 const MARGIN = 12 // from the screen edges
 
 // Button clicks from the pop-up to the main window: through Tauri's events in the desktop
@@ -60,18 +61,18 @@ export async function popupMonitor(): Promise<Monitor | null> {
   return monitors.find((monitor) => monitor.name === popupScreen) ?? (await primaryMonitor())
 }
 
-// Where a pop-up of this height (logical pixels) goes: the chosen corner of its screen's work
+// Where a pop-up of this height and width (logical pixels) goes: the chosen corner of its screen's work
 // area (the screen without the taskbar). In physical pixels with that screen's scale, so it
 // also lands right on a second screen with another scale than the main one.
 // maxHeight: the most it may grow (logical pixels), the work area's height.
-export async function popupPlace(height: number) {
+export async function popupPlace(height: number, width = POPUP_WIDTH) {
   const monitor = await popupMonitor()
   if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600 }
   const { position, size } = monitor.workArea
   const scale = monitor.scaleFactor
   const { popupCorner } = loadBackground()
   const margin = MARGIN * scale
-  const x = popupCorner.endsWith('left') ? position.x + margin : position.x + size.width - POPUP_WIDTH * scale - margin
+  const x = popupCorner.endsWith('left') ? position.x + margin : position.x + size.width - width * scale - margin
   const y = popupCorner.startsWith('top') ? position.y + margin : position.y + size.height - height * scale - margin
   return {
     position: new PhysicalPosition(Math.round(x), Math.round(y)),

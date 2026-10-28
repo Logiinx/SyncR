@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { BACKGROUND_KEY } from './desktop'
 import { useDueReminders, type DueItem } from './dueReminders'
-import { useMailAlerts, type MailAlert } from './mailAlerts'
+import { useMailAlerts, type MailAction, type MailAlert } from './mailAlerts'
+import MailReader from './MailReader'
 import { MailCards } from './MailCards'
 import { playEmailSound, playReminderSound } from './sounds'
 import { ReminderCards } from './ReminderAlerts'
-import { POPUP_WIDTH, popupPlace, sendFromPopup } from './popupWindow'
+import { POPUP_WIDTH, popupPlace, READER_WIDTH, sendFromPopup } from './popupWindow'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
 // ?view=reminder-popup, see main.tsx). Shows the due reminders and new emails, plays a sound
@@ -18,22 +19,40 @@ function ReminderPopup() {
   usePopupSounds(due, mails)
   const listRef = useRef<HTMLDivElement>(null)
 
+  // An email open to read: the window grows (READER_WIDTH, 80% of the screen's height) until
+  // Back, Done or Mark as unread. Reminders that come due meanwhile show above it.
+  const [readingKey, setReadingKey] = useState<string | null>(null)
+  const reading = mails.find((mail) => mail.key === readingKey)
+  const readingRef = useRef(false)
+  readingRef.current = reading !== undefined
+
+  function read(alert: MailAlert) {
+    setReadingKey(alert.key)
+    if (!alert.opened) sendFromPopup({ id: alert.key, action: 'mail-opened' }) // marks it read
+  }
+
   // Fit the window to the cards (at most the screen's height) and keep it in its corner. Also
-  // when the screen or corner is changed in Settings (main window, same storage).
+  // when the screen or corner is changed in Settings (main window, same storage), and when an
+  // email opens or closes.
+  const refitRef = useRef(() => {})
   useEffect(() => {
     const list = listRef.current
     if (!list) return
     const fit = async () => {
       const { maxHeight } = await popupPlace(0)
-      const height = Math.min(Math.ceil(list.scrollHeight), maxHeight)
+      const width = readingRef.current ? READER_WIDTH : POPUP_WIDTH
+      const height = readingRef.current
+        ? Math.round(maxHeight * 0.8)
+        : Math.min(Math.ceil(list.scrollHeight), maxHeight)
       if (height === 0) return
       const win = getCurrentWindow()
       // Size first (in the scale of the screen it's on now), then the place for that height.
       // Moving to a screen with another scale makes Windows rescale it to the same logical size.
-      await win.setSize(new LogicalSize(POPUP_WIDTH, height))
-      await win.setPosition((await popupPlace(height)).position)
+      await win.setSize(new LogicalSize(width, height))
+      await win.setPosition((await popupPlace(height, width)).position)
     }
-    const refit = () => fit().catch((error) => console.error(error))
+    const refit = () => void fit().catch((error) => console.error(error))
+    refitRef.current = refit
     const observer = new ResizeObserver(refit)
     observer.observe(list)
     const onStorage = (e: StorageEvent) => e.key === BACKGROUND_KEY && refit()
@@ -43,11 +62,23 @@ function ReminderPopup() {
       window.removeEventListener('storage', onStorage)
     }
   }, [])
+  useEffect(() => {
+    refitRef.current()
+  }, [reading !== undefined])
 
+  const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
-    <div ref={listRef} className="reminder-popup" role="alert">
+    <div ref={listRef} className={`reminder-popup${reading ? ' reading' : ''}`} role="alert">
       {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
-      <MailCards alerts={mails} onAction={(alert, action) => sendFromPopup({ id: alert.key, action })} />
+      {reading ? (
+        <MailReader
+          alert={reading}
+          onAction={(action) => mailAction(reading, action)}
+          onBack={() => setReadingKey(null)}
+        />
+      ) : (
+        <MailCards alerts={mails} onAction={mailAction} onRead={read} />
+      )}
     </div>
   )
 }
