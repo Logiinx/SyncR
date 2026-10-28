@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-28
+
 **Reminders**
 - Pick the reminder sound in Settings: Chime, Soft, Ping, Double ping or None. A click plays it.
 
