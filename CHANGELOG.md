@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- PC: the pop-up no longer stays open and empty after its last card is closed.
+- PC: side panels no longer slide in by themselves when SyncR starts.
+- Settings no longer jumps back to the top while you scroll it.
+
 ## [0.28.0] - 2026-10-28
 
 **App**

@@ -710,6 +710,9 @@ function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
     }
 
     function fit() {
+      // The tries below briefly make the dialog shorter, which pulls its scroll position up: put
+      // it back after (a status line changing made Settings jump to the top)
+      const scrollTop = dialog!.scrollTop
       const narrow = matchMedia('(max-width: 699px)').matches
       let count = narrow ? 1 : 2
       dialog!.classList.remove('compact')
@@ -726,6 +729,7 @@ function useSettingsColumns(dialogRef: RefObject<HTMLDivElement | null>) {
         dialog!.classList.add('compact')
         apply(count) // the tops again, with the new spacing
       }
+      dialog!.scrollTop = scrollTop
     }
 
     fit()
