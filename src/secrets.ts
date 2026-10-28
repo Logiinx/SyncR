@@ -18,6 +18,7 @@ const KEYS = [DROPBOX_SECRET, GOOGLE_SECRET, GMAIL_SECRET, SYNC_KEY_SECRET]
 const MARK = 'dpapi:' // a stored value = MARK + base64 of the encrypted bytes
 const memory = new Map<string, string | null>()
 let writes = Promise.resolve() // one after the other, so an older value can't land after a newer one
+const saving = new Map<string, number>() // per key: this window's saves not on disk yet
 
 async function decrypt(stored: string | null) {
   if (stored === null || !stored.startsWith(MARK)) return stored // not encrypted (yet)
@@ -38,7 +39,14 @@ export async function loadSecrets() {
   // then tell this window ("secret-change", the key in detail)
   window.addEventListener('storage', async (event) => {
     if (event.key === null || !KEYS.includes(event.key)) return
-    if (isTauri()) memory.set(event.key, await decrypt(event.newValue))
+    if (isTauri()) {
+      const value = await decrypt(event.newValue)
+      // Decrypting takes a moment: a newer save may have come meanwhile, and its event (which
+      // may finish first) has the say. Only the value still stored is taken, and not while
+      // this window is saving its own (newer: it lands after, the other window takes it then).
+      if (localStorage.getItem(event.key) !== event.newValue || saving.get(event.key)) return
+      memory.set(event.key, value)
+    }
     window.dispatchEvent(new CustomEvent('secret-change', { detail: event.key }))
   })
   if (!isTauri()) return
@@ -65,10 +73,12 @@ export function setSecret(key: string, value: string | null): Promise<void> {
     return Promise.resolve()
   }
   memory.set(key, value)
+  saving.set(key, (saving.get(key) ?? 0) + 1)
   writes = writes.then(async () => {
     if (value === null) return localStorage.removeItem(key)
     const data = await invoke<number[]>('protect_secret', { text: value })
     localStorage.setItem(key, MARK + toBase64(Uint8Array.from(data)))
   }).catch((error) => console.error('Secret could not be saved', error))
+    .finally(() => saving.set(key, saving.get(key)! - 1))
   return writes
 }

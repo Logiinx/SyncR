@@ -25,8 +25,6 @@ const STATE = 'gmail' // tells this sign-in's return apart from Calendar's and D
 export interface GmailAccount {
   email: string
   refreshToken: string
-  accessToken?: string
-  expiresAt?: number // ms since epoch
   color: string // a palette name (var(--text-<name>)): the strip on its pop-up cards
   enabled: boolean // off: not checked for new mail
   expired?: boolean // Google refused the sign-in (e.g. access removed): sign in again
@@ -35,7 +33,9 @@ export interface GmailAccount {
 
 export function loadAccounts(): GmailAccount[] {
   try {
-    return JSON.parse(getSecret(GMAIL_SECRET) ?? '[]')
+    // Up to v0.31 the access tokens were stored too: left out (they're in `accessTokens` now)
+    const stored: (GmailAccount & { accessToken?: string; expiresAt?: number })[] = JSON.parse(getSecret(GMAIL_SECRET) ?? '[]')
+    return stored.map(({ accessToken, expiresAt, ...account }) => account)
   } catch {
     return []
   }
@@ -139,10 +139,9 @@ async function finish(params: URLSearchParams): Promise<Result> {
   const email = idTokenClaims(data.id_token).email
   if (!email) return fail('Gmail: Google didn’t say which account it is. Please try again.')
 
+  accessTokens.set(email, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
   const tokens = {
     refreshToken: data.refresh_token,
-    accessToken: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
     pubsub: granted.split(' ').includes(PUBSUB_SCOPE),
   }
   const accounts = loadAccounts()
@@ -173,25 +172,30 @@ function nextColor(accounts: GmailAccount[]) {
 
 const REQUEST_TIMEOUT_MS = 30_000
 
-// A valid access token for the account (they last 1 hour), renewed through the proxy when
-// (almost) expired. Google refusing the sign-in marks the account "signed out" (Settings).
+// Access tokens (they last 1 hour), per window and only in memory: saving them would make the
+// pop-up rewrite the account list every hour, and a list saved by one window can undo a change
+// the other just made (on the PC each window's copy catches up a moment late, secrets.ts).
+const accessTokens = new Map<string, { token: string; expiresAt: number }>()
+
+// A valid access token for the account, renewed through the proxy when (almost) expired.
+// Google refusing the sign-in marks the account "signed out" (Settings).
 async function accessToken(email: string) {
   const account = loadAccounts().find((a) => a.email === email)
   if (!account || account.expired) throw new Error(`Gmail: ${email} isn't signed in`)
-  if (account.accessToken && account.expiresAt && account.expiresAt > Date.now() + 60_000) {
-    return account.accessToken
-  }
+  const known = accessTokens.get(email)
+  if (known && known.expiresAt > Date.now() + 60_000) return known.token
   const res = await tokenRequest({ refresh_token: account.refreshToken })
   if (!res.ok) {
     // Only "invalid_grant" means the sign-in was revoked; other errors may pass
     if ((await res.text()).includes('invalid_grant')) {
-      updateAccount(email, { expired: true, accessToken: undefined })
+      accessTokens.delete(email)
+      updateAccount(email, { expired: true })
       throw new Error(`Gmail: ${email} was signed out. Sign in again in Settings.`)
     }
     throw new Error(`Gmail error (${res.status})`)
   }
   const data = await res.json()
-  updateAccount(email, { accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
+  accessTokens.set(email, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
   return data.access_token as string
 }
 
@@ -218,7 +222,7 @@ export async function googleApi(
     })
   let res = await send()
   if (res.status === 401) {
-    updateAccount(email, { accessToken: undefined })
+    accessTokens.delete(email)
     res = await send()
   }
   if (!res.ok) {
