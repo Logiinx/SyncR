@@ -29,10 +29,11 @@ interface Props {
   onSearchFocused: () => void
 }
 
-// "Today, 14:32", "Yesterday, 09:10", otherwise "14 Oct 2026"
+// "Today, 14:32", "Yesterday, 09:10", otherwise "14 Oct 2026". A last edit is never ahead,
+// except from a device whose clock runs fast: then its date, not "Tomorrow"
 function formatDate(time: number) {
   const near = nearDay(time)
-  return near ? `${near}, ${clockTime(time)}` : shortDate(time)
+  return near && near !== 'Tomorrow' ? `${near}, ${clockTime(time)}` : shortDate(time)
 }
 
 // A search snippet with the matched words in bold

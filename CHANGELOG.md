@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- Note list: a note last edited on a device whose clock runs fast shows its date again, not "Tomorrow".
+
 **Board**
 - "Move to group…" works reliably when two groups have the same name.
 
