@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
-import { gameMenuItems, usePinnedGames } from './gameMenu'
+import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { WatchBell } from './PriceWatchView'
@@ -44,7 +44,6 @@ function GamesView() {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
-  const pinned = usePinnedGames()
   // The status shown (one at a time) and grid or list, remembered per device
   const [remembered, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
   // Before v0.20 it could be "done" or "dropped", which became the Library
@@ -52,7 +51,7 @@ function GamesView() {
   const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
   const statusList = useRef<HTMLDivElement>(null)
   const lines = useTabLines(statusList, shown)
-  const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<GameMenu | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
@@ -67,7 +66,7 @@ function GamesView() {
   const [top, setTop] = useLocalState('syncr.calendarTop', DEFAULT_TOP)
 
   function openMenu(game: Game, x: number, y: number) {
-    setMenu({ game, x, y })
+    gameMenuAt(game, x, y).then(setMenu)
   }
 
   async function askRemove(game: Game) {
@@ -75,9 +74,9 @@ function GamesView() {
   }
 
   // The shared game menu (gameMenu.ts)
-  function menuItems(game: Game): MenuItem[] {
+  function menuItems({ game, pinned }: GameMenu): MenuItem[] {
     return gameMenuItems(game, {
-      pinned: !!pinned?.has(game.id),
+      pinned,
       onWatch: () => {
         setOpenWatch(game.id)
         setOpenId(game.id)
@@ -194,7 +193,7 @@ function GamesView() {
           }}
         />
       )}
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.game)} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
   )

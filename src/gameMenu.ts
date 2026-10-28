@@ -1,6 +1,5 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, Bell, BellOff, Heart, Pin, PinOff, Sparkles, Trash2 } from 'lucide-react'
-import { canWatch, db, isWatched, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game } from './db'
+import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game } from './db'
 import { isFavoriteTab, priorityLabel, STATUSES } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
@@ -39,10 +38,10 @@ export function gameMenuItems(game: Game, view: { pinned: boolean; onWatch: () =
   ]
 }
 
-// Games that have a card on the Board (for "Pin to Board" / "Unpin from Board")
-export function usePinnedGames() {
-  return useLiveQuery(
-    async () => new Set((await db.cards.toArray()).filter((c) => !c.deleted && c.game).map((c) => c.game!.id)),
-    [],
-  )
+// The menu to open at x, y: whether the game has a Board card ("Pin to Board" or "Unpin from
+// Board") is looked up once here, not kept up to date while no menu is open
+export type GameMenu = { game: Game; x: number; y: number; pinned: boolean }
+
+export async function gameMenuAt(game: Game, x: number, y: number): Promise<GameMenu> {
+  return { game, x, y, pinned: !!(await pinnedCard(game.id)) }
 }

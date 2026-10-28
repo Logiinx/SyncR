@@ -10,7 +10,7 @@ import { CALENDAR_LAYOUTS, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
-import { gameMenuItems, usePinnedGames } from './gameMenu'
+import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, eventColor, useCalendarEvents } from './calendarEvents'
 import EventDialog from './EventDialog'
@@ -62,8 +62,8 @@ function RemindersView() {
   // The game opened by "Watch price…": its price alerts first (an id, like GamesView: a window
   // closed another way, e.g. by Remove, mustn't pass it on to the next game opened)
   const [openWatch, setOpenWatch] = useState<string | null>(null)
-  const [gameMenu, setGameMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
-  const pinned = usePinnedGames()
+  const [gameMenu, setGameMenu] = useState<GameMenu | null>(null)
+  const openGameMenu = (game: Game, x: number, y: number) => gameMenuAt(game, x, y).then(setGameMenu)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
@@ -185,7 +185,7 @@ function RemindersView() {
         onClick={() => setOpenGame(game.id)}
         onContextMenu={(e) => {
           e.preventDefault()
-          setGameMenu({ game, x: e.clientX, y: e.clientY })
+          openGameMenu(game, e.clientX, e.clientY)
         }}
       >
         <Cover coverId={game.coverId} />
@@ -250,7 +250,7 @@ function RemindersView() {
             onOpenEvent={setPreviewEvent}
             onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
             onGame={setOpenGame}
-            onGameMenu={(game, x, y) => setGameMenu({ game, x, y })}
+            onGameMenu={openGameMenu}
           />
         )}
         {!grid && waitingGames && events.length + waitingGames.length === 0 && (
@@ -306,7 +306,7 @@ function RemindersView() {
           y={gameMenu.y}
           onClose={() => setGameMenu(null)}
           items={gameMenuItems(gameMenu.game, {
-            pinned: !!pinned?.has(gameMenu.game.id),
+            pinned: gameMenu.pinned,
             onWatch: () => {
               setOpenWatch(gameMenu.game.id)
               setOpenGame(gameMenu.game.id)
