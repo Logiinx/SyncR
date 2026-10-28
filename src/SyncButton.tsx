@@ -3,7 +3,7 @@ import { Check } from 'lucide-react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
 import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
-import { forgetKey, getKey } from './crypto'
+import { dropOldKey, forgetKey, getKey } from './crypto'
 import { connect, disconnect, finishConnect, isConnected } from './dropbox'
 import { finishConnect as finishGoogleConnect, isGoogleReturn } from './google'
 import { finishGmailConnect, isGmailReturn } from './gmail'
@@ -69,6 +69,7 @@ function SyncButton() {
   const [signInError, setSignInError] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [askPassphrase, setAskPassphrase] = useState(false)
+  const [keyMoved, setKeyMoved] = useState(false) // the PC's old sync key was removed (crypto.ts, dropOldKey)
   const [message, setMessage] = useState<Message | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { status, errorMessage, lastSuccessAt } = useSyncExternalStore(subscribe, getStatus)
@@ -118,6 +119,11 @@ function SyncButton() {
     window.addEventListener('sync-key-change', refreshKey)
     window.addEventListener('sync-notice', onNotice)
     refreshKey()
+    dropOldKey().then((dropped) => {
+      if (!dropped) return
+      setKeyMoved(true)
+      setAskPassphrase(true)
+    })
 
     // Just came back from the Dropbox sign-in: ask for the passphrase right away
     const justConnected = new URL(location.href).searchParams.has('code') && !isGoogleReturn() && !isGmailReturn()
@@ -255,7 +261,12 @@ function SyncButton() {
           {message.text}
         </div>
       )}
-      {askPassphrase && !unlocked && connected && <PassphraseDialog onClose={() => setAskPassphrase(false)} />}
+      {askPassphrase && !unlocked && connected && (
+        <PassphraseDialog
+          note={keyMoved ? 'SyncR now keeps the sync key encrypted by Windows. Enter your passphrase once to set it up.' : undefined}
+          onClose={() => setAskPassphrase(false)}
+        />
+      )}
     </>
   )
 }

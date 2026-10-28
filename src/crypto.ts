@@ -1,9 +1,13 @@
+import { isTauri } from '@tauri-apps/api/core'
 import { db } from './db'
 import { download, upload } from './dropbox'
+import { getSecret, setSecret, SYNC_KEY_SECRET } from './secrets'
 
 // End-to-end encryption for everything stored in Dropbox.
 // AES-256-GCM, key derived from the passphrase with PBKDF2-SHA256.
-// Each device remembers the key (non-exportable, in IndexedDB). The passphrase is never stored.
+// Each device remembers the key. The passphrase is never stored.
+// PC: the key's bytes, encrypted by Windows (secrets.ts), turned into a non-exportable key in
+// memory. Phone and browser: a non-exportable key in IndexedDB (no Windows encryption there).
 
 const CRYPTO_FILE = '/crypto.json'
 const ITERATIONS = 600_000
@@ -29,6 +33,8 @@ export function fromBase64(text: string) {
   return Uint8Array.from(atob(text), (c) => c.charCodeAt(0))
 }
 
+const isPc = isTauri
+
 async function deriveKey(passphrase: string, salt: Uint8Array<ArrayBuffer>, iterations: number) {
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, [
     'deriveKey',
@@ -37,7 +43,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array<ArrayBuffer>, iter
     { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
     base,
     { name: 'AES-GCM', length: 256 },
-    false, // non-exportable: the key can be used but never read out
+    isPc(), // elsewhere non-exportable: the key can be used but never read out
     ['encrypt', 'decrypt'],
   )
 }
@@ -60,14 +66,37 @@ export async function decrypt(key: CryptoKey, data: Uint8Array) {
 
 // ---------- The key remembered on this device ----------
 
+let pcKey: { raw: string; key: CryptoKey } | undefined // the PC's key, made from its bytes once
+
 export async function getKey(): Promise<CryptoKey | undefined> {
-  return (await db.keys.get('sync'))?.key
+  if (!isPc()) return (await db.keys.get('sync'))?.key
+  const raw = getSecret(SYNC_KEY_SECRET)
+  if (!raw) return undefined
+  if (pcKey?.raw !== raw) {
+    const key = await crypto.subtle.importKey('raw', fromBase64(raw), 'AES-GCM', false, ['encrypt', 'decrypt'])
+    pcKey = { raw, key }
+  }
+  return pcKey.key
 }
 
 async function saveKey(key: CryptoKey | null) {
-  if (key) await db.keys.put({ name: 'sync', key })
-  else await db.keys.delete('sync')
+  if (!isPc()) {
+    if (key) await db.keys.put({ name: 'sync', key })
+    else await db.keys.delete('sync')
+  } else {
+    const raw = key && toBase64(new Uint8Array(await crypto.subtle.exportKey('raw', key)))
+    await setSecret(SYNC_KEY_SECRET, raw)
+    await db.keys.delete('sync') // an old one (up to v0.26), see dropOldKey
+  }
   window.dispatchEvent(new Event('sync-key-change'))
+}
+
+// Up to v0.26 the PC kept a non-exportable key in IndexedDB: it can't be moved under Windows
+// encryption, so it's removed and the passphrase asked once (SyncButton). true if there was one.
+export async function dropOldKey() {
+  if (!isPc() || !(await db.keys.get('sync'))) return false
+  await db.keys.delete('sync')
+  return true
 }
 
 export function forgetKey() {

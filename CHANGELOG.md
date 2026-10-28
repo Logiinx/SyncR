@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - PC: click a Gmail account's dot in Settings → Gmail to pick its color (its pop-ups' strip and its dot in the Mail tab).
-- PC: the Dropbox, Google Calendar and Gmail sign-ins are now stored encrypted, readable only by your Windows user.
+- PC: sign-ins and the sync key are now stored encrypted for your Windows user only. Enter your passphrase once after updating.
 
 ## [0.26.0] - 2026-10-28
 

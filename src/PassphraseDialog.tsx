@@ -4,7 +4,8 @@ import Spinner from './Spinner'
 
 // Asks for the sync passphrase. First device: create it (typed twice). Other devices: enter it.
 // Closing it without a passphrase is fine: sync just stays locked.
-function PassphraseDialog({ onClose }: { onClose: () => void }) {
+// note: why it's asked again (e.g. the PC's key was moved under Windows encryption, SyncButton)
+function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => void }) {
   const [mode, setMode] = useState<'loading' | 'create' | 'unlock'>('loading')
   const [passphrase, setPassphrase] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -78,7 +79,7 @@ function PassphraseDialog({ onClose }: { onClose: () => void }) {
             If you forget it, the copies in Dropbox can't be read. Your notes on each device are still fine.
           </p>
         )}
-        {mode === 'unlock' && <p>The passphrase you created on your other device.</p>}
+        {mode === 'unlock' && <p>{note ?? 'The passphrase you created on your other device.'}</p>}
 
         {mode !== 'loading' && (
           <>

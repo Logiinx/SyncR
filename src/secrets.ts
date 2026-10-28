@@ -2,16 +2,18 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { fromBase64, toBase64 } from './crypto'
 
 // Secrets kept per device in localStorage: the sign-ins (with their keys) of Dropbox, Google
-// Calendar and Gmail. On the PC they're stored encrypted with Windows DPAPI (lib.rs, dpapi):
-// only this Windows user can read them. They're decrypted once at start (loadSecrets, before
-// the app shows) and kept in memory, so reading them stays instant; saving one stores it
-// encrypted again. On the phone and in a browser: plain localStorage (no DPAPI there).
+// Calendar and Gmail, and on the PC the sync key (crypto.ts). On the PC they're stored
+// encrypted with Windows DPAPI (lib.rs, dpapi): only this Windows user can read them. They're
+// decrypted once at start (loadSecrets, before the app shows) and kept in memory, so reading
+// them stays instant; saving one stores it encrypted again. On the phone and in a browser:
+// plain localStorage (no DPAPI there).
 // The PKCE "verifiers" stay plain: they only live for one sign-in and are useless alone.
 
 export const DROPBOX_SECRET = 'syncr.dropbox'
 export const GOOGLE_SECRET = 'syncr.google'
 export const GMAIL_SECRET = 'syncr.gmail'
-const KEYS = [DROPBOX_SECRET, GOOGLE_SECRET, GMAIL_SECRET]
+export const SYNC_KEY_SECRET = 'syncr.sync-key'
+const KEYS = [DROPBOX_SECRET, GOOGLE_SECRET, GMAIL_SECRET, SYNC_KEY_SECRET]
 
 const MARK = 'dpapi:' // a stored value = MARK + base64 of the encrypted bytes
 const memory = new Map<string, string | null>()
