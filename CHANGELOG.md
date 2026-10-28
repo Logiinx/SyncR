@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-10-28
+
 **Notes**
 - Note list: a note last edited on a device whose clock runs fast shows its date again, not "Tomorrow".
 
