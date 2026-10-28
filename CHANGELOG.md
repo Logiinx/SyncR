@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Games**
 - Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.
 
+**App**
+- The "‹ Back" buttons of the trailer view and of an open email now look the same.
+
 ## [0.30.1] - 2026-10-28
 
 **App**

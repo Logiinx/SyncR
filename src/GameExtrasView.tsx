@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
+import { ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
+import BackButton from './BackButton'
 import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
@@ -240,9 +241,7 @@ export function TrailerTheater(props: {
       onKeyDown={(e) => e.key === 'Escape' && props.onBack()}
     >
       <header className="trailer-theater-bar">
-        <button className="trailer-theater-back" onClick={props.onBack} title="Back to the game">
-          <ChevronLeft size={18} /> Back
-        </button>
+        <BackButton onClick={props.onBack} title="Back to the game" />
         <div className="trailer-theater-info">
           <h2>{props.title}</h2>
           <p>{details.join(' · ')}</p>

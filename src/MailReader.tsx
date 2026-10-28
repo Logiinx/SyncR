@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
+import { ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
+import BackButton from './BackButton'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -50,9 +51,7 @@ function MailReader({ alert, onAction, onBack }: {
   return (
     <div className="reminder-alert mail-reader" style={{ borderLeftColor: accountColor(alert.account) }}>
       <div className="mail-reader-head">
-        <button className="mail-reader-icon mail-reader-back" onClick={onBack} title="Back to the list">
-          <ChevronLeft size={16} /> Back
-        </button>
+        <BackButton onClick={onBack} title="Back to the list" />
         <div className="mail-reader-title">
           <span className="reminder-alert-due">
             <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account">{alert.account}</span>
