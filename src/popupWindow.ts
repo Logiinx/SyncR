@@ -89,10 +89,24 @@ export async function popupPlacer() {
 }
 
 let opening = false
+let wanted = false // something to show: false once all is done (a pop-up still opening then closes)
 
 async function openPopup(onError: () => void) {
-  if (opening || (await WebviewWindow.getByLabel(POPUP_LABEL))) return
+  // Marked at once: two changes in a row (e.g. reminders and emails loading at start) must not
+  // both open one, the second would fail and the main window would stop closing the pop-up
+  if (opening) return
   opening = true
+  let created = false
+  try {
+    if (await WebviewWindow.getByLabel(POPUP_LABEL)) return
+    await createPopup(onError)
+    created = true // "opening" ends when Tauri says it's there (createPopup)
+  } finally {
+    if (!created) opening = false
+  }
+}
+
+async function createPopup(onError: () => void) {
   const height = 150 // first guess; the pop-up resizes itself to fit
   const { position, scale } = await popupPlace(height)
   const popup = new WebviewWindow(POPUP_LABEL, {
@@ -116,7 +130,10 @@ async function openPopup(onError: () => void) {
     // sees the same database. Without it, it loaded from http://… and found no reminders.
     useHttpsScheme: true,
   })
-  popup.once('tauri://created', () => (opening = false))
+  popup.once('tauri://created', () => {
+    opening = false
+    if (!wanted) closePopup() // everything was done while it opened
+  })
   popup.once('tauri://error', (error) => {
     console.error('Reminder pop-up failed', error)
     opening = false
@@ -146,7 +163,8 @@ export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[])
   // Alt+F4 comes back within a minute while reminders are still due
   useEffect(() => {
     if (!isTauri() || due === undefined || failed) return
-    if (due.length > 0 || mails.length > 0) openPopup(() => setFailed(true)).catch(() => setFailed(true))
+    wanted = due.length > 0 || mails.length > 0
+    if (wanted) openPopup(() => setFailed(true)).catch(() => setFailed(true))
     else closePopup()
   }, [due, mails, failed])
 
