@@ -12,7 +12,7 @@ import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
 import { checkForUpdates } from './UpdateBanner'
 import { searchNotes, type Snippet } from './noteSearch'
-import { shortDate } from './dates'
+import { clockTime, nearDay, shortDate } from './dates'
 
 interface Props {
   activeId: string | null
@@ -31,16 +31,8 @@ interface Props {
 
 // "Today, 14:32", "Yesterday, 09:10", otherwise "14 Oct 2026"
 function formatDate(time: number) {
-  const date = new Date(time)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`
-  const day = new Date(time).setHours(0, 0, 0, 0)
-  const today = new Date()
-  if (day === today.setHours(0, 0, 0, 0)) return `Today, ${clock}`
-  // (setDate instead of "minus 24 hours": days with a clock change are 23 or 25 hours long)
-  today.setDate(today.getDate() - 1)
-  if (day === today.getTime()) return `Yesterday, ${clock}`
-  return shortDate(time)
+  const near = nearDay(time)
+  return near ? `${near}, ${clockTime(time)}` : shortDate(time)
 }
 
 // A search snippet with the matched words in bold

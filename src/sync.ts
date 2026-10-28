@@ -10,7 +10,7 @@ import {
   type Note,
 } from './db'
 import { decrypt, encrypt, getKey } from './crypto'
-import { shortDate } from './dates'
+import { clockTime, shortDate } from './dates'
 import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
@@ -156,7 +156,7 @@ async function runSync(): Promise<SyncResult> {
   async function saveConflictCopy(note: Note, device: string): Promise<'new' | 'existing' | null> {
     const id = conflictCopyId(note)
     if (remoteNotes.has(id) || remoteDeleted.has(id)) return null
-    const when = `${shortDate(note.updatedAt)}, ${new Date(note.updatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+    const when = `${shortDate(note.updatedAt)}, ${clockTime(note.updatedAt)}`
     const added = await db.transaction('rw', db.notes, db.deletions, async () => {
       if (await db.deletions.get(id)) return null
       if (await db.notes.get(id)) return false

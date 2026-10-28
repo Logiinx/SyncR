@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Bell, Repeat } from 'lucide-react'
 import type { CalendarEvent } from './db'
+import { clockTime } from './dates'
 import Window from './Window'
 import CloseButton from './CloseButton'
 
@@ -22,7 +23,7 @@ function whenText(event: CalendarEvent) {
   const date = new Date(event.start)
   const day = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   if (event.allDay) return day
-  return `${day}, ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+  return `${day}, ${clockTime(event.start)}`
 }
 
 function EventPreview(props: {

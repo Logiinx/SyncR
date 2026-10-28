@@ -5,7 +5,7 @@ import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import GameDialog from './GameDialog'
 import Cover from './GameCover'
-import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
+import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { CALENDAR_LAYOUTS, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
@@ -19,6 +19,7 @@ import Spinner from './Spinner'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { formatDue } from './reminders'
+import { clockTime } from './dates'
 import { takeAlertEvent } from './dueReminders'
 import { priceEventGame } from './priceWatch'
 import { useListItems, usePage } from './animations'
@@ -333,7 +334,7 @@ function RemindersView() {
 function byMonth<T extends { time: number }>(items: T[]) {
   const groups: { month: string; items: T[] }[] = []
   for (const item of items) {
-    const month = new Date(item.time).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    const month = monthTitle(new Date(item.time))
     if (groups.at(-1)?.month === month) groups.at(-1)!.items.push(item)
     else groups.push({ month, items: [item] })
   }
@@ -365,7 +366,6 @@ function ReminderGrid(props: {
   const lastMonth = last ? (new Date(last).getFullYear() - today.getFullYear()) * 12 + new Date(last).getMonth() - today.getMonth() : 0
   const monthCount = Math.min(MAX_MONTHS, Math.max(MIN_MONTHS, lastMonth + 1))
   const months = Array.from({ length: monthCount }, (_, i) => new Date(today.getFullYear(), today.getMonth() + i, 1))
-  const time = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
   return (
     <MonthGrid
@@ -388,7 +388,7 @@ function ReminderGrid(props: {
               title={event.description ? `${event.title}\n${event.description}` : event.title}
               style={{ '--event': eventColor(event.colorId) } as React.CSSProperties}
             >
-              {!event.allDay && <span className="calendar-reminder-time">{time(event.start)}</span>}
+              {!event.allDay && <span className="calendar-reminder-time">{clockTime(event.start)}</span>}
               {event.seriesId && <Repeat size={11} className="calendar-repeat" aria-label="Repeating event" />} {event.title}
             </button>
           ))}

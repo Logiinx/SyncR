@@ -3773,34 +3773,6 @@ button {
   cursor: pointer;
 }
 
-/* A choice of buttons in Settings (font, pop-up screen and corner): two columns, the chosen
-   one in blue */
-.setting-choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.setting-choices button {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.setting-choices button:hover {
-  border-color: var(--text-dim);
-}
-
-.setting-choices button.selected {
-  border-color: var(--link);
-  background: var(--accent);
-}
-
 /* Settings → Gmail: one row per account: color dot + address (cut with … if long), on/off,
    Remove */
 .gmail-account {
