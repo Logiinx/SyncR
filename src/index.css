@@ -5232,8 +5232,8 @@ h3.games-group-title {
   color: var(--text);
 }
 
+/* The blue fill slides between them (FillSwitch, tabLines.tsx) */
 .gd-status button.active {
-  background: var(--accent);
   color: var(--text);
 }
 

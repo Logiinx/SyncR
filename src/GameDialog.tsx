@@ -11,6 +11,7 @@ import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
 import { isHundred, playedTime, updateSteamStats } from './steam'
 import { coverUrl } from './igdb'
+import { FillSwitch } from './tabLines'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
 // cover with the actions under it on the left; title, status, rating, review and note on the
@@ -137,17 +138,12 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               <CloseButton onClick={onClose} />
             </div>
 
-            <div className="gd-status" role="group" aria-label="Status">
-              {STATUSES.map(({ status, label }) => (
-                <button
-                  key={status}
-                  className={status === game.status ? 'active' : ''}
-                  onClick={() => status !== game.status && setGameStatus(game.id, status)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <FillSwitch
+              className="gd-status"
+              options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
+              value={game.status}
+              onChange={(status) => status !== game.status && setGameStatus(game.id, status)}
+            />
 
             {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
 

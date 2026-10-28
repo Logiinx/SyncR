@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- Game window: the blue fill of the status switch (To play, Playing…) now slides to the chosen one, like the other switches.
+
 ## [0.30.1] - 2026-10-28
 
 **App**
