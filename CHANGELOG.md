@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- PC: instant mail: new emails pop up within seconds once set up in Settings → Gmail (your Google Cloud project ID + one sign-in).
+
 ## [0.27.0] - 2026-10-28
 
 **App**

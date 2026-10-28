@@ -14,6 +14,7 @@ import {
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
+import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
 import { checkSteamProfile, saveSteamProfile, useSteamProfile, type SteamProfile } from './steam'
@@ -530,19 +531,24 @@ const FADE_CHOICES = [
 // Gmail accounts (gmail.ts): PC only (the phone has the Gmail app); also in the browser while
 // developing, to test. Each account: its color (the strip on its pop-ups), address, on/off,
 // Remove. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
+// Instant mail (instantMail.ts): the Google Cloud project ID, and a sign-in of the project's
+// owner (one of the accounts) with the Pub/Sub permission.
 function GmailSettings() {
   const accounts = useGmailAccounts()
+  const [projectId, setProjectId] = useState(loadProjectId)
+  const instant = useInstantStatus()
+  const collector = accounts.find((a) => a.pubsub && !a.expired)
   const [background, setBackground] = useState(loadBackground)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [colorMenu, setColorMenu] = useState<{ email: string; color: string; x: number; y: number } | null>(null)
   const proxy = useConnection()
 
-  async function add() {
+  async function add(pubsub = false) {
     setBusy(true)
     setMessage(isTauri() ? { text: 'Finish the sign-in in your browser…', ok: false } : null)
     try {
-      setMessage(await connectGmail()) // browser: leaves the app
+      setMessage(await connectGmail(pubsub)) // browser: leaves the app
     } catch (error) {
       setMessage({ text: error instanceof Error ? error.message : String(error), ok: false })
     }
@@ -577,7 +583,7 @@ function GmailSettings() {
             {account.expired && <span className="setting-value">signed out</span>}
           </span>
           {account.expired ? (
-            <button className="setting-button" disabled={busy} onClick={add}>
+            <button className="setting-button" disabled={busy} onClick={() => add()}>
               Sign in…
             </button>
           ) : (
@@ -601,7 +607,7 @@ function GmailSettings() {
       ))}
       <div className="setting setting-toggle">
         <span>New emails in Primary</span>
-        <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={add}>
+        <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add()}>
           Add account…
         </button>
       </div>
@@ -643,6 +649,36 @@ function GmailSettings() {
             ))}
           </div>
         </div>
+      )}
+      {accounts.length > 0 && (
+        <>
+          <label className="setting">
+            <span className="setting-label">Instant mail: Google Cloud project ID</span>
+            <input
+              type="text"
+              placeholder="e.g. syncr-123456"
+              value={projectId}
+              onChange={(e) => {
+                setProjectId(e.target.value.trim())
+                saveProjectId(e.target.value.trim())
+              }}
+              spellCheck={false}
+            />
+          </label>
+          <div className="setting setting-toggle">
+            <span>
+              Pub/Sub permission <span className="setting-value">{collector?.email ?? 'not yet'}</span>
+            </span>
+            <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add(true)}>
+              Sign in…
+            </button>
+          </div>
+          {instant.text && (
+            <p className={`setting-status${instant.ok ? ' ok' : ''}`} title={instant.text}>
+              {instant.text}
+            </p>
+          )}
+        </>
       )}
     </section>
   )

@@ -101,6 +101,7 @@ export function forgetAccountMail(email: string) {
 // ---------- Checking ----------
 
 let checking = false
+let again = false // asked while checking (e.g. instant mail's signal): one more check after
 // Cards closed during this run of SyncR: a check that started before keeps them out
 const closed = new Set<string>()
 
@@ -124,7 +125,10 @@ async function mailboxChange(email: string, since: string | undefined) {
 // One check of all accounts: the unread list only for accounts whose mailbox changed. Errors
 // (offline, Google down) leave that account as it was: the next check tries again.
 export async function checkMail() {
-  if (checking) return
+  if (checking) {
+    again = true
+    return
+  }
   checking = true
   try {
     const accounts = loadAccounts().filter((a) => a.enabled && !a.expired)
@@ -171,6 +175,10 @@ export async function checkMail() {
     if (JSON.stringify(alerts) !== JSON.stringify(loadMailAlerts())) saveMailAlerts(alerts)
   } finally {
     checking = false
+    if (again) {
+      again = false
+      void checkMail()
+    }
   }
 }
 

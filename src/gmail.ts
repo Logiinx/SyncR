@@ -17,6 +17,8 @@ import { getSecret, GMAIL_SECRET, setSecret } from './secrets'
 // (secrets.ts: encrypted on the PC).
 
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify' // read, mark as read/unread
+// Instant mail (instantMail.ts): reads Gmail's "new mail" signals from SyncR's Google Cloud queue
+export const PUBSUB_SCOPE = 'https://www.googleapis.com/auth/pubsub'
 const VERIFIER_KEY = 'syncr.gmail.verifier'
 const STATE = 'gmail' // tells this sign-in's return apart from Calendar's and Dropbox's
 
@@ -28,6 +30,7 @@ export interface GmailAccount {
   color: string // a palette name (var(--text-<name>)): the strip on its pop-up cards
   enabled: boolean // off: not checked for new mail
   expired?: boolean // Google refused the sign-in (e.g. access removed): sign in again
+  pubsub?: boolean // signed in with the Pub/Sub permission: collects instant mail's signals
 }
 
 export function loadAccounts(): GmailAccount[] {
@@ -85,14 +88,14 @@ export const isGmailReturn = () => new URL(location.href).searchParams.get('stat
 // Opens Google's sign-in page, where the user picks the account to add (or one already added:
 // it's signed in again). PC app: the page opens in the normal browser and this waits for its
 // return. Browser (only for testing, see SettingsDialog): leaves the app; finishGmailConnect()
-// completes it on return.
-export async function connectGmail(): Promise<Result | null> {
+// completes it on return. pubsub: also asks for the Pub/Sub permission (instant mail).
+export async function connectGmail(pubsub = false): Promise<Result | null> {
   const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)))
   localStorage.setItem(VERIFIER_KEY, verifier)
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
-    scope: `${SCOPE} openid email`, // email: which account it is
+    scope: `${SCOPE} openid email${pubsub ? ` ${PUBSUB_SCOPE}` : ''}`, // email: which account it is
     state: STATE,
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
@@ -140,6 +143,7 @@ async function finish(params: URLSearchParams): Promise<Result> {
     refreshToken: data.refresh_token,
     accessToken: data.access_token,
     expiresAt: Date.now() + data.expires_in * 1000,
+    pubsub: granted.split(' ').includes(PUBSUB_SCOPE),
   }
   const accounts = loadAccounts()
   if (accounts.some((a) => a.email === email)) {
@@ -187,12 +191,21 @@ async function accessToken(email: string) {
 }
 
 // Calls the Gmail API for an account (JSON in, JSON out), e.g. gmailApi(email, 'messages').
-// If Google rejects the access token, gets a fresh one and tries once more.
-export async function gmailApi(email: string, path: string, init: RequestInit = {}) {
+export const gmailApi = (email: string, path: string, init: RequestInit = {}) =>
+  googleApi(email, `https://gmail.googleapis.com/gmail/v1/users/me/${path}`, init, { name: `Gmail ${path}` })
+
+// Calls a Google API with an account's sign-in (JSON in, JSON out): Gmail, Pub/Sub. If Google
+// rejects the access token, gets a fresh one and tries once more. Errors carry the HTTP status.
+export async function googleApi(
+  email: string,
+  url: string,
+  init: RequestInit = {},
+  { name, timeoutMs = REQUEST_TIMEOUT_MS }: { name: string; timeoutMs?: number },
+) {
   const send = async () =>
-    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, {
+    fetch(url, {
       ...init,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       headers: {
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         Authorization: `Bearer ${await accessToken(email)}`,
@@ -203,7 +216,15 @@ export async function gmailApi(email: string, path: string, init: RequestInit = 
     updateAccount(email, { accessToken: undefined })
     res = await send()
   }
-  if (!res.ok) throw Object.assign(new Error(`Gmail ${path} failed (${res.status}): ${await res.text()}`), { status: res.status })
+  if (!res.ok) {
+    let reason = await res.text()
+    try {
+      reason = JSON.parse(reason).error?.message ?? reason // Google's errors: { error: { message } }
+    } catch {
+      // not JSON: the text as it is
+    }
+    throw Object.assign(new Error(`${name} failed (${res.status}): ${reason}`), { status: res.status })
+  }
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }
