@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { gmailApi, loadAccounts } from './gmail'
 import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 
@@ -49,12 +49,19 @@ export function useMailbox() {
   const [rows, setRows] = useState<MailboxRow[] | null>(null) // null: first load
   const [errors, setErrors] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadedFrom, setLoadedFrom] = useState(0) // when the shown list's load started (ms)
+  const lastLoad = useRef(0)
 
+  // Loads can overlap (refresh button, a change in Gmail): only the last one started is shown
   const refresh = useCallback(async () => {
+    const load = ++lastLoad.current
+    const startedAt = Date.now()
     setLoading(true)
     const result = await loadInbox()
+    if (load !== lastLoad.current) return
     setRows(result.rows)
     setErrors(result.errors)
+    setLoadedFrom(startedAt)
     setLoading(false)
   }, [])
 
@@ -68,5 +75,5 @@ export function useMailbox() {
     }
   }, [refresh])
 
-  return { rows, errors, loading, refresh }
+  return { rows, errors, loading, loadedFrom, refresh }
 }

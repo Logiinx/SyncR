@@ -12,12 +12,15 @@ import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
+// A change made in the Mail tab; doneAt: when Gmail took it (ms)
+type LocalChange = { what: 'read' | 'unread' | 'gone'; doneAt?: number }
+
 // The Mail tab (PC): the last mails in Primary of all Gmail accounts, read or not (mailbox.ts),
 // laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others.
 // "Missed" on top: unread emails whose pop-up faded by itself; then the others. A click reads
 // the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ← Back, Done or
-// Escape return to the list. Right-click (sender and subject on top): Open in Gmail, Mark as
-// read / unread, Remove from Missed, Archive, Delete (to Gmail's Trash, without asking).
+// Escape return to the list. Right-click (sender and subject on top): Mark as read / unread,
+// Remove from Missed, Archive, Open in Gmail, Delete (to Gmail's Trash, without asking).
 function MailView() {
   const pageRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -25,15 +28,18 @@ function MailView() {
   useListItems(listRef)
   const accounts = useGmailAccounts()
   const missed = useMissed()
-  const { rows, errors, loading, refresh } = useMailbox()
+  const { rows, errors, loading, loadedFrom, refresh } = useMailbox()
   const [unreadOnly, setUnreadOnly] = useLocalState('syncr.mail.unreadOnly', false)
-  // Marked read / unread here: shown right away, until the list comes back from Gmail
-  const [marked, setMarked] = useState<Map<string, boolean>>(new Map())
-  const [removed, setRemoved] = useState<Set<string>>(new Set()) // archived or deleted here
+  // Changed here (marked read / unread, archived or deleted: "gone"), shown right away. Kept
+  // until a list whose load started after Gmail took the change (one already loading still
+  // has the old state); dropped at once if Gmail refused it (the list's state is the real one).
+  const [changes, setChanges] = useState<Map<string, LocalChange>>(new Map())
   const [menu, setMenu] = useState<{ mail: MailboxRow; x: number; y: number } | null>(null)
   const [reading, setReading] = useState<MailAlert | null>(null)
 
-  useEffect(() => setMarked(new Map()), [rows])
+  useEffect(() => {
+    setChanges((map) => new Map([...map].filter(([, change]) => change.doneAt === undefined || change.doneAt > loadedFrom)))
+  }, [rows, loadedFrom])
 
   useEffect(() => {
     if (!reading) return
@@ -42,16 +48,34 @@ function MailView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [reading])
 
-  const isUnread = (mail: MailboxRow) => marked.get(mail.key) ?? mail.unread
-  const shown = (rows ?? []).filter((mail) => !removed.has(mail.key))
+  const isUnread = (mail: MailboxRow) => {
+    const local = changes.get(mail.key)?.what
+    return local === 'read' || local === 'unread' ? local === 'unread' : mail.unread
+  }
+  const shown = (rows ?? []).filter((mail) => changes.get(mail.key)?.what !== 'gone')
   const missedRows = shown.filter((mail) => missed.includes(mail.key) && isUnread(mail))
   const otherRows = shown.filter((mail) => !missedRows.includes(mail) && (!unreadOnly || isUnread(mail)))
 
-  // Shown right away; if Gmail can't be reached, the next refresh shows the real state
   function change(mail: MailAlert, what: 'read' | 'unread' | 'archive' | 'trash' | 'keep') {
-    if (what === 'read' || what === 'unread') setMarked((map) => new Map(map).set(mail.key, what === 'unread'))
-    if (what === 'archive' || what === 'trash') setRemoved((keys) => new Set(keys).add(mail.key))
-    changeMail(mail.key, what).catch((error) => console.error(error))
+    if (what === 'keep') return void changeMail(mail.key, what) // only the "missed" mark
+    const entry: LocalChange = { what: what === 'archive' || what === 'trash' ? 'gone' : what }
+    setChanges((map) => new Map(map).set(mail.key, entry))
+    // Only if it's still this change (not one made after it)
+    const settle = (doneAt?: number) =>
+      setChanges((map) => {
+        if (map.get(mail.key) !== entry) return map
+        const next = new Map(map)
+        if (doneAt) next.set(mail.key, { ...entry, doneAt })
+        else next.delete(mail.key)
+        return next
+      })
+    changeMail(mail.key, what).then(
+      () => settle(Date.now()),
+      (error) => {
+        console.error(error)
+        settle()
+      },
+    )
   }
 
   function read(mail: MailboxRow) {

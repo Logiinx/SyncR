@@ -13,6 +13,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - Instant mail: signing the instant mail account in again keeps it on (or says it's off). One failing account no longer stops it for all.
 - Gmail: the pop-up can no longer undo an account change just made in Settings. The Mail tab no longer reloads each hour by itself.
+- Mail tab: a mail marked read no longer flips back for a moment. An archived mail shows again once moved back to the inbox in Gmail.
 
 ## [0.31.0] - 2026-10-28
 
