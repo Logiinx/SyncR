@@ -6,9 +6,11 @@ import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { availableMonitors, getCurrentWindow, primaryMonitor, type Monitor } from '@tauri-apps/api/window'
 import { loadBackground } from './desktop'
 import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
+import { runMailAction, type MailAction, type MailAlert } from './mailAlerts'
 
 // The desktop reminder pop-up: a small always-on-top window in a corner of the screen (both
-// chosen in Settings), shown while reminders are due, even when SyncR's window is hidden in the tray.
+// chosen in Settings), shown while reminders are due or new emails came (mailAlerts.ts), even
+// when SyncR's window is hidden in the tray.
 // The main window opens and closes it; the pop-up (ReminderPopup.tsx) shows the reminders
 // itself (same database) and sends its button clicks back here, so all changes and syncing
 // happen in the main window.
@@ -20,8 +22,8 @@ const MARGIN = 12 // from the screen edges
 // Button clicks from the pop-up to the main window: through Tauri's events in the desktop
 // app; through a BroadcastChannel in the browser (only used to test the pop-up page in a tab)
 export interface PopupMessage {
-  id: string // an event alert's key (DueItem.key)
-  action: ReminderAction
+  id: string // an event alert's key (DueItem.key) or an email's (MailAlert.key, "mail:…")
+  action: ReminderAction | MailAction
 }
 const EVENT = 'reminder-popup-action'
 
@@ -126,27 +128,31 @@ async function showMainWindow() {
   await win.setFocus()
 }
 
-// Used by the main window: keeps the pop-up open while reminders are due and runs its button
-// clicks. Returns true if the pop-up couldn't open (then the main window shows cards).
-export function useReminderPopup(due: DueItem[] | undefined) {
+// Used by the main window: keeps the pop-up open while reminders are due or emails are new,
+// and runs its button clicks. Returns true if the pop-up couldn't open (then the main window
+// shows the reminders' cards; emails then wait for the pop-up, PC only anyway).
+export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[]) {
   const [failed, setFailed] = useState(false)
 
   // Checked on every change (not just "some due / none due"), so a pop-up closed with
   // Alt+F4 comes back within a minute while reminders are still due
   useEffect(() => {
     if (!isTauri() || due === undefined || failed) return
-    if (due.length > 0) openPopup(() => setFailed(true)).catch(() => setFailed(true))
+    if (due.length > 0 || mails.length > 0) openPopup(() => setFailed(true)).catch(() => setFailed(true))
     else closePopup()
-  }, [due, failed])
+  }, [due, mails, failed])
 
   useEffect(() => {
     if (!isTauri()) return
     return onPopupMessage(({ id, action }) => {
-      if (action === 'open') {
+      if (action.startsWith('mail-')) {
+        runMailAction(id, action as MailAction).catch((error) => console.error(error))
+      }
+      else if (action === 'open') {
         showMainWindow()
         openAlertEvent(id)
       }
-      else runAction(id, action)
+      else runAction(id, action as Exclude<ReminderAction, 'open'>)
     })
   }, [])
 

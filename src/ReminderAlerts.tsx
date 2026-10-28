@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { ArrowLeft, Bell, ChevronDown } from 'lucide-react'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
+import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
 
@@ -77,7 +78,9 @@ export function ReminderCards({ due, onAction }: {
 // fallback if the pop-up can't open. In the browser / on the phone: cards, bottom-right.
 function ReminderAlerts() {
   const due = useDueReminders()
-  const popupFailed = useReminderPopup(due)
+  useMailCheck() // PC: new emails go to the pop-up too
+  const mails = useMailAlerts()
+  const popupFailed = useReminderPopup(due, mails)
   const showCards = !isTauri() || popupFailed
   useChime(showCards ? due : undefined)
 

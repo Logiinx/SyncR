@@ -151,3 +151,51 @@ function nextColor(accounts: GmailAccount[]) {
   const used = new Set(accounts.map((a) => a.color))
   return ACCOUNT_COLORS.find((c) => !used.has(c)) ?? ACCOUNT_COLORS[accounts.length % ACCOUNT_COLORS.length]
 }
+
+// ---------- Calls ----------
+
+const REQUEST_TIMEOUT_MS = 30_000
+
+// A valid access token for the account (they last 1 hour), renewed through the proxy when
+// (almost) expired. Google refusing the sign-in marks the account "signed out" (Settings).
+async function accessToken(email: string) {
+  const account = loadAccounts().find((a) => a.email === email)
+  if (!account || account.expired) throw new Error(`Gmail: ${email} isn't signed in`)
+  if (account.accessToken && account.expiresAt && account.expiresAt > Date.now() + 60_000) {
+    return account.accessToken
+  }
+  const res = await tokenRequest({ refresh_token: account.refreshToken })
+  if (!res.ok) {
+    // Only "invalid_grant" means the sign-in was revoked; other errors may pass
+    if ((await res.text()).includes('invalid_grant')) {
+      updateAccount(email, { expired: true, accessToken: undefined })
+      throw new Error(`Gmail: ${email} was signed out. Sign in again in Settings.`)
+    }
+    throw new Error(`Gmail error (${res.status})`)
+  }
+  const data = await res.json()
+  updateAccount(email, { accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
+  return data.access_token as string
+}
+
+// Calls the Gmail API for an account (JSON in, JSON out), e.g. gmailApi(email, 'messages').
+// If Google rejects the access token, gets a fresh one and tries once more.
+export async function gmailApi(email: string, path: string, init: RequestInit = {}) {
+  const send = async () =>
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${await accessToken(email)}`,
+      },
+    })
+  let res = await send()
+  if (res.status === 401) {
+    updateAccount(email, { accessToken: undefined })
+    res = await send()
+  }
+  if (!res.ok) throw new Error(`Gmail ${path} failed (${res.status}): ${await res.text()}`)
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
+}

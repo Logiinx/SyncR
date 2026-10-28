@@ -5,8 +5,11 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Reminders**
-- PC: choose the screen and corner where the reminder pop-up shows (Settings → Pop-up), e.g. on a second screen, away from a game.
 - Pick the reminder sound in Settings: Chime, Soft, Ping, Double ping or None. A click plays it.
+
+**App**
+- PC: new Gmail emails (Primary tab) pop up, with Mark as read and Keep unread. Add your accounts in Settings → Gmail.
+- PC: choose the screen and corner where pop-ups show (Settings → Pop-up), e.g. on a second screen, away from a game.
 
 ## [0.25.1] - 2026-10-28
 

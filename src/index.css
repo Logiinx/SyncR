@@ -1535,6 +1535,20 @@ button {
   background: rgb(255 255 255 / 14%);
 }
 
+/* An email card (MailCards.tsx): the subject under the sender; the account's address cut with
+   … if long */
+.mail-alert-subject {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.mail-alert-account {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Done: twice as wide as Snooze */
 .reminder-alert-buttons .primary {
   flex: 2;
@@ -1595,7 +1609,8 @@ button {
 }
 
 .reminder-popup .reminder-alert + .reminder-alert,
-.reminder-popup .reminder-alerts-head + .reminder-alert {
+.reminder-popup .reminder-alerts-head + .reminder-alert,
+.reminder-popup .reminder-alert + .reminder-alerts-head {
   border-top: 1px solid var(--border);
 }
 

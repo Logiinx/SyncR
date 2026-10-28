@@ -17,8 +17,9 @@ export const SOUNDS: { id: SoundId; name: string }[] = [
 
 let audio: AudioContext | null = null
 
-// The sound chosen for reminders
+// The sounds chosen for reminders and for new emails
 export const playReminderSound = () => playSound(loadBackground().reminderSoundId)
+export const playEmailSound = () => playSound(loadBackground().emailSoundId)
 
 export async function playSound(id: SoundId) {
   if (id === 'none') return
