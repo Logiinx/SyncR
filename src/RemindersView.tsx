@@ -59,7 +59,9 @@ function RemindersView() {
   const listRef = useRef<HTMLDivElement>(null)
   useListItems(listRef, `${grid}-${hideRepeating}`)
   const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
-  const [openWatch, setOpenWatch] = useState(false) // opened by "Watch price…": its price alerts first
+  // The game opened by "Watch price…": its price alerts first (an id, like GamesView: a window
+  // closed another way, e.g. by Remove, mustn't pass it on to the next game opened)
+  const [openWatch, setOpenWatch] = useState<string | null>(null)
   const [gameMenu, setGameMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
   const pinned = usePinnedGames()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
@@ -306,7 +308,7 @@ function RemindersView() {
           items={gameMenuItems(gameMenu.game, {
             pinned: !!pinned?.has(gameMenu.game.id),
             onWatch: () => {
-              setOpenWatch(true)
+              setOpenWatch(gameMenu.game.id)
               setOpenGame(gameMenu.game.id)
             },
             onRemove: () => askRemoveGame(gameMenu.game.id),
@@ -316,10 +318,10 @@ function RemindersView() {
       {openGame && (
         <GameDialog
           id={openGame}
-          focusWatch={openWatch}
+          focusWatch={openWatch === openGame}
           onClose={() => {
             setOpenGame(null)
-            setOpenWatch(false)
+            setOpenWatch(null)
           }}
           onRemove={() => askRemoveGame(openGame)}
         />

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- After removing a game opened with "Watch price…", the next game you open no longer jumps to its price alert.
+
 **App**
 - Instant mail: signing the instant mail account in again keeps it on (or says it's off). One failing account no longer stops it for all.
 
