@@ -2,6 +2,7 @@ import { Plus, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { currentZoom } from './appearance'
 import { TabLines, useTabLines } from './tabLines'
+import { useListItems } from './animations'
 
 // An open tab: a note, or the Games tab
 export interface Tab {
@@ -66,6 +67,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
   // While dragging with a finger, stop the tab row from scrolling
   const navRef = useRef<HTMLElement>(null)
   const lines = useTabLines(navRef, activeId)
+  useListItems(navRef) // opened tabs grow in, closed ones shrink away
   useEffect(() => {
     const nav = navRef.current!
     const onTouchMove = (e: TouchEvent) => {
@@ -186,6 +188,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
           return (
             <div
               key={tab.id}
+              data-item={tab.id}
               {...lines.tabProps(tab.id)}
               ref={(el) => {
                 if (el) tabRefs.current.set(tab.id, el)

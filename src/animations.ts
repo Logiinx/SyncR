@@ -146,13 +146,68 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
   }, [])
 }
 
+// The same for lists without their own item components (note tabs, the sidebar's notes, the
+// Reminders list): items are found by their data-item attribute (unique key) inside `ref`. An
+// item grows in when its list (its parent) was already showing items, and shrinks out when its
+// list stays. reset: when it changes, the list changes all at once (a search, a filter): none.
+interface Tracked {
+  el: HTMLElement
+  parent: HTMLElement | null
+}
+
+export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown) {
+  const last = useRef<{ items: Map<string, Tracked>; reset: unknown } | null>(null)
+  useLayoutEffect(() => {
+    const root = ref.current
+    const items = new Map<string, Tracked>()
+    root?.querySelectorAll<HTMLElement>('[data-item]').forEach((el) => {
+      items.set(el.dataset.item!, { el, parent: el.parentElement })
+    })
+    const prev = last.current
+    last.current = root ? { items, reset } : null
+    if (!prev || !root || prev.reset !== reset || !animationsOn()) return
+
+    const parents = new Set([...prev.items.values()].map((item) => item.parent))
+    for (const [key, { el, parent }] of items) {
+      if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
+        el.animate(itemFrames(el, parent), { duration: OPEN_MS, easing: EASE_OUT })
+      }
+    }
+    const order = [...prev.items.keys()]
+    order.forEach((key, index) => {
+      const { el, parent } = prev.items.get(key)!
+      if (items.has(key) || el.isConnected || !parent?.isConnected) return
+      // Back where it was: before the next item that's still in the same list
+      const next = order
+        .slice(index + 1)
+        .map((after) => items.get(after)?.el)
+        .find((after) => after?.parentElement === parent)
+      itemOut(el, parent, next ?? null)
+    })
+  })
+}
+
 function isGrid(list: Element) {
   return getComputedStyle(list).display === 'grid'
 }
 
-// Gone ↔ there. In a column: its height, margins and the gap after it (the last gap goes with it)
+// Gone ↔ there. In a column: its height, margins and the gap after it (the last gap goes with it).
+// In a row (note tabs): the same with its width.
 function itemFrames(el: Element, list: Element): Keyframe[] {
   if (isGrid(list)) return [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }]
+  const listStyle = getComputedStyle(list)
+  if (listStyle.display.endsWith('flex') && !listStyle.flexDirection.startsWith('column')) {
+    const gap = parseFloat(listStyle.columnGap) || 0
+    const style = getComputedStyle(el)
+    const sides = ['minWidth', 'paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth', 'marginLeft'] as const
+    const gone: Keyframe = { width: '0px', marginRight: `${-gap}px`, opacity: 0, overflow: 'hidden' }
+    const there: Keyframe = { width: 'auto', marginRight: style.marginRight, opacity: 1, overflow: 'hidden' }
+    for (const side of sides) {
+      gone[side] = '0px'
+      there[side] = style[side]
+    }
+    return [gone, there]
+  }
   const gap = parseFloat(getComputedStyle(list).rowGap) || 0
   const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px`, opacity: 0, transform: 'scale(0.96)' }
   const there = { ...upright(el), opacity: 1, transform: 'none' }
@@ -161,7 +216,9 @@ function itemFrames(el: Element, list: Element): Keyframe[] {
 
 function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
   // Not found as the item itself (it has the same ids)
-  for (const el of [copy, ...copy.querySelectorAll('[data-card-id]')]) el.removeAttribute('data-card-id')
+  for (const el of [copy, ...copy.querySelectorAll('[data-card-id], [data-line], [data-item]')]) {
+    for (const name of ['data-card-id', 'data-line', 'data-item']) el.removeAttribute(name)
+  }
   copy.classList.add('closing')
   copy.inert = true
   list.insertBefore(copy, next)

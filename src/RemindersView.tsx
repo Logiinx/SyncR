@@ -20,7 +20,7 @@ import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import { takeAlertEvent } from './dueReminders'
 import { priceEventGame } from './priceWatch'
-import { usePage } from './animations'
+import { useListItems, usePage } from './animations'
 
 // The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
 // Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
@@ -52,6 +52,10 @@ function RemindersView() {
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
   const narrow = useNarrow()
   const grid = layout === 'grid' && !narrow
+  // Events and games added or removed grow in and shrink out (the list, not the month grid);
+  // not when "Hide repeating" or the layout changes the whole list
+  const listRef = useRef<HTMLDivElement>(null)
+  useListItems(listRef, `${grid}-${hideRepeating}`)
   const [openGame, setOpenGame] = useState<string | null>(null) // a game's details
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
@@ -140,6 +144,7 @@ function RemindersView() {
   const eventRow = (event: CalendarEvent) => (
     <button
       key={event.id}
+      data-item={event.id}
       className="reminder-row"
       onClick={() => setPreviewEvent(event)}
       onContextMenu={(e) => {
@@ -163,7 +168,7 @@ function RemindersView() {
   const gameRow = (game: Game) => {
     const countdown = releaseCountdown(game.releaseDate)
     return (
-      <button key={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
+      <button key={game.id} data-item={game.id} className="reminder-row" onClick={() => setOpenGame(game.id)}>
         <Cover coverId={game.coverId} />
         <span className="reminder-row-text">
           <span className="reminder-text" title={game.name}>{game.name}</span>
@@ -179,7 +184,7 @@ function RemindersView() {
 
   return (
     <main className="page games-page" ref={pageRef}>
-      <div className={grid ? 'games wide' : 'games'}>
+      <div className={grid ? 'games wide' : 'games'} ref={listRef}>
         {/* One row: New event on the left; refresh and grid / list on the right (the phone has
             no grid: only refresh there) */}
         <div className="games-views reminders-toolbar">

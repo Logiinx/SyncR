@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
+import { useListItems } from './animations'
 import { Bell, Gamepad2, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
 import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
@@ -59,6 +60,9 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   // While searching, only the matching notes, each with the text around the match
   const results = notes && query.trim() ? searchNotes(notes, query) : null
   const searchInput = useRef<HTMLInputElement>(null)
+  // New and deleted notes grow in and shrink out; not while the search changes the list
+  const listRef = useRef<HTMLUListElement>(null)
+  useListItems(listRef, query.trim())
   useEffect(() => {
     if (!focusSearch) return
     searchInput.current?.select()
@@ -95,9 +99,9 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           )}
         </div>
         {results?.length === 0 && <p className="sidebar-no-results">No notes found</p>}
-        <ul className="note-list">
+        <ul className="note-list" ref={listRef}>
           {(results ?? notes?.map((note) => ({ note, snippet: null })))?.map(({ note, snippet }) => (
-            <li key={note.id}>
+            <li key={note.id} data-item={note.id}>
               <button
                 className={note.id === activeId ? 'active' : ''}
                 onClick={() => onOpen(note.id)}
