@@ -3501,14 +3501,18 @@ button {
   text-transform: uppercase;
 }
 
-/* The categories on the left (like the sidebar's entries), the chosen one on the right,
-   scrolling by itself. Same size whatever the category. Phone: the list, or one category with
-   ← Back (.show-list: the list). */
+/* The categories on the left (like the sidebar's entries), the chosen one on the right. As
+   tall as the chosen category (up to the window, then it scrolls by itself); the top stays at
+   the same place, so switching only moves the bottom edge. Phone: the list, or one category
+   with ← Back (.show-list: the list), full screen. */
 .dialog.settings {
+  --settings-top: calc(10vh / var(--zoom, 1));
   display: flex;
   flex-direction: column;
-  width: min(820px, 100%);
-  height: min(640px, 100%);
+  align-self: flex-start;
+  width: min(700px, 100%);
+  max-height: calc(100% - var(--settings-top));
+  margin-top: var(--settings-top);
   overflow: hidden;
   padding-bottom: 0;
 }
@@ -3556,6 +3560,8 @@ button {
   .dialog.settings {
     width: 100%;
     height: 100%;
+    max-height: 100%;
+    margin-top: 0;
   }
 
   .settings-nav {
