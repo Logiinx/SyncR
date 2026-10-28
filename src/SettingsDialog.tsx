@@ -4,7 +4,7 @@ import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
 import { isTauri } from '@tauri-apps/api/core'
-import { playChime } from './chime'
+import { playSound, SOUNDS, type SoundId } from './sounds'
 import {
   connect as connectGoogle,
   connectedName as googleName,
@@ -209,17 +209,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </section>
           <section className="settings-group">
             <SectionTitle title="Reminders" scope="this device" />
-            <label className="setting setting-toggle">
-              <span>Sound when a reminder is due</span>
-              <input
-                type="checkbox"
-                checked={background.reminderSound}
-                onChange={(e) => {
-                  updateBackground({ reminderSound: e.target.checked })
-                  if (e.target.checked) playChime() // a preview
-                }}
-              />
-            </label>
+            <div className="setting">
+              <span className="setting-label">Sound when a reminder is due</span>
+              <SoundChoices value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
+            </div>
           </section>
           {isTauri() && <PopupSettings background={background} onChange={updateBackground} />}
           {isTauri() && (
@@ -600,6 +593,27 @@ function RulerSlider({ min, max, step, value, mark, ...input }: RulerSliderProps
           <span key={v} className={v === mark ? 'major' : undefined} />
         ))}
       </div>
+    </div>
+  )
+}
+
+// A choice of sounds (sounds.ts); a click also plays it, as a preview
+function SoundChoices({ value, onChange }: { value: SoundId; onChange: (id: SoundId) => void }) {
+  return (
+    <div className="setting-choices">
+      {SOUNDS.map(({ id, name }) => (
+        <button
+          key={id}
+          className={id === value ? 'selected' : ''}
+          aria-pressed={id === value}
+          onClick={() => {
+            onChange(id)
+            playSound(id)
+          }}
+        >
+          {name}
+        </button>
+      ))}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { playChime } from './chime'
+import { playReminderSound } from './sounds'
 import { eventId, listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
 import { REMINDERS_TAB } from './reminders'
 
@@ -85,7 +85,7 @@ export function useChime(due: DueItem[] | undefined) {
   useEffect(() => {
     if (!due) return
     const keys = due.map((item) => `${item.key}@${item.dueAt}`)
-    if (keys.some((key) => !chimed.current.has(key))) playChime()
+    if (keys.some((key) => !chimed.current.has(key))) playReminderSound()
     chimed.current = new Set(keys)
   }, [due])
 }

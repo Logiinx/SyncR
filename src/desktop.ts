@@ -1,6 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart'
 import { read, write } from './localState'
+import type { SoundId } from './sounds'
 
 // Running in the background on the PC: what ✕ does, start with Windows, reminder sound,
 // where the pop-up shows.
@@ -8,7 +9,7 @@ import { read, write } from './localState'
 
 export interface Background {
   closeToTray: boolean // ✕ hides SyncR in the tray (it keeps running for reminders) instead of quitting
-  reminderSound: boolean // short chime when a reminder comes due (chime.ts)
+  reminderSoundId: SoundId // played when a reminder comes due (sounds.ts)
   startHidden: boolean // started by Windows at sign-in: stay in the tray instead of showing the window
   popupScreen: string | null // the screen the pop-up shows on (its Windows name); null = the main screen
   popupCorner: PopupCorner
@@ -19,14 +20,16 @@ export type PopupCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-rig
 export const BACKGROUND_KEY = 'syncr.background'
 const DEFAULTS: Background = {
   closeToTray: false,
-  reminderSound: true,
+  reminderSoundId: 'chime',
   startHidden: false,
   popupScreen: null,
   popupCorner: 'bottom-right',
 }
 
 export function loadBackground(): Background {
-  return { ...DEFAULTS, ...read<Partial<Background>>(BACKGROUND_KEY, {}) }
+  // Before the list of sounds, the reminder sound was an on/off switch: off = None
+  const { reminderSound, ...stored } = read<Partial<Background> & { reminderSound?: boolean }>(BACKGROUND_KEY, {})
+  return { ...DEFAULTS, ...(reminderSound === false && { reminderSoundId: 'none' as const }), ...stored }
 }
 
 export function saveBackground(background: Background) {

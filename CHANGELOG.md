@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Reminders**
 - PC: choose the screen and corner where the reminder pop-up shows (Settings → Pop-up), e.g. on a second screen, away from a game.
+- Pick the reminder sound in Settings: Chime, Soft, Ping, Double ping or None. A click plays it.
 
 ## [0.25.1] - 2026-10-28
 
