@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Ellipsis } from 'lucide-react'
 import { changed, db, setCardColor, setCardPriority, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import Cover from './GameCover'
+import { useListItem } from './animations'
 
 interface Props {
   card: Card & { game: NonNullable<Card['game']> }
@@ -20,6 +21,8 @@ interface Props {
 // its own copy of them up to date, so the card still shows if the game is removed later.
 function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  useListItem(ref)
   const game = useLiveQuery(() => db.games.get(card.game.id), [card.game.id])
   const inList = !!game && !game.deleted
   const name = inList ? game.name : card.game.name
@@ -42,6 +45,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
       className={`card game-card${card.priority ? ' priority' : ''}${card.color ? ' colored' : ''}${inList ? '' : ' removed'}`}
       style={tintStyle(card.color)}
       data-card-id={card.id}
+      ref={ref}
       title={inList ? undefined : 'No longer in your games'}
       onPointerDown={(event) => {
         if (!(event.target as HTMLElement).closest('button')) onPress(event)

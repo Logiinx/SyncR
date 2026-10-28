@@ -19,6 +19,7 @@ import ContextMenu from './ContextMenu'
 import GameDialog from './GameDialog'
 import { removeGameQuestion } from './games'
 import Dialog, { type DialogRequest } from './Dialog'
+import { useList } from './animations'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
 // visible whatever note is open. Opened with the small tab in the middle of the window's right
@@ -50,6 +51,7 @@ function Board({ onClose }: Props) {
   // What's directly on the Board: cards not in a group, and the groups
   const cards = rows?.filter((row) => !inGroup(row)).sort(byPart)
   const listRef = useRef<HTMLDivElement>(null)
+  useList(listRef) // cards added later grow in (animations.ts)
   // After dropping a card: puts the cards back in place once the new order is on screen
   const settle = useRef<(() => void) | null>(null)
   // True while a card is being dragged (moved, not just pressed)

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronDown, Ellipsis, Layers } from 'lucide-react'
 import { deleteGroup, setCardPriority, setGroupColor, updateCardTitle, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
-import { closeCopy, useFoldAnimation } from './animations'
+import { closeCopy, useFoldAnimation, useList, useListItem } from './animations'
 import type { DialogRequest } from './Dialog'
 
 interface Props {
@@ -59,12 +59,16 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
   const cardsElement = () =>
     document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(group.id)}"] > .card-group-cards`)
   useFoldAnimation(!!group.folded, cardsElement)
+  const ref = useRef<HTMLDivElement>(null)
+  useListItem(ref)
+  const cardsRef = useRef<HTMLDivElement>(null)
+  useList(cardsRef)
 
   const className = ['card-group', group.priority && 'priority', group.color && 'colored', group.folded && 'folded']
     .filter(Boolean)
     .join(' ')
   return (
-    <div className={className} style={tintStyle(group.color)} data-card-id={group.id}>
+    <div className={className} style={tintStyle(group.color)} data-card-id={group.id} ref={ref}>
       <div
         className="card-group-head"
         onPointerDown={(event) => {
@@ -124,7 +128,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
         />
       )}
       {!group.folded && (
-        <div className="card-group-cards">{count ? children : <div className="card-group-empty">No cards</div>}</div>
+        <div className="card-group-cards" ref={cardsRef}>{count ? children : <div className="card-group-empty">No cards</div>}</div>
       )}
     </div>
   )

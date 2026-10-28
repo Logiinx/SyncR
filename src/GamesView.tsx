@@ -19,6 +19,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch, TabLines, useTabLines } from './tabLines'
+import { useListItem } from './animations'
 import GamePreview from './GamePreview'
 
 // The Games tab: your games in groups by status, and a search (IGDB) to add more.
@@ -191,7 +192,9 @@ function GamesView() {
                   )}
                   <FillSwitch className="calendar-layouts games-layouts" options={SHELF_LAYOUTS} value={shelf} onChange={setShelf} />
                 </div>
+                {/* A new list for each tab and layout: switching isn't games coming and going */}
                 <GameShelf
+                  key={`${shown}-${shelf}`}
                   games={sortGames(games.filter((g) => g.status === shown))}
                   layout={shelf}
                   emptyText={`No games in ${statusLabel(shown)}`}
@@ -252,8 +255,11 @@ function GameShelf({
 // waiting (or the vague date), "★ 4.5" once rated, else the release year. Badge: GameBadge
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const when = releaseText(game, 'short')
+  const ref = useRef<HTMLDivElement>(null)
+  useListItem(ref)
   return (
     <div
+      ref={ref}
       className={game.priority ? 'game-tile priority' : 'game-tile'}
       onClick={onOpen}
       onContextMenu={(e) => {
@@ -287,8 +293,11 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
   const details = [releaseText(game, 'year'), preview].filter(Boolean).join(' · ')
+  const ref = useRef<HTMLDivElement>(null)
+  useListItem(ref)
   return (
     <div
+      ref={ref}
       className={game.priority ? 'game-row priority' : 'game-row'}
       onClick={onOpen}
       onContextMenu={(e) => {

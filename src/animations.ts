@@ -3,7 +3,8 @@
 // element back for a moment, plays its closing animation, then removes it. It no longer belongs
 // to React, and nothing in it can be clicked (inert).
 
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { currentZoom } from './appearance'
 
 export const CLOSE_MS = 130
 const OPEN_MS = 200
@@ -26,10 +27,19 @@ function play(el: Element | null, keyframes: Keyframe[]) {
 // to their natural height ("auto" can be animated thanks to interpolate-size, index.css :root).
 // overflow: hidden also keeps their content's own margins inside, so nothing jumps at the end.
 function heightFrames(el: Element, display?: string): Keyframe[] {
-  const { marginTop, marginBottom } = getComputedStyle(el)
-  const shut = { height: '0px', marginTop: '0px', marginBottom: '0px', overflow: 'hidden', display }
-  const open = { height: 'auto', marginTop, marginBottom, overflow: 'hidden', display }
+  const shut = { ...FLAT, marginTop: '0px', marginBottom: '0px', overflow: 'hidden', display }
+  const open = { ...upright(el), overflow: 'hidden', display }
   return [shut, open]
+}
+
+// Its height with everything around it, flat (0) or as it is (padding and borders too: a
+// height of 0 alone would still leave them)
+const FLAT = { height: '0px', paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px' }
+
+function upright(el: Element) {
+  const style = getComputedStyle(el)
+  const { marginTop, marginBottom, paddingTop, paddingBottom, borderTopWidth, borderBottomWidth } = style
+  return { height: 'auto', marginTop, marginBottom, paddingTop, paddingBottom, borderTopWidth, borderBottomWidth }
 }
 
 export function growOpen(el: Element | null | undefined) {
@@ -53,6 +63,83 @@ export function useFoldAnimation(folded: boolean, content: () => Element | null 
     if (folded) shrinkShut(content())
     else growOpen(content())
   }, [folded])
+}
+
+// Items of a list (Board cards and groups, games in My games). Added to a list already on screen:
+// it grows in. Removed from a list that stays: a copy of it, made before React empties it (a
+// card's text editor is taken out), shrinks and fades out, and the items after it close the gap.
+// Neither when the whole list appears or goes (opening the Board, another games tab: a new list).
+// In a grid (game covers): fade + scale instead, the other tiles glide to their new places.
+const listSeen = new WeakMap<Element, number>() // when each list first showed an item
+
+export function useListItem(ref: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    const list = el?.parentElement
+    if (!el || !list) return
+    const seen = listSeen.get(list)
+    if (seen === undefined) listSeen.set(list, performance.now())
+    else if (performance.now() - seen > 300 && animationsOn()) {
+      // Measured without a running one (React runs this twice in development)
+      el.getAnimations().forEach((animation) => animation.cancel())
+      el.animate(itemFrames(el, list), { duration: OPEN_MS, easing: EASE_OUT })
+    }
+    return () => {
+      if (!animationsOn()) return
+      const copy = el.cloneNode(true) as HTMLElement
+      const next = el.nextSibling
+      queueMicrotask(() => {
+        // Still there (React's test run in development), or its whole list went too
+        if (el.isConnected || !list.isConnected) return
+        itemOut(copy, list, next?.parentNode === list ? next : null)
+      })
+    }
+  }, [])
+}
+
+// A list that can be empty (the Board, a group): known as on screen even before its first item
+export function useList(ref: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el && !listSeen.has(el)) listSeen.set(el, performance.now())
+  })
+}
+
+function isGrid(list: Element) {
+  return getComputedStyle(list).display === 'grid'
+}
+
+// Gone ↔ there. In a column: its height, margins and the gap after it (the last gap goes with it)
+function itemFrames(el: Element, list: Element): Keyframe[] {
+  if (isGrid(list)) return [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }]
+  const gap = parseFloat(getComputedStyle(list).rowGap) || 0
+  const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px`, opacity: 0, transform: 'scale(0.96)' }
+  const there = { ...upright(el), opacity: 1, transform: 'none' }
+  return [{ ...gone, overflow: 'hidden' }, { ...there, overflow: 'hidden' }]
+}
+
+function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
+  // Not found as the item itself (it has the same ids)
+  for (const el of [copy, ...copy.querySelectorAll('[data-card-id]')]) el.removeAttribute('data-card-id')
+  copy.classList.add('closing')
+  copy.inert = true
+  list.insertBefore(copy, next)
+  const grid = isGrid(list)
+  const animation = copy.animate(itemFrames(copy, list).reverse(), { duration: CLOSE_MS, easing: EASE_IN, fill: 'forwards' })
+  animation.finished.finally(() => {
+    if (!grid) return copy.remove()
+    // The other tiles glide from where they were to their new places
+    const others = [...list.children].filter((child) => child !== copy)
+    const before = others.map((child) => child.getBoundingClientRect())
+    copy.remove()
+    const zoom = currentZoom()
+    others.forEach((child, i) => {
+      const after = child.getBoundingClientRect()
+      const dx = (before[i].left - after.left) / zoom
+      const dy = (before[i].top - after.top) / zoom
+      if (dx || dy) child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
+    })
+  })
 }
 
 // What gets a closing animation, and which one

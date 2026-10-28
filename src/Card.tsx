@@ -16,7 +16,7 @@ import { extensions } from './NoteEditor'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import ColorPicker from './ColorPicker'
-import { useFoldAnimation } from './animations'
+import { useFoldAnimation, useListItem } from './animations'
 
 const SAVE_DELAY_MS = 500
 
@@ -67,6 +67,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   const hasTitle = useRef(!!card.title) // for onBlur below (it keeps the first render's card)
   hasTitle.current = !!card.title
   const cardRef = useRef<HTMLDivElement>(null)
+  useListItem(cardRef)
 
   const save = (editor: Editor) =>
     saveCardContent(card.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
