@@ -203,7 +203,7 @@ export async function gmailApi(email: string, path: string, init: RequestInit = 
     updateAccount(email, { accessToken: undefined })
     res = await send()
   }
-  if (!res.ok) throw new Error(`Gmail ${path} failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) throw Object.assign(new Error(`Gmail ${path} failed (${res.status}): ${await res.text()}`), { status: res.status })
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }

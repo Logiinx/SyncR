@@ -33,6 +33,7 @@ export type MailAction = 'mail-read' | 'mail-close' | 'mail-open' | 'mail-opened
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
 const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that faded unread (until read anywhere)
+const HISTORY_KEY = 'syncr.gmail.history' // per account: Gmail's history id at the last full check
 const CHECK_EVERY_MS = 60_000
 export const QUERY = 'in:inbox is:unread category:primary'
 const MAX_SEEN = 500 // per account; new mail always has a new id, so older ones can go
@@ -91,6 +92,9 @@ export function forgetAccountMail(email: string) {
   const seen = read<Record<string, string[]>>(SEEN_KEY, {})
   delete seen[email]
   write(SEEN_KEY, seen)
+  const history = read<Record<string, string>>(HISTORY_KEY, {})
+  delete history[email]
+  write(HISTORY_KEY, history)
   saveMissed(loadMissed().filter((key) => !key.startsWith(prefix)))
 }
 
@@ -100,19 +104,42 @@ let checking = false
 // Cards closed during this run of SyncR: a check that started before keeps them out
 const closed = new Set<string>()
 
-// One check of all accounts. Errors (offline, Google down) leave that account as it was: the
-// next check tries again.
+// Whether anything changed in the account's mailbox since the history id (new mail, mail read,
+// moved…), and the id to remember now. Gmail's "history" costs less than listing the unread
+// mail. Without an id, or one Gmail no longer knows (they last about a week): changed.
+async function mailboxChange(email: string, since: string | undefined) {
+  if (since) {
+    try {
+      const history = await gmailApi(email, `history?startHistoryId=${since}&maxResults=1`)
+      return { changed: !!history.history?.length, historyId: history.historyId as string }
+    } catch (error) {
+      if ((error as { status?: number }).status !== 404) throw error
+    }
+  }
+  // Taken before the list, so mail arriving in between shows as a change next time
+  const profile = await gmailApi(email, 'profile')
+  return { changed: true, historyId: profile.historyId as string }
+}
+
+// One check of all accounts: the unread list only for accounts whose mailbox changed. Errors
+// (offline, Google down) leave that account as it was: the next check tries again.
 export async function checkMail() {
   if (checking) return
   checking = true
   try {
     const accounts = loadAccounts().filter((a) => a.enabled && !a.expired)
     const seen = read<Record<string, string[]>>(SEEN_KEY, {})
+    const history = read<Record<string, string>>(HISTORY_KEY, {})
     // Cards of accounts that were removed, turned off or signed out go
     let alerts = loadMailAlerts().filter((alert) => accounts.some((a) => a.email === alert.account))
     let missed = loadMissed().filter((key) => accounts.some((a) => key.startsWith(`mail:${a.email}:`)))
     for (const { email } of accounts) {
       try {
+        const { changed, historyId } = await mailboxChange(email, history[email])
+        if (!changed) {
+          history[email] = historyId
+          continue
+        }
         const list = await gmailApi(email, `messages?q=${encodeURIComponent(QUERY)}&maxResults=50`)
         const unread: { id: string; threadId: string }[] = list?.messages ?? []
         const unreadIds = new Set(unread.map((m) => m.id))
@@ -126,6 +153,7 @@ export async function checkMail() {
         ]
         missed = missed.filter((key) => !key.startsWith(`mail:${email}:`) || unreadIds.has(key.split(':')[2]))
         seen[email] = [...new Set([...unreadIds, ...(known ?? [])])].slice(0, MAX_SEEN)
+        history[email] = historyId
       } catch (error) {
         console.error(error)
       }
@@ -133,7 +161,11 @@ export async function checkMail() {
     for (const email of Object.keys(seen)) {
       if (!loadAccounts().some((a) => a.email === email)) delete seen[email] // removed account
     }
+    for (const email of Object.keys(history)) {
+      if (!loadAccounts().some((a) => a.email === email)) delete history[email]
+    }
     write(SEEN_KEY, seen)
+    write(HISTORY_KEY, history)
     saveMissed(missed)
     alerts = alerts.filter((alert) => !closed.has(alert.key)).sort((a, b) => b.date - a.date)
     if (JSON.stringify(alerts) !== JSON.stringify(loadMailAlerts())) saveMailAlerts(alerts)
