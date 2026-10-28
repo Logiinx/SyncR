@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- Mail tab: when Gmail can't be reached (e.g. right at start), it tries again by itself instead of also saying "No mail".
+
 ## [0.31.2] - 2026-10-28
 
 **App**
