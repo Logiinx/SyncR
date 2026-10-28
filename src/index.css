@@ -1560,7 +1560,6 @@ button {
 .reminder-popup.reading {
   display: flex;
   flex-direction: column;
-  height: calc(100vh / var(--zoom, 1));
 }
 
 .mail-reader {
@@ -1598,6 +1597,14 @@ button {
 .mail-reader-icon:hover {
   background: rgb(255 255 255 / 8%);
   color: var(--text);
+}
+
+/* ‹ Back: the icon with its word (an arrow alone wasn't clear enough) */
+.mail-reader-back {
+  gap: 2px;
+  width: auto;
+  padding: 0 10px 0 4px;
+  font-size: 13px;
 }
 
 /* "Images from the web are blocked. Show images" */
@@ -1699,12 +1706,25 @@ button {
   background: rgb(255 255 255 / 10%);
 }
 
-/* The desktop pop-up window (ReminderPopup.tsx): the cards fill the window edge to edge,
-   the window itself has the shadow and border (Windows draws them) */
+/* The desktop pop-up window (ReminderPopup.tsx): see-through (popupWindow.ts); the cards fill
+   it edge to edge, with their own border and rounded corners (no shadow: Windows can't draw
+   one around a see-through window) */
+.popup-page,
+.popup-page body {
+  background: transparent;
+}
+
 .popup-page body {
   overflow-y: auto;
-  background: var(--bg-raised);
   user-select: none;
+}
+
+.reminder-popup {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  background: var(--bg-raised);
 }
 
 .reminder-popup .reminder-alert,

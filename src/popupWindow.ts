@@ -125,7 +125,11 @@ async function createPopup(onError: () => void) {
     // Never takes the keyboard away from what the user is doing (e.g. a fullscreen game: no
     // jump out of it). Nothing else may focus it either: only a click on a card brings SyncR.
     focus: false,
-    backgroundColor: '#202020',
+    // See-through, so it can change size at once while only the drawn part grows (opening an
+    // email, ReminderPopup.tsx). Windows' shadow would outline the see-through part: the page
+    // draws its own border.
+    transparent: true,
+    shadow: false,
     // Same origin as the main window (https://tauri.localhost, tauri.conf.json), so the pop-up
     // sees the same database. Without it, it loaded from http://… and found no reminders.
     useHttpsScheme: true,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
+import { ChevronLeft, ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -7,7 +7,7 @@ import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
 // A mail opened to read, in the desktop pop-up (which grows into a bigger window meanwhile,
-// ReminderPopup.tsx). Head: back to the list, when + account, sender, subject, open in Gmail.
+// ReminderPopup.tsx). Head: ‹ Back (to the list), when + account, sender, subject, open in Gmail.
 // Then the mail, then Done · Mark as unread.
 // The mail shows in a sandboxed frame: no scripts run, and a content policy blocks anything
 // from the web (images, fonts, styles: they can tell the sender you opened it) until "Show
@@ -50,8 +50,8 @@ function MailReader({ alert, onAction, onBack }: {
   return (
     <div className="reminder-alert mail-reader" style={{ borderLeftColor: accountColor(alert.account) }}>
       <div className="mail-reader-head">
-        <button className="mail-reader-icon" onClick={onBack} title="Back to the list" aria-label="Back to the list">
-          <ArrowLeft size={16} />
+        <button className="mail-reader-icon mail-reader-back" onClick={onBack} title="Back to the list">
+          <ChevronLeft size={16} /> Back
         </button>
         <div className="mail-reader-title">
           <span className="reminder-alert-due">

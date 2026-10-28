@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- PC: opening an email in the pop-up now grows smoothly. The pop-up has a thin border instead of a shadow.
+- The back button of an open email now says "‹ Back".
+
 ## [0.30.0] - 2026-10-28
 
 **App**

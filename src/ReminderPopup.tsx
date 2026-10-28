@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { BACKGROUND_KEY, loadBackground } from './desktop'
@@ -25,56 +25,67 @@ function ReminderPopup() {
   // An email open to read: the window grows (READER_WIDTH, 80% of the screen's height) until
   // Back, Done or Mark as unread. Reminders that come due meanwhile show above it.
   const [readingKey, setReadingKey] = useState<string | null>(null)
-  const reading = mails.find((mail) => mail.key === readingKey)
+  const [readerSize, setReaderSize] = useState<Size | null>(null)
+  const reading = readerSize ? mails.find((mail) => mail.key === readingKey) : undefined
   const readingRef = useRef(false)
   readingRef.current = reading !== undefined
+  const readerSizeRef = useRef(readerSize)
+  readerSizeRef.current = readerSize
+  const cardsSize = useRef<Size | null>(null) // the window's size before the email opened
 
-  function read(alert: MailAlert) {
+  async function read(alert: MailAlert) {
+    const win = getCurrentWindow()
+    cardsSize.current = (await win.innerSize()).toLogical(await win.scaleFactor())
+    const { maxHeight } = (await popupPlacer())(0)
+    setReaderSize({ width: READER_WIDTH, height: Math.round(maxHeight * 0.8) })
     setReadingKey(alert.key)
     if (!alert.opened) sendFromPopup({ id: alert.key, action: 'mail-opened' }) // marks it read
   }
 
+  // Back, Done, Mark as unread: the reader shrinks back to the cards' size in its corner, the
+  // window gets small again, then the cards come back (and `then`, e.g. the button's action)
+  async function closeReader(then?: () => void) {
+    const list = listRef.current
+    const from = readerSizeRef.current
+    if (list && from && cardsSize.current && loadAppearance().animations) {
+      await list.animate([{ clipPath: FULL_CLIP }, { clipPath: cornerClip(cardsSize.current, from) }], {
+        duration: GROW_MS,
+        easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)',
+        fill: 'forwards',
+      }).finished
+      await placeWindow(cardsSize.current) // so the cards don't show in a corner of the big window
+    }
+    setReadingKey(null)
+    setReaderSize(null)
+    then?.()
+  }
+
   // Fit the window to the cards (at most the screen's height) and keep it in its corner. Also
   // when the screen or corner is changed in Settings (main window, same storage), and when an
-  // email opens or closes: then it grows or shrinks smoothly from its corner (unless
-  // Animations are off). Fits asked for during that animation wait for its end.
+  // email opens or closes. One fit at a time (they're asynchronous).
   const refitRef = useRef(() => {})
   useEffect(() => {
     const list = listRef.current
     if (!list) return
-    let wasReading = false
-    let animating = false
-    let again = false
+    let queue = Promise.resolve()
     const fit = async () => {
-      if (animating) return void (again = true)
       const place = await popupPlacer()
-      const { maxHeight } = place(0)
-      const reading = readingRef.current
-      const width = reading ? READER_WIDTH : POPUP_WIDTH
-      const height = reading ? Math.round(maxHeight * 0.8) : Math.min(Math.ceil(list.scrollHeight), maxHeight)
+      const reader = readingRef.current ? readerSizeRef.current : null
+      const height = reader?.height ?? Math.min(Math.ceil(list.getBoundingClientRect().height), place(0).maxHeight)
       if (height === 0) return
-      const win = getCurrentWindow()
-      if (reading !== wasReading && loadAppearance().animations) {
-        wasReading = reading
-        animating = true
-        try {
-          await resizeSmoothly(place, width, height)
-        } finally {
-          animating = false
-        }
-        if (again) {
-          again = false
-          await fit()
-        }
-        return
+      await placeWindow({ width: reader?.width ?? POPUP_WIDTH, height }, place)
+      // Opening an email: it was drawn cut to the cards' size (below); now that the window is
+      // big (see-through around it), it opens up smoothly from its corner
+      const from = list.dataset.growFrom
+      if (reader && from) {
+        delete list.dataset.growFrom
+        list.style.clipPath = ''
+        list.animate([{ clipPath: from }, { clipPath: FULL_CLIP }], { duration: GROW_MS, easing: 'cubic-bezier(0.2, 0, 0, 1)' })
       }
-      wasReading = reading
-      // Size first (in the scale of the screen it's on now), then the place for that height.
-      // Moving to a screen with another scale makes Windows rescale it to the same logical size.
-      await win.setSize(new LogicalSize(width, height))
-      await win.setPosition(place(height, width).position)
     }
-    const refit = () => void fit().catch((error) => console.error(error))
+    const refit = () => {
+      queue = queue.then(fit).catch((error) => console.error(error))
+    }
     refitRef.current = refit
     const observer = new ResizeObserver(refit)
     observer.observe(list)
@@ -85,6 +96,20 @@ function ReminderPopup() {
       window.removeEventListener('storage', onStorage)
     }
   }, [])
+  // The first frame of an open email: cut to the cards' size, so nothing jumps before the
+  // window has grown (fit above). Closed: no cut left.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    if (reading && readerSize && cardsSize.current && loadAppearance().animations) {
+      list.dataset.growFrom = cornerClip(cardsSize.current, readerSize)
+      list.style.clipPath = list.dataset.growFrom
+    } else if (!reading) {
+      list.getAnimations().forEach((animation) => animation.cancel())
+      delete list.dataset.growFrom
+      list.style.clipPath = ''
+    }
+  }, [reading !== undefined]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     refitRef.current()
   }, [reading !== undefined])
@@ -92,13 +117,20 @@ function ReminderPopup() {
   const fading = useMailFade(mails, reading !== undefined)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
-    <div ref={listRef} className={`reminder-popup${reading ? ' reading' : ''}`} role="alert">
+    <div
+      ref={listRef}
+      className={`reminder-popup${reading ? ' reading' : ''}`}
+      style={reading && readerSize ? readerStyle(readerSize) : undefined}
+      role="alert"
+    >
       {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
       {reading ? (
         <MailReader
           alert={reading}
-          onAction={(action) => mailAction(reading, action)}
-          onBack={() => setReadingKey(null)}
+          onAction={(action) =>
+            action === 'mail-open' ? mailAction(reading, action) : closeReader(() => mailAction(reading, action))
+          }
+          onBack={() => closeReader()}
         />
       ) : (
         <MailCards alerts={mails} fading={fading} onAction={mailAction} onRead={read} />
@@ -173,21 +205,43 @@ function useMailFade(mails: MailAlert[], reading: boolean) {
   return fading
 }
 
-// Grows or shrinks the window to this size in steps (about 0.2 s, slowing down at the end),
-// keeping it in its corner: from a bottom corner it grows upward. Each step moves and sizes
-// it together (Tauri has no single call for both).
-const STEPS = 12
+// Opening and closing an email: the window is see-through (popupWindow.ts), so it changes size
+// at once and only what's drawn moves: a cut (clip-path) that grows from the cards' size in the
+// pop-up's corner to the whole reader, or back. Smooth, unlike resizing the window in steps.
+type Size = { width: number; height: number }
+const GROW_MS = 200
+const RADIUS = 8 // px, the pop-up's corners (index.css, .reminder-popup)
+const FULL_CLIP = `inset(0px 0px 0px 0px round ${RADIUS}px)`
 
-async function resizeSmoothly(place: Awaited<ReturnType<typeof popupPlacer>>, width: number, height: number) {
-  const win = getCurrentWindow()
-  const start = (await win.innerSize()).toLogical(await win.scaleFactor())
-  for (let i = 1; i <= STEPS; i++) {
-    const t = 1 - (1 - i / STEPS) ** 2 // ease out
-    const w = Math.round(start.width + (width - start.width) * t)
-    const h = Math.round(start.height + (height - start.height) * t)
-    await Promise.all([win.setPosition(place(h, w).position), win.setSize(new LogicalSize(w, h))])
-    await new Promise((resolve) => setTimeout(resolve, 16))
+// The part of the big size that the small one covers, in the pop-up's corner
+function cornerClip(small: Size, big: Size) {
+  const { popupCorner } = loadBackground()
+  const dx = Math.max(0, big.width - small.width)
+  const dy = Math.max(0, big.height - small.height)
+  const top = popupCorner.startsWith('top') ? 0 : dy
+  const left = popupCorner.endsWith('left') ? 0 : dx
+  return `inset(${top}px ${dx - left}px ${dy - top}px ${left}px round ${RADIUS}px)`
+}
+
+// The reader's box: its full size, held in the pop-up's corner (also while the window is
+// still small)
+function readerStyle({ width, height }: Size): CSSProperties {
+  const { popupCorner } = loadBackground()
+  return {
+    position: 'fixed',
+    width,
+    height,
+    [popupCorner.startsWith('top') ? 'top' : 'bottom']: 0,
+    [popupCorner.endsWith('left') ? 'left' : 'right']: 0,
   }
+}
+
+// Size first (in the scale of the screen it's on now), then the place for that height. Moving
+// to a screen with another scale makes Windows rescale it to the same logical size.
+async function placeWindow({ width, height }: Size, place?: Awaited<ReturnType<typeof popupPlacer>>) {
+  const win = getCurrentWindow()
+  await win.setSize(new LogicalSize(width, height))
+  await win.setPosition((place ?? (await popupPlacer()))(height, width).position)
 }
 
 export default ReminderPopup
