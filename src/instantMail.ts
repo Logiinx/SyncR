@@ -19,6 +19,7 @@ const RENEW_MS = 24 * 3600_000
 const PULL_TIMEOUT_MS = 120_000 // Pub/Sub may wait a while for a signal before answering
 const SHORT_PULL_MS = 5_000 // an empty answer faster than this: wait a moment before asking again
 const RETRY_MS = 60_000 // after an error (offline, setup not finished)
+const RETRY_WATCH_MS = 15 * 60_000 // one account's watch failed: not asked again every round
 
 export const loadProjectId = () => read<{ projectId: string }>(SETTING_KEY, { projectId: '' }).projectId
 
@@ -50,23 +51,40 @@ export function useInstantStatus() {
 
 // ---------- Watch ----------
 
-// Renews the watch of each account that's on, once a day (or when the project changed)
+const failedWatches = new Map<string, number>() // per account: when its watch last failed
+
+// Renews the watch of each account that's on, once a day (or when the project changed). An
+// account whose watch fails doesn't stop the others: it's tried again after RETRY_WATCH_MS
+// (its mail still comes with the minute check). Returns the accounts without a watch.
 async function renewWatches(projectId: string) {
   const watched = read<Record<string, { at: number; project: string }>>(WATCHED_KEY, {})
   const accounts = loadAccounts().filter((a) => a.enabled && !a.expired)
+  const failing: string[] = []
   for (const { email } of accounts) {
     const last = watched[email]
     if (last && last.project === projectId && Date.now() - last.at < RENEW_MS) continue
-    await gmailApi(email, 'watch', {
-      method: 'POST',
-      body: JSON.stringify({ topicName: `projects/${projectId}/topics/${TOPIC}`, labelIds: ['INBOX'] }),
-    })
-    watched[email] = { at: Date.now(), project: projectId }
+    if (Date.now() - (failedWatches.get(email) ?? 0) < RETRY_WATCH_MS) {
+      failing.push(email)
+      continue
+    }
+    try {
+      await gmailApi(email, 'watch', {
+        method: 'POST',
+        body: JSON.stringify({ topicName: `projects/${projectId}/topics/${TOPIC}`, labelIds: ['INBOX'] }),
+      })
+      watched[email] = { at: Date.now(), project: projectId }
+      failedWatches.delete(email)
+    } catch (error) {
+      console.error(`Gmail watch for ${email} failed`, error)
+      failedWatches.set(email, Date.now())
+      failing.push(email)
+    }
   }
   for (const email of Object.keys(watched)) {
     if (!accounts.some((a) => a.email === email)) delete watched[email] // off or removed: renewed when back
   }
   write(WATCHED_KEY, watched)
+  return failing
 }
 
 // ---------- Collecting the signals ----------
@@ -98,7 +116,7 @@ async function round(): Promise<number> {
     setStatus({ ok: false, text: 'Instant mail: needs a sign-in with the Pub/Sub permission (button above)' })
     return RETRY_MS
   }
-  await renewWatches(projectId)
+  const failing = await renewWatches(projectId)
   const subscription = `https://pubsub.googleapis.com/v1/projects/${projectId}/subscriptions/${SUBSCRIPTION}`
   const startedAt = Date.now()
   const answer = await googleApi(
@@ -107,7 +125,8 @@ async function round(): Promise<number> {
     { method: 'POST', body: JSON.stringify({ maxMessages: 20 }) },
     { name: 'Pub/Sub pull', timeoutMs: PULL_TIMEOUT_MS },
   )
-  setStatus({ ok: true, text: `Instant mail: on (via ${collector.email})` })
+  const notFor = failing.length ? ` · not for ${failing.join(', ')} (checked every minute)` : ''
+  setStatus({ ok: true, text: `Instant mail: on (via ${collector.email})${notFor}` })
   const ackIds: string[] = (answer?.receivedMessages ?? []).map((m: { ackId: string }) => m.ackId)
   if (ackIds.length > 0) {
     // Which account changed doesn't matter: the check asks every account what changed (cheap)

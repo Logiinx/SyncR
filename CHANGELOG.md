@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- Instant mail: signing the instant mail account in again keeps it on (or says it's off). One failing account no longer stops it for all.
+
 ## [0.31.0] - 2026-10-28
 
 **Board**

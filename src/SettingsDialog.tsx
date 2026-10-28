@@ -652,7 +652,8 @@ function GmailSettings() {
             {account.expired && <span className="setting-value">signed out</span>}
           </span>
           {account.expired ? (
-            <button className="setting-button" disabled={busy} onClick={() => add()}>
+            // The instant mail account asks for the Pub/Sub permission again, or it would lose it
+            <button className="setting-button" disabled={busy} onClick={() => add(account.pubsub)}>
               Sign in…
             </button>
           ) : (

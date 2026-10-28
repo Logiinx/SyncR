@@ -146,9 +146,14 @@ async function finish(params: URLSearchParams): Promise<Result> {
     pubsub: granted.split(' ').includes(PUBSUB_SCOPE),
   }
   const accounts = loadAccounts()
-  if (accounts.some((a) => a.email === email)) {
+  const existing = accounts.find((a) => a.email === email)
+  if (existing) {
     // Already added: new tokens, keeps its color and on/off
     saveAccounts(accounts.map((a) => (a.email === email ? { ...a, ...tokens, expired: false } : a)))
+    // The new tokens only carry what this sign-in asked for (Add account…: no Pub/Sub)
+    if (existing.pubsub && !tokens.pubsub) {
+      return { ok: false, text: `${email} signed in again, without the Pub/Sub permission: instant mail is off until "Sign in…" under Instant mail.` }
+    }
     return { ok: true, text: `${email} signed in again.` }
   }
   saveAccounts([...accounts, { email, ...tokens, color: nextColor(accounts), enabled: true }])
