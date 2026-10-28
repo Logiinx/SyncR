@@ -131,7 +131,7 @@ function MailView() {
             </button>
           </div>
         </div>
-        {accounts.length === 0 && <p className="games-empty">Add a Gmail account in Settings → Accounts</p>}
+        {accounts.length === 0 && <p className="games-empty">Add a Gmail account in Settings → Accounts.</p>}
         {errors.length > 0 && (
           <p className="games-empty">Couldn't reach Gmail for {errors.join(', ')} (offline?)</p>
         )}
