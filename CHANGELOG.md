@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - PC: Mail tab: your last 50 emails, read or not (read ones dimmed, "Unread only" filter); updates when you mark one unread in Gmail.
 - PC: Mail tab: a cleaner right-click menu with icons, the mail's sender and subject on top, and Delete (moves it to Gmail's Trash).
+- PC: emails now show dark, like a note (light text, links in blue). "Show original" brings back the sender's design on white.
 - Every right-click menu (and the phone's "⋯" list) now has an icon before each action, and a bit more room per line.
 
 ## [0.28.1] - 2026-10-28

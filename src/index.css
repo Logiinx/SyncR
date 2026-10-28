@@ -1611,6 +1611,9 @@ button {
 }
 
 .mail-reader-images button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin-left: auto;
   padding: 3px 10px;
   border-radius: 5px;
@@ -1621,6 +1624,11 @@ button {
 
 .mail-reader-images button:hover {
   background: rgb(255 255 255 / 14%);
+}
+
+/* Show images · Show original: side by side on the right */
+.mail-reader-images button + button {
+  margin-left: 0;
 }
 
 .mail-reader-frame,
@@ -1637,7 +1645,7 @@ button {
   background: var(--bg-raised);
 }
 
-/* An HTML mail is made for a white page */
+/* An HTML mail's original design is made for a white page */
 .mail-reader-frame.html {
   background: #fff;
 }

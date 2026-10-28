@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, ImageOff, Mail } from 'lucide-react'
+import { ArrowLeft, ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -11,7 +11,9 @@ import Spinner from './Spinner'
 // Then the mail, then Done · Mark as unread.
 // The mail shows in a sandboxed frame: no scripts run, and a content policy blocks anything
 // from the web (images, fonts, styles: they can tell the sender you opened it) until "Show
-// images". Links open in the normal browser.
+// images". Links open in the normal browser. HTML mails show dark like a note (light text,
+// no backgrounds, links in the notes' blue); "Show original" brings back the sender's design
+// for this opening.
 function MailReader({ alert, onAction, onBack }: {
   alert: MailAlert
   onAction: (action: MailAction) => void
@@ -20,17 +22,20 @@ function MailReader({ alert, onAction, onBack }: {
   const [body, setBody] = useState<MailBody | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [images, setImages] = useState(false)
+  const [original, setOriginal] = useState(false)
   const frameRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     setBody(null)
     setError(null)
     setImages(false)
+    setOriginal(false)
     fetchMailBody(alert).then(setBody, (e) => setError(e instanceof Error ? e.message : String(e)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alert.key])
 
-  const doc = useMemo(() => body && frameDocument(body, images), [body, images])
+  const dark = !!body && !body.plain && !original
+  const doc = useMemo(() => body && frameDocument(body, images, dark), [body, images, dark])
 
   // Links in the mail open in the browser (the frame itself never navigates)
   function onFrameLoad() {
@@ -64,16 +69,25 @@ function MailReader({ alert, onAction, onBack }: {
           <ExternalLink size={16} />
         </button>
       </div>
-      {body?.remoteImages && !images && (
+      {body && (!body.plain || (body.remoteImages && !images)) && (
         <div className="mail-reader-images">
-          <ImageOff size={14} /> Images from the web are blocked.
-          <button onClick={() => setImages(true)}>Show images</button>
+          {body.remoteImages && !images && (
+            <>
+              <ImageOff size={14} /> Images from the web are blocked.
+              <button onClick={() => setImages(true)}>Show images</button>
+            </>
+          )}
+          {!body.plain && (
+            <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
+              {original ? <Moon size={12} /> : <Sun size={12} />} {original ? 'Show dark' : 'Show original'}
+            </button>
+          )}
         </div>
       )}
       {doc ? (
         <iframe
           ref={frameRef}
-          className={`mail-reader-frame${body?.plain ? '' : ' html'}`}
+          className={`mail-reader-frame${body?.plain || dark ? '' : ' html'}`}
           title="Email"
           sandbox="allow-same-origin" // no scripts; lets SyncR catch link clicks
           srcDoc={doc}
@@ -88,16 +102,19 @@ function MailReader({ alert, onAction, onBack }: {
 }
 
 // The frame's page: a content policy (blocks the web unless images are shown), base styles
-// (HTML mails on white, as they're made for it; plain text in the app's colors), then the
-// mail, cleaned of what could act on its own (scripts, forms, refresh, frames).
-function frameDocument(body: MailBody, images: boolean) {
+// (plain text and dark HTML in the app's colors, the original HTML on white, as it's made
+// for it), then the mail, cleaned of what could act on its own (scripts, forms, refresh,
+// frames). Dark: the mail's own colors and backgrounds are overridden (images stay).
+function frameDocument(body: MailBody, images: boolean, dark: boolean) {
   const web = images ? ' https: http:' : ''
   const policy = `default-src 'none'; style-src 'unsafe-inline'${web}; img-src data:${web}; font-src data:${web}`
   const app = getComputedStyle(document.documentElement)
-  const colors = body.plain
-    ? `background: ${app.getPropertyValue('--bg-raised')}; color: ${app.getPropertyValue('--text')};`
-    : 'background: #fff; color: #222;'
-  const link = body.plain ? `a { color: ${app.getPropertyValue('--link')}; }` : ''
+  const [bg, text, link, border] = ['--bg-raised', '--text', '--link', '--border'].map((name) => app.getPropertyValue(name))
+  const colors = body.plain || dark ? `background: ${bg}; color: ${text};` : 'background: #fff; color: #222;'
+  const links = body.plain ? `a { color: ${link}; }`
+    : dark ? `body > div, body > div * { background-color: transparent !important; color: ${text} !important; border-color: ${border} !important; }
+  body > div a, body > div a * { color: ${link} !important; }`
+    : ''
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>
@@ -107,7 +124,7 @@ function frameDocument(body: MailBody, images: boolean) {
   img { max-width: 100%; height: auto; }
   img[src^="cid:"] { display: none; }
   pre { margin: 0; font: inherit; white-space: pre-wrap; }
-  ${link}
+  ${links}
 </style>
 ${cleanHtml(body.html)}`
 }
