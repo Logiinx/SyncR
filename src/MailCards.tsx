@@ -10,13 +10,14 @@ import { formatDue } from './reminders'
 // unread (the card goes, the mail stays unread).
 const FOLD_FROM = 4 // this many or more: one "N new emails" card until unfolded
 
-function MailCard({ alert, onAction, onRead }: {
+function MailCard({ alert, fading, onAction, onRead }: {
   alert: MailAlert
+  fading: boolean // fading out by itself (ReminderPopup.tsx)
   onAction: (action: MailAction) => void
   onRead: () => void
 }) {
   return (
-    <div className="reminder-alert" style={{ borderLeftColor: accountColor(alert.account) }}>
+    <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
       <button className="reminder-alert-body" onClick={onRead} title="Read">
         <span className="reminder-alert-due">
           <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account">{alert.account}</span>
@@ -53,8 +54,9 @@ export function accountColor(email: string) {
 
 // The cards, with "N new emails · Mark all read" above them when there are 2 or more. From
 // FOLD_FROM on, one card stands for all of them (senders listed) until "Show all".
-export function MailCards({ alerts, onAction, onRead }: {
+export function MailCards({ alerts, fading, onAction, onRead }: {
   alerts: MailAlert[]
+  fading: Set<string> // keys of cards fading out by themselves
   onAction: (alert: MailAlert, action: MailAction) => void
   onRead: (alert: MailAlert) => void
 }) {
@@ -67,7 +69,10 @@ export function MailCards({ alerts, onAction, onRead }: {
     // The account's color when they're all from one account, else the accent blue
     const color = accounts.size === 1 ? accountColor(alerts[0].account) : undefined
     return (
-      <div className="reminder-alert" style={{ borderLeftColor: color }}>
+      <div
+        className={`reminder-alert${alerts.every((a) => fading.has(a.key)) ? ' fading' : ''}`}
+        style={{ borderLeftColor: color }}
+      >
         <button className="reminder-alert-body" onClick={() => setUnfolded(true)} title="Show all">
           <span className="reminder-alert-due">
             <Mail size={12} /> {formatDue(alerts[0].date)}
@@ -96,6 +101,7 @@ export function MailCards({ alerts, onAction, onRead }: {
         <MailCard
           key={alert.key}
           alert={alert}
+          fading={fading.has(alert.key)}
           onAction={(action) => onAction(alert, action)}
           onRead={() => onRead(alert)}
         />

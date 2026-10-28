@@ -516,6 +516,14 @@ function GoogleSettings() {
   )
 }
 
+// Email pop-ups fade by themselves after… (0: they stay until closed)
+const FADE_CHOICES = [
+  { seconds: 0, name: 'Never' },
+  { seconds: 10, name: '10 s' },
+  { seconds: 30, name: '30 s' },
+  { seconds: 60, name: '1 min' },
+]
+
 // Gmail accounts (gmail.ts): PC only (the phone has the Gmail app); also in the browser while
 // developing, to test. Each account: its color (the strip on its pop-ups), address, on/off,
 // Remove. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
@@ -537,8 +545,8 @@ function GmailSettings() {
     setBusy(false)
   }
 
-  function setSound(id: SoundId) {
-    const next = { ...loadBackground(), emailSoundId: id }
+  function update(change: Partial<Background>) {
+    const next = { ...loadBackground(), ...change }
     setBackground(next)
     saveBackground(next)
   }
@@ -587,7 +595,26 @@ function GmailSettings() {
       {accounts.length > 0 && (
         <div className="setting">
           <span className="setting-label">Sound for new emails</span>
-          <SoundChoices value={background.emailSoundId} onChange={setSound} />
+          <SoundChoices value={background.emailSoundId} onChange={(id) => update({ emailSoundId: id })} />
+        </div>
+      )}
+      {accounts.length > 0 && (
+        <div className="setting">
+          <span className="setting-label">
+            Email pop-ups fade after <span className="setting-value">they stay unread, as missed</span>
+          </span>
+          <div className="setting-choices">
+            {FADE_CHOICES.map(({ seconds, name }) => (
+              <button
+                key={seconds}
+                className={seconds === background.emailFade ? 'selected' : ''}
+                aria-pressed={seconds === background.emailFade}
+                onClick={() => update({ emailFade: seconds })}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </section>

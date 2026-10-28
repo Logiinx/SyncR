@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - PC: new Gmail emails (Primary tab) pop up, with Mark as read and Keep unread. Add your accounts in Settings → Gmail.
 - Click an email's pop-up to read it: the pop-up grows from its corner. Web images stay blocked until "Show images".
+- Email pop-ups can fade by themselves after 10 s, 30 s or 1 min (Settings → Gmail). They stay unread.
 - PC: choose the screen and corner where pop-ups show (Settings → Pop-up), e.g. on a second screen, away from a game.
 
 ## [0.25.1] - 2026-10-28

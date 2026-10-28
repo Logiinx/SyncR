@@ -1535,6 +1535,12 @@ button {
   background: rgb(255 255 255 / 14%);
 }
 
+/* An email card fading out by itself (Settings → Gmail; ReminderPopup.tsx, FADE_OUT_MS) */
+.reminder-alert.fading {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
 /* An email card (MailCards.tsx): the subject under the sender; the account's address cut with
    … if long */
 .mail-alert-subject {

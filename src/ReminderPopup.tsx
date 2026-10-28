@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { BACKGROUND_KEY } from './desktop'
+import { BACKGROUND_KEY, loadBackground } from './desktop'
 import { useDueReminders, type DueItem } from './dueReminders'
 import { useMailAlerts, type MailAction, type MailAlert } from './mailAlerts'
 import MailReader from './MailReader'
@@ -87,6 +87,7 @@ function ReminderPopup() {
     refitRef.current()
   }, [reading !== undefined])
 
+  const fading = useMailFade(mails, reading !== undefined)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
     <div ref={listRef} className={`reminder-popup${reading ? ' reading' : ''}`} role="alert">
@@ -98,7 +99,7 @@ function ReminderPopup() {
           onBack={() => setReadingKey(null)}
         />
       ) : (
-        <MailCards alerts={mails} onAction={mailAction} onRead={read} />
+        <MailCards alerts={mails} fading={fading} onAction={mailAction} onRead={read} />
       )}
     </div>
   )
@@ -116,6 +117,58 @@ function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[]) {
     else if (keys.some((key) => !heard.current.has(key))) playEmailSound()
     heard.current = new Set(keys)
   }, [due, mails])
+}
+
+// Emails fade by themselves after the delay chosen in Settings → Gmail (never by default),
+// counted from when each card appeared. Not while the mouse is over the pop-up or a mail is
+// open to read: then every card starts its delay again afterwards. Opened (read) cards don't
+// fade. A faded card goes as "missed" (mailAlerts.ts); its mail stays unread.
+const FADE_OUT_MS = 400 // the fade itself (index.css, .reminder-alert.fading)
+
+function useMailFade(mails: MailAlert[], reading: boolean) {
+  const [hovered, setHovered] = useState(false)
+  const [fading, setFading] = useState<Set<string>>(new Set())
+  const since = useRef(new Map<string, number>()) // when each card appeared (or the pause ended)
+
+  useEffect(() => {
+    const root = document.documentElement
+    const enter = () => setHovered(true)
+    const leave = () => setHovered(false)
+    root.addEventListener('mouseenter', enter)
+    root.addEventListener('mouseleave', leave)
+    return () => {
+      root.removeEventListener('mouseenter', enter)
+      root.removeEventListener('mouseleave', leave)
+    }
+  }, [])
+
+  const paused = hovered || reading
+  useEffect(() => {
+    const seconds = loadBackground().emailFade
+    const now = Date.now()
+    for (const key of since.current.keys()) {
+      if (!mails.some((mail) => mail.key === key)) since.current.delete(key) // gone
+    }
+    if (paused || !seconds) {
+      since.current.clear() // the delay starts again once the pause ends
+      setFading(new Set())
+      return
+    }
+    // Also the timers that end a fade: a mouse arriving during it brings the card back
+    const timers: ReturnType<typeof setTimeout>[] = []
+    for (const mail of mails.filter((m) => !m.opened)) {
+      if (!since.current.has(mail.key)) since.current.set(mail.key, now)
+      const left = since.current.get(mail.key)! + seconds * 1000 - now
+      timers.push(setTimeout(() => {
+        setFading((keys) => new Set(keys).add(mail.key))
+        const out = loadAppearance().animations ? FADE_OUT_MS : 0
+        timers.push(setTimeout(() => sendFromPopup({ id: mail.key, action: 'mail-fade' }), out))
+      }, Math.max(left, 0)))
+    }
+    return () => timers.forEach(clearTimeout)
+  }, [mails, paused])
+
+  return fading
 }
 
 // Grows or shrinks the window to this size in steps (about 0.2 s, slowing down at the end),

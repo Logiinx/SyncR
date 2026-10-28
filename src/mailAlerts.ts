@@ -10,7 +10,8 @@ import { read, write } from './localState'
 // Only mail that's new since the account was first checked shows: unread mail already there
 // then doesn't pop up. A card goes when its mail is read (here, in Gmail or on the phone), or
 // with "Keep unread" (the mail stays unread). A card opened to read the mail (MailReader.tsx)
-// marks it read and stays until closed (Done, Mark as unread).
+// marks it read and stays until closed (Done, Mark as unread). A card that faded by itself
+// (Settings → Gmail) leaves its mail unread and "missed", for the Mail tab.
 
 export interface MailAlert {
   key: string // "mail:<account>:<message id>"
@@ -26,17 +27,19 @@ export interface MailAlert {
 
 // mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Keep unread,
 // Done after reading) · mail-open: in Gmail · mail-opened: opened to read (marks it read) ·
-// mail-unread: Mark as unread (the card goes)
-export type MailAction = 'mail-read' | 'mail-close' | 'mail-open' | 'mail-opened' | 'mail-unread'
+// mail-unread: Mark as unread (the card goes) · mail-fade: faded by itself (missed)
+export type MailAction = 'mail-read' | 'mail-close' | 'mail-open' | 'mail-opened' | 'mail-unread' | 'mail-fade'
 
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
+const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that faded unread (until read anywhere)
 const CHECK_EVERY_MS = 60_000
 const QUERY = 'in:inbox is:unread category:primary'
 const MAX_SEEN = 500 // per account; new mail always has a new id, so older ones can go
 const MAX_NEW = 10 // cards added per check and account at most (e.g. after a long time off)
 
 export const loadMailAlerts = () => read<MailAlert[]>(ALERTS_KEY, [])
+export const loadMissed = () => read<string[]>(MISSED_KEY, [])
 
 function saveMailAlerts(alerts: MailAlert[]) {
   write(ALERTS_KEY, alerts)
@@ -75,6 +78,7 @@ export async function checkMail() {
     const seen = read<Record<string, string[]>>(SEEN_KEY, {})
     // Cards of accounts that were removed, turned off or signed out go
     let alerts = loadMailAlerts().filter((alert) => accounts.some((a) => a.email === alert.account))
+    let missed = loadMissed().filter((key) => accounts.some((a) => key.startsWith(`mail:${a.email}:`)))
     for (const { email } of accounts) {
       try {
         const list = await gmailApi(email, `messages?q=${encodeURIComponent(QUERY)}&maxResults=50`)
@@ -88,6 +92,7 @@ export async function checkMail() {
           // Read since (anywhere): its card goes, unless it's open to read
           ...alerts.filter((alert) => alert.account !== email || alert.opened || unreadIds.has(alert.id)),
         ]
+        missed = missed.filter((key) => !key.startsWith(`mail:${email}:`) || unreadIds.has(key.split(':')[2]))
         seen[email] = [...new Set([...unreadIds, ...(known ?? [])])].slice(0, MAX_SEEN)
       } catch (error) {
         console.error(error)
@@ -97,6 +102,7 @@ export async function checkMail() {
       if (!loadAccounts().some((a) => a.email === email)) delete seen[email] // removed account
     }
     write(SEEN_KEY, seen)
+    write(MISSED_KEY, missed)
     alerts = alerts.filter((alert) => !closed.has(alert.key)).sort((a, b) => b.date - a.date)
     if (JSON.stringify(alerts) !== JSON.stringify(loadMailAlerts())) saveMailAlerts(alerts)
   } finally {
@@ -166,6 +172,7 @@ export async function runMailAction(key: string, action: MailAction) {
     return setUnread(alert, false)
   }
   removeAlert(key) // right away; if Gmail can't be reached, the mail just stays as it was
+  if (action === 'mail-fade') write(MISSED_KEY, [...new Set([key, ...loadMissed()])])
   if (action === 'mail-read') await setUnread(alert, false)
   if (action === 'mail-unread') await setUnread(alert, true)
 }
