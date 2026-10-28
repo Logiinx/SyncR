@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronLeft, Gamepad2, Menu, Plus } from 'lucide-react'
+import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Plus } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -18,6 +18,8 @@ import GamesView from './GamesView'
 import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
+import { MAIL_TAB } from './mailbox'
+import MailView from './MailView'
 import { startCalendarChecks } from './calendarEvents'
 import UpdateBanner from './UpdateBanner'
 import WhatsNew from './WhatsNew'
@@ -28,7 +30,7 @@ import { usePage } from './animations'
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
 // Tabs that show a page instead of a note (their ids never look like a note id)
-const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB
+const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id === MAIL_TAB
 
 function App() {
   // Remembered after a restart (per device)
@@ -95,10 +97,11 @@ function App() {
     async () => ({ ids: openTabs, notes: await db.notes.bulkGet(openTabs) }),
     [openTabs],
   )
-  // The tabs that exist: notes found in the database, and the Games and Reminders tabs
+  // The tabs that exist: notes found in the database, and the Games, Reminders and Mail tabs
   const tabs: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
     if (id === GAMES_TAB) return [{ id, title: 'Games', icon: <Gamepad2 size={14} className="tab-icon" /> }]
     if (id === REMINDERS_TAB) return [{ id, title: 'Reminders', icon: <Bell size={14} className="tab-icon" /> }]
+    if (id === MAIL_TAB) return [{ id, title: 'Mail', icon: <Mail size={14} className="tab-icon" /> }]
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
@@ -218,6 +221,7 @@ function App() {
             onSettings={() => setSettingsOpen(true)}
             onGames={() => openNote(GAMES_TAB)}
             onReminders={() => openNote(REMINDERS_TAB)}
+            onMail={() => openNote(MAIL_TAB)}
             query={searchQuery}
             onQuery={setSearchQuery}
             focusSearch={focusSearch}
@@ -228,6 +232,8 @@ function App() {
           <RemindersView />
         ) : activeId === GAMES_TAB && openTabs.includes(GAMES_TAB) ? (
           <GamesView />
+        ) : activeId === MAIL_TAB && openTabs.includes(MAIL_TAB) ? (
+          <MailView />
         ) : showNote ? (
           // key: a fresh view and editor for each note
           <NoteView key={activeNote.id} note={activeNote} autoFocus={activeNote.id === newNoteId} />

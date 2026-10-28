@@ -34,12 +34,34 @@ const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
 const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that faded unread (until read anywhere)
 const CHECK_EVERY_MS = 60_000
-const QUERY = 'in:inbox is:unread category:primary'
+export const QUERY = 'in:inbox is:unread category:primary'
 const MAX_SEEN = 500 // per account; new mail always has a new id, so older ones can go
 const MAX_NEW = 10 // cards added per check and account at most (e.g. after a long time off)
 
 export const loadMailAlerts = () => read<MailAlert[]>(ALERTS_KEY, [])
 export const loadMissed = () => read<string[]>(MISSED_KEY, [])
+
+function saveMissed(keys: string[]) {
+  if (JSON.stringify(keys) === JSON.stringify(loadMissed())) return
+  write(MISSED_KEY, keys)
+  window.dispatchEvent(new Event('mail-missed-change')) // this window; others get "storage"
+}
+
+// The missed emails' keys (Mail tab, its count in the sidebar), kept current
+export function useMissed() {
+  const [missed, setMissed] = useState(loadMissed)
+  useEffect(() => {
+    const refresh = () => setMissed(loadMissed())
+    const onStorage = (e: StorageEvent) => e.key === MISSED_KEY && refresh()
+    window.addEventListener('mail-missed-change', refresh)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('mail-missed-change', refresh)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+  return missed
+}
 
 function saveMailAlerts(alerts: MailAlert[]) {
   write(ALERTS_KEY, alerts)
@@ -102,7 +124,7 @@ export async function checkMail() {
       if (!loadAccounts().some((a) => a.email === email)) delete seen[email] // removed account
     }
     write(SEEN_KEY, seen)
-    write(MISSED_KEY, missed)
+    saveMissed(missed)
     alerts = alerts.filter((alert) => !closed.has(alert.key)).sort((a, b) => b.date - a.date)
     if (JSON.stringify(alerts) !== JSON.stringify(loadMailAlerts())) saveMailAlerts(alerts)
   } finally {
@@ -110,8 +132,9 @@ export async function checkMail() {
   }
 }
 
-// A card's content: sender, subject, start of the text (Gmail's "metadata": no body)
-async function fetchAlert(account: string, id: string): Promise<MailAlert> {
+// A card's content: sender, subject, start of the text (Gmail's "metadata": no body). Also
+// the Mail tab's rows (mailbox.ts).
+export async function fetchAlert(account: string, id: string): Promise<MailAlert> {
   const message = await gmailApi(account, `messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`)
   const header = (name: string) =>
     (message.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ''
@@ -172,21 +195,32 @@ export async function runMailAction(key: string, action: MailAction) {
     return setUnread(alert, false)
   }
   removeAlert(key) // right away; if Gmail can't be reached, the mail just stays as it was
-  if (action === 'mail-fade') write(MISSED_KEY, [...new Set([key, ...loadMissed()])])
+  if (action === 'mail-fade') saveMissed([...new Set([key, ...loadMissed()])])
   if (action === 'mail-read') await setUnread(alert, false)
   if (action === 'mail-unread') await setUnread(alert, true)
 }
 
-const setUnread = (alert: MailAlert, unread: boolean) =>
-  gmailApi(alert.account, `messages/${alert.id}/modify`, {
-    method: 'POST',
-    body: JSON.stringify(unread ? { addLabelIds: ['UNREAD'] } : { removeLabelIds: ['UNREAD'] }),
-  })
+const setUnread = (alert: MailAlert, unread: boolean) => changeMail(alert.key, unread ? 'unread' : 'read')
+
+// A change to a mail from the pop-up or the Mail tab (key: "mail:<account>:<id>"). Its card
+// and its "missed" mark go (Keep unread: only the mark).
+export async function changeMail(key: string, change: 'read' | 'unread' | 'archive' | 'keep') {
+  saveMissed(loadMissed().filter((k) => k !== key))
+  if (change === 'keep') return
+  if (loadMailAlerts().some((a) => a.key === key && !a.opened)) removeAlert(key)
+  const [, account, id] = key.split(':')
+  const labels =
+    change === 'read' ? { removeLabelIds: ['UNREAD'] }
+    : change === 'unread' ? { addLabelIds: ['UNREAD'] }
+    : { removeLabelIds: ['INBOX'] } // archive: out of the inbox, kept in All Mail
+  await gmailApi(account, `messages/${id}/modify`, { method: 'POST', body: JSON.stringify(labels) })
+}
 
 // The conversation in Gmail, signed in as the right account
-function openInGmail(alert: MailAlert) {
-  openLink(`https://mail.google.com/mail/?authuser=${encodeURIComponent(alert.account)}#all/${alert.threadId}`)
-}
+export const gmailLink = (mail: MailAlert) =>
+  `https://mail.google.com/mail/?authuser=${encodeURIComponent(mail.account)}#all/${mail.threadId}`
+
+const openInGmail = (alert: MailAlert) => openLink(gmailLink(alert))
 
 // ---------- Reading ----------
 

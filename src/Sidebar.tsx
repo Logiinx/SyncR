@@ -1,7 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { useListItems } from './animations'
-import { Bell, Gamepad2, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
+import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
+import { useGmailAccounts } from './gmail'
+import { useMissed } from './mailAlerts'
+import { MAIL_TAB } from './mailbox'
 import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
 import { REMINDERS_TAB } from './reminders'
@@ -18,6 +22,7 @@ interface Props {
   onSettings: () => void
   onGames: () => void
   onReminders: () => void
+  onMail: () => void
   query: string // search across all notes; kept in App so it survives closing the sidebar
   onQuery: (query: string) => void
   focusSearch: boolean // Ctrl+Shift+F (App.tsx): the box should get the cursor
@@ -52,7 +57,9 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, query, onQuery, focusSearch, onSearchFocused }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, query, onQuery, focusSearch, onSearchFocused }: Props) {
+  const accounts = useGmailAccounts()
+  const missed = useMissed()
   const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
@@ -82,6 +89,14 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         >
           <Bell size={15} /> Reminders
         </button>
+        {/* PC only (the phone has the Gmail app), once a Gmail account is added. The count:
+            emails whose pop-up faded by itself, still unread ("missed") */}
+        {(isTauri() || import.meta.env.DEV) && accounts.length > 0 && (
+          <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
+            <Mail size={15} /> Mail
+            {missed.length > 0 && <span className="sidebar-count" title="Missed emails">{missed.length}</span>}
+          </button>
+        )}
         <div className="game-search-bar sidebar-search">
           <Search size={15} />
           <input

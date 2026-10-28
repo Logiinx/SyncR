@@ -3908,6 +3908,29 @@ button {
   border-radius: 0 6px 6px 0;
 }
 
+/* Mail: how many emails were missed (their pop-up faded unread) */
+.sidebar-count {
+  margin-left: auto;
+  color: var(--link);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Mail tab (MailView.tsx): sender in bold before the subject; a mail marked read there is
+   dimmed until the tab closes */
+.mail-row .menu-swatch {
+  align-self: flex-start;
+  margin-top: 5px;
+}
+
+.mail-row-from {
+  font-weight: 600;
+}
+
+.mail-row.read {
+  opacity: 0.55;
+}
+
 .games {
   max-width: 760px;
   margin: 0 auto;
