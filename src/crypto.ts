@@ -85,7 +85,11 @@ async function saveKey(key: CryptoKey | null) {
     else await db.keys.delete('sync')
   } else {
     const raw = key && toBase64(new Uint8Array(await crypto.subtle.exportKey('raw', key)))
-    await setSecret(SYNC_KEY_SECRET, raw)
+    // Not stored (Windows refused): works until SyncR closes; said, so the next ask isn't a mystery
+    if (!(await setSecret(SYNC_KEY_SECRET, raw)) && raw) {
+      const message = "Unlocked for now, but Windows couldn't store the sync key: SyncR will ask for the passphrase again at the next start."
+      window.dispatchEvent(new CustomEvent('sync-notice', { detail: message })) // SyncButton
+    }
     await db.keys.delete('sync') // an old one (up to v0.26), see dropOldKey
   }
   window.dispatchEvent(new Event('sync-key-change'))

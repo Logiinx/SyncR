@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Reminders**
 - After removing a game opened with "Watch price…", the next game you open no longer jumps to its price alert.
 
+**Sync**
+- PC: if Windows can't store the sync key, a message says so, instead of the passphrase being asked again at each start without a reason.
+
 **App**
 - Instant mail: signing the instant mail account in again keeps it on (or says it's off). One failing account no longer stops it for all.
 - Gmail: the pop-up can no longer undo an account change just made in Settings. The Mail tab no longer reloads each hour by itself.

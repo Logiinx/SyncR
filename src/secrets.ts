@@ -66,19 +66,26 @@ export function getSecret(key: string): string | null {
 }
 
 // null removes it. Readable at once; on the PC it's on disk once the returned promise is done.
-export function setSecret(key: string, value: string | null): Promise<void> {
+// The promise says whether it got there: false = only in memory, gone at the next start.
+export function setSecret(key: string, value: string | null): Promise<boolean> {
   if (!isTauri()) {
     if (value === null) localStorage.removeItem(key)
     else localStorage.setItem(key, value)
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
   memory.set(key, value)
   saving.set(key, (saving.get(key) ?? 0) + 1)
-  writes = writes.then(async () => {
-    if (value === null) return localStorage.removeItem(key)
-    const data = await invoke<number[]>('protect_secret', { text: value })
-    localStorage.setItem(key, MARK + toBase64(Uint8Array.from(data)))
-  }).catch((error) => console.error('Secret could not be saved', error))
-    .finally(() => saving.set(key, saving.get(key)! - 1))
-  return writes
+  const saved = writes.then(async () => {
+    if (value === null) localStorage.removeItem(key)
+    else {
+      const data = await invoke<number[]>('protect_secret', { text: value })
+      localStorage.setItem(key, MARK + toBase64(Uint8Array.from(data)))
+    }
+    return true
+  }).catch((error) => {
+    console.error('Secret could not be saved', error)
+    return false
+  }).finally(() => saving.set(key, saving.get(key)! - 1))
+  writes = saved.then(() => undefined)
+  return saved
 }
