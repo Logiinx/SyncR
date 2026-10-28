@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.31.3] - 2026-10-28
+
 **Mail**
 - **Fixed:** If Gmail can't be reached right at start, the Mail tab tries again by itself.
 
