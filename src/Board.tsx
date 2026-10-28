@@ -1,8 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { flushSync } from 'react-dom'
-import { createRoot, type Root } from 'react-dom/client'
-import { ArrowDown, ArrowUp, ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
+import { ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
 import {
   createCard,
@@ -34,6 +32,13 @@ const MAX_WIDTH = 600
 const UNDO_MS = 5000
 const HOLD_MS = 300 // touch screens: hold a card this long before it moves (a swipe scrolls)
 const GAP = 6 // px between cards (.board-cards gap)
+
+// The drag's temporary drop zone (made outside React): Lucide's arrow-down / arrow-up as plain
+// SVG, like the sections' fold arrow (NoteEditor.tsx)
+const arrow = (paths: string) =>
+  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
+const DROP_NORMAL = `${arrow('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>')} Normal`
+const DROP_PRIORITY = `${arrow('<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>')} Priority`
 
 // Priority cards first, then the others; inside each part, in their order (new = bottom)
 const byPart = (a: CardData, b: CardData) => Number(b.priority) - Number(a.priority) || a.order - b.order
@@ -133,7 +138,6 @@ function Board({ onClose }: Props) {
     let shift = 0
     let startY = 0
     let zone: HTMLElement | null = null
-    let zoneRoot: Root | null = null
     const contentY = (clientY: number) => clientY - list.getBoundingClientRect().top + list.scrollTop
 
     function begin() {
@@ -148,9 +152,7 @@ function Board({ onClose }: Props) {
         const side = rest.length ? rest[0].priority : card!.priority
         zone = document.createElement('div')
         zone.className = 'board-separator board-drop-zone'
-        // Filled right away (flushSync): the cards' places are measured just below
-        zoneRoot = createRoot(zone)
-        flushSync(() => zoneRoot!.render(side ? <><ArrowDown size={12} /> Normal</> : <><ArrowUp size={12} /> Priority</>))
+        zone.innerHTML = side ? DROP_NORMAL : DROP_PRIORITY
         if (side) list!.append(zone)
         else list!.prepend(zone)
       }
@@ -301,7 +303,6 @@ function Board({ onClose }: Props) {
       window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
 
       const putBack = () => {
-        zoneRoot?.unmount()
         zone?.remove()
         for (const el of items) el.style.transform = ''
         for (const el of list!.querySelectorAll('.card-group')) el.classList.remove('drop-target', 'drop-into')
