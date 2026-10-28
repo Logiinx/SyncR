@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-28
+
 **App**
 - PC: click a Gmail account's dot in Settings → Gmail to pick its color (its pop-ups' strip and its dot in the Mail tab).
 - PC: sign-ins and the sync key are now stored encrypted for your Windows user only. Enter your passphrase once after updating.
