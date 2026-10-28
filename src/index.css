@@ -3501,59 +3501,144 @@ button {
   text-transform: uppercase;
 }
 
-/* The categories on the left (like the sidebar's entries), the chosen one on the right. As
-   tall as the chosen category (up to the window, then it scrolls by itself); the top stays at
-   the same place, so switching only moves the bottom edge. Phone: the list, or one category
-   with ← Back (.show-list: the list), full screen. */
+/* Four cards, all open (two columns on the PC, one on the phone); each setting a row: name
+   left, control right. The top stays at the same place when "Manage accounts…" changes the
+   height. Phone: full screen. */
 .dialog.settings {
-  --settings-top: calc(10vh / var(--zoom, 1));
-  display: flex;
-  flex-direction: column;
+  --settings-top: calc(8vh / var(--zoom, 1));
   align-self: flex-start;
-  width: min(700px, 100%);
+  width: min(880px, 100%);
   max-height: calc(100% - var(--settings-top));
   margin-top: var(--settings-top);
-  overflow: hidden;
-  padding-bottom: 0;
 }
 
-.settings-body {
+.settings-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.settings-card {
+  padding: 10px 14px 6px;
+  border: 1px solid #353535; /* like the section lines: --border barely shows here */
+  border-radius: 8px;
+}
+
+.settings-card-title {
   display: flex;
-  flex: 1;
-  min-height: 0;
-  gap: 20px;
-  margin: 0 -20px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 1em;
+  font-weight: 600;
 }
 
-.settings-nav {
+.settings-card-title svg {
+  color: var(--link);
+}
+
+.settings-row {
   display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  width: 170px;
-  padding-right: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
 }
 
-.settings-nav button {
-  margin-top: 4px;
-}
-
-.settings-page {
-  flex: 1;
+.settings-row-label {
   min-width: 0;
-  overflow-y: auto;
-  padding: 0 20px 20px 0;
 }
 
-/* The first section of a page: no line above it */
-.settings-page > section:first-of-type > .settings-section {
-  margin-top: 4px;
+.settings-row-control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 60%;
+}
+
+.dialog .settings-row select {
+  width: auto;
+  max-width: 100%;
+  padding: 3px 6px;
+  font-size: 0.95em;
+}
+
+.settings-row .ruler {
+  width: 150px;
+}
+
+.dialog .settings-row input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* A connection's state (Accounts card): dim, green when it works, one line */
+.settings-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.9em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.settings-status.ok {
+  color: var(--text-green); /* like the details' status lines */
+}
+
+.settings-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 6px;
+}
+
+/* ▶ next to a sound's dropdown */
+.settings-play {
+  display: flex;
+  padding: 5px;
+  border-radius: 5px;
+  color: var(--text-dim);
+}
+
+.settings-play:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* "Manage accounts…": the details, with ← Accounts in the head to go back */
+.settings-back {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  margin-left: -4px;
+  padding: 2px 4px;
+  color: var(--text);
+  font-size: 1.15em;
+  font-weight: 600;
+}
+
+/* Two columns on the PC: Games | Calendar, Gmail, Instant mail */
+.settings-manage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 32px;
+  margin-top: 8px;
+}
+
+.settings-manage > div > section:first-child > .settings-section {
+  margin-top: 0;
   padding-top: 0;
   border-top: none;
-}
-
-/* Phone only: the category's name, back to the list */
-.settings-back {
-  display: none;
 }
 
 @media (max-width: 699px) {
@@ -3564,29 +3649,22 @@ button {
     margin-top: 0;
   }
 
-  .settings-nav {
-    flex: 1;
-    width: auto;
-    padding-right: 20px;
+  .settings-cards {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .settings-page {
-    padding-left: 20px;
+  .settings-row .ruler {
+    width: 110px;
   }
 
-  .dialog.settings.show-list .settings-page,
-  .dialog.settings:not(.show-list) .settings-nav {
-    display: none;
+  .settings-manage {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .settings-back {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin: 0 0 8px -4px;
-    padding: 4px;
-    color: var(--text);
-    font-weight: 600;
+  .settings-manage > div + div > section:first-child > .settings-section {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid #353535;
   }
 }
 
@@ -3972,8 +4050,7 @@ button {
 }
 
 /* The entry above the notes list (Sidebar.tsx) */
-.sidebar-games,
-.settings-nav button {
+.sidebar-games {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3985,15 +4062,12 @@ button {
 }
 
 .sidebar-games:hover,
-.sidebar-games.active,
-.settings-nav button:hover,
-.settings-nav button.active {
+.sidebar-games.active {
   background: var(--border);
   color: var(--text);
 }
 
-.sidebar-games.active,
-.settings-nav button.active {
+.sidebar-games.active {
   border-left-color: var(--link);
   border-radius: 0 6px 6px 0;
 }

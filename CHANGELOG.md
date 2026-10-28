@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- Settings in four categories: Notes, Alerts, Accounts, App, one at a time. Settings shared by all devices are tagged "synced".
+- Settings fit in one view: four cards (Notes, Alerts, Accounts, App) with dropdowns; account details under "Manage accounts…".
 
 ## [0.29.0] - 2026-10-28
 

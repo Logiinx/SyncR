@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, NotebookPen, Plug, type LucideIcon } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, type LucideIcon } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -42,31 +42,19 @@ import {
 } from './appearance'
 import Spinner from './Spinner'
 import CloseButton from './CloseButton'
-import { useLocalState } from './localState'
 
-// Settings, in four categories (the list on the left, one shown at a time; the last one used
-// opens again). Phone: the list first, a tap opens a category, ← Back returns. Changes are
-// saved right away. Closed with Escape or a click outside it.
-type Category = 'notes' | 'alerts' | 'accounts' | 'app'
-
-const CATEGORIES: { id: Category; name: string; icon: LucideIcon }[] = [
-  { id: 'notes', name: 'Notes', icon: NotebookPen },
-  { id: 'alerts', name: 'Alerts', icon: Bell },
-  { id: 'accounts', name: 'Accounts', icon: Plug },
-  { id: 'app', name: 'App', icon: AppWindow },
-]
-
+// Settings: four cards, all open at once (two columns on the PC, one on the phone), each
+// setting one row: name on the left, its control on the right. The Accounts card shows how
+// each connection is doing; "Manage accounts…" opens the details in the same window, with
+// ← Back. Changes are saved right away. Closed with Escape or a click outside it.
 function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
-  const [category, setCategory] = useLocalState<Category>('syncr.settingsCategory', 'notes')
-  const [showList, setShowList] = useState(true) // phone: the list, not a category
-  const pageRef = useRef<HTMLDivElement>(null)
-  function open(id: Category) {
-    setCategory(id)
-    setShowList(false)
-    if (pageRef.current) pageRef.current.scrollTop = 0
+  const [manage, setManage] = useState(false) // the accounts' details instead of the cards
+  function showManage(on: boolean) {
+    setManage(on)
+    dialogRef.current?.scrollTo({ top: 0 })
   }
 
   const [appearance, setAppearance] = useState(loadAppearance)
@@ -126,235 +114,184 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // "What's new" also opens in place of Settings, like the color rules
   const [showWhatsNew, setShowWhatsNew] = useState(false)
 
+  // The Accounts card: each connection's state (the details: "Manage accounts…")
   const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
   const gmailAccounts = useGmailAccounts()
+  const instant = useInstantStatus()
+  const proxyStatus = useProxyStatus(useConnection() ?? null)
+  const steam = useSteamProfile()
+  const [calendar, setCalendar] = useState(isGoogleConnected)
+  useEffect(() => {
+    const refresh = () => setCalendar(isGoogleConnected())
+    window.addEventListener('google-change', refresh)
+    return () => window.removeEventListener('google-change', refresh)
+  }, [])
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
-  const notes = (
-    <>
-      <section className="settings-group">
-        <SectionTitle title="Text" />
-        <div className="setting">
-          <span className="setting-label">Font</span>
+  const cards = (
+    <div className="settings-cards">
+      <SettingsCard icon={NotebookPen} title="Notes">
+        <SettingRow label="Font">
           {/* Each choice is shown in its own font */}
-          <div className="setting-choices">
+          <select
+            value={appearance.font}
+            style={{ fontFamily: FONTS[appearance.font].css }}
+            onChange={(e) => update({ font: e.target.value as FontId })}
+          >
             {(Object.keys(FONTS) as FontId[]).map((id) => (
-              <button
-                key={id}
-                className={id === appearance.font ? 'selected' : ''}
-                style={{ fontFamily: FONTS[id].css }}
-                aria-pressed={id === appearance.font}
-                onClick={() => update({ font: id })}
-              >
+              <option key={id} value={id} style={{ fontFamily: FONTS[id].css }}>
                 {FONTS[id].name}
-              </button>
+              </option>
             ))}
-          </div>
-        </div>
-
+          </select>
+        </SettingRow>
         {/* The note behind the dialog changes while dragging */}
-        <label className="setting">
-          <span className="setting-label">
-            Text size <span className="setting-value">{appearance.fontSize} px</span>
-          </span>
+        <SettingRow label="Text size" value={`${appearance.fontSize} px`}>
           <RulerSlider
             min={FONT_SIZE_MIN}
             max={FONT_SIZE_MAX}
             step={1}
             mark={DEFAULTS.fontSize}
             value={appearance.fontSize}
+            aria-label="Text size"
             onChange={(e) => update({ fontSize: Number(e.target.value) })}
           />
-        </label>
-
-        <label className="setting setting-toggle">
-          <span>
-            Smart typography <span className="setting-value">“ ” — → … ½ ©</span>
-          </span>
+        </SettingRow>
+        <SettingRow label="Smart typography" value="“ ” — → … ½ ©">
           <input
             type="checkbox"
             checked={editing.smartTypography}
             onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
           />
-        </label>
-
-        <div className="setting setting-toggle">
-          <span>
-            Color rules <Synced /> <span className="setting-value">{rulesSummary}</span>
-          </span>
+        </SettingRow>
+        <SettingRow label="Dates in the note list">
+          <input type="checkbox" checked={appearance.showDates} onChange={(e) => update({ showDates: e.target.checked })} />
+        </SettingRow>
+        <SettingRow label={<>Color rules <Synced /></>} value={rulesSummary}>
           <button className="setting-button" onClick={() => setShowRules(true)}>
             Edit…
           </button>
+        </SettingRow>
+      </SettingsCard>
+
+      <SettingsCard icon={Bell} title="Alerts">
+        {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
+        <SettingRow label="Reminder sound">
+          <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
+        </SettingRow>
+        {mail && gmailAccounts.length > 0 && (
+          <>
+            <SettingRow label="Email sound">
+              <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
+            </SettingRow>
+            <SettingRow label="Email pop-ups fade" title="A faded email stays unread, as missed (Mail tab)">
+              <select value={background.emailFade} onChange={(e) => updateBackground({ emailFade: Number(e.target.value) })}>
+                {FADE_CHOICES.map(({ seconds, name }) => (
+                  <option key={seconds} value={seconds}>
+                    {seconds ? `after ${name}` : name}
+                  </option>
+                ))}
+              </select>
+            </SettingRow>
+          </>
+        )}
+        {mail && gmailAccounts.length === 0 && (
+          <SettingRow label="Emails">
+            <button className="version-link" onClick={() => showManage(true)}>
+              Add a Gmail account…
+            </button>
+          </SettingRow>
+        )}
+      </SettingsCard>
+
+      <SettingsCard icon={Plug} title="Accounts">
+        <SettingRow label={<>Game search <Synced /></>}>
+          <Status ok={proxyStatus.ok} text={proxyStatus.text} />
+        </SettingRow>
+        <SettingRow label="Steam">
+          <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? 'Not checked yet' : 'Not set up')} />
+        </SettingRow>
+        <SettingRow label="Google Calendar">
+          <Status ok={calendar} text={calendar ? `Connected${googleName() ? ` as ${googleName()}` : ''}` : 'Not connected'} />
+        </SettingRow>
+        {mail && (
+          <SettingRow label="Gmail">
+            <Status
+              ok={gmailAccounts.length > 0}
+              text={gmailAccounts.length === 0 ? 'No account yet'
+                : `${gmailAccounts.length} account${gmailAccounts.length > 1 ? 's' : ''}${instant.ok ? ' · instant mail on' : ''}`}
+            />
+          </SettingRow>
+        )}
+        <div className="settings-card-foot">
+          <button className="setting-button" onClick={() => showManage(true)}>
+            Manage accounts…
+          </button>
         </div>
-      </section>
-      <section className="settings-group">
-        <SectionTitle title="Note list" />
-        <label className="setting setting-toggle">
-          <span>Show dates</span>
-          <input
-            type="checkbox"
-            checked={appearance.showDates}
-            onChange={(e) => update({ showDates: e.target.checked })}
-          />
-        </label>
-      </section>
-    </>
-  )
+      </SettingsCard>
 
-  const alerts = (
-    <>
-      {isTauri() && <PopupSettings background={background} onChange={updateBackground} />}
-      <section className="settings-group">
-        <SectionTitle title="Reminders" />
-        <div className="setting">
-          <span className="setting-label">Sound when a reminder is due</span>
-          <SoundChoices value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
-        </div>
-      </section>
-      {mail && (
-        <section className="settings-group">
-          <SectionTitle title="Emails" />
-          {gmailAccounts.length === 0 ? (
-            <p className="setting-status">
-              Add a Gmail account in{' '}
-              <button className="version-link" onClick={() => open('accounts')}>
-                Accounts
-              </button>
-            </p>
-          ) : (
-            <>
-              <div className="setting">
-                <span className="setting-label">Sound for new emails</span>
-                <SoundChoices value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
-              </div>
-              <div className="setting">
-                <span className="setting-label">
-                  Email pop-ups fade after <span className="setting-value">they stay unread, as missed</span>
-                </span>
-                <div className="setting-choices">
-                  {FADE_CHOICES.map(({ seconds, name }) => (
-                    <button
-                      key={seconds}
-                      className={seconds === background.emailFade ? 'selected' : ''}
-                      aria-pressed={seconds === background.emailFade}
-                      onClick={() => updateBackground({ emailFade: seconds })}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-      )}
-    </>
-  )
-
-  const accounts = (
-    <>
-      <GamesSettings />
-      <GoogleSettings />
-      {mail && <GmailSettings />}
-    </>
-  )
-
-  const app = (
-    <>
-      <section className="settings-group">
-        <SectionTitle title="Look" />
-        <label className="setting">
-          <span className="setting-label">
-            App scaling <span className="setting-value">{scale} %</span>
-          </span>
+      <SettingsCard icon={AppWindow} title="App">
+        <SettingRow label="App scaling" value={`${scale} %`}>
           <RulerSlider
             min={SCALE_MIN}
             max={SCALE_MAX}
             step={5}
             mark={DEFAULTS.scale}
             value={scale}
+            aria-label="App scaling"
             onChange={(e) => setScale(Number(e.target.value))}
             onPointerUp={applyScale}
             onKeyUp={applyScale}
             onBlur={applyScale}
           />
-        </label>
-        <label className="setting setting-toggle">
-          <span>Animations</span>
-          <input
-            type="checkbox"
-            checked={appearance.animations}
-            onChange={(e) => update({ animations: e.target.checked })}
-          />
-        </label>
-      </section>
-      {isTauri() && (
-        <section className="settings-group">
-          <SectionTitle title="Window" />
-          <label className="setting setting-toggle">
-            <span>
-              ✕ hides SyncR in the tray{' '}
-              <span className="setting-value">keeps reminders working; Quit is in the tray menu</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={background.closeToTray}
-              onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
-            />
-          </label>
-          <label className="setting setting-toggle">
-            <span>
-              Start with Windows <span className="setting-value">when you sign in</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={autostart ?? false}
-              disabled={autostart === null}
-              onChange={(e) => toggleAutostart(e.target.checked)}
-            />
-          </label>
-          <label className="setting setting-toggle">
-            <span>
-              Start hidden in the tray{' '}
-              <span className="setting-value">when started with Windows; otherwise the window shows</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={background.startHidden}
-              disabled={!autostart}
-              onChange={(e) => updateBackground({ startHidden: e.target.checked })}
-            />
-          </label>
-        </section>
-      )}
-      <section className="settings-group">
-        <SectionTitle title="About" />
+        </SettingRow>
+        <SettingRow label="Animations">
+          <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
+        </SettingRow>
+        {isTauri() && (
+          <>
+            <SettingRow label="✕ hides SyncR in the tray" title="Keeps reminders working; Quit is in the tray menu">
+              <input
+                type="checkbox"
+                checked={background.closeToTray}
+                onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+              />
+            </SettingRow>
+            <SettingRow label="Start with Windows" title="When you sign in to Windows">
+              <input
+                type="checkbox"
+                checked={autostart ?? false}
+                disabled={autostart === null}
+                onChange={(e) => toggleAutostart(e.target.checked)}
+              />
+            </SettingRow>
+            <SettingRow label="Start hidden in the tray" title="When started with Windows; otherwise the window shows">
+              <input
+                type="checkbox"
+                checked={background.startHidden}
+                disabled={!autostart}
+                onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+              />
+            </SettingRow>
+          </>
+        )}
         {/* Check for updates: the icon next to Settings in the sidebar */}
-        <div className="setting">
-          <span>
-            SyncR{' '}
-            <span className="setting-value">
-              {/* Click the version: what's new in it */}
-              <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
-                v{__APP_VERSION__}
-              </button>{' '}
-              · by Logiinx
-            </span>
-          </span>
-        </div>
-      </section>
-    </>
+        <SettingRow label={<>SyncR <span className="setting-value">by Logiinx</span></>}>
+          {/* Click the version: what's new in it */}
+          <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
+            v{__APP_VERSION__}
+          </button>
+        </SettingRow>
+      </SettingsCard>
+    </div>
   )
-
-  const pages = { notes, alerts, accounts, app }
-  const current = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0]
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div
-        className={`dialog settings${showList ? ' show-list' : ''}`}
+        className="dialog settings"
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"
@@ -363,27 +300,71 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <div className="dialog-head">
-          <h2>Settings</h2>
+          {manage ? (
+            <button className="settings-back" onClick={() => showManage(false)}>
+              <ChevronLeft size={18} /> Accounts
+            </button>
+          ) : (
+            <h2>Settings</h2>
+          )}
           <CloseButton onClick={onClose} />
         </div>
-        <div className="settings-body">
-          <nav className="settings-nav">
-            {CATEGORIES.map(({ id, name, icon: Icon }) => (
-              <button key={id} className={id === current.id ? 'active' : ''} onClick={() => open(id)}>
-                <Icon size={15} /> {name}
-              </button>
-            ))}
-          </nav>
-          <div className="settings-page" ref={pageRef}>
-            {/* Phone: the category's name, and back to the list */}
-            <button className="settings-back" onClick={() => setShowList(true)}>
-              <ChevronLeft size={16} /> {current.name}
-            </button>
-            {pages[current.id]}
+        {manage ? (
+          <div className="settings-manage">
+            <div>
+              <GamesSettings />
+            </div>
+            <div>
+              <GoogleSettings />
+              {mail && <GmailSettings />}
+            </div>
           </div>
-        </div>
+        ) : (
+          cards
+        )}
       </div>
     </div>
+  )
+}
+
+// A card of settings: icon + title, then its rows
+function SettingsCard({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
+  return (
+    <section className="settings-card">
+      <h3 className="settings-card-title">
+        <Icon size={15} /> {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+// One setting: its name (and a dim detail) on the left, its control on the right. `title`: a
+// longer explanation on hover.
+function SettingRow({ label, value, title, children }: {
+  label: React.ReactNode
+  value?: string
+  title?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="settings-row" title={title}>
+      <span className="settings-row-label">
+        {label}
+        {value && <span className="setting-value"> {value}</span>}
+      </span>
+      <span className="settings-row-control">{children}</span>
+    </div>
+  )
+}
+
+// A connection's state in the Accounts card: green when it works, cut with … if long
+function Status({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <span className={`settings-status${ok ? ' ok' : ''}`} title={text}>
+      {text === 'Checking…' && <Spinner size={12} />}
+      {text}
+    </span>
   )
 }
 
@@ -400,22 +381,15 @@ const CHECK_DELAY = 800 // ms after the last key
 // Address + password of the last check that worked, until the app closes (see GamesSettings)
 let lastGoodConnection: string | null = null
 
-function GamesSettings() {
-  const saved = useConnection()
-  const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
-  // Shown from the start, so the dialog doesn't grow when the first result comes in. The saved
-  // connection loads a moment later: if one worked before, start on "Connected" (corrected below
-  // if the saved one is different now)
+// Whether the proxy answers with this address + password: "Connected", or what went wrong.
+// Shown from the start, so the dialog doesn't grow when the first result comes in. The saved
+// connection loads a moment later: if one worked before, start on "Connected" (corrected below
+// if the saved one is different now)
+function useProxyStatus(connection: IgdbConnection | null) {
   const [status, setStatus] = useState(() =>
     lastGoodConnection ? { ok: true, text: 'Connected' } : { ok: false, text: 'Waiting for connection…' },
   )
   const openedAt = useRef(Date.now())
-  const [fullStatus, setFullStatus] = useState(false) // a long message, tapped: shown in full
-
-  // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
-  useEffect(() => {
-    if (saved) setConnection((current) => current ?? saved)
-  }, [saved])
 
   useEffect(() => {
     if (!connection) return
@@ -448,6 +422,19 @@ function GamesSettings() {
       window.clearTimeout(timer)
     }
   }, [connection])
+  return status
+}
+
+function GamesSettings() {
+  const saved = useConnection()
+  const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
+  const status = useProxyStatus(connection)
+  const [fullStatus, setFullStatus] = useState(false) // a long message, tapped: shown in full
+
+  // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
+  useEffect(() => {
+    if (saved) setConnection((current) => current ?? saved)
+  }, [saved])
 
   function change(update: Partial<IgdbConnection>) {
     const next = { ...connection!, ...update }
@@ -778,24 +765,27 @@ function RulerSlider({ min, max, step, value, mark, ...input }: RulerSliderProps
   )
 }
 
-// A choice of sounds (sounds.ts); a click also plays it, as a preview
-function SoundChoices({ value, onChange }: { value: SoundId; onChange: (id: SoundId) => void }) {
+// A choice of sounds (sounds.ts): a dropdown, and ▶ to hear it again (picking one plays it)
+function SoundChoice({ value, onChange }: { value: SoundId; onChange: (id: SoundId) => void }) {
   return (
-    <div className="setting-choices">
-      {SOUNDS.map(({ id, name }) => (
-        <button
-          key={id}
-          className={id === value ? 'selected' : ''}
-          aria-pressed={id === value}
-          onClick={() => {
-            onChange(id)
-            playSound(id)
-          }}
-        >
-          {name}
-        </button>
-      ))}
-    </div>
+    <>
+      <select
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value as SoundId)
+          playSound(e.target.value as SoundId)
+        }}
+      >
+        {SOUNDS.map(({ id, name }) => (
+          <option key={id} value={id}>
+            {name}
+          </option>
+        ))}
+      </select>
+      <button className="settings-play" title="Play" aria-label="Play" disabled={value === 'none'} onClick={() => playSound(value)}>
+        <Play size={13} />
+      </button>
+    </>
   )
 }
 
@@ -809,7 +799,7 @@ const CORNERS: { id: PopupCorner; name: string }[] = [
 // PC: where the pop-up shows (screen + corner), e.g. on a second screen, away from a game.
 // The screens are read from Windows when Settings opens; a chosen screen that isn't plugged
 // in is kept, and the pop-up uses the main screen meanwhile.
-function PopupSettings({
+function PopupPlace({
   background,
   onChange,
 }: {
@@ -832,46 +822,34 @@ function PopupSettings({
   const unplugged =
     background.popupScreen !== null && screens.length > 0 && !screens.some((s) => s.name === background.popupScreen)
   return (
-    <section className="settings-group">
-      <SectionTitle title="Pop-up" />
-      <div className="setting">
-        <span className="setting-label">
-          Screen{' '}
-          {unplugged && <span className="setting-value">the chosen screen isn't plugged in: main screen meanwhile</span>}
-        </span>
-        <div className="setting-choices">
-          {screens.map((screen) => {
-            const selected = screen.name === background.popupScreen
-            return (
-              <button
-                key={screen.name ?? ''}
-                className={selected ? 'selected' : ''}
-                aria-pressed={selected}
-                title={screen.size}
-                onClick={() => onChange({ popupScreen: screen.name })}
-              >
-                {screen.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-      <div className="setting">
-        <span className="setting-label">Corner</span>
-        <div className="setting-choices">
-          {CORNERS.map(({ id, name }) => (
-            <button
-              key={id}
-              className={id === background.popupCorner ? 'selected' : ''}
-              aria-pressed={id === background.popupCorner}
-              onClick={() => onChange({ popupCorner: id })}
-            >
-              {name}
-            </button>
+    <>
+      <SettingRow
+        label="Pop-up screen"
+        title={unplugged ? "The chosen screen isn't plugged in: main screen meanwhile" : undefined}
+        value={unplugged ? 'not plugged in' : undefined}
+      >
+        <select
+          value={background.popupScreen ?? ''}
+          onChange={(e) => onChange({ popupScreen: e.target.value || null })}
+        >
+          {unplugged && <option value={background.popupScreen!}>Unplugged screen</option>}
+          {screens.map((screen) => (
+            <option key={screen.name ?? ''} value={screen.name ?? ''}>
+              {screen.label}{screen.size && ` (${screen.size})`}
+            </option>
           ))}
-        </div>
-      </div>
-    </section>
+        </select>
+      </SettingRow>
+      <SettingRow label="Pop-up corner">
+        <select value={background.popupCorner} onChange={(e) => onChange({ popupCorner: e.target.value as PopupCorner })}>
+          {CORNERS.map(({ id, name }) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+    </>
   )
 }
 
