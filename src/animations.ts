@@ -46,6 +46,13 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
     },
   ],
   ['.backdrop', (el) => [play(el, [{ opacity: 1 }, { opacity: 0 }])]],
+  // Due reminder cards (and "N reminders · Done all"): back out past the window's right edge;
+  // the last one leaves with its box
+  [
+    '.reminder-alert, .reminder-alerts-head',
+    (el) => [play(el, [{ transform: 'none' }, { transform: 'translateX(calc(100% + 16px))' }])],
+  ],
+  ['.reminder-alerts', (el) => [play(el, [{ transform: 'none' }, { transform: 'translateX(100%)' }])]],
 ]
 
 // Started once (main.tsx)

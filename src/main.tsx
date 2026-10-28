@@ -19,7 +19,8 @@ if (!isPopup) applyAppearance(loadAppearance())
 else document.documentElement.classList.add('popup-page')
 setUpScrollbars()
 setUpBoardTab()
-startClosingAnimations()
+// Not in the pop-up: it sizes its window from its cards, a closing one would still count
+if (!isPopup) startClosingAnimations()
 // Side panels slide in only when opened, not when the app starts with them open (index.css)
 setTimeout(() => document.documentElement.classList.add('ready'), 1000)
 

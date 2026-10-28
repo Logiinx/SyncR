@@ -309,16 +309,26 @@ button {
   background: var(--bg-raised);
   box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
   font-size: 13px;
-  animation: fade-in 0.2s;
+  animation: message-in 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Slides in from the right and back out; it's not at the window's edge, so it also fades */
 .sync-message.leaving {
-  animation: fade-out 0.3s forwards;
+  animation: message-out 0.13s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
-@keyframes fade-out {
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateX(50%);
+  }
+}
+
+/* Its own name: the same one, reversed, wouldn't restart (no animationend, never removed) */
+@keyframes message-out {
   to {
     opacity: 0;
+    transform: translateX(50%);
   }
 }
 
@@ -1423,15 +1433,18 @@ button {
 
 /* Due reminders: cards in the bottom-right corner, above the page, below menus and dialogs
    (ReminderAlerts.tsx) */
+/* right: 0 + padding: they're cut off at the window's edge, so they slide in from there */
 .reminder-alerts {
   position: fixed;
-  right: 16px;
+  right: 0;
   bottom: 16px;
+  padding-right: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: min(390px, calc(100% - 32px));
   max-height: calc(100% - 80px);
+  overflow-x: hidden;
   overflow-y: auto;
   z-index: 25;
 }
@@ -3191,6 +3204,17 @@ button {
 
   .ready .backdrop {
     animation: fade-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+/* Due reminder cards and "N reminders · Done all" slide in from the window's right edge */
+.reminder-alerts > * {
+  animation: from-edge 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes from-edge {
+  from {
+    transform: translateX(calc(100% + 16px));
   }
 }
 
