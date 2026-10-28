@@ -3931,6 +3931,21 @@ button {
   opacity: 0.55;
 }
 
+/* A mail read in the Mail tab: the pop-up's reader, filling the page (no card shadow) */
+.mail-view-reader {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-width: 900px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 16px 24px 24px;
+}
+
+.mail-view-reader .mail-reader {
+  box-shadow: none;
+}
+
 .games {
   max-width: 760px;
   margin: 0 auto;
