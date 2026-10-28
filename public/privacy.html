@@ -18,7 +18,13 @@
 
 <h2>Google Calendar</h2>
 <p>If you connect Google Calendar, SyncR reads, creates, changes and deletes events in your primary calendar, only to show them in the Reminders tab and to notify you. Events are kept on your device for offline viewing. They are not sent anywhere else, not shared, not sold and not used for ads.</p>
-<p>To sign in, a small proxy (a Cloudflare Worker run for SyncR) exchanges the sign-in code from Google for an access key. It passes the key straight back to your device and stores nothing. Your sign-in is kept on your device only. You can remove SyncR's access at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+<h2>Gmail (desktop app)</h2>
+<p>If you add a Gmail account, SyncR checks it for new unread emails in the Primary inbox, to notify you and to list them in the Mail tab. For that it reads each email's sender, subject and the short preview Gmail provides. It reads the full text of an email only when you open it, and keeps that text in memory only while it is shown. The only changes SyncR makes to your mail are the ones you ask for: mark as read or unread, and archive (remove from the inbox). It never sends, deletes or forwards emails.</p>
+<p>The sender, subject and preview of the emails it notifies you about are kept on your device, so the notifications and the Mail tab can show them. They are not synced to Dropbox, not sent anywhere else, not shared, not sold and not used for ads. Images and other content from the web inside an email are blocked until you choose to show them, so senders can't tell when you open their email. Removing the account in SyncR's settings deletes this stored information from the device.</p>
+
+<h2>Google sign-in</h2>
+<p>To sign in, a small proxy (a Cloudflare Worker run for SyncR) exchanges the sign-in code from Google for an access key. It passes the key straight back to your device and stores nothing. Your emails and events never go through it. Your sign-ins are kept on your device only. You can remove SyncR's access at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
 <p>SyncR's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
 <h2>Contact</h2>
