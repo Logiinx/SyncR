@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-28
+
 **App**
 - The blue line under the open tab (and the blue of switches like My games | Calendar) slides to your pick; a faint one follows the mouse.
 - Smoother app: windows and pages fade, menus unfold, panels slide, sections grow, cards and games shrink away or grow in.
