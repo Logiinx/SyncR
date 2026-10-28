@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - The "‹ Back" buttons of the trailer view and of an open email now look the same.
 - Cut-off text shows in full on hover: Mail tab subjects and previews, Steam import names, Gmail addresses in Settings.
+- Real icons instead of text symbols in the empty page's hint and the Board's "Priority" / "Normal" drop zones.
 
 ## [0.30.1] - 2026-10-28
 

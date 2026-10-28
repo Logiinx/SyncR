@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
+import { flushSync } from 'react-dom'
+import { createRoot, type Root } from 'react-dom/client'
+import { ArrowDown, ArrowUp, ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
 import {
   createCard,
@@ -131,6 +133,7 @@ function Board({ onClose }: Props) {
     let shift = 0
     let startY = 0
     let zone: HTMLElement | null = null
+    let zoneRoot: Root | null = null
     const contentY = (clientY: number) => clientY - list.getBoundingClientRect().top + list.scrollTop
 
     function begin() {
@@ -145,7 +148,9 @@ function Board({ onClose }: Props) {
         const side = rest.length ? rest[0].priority : card!.priority
         zone = document.createElement('div')
         zone.className = 'board-separator board-drop-zone'
-        zone.textContent = side ? 'Normal ↓' : 'Priority ↑'
+        // Filled right away (flushSync): the cards' places are measured just below
+        zoneRoot = createRoot(zone)
+        flushSync(() => zoneRoot!.render(side ? <><ArrowDown size={12} /> Normal</> : <><ArrowUp size={12} /> Priority</>))
         if (side) list!.append(zone)
         else list!.prepend(zone)
       }
@@ -296,6 +301,7 @@ function Board({ onClose }: Props) {
       window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
 
       const putBack = () => {
+        zoneRoot?.unmount()
         zone?.remove()
         for (const el of items) el.style.transform = ''
         for (const el of list!.querySelectorAll('.card-group')) el.classList.remove('drop-target', 'drop-into')

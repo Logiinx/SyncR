@@ -1189,8 +1189,12 @@ button {
 }
 
 /* While dragging with all cards on one side: a temporary zone where the separator would be,
-   so the card can still become a priority ("Priority ↑" on top) or a normal card ("Normal ↓") */
+   so the card can still become a priority ("↑ Priority" on top) or a normal card ("↓ Normal") */
 .board-cards > .board-drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   height: auto;
   margin: 0;
   padding: 4px;
@@ -2029,6 +2033,11 @@ button {
   margin-top: calc(30vh / var(--zoom, 1));
   text-align: center;
   color: var(--text-dim);
+}
+
+/* "or open one with ☰": the notes button's icon, inline */
+.empty-icon {
+  vertical-align: -3px;
 }
 
 .empty-new {

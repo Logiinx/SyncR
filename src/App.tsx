@@ -243,7 +243,9 @@ function App() {
               <button className="empty-new" onClick={newNote}>
                 <Plus size={16} /> New note
               </button>
-              <p>or open one with ☰</p>
+              <p>
+                or open one with <Menu size={15} className="empty-icon" aria-label="the notes button" />
+              </p>
             </div>
           </EmptyPage>
         )}
