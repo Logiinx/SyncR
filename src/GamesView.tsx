@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { ArrowRight, Bell, BellOff, CalendarCheck, CalendarClock, Download, Gamepad2, Heart, LayoutGrid, List, Pin, PinOff, Search, Sparkles, Trash2, X } from 'lucide-react'
 import { canWatch, db, isWatched, pinGameToBoard, setGameStatus, unpinGameFromBoard, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isFavoriteTab, isPlayed, isReleased, priorityLabel, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { stopWatching } from './priceWatch'
@@ -84,33 +84,37 @@ function GamesView() {
     return [
       ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
         label: `Move to ${label}`,
+        icon: ArrowRight,
         onClick: () => setGameStatus(game.id, status),
       })),
       {
         label: priorityLabel(game),
+        icon: isFavoriteTab(game) ? Heart : Sparkles,
         divider: true,
         onClick: () => updateGame(game.id, { priority: !game.priority }),
       },
       // To play and Waiting: the price alert, set in the game window
       ...(!canWatch(game) ? [] : isWatched(game)
-        ? [{ label: 'Stop watching', onClick: () => stopWatching(game) }]
+        ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]
         : [{
             label: 'Watch price…',
+            icon: Bell,
             onClick: () => {
               setOpenWatch(game.id)
               setOpenId(game.id)
             },
           }]),
       pinned?.has(game.id)
-        ? { label: 'Unpin from Board', onClick: () => unpinGameFromBoard(game.id) }
+        ? { label: 'Unpin from Board', icon: PinOff, onClick: () => unpinGameFromBoard(game.id) }
         : {
             label: 'Pin to Board',
+            icon: Pin,
             onClick: async () => {
               await pinGameToBoard(game)
               window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
             },
           },
-      { label: 'Remove from list', danger: true, onClick: () => askRemove(game) },
+      { label: 'Remove from list', icon: Trash2, danger: true, onClick: () => askRemove(game) },
     ]
   }
 

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Plus, StickyNote } from 'lucide-react'
+import { ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
 import {
   createCard,
@@ -338,9 +338,10 @@ function Board({ onClose }: Props) {
       ...groups
         .filter((group) => group.id !== card.groupId)
         .sort(byPart)
-        .map((group) => ({ label: group.title ?? 'Group', onClick: () => moveToGroup(card.id, group.id) })),
+        .map((group) => ({ label: group.title ?? 'Group', icon: Folder, onClick: () => moveToGroup(card.id, group.id) })),
       {
         label: 'New group…',
+        icon: FolderPlus,
         divider: true,
         onClick: () =>
           setDialog({
@@ -350,7 +351,7 @@ function Board({ onClose }: Props) {
             onConfirm: (name) => name.trim() && createGroup(name.trim(), card.id),
           }),
       },
-      ...(inGroup(card) ? [{ label: 'Remove from group', divider: true, onClick: () => moveToGroup(card.id, undefined) }] : []),
+      ...(inGroup(card) ? [{ label: 'Remove from group', icon: FolderOutput, divider: true, onClick: () => moveToGroup(card.id, undefined) }] : []),
     ]
   }
 

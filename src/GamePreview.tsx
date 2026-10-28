@@ -99,7 +99,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
             <ContextMenu
               x={menu.x}
               y={menu.y}
-              items={ADD_PLACES.map((place) => ({ label: place.label, onClick: () => add(place.status, place.completed) }))}
+              items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => add(place.status, place.completed) }))}
               onClose={() => setMenu(null)}
             />
           )}

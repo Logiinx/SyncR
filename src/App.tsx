@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Plus } from 'lucide-react'
+import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -271,8 +271,8 @@ function App() {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: 'Rename', onClick: () => askRename(menu.noteId) },
-            { label: 'Delete', danger: true, onClick: () => askDelete(menu.noteId) },
+            { label: 'Rename', icon: Pencil, onClick: () => askRename(menu.noteId) },
+            { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDelete(menu.noteId) },
           ]}
         />
       )}

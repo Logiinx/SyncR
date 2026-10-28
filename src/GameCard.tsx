@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Ellipsis } from 'lucide-react'
+import { Ellipsis, FolderInput, Gamepad2, Palette, PinOff, Sparkles } from 'lucide-react'
 import { changed, db, setCardColor, setCardPriority, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
@@ -79,15 +79,16 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
-            ...(inList ? [{ label: 'Open', onClick: () => onOpen(card.game.id) }] : []),
+            ...(inList ? [{ label: 'Open', icon: Gamepad2, onClick: () => onOpen(card.game.id) }] : []),
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
+              icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
-            { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Unpin from Board', danger: true, onClick: onDelete },
+            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: 'Unpin from Board', icon: PinOff, danger: true, onClick: onDelete },
           ]}
         />
       )}

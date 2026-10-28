@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, RefreshCw, Repeat } from 'lucide-react'
+import { ExternalLink, Pencil, Plus, RefreshCw, Repeat, Trash2 } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import GameDialog from './GameDialog'
@@ -274,9 +274,9 @@ function RemindersView() {
           y={eventMenu.y}
           onClose={() => setEventMenu(null)}
           items={[
-            { label: 'Edit', onClick: () => setEditingEvent(eventMenu.event) },
-            { label: 'Open in Google Calendar', onClick: () => openLink(eventMenu.event.link) },
-            { label: 'Delete', danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
+            { label: 'Edit', icon: Pencil, onClick: () => setEditingEvent(eventMenu.event) },
+            { label: 'Open in Google Calendar', icon: ExternalLink, onClick: () => openLink(eventMenu.event.link) },
+            { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
           ]}
         />
       )}

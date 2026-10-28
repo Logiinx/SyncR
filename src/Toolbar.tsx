@@ -137,18 +137,19 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
   // Phone: the "⋯" list, with only what can be used right now
   const [more, setMore] = useState<{ x: number; y: number } | null>(null)
   const moreItems = [
-    { label: state.inSection ? 'Remove section' : 'Section', show: state.inSection || state.canMakeSection, onClick: toggleSection },
+    { label: state.inSection ? 'Remove section' : 'Section', icon: FoldVertical, show: state.inSection || state.canMakeSection, onClick: toggleSection },
     {
       label: state.inCodeBlock ? 'Back to normal text' : 'Code block',
+      icon: SquareCode,
       show: state.inCodeBlock || state.canMakeCodeBlock,
       onClick: toggleCodeBlock,
     },
-    { label: 'Separate lines', show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
-    { label: 'Align under ">"', show: state.canAlign, onClick: alignUnder },
-    { label: 'Table', show: true, onClick: insertTable },
-    { label: 'Image', show: true, onClick: pickImage },
-    { label: 'Copy link to this spot', show: true, onClick: copyLink },
-    { label: 'Pin to Board', show: state.hasSelection, onClick: pin },
+    { label: 'Separate lines', icon: Rows3, show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
+    { label: 'Align under ">"', icon: IndentIncrease, show: state.canAlign, onClick: alignUnder },
+    { label: 'Table', icon: Table, show: true, onClick: insertTable },
+    { label: 'Image', icon: ImageIcon, show: true, onClick: pickImage },
+    { label: 'Copy link to this spot', icon: Link, show: true, onClick: copyLink },
+    { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
   ].filter((item) => item.show)
 
   return (

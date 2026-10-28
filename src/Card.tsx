@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
-import { ChevronDown, Ellipsis } from 'lucide-react'
+import { ChevronDown, Ellipsis, FolderInput, Heading, Palette, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
@@ -322,16 +322,17 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
             // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
             ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
               ? []
-              : [{ label: 'Edit', onClick: () => startEditing() }]),
-            { label: card.title ? 'Edit title' : 'Add title', divider: true, onClick: () => setEditingTitle(true) },
+              : [{ label: 'Edit', icon: Pencil, onClick: () => startEditing() }]),
+            { label: card.title ? 'Edit title' : 'Add title', icon: Heading, divider: true, onClick: () => setEditingTitle(true) },
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
+              icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: true }) },
-            { label: 'Move to group…', onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Delete', danger: true, onClick: onDelete },
+            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: 'Delete', icon: Trash2, danger: true, onClick: onDelete },
           ]}
         />
       )}

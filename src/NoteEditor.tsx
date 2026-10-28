@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { EditorContent, useEditor, wrappingInputRule } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Blockquote } from '@tiptap/extension-blockquote'
@@ -217,7 +218,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
           x={imageMenu.x}
           y={imageMenu.y}
           onClose={() => setImageMenu(null)}
-          items={[{ label: 'Delete image', danger: true, onClick: () => deleteImage(imageMenu.pos) }]}
+          items={[{ label: 'Delete image', icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) }]}
         />
       )}
     </>

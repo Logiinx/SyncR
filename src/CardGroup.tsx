@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, Ellipsis, Layers } from 'lucide-react'
+import { ChevronDown, Ellipsis, Layers, PaintBucket, Palette, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { deleteGroup, setCardPriority, setGroupColor, updateCardTitle, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
@@ -110,20 +110,22 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
           items={menu.colors ? colorItems(menu.colors === 'all') : [
             {
               label: 'New card',
+              icon: Plus,
               onClick: () => {
                 if (group.folded) updateCardTitle(group.id, { folded: undefined }) // unfolded to show it
                 onNewCard()
               },
             },
-            { label: 'Rename', divider: true, onClick: rename },
+            { label: 'Rename', icon: Pencil, divider: true, onClick: rename },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
+              icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Color…', onClick: () => setMenu({ ...menu, colors: 'group' }) },
-            { label: 'Color with its cards…', onClick: () => setMenu({ ...menu, colors: 'all' }) },
-            { label: 'Delete group', danger: true, onClick: askDelete },
+            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'group' }) },
+            { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
+            { label: 'Delete group', icon: Trash2, danger: true, onClick: askDelete },
           ]}
         />
       )}

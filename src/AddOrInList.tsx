@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import type { GameStatus } from './db'
 import { ADD_PLACES, statusLabel, type AddPlace } from './games'
 import ContextMenu from './ContextMenu'
@@ -36,7 +36,7 @@ function AddOrInList({ status, onAdd, onAddTo }: {
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          items={ADD_PLACES.map((place) => ({ label: place.label, onClick: () => onAddTo(place) }))}
+          items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => onAddTo(place) }))}
           onClose={() => setMenu(null)}
         />
       )}

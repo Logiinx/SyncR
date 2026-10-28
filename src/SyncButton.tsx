@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Check } from 'lucide-react'
+import { Check, RefreshCw, Unplug } from 'lucide-react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
 import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
@@ -246,8 +246,8 @@ function SyncButton() {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            ...(unlocked ? [{ label: 'Sync now', onClick }] : []),
-            { label: 'Disconnect Dropbox', danger: true, onClick: onDisconnect },
+            ...(unlocked ? [{ label: 'Sync now', icon: RefreshCw, onClick }] : []),
+            { label: 'Disconnect Dropbox', icon: Unplug, danger: true, onClick: onDisconnect },
           ]}
         />
       )}

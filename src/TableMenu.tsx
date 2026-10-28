@@ -1,6 +1,15 @@
 import { useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
-import { Ban } from 'lucide-react'
+import {
+  Ban,
+  BetweenHorizontalEnd,
+  BetweenHorizontalStart,
+  BetweenVerticalEnd,
+  BetweenVerticalStart,
+  Minus,
+  PanelTop,
+  Trash2,
+} from 'lucide-react'
 import { currentZoom } from './appearance'
 import { COLORS, highlightColor } from './ColorPicker'
 
@@ -46,15 +55,16 @@ function TableMenu({ editor, x, y, onClose }: Props) {
       }}
     >
       <div className="context-menu table-menu" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()}>
-        <button onClick={run(() => chain().addRowBefore().run())}>Add row above</button>
-        <button onClick={run(() => chain().addRowAfter().run())}>Add row below</button>
-        <button onClick={run(() => chain().addColumnBefore().run())}>Add column left</button>
-        <button onClick={run(() => chain().addColumnAfter().run())}>Add column right</button>
+        <button onClick={run(() => chain().addRowBefore().run())}><BetweenHorizontalStart size={15} className="menu-icon" />Add row above</button>
+        <button onClick={run(() => chain().addRowAfter().run())}><BetweenHorizontalEnd size={15} className="menu-icon" />Add row below</button>
+        <button onClick={run(() => chain().addColumnBefore().run())}><BetweenVerticalStart size={15} className="menu-icon" />Add column left</button>
+        <button onClick={run(() => chain().addColumnAfter().run())}><BetweenVerticalEnd size={15} className="menu-icon" />Add column right</button>
         <div className="menu-separator" />
-        <button onClick={run(() => chain().deleteRow().run())}>Delete row</button>
-        <button onClick={run(() => chain().deleteColumn().run())}>Delete column</button>
+        <button onClick={run(() => chain().deleteRow().run())}><Minus size={15} className="menu-icon" />Delete row</button>
+        <button onClick={run(() => chain().deleteColumn().run())}><Minus size={15} className="menu-icon" />Delete column</button>
         <div className="menu-separator" />
         <button onClick={run(() => chain().toggleHeaderRow().run())}>
+          <PanelTop size={15} className="menu-icon" />
           {hasHeader ? 'Remove header row' : 'Make first row a header'}
         </button>
         <div className="menu-label">Cell color</div>
@@ -83,6 +93,7 @@ function TableMenu({ editor, x, y, onClose }: Props) {
         </div>
         <div className="menu-separator" />
         <button className="danger" onClick={run(() => chain().deleteTable().run())}>
+          <Trash2 size={15} className="menu-icon" />
           Delete table
         </button>
       </div>
