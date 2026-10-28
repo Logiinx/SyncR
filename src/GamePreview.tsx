@@ -65,8 +65,11 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
                 <h2>{game.name}</h2>
                 <CloseButton onClick={onClose} />
               </div>
-              <p className="calendar-popup-info">{release}</p>
-              {game.platforms.length > 0 && <p className="calendar-popup-info">{allPlatforms(game.platforms)}</p>}
+              {/* One line, like the game window: "12 Mar 2027 · in 4 months · PC, Android" */}
+              <p className="calendar-popup-info">
+                {release}
+                {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
+              </p>
               {label && <p className="calendar-popup-info">In {label}</p>}
               <GameExtrasInfo igdbId={game.igdbId} />
               <GamePricesInfo igdbId={game.igdbId} name={game.name} />
