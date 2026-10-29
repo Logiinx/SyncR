@@ -168,3 +168,28 @@ export async function insertImages(editor: Editor, files: File[]) {
     }
   }
 }
+
+// Puts an image on the clipboard. Clipboards only take PNG, so other formats are redrawn as
+// PNG first. The PNG is handed over as a promise: browsers only allow writing right after
+// the click, so nothing may be awaited before write().
+export async function copyImage(src: string) {
+  const png = (async () => {
+    const blob = await (await fetch(src)).blob()
+    if (blob.type === 'image/png') return blob
+    const bitmap = await createImageBitmap(blob)
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+    bitmap.close()
+    return new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG failed'))), 'image/png'),
+    )
+  })()
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+  } catch (error) {
+    console.error(error)
+    window.alert("This image couldn't be copied.")
+  }
+}

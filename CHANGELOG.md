@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **New:** Right-click (long press on a phone) an image in a note to copy it.
+
 ## [0.31.3] - 2026-10-28
 
 **Mail**

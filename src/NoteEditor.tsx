@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Copy, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor, wrappingInputRule } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Blockquote } from '@tiptap/extension-blockquote'
@@ -14,7 +14,7 @@ import { noteTitle, registerFlush, saveNoteContent, type Note } from './db'
 import Toolbar from './Toolbar'
 import ImageViewer from './ImageViewer'
 import ContextMenu from './ContextMenu'
-import { Image } from './image'
+import { copyImage, Image } from './image'
 import { OpenLinksOnClick } from './links'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
@@ -104,7 +104,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const saveTimer = useRef<number | undefined>(undefined)
   // The last save started: "save now" waits for it, so sync never compares an older version
   const saving = useRef<Promise<void> | undefined>(undefined)
-  const [imageMenu, setImageMenu] = useState<{ pos: number; x: number; y: number } | null>(null)
+  const [imageMenu, setImageMenu] = useState<{ pos: number; src: string; x: number; y: number } | null>(null)
   const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
 
   const editor = useEditor({
@@ -181,7 +181,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     return () => window.removeEventListener('syncr-jump', jump)
   }, [editor, note.id])
 
-  // Right-click (long press on a phone) on an image: menu with "Delete image". In a table:
+  // Right-click (long press on a phone) on an image: menu with "Copy image" and "Delete image". In a table:
   // the table menu. Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
   function onContextMenu(e: React.MouseEvent) {
     const target = e.target as HTMLElement
@@ -198,7 +198,8 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     const box = target.closest('.note-image')
     if (!box) return
     e.preventDefault()
-    setImageMenu({ pos: editor.view.posAtDOM(box, 0), x: e.clientX, y: e.clientY })
+    const src = box.querySelector('img')?.getAttribute('src') ?? ''
+    setImageMenu({ pos: editor.view.posAtDOM(box, 0), src, x: e.clientX, y: e.clientY })
   }
 
   function deleteImage(pos: number) {
@@ -218,7 +219,11 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
           x={imageMenu.x}
           y={imageMenu.y}
           onClose={() => setImageMenu(null)}
-          items={[{ label: 'Delete image', icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) }]}
+          items={[
+            // Not while the image is still downloading (nothing to copy yet)
+            ...(imageMenu.src ? [{ label: 'Copy image', icon: Copy, onClick: () => copyImage(imageMenu.src) }] : []),
+            { label: 'Delete image', icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) },
+          ]}
         />
       )}
     </>
