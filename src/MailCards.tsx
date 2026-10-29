@@ -3,16 +3,19 @@ import { Mail } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
 import { formatDue } from './reminders'
+import Spinner from './Spinner'
 
 // New emails in the desktop pop-up, below the reminders. Same card as a reminder's: a strip in
 // the account's color, when + which account, sender, subject, start of the text. A click on
 // the text opens the mail to read in the pop-up (MailReader.tsx). Mark as read (big) and Keep
-// unread (the card goes, the mail stays unread).
+// unread (the card goes, the mail stays unread). A spinner after the account while a clicked
+// mail is still loading.
 const FOLD_FROM = 4 // this many or more: one "N new emails" card until unfolded
 
-function MailCard({ alert, fading, onAction, onRead }: {
+function MailCard({ alert, fading, loading, onAction, onRead }: {
   alert: MailAlert
   fading: boolean // fading out by itself (ReminderPopup.tsx)
+  loading: boolean
   onAction: (action: MailAction) => void
   onRead: () => void
 }) {
@@ -21,6 +24,7 @@ function MailCard({ alert, fading, onAction, onRead }: {
       <button className="reminder-alert-body" onClick={onRead} title="Read">
         <span className="reminder-alert-due">
           <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account">{alert.account}</span>
+          {loading && <Spinner size={12} />}
         </span>
         <span className="reminder-alert-text">{alert.from}</span>
         <span className="mail-alert-subject">{alert.subject}</span>
@@ -54,9 +58,10 @@ export function accountColor(email: string) {
 
 // The cards, with "N new emails · Mark all read" above them when there are 2 or more. From
 // FOLD_FROM on, one card stands for all of them (senders listed) until "Show all".
-export function MailCards({ alerts, fading, onAction, onRead }: {
+export function MailCards({ alerts, fading, loadingKey = null, onAction, onRead }: {
   alerts: MailAlert[]
   fading: Set<string> // keys of cards fading out by themselves
+  loadingKey?: string | null // the card whose mail is loading to be read
   onAction: (alert: MailAlert, action: MailAction) => void
   onRead: (alert: MailAlert) => void
 }) {
@@ -102,6 +107,7 @@ export function MailCards({ alerts, fading, onAction, onRead }: {
           key={alert.key}
           alert={alert}
           fading={fading.has(alert.key)}
+          loading={alert.key === loadingKey}
           onAction={(action) => onAction(alert, action)}
           onRead={() => onRead(alert)}
         />

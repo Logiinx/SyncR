@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { isTauri } from '@tauri-apps/api/core'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { BACKGROUND_KEY, loadBackground } from './desktop'
 import { useDueReminders, type DueItem } from './dueReminders'
 import { useMailAlerts, type MailAction, type MailAlert } from './mailAlerts'
 import MailReader from './MailReader'
+import { loadMailBody, prefetchMails } from './mailPrefetch'
 import { useGmailAccounts } from './gmail'
 import { MailCards } from './MailCards'
 import { playEmailSound, playReminderSound } from './sounds'
@@ -22,41 +24,62 @@ function ReminderPopup() {
   usePopupSounds(due, mails)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // An email open to read: the window grows (READER_WIDTH, 80% of the screen's height) until
-  // Back, Done or Mark as unread. Reminders that come due meanwhile show above it. A wide email
-  // makes it wider once loaded (widen), up to 90% of the screen's width.
-  const [readingKey, setReadingKey] = useState<string | null>(null)
-  const [readerSize, setReaderSize] = useState<Size | null>(null)
-  const reading = readerSize ? mails.find((mail) => mail.key === readingKey) : undefined
+  // Each new mail's text is downloaded as soon as its card shows (memory only, mailPrefetch.ts)
+  useEffect(() => prefetchMails(mails), [mails])
+
+  // An email open to read: first prepared unseen at the reader's size (its text, dark colors,
+  // its width measured), the cards staying as they are (a spinner on the card if it takes a
+  // moment). Then the window grows once, straight to its final size: READER_WIDTH or wider for
+  // a wide email (up to 90% of the screen's width), 80% of the screen's height. Until Back,
+  // Done or Mark as unread. Reminders that come due meanwhile show above it.
+  const [openKey, setOpenKey] = useState<string | null>(null) // being prepared or read
+  const [readerSize, setReaderSize] = useState<Size | null>(null) // set once ready: reading
+  const open = mails.find((mail) => mail.key === openKey)
+  const reading = readerSize ? open : undefined
+  const preparing = !!open && !readerSize
   const readingRef = useRef(false)
   readingRef.current = reading !== undefined
   const readerSizeRef = useRef(readerSize)
   readerSizeRef.current = readerSize
   const cardsSize = useRef<Size | null>(null) // the window's size before the email opened
+  const stageSize = useRef<Size>({ width: READER_WIDTH, height: 600 }) // where it's prepared
   const maxReaderWidth = useRef(READER_WIDTH)
-  const widenFrom = useRef<Size | null>(null) // the reader's size before it got wider
 
   async function read(alert: MailAlert) {
-    const win = getCurrentWindow()
-    cardsSize.current = (await win.innerSize()).toLogical(await win.scaleFactor())
-    const { maxHeight, maxWidth } = (await popupPlacer())(0)
+    if (readerSizeRef.current) return
+    const list = listRef.current
+    if (isTauri()) {
+      const win = getCurrentWindow()
+      cardsSize.current = (await win.innerSize()).toLogical(await win.scaleFactor())
+    } else if (list) {
+      cardsSize.current = { width: list.offsetWidth, height: list.offsetHeight } // browser test
+    }
+    const { maxHeight, maxWidth } = isTauri()
+      ? (await popupPlacer())(0)
+      : { maxHeight: window.innerHeight, maxWidth: window.innerWidth }
+    stageSize.current = { width: READER_WIDTH, height: Math.round(maxHeight * 0.8) }
     maxReaderWidth.current = Math.max(READER_WIDTH, Math.round(maxWidth * 0.9))
-    setReaderSize({ width: READER_WIDTH, height: Math.round(maxHeight * 0.8) })
-    setReadingKey(alert.key)
+    setOpenKey(alert.key)
     if (!alert.opened) sendFromPopup({ id: alert.key, action: 'mail-opened' }) // marks it read
   }
 
-  // The email needs `extra` pixels more: the reader gets wider (as far as allowed), the window
-  // follows (fit below). Returns the pixels given.
-  function widen(extra: number) {
-    const from = readerSizeRef.current
-    if (!from) return 0
-    const width = Math.min(from.width + Math.ceil(extra), maxReaderWidth.current)
-    if (width <= from.width) return 0
-    widenFrom.current = from
-    setReaderSize({ ...from, width })
-    return width - from.width
+  // The prepared email is ready, `extra` pixels wider than the reader: the window grows to show
+  // it (fit below), wider by what's allowed. Returns the pixels given.
+  function onReaderReady(extra: number) {
+    const { width, height } = stageSize.current
+    const wider = Math.min(width + Math.ceil(extra), maxReaderWidth.current)
+    setReaderSize({ width: wider, height })
+    return wider - width
   }
+
+  // A spinner on the card, only if preparing takes a moment (not downloaded yet)
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    setSlow(false)
+    if (!preparing) return
+    const timer = window.setTimeout(() => setSlow(true), 150)
+    return () => window.clearTimeout(timer)
+  }, [preparing, openKey])
 
   // Back, Done, Mark as unread: the reader shrinks back to the cards' size in its corner, the
   // window gets small again, then the cards come back (and `then`, e.g. the button's action)
@@ -71,7 +94,7 @@ function ReminderPopup() {
       }).finished
       await placeWindow(cardsSize.current) // so the cards don't show in a corner of the big window
     }
-    setReadingKey(null)
+    setOpenKey(null)
     setReaderSize(null)
     then?.()
   }
@@ -129,17 +152,7 @@ function ReminderPopup() {
   useEffect(() => {
     refitRef.current()
   }, [reading !== undefined])
-  // Getting wider: cut to its old size the same way, opened up once the window is wider
-  useLayoutEffect(() => {
-    const list = listRef.current
-    const from = widenFrom.current
-    widenFrom.current = null
-    if (!list || !from || !readerSize || !loadAppearance().animations) return
-    list.dataset.growFrom = cornerClip(from, readerSize)
-    list.style.clipPath = list.dataset.growFrom
-  }, [readerSize?.width]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fading = useMailFade(mails, reading !== undefined)
+  const fading = useMailFade(mails, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
     <div
@@ -149,18 +162,30 @@ function ReminderPopup() {
       role="alert"
     >
       {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
-      {reading ? (
-        <MailReader
-          fitWidth
-          onWiden={widen}
-          alert={reading}
-          onAction={(action) =>
-            action === 'mail-open' ? mailAction(reading, action) : closeReader(() => mailAction(reading, action))
-          }
-          onBack={() => closeReader()}
+      {!reading && (
+        <MailCards
+          alerts={mails}
+          fading={fading}
+          loadingKey={preparing && slow ? openKey : null}
+          onAction={mailAction}
+          onRead={read}
         />
-      ) : (
-        <MailCards alerts={mails} fading={fading} onAction={mailAction} onRead={read} />
+      )}
+      {/* The same reader while prepared (unseen, at its size) and read: kept in one place, so
+          the mail isn't loaded again when it shows */}
+      {open && (
+        <div style={reading ? { display: 'contents' } : stageStyle(stageSize.current)}>
+          <MailReader
+            fitWidth
+            loadBody={loadMailBody}
+            onReady={onReaderReady}
+            alert={open}
+            onAction={(action) =>
+              action === 'mail-open' ? mailAction(open, action) : closeReader(() => mailAction(open, action))
+            }
+            onBack={() => closeReader()}
+          />
+        </div>
       )}
     </div>
   )
@@ -260,6 +285,24 @@ function readerStyle({ width, height }: Size): CSSProperties {
     height,
     [popupCorner.startsWith('top') ? 'top' : 'bottom']: 0,
     [popupCorner.endsWith('left') ? 'left' : 'right']: 0,
+  }
+}
+
+// Where an email is prepared: the reader's size and layout (like .reminder-popup.reading, with
+// its border), out of the way and invisible
+function stageStyle({ width, height }: Size): CSSProperties {
+  return {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width,
+    height,
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box',
+    border: '1px solid transparent',
+    visibility: 'hidden',
+    pointerEvents: 'none',
   }
 }
 

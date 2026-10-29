@@ -16,15 +16,17 @@ import Spinner from './Spinner'
 // images". Links open in the normal browser. HTML mails show dark: the mail's own dark
 // version, or its light colors turned dark (mailDark.ts); "Show original" brings back the
 // sender's light design for this opening (not offered when it's the same: a mail made dark).
-// fitWidth (the pop-up): a mail wider than the frame first asks for more room (onWiden: the
-// pop-up grows, returns the pixels it gives); what's still too wide is scaled down to fit, so
-// it only scrolls up and down.
-function MailReader({ alert, onAction, onBack, fitWidth = false, onWiden }: {
+// The pop-up prepares the reader unseen (loadBody: the text it already downloaded) and only
+// shows it once onReady is called: after the first load, with how many pixels wider the mail
+// is than the frame (0 if it fits or couldn't load). It returns the pixels it gives (the pop-up
+// grows); fitWidth: what's still too wide is scaled down, so it only scrolls up and down.
+function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidth = false, onReady }: {
   alert: MailAlert
   onAction: (action: MailAction) => void
   onBack: () => void
+  loadBody?: (alert: MailAlert) => Promise<MailBody>
   fitWidth?: boolean
-  onWiden?: (extra: number) => number
+  onReady?: (extra: number) => number
 }) {
   const [body, setBody] = useState<MailBody | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +35,12 @@ function MailReader({ alert, onAction, onBack, fitWidth = false, onWiden }: {
   const [ready, setReady] = useState(false) // the frame is shown once its colors are done
   const [alreadyDark, setAlreadyDark] = useState(false) // dark mode changed nothing
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const readyFor = useRef<string | null>(null) // the mail onReady was called for
+  const tellReady = (extra: number) => {
+    if (readyFor.current === alert.key) return 0
+    readyFor.current = alert.key
+    return onReady?.(extra) ?? 0
+  }
 
   useEffect(() => {
     setBody(null)
@@ -40,7 +48,10 @@ function MailReader({ alert, onAction, onBack, fitWidth = false, onWiden }: {
     setImages(false)
     setOriginal(false)
     setAlreadyDark(false)
-    fetchMailBody(alert).then(setBody, (e) => setError(e instanceof Error ? e.message : String(e)))
+    loadBody(alert).then(setBody, (e) => {
+      setError(e instanceof Error ? e.message : String(e))
+      tellReady(0)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alert.key])
 
@@ -66,14 +77,12 @@ function MailReader({ alert, onAction, onBack, fitWidth = false, onWiden }: {
       // A mail with its own dark version still differs from its original
       if (!changed && !/prefers-color-scheme/i.test(body?.html ?? '')) setAlreadyDark(true)
     }
-    if (fitWidth) {
-      const page = frameDoc.documentElement
-      const extra = page.scrollWidth - page.clientWidth
-      // The frame grows with the pop-up (its size observer above fits what's left); no
-      // sideways scrollbar meanwhile
-      if (extra > 0 && onWiden && onWiden(extra) > 0) page.style.overflowX = 'hidden'
-      else fitToWidth(frameDoc)
-    }
+    const page = frameDoc.documentElement
+    const extra = fitWidth ? Math.max(0, page.scrollWidth - page.clientWidth) : 0
+    // Given more room: the frame grows with the pop-up (its size observer above fits what's
+    // left); no sideways scrollbar meanwhile
+    if (tellReady(extra) > 0) page.style.overflowX = 'hidden'
+    else if (fitWidth) fitToWidth(frameDoc)
     setReady(true)
     frameDoc.addEventListener('click', (e) => {
       const link = (e.target as Element).closest?.('a[href]')
