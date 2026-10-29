@@ -25,6 +25,10 @@ tauri = { version = "2.12.3", features = ["tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-process = "2"
 tauri-plugin-opener = "2"
+# "Save as" window for an email's attached files (lib.rs, save_attachment)
+tauri-plugin-dialog = "2"
+# Attached files come from Gmail as base64 text (lib.rs, attachment_bytes)
+base64 = "0.22"
 
 # The updater only exists on desktop (not Android/iOS).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

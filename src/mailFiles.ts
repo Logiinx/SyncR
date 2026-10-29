@@ -1,3 +1,4 @@
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { gmailApi } from './gmail'
 import type { MailAlert, MailFile } from './mailAlerts'
 
@@ -5,10 +6,12 @@ import type { MailAlert, MailFile } from './mailAlerts'
 // when opened or saved. Opening saves them to a temporary folder and opens them in their
 // normal program; risky types (programs, scripts) can only be saved.
 
-// Files that run something when opened: often how malware comes. Save… only.
+// Files that run something when opened: often how malware comes. Save… only. (The same list
+// is in lib.rs, which refuses to open them too.)
 const RISKY = /\.(exe|com|bat|cmd|msi|msix|msp|scr|pif|cpl|jar|js|jse|vbs|vbe|wsf|wsh|hta|ps1|psm1|lnk|reg|appx|appxbundle|application|gadget|iso|img|vhd|vhdx)$/i
 
-export const isRisky = (file: MailFile) => RISKY.test(file.name.trim())
+// (Windows drops trailing dots and spaces: "x.exe." is a program too)
+export const isRisky = (file: MailFile) => RISKY.test(file.name.trim().replace(/[. ]+$/, ''))
 
 // 1234567 → "1.2 MB"
 export function fileSize(bytes: number) {
@@ -23,25 +26,30 @@ export function fileSize(bytes: number) {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
 }
 
-// The file's bytes, from the message or downloaded apart
-export async function downloadFile(alert: MailAlert, file: MailFile): Promise<Uint8Array<ArrayBuffer>> {
-  const data = file.data ??
-    (await gmailApi(alert.account, `messages/${alert.id}/attachments/${file.attachmentId}`)).data as string
-  return Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+// The file as Gmail gives it (base64url text), from the message or downloaded apart. The
+// desktop app decodes it in Rust (lib.rs).
+async function fileData(alert: MailAlert, file: MailFile): Promise<string> {
+  return file.data ?? (await gmailApi(alert.account, `messages/${alert.id}/attachments/${file.attachmentId}`)).data
 }
 
-// Opened in its normal program. The browser version (development) downloads it instead.
+// Opened in its normal program (lib.rs, open_attachment). The browser version (development)
+// downloads it instead.
 export async function openFile(alert: MailAlert, file: MailFile) {
   if (isRisky(file)) return saveFile(alert, file)
-  browserDownload(file, await downloadFile(alert, file))
+  const data = await fileData(alert, file)
+  if (isTauri()) await invoke('open_attachment', { name: file.name, data })
+  else browserDownload(file, data)
 }
 
-// Saved where the user picks. The browser version (development): a normal download.
+// Saved where the user picks ("Save as" window, lib.rs). The browser version: a normal download.
 export async function saveFile(alert: MailAlert, file: MailFile) {
-  browserDownload(file, await downloadFile(alert, file))
+  const data = await fileData(alert, file)
+  if (isTauri()) await invoke('save_attachment', { name: file.name, data })
+  else browserDownload(file, data)
 }
 
-function browserDownload(file: MailFile, bytes: Uint8Array<ArrayBuffer>) {
+function browserDownload(file: MailFile, data: string) {
+  const bytes = Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
   const url = URL.createObjectURL(new Blob([bytes], { type: file.type }))
   const link = document.createElement('a')
   link.href = url

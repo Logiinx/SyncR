@@ -149,6 +149,106 @@ fn unprotect_secret(data: Vec<u8>) -> Result<String, String> {
   String::from_utf8(dpapi::unprotect(&data)?).map_err(|e| e.to_string())
 }
 
+// ---------- An email's attached files (mailFiles.ts) ----------
+
+// Files that run something when opened (often how malware comes): saved only, never opened.
+// Same list as RISKY in mailFiles.ts.
+const RISKY: &[&str] = &[
+  "exe", "com", "bat", "cmd", "msi", "msix", "msp", "scr", "pif", "cpl", "jar", "js", "jse", "vbs", "vbe",
+  "wsf", "wsh", "hta", "ps1", "psm1", "lnk", "reg", "appx", "appxbundle", "application", "gadget", "iso",
+  "img", "vhd", "vhdx",
+];
+
+// Gmail gives a file as base64url text (with or without the trailing "=")
+fn attachment_bytes(data: &str) -> Result<Vec<u8>, String> {
+  use base64::engine::{general_purpose::GeneralPurposeConfig, DecodePaddingMode, GeneralPurpose};
+  use base64::Engine;
+  let config = GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent);
+  GeneralPurpose::new(&base64::alphabet::URL_SAFE, config)
+    .decode(data.trim())
+    .map_err(|e| format!("The file came damaged ({e})"))
+}
+
+// A name Windows accepts: no folder parts, no forbidden or invisible characters (a right-to-left
+// mark could make "photo<RLO>gpj.exe" look like a .jpg), no trailing dots or spaces
+fn safe_file_name(name: &str) -> String {
+  let cleaned: String = name
+    .chars()
+    .map(|c| {
+      let invisible = matches!(c as u32, 0x200E..=0x200F | 0x202A..=0x202E | 0x2066..=0x2069);
+      if c.is_control() || invisible || "<>:\"/\|?*".contains(c) { '_' } else { c }
+    })
+    .collect();
+  let cleaned = cleaned.trim().trim_end_matches(['.', ' ']);
+  if cleaned.is_empty() { "file".to_string() } else { cleaned.to_string() }
+}
+
+fn is_risky(name: &str) -> bool {
+  name.rsplit_once('.').is_some_and(|(_, ext)| RISKY.contains(&ext.to_ascii_lowercase().as_str()))
+}
+
+// Opens a file in its normal program: written to a new folder in Windows' temporary files
+// ("SyncR attachments"; folders older than a day are removed then), then opened like a
+// double-click would
+#[tauri::command]
+async fn open_attachment(app: tauri::AppHandle, name: String, data: String) -> Result<(), String> {
+  use std::time::{Duration, SystemTime, UNIX_EPOCH};
+  use tauri_plugin_opener::OpenerExt;
+  let name = safe_file_name(&name);
+  if is_risky(&name) {
+    return Err("Programs and scripts can only be saved".to_string());
+  }
+  let bytes = attachment_bytes(&data)?;
+  let folder = std::env::temp_dir().join("SyncR attachments");
+  if let Ok(entries) = std::fs::read_dir(&folder) {
+    for entry in entries.flatten() {
+      let old = entry
+        .metadata()
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|time| time.elapsed().ok())
+        .is_some_and(|age| age > Duration::from_secs(24 * 3600));
+      if old {
+        let _ = std::fs::remove_dir_all(entry.path());
+      }
+    }
+  }
+  let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+  let dir = folder.join(stamp.to_string());
+  std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+  let path = dir.join(&name);
+  std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  app.opener().open_path(path.to_string_lossy().to_string(), None::<&str>).map_err(|e| e.to_string())
+}
+
+// Saves a file where the user picks ("Save as" window over the window that asked, starting in
+// Downloads). False: the user cancelled.
+#[tauri::command]
+async fn save_attachment(
+  app: tauri::AppHandle,
+  window: tauri::WebviewWindow,
+  name: String,
+  data: String,
+) -> Result<bool, String> {
+  use tauri_plugin_dialog::DialogExt;
+  let bytes = attachment_bytes(&data)?;
+  let mut dialog = app.dialog().file().set_file_name(safe_file_name(&name)).set_parent(&window);
+  if let Ok(downloads) = app.path().download_dir() {
+    dialog = dialog.set_directory(downloads);
+  }
+  let (sender, receiver) = std::sync::mpsc::channel();
+  dialog.save_file(move |picked| {
+    let _ = sender.send(picked);
+  });
+  let picked = tauri::async_runtime::spawn_blocking(move || receiver.recv().ok().flatten())
+    .await
+    .map_err(|e| e.to_string())?;
+  let Some(path) = picked else { return Ok(false) };
+  let path = path.into_path().map_err(|e| e.to_string())?;
+  std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  Ok(true)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default();
@@ -168,7 +268,16 @@ pub fn run() {
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser
     .plugin(tauri_plugin_opener::init())
-    .invoke_handler(tauri::generate_handler![started_hidden, google_sign_in, protect_secret, unprotect_secret]);
+    // "Save as" window for an email's attached files (save_attachment)
+    .plugin(tauri_plugin_dialog::init())
+    .invoke_handler(tauri::generate_handler![
+      started_hidden,
+      google_sign_in,
+      protect_secret,
+      unprotect_secret,
+      open_attachment,
+      save_attachment
+    ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
   // saved when the app closes and restored at the next start.
