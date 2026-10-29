@@ -176,7 +176,8 @@ fn safe_file_name(name: &str) -> String {
     .chars()
     .map(|c| {
       let invisible = matches!(c as u32, 0x200E..=0x200F | 0x202A..=0x202E | 0x2066..=0x2069);
-      if c.is_control() || invisible || "<>:\"/\|?*".contains(c) { '_' } else { c }
+      let forbidden = matches!(c, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*');
+      if c.is_control() || invisible || forbidden { '_' } else { c }
     })
     .collect();
   let cleaned = cleaned.trim().trim_end_matches(['.', ' ']);
