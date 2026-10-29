@@ -1069,6 +1069,34 @@ button {
   gap: 2px;
 }
 
+/* While editing: the text color button, faint until text is selected */
+.card-color {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.card-color:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.card-color:not(:disabled):hover,
+.card-color.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Room for it */
+.card.editing .card-editor .tiptap {
+  padding-right: 32px;
+}
+
 /* "⋯" only on the phone: there a long press is for Android's text menu (or moves the card) */
 .card-more {
   width: 20px;
@@ -1091,10 +1119,15 @@ button {
     display: flex;
   }
 
-  /* Room for the "⋯" */
+  /* Room for the "⋯" (and the color button while editing) */
   .card-editor .tiptap,
   .game-card {
     padding-right: 32px;
+  }
+
+  .card.editing .card-editor .tiptap,
+  .card.editing .card-title {
+    padding-right: 54px;
   }
 
   .card-title {
@@ -2702,12 +2735,6 @@ button {
   flex-basis: 100%;
   padding-top: 4px;
   border-top: 1px solid var(--border);
-}
-
-/* Cards: the menu is only the color row */
-.card-color-menu .color-picker {
-  padding-top: 0;
-  border-top: none;
 }
 
 /* ---------- Text color and highlight (ColorPicker.tsx) ---------- */

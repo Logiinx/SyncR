@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
+import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
 import { ChevronDown, Ellipsis, FolderInput, Heading, Palette, Pencil, Sparkles, Trash2 } from 'lucide-react'
-import { BubbleMenu } from '@tiptap/react/menus'
 import {
   saveCardContent,
   setCardDeleted,
@@ -17,6 +16,7 @@ import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import ColorPicker from './ColorPicker'
 import { useFoldAnimation, useListItem } from './animations'
+import { currentZoom } from './appearance'
 
 const SAVE_DELAY_MS = 500
 
@@ -96,7 +96,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
       attributes: { spellcheck: 'false' },
       // Escape ends editing (unless the "/" menu is open: then Escape closes that)
       handleKeyDown: (view, event) => {
-        if (event.key !== 'Escape' || document.querySelector('.slash-menu-popup')) return false
+        if (event.key !== 'Escape' || document.querySelector('.slash-menu-popup, .card-colors')) return false
         view.dom.blur()
         return true
       },
@@ -290,17 +290,8 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         </div>
       )}
       <EditorContent editor={editor} className="card-editor" />
-      {/* Selected text while editing: text colors (no highlights on cards) */}
-      {editor && (
-        <BubbleMenu
-          editor={editor}
-          className="selection-menu card-color-menu"
-          options={{ placement: 'bottom', offset: 8, flip: true, shift: { padding: 8 } }}
-        >
-          <ColorPicker editor={editor} onPicked={() => {}} highlights={false} />
-        </BubbleMenu>
-      )}
       <div className="card-buttons">
+        {editing && editor && <CardColorButton editor={editor} />}
         {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
         <button
           className="card-more"
@@ -337,6 +328,63 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         />
       )}
     </div>
+  )
+}
+
+// While editing: text colors for the selected text (no highlights on cards), like the toolbar's
+// color button in notes. Grayed until some text is selected; the colors close by themselves
+// when the selection goes (a color picked, a click elsewhere, Escape).
+function CardColorButton({ editor }: { editor: Editor }) {
+  const hasSelection = useEditorState({ editor, selector: ({ editor }) => !editor.state.selection.empty })
+  const [colors, setColors] = useState<{ right: number; top: number } | null>(null)
+  const panel = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!hasSelection) setColors(null)
+  }, [hasSelection])
+
+  useEffect(() => {
+    if (!colors) return
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (!panel.current?.contains(target) && !target.closest('.card-color')) setColors(null)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setColors(null)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [colors])
+
+  function toggle(button: HTMLElement) {
+    if (colors) return setColors(null)
+    const rect = button.getBoundingClientRect()
+    const zoom = currentZoom()
+    // Lined up with the button's right edge (the Board is at the window's right)
+    setColors({ right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 4 })
+  }
+
+  return (
+    <>
+      <button
+        className={['card-color', colors && 'active'].filter(Boolean).join(' ')}
+        title="Text color"
+        aria-label="Text color"
+        disabled={!hasSelection}
+        // Keep the selection (and the phone keyboard) in the card
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => toggle(e.currentTarget)}
+      >
+        <Palette size={13} />
+      </button>
+      {colors && (
+        <div className="color-popover card-colors" ref={panel} style={colors}>
+          <ColorPicker editor={editor} onPicked={() => setColors(null)} highlights={false} />
+        </div>
+      )}
+    </>
   )
 }
 
