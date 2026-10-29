@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { currentZoom } from './appearance'
-import { animationsOn } from './animations'
+import { animationsOn, TIMING } from './animations'
 
 // Tab rows (note tabs, Games' status tabs): the open tab's blue line, and a faint one under
 // the mouse, slide to their new tab instead of jumping. Each tab holds both lines (<TabLines />,
@@ -10,7 +10,7 @@ import { animationsOn } from './animations'
 // Filled switches (My games | Calendar, grid / list…) do the same with the chosen button's blue
 // fill (<TabLines fill />). Their copy moves inside the row, behind the buttons' text.
 
-const SLIDE_MS = 200
+const SLIDE_MS = TIMING.openSmall
 const FADE_MS = 150
 
 // Put inside each tab, in the element the line should be as wide as (position: relative)

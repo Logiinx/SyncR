@@ -310,12 +310,12 @@ button {
   background: var(--bg-raised);
   box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
   font-size: 13px;
-  animation: message-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+  animation: message-in var(--open-big) var(--ease-open);
 }
 
 /* Slides in from the right and back out; it's not at the window's edge, so it also fades */
 .sync-message.leaving {
-  animation: message-out 0.13s cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: message-out var(--close-big) var(--ease-close) forwards;
 }
 
 @keyframes message-in {
@@ -832,7 +832,7 @@ button {
   font-size: calc(var(--note-size, 16px) * 0.875);
   overflow-wrap: anywhere;
   /* Its space below eases in and out with the fold (the text shrinks shut: animations.ts) */
-  transition: padding-bottom 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: padding-bottom var(--open-small) var(--ease-open);
 }
 
 .card-title input {
@@ -876,8 +876,8 @@ button {
 
 .card.folded .card-title {
   padding-bottom: 8px;
-  transition-duration: 0.13s;
-  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  transition-duration: var(--close-small);
+  transition-timing-function: var(--ease-close);
 }
 
 /* A game pinned to the Board (GameCard.tsx): cover and name, buttons centered on the right */
@@ -3364,21 +3364,25 @@ button {
   animation: none !important;
 }
 
-/* Windows and the image viewer: the dark background fades in, the window rises 8px */
+/* Timings and curves: variables set by animations.ts (TIMING): --open-big, --close-small…,
+   --ease-open, --ease-close, --settle */
+
+/* Windows and the image viewer: the dark background fades in, the window rises 8px and grows
+   from 94% (settles in) */
 .dialog-backdrop,
 .image-viewer {
-  animation: fade-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+  animation: fade-in var(--open-big) var(--ease-open);
 }
 
 .dialog-backdrop > *,
 .image-viewer > img {
-  animation: window-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+  animation: window-in var(--open-big) var(--ease-open);
 }
 
 @keyframes window-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: var(--settle);
   }
 }
 
@@ -3387,7 +3391,7 @@ button {
 .context-menu,
 .color-popover,
 .slash-menu {
-  animation: menu-in 0.16s cubic-bezier(0.2, 0, 0, 1);
+  animation: menu-in var(--open-small) var(--ease-open);
 }
 
 /* Side panels (opening; closing: animations.ts). PC: the Board slides in from the right and
@@ -3395,31 +3399,31 @@ button {
    their edge, the shade fades in. Not when already open at start (.slide-in: animations.ts). */
 @media (min-width: 700px) {
   .board.slide-in {
-    animation: board-push 0.2s cubic-bezier(0.2, 0, 0, 1);
+    animation: board-push var(--open-big) var(--ease-open);
   }
 
   .sidebar.slide-in {
-    animation: sidebar-push 0.2s cubic-bezier(0.2, 0, 0, 1);
+    animation: sidebar-push var(--open-big) var(--ease-open);
   }
 }
 
 @media (max-width: 699px) {
   .board.slide-in {
-    animation: from-right 0.2s cubic-bezier(0.2, 0, 0, 1);
+    animation: from-right var(--open-phone) var(--ease-open);
   }
 
   .sidebar.slide-in {
-    animation: from-left 0.2s cubic-bezier(0.2, 0, 0, 1);
+    animation: from-left var(--open-phone) var(--ease-open);
   }
 
   .backdrop.slide-in {
-    animation: fade-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+    animation: fade-in var(--open-phone) var(--ease-open);
   }
 }
 
 /* Due reminder cards and "N reminders · Done all" slide in from the window's right edge */
 .reminder-alerts > * {
-  animation: from-edge 0.2s cubic-bezier(0.2, 0, 0, 1);
+  animation: from-edge var(--open-big) var(--ease-open);
 }
 
 @keyframes from-edge {

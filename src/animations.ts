@@ -6,10 +6,27 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { currentZoom } from './appearance'
 
-export const CLOSE_MS = 130
-const OPEN_MS = 200
-const EASE_IN = 'cubic-bezier(0.4, 0, 1, 1)' // starts slowly, ends fast: things leaving
-const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)' // starts fast, slows down: things arriving
+// The app's timings, all in one place (picked by the user, DECISIONS.md "Wish list"): big things
+// (windows, side panels, reminder cards, the sync message) and small ones (menus, sections, items
+// in lists, tab lines). Closing ≈ 70% of opening. Also CSS variables for index.css (--open-big…).
+export const TIMING = {
+  openBig: 400,
+  closeBig: 280,
+  openSmall: 240,
+  closeSmall: 170,
+  openPhone: 340, // side panels on the phone: a bit quicker
+  closePhone: 240,
+}
+const EASE_OPEN = 'cubic-bezier(0.32, 0.72, 0, 1)' // gentle start, smooth stop: things arriving
+const EASE_CLOSE = 'cubic-bezier(0.4, 0, 0.6, 0.6)' // things leaving
+// Windows come from (and go back to) a bit lower and smaller: they "settle in"
+const SETTLE = 'translateY(8px) scale(0.94)'
+
+const root = document.documentElement.style
+for (const [name, ms] of Object.entries(TIMING)) root.setProperty(`--${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, `${ms}ms`)
+root.setProperty('--ease-open', EASE_OPEN)
+root.setProperty('--ease-close', EASE_CLOSE)
+root.setProperty('--settle', SETTLE)
 
 // Settings → Animations (see appearance.ts)
 export function animationsOn() {
@@ -27,8 +44,9 @@ export function useSlideIn() {
 // A menu folds up from the bottom (its shadow, up to 24px around, stays visible)
 const FOLD = [{ clipPath: 'inset(-24px)' }, { clipPath: 'inset(0 -24px 100% -24px)' }]
 
-function play(el: Element | null, keyframes: Keyframe[]) {
-  return el?.animate(keyframes, { duration: CLOSE_MS, easing: EASE_IN, fill: 'forwards' })
+// A closing animation (big things by default)
+function play(el: Element | null, keyframes: Keyframe[], duration = TIMING.closeBig) {
+  return el?.animate(keyframes, { duration, easing: EASE_CLOSE, fill: 'forwards' })
 }
 
 // Collapsible things (note sections, Board groups and cards) grow open and shrink shut, from or
@@ -52,13 +70,13 @@ function upright(el: Element) {
 
 export function growOpen(el: Element | null | undefined) {
   if (!el || !animationsOn()) return
-  el.animate(heightFrames(el), { duration: OPEN_MS, easing: EASE_OUT })
+  el.animate(heightFrames(el), { duration: TIMING.openSmall, easing: EASE_OPEN })
 }
 
 // For something just hidden (display: none): shown again while it shrinks
 export function shrinkShut(el: Element | null | undefined, display = 'block') {
   if (!el || !animationsOn()) return
-  el.animate(heightFrames(el, display).reverse(), { duration: CLOSE_MS, easing: EASE_IN })
+  el.animate(heightFrames(el, display).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE })
 }
 
 // A Board card or group folding (not on its first render): grow open or shrink shut. A group's
@@ -90,7 +108,7 @@ export function useListItem(ref: RefObject<HTMLElement | null>) {
     else if (performance.now() - seen > 300 && animationsOn()) {
       // Measured without a running one (React runs this twice in development)
       el.getAnimations().forEach((animation) => animation.cancel())
-      el.animate(itemFrames(el, list), { duration: OPEN_MS, easing: EASE_OUT })
+      el.animate(itemFrames(el, list), { duration: TIMING.openSmall, easing: EASE_OPEN })
     }
     return () => {
       if (!animationsOn()) return
@@ -122,7 +140,7 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
     const body = el?.parentElement
     if (!el || !body) return
     if (document.documentElement.classList.contains('ready') && animationsOn()) {
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: OPEN_MS, easing: EASE_OUT })
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: TIMING.openSmall, easing: EASE_OPEN })
     }
     return () => {
       if (!animationsOn()) return
@@ -147,7 +165,7 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
         const copyScroller = copy.matches('.page') ? copy : copy.querySelector('.page')
         if (copyScroller) copyScroller.scrollTop = scroll
         copy
-          .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: EASE_IN, fill: 'forwards' })
+          .animate([{ opacity: 1 }, { opacity: 0 }], { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' })
           .finished.finally(() => copy.remove())
       })
     }
@@ -178,7 +196,7 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
     const parents = new Set([...prev.items.values()].map((item) => item.parent))
     for (const [key, { el, parent }] of items) {
       if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
-        el.animate(itemFrames(el, parent), { duration: OPEN_MS, easing: EASE_OUT })
+        el.animate(itemFrames(el, parent), { duration: TIMING.openSmall, easing: EASE_OPEN })
       }
     }
     const order = [...prev.items.keys()]
@@ -231,7 +249,7 @@ function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
   copy.inert = true
   list.insertBefore(copy, next)
   const grid = isGrid(list)
-  const animation = copy.animate(itemFrames(copy, list).reverse(), { duration: CLOSE_MS, easing: EASE_IN, fill: 'forwards' })
+  const animation = copy.animate(itemFrames(copy, list).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' })
   animation.finished.finally(() => {
     if (!grid) return copy.remove()
     // The other tiles glide from where they were to their new places
@@ -243,7 +261,7 @@ function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
       const after = child.getBoundingClientRect()
       const dx = (before[i].left - after.left) / zoom
       const dy = (before[i].top - after.top) / zoom
-      if (dx || dy) child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: OPEN_MS, easing: EASE_OUT })
+      if (dx || dy) child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: TIMING.openSmall, easing: EASE_OPEN })
     })
   })
 }
@@ -255,13 +273,13 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
     '.dialog-backdrop, .image-viewer',
     (el) => [
       play(el, [{ opacity: 1 }, { opacity: 0 }]),
-      play(el.firstElementChild, [{ transform: 'none' }, { transform: 'translateY(8px)' }]),
+      play(el.firstElementChild, [{ transform: 'none' }, { transform: SETTLE }]),
     ],
   ],
   // Menus: right-click and "▾" menus, the phone's "⋯" list, table menu (all in a .menu-backdrop),
   // the text colors. The slash menu and the note picker: COPY_EXITS.
-  ['.menu-backdrop', (el) => [play(el.firstElementChild, FOLD)]],
-  ['.color-popover', (el) => [play(el, FOLD)]],
+  ['.menu-backdrop', (el) => [play(el.firstElementChild, FOLD, TIMING.closeSmall)]],
+  ['.color-popover', (el) => [play(el, FOLD, TIMING.closeSmall)]],
   // Side panels (index.css): PC: the Board slides out to the right and the page takes the room
   // back (the sidebar to the left). Phone: they slide out over the page, the shade fades.
   [
@@ -269,13 +287,13 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
     (el) => {
       const right = el.matches('.board')
       if (matchMedia('(max-width: 699px)').matches) {
-        return [play(el, [{ transform: 'none' }, { transform: `translateX(${right ? 100 : -100}%)` }])]
+        return [play(el, [{ transform: 'none' }, { transform: `translateX(${right ? 100 : -100}%)` }], TIMING.closePhone)]
       }
       const margin = right ? 'marginRight' : 'marginLeft'
       return [play(el, [{ [margin]: '0px' }, { [margin]: `${-el.offsetWidth}px` }])]
     },
   ],
-  ['.backdrop', (el) => [play(el, [{ opacity: 1 }, { opacity: 0 }])]],
+  ['.backdrop', (el) => [play(el, [{ opacity: 1 }, { opacity: 0 }], TIMING.closePhone)]],
   // Due reminder cards (and "N reminders · Done all"): back out past the window's right edge;
   // the last one leaves with its box
   [
@@ -289,9 +307,9 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
 // animates a copy instead, made just before closing
 const COPY_EXITS: typeof EXITS = [
   // The slash menu and the note picker (Tiptap empties them first)
-  ['.slash-menu-popup', (el) => [play(el.firstElementChild, FOLD)]],
+  ['.slash-menu-popup', (el) => [play(el.firstElementChild, FOLD, TIMING.closeSmall)]],
   // A Board group's cards, when it folds (their text editors are taken out)
-  ['.card-group-cards', (el) => [play(el, heightFrames(el).reverse())]],
+  ['.card-group-cards', (el) => [play(el, heightFrames(el).reverse(), TIMING.closeSmall)]],
 ]
 
 const SECTION_CONTENT = '[data-type="detailsContent"]'
