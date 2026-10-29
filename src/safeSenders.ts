@@ -5,7 +5,7 @@ import { read, write } from './localState'
 // (news.amazon.com → amazon.com: they send from many addresses); a free mail service by the
 // exact address (trusting gmail.com would trust everyone on it).
 
-const KEY = 'mail-safe-senders'
+export const SAFE_SENDERS_KEY = 'mail-safe-senders'
 
 // Free mail services: anyone can have an address there
 const FREE_MAIL = /^(gmail|googlemail|outlook|hotmail|live|msn|yahoo|ymail|aol|icloud|me|mac|proton|protonmail|pm|gmx|web|mail|yandex|zoho|laposte|orange|free|sfr|wanadoo|libero|t-online)\./
@@ -27,7 +27,7 @@ export function trustFor(address: string) {
   return FREE_MAIL.test(main) ? address : main
 }
 
-export const loadSafeSenders = () => read<string[]>(KEY, [])
+export const loadSafeSenders = () => read<string[]>(SAFE_SENDERS_KEY, [])
 
 export function isSafeSender(address: string) {
   return !!address && loadSafeSenders().includes(trustFor(address))
@@ -35,11 +35,11 @@ export function isSafeSender(address: string) {
 
 export function addSafeSender(entry: string) {
   const list = loadSafeSenders()
-  if (!list.includes(entry)) write(KEY, [...list, entry].sort())
+  if (!list.includes(entry)) write(SAFE_SENDERS_KEY, [...list, entry].sort())
 }
 
 export function removeSafeSender(entry: string) {
-  write(KEY, loadSafeSenders().filter((e) => e !== entry))
+  write(SAFE_SENDERS_KEY, loadSafeSenders().filter((e) => e !== entry))
 }
 
 // ---------- Trackers ----------

@@ -16,6 +16,7 @@ import {
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
+import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
 import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
@@ -311,6 +312,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <div>
             <GoogleSettings />
             {mail && <GmailSettings />}
+            {mail && <SafeSenders />}
           </div>
         </div>
       ) : (
@@ -730,6 +732,41 @@ function GmailSettings() {
         </section>
       )}
     </>
+  )
+}
+
+// Safe senders (safeSenders.ts): their emails open with web images. Added from an email
+// ("Always for …"), removed here. The list follows changes made meanwhile in the pop-up window.
+function SafeSenders() {
+  const [list, setList] = useState(loadSafeSenders)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => e.key === SAFE_SENDERS_KEY && setList(loadSafeSenders())
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+  return (
+    <section className="settings-group">
+      <SectionTitle title="Safe senders" />
+      {list.map((entry) => (
+        <div key={entry} className="setting setting-toggle">
+          <span className="gmail-account-name">
+            <span className="gmail-account-email" title={entry}>{entry}</span>
+          </span>
+          <button
+            className="setting-button"
+            onClick={() => {
+              removeSafeSender(entry)
+              setList(loadSafeSenders())
+            }}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      <p className="setting-status" title='Web images show by themselves in their emails. Add one from an email: "Always for …"'>
+        {list.length ? 'Web images show by themselves in their emails' : 'None yet. Add one from an email: "Always for …"'}
+      </p>
+    </section>
   )
 }
 
