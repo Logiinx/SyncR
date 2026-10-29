@@ -365,6 +365,28 @@ button {
   scrollbar-width: none;
 }
 
+/* The whole row (TabBar.tsx): pinned tabs, a thin line, then the others (which scroll) */
+.tab-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.tabs-pinned {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tabs-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin: 0 6px;
+  background: var(--border);
+}
+
 /* A tab: icon, title, ✕. The open one is a lighter tile with a thin muted blue line under its title. */
 .tab {
   position: relative;
@@ -492,11 +514,11 @@ button {
   -webkit-touch-callout: none;
 }
 
-.tabs.dragging .tab {
+.tab-row.dragging .tab {
   transition: transform 0.15s;
 }
 
-.tabs.dragging .tab.drag-source {
+.tab-row.dragging .tab.drag-source {
   position: relative;
   z-index: 1;
   transition: none;
@@ -566,6 +588,24 @@ button {
       margin 0.15s,
       opacity 0.15s;
   }
+}
+
+/* Pinned (TabBar.tsx): no ✕, the same room on both sides; a note's title cut short, a
+   special tab only its icon (after the hover rules above, so they don't add room for a ✕) */
+.tab-row .tab.pinned {
+  padding: 0 10px;
+}
+
+.tab.pinned .tab-title {
+  max-width: 10ch;
+}
+
+.tab-row .tab.pinned.icon-only {
+  padding: 0 8px;
+}
+
+.tab.icon-only .tab-title {
+  display: flex;
 }
 
 .tab-new {

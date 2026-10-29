@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -36,6 +36,8 @@ function App() {
   // Remembered after a restart (per device)
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
+  // Pinned tabs (any tab, notes too): first in the row, in the order they were pinned (TabBar.tsx)
+  const [pinned, setPinned] = useLocalState<string[]>('syncr.pinnedTabs', [])
   // The notes sidebar and the Board start open on a new PC, so new users see that they exist
   // (on a phone they would cover the note: closed there)
   const [sidebarOpen, setSidebarOpen] = useLocalState('syncr.sidebarOpen', !isNarrowScreen())
@@ -88,7 +90,8 @@ function App() {
   }, [setBoardOpen, setSidebarOpen])
   // Only a brand-new note gets the cursor automatically
   const [newNoteId, setNewNoteId] = useState<string | null>(null)
-  const [menu, setMenu] = useState<{ noteId: string; x: number; y: number } | null>(null)
+  // tab: right-clicked in the tab row (Pin, Close…), not in the notes list
+  const [menu, setMenu] = useState<{ noteId: string; x: number; y: number; tab?: boolean } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -98,13 +101,18 @@ function App() {
     [openTabs],
   )
   // The tabs that exist: notes found in the database, and the Games, Reminders and Mail tabs
-  const tabs: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
+  const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
     if (id === GAMES_TAB) return [{ id, title: 'Games', icon: <Gamepad2 size={14} className="tab-icon" /> }]
     if (id === REMINDERS_TAB) return [{ id, title: 'Reminders', icon: <Bell size={14} className="tab-icon" /> }]
     if (id === MAIL_TAB) return [{ id, title: 'Mail', icon: <Mail size={14} className="tab-icon" /> }]
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
+  // As shown: the pinned ones first (in pinned order), then the others
+  const tabs: Tab[] = [
+    ...pinned.flatMap((id) => openTabsList.filter((tab) => tab.id === id).map((tab) => ({ ...tab, pinned: true }))),
+    ...openTabsList.filter((tab) => !pinned.includes(tab.id)),
+  ]
   const activeNote = useLiveQuery(
     () => (activeId ? db.notes.get(activeId) : undefined),
     [activeId],
@@ -121,6 +129,11 @@ function App() {
     if (activeId && missing.includes(activeId)) setActiveId(remaining.at(-1) ?? null)
   }, [tabsResult, openTabs, activeId, setOpenTabs, setActiveId])
 
+  // A pinned tab that was closed some other way (its note deleted…) is no longer pinned
+  useEffect(() => {
+    if (pinned.some((id) => !openTabs.includes(id))) setPinned(pinned.filter((id) => openTabs.includes(id)))
+  }, [pinned, openTabs, setPinned])
+
   // Clicking a link to a note (noteLinks.ts) opens it here, or says the target is gone
   useEffect(() => {
     onFollowLink(openNote, (message) =>
@@ -134,11 +147,28 @@ function App() {
     if (isNarrowScreen()) setSidebarOpen(false)
   }
 
+  // A pinned tab is unpinned first. The next open tab: the neighbor in the row as shown.
   function closeTab(id: string) {
-    const index = openTabs.indexOf(id)
-    const remaining = openTabs.filter((tabId) => tabId !== id)
-    setOpenTabs(remaining)
+    const shown = tabs.map((tab) => tab.id)
+    const order = shown.includes(id) ? shown : openTabs
+    const index = order.indexOf(id)
+    const remaining = order.filter((tabId) => tabId !== id)
+    setPinned(pinned.filter((tabId) => tabId !== id))
+    setOpenTabs(openTabs.filter((tabId) => tabId !== id))
     if (id === activeId) setActiveId(remaining[index] ?? remaining[index - 1] ?? null)
+  }
+
+  // Unpinned: the first of the other tabs, right after the line (where it was)
+  function togglePin(id: string) {
+    if (!pinned.includes(id)) return setPinned([...pinned, id])
+    setPinned(pinned.filter((tabId) => tabId !== id))
+    setOpenTabs([id, ...openTabs.filter((tabId) => tabId !== id)])
+  }
+
+  // A tab dragged among its group: the pinned ones, or the others
+  function reorderTabs(ids: string[], isPinned: boolean) {
+    if (isPinned) setPinned(ids)
+    else setOpenTabs([...openTabs.filter((id) => pinned.includes(id)), ...ids])
   }
 
   async function newNote() {
@@ -197,9 +227,9 @@ function App() {
           onSelect={openNote}
           onClose={closeTab}
           onNew={newNote}
-          onMenu={(noteId, x, y) => !isPageTab(noteId) && setMenu({ noteId, x, y })}
+          onMenu={(noteId, x, y) => setMenu({ noteId, x, y, tab: true })}
           onRename={askRename}
-          onReorder={setOpenTabs}
+          onReorder={reorderTabs}
         />
         <div className="drag-space" data-tauri-drag-region />
         <SyncButton />
@@ -273,8 +303,20 @@ function App() {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: 'Rename', icon: Pencil, onClick: () => askRename(menu.noteId) },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDelete(menu.noteId) },
+            ...(menu.tab
+              ? [
+                  pinned.includes(menu.noteId)
+                    ? { label: 'Unpin tab', icon: PinOff, onClick: () => togglePin(menu.noteId) }
+                    : { label: 'Pin tab', icon: Pin, onClick: () => togglePin(menu.noteId) },
+                  { label: 'Close tab', icon: X, onClick: () => closeTab(menu.noteId) },
+                ]
+              : []),
+            ...(isPageTab(menu.noteId)
+              ? []
+              : [
+                  { label: 'Rename', icon: Pencil, divider: menu.tab, onClick: () => askRename(menu.noteId) },
+                  { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDelete(menu.noteId) },
+                ]),
           ]}
         />
       )}

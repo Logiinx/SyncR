@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
+
 **Board**
 - **Fixed:** Cards' text no longer shifts when you double-click to edit them.
 
