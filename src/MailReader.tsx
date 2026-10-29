@@ -16,13 +16,15 @@ import Spinner from './Spinner'
 // images". Links open in the normal browser. HTML mails show dark: the mail's own dark
 // version, or its light colors turned dark (mailDark.ts); "Show original" brings back the
 // sender's light design for this opening (not offered when it's the same: a mail made dark).
-// fitWidth (the pop-up): a mail wider than the frame is scaled down to fit, so it only
-// scrolls up and down.
-function MailReader({ alert, onAction, onBack, fitWidth = false }: {
+// fitWidth (the pop-up): a mail wider than the frame first asks for more room (onWiden: the
+// pop-up grows, returns the pixels it gives); what's still too wide is scaled down to fit, so
+// it only scrolls up and down.
+function MailReader({ alert, onAction, onBack, fitWidth = false, onWiden }: {
   alert: MailAlert
   onAction: (action: MailAction) => void
   onBack: () => void
   fitWidth?: boolean
+  onWiden?: (extra: number) => number
 }) {
   const [body, setBody] = useState<MailBody | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +66,14 @@ function MailReader({ alert, onAction, onBack, fitWidth = false }: {
       // A mail with its own dark version still differs from its original
       if (!changed && !/prefers-color-scheme/i.test(body?.html ?? '')) setAlreadyDark(true)
     }
-    if (fitWidth) fitToWidth(frameDoc)
+    if (fitWidth) {
+      const page = frameDoc.documentElement
+      const extra = page.scrollWidth - page.clientWidth
+      // The frame grows with the pop-up (its size observer above fits what's left); no
+      // sideways scrollbar meanwhile
+      if (extra > 0 && onWiden && onWiden(extra) > 0) page.style.overflowX = 'hidden'
+      else fitToWidth(frameDoc)
+    }
     setReady(true)
     frameDoc.addEventListener('click', (e) => {
       const link = (e.target as Element).closest?.('a[href]')

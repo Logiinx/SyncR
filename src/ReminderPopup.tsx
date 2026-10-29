@@ -23,7 +23,8 @@ function ReminderPopup() {
   const listRef = useRef<HTMLDivElement>(null)
 
   // An email open to read: the window grows (READER_WIDTH, 80% of the screen's height) until
-  // Back, Done or Mark as unread. Reminders that come due meanwhile show above it.
+  // Back, Done or Mark as unread. Reminders that come due meanwhile show above it. A wide email
+  // makes it wider once loaded (widen), up to 90% of the screen's width.
   const [readingKey, setReadingKey] = useState<string | null>(null)
   const [readerSize, setReaderSize] = useState<Size | null>(null)
   const reading = readerSize ? mails.find((mail) => mail.key === readingKey) : undefined
@@ -32,14 +33,29 @@ function ReminderPopup() {
   const readerSizeRef = useRef(readerSize)
   readerSizeRef.current = readerSize
   const cardsSize = useRef<Size | null>(null) // the window's size before the email opened
+  const maxReaderWidth = useRef(READER_WIDTH)
+  const widenFrom = useRef<Size | null>(null) // the reader's size before it got wider
 
   async function read(alert: MailAlert) {
     const win = getCurrentWindow()
     cardsSize.current = (await win.innerSize()).toLogical(await win.scaleFactor())
-    const { maxHeight } = (await popupPlacer())(0)
+    const { maxHeight, maxWidth } = (await popupPlacer())(0)
+    maxReaderWidth.current = Math.max(READER_WIDTH, Math.round(maxWidth * 0.9))
     setReaderSize({ width: READER_WIDTH, height: Math.round(maxHeight * 0.8) })
     setReadingKey(alert.key)
     if (!alert.opened) sendFromPopup({ id: alert.key, action: 'mail-opened' }) // marks it read
+  }
+
+  // The email needs `extra` pixels more: the reader gets wider (as far as allowed), the window
+  // follows (fit below). Returns the pixels given.
+  function widen(extra: number) {
+    const from = readerSizeRef.current
+    if (!from) return 0
+    const width = Math.min(from.width + Math.ceil(extra), maxReaderWidth.current)
+    if (width <= from.width) return 0
+    widenFrom.current = from
+    setReaderSize({ ...from, width })
+    return width - from.width
   }
 
   // Back, Done, Mark as unread: the reader shrinks back to the cards' size in its corner, the
@@ -113,6 +129,15 @@ function ReminderPopup() {
   useEffect(() => {
     refitRef.current()
   }, [reading !== undefined])
+  // Getting wider: cut to its old size the same way, opened up once the window is wider
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const from = widenFrom.current
+    widenFrom.current = null
+    if (!list || !from || !readerSize || !loadAppearance().animations) return
+    list.dataset.growFrom = cornerClip(from, readerSize)
+    list.style.clipPath = list.dataset.growFrom
+  }, [readerSize?.width]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fading = useMailFade(mails, reading !== undefined)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
@@ -127,6 +152,7 @@ function ReminderPopup() {
       {reading ? (
         <MailReader
           fitWidth
+          onWiden={widen}
           alert={reading}
           onAction={(action) =>
             action === 'mail-open' ? mailAction(reading, action) : closeReader(() => mailAction(reading, action))

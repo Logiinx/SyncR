@@ -64,7 +64,7 @@ export async function popupMonitor(): Promise<Monitor | null> {
 // Where a pop-up of this height and width (logical pixels) goes: the chosen corner of its screen's work
 // area (the screen without the taskbar). In physical pixels with that screen's scale, so it
 // also lands right on a second screen with another scale than the main one.
-// maxHeight: the most it may grow (logical pixels), the work area's height.
+// maxHeight / maxWidth: the most it may grow (logical pixels), the work area's size.
 export async function popupPlace(height: number, width = POPUP_WIDTH) {
   return (await popupPlacer())(height, width)
 }
@@ -74,7 +74,7 @@ export async function popupPlacer() {
   const monitor = await popupMonitor()
   const { popupCorner } = loadBackground()
   return (height: number, width = POPUP_WIDTH) => {
-    if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600 }
+    if (!monitor) return { position: new PhysicalPosition(100, 100), scale: 1, maxHeight: 600, maxWidth: 800 }
     const { position, size } = monitor.workArea
     const scale = monitor.scaleFactor
     const margin = MARGIN * scale
@@ -84,6 +84,7 @@ export async function popupPlacer() {
       position: new PhysicalPosition(Math.round(x), Math.round(y)),
       scale,
       maxHeight: size.height / scale - 2 * MARGIN,
+      maxWidth: size.width / scale - 2 * MARGIN,
     }
   }
 }
