@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Improved:** Settings: the SyncR version line now sits quietly under all the cards.
+
 ## [0.32.0] - 2026-10-29
 
 **Notes**

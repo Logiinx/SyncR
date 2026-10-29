@@ -3737,7 +3737,16 @@ button {
   color: var(--text-dim);
 }
 
-/* Settings → About: the version number opens "What's new". Looks like text, underlined on hover. */
+/* Settings: the quiet "SyncR v… · by Logiinx" line under all cards */
+.settings-about {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  text-align: center;
+}
+
+/* Settings: the version number opens "What's new". Looks like text, underlined on hover. */
 .version-link {
   padding: 0;
   border: none;
