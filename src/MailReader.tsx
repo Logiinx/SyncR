@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
 import { openImageViewer } from './ImageViewer'
+import MailFilesRow from './MailFilesRow'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -176,6 +177,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
       ) : (
         <div className="mail-reader-status">{error ?? <Spinner size={16} />}</div>
       )}
+      {body && <MailFilesRow key={alert.key} alert={alert} files={body.files} />}
       <MailButtons opened onAction={onAction} />
     </div>
   )

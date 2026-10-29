@@ -299,13 +299,23 @@ export interface MailBody {
   plain: boolean // it was plain text (shown in the app's colors; HTML mails on white)
   remoteImages: boolean // it loads images from the web (blocked until "Show images")
   sender: string // the sender's address (lower case, '' if unreadable): safe senders (safeSenders.ts)
+  files: MailFile[] // attached files, not downloaded yet (mailFiles.ts)
+}
+
+// An attached file: downloaded only when opened or saved
+export interface MailFile {
+  name: string
+  type: string // e.g. application/pdf
+  size: number // bytes
+  attachmentId?: string // downloaded apart from the message (most files)
+  data?: string // or already in it (small ones), base64url
 }
 
 interface Part {
   mimeType?: string
   filename?: string
   headers?: { name: string; value: string }[]
-  body?: { data?: string; attachmentId?: string }
+  body?: { data?: string; attachmentId?: string; size?: number }
   parts?: Part[]
 }
 
@@ -316,7 +326,10 @@ export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
     (message.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === 'from')?.value ?? '',
   )
   const part = findPart(message.payload, 'text/html') ?? findPart(message.payload, 'text/plain')
-  if (!part) return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false, sender }
+  if (!part) {
+    const files = attachedFiles(message.payload, '')
+    return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false, sender, files }
+  }
   let data = part.body?.data
   if (!data && part.body?.attachmentId) {
     // A long text comes apart from the message, like an attachment
@@ -328,10 +341,43 @@ export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
   const text = decodePart(data ?? '', charset)
   if (part.mimeType === 'text/html') {
     const html = await withInlineImages(alert, message.payload, text)
-    return { html, plain: false, remoteImages: REMOTE_IMAGE.test(html), sender }
+    const files = attachedFiles(message.payload, text)
+    return { html, plain: false, remoteImages: REMOTE_IMAGE.test(html), sender, files }
   }
-  return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false, sender }
+  const files = attachedFiles(message.payload, '')
+  return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false, sender, files }
 }
+
+// The mail's files: every part with a file name, except pictures the text shows (cid:, see
+// withInlineImages), in the mail's order
+function attachedFiles(payload: Part | undefined, html: string): MailFile[] {
+  const shown = cidLabels(html)
+  const files: MailFile[] = []
+  const collect = (part: Part | undefined) => {
+    if (!part) return
+    if (part.filename && (part.body?.attachmentId || part.body?.data)) {
+      const id = part.headers?.find((h) => h.name.toLowerCase() === 'content-id')?.value
+      const inText = part.mimeType?.startsWith('image/') &&
+        ((id && shown.has(id.replace(/^<|>$/g, '').toLowerCase())) || shown.has(part.filename.toLowerCase()))
+      if (!inText) {
+        files.push({
+          name: part.filename,
+          type: part.mimeType ?? 'application/octet-stream',
+          size: part.body?.size ?? 0,
+          attachmentId: part.body?.attachmentId,
+          data: part.body?.data,
+        })
+      }
+    }
+    part.parts?.forEach(collect)
+  }
+  collect(payload)
+  return files
+}
+
+// The labels the text points to as "cid:label" (lower case)
+const cidLabels = (html: string) =>
+  new Set([...html.matchAll(/cid:([^"'\s)>]+)/gi)].map((m) => safeDecode(m[1]).toLowerCase()))
 
 // The first part of this type that isn't an attached file (mails nest parts: alternatives,
 // related images, attachments)
@@ -350,9 +396,7 @@ function findPart(part: Part | undefined, type: string): Part | undefined {
 // downloaded from Gmail (not from the sender: they can't tell the mail was opened). Pointers
 // with no matching part stay hidden (MailReader.tsx).
 async function withInlineImages(alert: MailAlert, payload: Part | undefined, html: string) {
-  const wanted = new Set(
-    [...html.matchAll(/cid:([^"'\s)>]+)/gi)].map((m) => safeDecode(m[1]).toLowerCase()),
-  )
+  const wanted = cidLabels(html)
   if (!wanted.size) return html
   const images = new Map<string, Part>() // label (and file name, some mails point to it) → part
   const collect = (part: Part | undefined) => {
