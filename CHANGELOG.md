@@ -15,6 +15,9 @@ All notable changes to SyncR. Newest version first.
 - **Improved:** Emails open at once in the pop-up, which grows to fit wide ones (no sideways scrolling).
 - **Fixed:** Emails show properly dark: their own dark version, or kept colors (no more white mails).
 
+**Reminders**
+- **New:** Five new soft sounds for reminders and emails: Drop, Glass, Wood, Rise and Bubble.
+
 **App**
 - **Improved:** Calmer, softer animations; side panels glide smoothly, windows settle into place.
 
