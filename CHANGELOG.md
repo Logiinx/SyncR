@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-10-29
+
 **Notes**
 - **New:** Right-click (long press on a phone) an image in a note to copy it.
 - **Improved:** Phone: the Image button is in the toolbar again; Strikethrough moved to the "⋯" list.
