@@ -193,9 +193,7 @@ function ReminderPopup() {
             loadBody={loadMailBody}
             onReady={onReaderReady}
             alert={open}
-            onAction={(action) =>
-              action === 'mail-open' ? mailAction(open, action) : closeReader(() => mailAction(open, action))
-            }
+            onAction={(action) => closeReader(() => mailAction(open, action))}
             onBack={() => closeReader()}
           />
         </div>

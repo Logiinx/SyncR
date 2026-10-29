@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **New:** A red trash button deletes an email, on pop-up cards and when reading one.
+- **Improved:** The email reader has a ✕ to close it, in place of "Open in Gmail".
+
 ## [0.34.0] - 2026-10-29
 
 **Mail**

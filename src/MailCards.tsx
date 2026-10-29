@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail } from 'lucide-react'
+import { Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
 import { formatDue } from './reminders'
@@ -36,7 +36,8 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
 }
 
 // A new mail: Mark as read (big) · Keep unread. One already opened (so read): Done · Mark as
-// unread. Also under the mail in the reader.
+// unread. Then a red trash at the right: Delete (to Gmail's Trash, no question, like the Mail
+// tab's menu). Also under the mail in the reader.
 export function MailButtons({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
   return (
     <div className="reminder-alert-buttons">
@@ -45,6 +46,9 @@ export function MailButtons({ opened, onAction }: { opened?: boolean; onAction: 
       </button>
       <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-close')}>
         {opened ? 'Mark as unread' : 'Keep unread'}
+      </button>
+      <button className="mail-delete" onClick={() => onAction('mail-delete')} title="Delete" aria-label="Delete">
+        <Trash2 size={15} />
       </button>
     </div>
   )

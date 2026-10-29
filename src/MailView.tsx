@@ -18,7 +18,7 @@ type LocalChange = { what: 'read' | 'unread' | 'gone'; doneAt?: number }
 // The Mail tab (PC): the last mails in Primary of all Gmail accounts, read or not (mailbox.ts),
 // laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others.
 // "Missed" on top: unread emails whose pop-up faded by itself; then the others. A click reads
-// the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ← Back, Done or
+// the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ‹ Back, ✕, Done or
 // Escape return to the list. Right-click (sender and subject on top): Mark as read / unread,
 // Remove from Missed, Archive, Open in Gmail, Delete (to Gmail's Trash, without asking).
 function MailView() {
@@ -136,9 +136,9 @@ function MailView() {
             alert={reading}
             onBack={() => setReading(null)}
             onAction={(action) => {
-              if (action === 'mail-open') return openLink(gmailLink(reading))
               if (action === 'mail-unread') change(reading, 'unread')
-              setReading(null) // Done, Mark as unread
+              if (action === 'mail-delete') change(reading, 'trash')
+              setReading(null) // Done, ✕, Mark as unread, Delete
             }}
           />
         </div>

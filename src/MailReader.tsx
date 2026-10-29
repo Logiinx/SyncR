@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ExternalLink, ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
+import CloseButton from './CloseButton'
 import { openImageViewer } from './ImageViewer'
 import MailFilesRow from './MailFilesRow'
 import { openLink } from './links'
@@ -12,8 +13,8 @@ import { addSafeSender, isSafeSender, isTracker, trustFor } from './safeSenders'
 import Spinner from './Spinner'
 
 // A mail opened to read, in the desktop pop-up (which grows into a bigger window meanwhile,
-// ReminderPopup.tsx). Head: ‹ Back (to the list), when + account, sender, subject, open in Gmail.
-// Then the mail, then Done · Mark as unread.
+// ReminderPopup.tsx). Head: ‹ Back (to the list), when + account, sender, subject, ✕ (= Done).
+// Then the mail, then Done · Mark as unread · Delete.
 // The mail shows in a sandboxed frame: no scripts run, and a content policy blocks anything
 // from the web (images, fonts, styles: they can tell the sender you opened it) until "Show
 // images". Links open in the normal browser. HTML mails show dark: the mail's own dark
@@ -119,14 +120,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           <span className="reminder-alert-text">{alert.from}</span>
           <span className="mail-alert-subject">{alert.subject}</span>
         </div>
-        <button
-          className="mail-reader-icon"
-          onClick={() => onAction('mail-open')}
-          title="Open in Gmail"
-          aria-label="Open in Gmail"
-        >
-          <ExternalLink size={16} />
-        </button>
+        <CloseButton onClick={() => onAction('mail-close')} />
       </div>
       {body && (!body.plain || (body.remoteImages && !showImages)) && (
         <div className="mail-reader-images">

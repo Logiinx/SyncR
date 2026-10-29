@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { gmailApi, loadAccounts } from './gmail'
-import { openLink } from './links'
 import { read, write } from './localState'
 import { senderAddress } from './safeSenders'
 
@@ -27,9 +26,9 @@ export interface MailAlert {
 }
 
 // mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Keep unread,
-// Done after reading) · mail-open: in Gmail · mail-opened: opened to read (marks it read) ·
+// Done after reading) · mail-delete: to Gmail's Trash · mail-opened: opened to read (marks it read) ·
 // mail-unread: Mark as unread (the card goes) · mail-fade: faded by itself (missed)
-export type MailAction = 'mail-read' | 'mail-close' | 'mail-open' | 'mail-opened' | 'mail-unread' | 'mail-fade'
+export type MailAction = 'mail-read' | 'mail-close' | 'mail-delete' | 'mail-opened' | 'mail-unread' | 'mail-fade'
 
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
@@ -253,12 +252,10 @@ function removeAlert(key: string) {
   saveMailAlerts(loadMailAlerts().filter((a) => a.key !== key))
 }
 
-// Runs a card's button (MailAction). Open in Gmail: in the browser (Gmail marks it read; the
-// next check then removes the card).
+// Runs a card's button (MailAction)
 export async function runMailAction(key: string, action: MailAction) {
   const alert = loadMailAlerts().find((a) => a.key === key)
   if (!alert) return
-  if (action === 'mail-open') return openInGmail(alert)
   if (action === 'mail-opened') {
     saveMailAlerts(loadMailAlerts().map((a) => (a.key === key ? { ...a, opened: true } : a)))
     return setUnread(alert, false)
@@ -267,6 +264,7 @@ export async function runMailAction(key: string, action: MailAction) {
   if (action === 'mail-fade') saveMissed([...new Set([key, ...loadMissed()])])
   if (action === 'mail-read') await setUnread(alert, false)
   if (action === 'mail-unread') await setUnread(alert, true)
+  if (action === 'mail-delete') await changeMail(key, 'trash')
 }
 
 const setUnread = (alert: MailAlert, unread: boolean) => changeMail(alert.key, unread ? 'unread' : 'read')
@@ -289,8 +287,6 @@ export async function changeMail(key: string, change: 'read' | 'unread' | 'archi
 // The conversation in Gmail, signed in as the right account
 export const gmailLink = (mail: MailAlert) =>
   `https://mail.google.com/mail/?authuser=${encodeURIComponent(mail.account)}#all/${mail.threadId}`
-
-const openInGmail = (alert: MailAlert) => openLink(gmailLink(alert))
 
 // ---------- Reading ----------
 
