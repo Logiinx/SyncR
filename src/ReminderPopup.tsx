@@ -126,6 +126,7 @@ function ReminderPopup() {
       {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
       {reading ? (
         <MailReader
+          fitWidth
           alert={reading}
           onAction={(action) =>
             action === 'mail-open' ? mailAction(reading, action) : closeReader(() => mailAction(reading, action))

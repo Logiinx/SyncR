@@ -16,10 +16,13 @@ import Spinner from './Spinner'
 // images". Links open in the normal browser. HTML mails show dark: the mail's own dark
 // version, or its light colors turned dark (mailDark.ts); "Show original" brings back the
 // sender's light design for this opening (not offered when it's the same: a mail made dark).
-function MailReader({ alert, onAction, onBack }: {
+// fitWidth (the pop-up): a mail wider than the frame is scaled down to fit, so it only
+// scrolls up and down.
+function MailReader({ alert, onAction, onBack, fitWidth = false }: {
   alert: MailAlert
   onAction: (action: MailAction) => void
   onBack: () => void
+  fitWidth?: boolean
 }) {
   const [body, setBody] = useState<MailBody | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +46,15 @@ function MailReader({ alert, onAction, onBack }: {
   const doc = useMemo(() => body && frameDocument(body, images, dark), [body, images, dark])
   useEffect(() => setReady(false), [doc])
 
+  // The frame changes width (window resized): fit the mail again
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!fitWidth || !frame) return
+    const observer = new ResizeObserver(() => frame.contentDocument && fitToWidth(frame.contentDocument))
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [fitWidth, doc])
+
   // Links in the mail open in the browser (the frame itself never navigates)
   function onFrameLoad() {
     const frameDoc = frameRef.current?.contentDocument
@@ -52,6 +64,7 @@ function MailReader({ alert, onAction, onBack }: {
       // A mail with its own dark version still differs from its original
       if (!changed && !/prefers-color-scheme/i.test(body?.html ?? '')) setAlreadyDark(true)
     }
+    if (fitWidth) fitToWidth(frameDoc)
     setReady(true)
     frameDoc.addEventListener('click', (e) => {
       const link = (e.target as Element).closest?.('a[href]')
@@ -114,6 +127,19 @@ function MailReader({ alert, onAction, onBack }: {
       <MailButtons opened onAction={onAction} />
     </div>
   )
+}
+
+// Scales the mail down (CSS zoom, so the page gets shorter too) when it's wider than the frame
+function fitToWidth(doc: Document) {
+  const page = doc.documentElement
+  if (!doc.body) return // not loaded yet
+  doc.body.style.zoom = ''
+  page.style.overflowX = ''
+  const room = page.clientWidth
+  const wide = page.scrollWidth
+  if (!room || wide <= room) return
+  doc.body.style.zoom = String(room / wide)
+  page.style.overflowX = 'hidden' // a pixel left over by rounding
 }
 
 // The frame's page: a content policy (blocks the web unless images are shown), base styles
