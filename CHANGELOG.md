@@ -4,9 +4,6 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**App**
-- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
-
 **Board**
 - **Fixed:** Cards' text no longer shifts when you double-click to edit them.
 
@@ -14,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 - **New:** "Always for amazon.com": a sender's web images show by themselves (list in Manage accounts).
 - **New:** Hidden tracking images never load, even with images shown ("2 trackers blocked").
 - **Fixed:** Pictures inside emails (logos, pasted images) now show instead of being left out.
+
+**App**
+- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
 
 ## [0.32.1] - 2026-10-29
 
