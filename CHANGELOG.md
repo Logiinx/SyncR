@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **New:** Click a picture in an email to see it full size; the scroll wheel zooms in and out.
+
+**Notes**
+- **Improved:** Pictures shown full size: the scroll wheel zooms around the mouse, drag to move.
+
 ## [0.33.0] - 2026-10-29
 
 **App**

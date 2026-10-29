@@ -12,7 +12,6 @@ import { Highlight } from '@tiptap/extension-highlight'
 import { syncSoon } from './autoSync'
 import { noteTitle, registerFlush, saveNoteContent, type Note } from './db'
 import Toolbar from './Toolbar'
-import ImageViewer from './ImageViewer'
 import ContextMenu from './ContextMenu'
 import { copyImage, Image } from './image'
 import { OpenLinksOnClick } from './links'
@@ -211,7 +210,6 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   return (
     <>
       <Toolbar editor={editor} noteId={note.id} title={noteTitle(note)} />
-      <ImageViewer />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
       {tableMenu && <TableMenu editor={editor} x={tableMenu.x} y={tableMenu.y} onClose={() => setTableMenu(null)} />}
       {imageMenu && (

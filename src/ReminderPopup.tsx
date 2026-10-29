@@ -6,6 +6,7 @@ import { BACKGROUND_KEY, loadBackground } from './desktop'
 import { useDueReminders, type DueItem } from './dueReminders'
 import { useMailAlerts, type MailAction, type MailAlert } from './mailAlerts'
 import MailReader from './MailReader'
+import ImageViewer from './ImageViewer'
 import { loadMailBody, prefetchMails } from './mailPrefetch'
 import { useGmailAccounts } from './gmail'
 import { MailCards } from './MailCards'
@@ -166,6 +167,7 @@ function ReminderPopup() {
   const fading = useMailFade(mails, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
+    <>
     <div
       ref={listRef}
       className={`reminder-popup${reading ? ' reading' : ''}`}
@@ -199,6 +201,9 @@ function ReminderPopup() {
         </div>
       )}
     </div>
+    {/* A picture clicked in the email, full size over the whole pop-up (outside its clip) */}
+    <ImageViewer />
+    </>
   )
 }
 

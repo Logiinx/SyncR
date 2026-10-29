@@ -2375,23 +2375,32 @@ button {
   position: fixed;
   inset: 0;
   z-index: 30;
-  display: flex;
-  overflow: auto;
+  overflow: hidden;
   background: rgb(0 0 0 / 90%);
+  outline: none;
+  touch-action: none; /* a finger drags the zoomed image, not the page */
+}
+
+/* The image is placed and scaled by its transform (ImageViewer.tsx), from its top left corner */
+.image-viewer-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .image-viewer img {
-  margin: auto; /* centered, but still scrollable when bigger than the screen */
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  user-select: none;
+  pointer-events: auto;
   cursor: zoom-in;
 }
 
-.image-viewer.real-size img {
-  max-width: none;
-  max-height: none;
-  cursor: zoom-out;
+.image-viewer.zoomed img {
+  cursor: grab;
 }
 
 .image-viewer-close {
@@ -3438,7 +3447,7 @@ button {
 }
 
 .dialog-backdrop > *,
-.image-viewer > img {
+.image-viewer-stage {
   animation: window-in var(--open-big) var(--ease-open);
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
+import { openImageViewer } from './ImageViewer'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -72,7 +73,8 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
     return () => observer.disconnect()
   }, [fitWidth, doc])
 
-  // Links in the mail open in the browser (the frame itself never navigates)
+  // Links in the mail open in the browser (the frame itself never navigates). Pictures that
+  // aren't links and aren't tiny (icons, small logos) open full size (ImageViewer.tsx).
   function onFrameLoad() {
     const frameDoc = frameRef.current?.contentDocument
     if (!frameDoc) return
@@ -88,11 +90,20 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
     if (tellReady(extra) > 0) page.style.overflowX = 'hidden'
     else if (fitWidth) fitToWidth(frameDoc)
     setReady(true)
+    frameDoc.querySelectorAll('img').forEach((img) => {
+      const mark = () => viewable(img) && img.classList.add('viewable')
+      if (img.complete) mark()
+      else img.addEventListener('load', mark, { once: true })
+    })
     frameDoc.addEventListener('click', (e) => {
-      const link = (e.target as Element).closest?.('a[href]')
-      if (!link) return
-      e.preventDefault()
-      openLink((link as HTMLAnchorElement).href)
+      const target = e.target as Element
+      const link = target.closest?.('a[href]')
+      if (link) {
+        e.preventDefault()
+        openLink((link as HTMLAnchorElement).href)
+      } else if (target instanceof frameDoc.defaultView!.HTMLImageElement && viewable(target)) {
+        openImageViewer(target.currentSrc || target.src)
+      }
     })
   }
 
@@ -170,6 +181,10 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   )
 }
 
+// A picture worth opening full size: not inside a link, at least 50 px both ways (real size)
+const viewable = (img: HTMLImageElement) =>
+  !img.closest('a[href]') && img.naturalWidth >= 50 && img.naturalHeight >= 50
+
 // Scales the mail down (CSS zoom, so the page gets shorter too) when it's wider than the frame
 function fitToWidth(doc: Document) {
   const page = doc.documentElement
@@ -203,6 +218,7 @@ function frameDocument(body: MailBody, images: boolean, dark: boolean) {
   body > div { min-height: 100vh; padding: 12px 14px; box-sizing: border-box; }
   img { max-width: 100%; height: auto; }
   img[src^="cid:"] { display: none; }
+  img.viewable { cursor: zoom-in; }
   pre { margin: 0; font: inherit; white-space: pre-wrap; }
   ${links}
 </style>
