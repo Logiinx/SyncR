@@ -601,11 +601,17 @@ button {
 }
 
 .tab-row .tab.pinned.icon-only {
-  padding: 0 8px;
+  padding: 0 12px;
 }
 
 .tab.icon-only .tab-title {
   display: flex;
+}
+
+/* A bit bigger than beside a title: the icon is the whole tab */
+.tab.icon-only .tab-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .tab-new {
