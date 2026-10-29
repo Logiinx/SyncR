@@ -280,17 +280,15 @@ const EXITS: [string, (el: HTMLElement) => (Animation | undefined)[]][] = [
   // the text colors. The slash menu and the note picker: COPY_EXITS.
   ['.menu-backdrop', (el) => [play(el.firstElementChild, FOLD, TIMING.closeSmall)]],
   ['.color-popover', (el) => [play(el, FOLD, TIMING.closeSmall)]],
-  // Side panels (index.css): PC: the Board slides out to the right and the page takes the room
-  // back (the sidebar to the left). Phone: they slide out over the page, the shade fades.
+  // Side panels (index.css): the Board glides out to the right, the sidebar to the left. PC: it
+  // keeps its room meanwhile, the page takes it back at the end. Phone: over the page, the shade
+  // fades.
   [
     '.board, .sidebar',
     (el) => {
-      const right = el.matches('.board')
-      if (matchMedia('(max-width: 699px)').matches) {
-        return [play(el, [{ transform: 'none' }, { transform: `translateX(${right ? 100 : -100}%)` }], TIMING.closePhone)]
-      }
-      const margin = right ? 'marginRight' : 'marginLeft'
-      return [play(el, [{ [margin]: '0px' }, { [margin]: `${-el.offsetWidth}px` }])]
+      const phone = matchMedia('(max-width: 699px)').matches
+      const away = `translateX(${el.matches('.board') ? 100 : -100}%)`
+      return [play(el, [{ transform: 'none' }, { transform: away }], phone ? TIMING.closePhone : TIMING.closeBig)]
     },
   ],
   ['.backdrop', (el) => [play(el, [{ opacity: 1 }, { opacity: 0 }], TIMING.closePhone)]],

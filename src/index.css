@@ -3394,16 +3394,17 @@ button {
   animation: menu-in var(--open-small) var(--ease-open);
 }
 
-/* Side panels (opening; closing: animations.ts). PC: the Board slides in from the right and
-   the page makes room; the sidebar the same from the left. Phone: they slide over the page from
-   their edge, the shade fades in. Not when already open at start (.slide-in: animations.ts). */
+/* Side panels (opening; closing: animations.ts). PC: the page makes room at once (its text
+   rewraps once), then the Board glides into it from the right, the sidebar from the left: only
+   the panel moves, so it stays smooth. Phone: they slide over the page from their edge, the
+   shade fades in. Not when already open at start (.slide-in: animations.ts). */
 @media (min-width: 700px) {
   .board.slide-in {
-    animation: board-push var(--open-big) var(--ease-open);
+    animation: from-right var(--open-big) var(--ease-open);
   }
 
   .sidebar.slide-in {
-    animation: sidebar-push var(--open-big) var(--ease-open);
+    animation: from-left var(--open-big) var(--ease-open);
   }
 }
 
@@ -3429,19 +3430,6 @@ button {
 @keyframes from-edge {
   from {
     transform: translateX(calc(100% + 16px));
-  }
-}
-
-/* Their width plus the 1px border */
-@keyframes board-push {
-  from {
-    margin-right: calc(-1px - var(--board-width, 280px));
-  }
-}
-
-@keyframes sidebar-push {
-  from {
-    margin-left: -261px;
   }
 }
 
