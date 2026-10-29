@@ -1678,7 +1678,7 @@ button {
   font-size: 13px;
 }
 
-/* "Web images blocked. Show images · Always for amazon.com" */
+/* "Web images blocked · Show images · Always for amazon.com" */
 .mail-reader-images {
   display: flex;
   flex-wrap: wrap; /* the pop-up is narrow: buttons go to a second line when needed */
@@ -1724,7 +1724,7 @@ button {
   white-space: nowrap;
 }
 
-/* "Web images blocked." / "2 trackers blocked": discreet, on the left */
+/* "Web images blocked" / "2 trackers blocked": discreet, on the left */
 .mail-reader-note {
   display: flex;
   align-items: center;

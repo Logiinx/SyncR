@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
@@ -22,16 +22,23 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
   return (
     <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
       <button className="reminder-alert-body" onClick={onRead} title="Read">
-        <span className="reminder-alert-due">
-          <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account">{alert.account}</span>
-          {loading && <Spinner size={12} />}
-        </span>
+        <MailWhen alert={alert}>{loading && <Spinner size={12} />}</MailWhen>
         <span className="reminder-alert-text">{alert.from}</span>
         <span className="mail-alert-subject">{alert.subject}</span>
         {alert.snippet && <span className="reminder-alert-note">{alert.snippet}</span>}
       </button>
       <MailButtons opened={alert.opened} onAction={onAction} />
     </div>
+  )
+}
+
+// A mail's top line, on its card and in the reader: when it came + which account
+export function MailWhen({ alert, children }: { alert: MailAlert; children?: ReactNode }) {
+  return (
+    <span className="reminder-alert-due">
+      <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account" title={alert.account}>{alert.account}</span>
+      {children}
+    </span>
   )
 }
 

@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { ImageOff, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
 import CloseButton from './CloseButton'
 import { openImageViewer } from './ImageViewer'
 import MailFilesRow from './MailFilesRow'
 import { openLink } from './links'
-import { accountColor, MailButtons } from './MailCards'
+import { accountColor, MailButtons, MailWhen } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
 import { darkenMail } from './mailDark'
-import { formatDue } from './reminders'
 import { addSafeSender, isSafeSender, isTracker, trustFor } from './safeSenders'
 import Spinner from './Spinner'
 
@@ -114,9 +113,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
       <div className="mail-reader-head">
         <BackButton onClick={onBack} title="Back to the list" />
         <div className="mail-reader-title">
-          <span className="reminder-alert-due">
-            <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account">{alert.account}</span>
-          </span>
+          <MailWhen alert={alert} />
           <span className="reminder-alert-text">{alert.from}</span>
           <span className="mail-alert-subject">{alert.subject}</span>
         </div>
@@ -126,7 +123,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
         <div className="mail-reader-images">
           {body.remoteImages && !showImages && (
             <span className="mail-reader-note">
-              <ImageOff size={14} /> Web images blocked.
+              <ImageOff size={13} /> Web images blocked
             </span>
           )}
           {showImages && !!frame?.trackers && (
@@ -150,7 +147,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
             )}
             {!body.plain && !alreadyDark && (
               <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
-                {original ? <Moon size={12} /> : <Sun size={12} />} {original ? 'Show dark' : 'Show original'}
+                {original ? <Moon size={13} /> : <Sun size={13} />} {original ? 'Show dark' : 'Show original'}
               </button>
             )}
           </div>

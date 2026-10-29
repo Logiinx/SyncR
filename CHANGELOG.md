@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **Fixed:** Small fixes: full account address on hover, tidier "Web images blocked" line.
+
 ## [0.35.1] - 2026-10-29
 
 **Mail**
