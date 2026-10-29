@@ -181,7 +181,7 @@ const accessTokens = new Map<string, { token: string; expiresAt: number }>()
 // Google refusing the sign-in marks the account "signed out" (Settings).
 async function accessToken(email: string) {
   const account = loadAccounts().find((a) => a.email === email)
-  if (!account || account.expired) throw new Error(`Gmail: ${email} isn't signed in`)
+  if (!account || account.expired) throw Object.assign(new Error(`Gmail: ${email} isn't signed in`), { signedOut: true })
   const known = accessTokens.get(email)
   if (known && known.expiresAt > Date.now() + 60_000) return known.token
   const res = await tokenRequest({ refresh_token: account.refreshToken })
@@ -190,14 +190,31 @@ async function accessToken(email: string) {
     if ((await res.text()).includes('invalid_grant')) {
       accessTokens.delete(email)
       updateAccount(email, { expired: true })
-      throw new Error(`Gmail: ${email} was signed out. Sign in again in Settings.`)
+      throw Object.assign(new Error(`Gmail: ${email} was signed out. Sign in again in Settings.`), { signedOut: true })
     }
-    throw new Error(`Gmail error (${res.status})`)
+    throw Object.assign(new Error(`Gmail sign-in renewal failed (${res.status})`), { status: res.status })
   }
   const data = await res.json()
   accessTokens.set(email, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
   return data.access_token as string
 }
+
+// A failed Gmail call in plain words, without a period (Mail tab, reader, attached files);
+// Gmail's exact text stays in the error's message (shown on hover)
+export function gmailErrorText(error: unknown) {
+  const e = (error ?? {}) as { status?: number; signedOut?: boolean; offline?: boolean; message?: string }
+  const status = e.status ?? 0
+  if (e.signedOut) return 'Signed out: sign in again in Settings → Accounts'
+  if (e.offline) return 'No connection to Gmail (offline?)'
+  if (status === 404) return 'This email is gone (deleted or moved in Gmail)'
+  // Too many requests at once, or trouble on Google's side
+  if (status === 429 || status >= 500 || (status === 403 && /rate|limit/i.test(e.message ?? ''))) return 'Gmail is busy right now'
+  if (status) return `Gmail error (${status})`
+  return error instanceof Error ? error.message : String(error)
+}
+
+// Its details for the hover text: Gmail's own words
+export const errorDetails = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 // Calls the Gmail API for an account (JSON in, JSON out), e.g. gmailApi(email, 'messages').
 export const gmailApi = (email: string, path: string, init: RequestInit = {}) =>
@@ -211,15 +228,19 @@ export async function googleApi(
   init: RequestInit = {},
   { name, timeoutMs = REQUEST_TIMEOUT_MS }: { name: string; timeoutMs?: number },
 ) {
-  const send = async () =>
-    fetch(url, {
-      ...init,
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        Authorization: `Bearer ${await accessToken(email)}`,
-      },
-    })
+  const send = async () => {
+    const token = await accessToken(email)
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` },
+      })
+    } catch (error) {
+      // No answer at all (no network, timed out)
+      throw Object.assign(new Error(`${name}: ${error}`), { offline: true })
+    }
+  }
   let res = await send()
   if (res.status === 401) {
     accessTokens.delete(email)

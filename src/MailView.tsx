@@ -156,9 +156,11 @@ function MailView() {
           </div>
         </div>
         {accounts.length === 0 && <p className="games-empty">Add a Gmail account in Settings → Accounts.</p>}
-        {errors.length > 0 && (
-          <p className="games-empty">Couldn't reach Gmail for {errors.join(', ')} (offline?). Trying again…</p>
-        )}
+        {errors.map(({ email, text, details }) => (
+          <p key={email} className="games-empty" title={details}>
+            {email}: {text}. Trying again…
+          </p>
+        ))}
         {rows && accounts.length > 0 && errors.length === 0 && missedRows.length + otherRows.length === 0 && (
           <p className="games-empty">{unreadOnly ? 'No unread mail in Primary' : 'No mail in Primary'}</p>
         )}

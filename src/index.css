@@ -1837,6 +1837,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 12px;
   color: var(--text-dim);
   font-size: 13px;

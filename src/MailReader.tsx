@@ -4,6 +4,7 @@ import BackButton from './BackButton'
 import CloseButton from './CloseButton'
 import { openImageViewer } from './ImageViewer'
 import MailFilesRow from './MailFilesRow'
+import { errorDetails, gmailErrorText } from './gmail'
 import { openLink } from './links'
 import { accountColor, MailButtons, MailWhen } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -32,7 +33,8 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   onReady?: (extra: number) => number
 }) {
   const [body, setBody] = useState<MailBody | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ text: string; details: string } | null>(null)
+  const [attempt, setAttempt] = useState(0) // Try again after a failed download
   const [images, setImages] = useState(false)
   const [original, setOriginal] = useState(false)
   const [ready, setReady] = useState(false) // the frame is shown once its colors are done
@@ -52,11 +54,11 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
     setOriginal(false)
     setAlreadyDark(false)
     loadBody(alert).then(setBody, (e) => {
-      setError(e instanceof Error ? e.message : String(e))
+      setError({ text: gmailErrorText(e), details: errorDetails(e) })
       tellReady(0)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alert.key])
+  }, [alert.key, attempt])
 
   const dark = !!body && !body.plain && !original
   // A safe sender's mail opens with its web images (safeSenders.ts)
@@ -166,7 +168,16 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           onLoad={onFrameLoad}
         />
       ) : (
-        <div className="mail-reader-status">{error ?? <Spinner size={16} />}</div>
+        <div className="mail-reader-status">
+          {error ? (
+            <>
+              <span title={error.details}>{error.text}</span>
+              <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
+            </>
+          ) : (
+            <Spinner size={16} />
+          )}
+        </div>
       )}
       {body && <MailFilesRow key={alert.key} alert={alert} files={body.files} />}
       <MailButtons opened onAction={onAction} />

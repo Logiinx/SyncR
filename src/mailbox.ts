@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { gmailApi, loadAccounts } from './gmail'
+import { errorDetails, gmailApi, gmailErrorText, loadAccounts } from './gmail'
 import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 
 // The Mail tab's list (MailView.tsx): the last 50 mails in Primary of every Gmail account
@@ -16,6 +16,8 @@ const MAX_ROWS = 50
 const RETRY_MS = [5000, 15_000, 60_000]
 
 export type MailboxRow = MailAlert & { unread: boolean }
+// An account whose mail couldn't load: what went wrong in plain words, and Gmail's own words
+export type MailboxError = { email: string; text: string; details: string }
 
 // Gmail refuses an account's requests when too many run at once (it fails the load, e.g. at
 // start, when the minute check's mailbox-change starts a second load during the first one)
@@ -57,7 +59,7 @@ async function listIds(email: string, query: string): Promise<string[]> {
 
 async function loadInbox() {
   const rows: MailboxRow[] = []
-  const errors: string[] = []
+  const errors: MailboxError[] = []
   for (const { email } of loadAccounts().filter((a) => a.enabled && !a.expired)) {
     try {
       const [recent, unread] = await Promise.all([listIds(email, RECENT), listIds(email, QUERY)])
@@ -70,7 +72,7 @@ async function loadInbox() {
       )
     } catch (error) {
       console.error(error)
-      errors.push(email)
+      errors.push({ email, text: gmailErrorText(error), details: errorDetails(error) })
     }
   }
   rows.sort((a, b) => b.date - a.date)
@@ -79,7 +81,7 @@ async function loadInbox() {
 
 export function useMailbox() {
   const [rows, setRows] = useState<MailboxRow[] | null>(null) // null: first load
-  const [errors, setErrors] = useState<string[]>([])
+  const [errors, setErrors] = useState<MailboxError[]>([])
   const [loading, setLoading] = useState(false)
   const [loadedFrom, setLoadedFrom] = useState(0) // when the shown list's load started (ms)
   const lastLoad = useRef(0)

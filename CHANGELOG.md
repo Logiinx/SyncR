@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Mail**
+- **Improved:** Mail errors say what went wrong in plain words; an email that fails to open has Try again.
 - **Fixed:** Small fixes: full account address on hover, tidier "Web images blocked" line.
 
 ## [0.35.1] - 2026-10-29

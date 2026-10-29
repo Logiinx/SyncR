@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download, File, FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, type LucideIcon } from 'lucide-react'
+import { errorDetails, gmailErrorText } from './gmail'
 import type { MailAlert, MailFile } from './mailAlerts'
 import { fileSize, isRisky, openFile, saveFile } from './mailFiles'
 import Spinner from './Spinner'
@@ -13,7 +14,7 @@ const FIRST = 3
 function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] }) {
   const [all, setAll] = useState(false)
   const [busy, setBusy] = useState<number[]>([]) // files downloading
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ text: string; details: string } | null>(null)
   if (!files.length) return null
 
   async function run(index: number, action: typeof openFile) {
@@ -23,7 +24,7 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
     try {
       await action(alert, files[index])
     } catch (e) {
-      setError(`${files[index].name}: ${e instanceof Error ? e.message : String(e)}`)
+      setError({ text: `${files[index].name}: ${gmailErrorText(e)}`, details: errorDetails(e) })
     }
     setBusy((list) => list.filter((i) => i !== index))
   }
@@ -56,7 +57,7 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
           +{files.length - FIRST} more
         </button>
       )}
-      {error && <span className="mail-files-error" title={error}>{error}</span>}
+      {error && <span className="mail-files-error" title={error.details}>{error.text}</span>}
     </div>
   )
 }

@@ -61,7 +61,7 @@ export async function igdbProxyFetch(path: string, body: string, timeoutMs: numb
       signal: AbortSignal.timeout(timeoutMs),
     })
   } catch {
-    throw new Error("Could not reach SyncR's proxy (offline, or wrong address?)")
+    throw Object.assign(new Error("Could not reach SyncR's proxy (offline, or wrong address?)"), { offline: true })
   }
 }
 
