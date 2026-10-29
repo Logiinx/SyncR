@@ -1597,6 +1597,12 @@ button {
   min-height: 0;
 }
 
+/* Done · Mark as unread: as wide as in the normal 600 px pop-up reader at most, on the left,
+   also when it's wider (a wide email, the Mail tab) */
+.mail-reader .reminder-alert-buttons {
+  max-width: 562px;
+}
+
 .mail-reader-head {
   display: flex;
   align-items: flex-start;
