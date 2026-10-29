@@ -17,7 +17,38 @@ const RETRY_MS = [5000, 15_000, 60_000]
 
 export type MailboxRow = MailAlert & { unread: boolean }
 
-const cache = new Map<string, MailAlert>() // a mail's sender, subject… never change: fetched once
+// Gmail refuses an account's requests when too many run at once (it fails the load, e.g. at
+// start, when the minute check's mailbox-change starts a second load during the first one)
+const MAX_PARALLEL = 10
+
+// A mail's sender, subject… never change: fetched once. The request itself is kept, so
+// overlapping loads share it; a failed one is dropped (asked again next time).
+const cache = new Map<string, Promise<MailAlert>>()
+
+function cachedAlert(email: string, id: string) {
+  const key = `mail:${email}:${id}`
+  let alert = cache.get(key)
+  if (!alert) {
+    alert = fetchAlert(email, id)
+    cache.set(key, alert)
+    alert.catch(() => cache.get(key) === alert && cache.delete(key))
+  }
+  return alert
+}
+
+// Like Promise.all(items.map(fn)), with at most `limit` running at a time
+async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>) {
+  const results: R[] = []
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
 
 async function listIds(email: string, query: string): Promise<string[]> {
   const list = await gmailApi(email, `messages?q=${encodeURIComponent(query)}&maxResults=${MAX_ROWS}`)
@@ -32,13 +63,10 @@ async function loadInbox() {
       const [recent, unread] = await Promise.all([listIds(email, RECENT), listIds(email, QUERY)])
       const unreadIds = new Set(unread)
       rows.push(
-        ...(await Promise.all(
-          [...new Set([...recent, ...unread])].map(async (id) => {
-            const key = `mail:${email}:${id}`
-            if (!cache.has(key)) cache.set(key, await fetchAlert(email, id))
-            return { ...cache.get(key)!, unread: unreadIds.has(id) }
-          }),
-        )),
+        ...(await mapLimited([...new Set([...recent, ...unread])], MAX_PARALLEL, async (id) => ({
+          ...(await cachedAlert(email, id)),
+          unread: unreadIds.has(id),
+        }))),
       )
     } catch (error) {
       console.error(error)

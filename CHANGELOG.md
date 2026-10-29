@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **Fixed:** Opening Mail right after starting SyncR no longer shows "Couldn't reach Gmail" for a moment.
+
 ## [0.35.0] - 2026-10-29
 
 **Mail**
