@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- **Fixed:** Cards' text no longer shifts when you double-click to edit them.
+
 ## [0.32.1] - 2026-10-29
 
 **App**
