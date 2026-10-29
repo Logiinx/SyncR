@@ -332,7 +332,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
 }
 
 // While editing: text colors for the selected text (no highlights on cards), like the toolbar's
-// color button in notes. Grayed until some text is selected; the colors close by themselves
+// color button in notes. Only shown while some text is selected; the colors close by themselves
 // when the selection goes (a color picked, a click elsewhere, Escape).
 function CardColorButton({ editor }: { editor: Editor }) {
   const hasSelection = useEditorState({ editor, selector: ({ editor }) => !editor.state.selection.empty })
@@ -366,13 +366,13 @@ function CardColorButton({ editor }: { editor: Editor }) {
     setColors({ right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 4 })
   }
 
+  if (!hasSelection) return null
   return (
     <>
       <button
         className={['card-color', colors && 'active'].filter(Boolean).join(' ')}
         title="Text color"
         aria-label="Text color"
-        disabled={!hasSelection}
         // Keep the selection (and the phone keyboard) in the card
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => toggle(e.currentTarget)}

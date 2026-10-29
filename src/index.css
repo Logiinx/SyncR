@@ -1069,7 +1069,7 @@ button {
   gap: 2px;
 }
 
-/* While editing: the text color button, faint until text is selected */
+/* While editing, with text selected: the text color button */
 .card-color {
   width: 20px;
   height: 20px;
@@ -1081,18 +1081,13 @@ button {
   color: var(--text-dim);
 }
 
-.card-color:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.card-color:not(:disabled):hover,
+.card-color:hover,
 .card-color.active {
   background: var(--hover);
   color: var(--text);
 }
 
-/* Room for it */
+/* Room for it, kept for the whole edit (the text doesn't rewrap on each selection) */
 .card.editing .card-editor .tiptap {
   padding-right: 32px;
 }

@@ -8,7 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Right-click (long press on a phone) an image in a note to copy it.
 
 **Board**
-- **Improved:** Text colors on cards open from a small button, no longer pop up on every selection.
+- **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.
 
 ## [0.31.3] - 2026-10-28
 
