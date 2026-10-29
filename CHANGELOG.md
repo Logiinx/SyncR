@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-10-29
+
 **Mail**
 - **New:** Attached files show under each email: click one to open it, ⬇ to save it.
 - **New:** Click a picture in an email to see it full size; the scroll wheel zooms in and out.
