@@ -322,7 +322,8 @@ export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
   )?.[1]
   const text = decodePart(data ?? '', charset)
   if (part.mimeType === 'text/html') {
-    return { html: text, plain: false, remoteImages: REMOTE_IMAGE.test(text) }
+    const html = await withInlineImages(alert, message.payload, text)
+    return { html, plain: false, remoteImages: REMOTE_IMAGE.test(html) }
   }
   return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false }
 }
@@ -337,6 +338,50 @@ function findPart(part: Part | undefined, type: string): Part | undefined {
     if (found) return found
   }
   return undefined
+}
+
+// Images inside the text (logos, pasted pictures) come with the mail as parts with a label
+// (Content-ID); the text points to them as "cid:label". They're put in as data: addresses,
+// downloaded from Gmail (not from the sender: they can't tell the mail was opened). Pointers
+// with no matching part stay hidden (MailReader.tsx).
+async function withInlineImages(alert: MailAlert, payload: Part | undefined, html: string) {
+  const wanted = new Set(
+    [...html.matchAll(/cid:([^"'\s)>]+)/gi)].map((m) => safeDecode(m[1]).toLowerCase()),
+  )
+  if (!wanted.size) return html
+  const images = new Map<string, Part>() // label (and file name, some mails point to it) → part
+  const collect = (part: Part | undefined) => {
+    if (!part) return
+    if (part.mimeType?.startsWith('image/')) {
+      const id = part.headers?.find((h) => h.name.toLowerCase() === 'content-id')?.value
+      if (id) images.set(id.replace(/^<|>$/g, '').toLowerCase(), part)
+      if (part.filename) images.set(part.filename.toLowerCase(), part)
+    }
+    part.parts?.forEach(collect)
+  }
+  collect(payload)
+  const found = new Map<string, string>() // label → data: address
+  await Promise.all(
+    [...wanted].map(async (label) => {
+      const part = images.get(label)
+      if (!part) return
+      let data = part.body?.data
+      if (!data && part.body?.attachmentId) {
+        data = (await gmailApi(alert.account, `messages/${alert.id}/attachments/${part.body.attachmentId}`)).data
+      }
+      if (data) found.set(label, `data:${part.mimeType};base64,${data.replace(/-/g, '+').replace(/_/g, '/')}`)
+    }),
+  )
+  return html.replace(/cid:([^"'\s)>]+)/gi, (match, label) => found.get(safeDecode(label).toLowerCase()) ?? match)
+}
+
+// A label written with %-escapes (some mails do), read as is if they're not valid
+function safeDecode(text: string) {
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return text
+  }
 }
 
 // Gmail gives each part as base64url bytes, in the mail's own character set

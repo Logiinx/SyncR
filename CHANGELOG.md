@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Board**
 - **Fixed:** Cards' text no longer shifts when you double-click to edit them.
 
+**Mail**
+- **Fixed:** Pictures inside emails (logos, pasted images) now show instead of being left out.
+
 ## [0.32.1] - 2026-10-29
 
 **App**
