@@ -11,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 **Board**
 - **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.
 
+**Mail**
+- **Fixed:** Emails show properly dark: their own dark version, or kept colors (no more white mails).
+
 ## [0.31.3] - 2026-10-28
 
 **Mail**

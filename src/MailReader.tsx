@@ -4,6 +4,7 @@ import BackButton from './BackButton'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
+import { darkenMail } from './mailDark'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
@@ -12,9 +13,9 @@ import Spinner from './Spinner'
 // Then the mail, then Done · Mark as unread.
 // The mail shows in a sandboxed frame: no scripts run, and a content policy blocks anything
 // from the web (images, fonts, styles: they can tell the sender you opened it) until "Show
-// images". Links open in the normal browser. HTML mails show dark like a note (light text,
-// no backgrounds, links in the notes' blue); "Show original" brings back the sender's design
-// for this opening.
+// images". Links open in the normal browser. HTML mails show dark: the mail's own dark
+// version, or its light colors turned dark (mailDark.ts); "Show original" brings back the
+// sender's light design for this opening (not offered when it's the same: a mail made dark).
 function MailReader({ alert, onAction, onBack }: {
   alert: MailAlert
   onAction: (action: MailAction) => void
@@ -24,6 +25,8 @@ function MailReader({ alert, onAction, onBack }: {
   const [error, setError] = useState<string | null>(null)
   const [images, setImages] = useState(false)
   const [original, setOriginal] = useState(false)
+  const [ready, setReady] = useState(false) // the frame is shown once its colors are done
+  const [alreadyDark, setAlreadyDark] = useState(false) // dark mode changed nothing
   const frameRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
@@ -31,16 +34,26 @@ function MailReader({ alert, onAction, onBack }: {
     setError(null)
     setImages(false)
     setOriginal(false)
+    setAlreadyDark(false)
     fetchMailBody(alert).then(setBody, (e) => setError(e instanceof Error ? e.message : String(e)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alert.key])
 
   const dark = !!body && !body.plain && !original
   const doc = useMemo(() => body && frameDocument(body, images, dark), [body, images, dark])
+  useEffect(() => setReady(false), [doc])
 
   // Links in the mail open in the browser (the frame itself never navigates)
   function onFrameLoad() {
-    frameRef.current?.contentDocument?.addEventListener('click', (e) => {
+    const frameDoc = frameRef.current?.contentDocument
+    if (!frameDoc) return
+    if (dark) {
+      const changed = darkenMail(frameDoc)
+      // A mail with its own dark version still differs from its original
+      if (!changed && !/prefers-color-scheme/i.test(body?.html ?? '')) setAlreadyDark(true)
+    }
+    setReady(true)
+    frameDoc.addEventListener('click', (e) => {
       const link = (e.target as Element).closest?.('a[href]')
       if (!link) return
       e.preventDefault()
@@ -76,7 +89,7 @@ function MailReader({ alert, onAction, onBack }: {
               <button onClick={() => setImages(true)}>Show images</button>
             </>
           )}
-          {!body.plain && (
+          {!body.plain && !alreadyDark && (
             <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
               {original ? <Moon size={12} /> : <Sun size={12} />} {original ? 'Show dark' : 'Show original'}
             </button>
@@ -87,6 +100,9 @@ function MailReader({ alert, onAction, onBack }: {
         <iframe
           ref={frameRef}
           className={`mail-reader-frame${body?.plain || dark ? '' : ' html'}`}
+          // Dark: asks the mail for its own dark version (prefers-color-scheme); hidden until
+          // its colors are done, so it never flashes white
+          style={{ colorScheme: body?.plain || dark ? 'dark' : 'light', visibility: ready ? undefined : 'hidden' }}
           title="Email"
           sandbox="allow-same-origin" // no scripts; lets SyncR catch link clicks
           srcDoc={doc}
@@ -103,17 +119,14 @@ function MailReader({ alert, onAction, onBack }: {
 // The frame's page: a content policy (blocks the web unless images are shown), base styles
 // (plain text and dark HTML in the app's colors, the original HTML on white, as it's made
 // for it), then the mail, cleaned of what could act on its own (scripts, forms, refresh,
-// frames). Dark: the mail's own colors and backgrounds are overridden (images stay).
+// frames). Dark: the mail's colors are turned dark once it's loaded (onFrameLoad).
 function frameDocument(body: MailBody, images: boolean, dark: boolean) {
   const web = images ? ' https: http:' : ''
   const policy = `default-src 'none'; style-src 'unsafe-inline'${web}; img-src data:${web}; font-src data:${web}`
   const app = getComputedStyle(document.documentElement)
-  const [bg, text, link, border] = ['--bg-raised', '--text', '--link', '--border'].map((name) => app.getPropertyValue(name))
+  const [bg, text, link] = ['--bg-raised', '--text', '--link'].map((name) => app.getPropertyValue(name))
   const colors = body.plain || dark ? `background: ${bg}; color: ${text};` : 'background: #fff; color: #222;'
-  const links = body.plain ? `a { color: ${link}; }`
-    : dark ? `body > div, body > div * { background-color: transparent !important; color: ${text} !important; border-color: ${border} !important; }
-  body > div a, body > div a * { color: ${link} !important; }`
-    : ''
+  const links = body.plain ? `a { color: ${link}; }` : ''
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>
