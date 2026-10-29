@@ -6,16 +6,16 @@ All notable changes to SyncR. Newest version first.
 
 ## [0.33.0] - 2026-10-29
 
-**Board**
-- **Fixed:** Cards' text no longer shifts when you double-click to edit them.
+**App**
+- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
 
 **Mail**
 - **New:** "Always for amazon.com": a sender's web images show by themselves (list in Manage accounts).
 - **New:** Hidden tracking images never load, even with images shown ("2 trackers blocked").
 - **Fixed:** Pictures inside emails (logos, pasted images) now show instead of being left out.
 
-**App**
-- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
+**Board**
+- **Fixed:** Cards' text no longer shifts when you double-click to edit them.
 
 ## [0.32.1] - 2026-10-29
 
@@ -28,18 +28,18 @@ All notable changes to SyncR. Newest version first.
 - **New:** Right-click (long press on a phone) an image in a note to copy it.
 - **Improved:** Phone: the Image button is in the toolbar again; Strikethrough moved to the "⋯" list.
 
-**Board**
-- **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.
+**Reminders**
+- **New:** Five new soft sounds for reminders and emails: Drop, Glass, Wood, Rise and Bubble.
 
 **Mail**
 - **Improved:** Emails open at once in the pop-up, which grows to fit wide ones (no sideways scrolling).
 - **Fixed:** Emails show properly dark: their own dark version, or kept colors (no more white mails).
 
-**Reminders**
-- **New:** Five new soft sounds for reminders and emails: Drop, Glass, Wood, Rise and Bubble.
-
 **App**
 - **Improved:** Calmer, softer animations; side panels glide smoothly, windows settle into place.
+
+**Board**
+- **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.
 
 ## [0.31.3] - 2026-10-28
 
