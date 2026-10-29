@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Notes**
 - **New:** Right-click (long press on a phone) an image in a note to copy it.
+- **Improved:** Phone: the Image button is in the toolbar again; Strikethrough moved to the "⋯" list.
 
 **Board**
 - **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.

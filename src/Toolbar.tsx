@@ -36,8 +36,9 @@ const ICON_SIZE = 16
 // Slim bar above the note, pinned while the note scrolls. Groups: undo · text style · what the
 // lines are (checklist, section, code, separate lines) · insert · use elsewhere (link, pin).
 // Buttons that can't be used right now are grayed out, so the others never move. Without a
-// selection, the line buttons act on the cursor's line. On a phone the buttons after Checklist
-// don't fit: they're in a "⋯" list. Scrolls sideways if it still doesn't fit.
+// selection, the line buttons act on the cursor's line. On a phone not all fit: Strikethrough and
+// the buttons after Checklist (except Image) are in a "⋯" list. Scrolls sideways if it still
+// doesn't fit.
 function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; title: string }) {
   const narrow = useNarrow()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -137,7 +138,14 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
   // Phone: the "⋯" list, with only what can be used right now
   const [more, setMore] = useState<{ x: number; y: number } | null>(null)
   const moreItems = [
-    { label: state.inSection ? 'Remove section' : 'Section', icon: FoldVertical, show: state.inSection || state.canMakeSection, onClick: toggleSection },
+    { label: 'Strikethrough', icon: Strikethrough, show: true, checked: state.strike, onClick: () => chain().toggleStrike().run() },
+    {
+      label: state.inSection ? 'Remove section' : 'Section',
+      icon: FoldVertical,
+      show: state.inSection || state.canMakeSection,
+      divider: true,
+      onClick: toggleSection,
+    },
     {
       label: state.inCodeBlock ? 'Back to normal text' : 'Code block',
       icon: SquareCode,
@@ -147,7 +155,6 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
     { label: 'Separate lines', icon: Rows3, show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
     { label: 'Align under ">"', icon: IndentIncrease, show: state.canAlign, onClick: alignUnder },
     { label: 'Table', icon: Table, show: true, onClick: insertTable },
-    { label: 'Image', icon: ImageIcon, show: true, onClick: pickImage },
     { label: 'Copy link to this spot', icon: Link, show: true, onClick: copyLink },
     { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
   ].filter((item) => item.show)
@@ -173,13 +180,15 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
         <ToolButton title="Underline (Ctrl+U)" active={state.underline} onClick={() => chain().toggleUnderline().run()}>
           <Underline size={ICON_SIZE} />
         </ToolButton>
-        <ToolButton
-          title="Strikethrough (Ctrl+Shift+S)"
-          active={state.strike}
-          onClick={() => chain().toggleStrike().run()}
-        >
-          <Strikethrough size={ICON_SIZE} />
-        </ToolButton>
+        {!narrow && (
+          <ToolButton
+            title="Strikethrough (Ctrl+Shift+S)"
+            active={state.strike}
+            onClick={() => chain().toggleStrike().run()}
+          >
+            <Strikethrough size={ICON_SIZE} />
+          </ToolButton>
+        )}
   
         <ToolButton
           title="Text color and highlight"
@@ -201,16 +210,21 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
           <ListTodo size={ICON_SIZE} />
         </ToolButton>
         {narrow ? (
-          <ToolButton
-            title="More"
-            active={!!more}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              setMore(more ? null : { x: rect.left, y: rect.bottom + 4 * currentZoom() })
-            }}
-          >
-            {done ? <Check size={ICON_SIZE} /> : <Ellipsis size={ICON_SIZE} />}
-          </ToolButton>
+          <>
+            <ToolButton title="Insert image" onClick={pickImage}>
+              <ImageIcon size={ICON_SIZE} />
+            </ToolButton>
+            <ToolButton
+              title="More"
+              active={!!more}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setMore(more ? null : { x: rect.left, y: rect.bottom + 4 * currentZoom() })
+              }}
+            >
+              {done ? <Check size={ICON_SIZE} /> : <Ellipsis size={ICON_SIZE} />}
+            </ToolButton>
+          </>
         ) : (
           <>
             <ToolButton
