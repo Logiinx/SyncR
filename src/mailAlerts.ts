@@ -3,6 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { gmailApi, loadAccounts } from './gmail'
 import { openLink } from './links'
 import { read, write } from './localState'
+import { senderAddress } from './safeSenders'
 
 // New emails for the pop-up (PC). The main window checks each Gmail account that's on every
 // minute (useMailCheck) and keeps the cards to show in localStorage, which the pop-up window
@@ -297,6 +298,7 @@ export interface MailBody {
   html: string // the mail as HTML (a plain-text mail: escaped, links made clickable)
   plain: boolean // it was plain text (shown in the app's colors; HTML mails on white)
   remoteImages: boolean // it loads images from the web (blocked until "Show images")
+  sender: string // the sender's address (lower case, '' if unreadable): safe senders (safeSenders.ts)
 }
 
 interface Part {
@@ -310,8 +312,11 @@ interface Part {
 // The mail's text, read in the pop-up (MailReader.tsx): its HTML part, else its plain text
 export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
   const message = await gmailApi(alert.account, `messages/${alert.id}?format=full`)
+  const sender = senderAddress(
+    (message.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === 'from')?.value ?? '',
+  )
   const part = findPart(message.payload, 'text/html') ?? findPart(message.payload, 'text/plain')
-  if (!part) return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false }
+  if (!part) return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false, sender }
   let data = part.body?.data
   if (!data && part.body?.attachmentId) {
     // A long text comes apart from the message, like an attachment
@@ -323,9 +328,9 @@ export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
   const text = decodePart(data ?? '', charset)
   if (part.mimeType === 'text/html') {
     const html = await withInlineImages(alert, message.payload, text)
-    return { html, plain: false, remoteImages: REMOTE_IMAGE.test(html) }
+    return { html, plain: false, remoteImages: REMOTE_IMAGE.test(html), sender }
   }
-  return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false }
+  return { html: `<pre>${linkify(escapeHtml(text))}</pre>`, plain: true, remoteImages: false, sender }
 }
 
 // The first part of this type that isn't an attached file (mails nest parts: alternatives,

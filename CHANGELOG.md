@@ -8,6 +8,8 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Cards' text no longer shifts when you double-click to edit them.
 
 **Mail**
+- **New:** "Always for amazon.com": a sender's web images then show by themselves.
+- **New:** Hidden tracking images never load, even with images shown ("2 trackers blocked").
 - **Fixed:** Pictures inside emails (logos, pasted images) now show instead of being left out.
 
 ## [0.32.1] - 2026-10-29

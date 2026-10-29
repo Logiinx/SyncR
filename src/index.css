@@ -1631,9 +1631,10 @@ button {
   font-size: 13px;
 }
 
-/* "Images from the web are blocked. Show images" */
+/* "Web images blocked. Show images · Always for amazon.com" */
 .mail-reader-images {
   display: flex;
+  flex-wrap: wrap; /* the pop-up is narrow: buttons go to a second line when needed */
   align-items: center;
   gap: 6px;
   margin-top: 8px;
@@ -1645,21 +1646,43 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   padding: 3px 10px;
   border-radius: 5px;
   background: rgb(255 255 255 / 8%);
   color: var(--text);
   font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mail-reader-images button:hover {
   background: rgb(255 255 255 / 14%);
 }
 
-/* Show images · Show original: side by side on the right */
-.mail-reader-images button + button {
-  margin-left: 0;
+/* Show images · Always for … · Show original: together on the right; the whole group moves
+   to the next line when the note before it leaves no room */
+.mail-reader-image-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* "Always for amazon.com": a long address is cut (full text in its title) */
+.mail-reader-always span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Web images blocked." / "2 trackers blocked": discreet, on the left */
+.mail-reader-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .mail-reader-frame,

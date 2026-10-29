@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ExternalLink, ImageOff, Mail, Moon, Sun } from 'lucide-react'
+import { ExternalLink, ImageOff, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
 import { openLink } from './links'
 import { accountColor, MailButtons } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
 import { darkenMail } from './mailDark'
 import { formatDue } from './reminders'
+import { addSafeSender, isSafeSender, isTracker, trustFor } from './safeSenders'
 import Spinner from './Spinner'
 
 // A mail opened to read, in the desktop pop-up (which grows into a bigger window meanwhile,
@@ -56,7 +57,10 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   }, [alert.key])
 
   const dark = !!body && !body.plain && !original
-  const doc = useMemo(() => body && frameDocument(body, images, dark), [body, images, dark])
+  // A safe sender's mail opens with its web images (safeSenders.ts)
+  const showImages = images || (!!body && isSafeSender(body.sender))
+  const frame = useMemo(() => body && frameDocument(body, showImages, dark), [body, showImages, dark])
+  const doc = frame?.doc
   useEffect(() => setReady(false), [doc])
 
   // The frame changes width (window resized): fit the mail again
@@ -112,19 +116,38 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           <ExternalLink size={16} />
         </button>
       </div>
-      {body && (!body.plain || (body.remoteImages && !images)) && (
+      {body && (!body.plain || (body.remoteImages && !showImages)) && (
         <div className="mail-reader-images">
-          {body.remoteImages && !images && (
-            <>
-              <ImageOff size={14} /> Images from the web are blocked.
-              <button onClick={() => setImages(true)}>Show images</button>
-            </>
+          {body.remoteImages && !showImages && (
+            <span className="mail-reader-note">
+              <ImageOff size={14} /> Web images blocked.
+            </span>
           )}
-          {!body.plain && !alreadyDark && (
-            <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
-              {original ? <Moon size={12} /> : <Sun size={12} />} {original ? 'Show dark' : 'Show original'}
-            </button>
+          {showImages && !!frame?.trackers && (
+            <span className="mail-reader-note" title="Hidden images that tell the sender the email was opened: not loaded">
+              <ShieldCheck size={13} /> {frame.trackers} {frame.trackers === 1 ? 'tracker' : 'trackers'} blocked
+            </span>
           )}
+          <div className="mail-reader-image-buttons">
+            {body.remoteImages && !showImages && <button onClick={() => setImages(true)}>Show images</button>}
+            {body.remoteImages && !showImages && body.sender && (
+              <button
+                className="mail-reader-always"
+                title={`Always show images in emails from ${trustFor(body.sender)}`}
+                onClick={() => {
+                  addSafeSender(trustFor(body.sender))
+                  setImages(true)
+                }}
+              >
+                <span>Always for {trustFor(body.sender)}</span>
+              </button>
+            )}
+            {!body.plain && !alreadyDark && (
+              <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
+                {original ? <Moon size={12} /> : <Sun size={12} />} {original ? 'Show dark' : 'Show original'}
+              </button>
+            )}
+          </div>
         </div>
       )}
       {doc ? (
@@ -165,13 +188,14 @@ function fitToWidth(doc: Document) {
 // for it), then the mail, cleaned of what could act on its own (scripts, forms, refresh,
 // frames). Dark: the mail's colors are turned dark once it's loaded (onFrameLoad).
 function frameDocument(body: MailBody, images: boolean, dark: boolean) {
+  const { html, trackers } = cleanHtml(body.html)
   const web = images ? ' https: http:' : ''
   const policy = `default-src 'none'; style-src 'unsafe-inline'${web}; img-src data:${web}; font-src data:${web}`
   const app = getComputedStyle(document.documentElement)
   const [bg, text, link] = ['--bg-raised', '--text', '--link'].map((name) => app.getPropertyValue(name))
   const colors = body.plain || dark ? `background: ${bg}; color: ${text};` : 'background: #fff; color: #222;'
   const links = body.plain ? `a { color: ${link}; }` : ''
-  return `<!doctype html><html><head><meta charset="utf-8">
+  const doc = `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>
   html, body { margin: 0; }
@@ -182,15 +206,19 @@ function frameDocument(body: MailBody, images: boolean, dark: boolean) {
   pre { margin: 0; font: inherit; white-space: pre-wrap; }
   ${links}
 </style>
-${cleanHtml(body.html)}`
+${html}`
+  return { doc, trackers }
 }
 
-// The mail's own styles and body, without scripts, forms, frames, <meta> (refresh), <base>
-// and <link> (outside styles). The body's own color, style and class are kept on a wrapper
-// that fills the page.
+// The mail's own styles and body, without scripts, forms, frames, <meta> (refresh), <base>,
+// <link> (outside styles) and tracking pixels (counted, for "N trackers blocked"). The body's
+// own color, style and class are kept on a wrapper that fills the page.
 function cleanHtml(html: string) {
   const parsed = new DOMParser().parseFromString(html, 'text/html') // scripts don't run here
   parsed.querySelectorAll('script, noscript, form, iframe, frame, object, embed, meta, base, link').forEach((el) => el.remove())
+  // Tracking pixels never load, even with images shown (safeSenders.ts)
+  const trackers = [...parsed.querySelectorAll('img')].filter(isTracker)
+  trackers.forEach((el) => el.remove())
   const styles = [...parsed.querySelectorAll('style')].map((el) => el.outerHTML).join('')
   parsed.querySelectorAll('style').forEach((el) => el.remove())
   const wrapper = parsed.createElement('div')
@@ -199,7 +227,7 @@ function cleanHtml(html: string) {
   const className = parsed.body.getAttribute('class')
   if (className) wrapper.setAttribute('class', className)
   wrapper.innerHTML = parsed.body.innerHTML
-  return `${styles}</head><body>${wrapper.outerHTML}</body></html>`
+  return { html: `${styles}</head><body>${wrapper.outerHTML}</body></html>`, trackers: trackers.length }
 }
 
 export default MailReader
