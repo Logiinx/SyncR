@@ -1,12 +1,12 @@
 import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
-import { endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
+import { endingChange, endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
-// Three groups: Move to … ("Start playing" for Playing) | priority, price alert, Board (priority
-// first, like a Board card's menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
+// Groups: Move to … ("Start playing" for Playing) | Library: how it ended | priority, price alert,
+// Board (priority first, like a Board card's menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
 // With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
 export function gameMenuItems(
   game: Game,
@@ -20,6 +20,11 @@ export function gameMenuItems(
         status === 'library' && game.status === 'playing' && view.onAskEnding
           ? view.onAskEnding()
           : setGameStatus(game.id, status),
+    })),
+    // Library: how it ended, like the game window's pills (✓ = the current one, again = none)
+    ...(game.status !== 'library' ? [] : ENDINGS.filter((e) => e.ending).map(({ ending, label, icon }, i) => {
+      const on = endingOf(game) === ending
+      return { label, icon, checked: on, divider: i === 0, onClick: () => updateGame(game.id, endingChange(on ? undefined : ending)) }
     })),
     {
       label: priorityLabel(game),
