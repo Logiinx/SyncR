@@ -111,11 +111,13 @@ export interface Card {
 // A game in the Games tab (GamesView.tsx), with its data from IGDB (igdb.ts).
 // Synced like a card: one file per game, newest wins, a removed game stays as a row with
 // deleted = true for a while. The id comes from IGDB's, so a game can't be in the list twice.
-// Before v0.20 there were "done" and "dropped", before v0.22 "watched" (games.ts upgradeOldStatuses).
-export type GameStatus = 'waiting' | 'toplay' | 'playing' | 'library'
+// Before v0.20 there were "done" and "dropped", before v0.22 "watched", before v0.36 "toplay"
+// (to buy and owned mixed, now "tobuy") (games.ts upgradeOldStatuses). Shown as tabs: waiting =
+// Coming soon, tobuy = To buy, upnext + playing = To play (two parts), library (games.ts TABS).
+export type GameStatus = 'waiting' | 'tobuy' | 'upnext' | 'playing' | 'library'
 
 // Games whose price can be watched (priceWatch.ts): not owned yet
-export const canWatch = (game: { status: GameStatus }) => game.status === 'toplay' || game.status === 'waiting'
+export const canWatch = (game: { status: GameStatus }) => game.status === 'tobuy' || game.status === 'waiting'
 // A price alert on the game or on one of its editions
 export const isWatched = (game: { watch?: PriceWatch; editionWatches?: EditionWatch[] }) =>
   !!game.watch || !!game.editionWatches?.length
@@ -127,7 +129,7 @@ export interface SteamStats {
   total?: number
 }
 
-// A To play or Waiting game's price alert (priceWatch.ts): when it alerts (the cheaper of Steam
+// A To buy or Coming soon game's price alert (priceWatch.ts): when it alerts (the cheaper of Steam
 // and the cheapest key). It alerts once, then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
   // Before v0.22 a watch also had store: 'steam' | 'key'; now it looks at the cheaper of both
@@ -139,7 +141,7 @@ export interface PriceWatch {
   firedPrice?: number // cents, the price that made it alert
 }
 
-// A watched edition of a To play or Waiting game (editions.ts): its own watch, on its Steam
+// A watched edition of a To buy or Coming soon game (editions.ts): its own watch, on its Steam
 // package or bundle.
 export interface EditionWatch extends PriceWatch {
   kind: 'sub' | 'bundle'
@@ -166,7 +168,7 @@ export interface Game {
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
-  watch?: PriceWatch // To play and Waiting games only (canWatch)
+  watch?: PriceWatch // To buy and Coming soon games only (canWatch)
   editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
   deleted: boolean
@@ -531,7 +533,7 @@ export async function updateGame(id: string, change: Partial<Game>) {
   changed()
 }
 
-// Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
+// Up next, Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
 // and Favorite mean different things, so the mark goes (games.ts isFavoriteTab).
 export async function setGameStatus(id: string, status: GameStatus) {
   const game = await db.games.get(id)

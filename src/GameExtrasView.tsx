@@ -35,7 +35,7 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
-// Prices in the game windows (prices.ts), same look as the To play list (GamePriceLine): Steam
+// Prices in the game windows (prices.ts), same look as the To buy list (GamePriceLine): Steam
 // logo + price + green discount badge (and the old price), key icon + the cheapest key that
 // works in France (GG.deals), then the all-time lows. A price opens its Steam or GG.deals page.
 // Nothing shows for games not on Steam or when prices can't load.
@@ -148,7 +148,7 @@ function SteamIcon({ cheapest }: { cheapest?: boolean }) {
   )
 }
 
-// To play list (user's pick "B"): Steam logo + price + green discount badge, key icon + cheapest
+// To buy list (user's pick "B"): Steam logo + price + green discount badge, key icon + cheapest
 // key. Two lines in the grid, one line in the list (CSS). Only prices already looked up (at
 // start, or when the list opens); nothing while unknown.
 export function GamePriceLine({ igdbId }: { igdbId: number }) {

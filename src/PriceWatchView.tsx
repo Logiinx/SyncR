@@ -7,7 +7,7 @@ import { editionLabel, gameEditions, knownEditions, type Edition } from './editi
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
 import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
 
-// The "Price alerts" part of a To play or Waiting game's window (GameDialog.tsx): per row (the
+// The "Price alerts" part of a To buy or Coming soon game's window (GameDialog.tsx): per row (the
 // game, its editions) a bell turns the alert on or off, then when to alert on the cheaper of Steam
 // and the cheapest key, what it looks like now,
 // "Stop watching" and a link to the game's GG.deals page to set an alert there too (store
@@ -53,7 +53,7 @@ const nowText = (now: ReturnType<typeof currentPrice>) =>
 
 type WatchFields = Pick<PriceWatch, 'when' | 'target'>
 
-// "Price alerts" in a To play or Waiting game's window: one list, the game first, then its
+// "Price alerts" in a To buy or Coming soon game's window: one list, the game first, then its
 // other editions on Steam (editions.ts), each row with its own alert (an edition is watched only
 // when the user sets one). The editions known from the start lookup show at once and are asked
 // again quietly; before any are known a dim line keeps their place, so nothing jumps.

@@ -42,7 +42,7 @@ function RemindersView() {
   )
   // The main Google Calendar's events (calendarEvents.ts). The release events of Waiting games
   // (games.ts) are left out: the game shows instead (with its cover). Once out, the game moves
-  // to "To play" and its event shows like any other.
+  // to "To buy" and its event shows like any other.
   const gameEventIds = new Set((waitingGames ?? []).map(releaseEventId))
   const calendar = useCalendarEvents()
   // "Hide repeating" (per device): repeating events leave the list and grid, so the next real

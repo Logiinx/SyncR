@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, STATUSES } from './games'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, tabOf, TABS, type GamesTab } from './games'
 import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
@@ -28,6 +28,9 @@ import GamePreview from './GamePreview'
 const SEARCH_DELAY = 400 // ms after the last key before searching
 
 type GamesViewName = 'mine' | 'calendar'
+
+// The open tab: To buy at each start (the user checks it most), then the last one opened
+let sessionTab: GamesTab = 'tobuy'
 type ShelfLayout = 'grid' | 'list'
 const VIEWS: { value: GamesViewName; label: string }[] = [
   { value: 'mine', label: 'My games' },
@@ -44,10 +47,9 @@ function GamesView() {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
-  // The status shown (one at a time) and grid or list, remembered per device
-  const [remembered, setShown] = useLocalState<GameStatus>('syncr.gamesStatus', 'waiting')
-  // Before v0.20 it could be "done" or "dropped", which became the Library
-  const shown: GameStatus = STATUSES.some((s) => s.status === remembered) ? remembered : 'library'
+  // The tab shown (one at a time); grid or list, remembered per device
+  const [shown, setShownState] = useState<GamesTab>(sessionTab)
+  const setShown = (tab: GamesTab) => setShownState((sessionTab = tab))
   const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
   const statusList = useRef<HTMLDivElement>(null)
   const lines = useTabLines(statusList, shown)
@@ -57,9 +59,9 @@ function GamesView() {
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
-  // To play and Waiting: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  // To buy and Coming soon: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
-    if (canWatch({ status: shown })) loadListPrices()
+    if (TABS.find((t) => t.tab === shown)!.statuses.some((status) => canWatch({ status }))) loadListPrices()
   }, [shown])
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
@@ -144,12 +146,12 @@ function GamesView() {
                 <div className={shelf === 'grid' ? 'games-status-tabs wide' : 'games-status-tabs'}>
                   {/* Scrolls sideways when the screen is too narrow (phone) */}
                   <div className="games-status-list" ref={statusList} onPointerLeave={lines.onRowLeave}>
-                    {STATUSES.map(({ status, label }) => {
-                      const count = games.filter((g) => g.status === status).length
-                      let className = shown === status ? 'active' : ''
-                      if (lines.hovered === status) className += ' hovered'
+                    {TABS.map(({ tab, label }) => {
+                      const count = games.filter((g) => tabOf(g.status).tab === tab).length
+                      let className = shown === tab ? 'active' : ''
+                      if (lines.hovered === tab) className += ' hovered'
                       return (
-                        <button key={status} {...lines.tabProps(status)} className={className} onClick={() => setShown(status)}>
+                        <button key={tab} {...lines.tabProps(tab)} className={className} onClick={() => setShown(tab)}>
                           {label}
                           {count > 0 && <span className="games-count">{count}</span>}
                           <TabLines />
@@ -166,14 +168,18 @@ function GamesView() {
                   <FillSwitch className="calendar-layouts games-layouts" options={SHELF_LAYOUTS} value={shelf} onChange={setShelf} />
                 </div>
                 {/* A new list for each tab and layout: switching isn't games coming and going */}
-                <GameShelf
-                  key={`${shown}-${shelf}`}
-                  games={sortGames(games.filter((g) => g.status === shown))}
-                  layout={shelf}
-                  emptyText={`No games in ${statusLabel(shown)}`}
-                  onOpen={setOpenId}
-                  onMenu={openMenu}
-                />
+                {shown === 'toplay' ? (
+                  <ToPlayShelf key={shelf} games={games} layout={shelf} onOpen={setOpenId} onMenu={openMenu} />
+                ) : (
+                  <GameShelf
+                    key={`${shown}-${shelf}`}
+                    games={sortGames(games.filter((g) => tabOf(g.status).tab === shown))}
+                    layout={shelf}
+                    emptyText={`No games in ${TABS.find((t) => t.tab === shown)!.label}`}
+                    onOpen={setOpenId}
+                    onMenu={openMenu}
+                  />
+                )}
               </>
             )}
           </>
@@ -196,6 +202,32 @@ function GamesView() {
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
+  )
+}
+
+// To play: two parts, Playing above Up next (owned, not started), each with its title and count
+function ToPlayShelf({ games, layout, onOpen, onMenu }: {
+  games: Game[]
+  layout: ShelfLayout
+  onOpen: (id: string) => void
+  onMenu: (game: Game, x: number, y: number) => void
+}) {
+  const parts = [
+    { title: 'Playing', games: games.filter((g) => g.status === 'playing'), empty: 'Nothing being played right now.' },
+    { title: 'Up next', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet." },
+  ]
+  return (
+    <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>
+      {parts.map((part) => (
+        <section key={part.title} className="games-part">
+          <h3 className="games-part-title">
+            {part.title}
+            {part.games.length > 0 && <span className="games-count">{part.games.length}</span>}
+          </h3>
+          <GameShelf games={sortGames(part.games)} layout={layout} emptyText={part.empty} onOpen={onOpen} onMenu={onMenu} />
+        </section>
+      ))}
+    </div>
   )
 }
 

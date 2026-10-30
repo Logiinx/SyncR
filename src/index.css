@@ -4553,6 +4553,26 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
+/* To play's two parts (Playing, Up next): a small title with its count above each shelf */
+.games-part + .games-part {
+  margin-top: 28px;
+}
+
+.games-part-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.games-parts.wide .games-part-title,
+.games-parts.wide .games-shelf-empty {
+  margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* lined up with the wide grid */
+}
+
 /* Big covers. The grid uses the page's free width (up to 2200 px), not just the 760 px of the
    search and tabs above it: each cover gets about 1/7 of it (so ~6 per row) and grows with the
    window up to 170 px; wider still, more per row. A phone: 3 per row (100 px at least).
@@ -5397,13 +5417,15 @@ h3.games-group-title {
   background: var(--bg);
 }
 
+/* One line; on a narrow screen at a big app scale "Coming soon" wraps instead of overflowing */
 .gd-status button {
-  flex: 1;
+  flex: 1 1 auto;
   padding: 5px 2px;
   border-radius: 6px;
   color: var(--text-dim);
   font-size: 0.85em;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: normal;
 }
 
 .gd-status button:hover {

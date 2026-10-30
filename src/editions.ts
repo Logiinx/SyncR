@@ -77,7 +77,7 @@ export function editionLabel(gameName: string, name: string) {
 // The last known editions of a game, however old: a game window shows them at once, then asks again
 export const knownEditions = (igdbId: number) => cache.get(igdbId)?.editions
 
-// Editions of all To play and Waiting games, once per start (games.ts, a minute after the
+// Editions of all To buy and Coming soon games, once per start (games.ts, a minute after the
 // prices, so both don't share GG.deals' per-minute limit). Quietly does nothing when it can't.
 export async function loadListEditions() {
   try {

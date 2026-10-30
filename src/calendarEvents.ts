@@ -334,7 +334,7 @@ export async function saveReleaseEvent(release: ReleaseEvent): Promise<boolean> 
   return true
 }
 
-// Deletes the event if it exists and its day hasn't come yet (a game moves to "To play" on its
+// Deletes the event if it exists and its day hasn't come yet (a game moves to "To buy" on its
 // release day: its event stays). Marked first, so saveReleaseEvent() knows SyncR deleted it.
 // Returns true if Google changed.
 export async function removeReleaseEvent(id: string): Promise<boolean> {

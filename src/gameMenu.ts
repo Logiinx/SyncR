@@ -1,17 +1,17 @@
-import { ArrowRight, Bell, BellOff, Heart, Pin, PinOff, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowRight, Bell, BellOff, Heart, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game } from './db'
 import { isFavoriteTab, priorityLabel, STATUSES } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
-// Three groups: Move to … | priority, price alert, Board (priority first, like a Board card's
-// menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
+// Three groups: Move to … ("Start playing" for Playing) | priority, price alert, Board (priority
+// first, like a Board card's menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
 export function gameMenuItems(game: Game, view: { pinned: boolean; onWatch: () => void; onRemove: () => void }): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
-      label: `Move to ${label}`,
-      icon: ArrowRight,
+      label: status === 'playing' ? 'Start playing' : `Move to ${label}`,
+      icon: status === 'playing' ? Play : ArrowRight,
       onClick: () => setGameStatus(game.id, status),
     })),
     {
@@ -20,7 +20,7 @@ export function gameMenuItems(game: Game, view: { pinned: boolean; onWatch: () =
       divider: true,
       onClick: () => updateGame(game.id, { priority: !game.priority }),
     },
-    // To play and Waiting: the price alert, set in the game window
+    // To buy and Coming soon: the price alert, set in the game window
     ...(!canWatch(game) ? [] : isWatched(game)
       ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]
       : [{ label: 'Watch price…', icon: Bell, onClick: view.onWatch }]),
