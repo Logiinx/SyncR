@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { ArrowLeft, Bell, ChevronDown } from 'lucide-react'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
 import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useInstantMail } from './instantMail'
+import { startMailbox } from './mailbox'
 import { useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
@@ -75,6 +76,7 @@ export function ReminderCards({ due, onAction }: {
 function ReminderAlerts() {
   const due = useDueReminders()
   useMailCheck() // PC: new emails go to the pop-up too
+  useEffect(startMailbox, []) // PC: the Mail tab's list, ready before the tab opens
   useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
   const popupFailed = useReminderPopup(due, mails)

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
+import { isTauri } from '@tauri-apps/api/core'
 import { errorDetails, gmailApi, gmailErrorText, loadAccounts } from './gmail'
 import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 
 // The Mail tab's list (MailView.tsx): the last 50 mails in Primary of every Gmail account
-// that's on, read or not, plus any older unread ones; newest first, live from Gmail. Loaded
-// when the tab opens, with its refresh button, and whenever the minute check or instant mail
-// sees a change in a mailbox (mailbox-change: new mail, mail read or marked unread in Gmail…),
-// and again after a failed load (RETRY_MS).
+// that's on, read or not, plus any older unread ones; newest first, live from Gmail. Kept in
+// memory while SyncR runs (never saved), so the tab opens at once: loaded a few seconds after
+// start (startMailbox), again when the tab opens (in the background, the old list stays shown),
+// with its refresh button, whenever the minute check or instant mail sees a change in a mailbox
+// (mailbox-change: new mail, mail read or marked unread in Gmail…), and after a failed load (RETRY_MS).
 
 export const MAIL_TAB = 'mail' // its id among the open tabs (like GAMES_TAB)
 const RECENT = 'in:inbox category:primary' // QUERY without is:unread
@@ -79,43 +81,57 @@ async function loadInbox() {
   return { rows: rows.filter((row, i) => i < MAX_ROWS || row.unread), errors }
 }
 
+type Mailbox = {
+  rows: MailboxRow[] | null // null: first load
+  errors: MailboxError[]
+  loading: boolean
+  loadedFrom: number // when the shown list's load started (ms)
+}
+let mailbox: Mailbox = { rows: null, errors: [], loading: false, loadedFrom: 0 }
+const listeners = new Set<() => void>()
+const setMailbox = (change: Partial<Mailbox>) => {
+  mailbox = { ...mailbox, ...change }
+  listeners.forEach((listener) => listener())
+}
+
+// Loads can overlap (refresh button, a change in Gmail): only the last one started is shown
+let lastLoad = 0
+let retryTimer: number | undefined
+let retryCount = 0
+export async function refreshMailbox() {
+  const load = ++lastLoad
+  clearTimeout(retryTimer)
+  const startedAt = Date.now()
+  setMailbox({ loading: true })
+  const result = await loadInbox()
+  if (load !== lastLoad) return
+  setMailbox({ rows: result.rows, errors: result.errors, loadedFrom: startedAt, loading: false })
+  if (result.errors.length === 0) retryCount = 0
+  else retryTimer = window.setTimeout(refreshMailbox, RETRY_MS[Math.min(retryCount++, RETRY_MS.length - 1)])
+}
+
+// Started once by the app (PC; in the browser only while developing): the first load waits a
+// few seconds (the minute check also asks Gmail right at start), then follows every change
+const FIRST_LOAD_AFTER = 5000
+let started = false
+export function startMailbox() {
+  if (started || (!isTauri() && !import.meta.env.DEV)) return
+  started = true
+  window.setTimeout(() => !mailbox.loading && !mailbox.rows && refreshMailbox(), FIRST_LOAD_AFTER)
+  for (const event of ['mailbox-change', 'gmail-change', 'online']) window.addEventListener(event, refreshMailbox)
+}
+
 export function useMailbox() {
-  const [rows, setRows] = useState<MailboxRow[] | null>(null) // null: first load
-  const [errors, setErrors] = useState<MailboxError[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loadedFrom, setLoadedFrom] = useState(0) // when the shown list's load started (ms)
-  const lastLoad = useRef(0)
-  const retry = useRef<{ timer?: number; count: number }>({ count: 0 })
-
-  // Loads can overlap (refresh button, a change in Gmail): only the last one started is shown
-  const refresh = useCallback(async () => {
-    const load = ++lastLoad.current
-    clearTimeout(retry.current.timer)
-    const startedAt = Date.now()
-    setLoading(true)
-    const result = await loadInbox()
-    if (load !== lastLoad.current) return
-    setRows(result.rows)
-    setErrors(result.errors)
-    setLoadedFrom(startedAt)
-    setLoading(false)
-    if (result.errors.length === 0) retry.current.count = 0
-    else retry.current.timer = window.setTimeout(refresh, RETRY_MS[Math.min(retry.current.count++, RETRY_MS.length - 1)])
-  }, [])
-
+  const shown = useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => mailbox,
+  )
+  // Opening the tab: a fresh list in the background (unless one is loading already)
   useEffect(() => {
-    refresh()
-    window.addEventListener('mailbox-change', refresh)
-    window.addEventListener('gmail-change', refresh)
-    window.addEventListener('online', refresh)
-    return () => {
-      lastLoad.current++ // a load still running when the tab closes is dropped (no retry timer)
-      clearTimeout(retry.current.timer)
-      window.removeEventListener('online', refresh)
-      window.removeEventListener('mailbox-change', refresh)
-      window.removeEventListener('gmail-change', refresh)
-    }
-  }, [refresh])
-
-  return { rows, errors, loading, loadedFrom, refresh }
+    if (!mailbox.loading) refreshMailbox()
+  }, [])
+  return { ...shown, refresh: refreshMailbox }
 }

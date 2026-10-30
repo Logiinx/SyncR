@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 - **Improved:** Playing and Not started titles in To play are bigger and easier to spot.
 - **Improved:** Achievement bars turn from blue to green as they fill, so progress is easy to read.
 
+**Mail**
+- **Improved:** The Mail tab opens at once: its list loads in the background while SyncR runs.
+
 ## [0.36.0] - 2026-10-30
 
 **Games**
