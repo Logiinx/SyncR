@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { Bell, BellOff, BellRing, ExternalLink } from 'lucide-react'
+import { Bell, BellOff, BellRing, ExternalLink, PackageCheck } from 'lucide-react'
 import type { Game, PriceWatch } from './db'
 import { shortDate } from './dates'
 import { openLink } from './links'
@@ -23,6 +23,11 @@ const WHEN: [PriceWatch['when'], string][] = [
 // corner (the check/trophy badge has the right one), a bell, ringing and green once a price was
 // reached. Hover: one line per alert ("Alert at ≤ 10,00 €", "Deluxe Edition: alert at ≤ 25,00 €",
 // "· reached 9,50 €" once it rang).
+// A pre-ordered Coming soon game: a green box in the same corner (it never has a bell)
+export function PreorderBadge() {
+  return <span className="game-badge preorder" title="Pre-ordered"><PackageCheck /></span>
+}
+
 export function WatchBell({ game }: { game: Game }) {
   const watches = [
     ...(game.watch ? [{ watch: game.watch as PriceWatch, name: '' }] : []),

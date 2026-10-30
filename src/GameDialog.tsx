@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, PackageCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
-import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
+import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
 import { ENDING_HEADER, endingMenuItems, ENDINGS } from './gameMenu'
 import ContextMenu from './ContextMenu'
@@ -154,6 +154,20 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
         />
         {endingAt && (
           <ContextMenu x={endingAt.x} y={endingAt.y} header={ENDING_HEADER} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
+        )}
+
+        {/* Coming soon: a pre-order is owned (no price alerts; Up next on release day) */}
+        {game.status === 'waiting' && (
+          <div className="game-endings">
+            <button
+              className={game.preordered ? 'game-ending completed on' : 'game-ending completed'}
+              onClick={() => setPreordered(game.id, !game.preordered)}
+              aria-pressed={!!game.preordered}
+            >
+              <PackageCheck size={16} />
+              Pre-ordered
+            </button>
+          </div>
         )}
 
         {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}

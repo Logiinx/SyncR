@@ -1,5 +1,5 @@
-import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
-import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game } from './db'
+import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
+import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
 import { endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
@@ -27,6 +27,10 @@ export function gameMenuItems(
       divider: true,
       onClick: () => updateGame(game.id, { priority: !game.priority }),
     },
+    // Coming soon: pre-ordered or not (a pre-order has no price alert)
+    ...(game.status !== 'waiting' ? [] : game.preordered
+      ? [{ label: 'Not pre-ordered', icon: PackageX, onClick: () => setPreordered(game.id, false) }]
+      : [{ label: 'Mark as pre-ordered', icon: PackageCheck, onClick: () => setPreordered(game.id, true) }]),
     // To buy and Coming soon: the price alert, set in the game window
     ...(!canWatch(game) ? [] : isWatched(game)
       ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]

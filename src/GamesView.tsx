@@ -6,7 +6,7 @@ import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, remo
 import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
-import { WatchBell } from './PriceWatchView'
+import { PreorderBadge, WatchBell } from './PriceWatchView'
 import { isHundred, playedText, useSteamProfile } from './steam'
 import { shortDate } from './dates'
 import SteamImport from './SteamImport'
@@ -344,6 +344,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         <Cover coverId={game.coverId} big />
         <GameBadge game={game} />
         {isWatched(game) && <WatchBell game={game} />}
+        {game.preordered && <PreorderBadge />}
       </div>
       <div className="game-tile-name">{game.name}</div>
       {showsRated(game) ? (
@@ -381,6 +382,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
         <Cover coverId={game.coverId} />
         <GameBadge game={game} />
         {isWatched(game) && <WatchBell game={game} />}
+        {game.preordered && <PreorderBadge />}
       </span>
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>

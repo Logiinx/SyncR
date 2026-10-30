@@ -5265,13 +5265,20 @@ h3.games-group-title {
 }
 
 /* Price watched (WatchBell): the left corner, white; green and ringing once reached */
-.game-badge.watch {
+.game-badge.watch,
+.game-badge.preorder {
   right: auto;
   left: 6px;
   color: var(--text);
 }
 
-.game-row-cover .game-badge.watch {
+/* Pre-ordered (PreorderBadge): the bell's corner, green */
+.game-badge.preorder {
+  color: var(--text-green);
+}
+
+.game-row-cover .game-badge.watch,
+.game-row-cover .game-badge.preorder {
   right: auto;
   left: -4px;
 }

@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** "Start playing" in a game's menu; Games opens on To buy. Your old To play games are in To buy.
 - **New:** Library games can be marked Completed, Paused or Dropped; SyncR asks when you stop playing.
 - **New:** A line at the top of Games tells you when a game moved by itself, e.g. on release day.
+- **New:** Mark a Coming soon game as pre-ordered: no price alerts, and it goes to To play when it's out.
 - **Improved:** To buy lists games on sale on Steam first, biggest discount first (after Priority).
 - **Improved:** Click a "Delayed" or "Date set" line at the top of Games to open its game.
 

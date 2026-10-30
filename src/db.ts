@@ -116,8 +116,9 @@ export interface Card {
 // Coming soon, tobuy = To buy, upnext + playing = To play (two parts), library (games.ts TABS).
 export type GameStatus = 'waiting' | 'tobuy' | 'upnext' | 'playing' | 'library'
 
-// Games whose price can be watched (priceWatch.ts): not owned yet
-export const canWatch = (game: { status: GameStatus }) => game.status === 'tobuy' || game.status === 'waiting'
+// Games whose price can be watched (priceWatch.ts): not owned yet (a pre-order is owned)
+export const canWatch = (game: { status: GameStatus; preordered?: boolean }) =>
+  game.status === 'tobuy' || (game.status === 'waiting' && !game.preordered)
 // A price alert on the game or on one of its editions
 export const isWatched = (game: { watch?: PriceWatch; editionWatches?: EditionWatch[] }) =>
   !!game.watch || !!game.editionWatches?.length
@@ -160,6 +161,7 @@ export interface Game {
   delayedFromLabel?: string // the same when the earlier date was vague, e.g. "Q1 2027"
   datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
   movedBy?: 'released' | 'bought' | 'started' // SyncR moved it by itself (banner until dismissed or moved by hand)
+  preordered?: boolean // Coming soon only: owned already, so no price alert; goes to Up next on release
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
@@ -549,7 +551,13 @@ export async function setGameStatus(id: string, status: GameStatus) {
     ...(leavesMark && { priority: false }),
     ...(status !== 'library' && game?.ending && { ending: undefined }),
     ...(game?.movedBy && { movedBy: undefined }),
+    ...(game?.preordered && { preordered: undefined }), // only means something while Coming soon
   })
+}
+
+// "Pre-ordered" (Coming soon games: menu and game window): owned, so its price alerts go
+export async function setPreordered(id: string, on: boolean) {
+  await updateGame(id, on ? { preordered: true, watch: undefined, editionWatches: undefined } : { preordered: undefined })
 }
 
 // ---------- Games on the Board ----------
