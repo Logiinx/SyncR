@@ -4622,10 +4622,10 @@ h3.games-group-title {
    grid in the Covers layout), one slim row each on the phone */
 .playing-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   gap: 12px;
-  /* As big as a cover in the grid below (.games-grid), so Playing stands out over Not started */
-  --playing-cover: clamp(100px, var(--shelf-width) / 7, 170px);
+  /* Two thirds of a usual grid cover (.games-grid); Not started's covers are smaller still */
+  --playing-cover: clamp(68px, var(--shelf-width) / 10.5, 114px);
 }
 
 .playing-card {
@@ -4706,6 +4706,11 @@ h3.games-group-title {
 /* To play's two parts (Playing, Not started): a small title with its count above each shelf */
 .games-part + .games-part {
   margin-top: 28px;
+}
+
+/* Not started: smaller covers than the other tabs' grids (and than Playing's), so "now" comes first */
+.games-part.later .games-grid {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(76px, var(--shelf-width) / 9.5, 128px), 1fr));
 }
 
 /* To play's part titles (Playing, Not started): bright, with a line to the end */

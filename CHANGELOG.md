@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- **Improved:** Playing games show big covers, so they stand out over Not started.
+- **Improved:** To play: Playing cards have bigger covers and Not started smaller ones, so Playing comes first.
 - **Fixed:** Library games can be unpaused from their right-click menu (Completed, Paused, Dropped).
 
 ## [0.37.0] - 2026-10-31

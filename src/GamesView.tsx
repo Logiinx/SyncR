@@ -243,7 +243,7 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   return (
     <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>
       {parts.map((part) => (
-        <section key={part.title} className="games-part">
+        <section key={part.title} className={part.title === 'Playing' ? 'games-part' : 'games-part later'}>
           <h3 className="games-part-title">
             {part.title}
             {part.games.length > 0 && <span className="games-count">{part.games.length}</span>}
