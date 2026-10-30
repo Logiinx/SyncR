@@ -4622,16 +4622,18 @@ h3.games-group-title {
    grid in the Covers layout), one slim row each on the phone */
 .playing-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
   gap: 12px;
+  /* As big as a cover in the grid below (.games-grid), so Playing stands out over Not started */
+  --playing-cover: clamp(100px, var(--shelf-width) / 7, 170px);
 }
 
 .playing-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--text) 2%, var(--bg));
@@ -4649,14 +4651,15 @@ h3.games-group-title {
 }
 
 .playing-card .game-cover {
-  width: 64px;
-  height: 86px;
+  width: var(--playing-cover);
+  height: auto;
+  aspect-ratio: 3 / 4;
 }
 
 .playing-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   flex: 1;
   min-width: 0;
 }
@@ -4669,6 +4672,7 @@ h3.games-group-title {
 
 .playing-top .game-name {
   flex: 1;
+  font-size: 1.15em;
   font-weight: 600;
 }
 
@@ -4694,12 +4698,8 @@ h3.games-group-title {
   }
 
   .playing-card {
-    padding: 6px 8px;
-  }
-
-  .playing-card .game-cover {
-    width: 40px;
-    height: 54px;
+    gap: 12px;
+    padding: 8px;
   }
 }
 
