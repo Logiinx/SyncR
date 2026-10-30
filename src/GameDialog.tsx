@@ -306,6 +306,18 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
   )
 }
 
+// Steam achievements bar (game window, Playing cards): blue turning green as it fills, gold at
+// 100% (CSS, .hundred), so 14 / 27 doesn't look like 0 / 66
+export function AchievementBar({ stats }: { stats: SteamStats }) {
+  const percent = stats.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
+  const color = isHundred(stats) ? undefined : `color-mix(in oklab, var(--text-green) ${percent}%, var(--text-blue))`
+  return (
+    <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
+      <div style={{ width: `${percent}%`, background: color }} />
+    </div>
+  )
+}
+
 // Game window: two blocks, hours played and achievements with a bar (gold at 100%)
 function SteamStatsView({ stats }: { stats: SteamStats }) {
   const percent = stats.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
@@ -329,9 +341,7 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
               <span>achievements</span>
               <span className="gd-percent">{percent}%</span>
             </div>
-            <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
-              <div style={{ width: `${percent}%` }} />
-            </div>
+            <AchievementBar stats={stats} />
           </div>
         </div>
       )}

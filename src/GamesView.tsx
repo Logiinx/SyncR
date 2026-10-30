@@ -15,7 +15,7 @@ import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { CALENDAR_LAYOUTS, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import GameDialog, { GameBadge, GameRated, showsRated } from './GameDialog'
+import GameDialog, { AchievementBar, GameBadge, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
@@ -265,7 +265,6 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 // side on the PC, slim full-width rows on the phone (CSS).
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
-  const percent = stats?.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
   const since = `since ${shortDate(game.statusAt)}`
   const details = stats ? `${playedText(stats.minutes)} · ${since}` : since[0].toUpperCase() + since.slice(1)
   const ref = useRef<HTMLDivElement>(null)
@@ -292,9 +291,7 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
         <div className="game-details">{details}</div>
         {!!stats?.total && (
           <div className={isHundred(stats) ? 'playing-achievements hundred' : 'playing-achievements'}>
-            <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
-              <div style={{ width: `${percent}%` }} />
-            </div>
+            <AchievementBar stats={stats} />
             <span>
               {stats.done ?? 0} / {stats.total} achievements
             </span>
