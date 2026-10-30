@@ -5,11 +5,11 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **New:** "Wrong key" on a key price alert (e.g. an Xbox key): keeps watching, skips that key price.
 - **Improved:** Tabs fill the width with icons; Upcoming (was Coming soon), Not started (was Up next).
 - **Improved:** Hours and achievements of Playing games update every 10 minutes (was once a day).
 - **Improved:** Playing and Not started titles in To play are bigger and easier to spot.
 - **Improved:** Achievement bars turn from blue to green as they fill, so progress is easy to read.
-- **New:** "Wrong key" on a key price alert (e.g. an Xbox key): keeps watching, skips that key price.
 
 **Mail**
 - **Improved:** The Mail tab opens at once: its list loads in the background while SyncR runs.
