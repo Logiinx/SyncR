@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-10-31
+
 **Games**
 - **New:** "Wrong key" on a key price alert (e.g. an Xbox key): keeps watching, skips that key price.
 - **Improved:** Tabs fill the width with icons; Upcoming (was Coming soon), Not started (was Up next).
