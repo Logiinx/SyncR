@@ -3,7 +3,7 @@ import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
 import { isConnected as dropboxConnected } from './dropbox'
 import { getStatus, subscribe } from './autoSync'
-import { loadListPrices } from './prices'
+import { knownDiscount, loadListPrices } from './prices'
 import { loadListEditions } from './editions'
 import { startWatchChecks } from './priceWatch'
 import { refreshSteamStats } from './steam'
@@ -123,12 +123,15 @@ export async function removeGameQuestion(game: Game, onRemoved: () => void): Pro
   }
 }
 
-// Priority games first. Waiting: soonest release first, not announced (TBA) last.
+// Priority games first. To buy: then games on sale on Steam, biggest discount first (prices
+// already known). Waiting: soonest release first, not announced (TBA) last.
 // The others: most recent first (Library: newest added first).
+const saleDiscount = (game: Game) => (game.status === 'tobuy' ? knownDiscount(game.igdbId) : 0)
 export function sortGames(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) =>
       Number(b.priority) - Number(a.priority) ||
+      saleDiscount(b) - saleDiscount(a) ||
       Number(isWatched(b)) - Number(isWatched(a)) || // price watched (To buy, Coming soon)
       (a.status === 'waiting'
         ? (a.releaseDate ?? Infinity) - (b.releaseDate ?? Infinity) || a.name.localeCompare(b.name)

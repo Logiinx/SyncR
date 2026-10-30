@@ -169,15 +169,24 @@ export async function steamPrices(refs: SteamRef[], { background }: LookupOption
 // The lists show only what's already known (no lookup of their own); they update when new prices arrive
 const listeners = new Set<() => void>()
 
-export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
-  const [, setVersion] = useState(0)
+// Re-renders when new prices arrive (also the To buy order, GamesView.tsx)
+export function usePricesVersion() {
+  const [version, setVersion] = useState(0)
   useEffect(() => {
     const listener = () => setVersion((v) => v + 1)
     listeners.add(listener)
     return () => void listeners.delete(listener)
   }, [])
+  return version
+}
+
+export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
+  usePricesVersion()
   return cache.get(igdbId)?.prices
 }
+
+// A game's Steam discount right now (%), 0 when not on sale or not known yet: To buy's order
+export const knownDiscount = (igdbId: number) => cache.get(igdbId)?.prices?.steam?.discount ?? 0
 
 // The games that show prices in the lists: To buy, and watched Coming soon games (pre-orders)
 export const hasPriceLine = (game: Game) => game.status === 'tobuy' || (game.status === 'waiting' && isWatched(game))

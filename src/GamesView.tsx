@@ -5,7 +5,7 @@ import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from 
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, tabOf, TABS, type GamesTab } from './games'
 import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
-import { hasPriceLine, loadListPrices } from './prices'
+import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { WatchBell } from './PriceWatchView'
 import { isHundred, playedText, useSteamProfile } from './steam'
 import { shortDate } from './dates'
@@ -48,6 +48,7 @@ function GamesView() {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
+  usePricesVersion() // To buy: games on sale first, once their prices are known (sortGames)
   // The tab shown (one at a time); grid or list, remembered per device
   const [shown, setShownState] = useState<GamesTab>(sessionTab)
   const setShown = (tab: GamesTab) => setShownState((sessionTab = tab))
