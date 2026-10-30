@@ -4622,18 +4622,16 @@ h3.games-group-title {
    grid in the Covers layout), one slim row each on the phone */
 .playing-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
-  /* Two thirds of a usual grid cover (.games-grid); Not started's covers are smaller still */
-  --playing-cover: clamp(68px, var(--shelf-width) / 10.5, 114px);
 }
 
 .playing-card {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer; /* as dark as the page: only its border shows */
@@ -4651,15 +4649,14 @@ h3.games-group-title {
 }
 
 .playing-card .game-cover {
-  width: var(--playing-cover);
-  height: auto;
-  aspect-ratio: 3 / 4;
+  width: 64px;
+  height: 86px;
 }
 
 .playing-text {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
 }
@@ -4672,7 +4669,6 @@ h3.games-group-title {
 
 .playing-top .game-name {
   flex: 1;
-  font-size: 1.15em;
   font-weight: 600;
 }
 
@@ -4698,8 +4694,12 @@ h3.games-group-title {
   }
 
   .playing-card {
-    gap: 12px;
-    padding: 8px;
+    padding: 6px 8px;
+  }
+
+  .playing-card .game-cover {
+    width: 40px;
+    height: 54px;
   }
 }
 
@@ -4708,7 +4708,7 @@ h3.games-group-title {
   margin-top: 28px;
 }
 
-/* Not started: smaller covers than the other tabs' grids (and than Playing's), so "now" comes first */
+/* Not started: smaller covers than the other tabs' grids, so Playing's cards come first */
 .games-part.later .games-grid {
   grid-template-columns: repeat(auto-fill, minmax(clamp(76px, var(--shelf-width) / 9.5, 128px), 1fr));
 }
