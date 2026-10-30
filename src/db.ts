@@ -113,7 +113,7 @@ export interface Card {
 // deleted = true for a while. The id comes from IGDB's, so a game can't be in the list twice.
 // Before v0.20 there were "done" and "dropped", before v0.22 "watched", before v0.36 "toplay"
 // (to buy and owned mixed, now "tobuy") (games.ts upgradeOldStatuses). Shown as tabs: waiting =
-// Coming soon, tobuy = To buy, upnext + playing = To play (two parts), library (games.ts TABS).
+// Upcoming, tobuy = To buy, upnext + playing = To play (two parts), library (games.ts TABS).
 export type GameStatus = 'waiting' | 'tobuy' | 'upnext' | 'playing' | 'library'
 
 // Games whose price can be watched (priceWatch.ts): not owned yet (a pre-order is owned)
@@ -130,7 +130,7 @@ export interface SteamStats {
   total?: number
 }
 
-// A To buy or Coming soon game's price alert (priceWatch.ts): when it alerts (the cheaper of Steam
+// A To buy or Upcoming game's price alert (priceWatch.ts): when it alerts (the cheaper of Steam
 // and the cheapest key). It alerts once, then stays off until it's changed or set again ("Watch again").
 export interface PriceWatch {
   // Before v0.22 a watch also had store: 'steam' | 'key'; now it looks at the cheaper of both
@@ -142,7 +142,7 @@ export interface PriceWatch {
   firedPrice?: number // cents, the price that made it alert
 }
 
-// A watched edition of a To buy or Coming soon game (editions.ts): its own watch, on its Steam
+// A watched edition of a To buy or Upcoming game (editions.ts): its own watch, on its Steam
 // package or bundle.
 export interface EditionWatch extends PriceWatch {
   kind: 'sub' | 'bundle'
@@ -161,8 +161,8 @@ export interface Game {
   delayedFromLabel?: string // the same when the earlier date was vague, e.g. "Q1 2027"
   datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
   movedBy?: 'released' | 'bought' | 'started' // SyncR moved it by itself (banner until dismissed or moved by hand)
-  preordered?: boolean // Coming soon only: owned already, so no price alert; goes to Up next on release
-  upNextMinutes?: number // Up next: Steam minutes played when first seen there (steam.ts followSteam); +1 h = Playing
+  preordered?: boolean // Upcoming only: owned already, so no price alert; goes to Not started on release
+  upNextMinutes?: number // Not started: Steam minutes played when first seen there (steam.ts followSteam); +1 h = Playing
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
@@ -173,7 +173,7 @@ export interface Game {
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
   ending?: 'paused' | 'dropped' // Library: how it ended when not completed (games.ts endingOf); never with completed
-  watch?: PriceWatch // To buy and Coming soon games only (canWatch)
+  watch?: PriceWatch // To buy and Upcoming games only (canWatch)
   editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
   deleted: boolean
@@ -538,7 +538,7 @@ export async function updateGame(id: string, change: Partial<Game>) {
   changed()
 }
 
-// Up next, Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
+// Not started, Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
 // and Favorite mean different things, so the mark goes (games.ts isFavoriteTab). Out of the Library:
 // Paused / Dropped no longer apply (Completed stays, like the rating). A move clears the "moved by
 // itself" line (movedBy): automatic moves set it again right after (games.ts moveReleased).
@@ -552,12 +552,12 @@ export async function setGameStatus(id: string, status: GameStatus) {
     ...(leavesMark && { priority: false }),
     ...(status !== 'library' && game?.ending && { ending: undefined }),
     ...(game?.movedBy && { movedBy: undefined }),
-    ...(game?.preordered && { preordered: undefined }), // only means something while Coming soon
+    ...(game?.preordered && { preordered: undefined }), // only means something while Upcoming
     ...(game?.upNextMinutes !== undefined && { upNextMinutes: undefined }),
   })
 }
 
-// "Pre-ordered" (Coming soon games: menu and game window): owned, so its price alerts go
+// "Pre-ordered" (Upcoming games: menu and game window): owned, so its price alerts go
 export async function setPreordered(id: string, on: boolean) {
   await updateGame(id, on ? { preordered: true, watch: undefined, editionWatches: undefined } : { preordered: undefined })
 }

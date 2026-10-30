@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Improved:** Tabs renamed Upcoming (was Coming soon) and, in To play, Not started (was Up next).
+
 ## [0.36.0] - 2026-10-30
 
 **Games**

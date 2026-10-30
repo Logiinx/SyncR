@@ -6,7 +6,7 @@ import { savePriceAlertEvent } from './calendarEvents'
 import { gameId } from './games'
 import { gameEditions } from './editions'
 
-// Price alerts of To buy and Coming soon games (set in the game window: PriceWatchView.tsx): one
+// Price alerts of To buy and Upcoming games (set in the game window: PriceWatchView.tsx): one
 // target for the cheaper of Steam and the cheapest key, when it alerts, and the check (games.ts: after the first sync, then
 // every hour, see startWatchChecks) that turns a reached price into a Google Calendar event.
 
@@ -141,7 +141,7 @@ async function sendAlert(game: Game, watch: PriceWatch | EditionWatch, met: { pr
 
 const waiting = (watch?: PriceWatch) => !!watch && !watch.firedAt
 
-// Every To buy or Coming soon game with a watch (its own or an edition's) that hasn't alerted yet:
+// Every To buy or Upcoming game with a watch (its own or an edition's) that hasn't alerted yet:
 // when its price is reached, the event is made and the watch marked as alerted, so it stays
 // quiet until set again. Each edition alerts on its own. Google unreachable: nothing is
 // marked, the next check tries again. false: it failed (offline, proxy or Google unreachable).

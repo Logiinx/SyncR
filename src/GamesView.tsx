@@ -62,7 +62,7 @@ function GamesView() {
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
-  // To buy and Coming soon: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  // To buy and Upcoming: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
     if (TABS.find((t) => t.tab === shown)!.statuses.some((status) => canWatch({ status }))) loadListPrices()
   }, [shown])
@@ -218,7 +218,7 @@ function GamesView() {
   )
 }
 
-// To play: two parts, Playing above Up next (owned, not started), each with its title and count
+// To play: two parts, Playing above Not started (owned, not started), each with its title and count
 function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   games: Game[]
   layout: ShelfLayout
@@ -227,7 +227,7 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 }) {
   const parts = [
     { title: 'Playing', games: games.filter((g) => g.status === 'playing'), empty: 'Nothing being played right now.' },
-    { title: 'Up next', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet." },
+    { title: 'Not started', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet." },
   ]
   return (
     <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>

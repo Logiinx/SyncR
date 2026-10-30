@@ -156,7 +156,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           <ContextMenu x={endingAt.x} y={endingAt.y} header={ENDING_HEADER} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
         )}
 
-        {/* Coming soon: a pre-order is owned (no price alerts; Up next on release day) */}
+        {/* Upcoming: a pre-order is owned (no price alerts; Not started on release day) */}
         {game.status === 'waiting' && (
           <div className="game-endings">
             <button

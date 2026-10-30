@@ -4685,7 +4685,7 @@ h3.games-group-title {
   }
 }
 
-/* To play's two parts (Playing, Up next): a small title with its count above each shelf */
+/* To play's two parts (Playing, Not started): a small title with its count above each shelf */
 .games-part + .games-part {
   margin-top: 28px;
 }
@@ -5566,7 +5566,7 @@ h3.games-group-title {
   background: var(--bg);
 }
 
-/* One line; on a narrow screen at a big app scale "Coming soon" wraps instead of overflowing */
+/* One line; on a narrow screen at a big app scale "Upcoming" wraps instead of overflowing */
 .gd-status button {
   flex: 1 1 auto;
   padding: 5px 2px;

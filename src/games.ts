@@ -17,10 +17,10 @@ import { isConnected as googleConnected } from './google'
 
 export const GAMES_TAB = 'games' // its id among the open tabs (note ids never look like this)
 
-// The Games tabs (user's names): To play shows two statuses, Playing above Up next
+// The Games tabs (user's names): To play shows two statuses, Playing above Not started
 export type GamesTab = 'waiting' | 'tobuy' | 'toplay' | 'library'
 export const TABS: { tab: GamesTab; label: string; statuses: GameStatus[] }[] = [
-  { tab: 'waiting', label: 'Coming soon', statuses: ['waiting'] },
+  { tab: 'waiting', label: 'Upcoming', statuses: ['waiting'] },
   { tab: 'tobuy', label: 'To buy', statuses: ['tobuy'] },
   { tab: 'toplay', label: 'To play', statuses: ['playing', 'upnext'] },
   { tab: 'library', label: 'Library', statuses: ['library'] },
@@ -32,15 +32,15 @@ export const statusLabel = (status?: GameStatus) => (status ? tabOf(status).labe
 
 // Every status a game can be moved to (game window, right-click menu), in the tabs' order
 export const STATUSES: { status: GameStatus; label: string }[] = [
-  { status: 'waiting', label: 'Coming soon' },
+  { status: 'waiting', label: 'Upcoming' },
   { status: 'tobuy', label: 'To buy' },
-  { status: 'upnext', label: 'Up next' },
+  { status: 'upnext', label: 'Not started' },
   { status: 'playing', label: 'Playing' },
   { status: 'library', label: 'Library' },
 ]
 
 // Where a released game can be added (search's "Add ▾", the preview's "Add to list ▾"), in the
-// tabs' order. No Coming soon: it's out already.
+// tabs' order. No Upcoming: it's out already.
 export interface AddPlace { label: string; status: GameStatus; completed?: boolean }
 export const ADD_PLACES: AddPlace[] = [
   { label: 'To buy', status: 'tobuy' },
@@ -81,7 +81,7 @@ export const gameId = (igdbId: number) => `igdb-${igdbId}`
 export const isReleased = (game: { releaseDate?: number }) =>
   !!game.releaseDate && new Date(game.releaseDate).setHours(0, 0, 0, 0) <= Date.now()
 
-// Added from the search: Coming soon if it isn't out yet, otherwise To buy. The calendar's pin
+// Added from the search: Upcoming if it isn't out yet, otherwise To buy. The calendar's pin
 // always gives Waiting. A game removed earlier comes back with its note, review and rating.
 export async function addGame(found: FoundGame, status?: GameStatus, completed?: boolean) {
   const id = gameId(found.igdbId)
@@ -132,7 +132,7 @@ export function sortGames(games: Game[]): Game[] {
     (a, b) =>
       Number(b.priority) - Number(a.priority) ||
       saleDiscount(b) - saleDiscount(a) ||
-      Number(isWatched(b)) - Number(isWatched(a)) || // price watched (To buy, Coming soon)
+      Number(isWatched(b)) - Number(isWatched(a)) || // price watched (To buy, Upcoming)
       (a.status === 'waiting'
         ? (a.releaseDate ?? Infinity) - (b.releaseDate ?? Infinity) || a.name.localeCompare(b.name)
         : b.statusAt - a.statusAt),
@@ -197,8 +197,8 @@ const CHECK_EVERY = 10 * 60 * 1000 // release day check, ms
 const REFRESH_EVERY = 24 * 60 * 60 * 1000
 const REFRESHED_KEY = 'syncr.gamesRefreshedAt' // per device
 
-// Release day: Coming soon games whose (exact) day has come move to To buy (pre-orders: To play's
-// Up next), with a line at the top of Games ("Released: Name → To buy", GamesView.tsx DelayBanner)
+// Release day: Upcoming games whose (exact) day has come move to To buy (pre-orders: To play's
+// Not started), with a line at the top of Games ("Released: Name → To buy", GamesView.tsx DelayBanner)
 export async function moveReleased() {
   const due = await db.games.filter((g) => !g.deleted && g.status === 'waiting' && isReleased(g)).toArray()
   for (const game of due) {
@@ -324,7 +324,7 @@ export async function syncReleaseEvents() {
 
 // v0.20: "Done" became Library with Completed on, "Dropped" went (its games go to the Library,
 // not completed). v0.36: "To play" (to buy and owned mixed) became To buy; the user moves owned
-// ones to Up next. After each sync, so it also catches games an older app version still marks.
+// ones to Not started. After each sync, so it also catches games an older app version still marks.
 async function upgradeOldStatuses() {
   const old = await db.games.filter((g) => !g.deleted && ['done', 'dropped', 'watched', 'toplay'].includes(g.status as string)).toArray()
   for (const game of old) {
@@ -367,7 +367,7 @@ export function startGameChecks() {
     } catch (e) {
       console.warn('Game refresh failed', e)
     }
-    // To buy (and watched Coming soon) prices, once per start, after the first sync brought the list up to date
+    // To buy (and watched Upcoming) prices, once per start, after the first sync brought the list up to date
     // and the price alert checks (every hour, see startWatchChecks); a minute later the editions (game windows)
     if (!pricesLoaded) {
       pricesLoaded = true

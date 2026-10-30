@@ -188,10 +188,10 @@ export function useKnownPrice(igdbId: number): GamePrices | null | undefined {
 // A game's Steam discount right now (%), 0 when not on sale or not known yet: To buy's order
 export const knownDiscount = (igdbId: number) => cache.get(igdbId)?.prices?.steam?.discount ?? 0
 
-// The games that show prices in the lists: To buy, and watched Coming soon games (pre-orders)
+// The games that show prices in the lists: To buy, and watched Upcoming games (pre-orders)
 export const hasPriceLine = (game: Game) => game.status === 'tobuy' || (game.status === 'waiting' && isWatched(game))
 
-// Prices of all those games at once: at start (games.ts) and when the To buy or Coming soon list
+// Prices of all those games at once: at start (games.ts) and when the To buy or Upcoming list
 // opens. Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
 export async function loadListPrices() {
   try {

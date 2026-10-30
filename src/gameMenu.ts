@@ -27,11 +27,11 @@ export function gameMenuItems(
       divider: true,
       onClick: () => updateGame(game.id, { priority: !game.priority }),
     },
-    // Coming soon: pre-ordered or not (a pre-order has no price alert)
+    // Upcoming: pre-ordered or not (a pre-order has no price alert)
     ...(game.status !== 'waiting' ? [] : game.preordered
       ? [{ label: 'Not pre-ordered', icon: PackageX, onClick: () => setPreordered(game.id, false) }]
       : [{ label: 'Mark as pre-ordered', icon: PackageCheck, onClick: () => setPreordered(game.id, true) }]),
-    // To buy and Coming soon: the price alert, set in the game window
+    // To buy and Upcoming: the price alert, set in the game window
     ...(!canWatch(game) ? [] : isWatched(game)
       ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]
       : [{ label: 'Watch price…', icon: Bell, onClick: view.onWatch }]),

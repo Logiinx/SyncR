@@ -12,7 +12,7 @@ import ContextMenu from './ContextMenu'
 // A game that isn't in your list yet (Calendar, search results): the cover; on the right the
 // name, release, all platforms, where it is in your list, the extras (developer, publisher,
 // modes), then the add button and "Trailer" (PC: the trailer view in place of the window;
-// phone: a panel below it). Not out yet: "Add to Coming soon"; out: "Add to list", a menu of statuses.
+// phone: a panel below it). Not out yet: "Add to Upcoming"; out: "Add to list", a menu of statuses.
 // ✕, Escape or a click outside closes it.
 function GamePreview(props: { game: FoundGame; release: string; status?: GameStatus; onClose: () => void }) {
   const { game, release, status, onClose } = props
@@ -73,7 +73,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
           <div className="calendar-popup-actions">
             {!status && !released && (
               <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>
-                <Pin size={15} /> <span>Add to Coming soon</span>
+                <Pin size={15} /> <span>Add to Upcoming</span>
               </button>
             )}
             {!status && released && (

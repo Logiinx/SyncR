@@ -135,7 +135,7 @@ export async function refreshSteamStats() {
 const FOLLOW_SETTING = 'steam-follow'
 const FOLLOW_EVERY = 30 * 60_000 // at most this often per device
 const FOLLOWED_KEY = 'syncr.steamFollowedAt' // per device
-const STARTED_MINUTES = 60 // played this much more since it got to Up next = started
+const STARTED_MINUTES = 60 // played this much more since it got to Not started = started
 
 export async function loadSteamFollow() {
   return (await db.settings.get(FOLLOW_SETTING))?.value === true
@@ -149,9 +149,9 @@ export async function saveSteamFollow(on: boolean) {
 
 export const useSteamFollow = () => useLiveQuery(loadSteamFollow, [])
 
-// With the setting on: a To buy game you own on Steam goes to Up next ("Owned on Steam"); an Up
+// With the setting on: a To buy game you own on Steam goes to Not started ("Owned on Steam"); an Up
 // next game played 1 h more on Steam than when it got there goes to Playing ("Started on
-// Steam"). Both show a line at the top of Games (movedBy). The first time an Up next game is
+// Steam"). Both show a line at the top of Games (movedBy). The first time an Not started game is
 // seen, its minutes are noted (not an edit, like the stats), so hours played before don't count.
 // Every 10 min with the release day check (games.ts), at most every 30 min. Quietly does nothing
 // when it can't.
