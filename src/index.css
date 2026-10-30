@@ -3324,7 +3324,6 @@ button {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  margin: 0 0 4px auto;
   padding: 5px 10px;
   font-size: 0.85em;
   white-space: nowrap;
@@ -3337,10 +3336,6 @@ button {
   color: var(--text);
 }
 
-/* 6px apart (the row's gap is 16px) */
-.games-status-tabs .games-import + .games-layouts {
-  margin-left: -10px;
-}
 
 .games-empty-import {
   padding: 0;
@@ -4516,21 +4511,26 @@ h3.games-group-title {
    underlined in blue with its count in blue. The covers / list switch at the end of the row.
    In the Covers layout the row is as wide as the cover grid (.wide, same width) */
 .games-status-tabs {
-  display: flex;
-  align-items: flex-end; /* the tabs' underline on the row's line */
-  gap: 16px;
   margin: 16px 0 14px;
-  border-bottom: 1px solid var(--border);
 }
 
-/* The tabs; on a narrow screen they scroll sideways (no scrollbar), the switch stays in view */
+/* The tabs, a quarter of the row each, on a line (the open tab's underline covers it); on a
+   very narrow screen they scroll sideways (no scrollbar) */
 .games-status-list {
   display: flex;
-  gap: 20px;
   min-width: 0;
-  margin-bottom: -1px; /* the open tab's underline sits on the row's line */
   overflow-x: auto;
   scrollbar-width: none;
+  box-shadow: inset 0 -1px var(--border);
+}
+
+/* Import and the layout switch: under the tabs, on the right */
+.games-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .games-status-tabs.wide {
@@ -4540,10 +4540,12 @@ h3.games-group-title {
 .games-status-list > button {
   position: relative;
   display: flex;
-  align-items: baseline;
-  gap: 5px;
-  flex-shrink: 0;
-  padding: 8px 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 0 auto;
+  padding: 9px 8px;
+  font-size: 1.05em;
   border-bottom: 2px solid transparent;
   color: var(--text-dim);
   white-space: nowrap;
@@ -4566,6 +4568,23 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
+.games-tab-icon {
+  flex-shrink: 0;
+}
+
+/* A phone: no icons and less room around the names, so the four tabs fit side by side */
+@container (max-width: 480px) {
+  .games-tab-icon {
+    display: none;
+  }
+
+  .games-status-list > button {
+    gap: 4px;
+    padding-inline: 2px;
+    font-size: 1em;
+  }
+}
+
 .games-status-list > button.active .games-count {
   color: var(--link);
 }
@@ -4573,7 +4592,6 @@ h3.games-group-title {
 /* Covers / list: a small joined switch at the end of the row */
 .games-status-tabs .games-layouts {
   gap: 2px;
-  margin: 0 0 4px auto;
   padding: 2px;
   border-radius: 6px;
   background: var(--bg-raised);
@@ -4690,14 +4708,27 @@ h3.games-group-title {
   margin-top: 28px;
 }
 
+/* To play's part titles (Playing, Not started): bright, with a line to the end */
 .games-part-title {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 12px;
-  font-size: 0.85em;
+  font-size: 1em;
   font-weight: 600;
-  color: var(--text-dim);
+  color: var(--text);
+}
+
+.games-part-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  margin-left: 4px;
+  background: var(--border);
+}
+
+.games-part-title .games-count {
+  font-size: 0.8em;
 }
 
 .games-parts.wide .games-part-title,
