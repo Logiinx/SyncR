@@ -4636,12 +4636,12 @@ h3.games-group-title {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--text) 2%, var(--bg));
-  cursor: pointer;
+  cursor: pointer; /* as dark as the page: only its border shows */
 }
 
+/* A soft hover: a big card lights up a lot more than a list row with the same tint */
 .playing-card:hover {
-  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+  background: color-mix(in srgb, var(--text) 3%, var(--bg));
 }
 
 /* Priority: the Board cards' blue frame, like list rows */
