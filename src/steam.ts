@@ -130,6 +130,27 @@ export async function refreshSteamStats() {
   if (result === 'failed') write(REFRESHED_KEY, Date.now() - REFRESH_EVERY + RETRY_AFTER)
 }
 
+// Playing games: hours and achievements every 10 minutes (games.ts, with the release day check)
+// and when Games opens if the last look is over 5 minutes old (GamesView.tsx). Always a fresh
+// owned list (hours), not the one kept for game windows. ~3 requests each: far below Steam's limit.
+const PLAYING_EVERY = 10 * 60_000
+export const PLAYING_ON_OPEN = 5 * 60_000
+let playingAt = 0
+let playingRunning = false
+export async function refreshPlaying(minAge = PLAYING_EVERY) {
+  if (playingRunning || Date.now() - playingAt < minAge - 30_000) return // a timer a bit early still counts
+  playingRunning = true
+  playingAt = Date.now()
+  try {
+    const games = await db.games.filter((g) => !g.deleted && g.status === 'playing').toArray()
+    if (games.length === 0) return
+    owned = null
+    await updateSteamStats(games)
+  } finally {
+    playingRunning = false
+  }
+}
+
 // ---------- Follow my Steam account (Settings → Games, synced) ----------
 
 const FOLLOW_SETTING = 'steam-follow'

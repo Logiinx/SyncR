@@ -6,7 +6,7 @@ import { getStatus, subscribe } from './autoSync'
 import { knownDiscount, loadListPrices } from './prices'
 import { loadListEditions } from './editions'
 import { startWatchChecks } from './priceWatch'
-import { followSteam, refreshSteamStats } from './steam'
+import { followSteam, refreshPlaying, refreshSteamStats } from './steam'
 import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
@@ -351,6 +351,7 @@ export function startGameChecks() {
     try {
       await moveReleased()
       await followSteam()
+      await refreshPlaying()
       if (!dropboxConnected()) await syncReleaseEvents() // with Dropbox: after each sync (refresh)
     } catch (e) {
       console.warn('Release day check failed', e)

@@ -7,7 +7,7 @@ import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMen
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
-import { isHundred, playedText, useSteamProfile } from './steam'
+import { isHundred, PLAYING_ON_OPEN, playedText, refreshPlaying, useSteamProfile } from './steam'
 import { shortDate } from './dates'
 import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
@@ -62,6 +62,10 @@ function GamesView() {
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
+  // Playing games' Steam hours and achievements, unless looked at in the last 5 minutes
+  useEffect(() => {
+    refreshPlaying(PLAYING_ON_OPEN)
+  }, [])
   // To buy and Upcoming: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
   useEffect(() => {
     if (TABS.find((t) => t.tab === shown)!.statuses.some((status) => canWatch({ status }))) loadListPrices()

@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **Improved:** Tabs fill the width with icons; Upcoming (was Coming soon), Not started (was Up next).
+- **Improved:** Hours and achievements of Playing games update every 10 minutes (was once a day).
 - **Improved:** Playing and Not started titles in To play are bigger and easier to spot.
 - **Improved:** Achievement bars turn from blue to green as they fill, so progress is easy to read.
 
