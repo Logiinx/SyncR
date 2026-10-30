@@ -13,7 +13,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Mark a Coming soon game as pre-ordered: no price alerts, and it goes to To play when it's out.
 - **New:** Settings → Follow my Steam account: games you buy or start on Steam move by themselves.
 - **Improved:** To buy lists games on sale on Steam first, biggest discount first (after Priority).
-- **Improved:** Click a "Delayed" or "Date set" line at the top of Games to open its game.
+- **Improved:** "Delayed" and "Date set" lines show the game's cover and name; a click opens the game.
 
 ## [0.35.2] - 2026-10-30
 

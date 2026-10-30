@@ -4346,7 +4346,50 @@ h3.games-group-title {
   font-size: 0.9em;
 }
 
-.games-delay > svg {
+/* Small cover, the game's name, what happened under it (icon in the line's color) */
+.games-delay-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.games-delay .game-cover {
+  width: 24px;
+  height: 32px;
+}
+
+.games-delay-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.games-delay-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.games-delay-what {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.games-delay-what b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.games-delay-what svg {
   flex-shrink: 0;
   color: var(--text-yellow);
 }
@@ -4355,7 +4398,7 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text-green) 12%, var(--bg));
 }
 
-.games-dated > svg {
+.games-dated .games-delay-what svg {
   color: var(--text-green);
 }
 
@@ -4364,15 +4407,8 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
 }
 
-.games-moved > svg {
+.games-moved .games-delay-what svg {
   color: var(--text-blue);
-}
-
-/* Click: opens the game */
-.games-delay span {
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
 }
 
 .games-delay button {

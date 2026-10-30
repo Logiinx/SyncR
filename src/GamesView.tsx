@@ -396,9 +396,9 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
 
 // What the daily refresh found (games.ts), until dismissed (✕): Waiting games whose date got
 // more precise ("Date set", green) and delayed games (yellow). Old date → new date. Saved on
-// the game, so it shows on both devices.
-// Also the games SyncR moved by itself (blue, first): "Released: Name → To buy", "Started on
-// Steam: Name → Playing" (To play's part, clearer than the tab). A click on a line opens its game.
+// the game, so it shows on both devices. Also the games SyncR moved by itself (blue, first):
+// "Released · now in To buy", "Started on Steam · now in Playing" (To play's part, clearer than
+// the tab). Each line: small cover, the game's name, what happened under it; a click opens it.
 const MOVED_LABELS = { released: 'Released', bought: 'Owned on Steam', started: 'Started on Steam' }
 
 function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
@@ -409,39 +409,69 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
   return (
     <div className="games-delays">
       {moved.map((game) => (
-        <div key={`moved-${game.id}`} className="games-delay games-moved">
-          <ArrowRight size={15} />
-          <span onClick={() => onOpen(game.id)}>
-            <b>{MOVED_LABELS[game.movedBy!]}:</b> {game.name} → {game.status === 'playing' ? 'Playing' : statusLabel(game.status)}
-          </span>
-          <button onClick={() => updateGame(game.id, { movedBy: undefined })} title="Dismiss">
-            <X size={15} />
-          </button>
-        </div>
+        <NewsLine
+          key={`moved-${game.id}`}
+          game={game}
+          kind="games-moved"
+          icon={ArrowRight}
+          what={MOVED_LABELS[game.movedBy!]}
+          detail={`now in ${game.status === 'playing' ? 'Playing' : statusLabel(game.status)}`}
+          onOpen={onOpen}
+          onDismiss={() => updateGame(game.id, { movedBy: undefined })}
+        />
       ))}
       {dated.map((game) => (
-        <div key={`dated-${game.id}`} className="games-delay games-dated">
-          <CalendarCheck size={15} />
-          <span onClick={() => onOpen(game.id)}>
-            <b>Date set:</b> {game.name} · {game.datedFrom} → {formatRelease(game.releaseDate, game.releaseLabel)}
-          </span>
-          <button onClick={() => updateGame(game.id, { datedFrom: undefined })} title="Dismiss">
-            <X size={15} />
-          </button>
-        </div>
+        <NewsLine
+          key={`dated-${game.id}`}
+          game={game}
+          kind="games-dated"
+          icon={CalendarCheck}
+          what="Date set"
+          detail={`${game.datedFrom} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
+          onOpen={onOpen}
+          onDismiss={() => updateGame(game.id, { datedFrom: undefined })}
+        />
       ))}
       {delayed.map((game) => (
-        <div key={game.id} className="games-delay">
-          <CalendarClock size={15} />
-          <span onClick={() => onOpen(game.id)}>
-            <b>Delayed:</b> {game.name} · {formatRelease(game.delayedFrom, game.delayedFromLabel)} →{' '}
-            {formatRelease(game.releaseDate, game.releaseLabel)}
-          </span>
-          <button onClick={() => updateGame(game.id, { delayedFrom: undefined, delayedFromLabel: undefined })} title="Dismiss">
-            <X size={15} />
-          </button>
-        </div>
+        <NewsLine
+          key={game.id}
+          game={game}
+          kind=""
+          icon={CalendarClock}
+          what="Delayed"
+          detail={`${formatRelease(game.delayedFrom, game.delayedFromLabel)} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
+          onOpen={onOpen}
+          onDismiss={() => updateGame(game.id, { delayedFrom: undefined, delayedFromLabel: undefined })}
+        />
       ))}
+    </div>
+  )
+}
+
+function NewsLine({ game, kind, icon: Icon, what, detail, onOpen, onDismiss }: {
+  game: Game
+  kind: string // its color: games-moved (blue), games-dated (green), none (yellow)
+  icon: typeof ArrowRight
+  what: string
+  detail: string
+  onOpen: (id: string) => void
+  onDismiss: () => void
+}) {
+  return (
+    <div className={`games-delay ${kind}`}>
+      <span className="games-delay-main" onClick={() => onOpen(game.id)}>
+        <Cover coverId={game.coverId} />
+        <span className="games-delay-text">
+          <span className="games-delay-name" title={game.name}>{game.name}</span>
+          <span className="games-delay-what">
+            <Icon size={13} />
+            <b>{what}</b> · {detail}
+          </span>
+        </span>
+      </span>
+      <button onClick={onDismiss} title="Dismiss">
+        <X size={15} />
+      </button>
     </div>
   )
 }

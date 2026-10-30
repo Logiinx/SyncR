@@ -541,7 +541,6 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
       {/* Games move by themselves (steam.ts followSteam); checked right away when switched on */}
       <SettingRow
         label="Follow my Steam account"
-        value="moves games you buy or start"
         title="To buy games you own on Steam move to To play; Up next games you play for 1 h move to Playing"
       >
         <input
