@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-10-30
+
 **Games**
 - **New:** Tabs Coming soon · To buy · To play · Library; To play shows Playing above Up next (owned).
 - **New:** Games you're playing show as cards with hours played and Steam achievements.
