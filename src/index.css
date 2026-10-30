@@ -5245,6 +5245,14 @@ h3.games-group-title {
   color: var(--text-green);
 }
 
+.game-badge.paused {
+  color: var(--text-blue);
+}
+
+.game-badge.dropped {
+  color: var(--text-red);
+}
+
 /* Price watched (WatchBell): the left corner, white; green and ringing once reached */
 .game-badge.watch {
   right: auto;
@@ -5674,25 +5682,45 @@ h3.games-group-title {
 }
 
 /* A pill at the row's end: outlined and dim until switched on, then filled green */
-.game-completed {
+/* How a game ended (game window): pills, tinted in their color when on. Completed green (also
+   alone at the rating row's end for Playing games), Paused blue, Dropped red */
+.game-endings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-ending {
+  --ending: var(--text-green);
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-dim);
 }
 
-.game-completed.on {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--text-green) 18%, transparent);
+.game-rating .game-ending {
+  margin-left: auto;
 }
 
-.game-completed:hover,
-.game-completed.on {
-  color: var(--text-green);
+.game-ending.paused {
+  --ending: var(--text-blue);
+}
+
+.game-ending.dropped {
+  --ending: var(--text-red);
+}
+
+.game-ending.on {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ending) 18%, transparent);
+}
+
+.game-ending:hover,
+.game-ending.on {
+  color: var(--ending);
 }
 
 /* Reminders list: a Waiting game's small cover */

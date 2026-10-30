@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, tabOf, TABS, type GamesTab } from './games'
-import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
+import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { WatchBell } from './PriceWatchView'
@@ -55,6 +55,7 @@ function GamesView() {
   const statusList = useRef<HTMLDivElement>(null)
   const lines = useTabLines(statusList, shown)
   const [menu, setMenu] = useState<GameMenu | null>(null)
+  const [endingMenu, setEndingMenu] = useState<GameMenu | null>(null) // "How did it end?" (Playing → Library)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [openId, setOpenId] = useState<string | null>(null) // the game whose details are shown
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
@@ -77,9 +78,10 @@ function GamesView() {
   }
 
   // The shared game menu (gameMenu.ts)
-  function menuItems({ game, pinned }: GameMenu): MenuItem[] {
+  function menuItems({ game, pinned, x, y }: GameMenu): MenuItem[] {
     return gameMenuItems(game, {
       pinned,
+      onAskEnding: () => setEndingMenu({ game, pinned, x, y }),
       onWatch: () => {
         setOpenWatch(game.id)
         setOpenId(game.id)
@@ -201,6 +203,15 @@ function GamesView() {
         />
       )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
+      {endingMenu && (
+        <ContextMenu
+          x={endingMenu.x}
+          y={endingMenu.y}
+          header={ENDING_HEADER}
+          items={endingMenuItems(endingMenu.game)}
+          onClose={() => setEndingMenu(null)}
+        />
+      )}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
   )

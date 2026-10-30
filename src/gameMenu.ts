@@ -1,18 +1,25 @@
-import { ArrowRight, Bell, BellOff, Heart, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
+import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type Game } from './db'
-import { isFavoriteTab, priorityLabel, STATUSES } from './games'
+import { endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
 // Three groups: Move to … ("Start playing" for Playing) | priority, price alert, Board (priority
 // first, like a Board card's menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
-export function gameMenuItems(game: Game, view: { pinned: boolean; onWatch: () => void; onRemove: () => void }): MenuItem[] {
+// With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
+export function gameMenuItems(
+  game: Game,
+  view: { pinned: boolean; onWatch: () => void; onRemove: () => void; onAskEnding?: () => void },
+): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
       label: status === 'playing' ? 'Start playing' : `Move to ${label}`,
       icon: status === 'playing' ? Play : ArrowRight,
-      onClick: () => setGameStatus(game.id, status),
+      onClick: () =>
+        status === 'library' && game.status === 'playing' && view.onAskEnding
+          ? view.onAskEnding()
+          : setGameStatus(game.id, status),
     })),
     {
       label: priorityLabel(game),
@@ -37,6 +44,23 @@ export function gameMenuItems(game: Game, view: { pinned: boolean; onWatch: () =
     { label: 'Remove from list', icon: Trash2, danger: true, onClick: view.onRemove },
   ]
 }
+
+// How a game ended, in the Library (✓ = the current one). Asked when a Playing game moves to the
+// Library ("How did it end?" menu, Games tab and game window), also the game window's choices.
+export const ENDINGS: { ending?: Ending; label: string; icon: typeof Archive }[] = [
+  { ending: 'completed', label: 'Completed', icon: CircleCheck },
+  { ending: 'paused', label: 'Paused', icon: CirclePause },
+  { ending: 'dropped', label: 'Dropped', icon: CircleX },
+  { label: 'Just put away', icon: Archive },
+]
+export const endingMenuItems = (game: Game): MenuItem[] =>
+  ENDINGS.map(({ ending, label, icon }) => ({
+    label,
+    icon,
+    checked: endingOf(game) === ending && !!ending,
+    onClick: () => moveToLibrary(game.id, ending),
+  }))
+export const ENDING_HEADER = { title: 'How did it end?', subtitle: 'Moves it to the Library' }
 
 // The menu to open at x, y: whether the game has a Board card ("Pin to Board" or "Unpin from
 // Board") is looked up once here, not kept up to date while no menu is open

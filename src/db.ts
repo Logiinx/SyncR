@@ -168,6 +168,7 @@ export interface Game {
   rating?: number // 0.5 to 5, in half stars
   liked: boolean // the heart
   completed?: boolean // "Completed" (finished it), next to the rating
+  ending?: 'paused' | 'dropped' // Library: how it ended when not completed (games.ts endingOf); never with completed
   watch?: PriceWatch // To buy and Coming soon games only (canWatch)
   editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
@@ -534,7 +535,8 @@ export async function updateGame(id: string, change: Partial<Game>) {
 }
 
 // Up next, Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
-// and Favorite mean different things, so the mark goes (games.ts isFavoriteTab).
+// and Favorite mean different things, so the mark goes (games.ts isFavoriteTab). Out of the Library:
+// Paused / Dropped no longer apply (Completed stays, like the rating).
 export async function setGameStatus(id: string, status: GameStatus) {
   const game = await db.games.get(id)
   const leavesMark = game?.priority && (game.status === 'library') !== (status === 'library')
@@ -543,6 +545,7 @@ export async function setGameStatus(id: string, status: GameStatus) {
     statusAt: Date.now(),
     ...(!canWatch({ status }) && { watch: undefined, editionWatches: undefined }),
     ...(leavesMark && { priority: false }),
+    ...(status !== 'library' && game?.ending && { ending: undefined }),
   })
 }
 

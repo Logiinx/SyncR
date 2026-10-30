@@ -108,7 +108,7 @@ export async function updateSteamStats(only?: Game[]): Promise<'off' | 'failed' 
         // Reaching 100% ticks Completed: an edit, synced. Otherwise saved without counting as an
         // edit (same updatedAt), so it never beats a real change from the other device in sync;
         // each device gets its own stats from Steam.
-        if (isHundred(stats) && !isHundred(before)) await updateGame(game.id, { steamStats: stats, completed: true })
+        if (isHundred(stats) && !isHundred(before)) await updateGame(game.id, { steamStats: stats, completed: true, ending: undefined })
         else await db.games.update(game.id, { steamStats: stats })
       }
     }

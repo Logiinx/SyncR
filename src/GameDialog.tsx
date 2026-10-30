@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, CircleCheck, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
-import { allPlatforms, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
+import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
+import { ENDING_HEADER, endingMenuItems, ENDINGS } from './gameMenu'
+import ContextMenu from './ContextMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -36,6 +38,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
   const played = isPlayed(game)
   const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
   const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
+  const [endingAt, setEndingAt] = useState<{ x: number; y: number } | null>(null) // "How did it end?" (Playing → Library)
   const narrow = useNarrow()
   // Focused when it opens (so Escape works), without scrolling; again after the trailer view
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -64,6 +67,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
       className="dialog game-dialog"
       label={game.name}
       onClose={onClose}
+      escapeCloses={!endingAt} // Escape closes the "How did it end?" menu first
       ref={dialogRef}
       inRow
       beside={trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
@@ -138,9 +142,19 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           className="gd-status"
           options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
           value={game.status}
-          onChange={(status) => status !== game.status && setGameStatus(game.id, status)}
+          onChange={(status) => {
+            if (status === game.status) return
+            // Playing → Library: asks how it ended, in a menu under the Library button
+            const library = status === 'library' && game.status === 'playing' && dialogRef.current?.querySelector('.gd-status button:last-child')
+            if (!library) return setGameStatus(game.id, status)
+            const box = library.getBoundingClientRect()
+            setEndingAt({ x: box.left, y: box.bottom + 4 })
+          }}
           label="Status"
         />
+        {endingAt && (
+          <ContextMenu x={endingAt.x} y={endingAt.y} header={ENDING_HEADER} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
+        )}
 
         {canWatch(game) && <PriceWatchView key={game.id} game={game} focus={focusWatch} />}
 
@@ -151,16 +165,41 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               <div className="game-rating">
                 <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
                 {!!game.rating && <span className="game-rating-number">{game.rating} / 5</span>}
-                <button
-                  className={game.completed ? 'game-completed on' : 'game-completed'}
-                  onClick={() => updateGame(game.id, { completed: !game.completed })}
-                  aria-pressed={!!game.completed}
-                >
-                  <CircleCheck size={16} />
-                  Completed
-                </button>
+                {/* Playing: just Completed here; the Library has its "How it ended" row below */}
+                {game.status === 'playing' && (
+                  <button
+                    className={game.completed ? 'game-ending completed on' : 'game-ending completed'}
+                    onClick={() => updateGame(game.id, { completed: !game.completed })}
+                    aria-pressed={!!game.completed}
+                  >
+                    <CircleCheck size={16} />
+                    Completed
+                  </button>
+                )}
               </div>
             </div>
+            {/* Library: Completed, Paused or Dropped (one at a time; click again for none) */}
+            {game.status === 'library' && (
+              <div className="gd-field">
+                <span>How it ended</span>
+                <div className="game-endings">
+                  {ENDINGS.filter((e) => e.ending).map(({ ending, label, icon: Icon }) => {
+                    const on = endingOf(game) === ending
+                    return (
+                      <button
+                        key={label}
+                        className={on ? `game-ending ${ending} on` : `game-ending ${ending}`}
+                        onClick={() => updateGame(game.id, endingChange(on ? undefined : ending))}
+                        aria-pressed={on}
+                      >
+                        <Icon size={16} />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             {/* From Steam: hours played and achievements (gold at 100%) */}
             {game.steamStats && <SteamStatsView stats={game.steamStats} />}
             <HiddenText
@@ -296,10 +335,13 @@ export function GameRated({ game }: { game: Game }) {
   )
 }
 
-// A played game's badge in the cover's corner (grid and list): gold trophy at 100% Steam
-// achievements, else a green check when Completed. Favorites need none: the frame shows them.
+// A played game's badge in the cover's corner (grid and list): Paused (blue) or Dropped (red) in
+// the Library, else a gold trophy at 100% Steam achievements, else a green check when Completed.
+// Favorites need none: the frame shows them.
 export function GameBadge({ game }: { game: Game }) {
   if (!isPlayed(game)) return null
+  if (game.ending === 'paused') return <span className="game-badge paused" title="Paused"><CirclePause /></span>
+  if (game.ending === 'dropped') return <span className="game-badge dropped" title="Dropped"><CircleX /></span>
   if (isHundred(game.steamStats)) return <span className="game-badge hundred" title="100% achievements"><Trophy /></span>
   if (game.completed) return <span className="game-badge done" title="Completed"><CircleCheck /></span>
   return null

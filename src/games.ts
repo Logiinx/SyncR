@@ -60,6 +60,21 @@ export const priorityLabel = (game: { status: GameStatus; priority: boolean }) =
     ? (game.priority ? 'Remove favorite' : 'Mark as favorite')
     : (game.priority ? 'Remove priority' : 'Mark as priority')
 
+// How a Library game ended: Completed, Paused or Dropped, or nothing (just put away). Stored as
+// completed (older apps know it) or ending, never both (endingChange).
+export type Ending = 'completed' | 'paused' | 'dropped'
+export const endingOf = (game: Game): Ending | undefined => game.ending ?? (game.completed ? 'completed' : undefined)
+export const endingChange = (ending?: Ending) => ({
+  completed: ending === 'completed',
+  ending: ending === 'completed' ? undefined : ending,
+})
+
+// Leaving Playing for the Library asks how it ended (gameMenu.ts endingMenuItems)
+export async function moveToLibrary(id: string, ending?: Ending) {
+  await setGameStatus(id, 'library')
+  await updateGame(id, endingChange(ending))
+}
+
 export const gameId = (igdbId: number) => `igdb-${igdbId}`
 
 // Out from the start of its release day (local time). Only an exact date counts.
