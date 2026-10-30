@@ -13,10 +13,12 @@ import { gameEditions } from './editions'
 const cents = (price: string | null | undefined) => (price == null ? null : Math.round(Number(price) * 100))
 
 // The cheaper of Steam and the cheapest key now, in cents, and where (equal: Steam, the safer
-// buy, like the price lines). null: neither is sold.
-export function currentPrice(prices: GamePrices): { price: number; store: 'steam' | 'key' } | null {
+// buy, like the price lines). null: neither is sold. ignoredKeys: a key at one of these prices
+// doesn't count (a watch's "Wrong key" prices).
+export function currentPrice(prices: GamePrices, ignoredKeys?: number[]): { price: number; store: 'steam' | 'key' } | null {
   const steam = prices.steam?.final ?? null
-  const key = cents(prices.deals?.keyshops)
+  let key = cents(prices.deals?.keyshops)
+  if (key !== null && ignoredKeys?.includes(key)) key = null
   if (steam !== null && (key === null || steam <= key)) return { price: steam, store: 'steam' }
   return key !== null ? { price: key, store: 'key' } : null
 }
@@ -62,7 +64,7 @@ export function alertPrice(watch: PriceWatch, prices: GamePrices | null | undefi
 
 // The price now (and where) when it should alert, else null
 export function watchMet(watch: PriceWatch, prices: GamePrices) {
-  const now = currentPrice(prices)
+  const now = currentPrice(prices, watch.ignoredKeys)
   const limit = alertPrice(watch, prices)
   if (now === null || limit === null) return null
   return now.price <= limit ? now : null
@@ -72,7 +74,7 @@ export function watchMet(watch: PriceWatch, prices: GamePrices) {
 // again.
 export function setWatch(game: Game, fields: Pick<PriceWatch, 'when' | 'target'> | null) {
   if (!fields) return updateGame(game.id, { watch: undefined })
-  const watch: PriceWatch = { ...fields, setAt: Date.now() }
+  const watch: PriceWatch = { ...fields, setAt: Date.now(), ...(game.watch?.ignoredKeys && { ignoredKeys: game.watch.ignoredKeys }) }
   if (fields.target === undefined) delete watch.target
   return updateGame(game.id, { watch })
 }
@@ -85,13 +87,37 @@ export async function setEditionWatch(
   fields: Pick<PriceWatch, 'when' | 'target'> | null,
 ) {
   const current = (await db.games.get(game.id))?.editionWatches ?? []
-  const list = current.filter((w) => !(w.kind === edition.kind && w.id === edition.id))
+  const before = current.find((w) => w.kind === edition.kind && w.id === edition.id)
+  const list = current.filter((w) => w !== before)
   if (fields) {
     const watch: EditionWatch = { kind: edition.kind, id: edition.id, name: edition.name, ...fields, setAt: Date.now() }
+    if (before?.ignoredKeys) watch.ignoredKeys = before.ignoredKeys
     if (fields.target === undefined) delete watch.target
     list.push(watch)
   }
   return updateGame(game.id, { editionWatches: list.length > 0 ? list : undefined })
+}
+
+// "Wrong key" on a key price alert (dueReminders.ts): the key that alerted isn't one I can use
+// (e.g. Xbox), so the watch goes on, skipping keys at that exact price (GG.deals gives only the
+// cheapest key's price, not its platform). A new setAt: a next alert is a new Calendar event.
+export async function ignoreAlertKey(eventId: string) {
+  const match = eventId.match(/^price(\d+)t(\d+)(?:e(\d+))?$/)
+  const game = match && (await db.games.get(gameId(Number(match[1]))))
+  if (!match || !game) return
+  const setAt = Number(match[2])
+  const rearm = <W extends PriceWatch>(w: W): W =>
+    w.firedPrice === undefined
+      ? w
+      : { ...w, firedAt: undefined, firedPrice: undefined, setAt: Date.now(), ignoredKeys: [...(w.ignoredKeys ?? []), w.firedPrice].slice(-5) }
+  if (!match[3]) {
+    if (game.watch?.setAt === setAt) await updateGame(game.id, { watch: rearm(game.watch) })
+    return
+  }
+  const id = Number(match[3])
+  const list = game.editionWatches ?? []
+  if (!list.some((w) => w.id === id && w.setAt === setAt)) return
+  await updateGame(game.id, { editionWatches: list.map((w) => (w.id === id && w.setAt === setAt ? rearm(w) : w)) })
 }
 
 // "Stop watching": the game and all its editions

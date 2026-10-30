@@ -140,6 +140,9 @@ export interface PriceWatch {
   setAt: number // when it was set: also names its Calendar event, so two devices make only one
   firedAt?: number // when it alerted
   firedPrice?: number // cents, the price that made it alert
+  // cents: key prices marked "Wrong key" on an alert (e.g. an Xbox key: GG.deals doesn't say the
+  // platform), skipped by this watch; the last 5. Kept when the alert is changed, gone when it's turned off.
+  ignoredKeys?: number[]
 }
 
 // A watched edition of a To buy or Upcoming game (editions.ts): its own watch, on its Steam

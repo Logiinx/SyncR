@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { playReminderSound } from './sounds'
 import { eventId, listEventAlerts, markAlertDone, MISSED_MS, snoozeAlert } from './eventAlerts'
 import { REMINDERS_TAB } from './reminders'
+import { ignoreAlertKey, priceEventGame } from './priceWatch'
 
 // What is due right now, used by the cards (ReminderAlerts.tsx) and the desktop pop-up
 // (ReminderPopup.tsx): the alerts of Google Calendar events (eventAlerts.ts).
@@ -19,10 +20,11 @@ export interface DueItem {
   dueAt: number // when it came due (a snoozed one: when the snooze ended)
   notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
   colorId?: string // the event's Google color (the card's strip)
+  keyAlert: boolean // a price alert for a key: also "Wrong key" (priceWatch.ts ignoreAlertKey)
 }
 
 // The buttons on a due item ('open': a click on the card's text)
-export type ReminderAction = 'done' | 'snooze10' | 'snooze60' | 'tomorrow' | 'open'
+export type ReminderAction = 'done' | 'snooze10' | 'snooze60' | 'tomorrow' | 'open' | 'wrongkey'
 
 // A click on a card: SyncR shows the Reminders tab with the event's preview. RemindersView takes
 // the event (takeAlertEvent) when it opens, or right away if it's already open.
@@ -40,6 +42,8 @@ export function takeAlertEvent() {
 
 export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) {
   if (action === 'done') return markAlertDone(key)
+  // Done, and the watch goes on without that key price
+  if (action === 'wrongkey') return ignoreAlertKey(eventId(key)).then(() => markAlertDone(key))
   if (action === 'snooze10') return snoozeAlert(key, 10)
   if (action === 'snooze60') return snoozeAlert(key, 60)
   return snoozeAlert(key, 'tomorrow')
@@ -49,7 +53,10 @@ export function runAction(key: string, action: Exclude<ReminderAction, 'open'>) 
 async function listItems(): Promise<DueItem[]> {
   const alerts = await listEventAlerts()
   return alerts
-    .map((a) => ({ key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt, notMoved: a.notMoved, colorId: a.colorId }))
+    .map((a) => ({
+      key: a.key, text: a.title, note: a.description, time: a.start, allDay: a.allDay, dueAt: a.dueAt, notMoved: a.notMoved, colorId: a.colorId,
+      keyAlert: !!priceEventGame(eventId(a.key)) && a.title.endsWith(' for a key'), // priceWatch.ts alertText
+    }))
     .sort((a, b) => a.dueAt - b.dueAt)
 }
 

@@ -179,7 +179,7 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
   const when = !watch ? null : watch.when === 'price' || noHistory ? 'price' : 'low' // an old 'record' watch: 'low'
   const save = (change: Partial<WatchFields>) =>
     onSave({ when: when ?? 'price', target: watch?.target, ...change })
-  const now = prices ? currentPrice(prices) : null
+  const now = prices ? currentPrice(prices, watch?.ignoredKeys) : null
   const limit = watch && alertPrice(watch, prices)
   // Where the suggested price came from, shown until the price is changed
   const [suggested, setSuggested] = useState<string | null>(null)
@@ -224,6 +224,11 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
             limit != null && ` · alerts at ≤ ${formatEuros(limit)}`
           )}
         </span>
+        {watch?.ignoredKeys && (
+          <span title="Marked “Wrong key” on an alert (turn the alert off and on to forget them)">
+            Ignoring keys at {watch.ignoredKeys.map(formatEuros).join(', ')}
+          </span>
+        )}
         {suggested && when === 'price' && <span>{suggested}</span>}
       </div>
       {when && (

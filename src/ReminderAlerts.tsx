@@ -10,7 +10,8 @@ import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
 
 // One due event alert: a strip in the event's color (none: the accent), time, title, note. A click on the text
-// opens the event in SyncR (a price alert: its game). Done (big) and Snooze, which unfolds its choices in place of the
+// opens the event in SyncR (a price alert: its game). Done (big), Snooze (a key price alert: also
+// Wrong key, see priceWatch.ts ignoreAlertKey), Snooze unfolds its choices in place of the
 // buttons (inside the card: a menu could be cut off by the pop-up window's edge).
 export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (action: ReminderAction) => void }) {
   const [snoozing, setSnoozing] = useState(false)
@@ -44,6 +45,11 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
           <button onClick={() => setSnoozing(true)}>
             Snooze <ChevronDown size={14} />
           </button>
+          {item.keyAlert && (
+            <button onClick={() => onAction('wrongkey')} title="Not a key I can use (e.g. Xbox): keep watching, skip keys at this price">
+              Wrong key
+            </button>
+          )}
         </div>
       )}
     </div>
