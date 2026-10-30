@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **Improved:** Games with 100% achievements get a gold ring around the cover instead of a trophy.
 - **Improved:** To play: Playing cards have bigger covers and Not started smaller ones, so Playing comes first.
 - **Fixed:** Library games can be unpaused from their right-click menu (Completed, Paused, Dropped).
 

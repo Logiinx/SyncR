@@ -4788,6 +4788,15 @@ h3.games-group-title {
   outline-color: var(--text-blue);
 }
 
+/* 100% Steam achievements: a gold ring around the cover (tiles, list rows, Playing cards; no
+   trophy badge). It replaces the priority / favorite mark (gameClass, GameDialog.tsx). */
+.game-tile.hundred .game-cover,
+.game-row.hundred .game-cover,
+.playing-card.hundred .game-cover {
+  outline: 2px solid var(--text-yellow);
+  outline-offset: 2px;
+}
+
 .game-tile-name {
   display: -webkit-box;
   margin-top: 6px;
@@ -5288,7 +5297,7 @@ h3.games-group-title {
   fill: currentColor;
 }
 
-/* Completed check or 100% trophy in the cover's top right corner (GameBadge): a dark round
+/* Completed check, Paused or Dropped in the cover's top right corner (GameBadge; 100%: a gold ring instead): a dark round
    badge so it reads on any cover */
 .game-row-cover {
   position: relative;
@@ -5359,9 +5368,6 @@ h3.games-group-title {
   color: var(--text-green);
 }
 
-.game-badge.hundred {
-  color: var(--text-yellow);
-}
 
 /* Game window: Steam hours played and achievements, two blocks (SteamStatsView) */
 .gd-steam {

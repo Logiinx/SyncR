@@ -362,11 +362,18 @@ export function GameRated({ game }: { game: Game }) {
 // A played game's badge in the cover's corner (grid and list): Paused (blue) or Dropped (red) in
 // the Library, else a gold trophy at 100% Steam achievements, else a green check when Completed.
 // Favorites need none: the frame shows them.
+// 100% Steam achievements (Playing and Library): a gold ring around the cover instead of a badge.
+// It wins over the priority / favorite mark, which then only puts the game first (user's choice).
+export const hasGoldRing = (game: Game) => isPlayed(game) && isHundred(game.steamStats)
+// A game's tile, row or Playing card class: base + "hundred" (gold ring) or "priority" (blue)
+export const gameClass = (base: string, game: Game) =>
+  hasGoldRing(game) ? `${base} hundred` : game.priority ? `${base} priority` : base
+
 export function GameBadge({ game }: { game: Game }) {
   if (!isPlayed(game)) return null
   if (game.ending === 'paused') return <span className="game-badge paused" title="Paused"><CirclePause /></span>
   if (game.ending === 'dropped') return <span className="game-badge dropped" title="Dropped"><CircleX /></span>
-  if (isHundred(game.steamStats)) return <span className="game-badge hundred" title="100% achievements"><Trophy /></span>
+  if (hasGoldRing(game)) return null // the gold ring says it (gameClass)
   if (game.completed) return <span className="game-badge done" title="Completed"><CircleCheck /></span>
   return null
 }

@@ -15,7 +15,7 @@ import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { CALENDAR_LAYOUTS, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import GameDialog, { AchievementBar, GameBadge, GameRated, showsRated } from './GameDialog'
+import GameDialog, { AchievementBar, GameBadge, gameClass, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
@@ -276,7 +276,7 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
   return (
     <div
       ref={ref}
-      className={game.priority ? 'playing-card priority' : 'playing-card'}
+      className={gameClass('playing-card', game)}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -340,7 +340,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
   return (
     <div
       ref={ref}
-      className={game.priority ? 'game-tile priority' : 'game-tile'}
+      className={gameClass('game-tile', game)}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -379,7 +379,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   return (
     <div
       ref={ref}
-      className={game.priority ? 'game-row priority' : 'game-row'}
+      className={gameClass('game-row', game)}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
