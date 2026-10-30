@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **New:** Tabs Coming soon · To buy · To play · Library; To play shows Playing above Up next (owned).
+- **New:** Games you're playing show as cards with hours played and Steam achievements.
+- **New:** "Start playing" in a game's menu; Games opens on To buy. Your old To play games are in To buy.
+
 ## [0.35.2] - 2026-10-30
 
 **Mail**
