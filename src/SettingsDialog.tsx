@@ -20,7 +20,7 @@ import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSende
 import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
-import { checkSteamProfile, saveSteamProfile, useSteamProfile, type SteamProfile } from './steam'
+import { checkSteamProfile, followSteam, saveSteamFollow, saveSteamProfile, useSteamFollow, useSteamProfile, type SteamProfile } from './steam'
 import {
   loadBackground,
   saveBackground,
@@ -480,6 +480,7 @@ function GamesSettings() {
 // stops and when Settings opens. Its id and name are saved once found.
 function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
   const saved = useSteamProfile()
+  const follow = useSteamFollow()
   const [profile, setProfile] = useState<SteamProfile | null>(null) // null until loaded
   const [status, setStatus] = useState({ ok: false, text: '' })
 
@@ -537,6 +538,23 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
         {status.text === 'Checking…' && <Spinner size={12} />}
         {status.text}
       </p>
+      {/* Games move by themselves (steam.ts followSteam); checked right away when switched on */}
+      <SettingRow
+        label="Follow my Steam account"
+        value="moves games you buy or start"
+        title="To buy games you own on Steam move to To play; Up next games you play for 1 h move to Playing"
+      >
+        <input
+          type="checkbox"
+          checked={!!follow}
+          disabled={follow === undefined}
+          onChange={async (e) => {
+            const on = e.target.checked // read first: the box shows the saved value again meanwhile
+            await saveSteamFollow(on)
+            if (on) followSteam(true)
+          }}
+        />
+      </SettingRow>
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { changed, db, updateGame, type Game, type SteamStats } from './db'
+import { changed, db, setGameStatus, updateGame, type Game, type SteamStats } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { steamRefs } from './prices'
 import { read, write } from './localState'
@@ -128,6 +128,64 @@ export async function refreshSteamStats() {
   const result = await updateSteamStats()
   if (result === 'off') write(REFRESHED_KEY, before)
   if (result === 'failed') write(REFRESHED_KEY, Date.now() - REFRESH_EVERY + RETRY_AFTER)
+}
+
+// ---------- Follow my Steam account (Settings → Games, synced) ----------
+
+const FOLLOW_SETTING = 'steam-follow'
+const FOLLOW_EVERY = 30 * 60_000 // at most this often per device
+const FOLLOWED_KEY = 'syncr.steamFollowedAt' // per device
+const STARTED_MINUTES = 60 // played this much more since it got to Up next = started
+
+export async function loadSteamFollow() {
+  return (await db.settings.get(FOLLOW_SETTING))?.value === true
+}
+
+export async function saveSteamFollow(on: boolean) {
+  const change = { value: on, updatedAt: Date.now() }
+  if (!(await db.settings.update(FOLLOW_SETTING, change))) await db.settings.put({ name: FOLLOW_SETTING, ...change })
+  changed()
+}
+
+export const useSteamFollow = () => useLiveQuery(loadSteamFollow, [])
+
+// With the setting on: a To buy game you own on Steam goes to Up next ("Owned on Steam"); an Up
+// next game played 1 h more on Steam than when it got there goes to Playing ("Started on
+// Steam"). Both show a line at the top of Games (movedBy). The first time an Up next game is
+// seen, its minutes are noted (not an edit, like the stats), so hours played before don't count.
+// Every 10 min with the release day check (games.ts), at most every 30 min. Quietly does nothing
+// when it can't.
+export async function followSteam(force = false) {
+  if (!force && Date.now() < read<number>(FOLLOWED_KEY, 0) + FOLLOW_EVERY) return
+  try {
+    if (!(await loadSteamFollow())) return
+    const profile = await loadSteamProfile()
+    if (!profile.steamId || !isComplete(await loadConnection())) return
+    const games = await db.games.filter((g) => !g.deleted && (g.status === 'tobuy' || g.status === 'upnext')).toArray()
+    write(FOLLOWED_KEY, Date.now())
+    if (games.length === 0) return
+    const minutes = await ownedMinutes(profile.steamId)
+    if (!minutes) return // private game details
+    const refs = await steamRefs(games.map((g) => g.igdbId))
+    for (const game of games) {
+      const ref = refs.get(game.igdbId)
+      const played = ref?.kind === 'app' ? minutes.get(ref.id) : undefined
+      if (played === undefined) continue // not owned on Steam
+      if (game.status === 'tobuy') {
+        await setGameStatus(game.id, 'upnext')
+        await updateGame(game.id, { movedBy: 'bought' })
+        await db.games.update(game.id, { upNextMinutes: played })
+      } else if (game.upNextMinutes === undefined) {
+        await db.games.update(game.id, { upNextMinutes: played })
+      } else if (played >= game.upNextMinutes + STARTED_MINUTES) {
+        await setGameStatus(game.id, 'playing')
+        await updateGame(game.id, { movedBy: 'started' })
+        await updateSteamStats([{ ...game, status: 'playing' }]) // hours and achievements for its card
+      }
+    }
+  } catch (e) {
+    console.warn('Following Steam failed', e)
+  }
 }
 
 // "42 h played", "4.5 h played", "35 min played"

@@ -162,6 +162,7 @@ export interface Game {
   datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
   movedBy?: 'released' | 'bought' | 'started' // SyncR moved it by itself (banner until dismissed or moved by hand)
   preordered?: boolean // Coming soon only: owned already, so no price alert; goes to Up next on release
+  upNextMinutes?: number // Up next: Steam minutes played when first seen there (steam.ts followSteam); +1 h = Playing
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
@@ -552,6 +553,7 @@ export async function setGameStatus(id: string, status: GameStatus) {
     ...(status !== 'library' && game?.ending && { ending: undefined }),
     ...(game?.movedBy && { movedBy: undefined }),
     ...(game?.preordered && { preordered: undefined }), // only means something while Coming soon
+    ...(game?.upNextMinutes !== undefined && { upNextMinutes: undefined }),
   })
 }
 

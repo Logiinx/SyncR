@@ -397,9 +397,9 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
 // What the daily refresh found (games.ts), until dismissed (✕): Waiting games whose date got
 // more precise ("Date set", green) and delayed games (yellow). Old date → new date. Saved on
 // the game, so it shows on both devices.
-// Also the games SyncR moved by itself (blue, first): "Released: Name → To buy". A click on a
-// line opens its game.
-const MOVED_LABELS = { released: 'Released', bought: 'Bought on Steam', started: 'Started on Steam' }
+// Also the games SyncR moved by itself (blue, first): "Released: Name → To buy", "Started on
+// Steam: Name → Playing" (To play's part, clearer than the tab). A click on a line opens its game.
+const MOVED_LABELS = { released: 'Released', bought: 'Owned on Steam', started: 'Started on Steam' }
 
 function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
   const moved = games.filter((g) => g.movedBy)
@@ -412,7 +412,7 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
         <div key={`moved-${game.id}`} className="games-delay games-moved">
           <ArrowRight size={15} />
           <span onClick={() => onOpen(game.id)}>
-            <b>{MOVED_LABELS[game.movedBy!]}:</b> {game.name} → {statusLabel(game.status)}
+            <b>{MOVED_LABELS[game.movedBy!]}:</b> {game.name} → {game.status === 'playing' ? 'Playing' : statusLabel(game.status)}
           </span>
           <button onClick={() => updateGame(game.id, { movedBy: undefined })} title="Dismiss">
             <X size={15} />
