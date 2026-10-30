@@ -9,7 +9,9 @@ All notable changes to SyncR. Newest version first.
 - **New:** Games you're playing show as cards with hours played and Steam achievements.
 - **New:** "Start playing" in a game's menu; Games opens on To buy. Your old To play games are in To buy.
 - **New:** Library games can be marked Completed, Paused or Dropped; SyncR asks when you stop playing.
+- **New:** A line at the top of Games tells you when a game moved by itself, e.g. on release day.
 - **Improved:** To buy lists games on sale on Steam first, biggest discount first (after Priority).
+- **Improved:** Click a "Delayed" or "Date set" line at the top of Games to open its game.
 
 ## [0.35.2] - 2026-10-30
 

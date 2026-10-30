@@ -159,6 +159,7 @@ export interface Game {
   delayedFrom?: number // the earlier release day, when the refresh found a delay (banner until dismissed)
   delayedFromLabel?: string // the same when the earlier date was vague, e.g. "Q1 2027"
   datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
+  movedBy?: 'released' | 'bought' | 'started' // SyncR moved it by itself (banner until dismissed or moved by hand)
   platforms: string[] // short names, e.g. "PC", "Android"
   status: GameStatus
   statusAt: number // when it got this status (sorts the groups: newest first, e.g. last finished)
@@ -536,7 +537,8 @@ export async function updateGame(id: string, change: Partial<Game>) {
 
 // Up next, Playing or Library: owned now, so its price watch goes. Into or out of the Library: Priority
 // and Favorite mean different things, so the mark goes (games.ts isFavoriteTab). Out of the Library:
-// Paused / Dropped no longer apply (Completed stays, like the rating).
+// Paused / Dropped no longer apply (Completed stays, like the rating). A move clears the "moved by
+// itself" line (movedBy): automatic moves set it again right after (games.ts moveReleased).
 export async function setGameStatus(id: string, status: GameStatus) {
   const game = await db.games.get(id)
   const leavesMark = game?.priority && (game.status === 'library') !== (status === 'library')
@@ -546,6 +548,7 @@ export async function setGameStatus(id: string, status: GameStatus) {
     ...(!canWatch({ status }) && { watch: undefined, editionWatches: undefined }),
     ...(leavesMark && { priority: false }),
     ...(status !== 'library' && game?.ending && { ending: undefined }),
+    ...(game?.movedBy && { movedBy: undefined }),
   })
 }
 

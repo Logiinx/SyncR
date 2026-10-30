@@ -4359,9 +4359,20 @@ h3.games-group-title {
   color: var(--text-green);
 }
 
+/* SyncR moved the game by itself (release day, Steam): blue */
+.games-moved {
+  background: color-mix(in srgb, var(--text-blue) 12%, var(--bg));
+}
+
+.games-moved > svg {
+  color: var(--text-blue);
+}
+
+/* Click: opens the game */
 .games-delay span {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 
 .games-delay button {

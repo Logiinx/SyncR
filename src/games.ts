@@ -197,10 +197,14 @@ const CHECK_EVERY = 10 * 60 * 1000 // release day check, ms
 const REFRESH_EVERY = 24 * 60 * 60 * 1000
 const REFRESHED_KEY = 'syncr.gamesRefreshedAt' // per device
 
-// Release day: Coming soon games whose (exact) day has come move to To buy
+// Release day: Coming soon games whose (exact) day has come move to To buy, with a line at the
+// top of Games ("Released: Name → To buy", GamesView.tsx MovedLines)
 export async function moveReleased() {
   const due = await db.games.filter((g) => !g.deleted && g.status === 'waiting' && isReleased(g)).toArray()
-  for (const game of due) await setGameStatus(game.id, 'tobuy')
+  for (const game of due) {
+    await setGameStatus(game.id, 'tobuy')
+    await updateGame(game.id, { movedBy: 'released' })
+  }
 }
 
 const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0)

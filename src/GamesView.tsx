@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, tabOf, TABS, type GamesTab } from './games'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
 import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
@@ -125,7 +125,7 @@ function GamesView() {
           )
         ) : (
           <>
-            {games && <DelayBanner games={games} />}
+            {games && <DelayBanner games={games} onOpen={setOpenId} />}
             <GameSearch inList={inList} onOpen={setOpenId} />
             {games && games.length === 0 && connected && (
               <p className="games-empty">
@@ -395,16 +395,32 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
 // What the daily refresh found (games.ts), until dismissed (✕): Waiting games whose date got
 // more precise ("Date set", green) and delayed games (yellow). Old date → new date. Saved on
 // the game, so it shows on both devices.
-function DelayBanner({ games }: { games: Game[] }) {
+// Also the games SyncR moved by itself (blue, first): "Released: Name → To buy". A click on a
+// line opens its game.
+const MOVED_LABELS = { released: 'Released', bought: 'Bought on Steam', started: 'Started on Steam' }
+
+function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
+  const moved = games.filter((g) => g.movedBy)
   const dated = games.filter((g) => g.datedFrom)
   const delayed = games.filter((g) => g.delayedFrom || g.delayedFromLabel)
-  if (dated.length === 0 && delayed.length === 0) return null
+  if (moved.length === 0 && dated.length === 0 && delayed.length === 0) return null
   return (
     <div className="games-delays">
+      {moved.map((game) => (
+        <div key={`moved-${game.id}`} className="games-delay games-moved">
+          <ArrowRight size={15} />
+          <span onClick={() => onOpen(game.id)}>
+            <b>{MOVED_LABELS[game.movedBy!]}:</b> {game.name} → {statusLabel(game.status)}
+          </span>
+          <button onClick={() => updateGame(game.id, { movedBy: undefined })} title="Dismiss">
+            <X size={15} />
+          </button>
+        </div>
+      ))}
       {dated.map((game) => (
         <div key={`dated-${game.id}`} className="games-delay games-dated">
           <CalendarCheck size={15} />
-          <span>
+          <span onClick={() => onOpen(game.id)}>
             <b>Date set:</b> {game.name} · {game.datedFrom} → {formatRelease(game.releaseDate, game.releaseLabel)}
           </span>
           <button onClick={() => updateGame(game.id, { datedFrom: undefined })} title="Dismiss">
@@ -415,7 +431,7 @@ function DelayBanner({ games }: { games: Game[] }) {
       {delayed.map((game) => (
         <div key={game.id} className="games-delay">
           <CalendarClock size={15} />
-          <span>
+          <span onClick={() => onOpen(game.id)}>
             <b>Delayed:</b> {game.name} · {formatRelease(game.delayedFrom, game.delayedFromLabel)} →{' '}
             {formatRelease(game.releaseDate, game.releaseLabel)}
           </span>
