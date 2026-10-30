@@ -4788,11 +4788,10 @@ h3.games-group-title {
   outline-color: var(--text-blue);
 }
 
-/* 100% Steam achievements: a gold ring around the cover (tiles, list rows, Playing cards; no
-   trophy badge). It replaces the priority / favorite mark (gameClass, GameDialog.tsx). */
+/* 100% Steam achievements in the Library: a gold ring around the cover (tiles, list rows; no
+   trophy badge). It replaces the favorite mark (gameClass, GameDialog.tsx). */
 .game-tile.hundred .game-cover,
-.game-row.hundred .game-cover,
-.playing-card.hundred .game-cover {
+.game-row.hundred .game-cover {
   outline: 2px solid var(--text-yellow);
   outline-offset: 2px;
 }
