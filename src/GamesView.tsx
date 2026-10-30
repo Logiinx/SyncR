@@ -7,7 +7,8 @@ import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices } from './prices'
 import { WatchBell } from './PriceWatchView'
-import { useSteamProfile } from './steam'
+import { isHundred, playedText, useSteamProfile } from './steam'
+import { shortDate } from './dates'
 import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
@@ -224,9 +225,63 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
             {part.title}
             {part.games.length > 0 && <span className="games-count">{part.games.length}</span>}
           </h3>
-          <GameShelf games={sortGames(part.games)} layout={layout} emptyText={part.empty} onOpen={onOpen} onMenu={onMenu} />
+          {part.title === 'Playing' && part.games.length > 0 ? (
+            <div className="playing-cards">
+              {sortGames(part.games).map((game) => (
+                <PlayingCard key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
+              ))}
+            </div>
+          ) : (
+            <GameShelf games={sortGames(part.games)} layout={layout} emptyText={part.empty} onOpen={onOpen} onMenu={onMenu} />
+          )}
         </section>
       ))}
+    </div>
+  )
+}
+
+// A game being played (To play's top part, both layouts): cover, name, "42 h played · since
+// 21 Oct 2026" (hours only for Steam games; since = when it moved to Playing), "★ 4.5" once
+// rated, and the Steam achievements bar (gold at 100%, like the game window). Wide cards side by
+// side on the PC, slim full-width rows on the phone (CSS).
+function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
+  const stats = game.steamStats
+  const percent = stats?.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
+  const since = `since ${shortDate(game.statusAt)}`
+  const details = stats ? `${playedText(stats.minutes)} · ${since}` : since[0].toUpperCase() + since.slice(1)
+  const ref = useRef<HTMLDivElement>(null)
+  useListItem(ref)
+  return (
+    <div
+      ref={ref}
+      className={game.priority ? 'playing-card priority' : 'playing-card'}
+      onClick={onOpen}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onMenu(e.clientX, e.clientY)
+      }}
+    >
+      <span className="game-row-cover">
+        <Cover coverId={game.coverId} big />
+        <GameBadge game={game} />
+      </span>
+      <div className="playing-text">
+        <div className="playing-top">
+          <div className="game-name" title={game.name}>{game.name}</div>
+          {showsRated(game) && <GameRated game={game} />}
+        </div>
+        <div className="game-details">{details}</div>
+        {!!stats?.total && (
+          <div className={isHundred(stats) ? 'playing-achievements hundred' : 'playing-achievements'}>
+            <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
+              <div style={{ width: `${percent}%` }} />
+            </div>
+            <span>
+              {stats.done ?? 0} / {stats.total} achievements
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

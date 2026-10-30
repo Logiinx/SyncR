@@ -4553,6 +4553,91 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
+/* To play's Playing part (PlayingCard): wide cards side by side on the PC (as wide as the cover
+   grid in the Covers layout), one slim row each on the phone */
+.playing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.playing-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 2%, var(--bg));
+  cursor: pointer;
+}
+
+.playing-card:hover {
+  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+
+/* Priority: the Board cards' blue frame, like list rows */
+.playing-card.priority {
+  outline: 1.5px solid var(--text-blue);
+  outline-offset: -1.5px;
+}
+
+.playing-card .game-cover {
+  width: 64px;
+  height: 86px;
+}
+
+.playing-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.playing-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.playing-top .game-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.playing-achievements {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.playing-achievements .gd-bar {
+  flex: 1;
+  margin-top: 0;
+}
+
+@container (max-width: 600px) {
+  .playing-cards {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .playing-card {
+    padding: 6px 8px;
+  }
+
+  .playing-card .game-cover {
+    width: 40px;
+    height: 54px;
+  }
+}
+
 /* To play's two parts (Playing, Up next): a small title with its count above each shelf */
 .games-part + .games-part {
   margin-top: 28px;
@@ -4569,7 +4654,8 @@ h3.games-group-title {
 }
 
 .games-parts.wide .games-part-title,
-.games-parts.wide .games-shelf-empty {
+.games-parts.wide .games-shelf-empty,
+.games-parts.wide .playing-cards {
   margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* lined up with the wide grid */
 }
 
@@ -5246,7 +5332,8 @@ h3.games-group-title {
   color: var(--text-yellow);
 }
 
-.gd-achievements.hundred .gd-bar > div {
+.gd-achievements.hundred .gd-bar > div,
+.playing-achievements.hundred .gd-bar > div {
   background: var(--text-yellow);
 }
 
