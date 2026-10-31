@@ -97,7 +97,7 @@ export function useFoldAnimation(folded: boolean, content: () => Element | null 
 // it grows in. Removed from a list that stays: a copy of it, made before React empties it (a
 // card's text editor is taken out), shrinks and fades out, and the items after it close the gap.
 // Neither when the whole list appears or goes (opening the Board, another games tab: a new list).
-// In a grid (game covers): fade + scale instead, the other tiles glide to their new places.
+// In a grid (game covers): a fade instead, the other tiles glide to their new places. No scaling.
 const listSeen = new WeakMap<Element, number>() // when each list first showed an item
 
 export function useListItem(ref: RefObject<HTMLElement | null>) {
@@ -222,7 +222,7 @@ function isGrid(list: Element) {
 // Gone ↔ there. In a column: its height, margins and the gap after it (the last gap goes with it).
 // In a row (note tabs): the same with its width.
 function itemFrames(el: Element, list: Element): Keyframe[] {
-  if (isGrid(list)) return [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }]
+  if (isGrid(list)) return [{ opacity: 0 }, { opacity: 1 }] // no scaling (blurry, then snaps)
   const listStyle = getComputedStyle(list)
   if (listStyle.display.endsWith('flex') && !listStyle.flexDirection.startsWith('column')) {
     const gap = parseFloat(listStyle.columnGap) || 0
@@ -237,8 +237,8 @@ function itemFrames(el: Element, list: Element): Keyframe[] {
     return [gone, there]
   }
   const gap = parseFloat(getComputedStyle(list).rowGap) || 0
-  const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px`, opacity: 0, transform: 'scale(0.96)' }
-  const there = { ...upright(el), opacity: 1, transform: 'none' }
+  const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px`, opacity: 0 }
+  const there = { ...upright(el), opacity: 1 }
   return [{ ...gone, overflow: 'hidden' }, { ...there, overflow: 'hidden' }]
 }
 
