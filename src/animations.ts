@@ -19,10 +19,10 @@ export const TIMING = {
 }
 export const EASE_OPEN = 'cubic-bezier(0.32, 0.72, 0, 1)' // gentle start, smooth stop: things arriving
 export const EASE_CLOSE = 'cubic-bezier(0.4, 0, 0.6, 0.6)' // things leaving
-// Windows come from (and go back to) a bit lower and smaller: they "settle in". The mail pop-up
-// only grows from its corner (SETTLE_SCALE), it doesn't rise.
-export const SETTLE_SCALE = 'scale(0.94)'
-const SETTLE = `translateY(8px) ${SETTLE_SCALE}`
+// Windows come from (and go back to) a bit lower: they "settle in". No scaling (it was 94%): a
+// scaled window's text is drawn blurry until it's at full size, then snaps a hair into place
+// (dropdowns most), so windows only rise; the mail pop-up only unfolds from its corner.
+const SETTLE = 'translateY(8px)'
 
 const root = document.documentElement.style
 for (const [name, ms] of Object.entries(TIMING)) root.setProperty(`--${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, `${ms}ms`)

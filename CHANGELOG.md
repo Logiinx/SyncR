@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **Fixed:** Small fixes: the Settings window no longer slides its content while opening.
+- **Improved:** Windows and the mail pop-up open with sharp text: no more blur or shift at the end.
 
 ## [0.37.2] - 2026-10-31
 

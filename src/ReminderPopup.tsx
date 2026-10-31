@@ -13,7 +13,7 @@ import { MailCards } from './MailCards'
 import { playEmailSound, playReminderSound } from './sounds'
 import { ReminderCards } from './ReminderAlerts'
 import { loadAppearance } from './appearance'
-import { EASE_CLOSE, EASE_OPEN, SETTLE_SCALE, TIMING } from './animations'
+import { EASE_CLOSE, EASE_OPEN, TIMING } from './animations'
 import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWindow'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
@@ -89,12 +89,8 @@ function ReminderPopup() {
     const list = listRef.current
     const from = readerSizeRef.current
     if (list && from && cardsSize.current && loadAppearance().animations) {
-      list.style.transformOrigin = cornerOrigin()
       await list.animate(
-        [
-          { clipPath: FULL_CLIP, transform: 'none' },
-          { clipPath: cornerClip(cardsSize.current, from), transform: SETTLE_SCALE },
-        ],
+        [{ clipPath: FULL_CLIP }, { clipPath: cornerClip(cardsSize.current, from) }],
         { duration: TIMING.closeBig, easing: EASE_CLOSE, fill: 'forwards' },
       ).finished
       await placeWindow(cardsSize.current) // so the cards don't show in a corner of the big window
@@ -124,8 +120,7 @@ function ReminderPopup() {
       if (reader && from) {
         delete list.dataset.growFrom
         list.style.clipPath = ''
-        list.style.transform = ''
-        list.animate([{ clipPath: from, transform: SETTLE_SCALE }, { clipPath: FULL_CLIP, transform: 'none' }], {
+        list.animate([{ clipPath: from }, { clipPath: FULL_CLIP }], {
           duration: TIMING.openBig,
           easing: EASE_OPEN,
         })
@@ -152,13 +147,10 @@ function ReminderPopup() {
     if (reading && readerSize && cardsSize.current && loadAppearance().animations) {
       list.dataset.growFrom = cornerClip(cardsSize.current, readerSize)
       list.style.clipPath = list.dataset.growFrom
-      list.style.transformOrigin = cornerOrigin()
-      list.style.transform = SETTLE_SCALE // where the growing starts
     } else if (!reading) {
       list.getAnimations().forEach((animation) => animation.cancel())
       delete list.dataset.growFrom
       list.style.clipPath = ''
-      list.style.transform = ''
     }
   }, [reading !== undefined]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -273,17 +265,11 @@ function useMailFade(mails: MailAlert[], reading: boolean) {
 
 // Opening and closing an email: the window is see-through (popupWindow.ts), so it changes size
 // at once and only what's drawn moves: a cut (clip-path) that grows from the cards' size in the
-// pop-up's corner to the whole reader, or back, while it settles in (grows from 94%, anchored in
-// that corner). Smooth, unlike resizing the window in steps. Timings: animations.ts.
+// pop-up's corner to the whole reader, or back (no scaling: the text stays sharp). Smooth,
+// unlike resizing the window in steps. Timings: animations.ts.
 type Size = { width: number; height: number }
 const RADIUS = 8 // px, the pop-up's corners (index.css, .reminder-popup)
 const FULL_CLIP = `inset(0px 0px 0px 0px round ${RADIUS}px)`
-
-// The pop-up's corner, as a transform origin (it settles in toward it)
-function cornerOrigin() {
-  const { popupCorner } = loadBackground()
-  return `${popupCorner.startsWith('top') ? 'top' : 'bottom'} ${popupCorner.endsWith('left') ? 'left' : 'right'}`
-}
 
 // The part of the big size that the small one covers, in the pop-up's corner
 function cornerClip(small: Size, big: Size) {

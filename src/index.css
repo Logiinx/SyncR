@@ -3519,8 +3519,8 @@ button {
 /* Timings and curves: variables set by animations.ts (TIMING): --open-big, --close-small…,
    --ease-open, --ease-close, --settle */
 
-/* Windows and the image viewer: the dark background fades in, the window rises 8px and grows
-   from 94% (settles in) */
+/* Windows and the image viewer: the dark background fades in, the window rises 8px (settles in;
+   no scaling: text stays sharp, nothing snaps at the end) */
 .dialog-backdrop,
 .image-viewer {
   animation: fade-in var(--open-big) var(--ease-open);
@@ -3700,9 +3700,6 @@ button {
 .dialog.settings {
   --settings-top: calc(8vh / var(--zoom, 1));
   align-self: flex-start;
-  /* Pinned near the top: it grows from its top edge when it opens (from the middle, its title
-     and cards slid up ~25px) */
-  transform-origin: top center;
   width: min(880px, 100%);
   max-height: calc(100% - var(--settings-top));
   margin-top: var(--settings-top);
