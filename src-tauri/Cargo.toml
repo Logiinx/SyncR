@@ -43,3 +43,13 @@ tauri-plugin-single-instance = "2"
 # Windows DPAPI for secrets (lib.rs, dpapi). Same version Tauri already uses.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+
+# A smaller app (installer and updates): one optimization pass over the whole program (LTO),
+# optimized for size, no debug symbols, stop at once on a crash. Costs ~1-2 min per GitHub build
+# (the LTO pass can't be cached); lighter: drop lto and codegen-units.
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
+strip = true
+panic = "abort"
