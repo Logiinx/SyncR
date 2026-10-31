@@ -161,6 +161,21 @@ function MailView() {
             {email}: {text}. Trying again…
           </p>
         ))}
+        {/* Before the first list (right after start): placeholder rows shaped like mails */}
+        {!rows && accounts.length > 0 && errors.length === 0 && (
+          <section className="games-group" aria-label="Loading mail">
+            {[62, 48, 70, 55, 66, 44].map((width, i) => (
+              <div key={i} className="reminder-row mail-row">
+                <span className="menu-swatch skeleton" />
+                <span className="reminder-row-text">
+                  <span className="skeleton" style={{ width: `${width}%` }} />
+                  <span className="skeleton" style={{ width: `${width + 20}%`, height: '0.75em' }} />
+                </span>
+                <span className="skeleton" style={{ width: '3em' }} />
+              </div>
+            ))}
+          </section>
+        )}
         {rows && accounts.length > 0 && errors.length === 0 && missedRows.length + otherRows.length === 0 && (
           <p className="games-empty">{unreadOnly ? 'No unread mail in Primary' : 'No mail in Primary'}</p>
         )}

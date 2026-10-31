@@ -6,7 +6,7 @@ import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
-import { formatEuros, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
+import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
 // the trailer (a button that opens a panel beside the window). Nothing shows when they can't
@@ -150,9 +150,17 @@ function SteamIcon({ cheapest }: { cheapest?: boolean }) {
 
 // To buy list (user's pick "B"): Steam logo + price + green discount badge, key icon + cheapest
 // key. Two lines in the grid, one line in the list (CSS). Only prices already looked up (at
-// start, or when the list opens); nothing while unknown.
+// start, or when the list opens); not known yet: a placeholder while the lookup runs, else nothing.
 export function GamePriceLine({ igdbId }: { igdbId: number }) {
   const prices = useKnownPrice(igdbId)
+  if (prices === undefined && listPricesLoading()) {
+    return (
+      <div className="game-price-line" aria-label="Loading prices">
+        <span className="skeleton" style={{ width: '4.5em' }} />
+        <span className="skeleton" style={{ width: '3.5em' }} />
+      </div>
+    )
+  }
   if (!prices) return null
   const { steam, deals } = prices
   if (isFree(prices)) {

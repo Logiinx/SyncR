@@ -8,7 +8,6 @@ import AddOrInList from './AddOrInList'
 import GamePreview from './GamePreview'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
-import Spinner from './Spinner'
 
 // The Games tab's Calendar view: popular upcoming PC games for the next 6 months (Steam's top
 // 100 / 300 / 500 / 1000 most wishlisted, chosen with buttons).
@@ -61,13 +60,7 @@ function GameCalendar(props: {
   }, [])
 
   if (error) return <p className="game-search-message error">{error}</p>
-  if (!loaded) {
-    return (
-      <p className="game-search-message loading-line">
-        <Spinner /> Loading upcoming games…
-      </p>
-    )
-  }
+  if (!loaded) return <CalendarLoading grid={layout === 'grid' && !narrow} />
   const games = loaded.filter((g) => g.rank <= top) // the chosen level (top 100 / 300 / 500 / 1000)
   if (games.length === 0) return <p className="game-search-message">No upcoming games found</p>
 
@@ -87,6 +80,50 @@ function GameCalendar(props: {
       )}
       {shown && (
         <GamePreview game={shown} release={releaseLine(shown)} status={statusOf(shown)} onClose={() => setShown(null)} />
+      )}
+    </div>
+  )
+}
+
+// The months shown: from this one to the end of the range. The range ends 6 months from today,
+// so it usually ends partway through a 7th month.
+function calendarMonths() {
+  const today = new Date()
+  const end = new Date(today.getFullYear(), today.getMonth() + CALENDAR_MONTHS, today.getDate())
+  return Array.from({ length: CALENDAR_MONTHS + 1 }, (_, i) => new Date(today.getFullYear(), today.getMonth() + i, 1))
+    .filter((first) => first < end)
+}
+
+// While Steam's list loads: the real months with soft placeholder games on some days from today
+// (grid), or placeholder rows (list), so the page has its shape at once
+function CalendarLoading({ grid }: { grid: boolean }) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return (
+    <div className="game-calendar" aria-label="Loading upcoming games">
+      {grid ? (
+        <MonthGrid
+          months={calendarMonths()}
+          count={() => null}
+          renderDay={(date) =>
+            date >= today && (date.getDate() * 7) % 5 === 0 && (
+              <span className="calendar-game">
+                <span className="game-cover skeleton" />
+                <span className="skeleton" style={{ width: '80%' }} />
+              </span>
+            )
+          }
+        />
+      ) : (
+        [55, 40, 62, 48, 70, 44, 58, 50].map((width, i) => (
+          <div key={i} className="game-row calendar-row">
+            <span className="game-cover skeleton" />
+            <div className="game-text">
+              <span className="skeleton" style={{ width: `${width}%` }} />
+              <span className="skeleton" style={{ width: '9em', height: '0.75em' }} />
+            </div>
+          </div>
+        ))
       )}
     </div>
   )
@@ -150,15 +187,11 @@ const releaseLine = (game: UpcomingGame) =>
 // Grid: every month from this one to the end of the range, stacked (MonthGrid.tsx). A day shows
 // its games' covers and names; a month's month-only games are listed under its grid.
 function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
-  const today = new Date()
   const days = byDay(
     games.filter((g) => g.exact),
     (g) => g.pcDate,
   )
-  // The range ends 6 months from today, so it usually ends partway through a 7th month
-  const end = new Date(today.getFullYear(), today.getMonth() + CALENDAR_MONTHS, today.getDate())
-  const months = Array.from({ length: CALENDAR_MONTHS + 1 }, (_, i) => new Date(today.getFullYear(), today.getMonth() + i, 1))
-    .filter((first) => first < end)
+  const months = calendarMonths()
   const monthOnly = (first: Date) => games.filter((g) => g.monthOnly && sameMonth(new Date(g.pcDate), first))
 
   return (

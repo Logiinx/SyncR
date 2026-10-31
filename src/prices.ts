@@ -193,13 +193,23 @@ export const hasPriceLine = (game: Game) => game.status === 'tobuy' || (game.sta
 
 // Prices of all those games at once: at start (games.ts) and when the To buy or Upcoming list
 // opens. Only those older than CACHE_MS are asked again. Quietly does nothing when it can't.
+// While it runs, a price line not known yet shows a placeholder (listPricesLoading).
+let listLoads = 0
+export const listPricesLoading = () => listLoads > 0
+const loadsChanged = (change: number) => {
+  listLoads += change
+  listeners.forEach((listener) => listener())
+}
 export async function loadListPrices() {
+  loadsChanged(1)
   try {
     if (!isComplete(await loadConnection())) return
     const games = await db.games.filter((g) => hasPriceLine(g) && !g.deleted).toArray()
     if (games.length > 0) await gamePrices(games.map((g) => g.igdbId))
   } catch (e) {
     console.warn('Price lookup failed', e)
+  } finally {
+    loadsChanged(-1)
   }
 }
 

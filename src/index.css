@@ -255,14 +255,41 @@ button {
 
 /* Settings → Animations off: no slides or fades anywhere. They still end at once (1ms),
    so code waiting for an animation's end goes on. Kept: what shows that something is loading
-   (spinners, the pulsing trailer button) and the flash on a block you jumped to. */
+   (spinners, the pulsing trailer button, loading placeholders) and the flash on a block you jumped to. */
 .no-animations
-  :not(.sync-button .ring, .spinner circle, .trailer-toggle.loading, .link-flash, .search-flash),
+  :not(.sync-button .ring, .spinner circle, .trailer-toggle.loading, .skeleton, .link-flash, .search-flash),
 .no-animations ::before,
 .no-animations ::after {
   transition: none !important;
   animation-duration: 1ms !important;
   animation-delay: 0s !important;
+}
+
+/* Loading placeholders: soft gray shapes that pulse gently where something will show (To buy
+   prices, Mail list, game window's Steam stats, Calendar). Size and shape: set where used. */
+.skeleton {
+  display: inline-block;
+  height: 0.9em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  animation: skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+
+/* A game row's placeholder lines are stacked (its text column isn't a flex column) */
+.game-text .skeleton {
+  display: block;
+}
+
+/* Two placeholder lines on top of each other (a mail's or a game's name and details) */
+.reminder-row-text .skeleton + .skeleton,
+.game-text .skeleton + .skeleton {
+  margin-top: 6px;
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: 0.5;
+  }
 }
 
 @keyframes spin {

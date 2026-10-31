@@ -12,7 +12,7 @@ export const monthTitle = (date: Date) => date.toLocaleDateString('en-GB', { mon
 interface Props {
   months: Date[] // the first day of each month to show
   renderDay: (date: Date) => ReactNode // the items in a day's cell
-  count: (first: Date) => number // the number next to the month's title
+  count: (first: Date) => number | null // the number next to the month's title (null: none)
   after?: (first: Date) => ReactNode // under a month's grid (e.g. games with only a month)
 }
 
