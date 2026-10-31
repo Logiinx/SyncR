@@ -4,8 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**App**
-- **Fixed:** Small fixes: no more blur while dragging a Board card.
+## [0.37.4] - 2026-10-31
 
 **Games**
 - **Improved:** Game covers fade in as they load; switching tabs and moving games look smoother.
@@ -13,6 +12,9 @@ All notable changes to SyncR. Newest version first.
 
 **Mail**
 - **Improved:** The Mail list shows placeholder rows while it loads after starting the app.
+
+**App**
+- **Fixed:** Small fixes: no more blur while dragging a Board card.
 
 ## [0.37.3] - 2026-10-31
 
