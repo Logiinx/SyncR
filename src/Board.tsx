@@ -182,7 +182,7 @@ function Board({ onClose }: Props) {
     function update() {
       if (!dragged) return
       const dy = contentY(pointerY) - startY
-      dragged.style.transform = `translateY(${dy}px) scale(1.02)`
+      dragged.style.transform = `translateY(${dy}px)` // lifted by its shadow; no scaling (blurry, then snaps)
       // The leading edge (top when moving up, bottom when moving down) passing another card's
       // middle swaps them, so a tall card doesn't have to cover a short one first.
       const edge = dragged.offsetTop + dy + (dy > 0 ? dragged.offsetHeight : 0)
