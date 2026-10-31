@@ -73,6 +73,12 @@ button {
   cursor: pointer;
 }
 
+/* Every button darkens while pressed (background, text and icon: many have no background), so a
+   click or tap feels answered. Brightness, not scaling (no blur). */
+button:active:not(:disabled) {
+  filter: brightness(0.75);
+}
+
 .app {
   display: flex;
   flex-direction: column;
@@ -1853,6 +1859,9 @@ button {
 
 .reminder-alert-buttons .primary:hover {
   background: var(--accent);
+}
+
+.reminder-alert-buttons .primary:hover:not(:active) {
   filter: brightness(1.2);
 }
 
@@ -4164,8 +4173,8 @@ button {
   background: #5c2626;
 }
 
-.dialog-buttons .primary:hover,
-.dialog-buttons .danger:hover {
+.dialog-buttons .primary:hover:not(:active),
+.dialog-buttons .danger:hover:not(:active) {
   filter: brightness(1.2);
 }
 
@@ -4230,7 +4239,7 @@ button {
   background: var(--accent);
 }
 
-.update-button:hover {
+.update-button:hover:not(:active) {
   filter: brightness(1.2);
 }
 
