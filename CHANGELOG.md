@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.37.1] - 2026-10-31
+
 **Games**
 - **Improved:** Library games with 100% achievements get a gold ring around the cover instead of a trophy.
 - **Improved:** To play: Not started shows smaller covers, so the Playing cards come first.
