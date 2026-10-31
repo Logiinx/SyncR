@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Fixed:** Small fixes: the Settings window no longer slides its content while opening.
+
 ## [0.37.2] - 2026-10-31
 
 **Games**
