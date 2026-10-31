@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Improved:** Game covers fade in softly as they load instead of popping in.
+
 ## [0.37.3] - 2026-10-31
 
 **App**

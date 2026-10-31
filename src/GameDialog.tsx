@@ -14,6 +14,7 @@ import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
 import { isHundred, playedTime, updateSteamStats } from './steam'
 import { coverUrl } from './igdb'
+import { CoverImage } from './GameCover'
 import { FillSwitch } from './tabLines'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -75,7 +76,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
       {/* Left (PC): the cover and the actions. Phone: the cover beside the title, actions as icons */}
       <div className="gd-side">
         {game.coverId ? (
-          <img className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} alt="" />
+          <CoverImage className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} />
         ) : (
           <span className="gd-cover gd-cover-none">
             <Gamepad2 size={28} />
