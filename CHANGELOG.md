@@ -4,11 +4,13 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Games**
-- **Improved:** "Follow my Steam account" has an ⓘ that explains which games it moves.
+## [0.37.3] - 2026-10-31
 
 **App**
 - **Improved:** Windows and the mail pop-up open with sharp text: no more blur or shift at the end.
+
+**Games**
+- **Improved:** "Follow my Steam account" has an ⓘ that explains which games it moves.
 
 ## [0.37.2] - 2026-10-31
 
