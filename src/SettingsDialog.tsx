@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, type LucideIcon } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
+import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
@@ -540,8 +541,23 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
       </p>
       {/* Games move by themselves (steam.ts followSteam); checked right away when switched on */}
       <SettingRow
-        label="Follow my Steam account"
-        title="To buy games you own on Steam move to To play; Not started games you play for 1 h move to Playing"
+        label={
+          <>
+            Follow my Steam account
+            <InfoTip label="How Follow my Steam account works">
+              Moves games for you, based on your Steam account (checked about every 30 minutes):
+              <ul>
+                <li>
+                  A <b>To buy</b> game you own on Steam → <b>To play › Not started</b>
+                </li>
+                <li>
+                  A <b>Not started</b> game you play for 1 hour on Steam → <b>Playing</b>
+                </li>
+              </ul>
+              Each move shows a line at the top of Games. Nothing else moves, and you can always move a game back.
+            </InfoTip>
+          </>
+        }
       >
         <input
           type="checkbox"

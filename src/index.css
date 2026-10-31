@@ -3744,6 +3744,51 @@ button {
   min-width: 0;
 }
 
+/* ⓘ after a label (InfoTip.tsx): a dim icon; its box below looks like a menu and unfolds like one */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.info-tip-button {
+  display: flex;
+  padding: 2px;
+  border-radius: 50%;
+  color: var(--text-dim);
+}
+
+.info-tip-button:hover,
+.info-tip-button[aria-expanded='true'] {
+  color: var(--text);
+}
+
+.info-tip-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -8px;
+  z-index: 20;
+  width: max-content;
+  max-width: min(320px, 70vw);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  color: var(--text);
+  font-size: 0.85em;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: normal;
+  animation: menu-in var(--open-small) var(--ease-open);
+}
+
+.info-tip-box ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
 .settings-row-control {
   display: flex;
   flex-shrink: 0;
