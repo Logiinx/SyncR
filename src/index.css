@@ -4649,8 +4649,8 @@ h3.games-group-title {
 }
 
 .playing-card .game-cover {
-  width: 64px;
-  height: 86px;
+  width: 72px;
+  height: 96px;
 }
 
 .playing-text {
@@ -4698,8 +4698,8 @@ h3.games-group-title {
   }
 
   .playing-card .game-cover {
-    width: 40px;
-    height: 54px;
+    width: 45px;
+    height: 60px;
   }
 }
 

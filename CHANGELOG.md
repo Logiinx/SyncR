@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Improved:** Playing cards show slightly bigger covers.
+
 ## [0.37.1] - 2026-10-31
 
 **Games**
