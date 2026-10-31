@@ -5,7 +5,6 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **Improved:** Buttons darken while pressed, so every click or tap feels answered.
 - **Fixed:** Small fixes: no more blur while dragging a Board card.
 
 **Games**
