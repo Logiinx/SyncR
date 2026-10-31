@@ -3744,9 +3744,9 @@ button {
   min-width: 0;
 }
 
-/* ⓘ after a label (InfoTip.tsx): a dim icon; its box below looks like a menu and unfolds like one */
+/* ⓘ after a label (InfoTip.tsx): a dim icon; its box (over the whole app, placed by InfoTip) looks
+   like a menu and unfolds like one (above the ⓘ: fades in) */
 .info-tip {
-  position: relative;
   display: inline-flex;
   vertical-align: middle;
   margin-left: 6px;
@@ -3765,12 +3765,10 @@ button {
 }
 
 .info-tip-box {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: -8px;
-  z-index: 20;
+  position: fixed;
+  z-index: 100;
   width: max-content;
-  max-width: min(320px, 70vw);
+  max-width: min(320px, 100vw / var(--zoom, 1) - 16px);
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -3782,6 +3780,10 @@ button {
   line-height: 1.45;
   white-space: normal;
   animation: menu-in var(--open-small) var(--ease-open);
+}
+
+.info-tip-box.above {
+  animation: fade-in var(--open-small) var(--ease-open);
 }
 
 .info-tip-box ul {
