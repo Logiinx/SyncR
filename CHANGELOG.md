@@ -5,12 +5,14 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **Improved:** The Mail list shows placeholder rows while it loads after starting the app.
 - **Fixed:** Small fixes: no more blur while dragging a Board card.
 
 **Games**
 - **Improved:** Game covers fade in as they load; switching tabs and moving games look smoother.
 - **Improved:** Soft placeholders while prices and the Calendar load, instead of empty space.
+
+**Mail**
+- **Improved:** The Mail list shows placeholder rows while it loads after starting the app.
 
 ## [0.37.3] - 2026-10-31
 
