@@ -180,19 +180,21 @@ function GamesView() {
                     <FillSwitch className="calendar-layouts games-layouts" options={SHELF_LAYOUTS} value={shelf} onChange={setShelf} />
                   </div>
                 </div>
-                {/* A new list for each tab and layout: switching isn't games coming and going */}
-                {shown === 'toplay' ? (
-                  <ToPlayShelf key={shelf} games={games} layout={shelf} onOpen={setOpenId} onMenu={openMenu} />
-                ) : (
-                  <GameShelf
-                    key={`${shown}-${shelf}`}
-                    games={sortGames(games.filter((g) => tabOf(g.status).tab === shown))}
-                    layout={shelf}
-                    emptyText={`No games in ${TABS.find((t) => t.tab === shown)!.label}`}
-                    onOpen={setOpenId}
-                    onMenu={openMenu}
-                  />
-                )}
+                {/* A new list for each tab and layout (switching isn't games coming and going),
+                    which fades in quickly */}
+                <div key={`${shown}-${shelf}`} className="games-tab-in">
+                  {shown === 'toplay' ? (
+                    <ToPlayShelf games={games} layout={shelf} onOpen={setOpenId} onMenu={openMenu} />
+                  ) : (
+                    <GameShelf
+                      games={sortGames(games.filter((g) => tabOf(g.status).tab === shown))}
+                      layout={shelf}
+                      emptyText={`No games in ${TABS.find((t) => t.tab === shown)!.label}`}
+                      onOpen={setOpenId}
+                      onMenu={openMenu}
+                    />
+                  )}
+                </div>
               </>
             )}
           </>

@@ -5215,6 +5215,11 @@ h3.games-group-title {
   outline-offset: -1.5px;
 }
 
+/* Games: a tab's (or layout's) list fades in quickly when switching (GamesView.tsx) */
+.games-tab-in {
+  animation: fade-in var(--close-small) ease-out;
+}
+
 /* A cover that just arrived fades in (CoverImage, GameCover.tsx; an already loaded one shows at once) */
 img[data-fade] {
   animation: fade-in var(--open-small) ease-out;
