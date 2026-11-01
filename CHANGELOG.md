@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Fixed:** Small fixes: plus icon on "Add to Upcoming".
+
 ## [0.38.3] - 2026-11-01
 
 **Notes**

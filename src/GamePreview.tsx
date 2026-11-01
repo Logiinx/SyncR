@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pin, Plus } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { ADD_PLACES, addGame, allPlatforms, isReleased, statusLabel } from './games'
@@ -74,7 +74,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
           <div className="calendar-popup-actions">
             {!status && !released && (
               <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>
-                <Pin size={15} /> <span>Add to Upcoming</span>
+                <Plus size={15} /> <span>Add to Upcoming</span>
               </button>
             )}
             {!status && released && (
