@@ -804,7 +804,11 @@ function GmailSettings() {
   return (
     <>
     <section className="settings-group">
-      <SectionTitle title="Gmail" />
+      <SectionTitle title="Gmail">
+        <InfoTip label="About the checkboxes">
+          An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.
+        </InfoTip>
+      </SectionTitle>
       {accounts.map((account) => (
         <div key={account.email} className="setting setting-toggle gmail-account">
           <span className="gmail-account-name" title={account.email}>
@@ -830,7 +834,7 @@ function GmailSettings() {
             <input
               type="checkbox"
               checked={account.enabled}
-              title="On: pop-ups for new emails, and in the Mail tab"
+              aria-label={`Emails from ${account.email}`}
               onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
             />
           )}
@@ -1077,11 +1081,13 @@ function PopupPlace({
 }
 
 // A group of settings: small title, "synced" if it applies to all devices
-function SectionTitle({ title, synced }: { title: string; synced?: boolean }) {
+// children: an InfoTip about the whole section
+function SectionTitle({ title, synced, children }: { title: string; synced?: boolean; children?: React.ReactNode }) {
   return (
     <h3 className="settings-section">
       {title}
       {synced && <> <Synced /></>}
+      {children}
     </h3>
   )
 }

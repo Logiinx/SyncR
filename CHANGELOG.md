@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 **Games**
 - **Fixed:** Small fixes: the trailer's full name shows on hover.
 
+**Mail**
+- **Fixed:** Small fixes: an ⓘ by Settings' Gmail title explains the account checkboxes.
+
 **Sync**
 - **Fixed:** Small fixes: short error messages end without a period, like everywhere else.
 
