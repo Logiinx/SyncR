@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.8] - 2026-11-01
+
 **Notes**
 - **Fixed:** A click beside a link card puts the cursor there; Backspace removes the card in one go.
 
