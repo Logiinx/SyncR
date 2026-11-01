@@ -156,9 +156,9 @@ function MailView() {
           </div>
         </div>
         {accounts.length === 0 && <p className="games-empty">Add a Gmail account in Settings → Accounts.</p>}
-        {errors.map(({ email, text, details }) => (
-          <p key={email} className="games-empty error" title={details}>
-            {email}: {text}. Trying again…
+        {errors.map(({ email, text, details, retry }) => (
+          <p key={email} className="games-empty error" title={details || undefined}>
+            {email}: {text}{retry && '. Trying again…'}
           </p>
         ))}
         {/* Before the first list (right after start): placeholder rows shaped like mails */}

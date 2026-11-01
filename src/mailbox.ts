@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
-import { errorDetails, gmailApi, gmailErrorText, loadAccounts } from './gmail'
+import { errorDetails, gmailApi, gmailErrorPasses, gmailErrorText, loadAccounts } from './gmail'
 import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 
 // The Mail tab's list (MailView.tsx): the last 50 mails in Primary of every Gmail account
@@ -8,7 +8,8 @@ import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 // memory while SyncR runs (never saved), so the tab opens at once: loaded a few seconds after
 // start (startMailbox), again when the tab opens (in the background, the old list stays shown),
 // with its refresh button, whenever the minute check or instant mail sees a change in a mailbox
-// (mailbox-change: new mail, mail read or marked unread in Gmail…), and after a failed load (RETRY_MS).
+// (mailbox-change: new mail, mail read or marked unread in Gmail…), and after a load that
+// failed for a passing reason (RETRY_MS).
 
 export const MAIL_TAB = 'mail' // its id among the open tabs (like GAMES_TAB)
 const RECENT = 'in:inbox category:primary' // QUERY without is:unread
@@ -18,8 +19,9 @@ const MAX_ROWS = 50
 const RETRY_MS = [5000, 15_000, 60_000]
 
 export type MailboxRow = MailAlert & { unread: boolean }
-// An account whose mail couldn't load: what went wrong in plain words, and Gmail's own words
-export type MailboxError = { email: string; text: string; details: string }
+// An account whose mail couldn't load: what went wrong in plain words, Gmail's own words, and
+// whether trying again can help (a signed-out account stays listed until it signs in again)
+export type MailboxError = { email: string; text: string; details: string; retry: boolean }
 
 // Gmail refuses an account's requests when too many run at once (it fails the load, e.g. at
 // start, when the minute check's mailbox-change starts a second load during the first one)
@@ -62,7 +64,12 @@ async function listIds(email: string, query: string): Promise<string[]> {
 async function loadInbox() {
   const rows: MailboxRow[] = []
   const errors: MailboxError[] = []
-  for (const { email } of loadAccounts().filter((a) => a.enabled && !a.expired)) {
+  for (const { email, expired } of loadAccounts().filter((a) => a.enabled)) {
+    if (expired) {
+      const error = { signedOut: true }
+      errors.push({ email, text: gmailErrorText(error), details: '', retry: gmailErrorPasses(error) })
+      continue
+    }
     try {
       const [recent, unread] = await Promise.all([listIds(email, RECENT), listIds(email, QUERY)])
       const unreadIds = new Set(unread)
@@ -74,7 +81,7 @@ async function loadInbox() {
       )
     } catch (error) {
       console.error(error)
-      errors.push({ email, text: gmailErrorText(error), details: errorDetails(error) })
+      errors.push({ email, text: gmailErrorText(error), details: errorDetails(error), retry: gmailErrorPasses(error) })
     }
   }
   rows.sort((a, b) => b.date - a.date)
@@ -106,7 +113,7 @@ export async function refreshMailbox() {
   const result = await loadInbox()
   if (load !== lastLoad) return
   setMailbox({ rows: result.rows, errors: result.errors, loadedFrom: startedAt, loading: false })
-  if (result.errors.length === 0) retryCount = 0
+  if (!result.errors.some((error) => error.retry)) retryCount = 0
   else retryTimer = window.setTimeout(refreshMailbox, RETRY_MS[Math.min(retryCount++, RETRY_MS.length - 1)])
 }
 

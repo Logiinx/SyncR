@@ -5,7 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Mail**
-- **Fixed:** Small fixes: errors in the Mail tab, the email reader and Reminders show in red, account on "N new emails".
+- **Improved:** Mail tab: a signed-out account stays listed as "Signed out" until you sign in again.
+- **Fixed:** Small fixes: errors in red (also Reminders), "Try again" only when it can help, account on "N new emails".
 
 ## [0.38.4] - 2026-11-01
 

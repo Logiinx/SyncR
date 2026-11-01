@@ -4,7 +4,7 @@ import BackButton from './BackButton'
 import CloseButton from './CloseButton'
 import { openImageViewer } from './ImageViewer'
 import MailFilesRow from './MailFilesRow'
-import { errorDetails, gmailErrorText } from './gmail'
+import { errorDetails, gmailErrorPasses, gmailErrorText } from './gmail'
 import { openLink } from './links'
 import { accountColor, MailButtons, MailWhen } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
@@ -33,7 +33,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   onReady?: (extra: number) => number
 }) {
   const [body, setBody] = useState<MailBody | null>(null)
-  const [error, setError] = useState<{ text: string; details: string } | null>(null)
+  const [error, setError] = useState<{ text: string; details: string; retry: boolean } | null>(null)
   const [attempt, setAttempt] = useState(0) // Try again after a failed download
   const [images, setImages] = useState(false)
   const [original, setOriginal] = useState(false)
@@ -54,7 +54,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
     setOriginal(false)
     setAlreadyDark(false)
     loadBody(alert).then(setBody, (e) => {
-      setError({ text: gmailErrorText(e), details: errorDetails(e) })
+      setError({ text: gmailErrorText(e), details: errorDetails(e), retry: gmailErrorPasses(e) })
       tellReady(0)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,7 +172,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           {error ? (
             <>
               <span className="mail-reader-error" title={error.details}>{error.text}</span>
-              <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
+              {error.retry && <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>Try again</button>}
             </>
           ) : (
             <Spinner size={16} />

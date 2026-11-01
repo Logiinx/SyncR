@@ -202,16 +202,28 @@ async function accessToken(email: string) {
 // A failed Gmail call in plain words, without a period (Mail tab, reader, attached files);
 // Gmail's exact text stays in the error's message (shown on hover)
 export function gmailErrorText(error: unknown) {
-  const e = (error ?? {}) as { status?: number; signedOut?: boolean; offline?: boolean; message?: string }
+  const e = asGmailError(error)
   const status = e.status ?? 0
-  if (e.signedOut) return 'Signed out: sign in again in Settings → Accounts'
+  if (e.signedOut) return 'Signed out, sign in again in Settings → Accounts'
   if (e.offline) return 'No connection to Gmail (offline?)'
   if (status === 404) return 'This email is gone (deleted or moved in Gmail)'
-  // Too many requests at once, or trouble on Google's side
-  if (status === 429 || status >= 500 || (status === 403 && /rate|limit/i.test(e.message ?? ''))) return 'Gmail is busy right now'
+  if (isBusy(e)) return 'Gmail is busy right now'
   if (status) return `Gmail error (${status})`
   return error instanceof Error ? error.message : String(error)
 }
+
+// Whether trying again later can help: no connection, Gmail busy, or no answer from Gmail at
+// all. Not when signed out, the email is gone, or Gmail refused the request.
+export function gmailErrorPasses(error: unknown) {
+  const e = asGmailError(error)
+  return !e.signedOut && (!e.status || isBusy(e))
+}
+
+type GmailError = { status?: number; signedOut?: boolean; offline?: boolean; message?: string }
+const asGmailError = (error: unknown) => (error ?? {}) as GmailError
+// Too many requests at once, or trouble on Google's side
+const isBusy = ({ status = 0, message = '' }: GmailError) =>
+  status === 429 || status >= 500 || (status === 403 && /rate|limit/i.test(message))
 
 // Its details for the hover text: Gmail's own words
 export const errorDetails = (error: unknown) => (error instanceof Error ? error.message : String(error))
