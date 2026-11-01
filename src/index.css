@@ -2382,6 +2382,82 @@ button {
   opacity: 1;
 }
 
+/* Link groups (linkPreviews.ts, Settings → Notes → Link groups): 2+ lines in a row holding only
+   a link card. The note's width decides how many grid cells fit in a row. */
+.tiptap {
+  container-type: inline-size;
+}
+
+.tiptap p.link-group-grid {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 100%;
+  padding-right: 6px;
+  vertical-align: top;
+}
+
+@container (min-width: 540px) {
+  .tiptap p.link-group-grid {
+    width: 50%;
+  }
+}
+
+@container (min-width: 810px) {
+  .tiptap p.link-group-grid {
+    width: 33.333%;
+  }
+}
+
+.link-group-grid .link-card {
+  display: flex;
+  max-width: 100%;
+}
+
+.tiptap p.link-group-chips {
+  display: inline-block;
+  max-width: 100%;
+  margin-right: 6px;
+  vertical-align: top;
+}
+
+.link-card.link-card-chip {
+  max-width: min(240px, 100%);
+  margin: 2px 0;
+}
+
+.link-card.link-card-chip .link-card-title {
+  max-width: none;
+}
+
+.tiptap .link-group-hidden {
+  display: none;
+}
+
+/* A folded group's line: ▸, the links' icons, "6 links" */
+.link-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.link-group-summary:hover {
+  color: var(--text);
+}
+
+.link-group-summary svg {
+  flex: none;
+  transition: transform 0.15s;
+}
+
+.link-group-summary.open svg {
+  transform: rotate(90deg);
+}
+
 /* A hover card instead of the address (linkPreviews.ts): the card draws its own frame */
 .link-tooltip.has-card {
   max-width: min(460px, 100vw / var(--zoom, 1) - 8px);

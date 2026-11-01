@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **New:** Several link cards in a row can show side by side, as small chips, or folded into one line.
+
 ## [0.38.0] - 2026-11-01
 
 **Notes**

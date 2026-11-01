@@ -1,7 +1,7 @@
 import { Extension, type Editor } from '@tiptap/react'
 import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
-import { Plugin, PluginKey, type EditorState } from '@tiptap/pm/state'
+import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { db } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
@@ -39,10 +39,14 @@ export type CardStyle = keyof typeof CARD_STYLES
 // The card shown while the mouse is on a link (PC): off · small (the text the inline card cut) · large
 export const HOVER_SIZES = { off: 'Off', small: 'Small', large: 'Large' }
 export type HoverSize = keyof typeof HOVER_SIZES
+// 2+ lines in a row holding only a link card: as today (list), side by side, as chips, or folded
+export const GROUP_STYLES = { list: 'List', grid: 'Grid', chips: 'Chips', folded: 'Folded' }
+export type GroupStyle = keyof typeof GROUP_STYLES
 
 export interface LinkPreviewSettings {
   style: CardStyle
   hover: HoverSize
+  groups: GroupStyle
   allSites: boolean // every link, or only links to `sites` (and their subdomains)
   sites: string[]
   plain: string[] // addresses shown as plain links ("Show as plain link" in the right-click menu)
@@ -50,7 +54,7 @@ export interface LinkPreviewSettings {
 
 const SETTINGS_KEY = 'syncr.linkPreviews'
 export const DEFAULT_SITES = ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com']
-const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', allSites: false, sites: DEFAULT_SITES, plain: [] }
+const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', groups: 'list', allSites: false, sites: DEFAULT_SITES, plain: [] }
 
 // Read on every redraw, so kept in memory
 let settings: LinkPreviewSettings | undefined
@@ -59,6 +63,7 @@ export function loadLinkPreviewSettings(): LinkPreviewSettings {
   settings ??= { ...DEFAULTS, ...read<Partial<LinkPreviewSettings>>(SETTINGS_KEY, {}) }
   if (!(settings.style in CARD_STYLES)) settings.style = DEFAULTS.style
   if (!(settings.hover in HOVER_SIZES)) settings.hover = DEFAULTS.hover
+  if (!(settings.groups in GROUP_STYLES)) settings.groups = DEFAULTS.groups
   return settings
 }
 
@@ -252,9 +257,21 @@ function largeCard(href: string, preview: LinkPreview) {
   return root
 }
 
-const BUILDERS = { line: lineCard, card: twoLineCard, large: largeCard }
+// Chips (link groups): icon and a short title, side by side
+function chipCard(href: string, preview: LinkPreview) {
+  const { title } = parts(href, preview)
+  const root = element('span', 'link-card link-card-line-style link-card-chip')
+  const tweet = preview.kind === 'tweet' && preview.handle
+  const label = tweet ? `@${preview.handle}${preview.description ? ` · ${preview.description}` : ''}` : title
+  const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
+  root.append(picture('link-card-icon', sources), element('span', 'link-card-title', label))
+  return root
+}
 
-function card(href: string, preview: LinkPreview, style: Exclude<CardStyle, 'off'>) {
+const BUILDERS = { line: lineCard, card: twoLineCard, large: largeCard, chip: chipCard }
+type Builder = keyof typeof BUILDERS
+
+function card(href: string, preview: LinkPreview, style: Builder) {
   const root = BUILDERS[style](href, preview)
   root.contentEditable = 'false'
   root.dataset.href = href
@@ -333,7 +350,9 @@ function editLink(editor: Editor, from: number, href: string) {
 
 interface PluginState {
   set: DecorationSet
+  lines: { from: number; to: number }[] // lines holding only a link card
   focused: boolean
+  opened: Set<string> // folded link groups opened in this editor (first link's address)
 }
 
 const key = new PluginKey<PluginState>('linkPreviews')
@@ -353,26 +372,132 @@ function findLinks(state: EditorState) {
   return links
 }
 
+// A line holding only a link card (spaces around it allowed): the parts of a link group
+interface CardLine {
+  link: ReturnType<typeof findLinks>[number]
+  preview: LinkPreview
+  from: number // the line (paragraph) itself
+  to: number
+}
+
+// Lines next to each other (the next starts where the previous ends), 2 or more
+function findGroups(lines: CardLine[]) {
+  const groups: CardLine[][] = []
+  for (const line of lines) {
+    const last = groups[groups.length - 1]
+    if (last && last[last.length - 1].to === line.from) last.push(line)
+    else groups.push([line])
+  }
+  return groups.filter((group) => group.length > 1)
+}
+
+// "▸ icons · 6 links": a folded group's line; a click opens or closes it
+function groupSummary(group: CardLine[], open: boolean, toggle: () => void) {
+  const root = element('div', `link-group-summary${open ? ' open' : ''}`)
+  root.contentEditable = 'false'
+  root.innerHTML = CHEVRON
+  for (const { preview } of group.slice(0, 8)) {
+    const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
+    root.append(picture('link-card-icon', sources))
+  }
+  root.append(element('span', 'link-group-count', `${group.length} links`))
+  root.addEventListener('mousedown', (event) => event.preventDefault())
+  root.addEventListener('click', toggle)
+  return root
+}
+
+const CHEVRON =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
+
 // focused: the cursor only shows a link's address while the text is being edited (a Board card
-// that isn't, or a note after clicking elsewhere, keeps its cursor at the end)
-function decorations(state: EditorState, focused: boolean) {
+// that isn't, or a note after clicking elsewhere, keeps its cursor at the end).
+// opened: the folded groups opened in this editor.
+function decorations(state: EditorState, focused: boolean, opened: Set<string>) {
   const settings = loadLinkPreviewSettings()
   const { from: selFrom, to: selTo } = state.selection
+  const touches = (from: number, to: number) => focused && selTo >= from && selFrom <= to
   const found: Decoration[] = []
+
+  // Links that get a card, and the lines that hold nothing else
+  const cards: { link: ReturnType<typeof findLinks>[number]; preview: LinkPreview }[] = []
+  const lines: CardLine[] = []
   for (const link of findLinks(state)) {
     if (!wantsCard(link.href, link.text, settings)) continue
-    const style = settings.style as Exclude<CardStyle, 'off'>
     if (!previews.has(link.href)) void ask(link.href)
     const preview = previews.get(link.href)
     if (!preview) continue
-    // The cursor at or in the link: show the address, so it can be edited
-    if (focused && selTo >= link.from && selFrom <= link.to) continue
+    cards.push({ link, preview })
+    const $from = state.doc.resolve(link.from)
+    const [start, end] = [$from.start(), $from.end()]
+    const alone =
+      $from.parent.type.name === 'paragraph' &&
+      !state.doc.textBetween(start, link.from).trim() &&
+      !state.doc.textBetween(link.to, end).trim()
+    if (alone) lines.push({ link, preview, from: $from.before(), to: $from.after() })
+  }
+
+  // Link groups: how each of their links is drawn
+  const inGroup = new Map<string, Builder | null>() // "from" of the link → its look (null: hidden)
+  if (settings.groups !== 'list') {
+    for (const group of findGroups(lines)) {
+      const groupKey = group[0].link.href
+      if (settings.groups === 'folded') {
+        // The cursor inside opens it (an undo, a search result)
+        const open = opened.has(groupKey) || touches(group[0].from, group[group.length - 1].to)
+        found.push(
+          Decoration.widget(group[0].from, (view) => groupSummary(group, open, () => {
+            view.dispatch(view.state.tr.setMeta(key, { toggle: groupKey }).setMeta('addToHistory', false))
+          }), { key: `group|${open}|${group.map((line) => line.link.href).join(' ')}`, side: -1, ignoreSelection: true }),
+        )
+        if (!open) for (const line of group) {
+          found.push(Decoration.node(line.from, line.to, { class: 'link-group-hidden' }))
+          inGroup.set(String(line.link.from), null)
+        }
+        continue
+      }
+      const look: Builder = settings.groups === 'grid' ? 'card' : 'chip'
+      for (const line of group) {
+        found.push(Decoration.node(line.from, line.to, { class: `link-group-item link-group-${settings.groups}` }))
+        inGroup.set(String(line.link.from), look)
+        // Spaces around the link would take room next to the card
+        if (!touches(line.link.from, line.link.to)) {
+          if (line.from + 1 < line.link.from) found.push(Decoration.inline(line.from + 1, line.link.from, { class: 'link-carded' }))
+          if (line.link.to < line.to - 1) found.push(Decoration.inline(line.link.to, line.to - 1, { class: 'link-carded' }))
+        }
+      }
+    }
+  }
+
+  for (const { link, preview } of cards) {
+    const look = inGroup.has(String(link.from)) ? inGroup.get(String(link.from)) : (settings.style as Builder)
+    // Hidden in a folded group, or the cursor at or in the link: the address, so it can be edited
+    if (!look || touches(link.from, link.to)) continue
     found.push(
-      Decoration.widget(link.from, () => card(link.href, preview, style), { key: `${style}|${settings.hover}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.from, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )
   }
-  return DecorationSet.create(state.doc, found)
+  return { set: DecorationSet.create(state.doc, found), lines: lines.map(({ from, to }) => ({ from, to })) }
+}
+
+// The arrow keys into a line holding only a card: the browser finds no place for the cursor
+// there (side by side in a grid or chips, it skips the whole group), so the editor moves it.
+// To the line's end going back, its start going forward: the address shows, ready to edit.
+const ARROWS: Record<string, 'left' | 'right' | 'up' | 'down'> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
+
+function arrowIntoCardLine(view: EditorView, event: KeyboardEvent) {
+  const direction = ARROWS[event.key]
+  if (!direction || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return false
+  const { selection, doc } = view.state
+  if (!selection.empty || !view.endOfTextblock(direction)) return false
+  const back = direction === 'left' || direction === 'up'
+  const $from = selection.$from
+  const edge = back ? $from.before() : $from.after()
+  const line = key.getState(view.state)?.lines.find((l) => (back ? l.to === edge : l.from === edge))
+  if (!line) return false
+  const target = back ? line.to - 1 : line.from + 1
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, target)).scrollIntoView())
+  return true
 }
 
 export const LinkPreviews = Extension.create({
@@ -383,15 +508,22 @@ export const LinkPreviews = Extension.create({
       new Plugin<PluginState>({
         key,
         state: {
-          init: (_, state) => ({ set: decorations(state, false), focused: false }),
+          init: (_, state) => ({ ...decorations(state, false, new Set()), focused: false, opened: new Set() }),
           apply: (tr, old, _oldState, state) => {
-            const meta = tr.getMeta(key) as { focused?: boolean } | undefined
+            const meta = tr.getMeta(key) as { focused?: boolean; toggle?: string } | undefined
+            if (!tr.docChanged && !tr.selectionSet && !meta) return old
             const focused = meta?.focused ?? old.focused
-            return tr.docChanged || tr.selectionSet || meta ? { set: decorations(state, focused), focused } : old
+            let opened = old.opened
+            if (meta?.toggle) {
+              opened = new Set(opened)
+              if (!opened.delete(meta.toggle)) opened.add(meta.toggle)
+            }
+            return { ...decorations(state, focused, opened), focused, opened }
           },
         },
         props: {
           decorations: (state) => key.getState(state)?.set,
+          handleKeyDown: arrowIntoCardLine,
           handleDOMEvents: {
             focus: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: true }).setMeta('addToHistory', false)), false),
             blur: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: false }).setMeta('addToHistory', false)), false),

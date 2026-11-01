@@ -9,11 +9,13 @@ import { loadEditing, saveEditing, type Editing } from './editing'
 import {
   CARD_STYLES,
   DEFAULT_SITES,
+  GROUP_STYLES,
   HOVER_SIZES,
   loadLinkPreviewSettings,
   parseSites,
   saveLinkPreviewSettings,
   type CardStyle,
+  type GroupStyle,
   type HoverSize,
   type LinkPreviewSettings,
 } from './linkPreviews'
@@ -211,7 +213,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </SettingRow>
         {/* Only where there's a mouse (a phone can't hover) */}
         {matchMedia('(hover: hover)').matches && (
-          <SettingRow label="Hover card" title="Shown while the mouse is on a link, also on links with their own text">
+          <SettingRow
+            label={
+              <>
+                Hover card
+                <InfoTip label="About hover cards">Shown while the mouse is on a link card, and on links with their own text.</InfoTip>
+              </>
+            }
+          >
             <select value={links.hover} onChange={(e) => updateLinks({ hover: e.target.value as HoverSize })}>
               {(Object.keys(HOVER_SIZES) as HoverSize[]).map((id) => (
                 <option key={id} value={id}>
@@ -221,6 +230,29 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             </select>
           </SettingRow>
         )}
+        <SettingRow
+          label={
+            <>
+              Link groups
+              <InfoTip label="About link groups">
+                2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips,
+                or folded into one line.
+              </InfoTip>
+            </>
+          }
+        >
+          <select
+            value={links.groups}
+            disabled={links.style === 'off'}
+            onChange={(e) => updateLinks({ groups: e.target.value as GroupStyle })}
+          >
+            {(Object.keys(GROUP_STYLES) as GroupStyle[]).map((id) => (
+              <option key={id} value={id}>
+                {GROUP_STYLES[id]}
+              </option>
+            ))}
+          </select>
+        </SettingRow>
         <SettingRow label="Cards for">
           <select
             value={links.allSites ? 'all' : 'sites'}
@@ -231,7 +263,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <option value="all">All links</option>
           </select>
         </SettingRow>
-        <SettingRow label="Sites" title="Links to these sites (and their subdomains) get a card. Separate them with commas.">
+        <SettingRow
+          label={
+            <>
+              Sites
+              <InfoTip label="About sites">Links to these sites (and their subdomains) get a card. Separate them with commas.</InfoTip>
+            </>
+          }
+        >
           <SitesInput
             sites={links.sites}
             disabled={(links.style === 'off' && links.hover === 'off') || links.allSites}
