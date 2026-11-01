@@ -241,8 +241,8 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   onMenu: (game: Game, x: number, y: number) => void
 }) {
   const parts = [
-    { title: 'Playing', games: games.filter((g) => g.status === 'playing'), empty: 'Nothing being played right now.' },
-    { title: 'Not started', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet." },
+    { title: 'Playing', games: games.filter((g) => g.status === 'playing'), empty: 'Nothing being played right now' },
+    { title: 'Not started', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet" },
   ]
   return (
     <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>
