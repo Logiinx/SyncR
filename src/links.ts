@@ -3,6 +3,8 @@ import { Plugin } from '@tiptap/pm/state'
 import { isTauri } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { followNoteLink, linkTargetTitle, parseNoteLink } from './noteLinks'
+import { hoverCard } from './linkPreviews'
+import { currentZoom } from './appearance'
 
 // Only web and e-mail links are opened (not e.g. "javascript:" or local files)
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:']
@@ -31,28 +33,53 @@ export function simplify(address: string) {
     .replace(/\/$/, '')
 }
 
-// Hovering a link with the mouse shows its address, unless the link text already is the address
+// Hovering a link with the mouse shows its hover card (linkPreviews.ts), or else its address,
+// unless the link text already is the address. Also on link cards (their address: data-href).
 function linkTooltip() {
   const tooltip = document.createElement('div')
   tooltip.className = 'link-tooltip'
   document.body.append(tooltip)
   let timer: number | undefined
+  let shownFor: HTMLElement | undefined
 
   const hide = () => {
     clearTimeout(timer)
+    shownFor = undefined
     tooltip.classList.remove('visible')
   }
+  // Below the link, or above it when there's no room (a large card). Screen pixels ÷ the app's
+  // scale (CSS zoom).
+  const place = () => {
+    if (!shownFor) return
+    const zoom = currentZoom()
+    const box = shownFor.getBoundingClientRect()
+    const [width, height] = [window.innerWidth / zoom, window.innerHeight / zoom]
+    const [left, top, bottom] = [box.left / zoom, box.top / zoom, box.bottom / zoom]
+    tooltip.style.left = `${Math.max(4, Math.min(left, width - tooltip.offsetWidth - 4))}px`
+    const below = bottom + 6
+    const above = top - 6 - tooltip.offsetHeight
+    tooltip.style.top = `${below + tooltip.offsetHeight > height - 4 && above > 4 ? above : below}px`
+  }
+  // A picture arriving makes the card taller
+  tooltip.addEventListener('load', place, true)
+
   const show = (link: HTMLElement) => {
-    const href = link.getAttribute('href')!
-    if (simplify(href) === simplify(link.textContent ?? '')) return
-    // Links to notes: the note's title instead of the syncr:note/… address
-    const text = parseNoteLink(href) ? `→ ${linkTargetTitle(href) ?? 'Note not found'}` : href
+    const onCard = link.classList.contains('link-card')
+    const href = (onCard ? link.dataset.href : link.getAttribute('href')) ?? ''
+    if (!href || link === shownFor) return
     clearTimeout(timer)
     timer = window.setTimeout(() => {
-      tooltip.textContent = text
-      const box = link.getBoundingClientRect()
-      tooltip.style.left = `${Math.max(4, Math.min(box.left, window.innerWidth - tooltip.offsetWidth - 4))}px`
-      tooltip.style.top = `${box.bottom + 6}px`
+      const card = parseNoteLink(href) ? null : hoverCard(href, onCard)
+      if (card) {
+        tooltip.replaceChildren(card)
+      } else {
+        if (onCard || simplify(href) === simplify(link.textContent ?? '')) return
+        // Links to notes: the note's title instead of the syncr:note/… address
+        tooltip.textContent = parseNoteLink(href) ? `→ ${linkTargetTitle(href) ?? 'Note not found'}` : href
+      }
+      tooltip.classList.toggle('has-card', !!card)
+      shownFor = link
+      place()
       tooltip.classList.add('visible')
     }, 300)
   }
@@ -77,12 +104,17 @@ export const OpenLinksOnClick = Extension.create({
             mouseover: (_view, event) => {
               // Only with a real mouse: phones fake a mouseover on tap
               if (!matchMedia('(hover: hover)').matches) return false
-              const link = (event.target as HTMLElement).closest<HTMLElement>('a[href]')
+              const link = (event.target as HTMLElement).closest<HTMLElement>('a[href], .link-card')
               if (link) tooltip?.show(link)
               else tooltip?.hide()
               return false
             },
-            mouseout: () => (tooltip?.hide(), false),
+            mouseout: (_view, event) => {
+              // Moving between the parts of one link (bold text, a card's title…) isn't leaving it
+              const from = (event.target as HTMLElement).closest('a[href], .link-card')
+              if (!from?.contains(event.relatedTarget as Node | null)) tooltip?.hide()
+              return false
+            },
             mousedown: () => (tooltip?.hide(), false),
             // handleClick below opens the link, but it runs on mouseup: its preventDefault
             // doesn't stop the browser's own click on the <a> (target="_blank"), which opened

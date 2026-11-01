@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Notes**
-- **New:** Links can show as cards with title and picture: 3 styles, sites chosen in Settings.
+- **New:** Links can show as cards with title and picture (3 styles), and a bigger card on hover.
 
 ## [0.37.4] - 2026-10-31
 

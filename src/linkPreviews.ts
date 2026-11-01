@@ -34,16 +34,20 @@ export interface LinkPreview {
 // off · B one line · C card (two lines) · D large card (Discord-like)
 export const CARD_STYLES = { off: 'Off', line: 'One line', card: 'Card', large: 'Large card' }
 export type CardStyle = keyof typeof CARD_STYLES
+// The card shown while the mouse is on a link (PC): off · small (the text the inline card cut) · large
+export const HOVER_SIZES = { off: 'Off', small: 'Small', large: 'Large' }
+export type HoverSize = keyof typeof HOVER_SIZES
 
 export interface LinkPreviewSettings {
   style: CardStyle
+  hover: HoverSize
   allSites: boolean // every link, or only links to `sites` (and their subdomains)
   sites: string[]
 }
 
 const SETTINGS_KEY = 'syncr.linkPreviews'
 export const DEFAULT_SITES = ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com']
-const DEFAULTS: LinkPreviewSettings = { style: 'card', allSites: false, sites: DEFAULT_SITES }
+const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', allSites: false, sites: DEFAULT_SITES }
 
 // Read on every redraw, so kept in memory
 let settings: LinkPreviewSettings | undefined
@@ -51,6 +55,7 @@ let settings: LinkPreviewSettings | undefined
 export function loadLinkPreviewSettings(): LinkPreviewSettings {
   settings ??= { ...DEFAULTS, ...read<Partial<LinkPreviewSettings>>(SETTINGS_KEY, {}) }
   if (!(settings.style in CARD_STYLES)) settings.style = DEFAULTS.style
+  if (!(settings.hover in HOVER_SIZES)) settings.hover = DEFAULTS.hover
   return settings
 }
 
@@ -72,7 +77,11 @@ export function parseSites(text: string) {
 // A link gets a card when its text is its address (links with their own text stay as they are)
 // and it goes to one of the chosen sites
 function wantsCard(href: string, text: string, settings: LinkPreviewSettings) {
-  if (settings.style === 'off' || simplify(href) !== simplify(text)) return false
+  return settings.style !== 'off' && simplify(href) === simplify(text) && forChosenSite(href, settings)
+}
+
+// A web link to one of the chosen sites (or any, with "All links")
+function forChosenSite(href: string, settings: LinkPreviewSettings) {
   let host: string
   try {
     const url = new URL(href)
@@ -245,7 +254,9 @@ const BUILDERS = { line: lineCard, card: twoLineCard, large: largeCard }
 function card(href: string, preview: LinkPreview, style: Exclude<CardStyle, 'off'>) {
   const root = BUILDERS[style](href, preview)
   root.contentEditable = 'false'
-  root.title = href
+  root.dataset.href = href
+  // The hover card shows the address; without it, the browser's own tooltip
+  if (loadLinkPreviewSettings().hover === 'off') root.title = href
   // The card isn't a part of the text: a click opens the link, and doesn't move the cursor
   root.addEventListener('mousedown', (event) => event.preventDefault())
   root.addEventListener('click', (event) => {
@@ -253,6 +264,35 @@ function card(href: string, preview: LinkPreview, style: Exclude<CardStyle, 'off
     event.stopPropagation()
     openLink(href)
   })
+  return root
+}
+
+// ---------- Hover card (PC) ----------
+
+// The hover card for a link (links.ts shows it in place of the address tooltip), or null: hover
+// cards off, not a chosen site, or not read yet (then it's read now, ready for the next hover).
+// Links with their own text get one too: their card isn't shown in the note.
+export function hoverCard(href: string, onInlineCard: boolean) {
+  const settings = loadLinkPreviewSettings()
+  if (settings.hover === 'off' || !forChosenSite(href, settings)) return null
+  // A large card in the note already shows everything
+  if (onInlineCard && settings.style === 'large') return null
+  if (!previews.has(href)) void ask(href)
+  const preview = previews.get(href)
+  if (!preview) return null
+  if (settings.hover === 'large') {
+    const root = largeCard(href, preview)
+    root.classList.add('link-hover-card')
+    root.append(element('span', 'link-card-address', href))
+    return root
+  }
+  // Small: title, the whole description, the address
+  const { title, site, extras } = parts(href, preview)
+  const root = element('span', 'link-card link-card-small link-hover-card')
+  root.append(element('span', 'link-card-title', title))
+  if (preview.description) root.append(element('span', 'link-card-description', preview.description))
+  else root.append(element('span', 'link-card-line', [site, extras].filter(Boolean).join(' · ')))
+  root.append(element('span', 'link-card-address', href))
   return root
 }
 
@@ -286,7 +326,7 @@ function decorations(state: EditorState) {
     // The cursor at or in the link: show the address, so it can be edited
     if (selTo >= link.from && selFrom <= link.to) continue
     found.push(
-      Decoration.widget(link.from, () => card(link.href, preview, style), { key: `${style}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.from, () => card(link.href, preview, style), { key: `${style}|${settings.hover}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )
   }

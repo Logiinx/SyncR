@@ -9,10 +9,12 @@ import { loadEditing, saveEditing, type Editing } from './editing'
 import {
   CARD_STYLES,
   DEFAULT_SITES,
+  HOVER_SIZES,
   loadLinkPreviewSettings,
   parseSites,
   saveLinkPreviewSettings,
   type CardStyle,
+  type HoverSize,
   type LinkPreviewSettings,
 } from './linkPreviews'
 import { isTauri } from '@tauri-apps/api/core'
@@ -207,10 +209,22 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </SettingRow>
+        {/* Only where there's a mouse (a phone can't hover) */}
+        {matchMedia('(hover: hover)').matches && (
+          <SettingRow label="Hover card" title="Shown while the mouse is on a link, also on links with their own text">
+            <select value={links.hover} onChange={(e) => updateLinks({ hover: e.target.value as HoverSize })}>
+              {(Object.keys(HOVER_SIZES) as HoverSize[]).map((id) => (
+                <option key={id} value={id}>
+                  {HOVER_SIZES[id]}
+                </option>
+              ))}
+            </select>
+          </SettingRow>
+        )}
         <SettingRow label="Cards for">
           <select
             value={links.allSites ? 'all' : 'sites'}
-            disabled={links.style === 'off'}
+            disabled={links.style === 'off' && links.hover === 'off'}
             onChange={(e) => updateLinks({ allSites: e.target.value === 'all' })}
           >
             <option value="sites">These sites</option>
@@ -220,7 +234,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow label="Sites" title="Links to these sites (and their subdomains) get a card. Separate them with commas.">
           <SitesInput
             sites={links.sites}
-            disabled={links.style === 'off' || links.allSites}
+            disabled={(links.style === 'off' && links.hover === 'off') || links.allSites}
             onChange={(sites) => updateLinks({ sites })}
           />
         </SettingRow>
