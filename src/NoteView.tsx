@@ -29,7 +29,7 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     if (!page) return
     const saved = getScroll(note.id)
     page.scrollTop = !saved || saved.atBottom ? page.scrollHeight : saved.top
-    atBottom.current = isAtBottom(page)
+    trackBottom(page)
   }, [note.id])
 
   // At the bottom of the note: stay there when the note changes size. E.g. opening the sidebar
@@ -47,8 +47,16 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     return () => observer.disconnect()
   }, [note.id])
 
+  // At the bottom, the browser must not keep the top line in place itself: its own scroll
+  // (when the note gets taller) can come before the size change is seen, and would end
+  // "at the bottom" before the end could be brought back into view.
+  function trackBottom(page: HTMLElement) {
+    atBottom.current = isAtBottom(page)
+    page.style.overflowAnchor = atBottom.current ? 'none' : ''
+  }
+
   function onScroll() {
-    if (pageRef.current) atBottom.current = isAtBottom(pageRef.current)
+    if (pageRef.current) trackBottom(pageRef.current)
     window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
       const page = pageRef.current
