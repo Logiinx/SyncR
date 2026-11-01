@@ -95,7 +95,7 @@ function MailView() {
           e.preventDefault()
           setMenu({ mail, x: e.clientX, y: e.clientY })
         }}
-        title={`${mail.account} (right-click for more)`}
+        title={mail.account}
       >
         <span className="menu-swatch" style={{ background: accountColor(mail.account) ?? 'var(--link)' }} />
         <span className="reminder-row-text">
