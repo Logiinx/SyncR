@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { JSONContent } from '@tiptap/react'
+import type { LinkPreview } from './linkPreviews'
 
 export interface Note {
   id: string
@@ -214,6 +215,13 @@ export interface AlertState {
   notMoved?: boolean // snoozed, but the event couldn't be moved in Google (offline…)
 }
 
+// A link card's data (linkPreviews.ts), fetched by our proxy. Not synced: a cache, per device.
+export interface LinkPreviewRow {
+  url: string
+  preview: LinkPreview | null // null: the page couldn't be read
+  fetchedAt: number
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -227,6 +235,7 @@ export const db = new Dexie('syncr') as Dexie & {
   games: EntityTable<Game, 'id'>
   events: EntityTable<CalendarEvent, 'id'>
   alertStates: EntityTable<AlertState, 'key'>
+  linkPreviews: EntityTable<LinkPreviewRow, 'url'>
 }
 
 db.version(1).stores({
@@ -271,6 +280,10 @@ db.version(10).stores({
 
 db.version(11).stores({
   alertStates: 'key',
+})
+
+db.version(12).stores({
+  linkPreviews: 'url',
 })
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.

@@ -15,6 +15,7 @@ import Toolbar from './Toolbar'
 import ContextMenu from './ContextMenu'
 import { copyImage, Image } from './image'
 import { OpenLinksOnClick } from './links'
+import { LinkPreviews } from './linkPreviews'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
 import { EmptyLineAbove, ListAfterBreak, ListEnter } from './lists'
@@ -61,6 +62,7 @@ export const extensions = [
   NoteLinks,
   NotePicker,
   OpenLinksOnClick,
+  LinkPreviews,
   // Text color and highlighter, from a fixed palette (ColorPicker.tsx)
   TextStyle,
   Color,

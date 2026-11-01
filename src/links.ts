@@ -22,7 +22,7 @@ export function openLink(href: string) {
 }
 
 // "https://www.example.com/" and "example.com" count as the same address
-function simplify(address: string) {
+export function simplify(address: string) {
   return address
     .trim()
     .toLowerCase()

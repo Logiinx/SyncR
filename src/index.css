@@ -2382,6 +2382,73 @@ button {
   opacity: 1;
 }
 
+/* Link cards (linkPreviews.ts): drawn in place of the link's address, which is hidden
+   (it comes back while the cursor is in it) */
+.tiptap .link-carded {
+  display: none;
+}
+
+.link-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  max-width: min(460px, 100%);
+  margin: 2px 0;
+  padding: 6px 10px 6px 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  vertical-align: middle;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s;
+}
+
+.link-card:hover {
+  border-color: var(--text-dim);
+}
+
+.link-card-picture {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.link-card-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.link-card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.link-card-title,
+.link-card-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link-card-title {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.link-card-line {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 /* ---------- Bullet and numbered lists ---------- */
 
 /* The bullet / number sits near the left edge of the text, like the "-" you typed

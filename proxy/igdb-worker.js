@@ -2,7 +2,8 @@
 // IGDB can't be called from a web page directly: it sends no CORS headers, and it needs a
 // Client Secret, which can't be in the app (public code). This Worker holds the secret,
 // gets the Twitch access token, forwards the app's query and adds the CORS headers.
-// It also does Google Calendar's sign-in exchange, for the same reason (see /google/token).
+// It also does Google Calendar's sign-in exchange, for the same reason (see /google/token),
+// and reads web pages for the link cards in notes (see /preview).
 //
 // Settings (Cloudflare dashboard → the Worker → Settings → Variables and Secrets, type Secret):
 //   TWITCH_CLIENT_ID      from dev.twitch.tv/console (your application)
@@ -266,6 +267,129 @@ async function steam(env, endpoint, request) {
   return result
 }
 
+// ---------- Link previews ----------
+// Body (JSON): { url } → what a note's link card shows: { url, kind, site, title, description,
+// image, icon } (any of them may be null), plus for kind "github" { stars, language } and for
+// kind "tweet" { author, handle, likes, date }; { error } when the page can't be read.
+// GitHub repos come from GitHub's API, posts on X (x.com, twitter.com, fxtwitter.com…) from
+// fxtwitter's API (X itself shows nothing to programs), other pages from their meta tags.
+const PREVIEW_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; SyncR-LinkPreview/1.0)' }
+const TWEET_HOSTS = ['x.com', 'twitter.com', 'fxtwitter.com', 'fixupx.com', 'vxtwitter.com', 'fixvx.com']
+
+const hostOf = (url) => url.hostname.replace(/^(www|mobile)\./, '')
+
+async function githubPreview(url) {
+  const [owner, repo, more] = url.pathname.split('/').filter(Boolean)
+  // Only a repo's main page; issues, files… use the page's meta tags
+  if (!owner || !repo || more) return null
+  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    headers: { ...PREVIEW_HEADERS, Accept: 'application/vnd.github+json' },
+  })
+  if (!response.ok) return null // e.g. GitHub's limit for programs without a key
+  const data = await response.json()
+  return {
+    url: url.href,
+    kind: 'github',
+    site: 'GitHub',
+    title: data.full_name,
+    description: data.description,
+    image: data.owner?.avatar_url ?? null,
+    icon: 'https://github.com/favicon.ico',
+    stars: data.stargazers_count ?? null,
+    language: data.language ?? null,
+  }
+}
+
+async function tweetPreview(url) {
+  const match = url.pathname.match(/^\/([^/]+)\/status(?:es)?\/(\d+)/)
+  if (!match) return null
+  const response = await fetch(`https://api.fxtwitter.com/${match[1]}/status/${match[2]}`, { headers: PREVIEW_HEADERS })
+  if (!response.ok) return null
+  const tweet = (await response.json()).tweet
+  if (!tweet) return null
+  const media = tweet.media ?? {}
+  return {
+    url: url.href,
+    kind: 'tweet',
+    site: 'X',
+    title: tweet.author?.name ?? null,
+    description: tweet.text ?? null,
+    image: media.photos?.[0]?.url ?? media.videos?.[0]?.thumbnail_url ?? null,
+    icon: tweet.author?.avatar_url ?? null,
+    author: tweet.author?.name ?? null,
+    handle: tweet.author?.screen_name ?? null,
+    likes: tweet.likes ?? null,
+    date: tweet.created_timestamp ? tweet.created_timestamp * 1000 : null,
+  }
+}
+
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const decodeHtml = (text) =>
+  text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, number) => String.fromCodePoint(Number(number)))
+    .replace(/&([a-z]+);/gi, (all, name) => ENTITIES[name.toLowerCase()] ?? all)
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'))?.slice(2).find((v) => v !== undefined)
+
+// A page's title, description, picture and icon from its <head> (only the first 300 KB are read)
+async function pagePreview(url) {
+  const response = await fetch(url.href, { headers: { ...PREVIEW_HEADERS, Accept: 'text/html' }, redirect: 'follow' })
+  if (!response.ok) return { error: `The site answered ${response.status}` }
+  if (!(response.headers.get('Content-Type') ?? '').includes('html')) return { error: 'Not a web page' }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let html = ''
+  while (html.length < 300_000) {
+    const { done, value } = await reader.read()
+    if (done) break
+    html += decoder.decode(value, { stream: true })
+    if (html.includes('</head>')) break
+  }
+  reader.cancel().catch(() => {})
+  const page = new URL(response.url || url.href)
+  const meta = {}
+  for (const tag of html.match(/<meta\s[^>]*>/gi) ?? []) {
+    const key = (attribute(tag, 'property') ?? attribute(tag, 'name') ?? '').toLowerCase()
+    const content = attribute(tag, 'content')
+    if (key && content !== undefined && !(key in meta)) meta[key] = decodeHtml(content)
+  }
+  const absolute = (address) => {
+    try {
+      const href = address ? new URL(address, page).href : null
+      return href === 'data:,' ? null : href // "data:," = "no icon"
+    } catch {
+      return null
+    }
+  }
+  const iconTag = (html.match(/<link\s[^>]*>/gi) ?? []).find((tag) => /(^|\s)icon(\s|$)/i.test(attribute(tag, 'rel') ?? ''))
+  const title = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]
+  return {
+    url: url.href,
+    kind: 'page',
+    site: meta['og:site_name'] ?? hostOf(page),
+    title: meta['og:title'] ?? meta['twitter:title'] ?? (title ? decodeHtml(title) : null),
+    description: meta['og:description'] ?? meta['twitter:description'] ?? meta.description ?? null,
+    image: absolute(meta['og:image'] ?? meta['twitter:image']),
+    icon: absolute(iconTag ? attribute(iconTag, 'href') : '/favicon.ico'),
+  }
+}
+
+async function linkPreview(request) {
+  let url
+  try {
+    url = new URL((await request.json()).url)
+  } catch {
+    return { error: 'Not a link' }
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return { error: 'Not a web link' }
+  const host = hostOf(url)
+  const special = host === 'github.com' ? await githubPreview(url) : TWEET_HOSTS.includes(host) ? await tweetPreview(url) : null
+  return special ?? pagePreview(url)
+}
+
 function askIgdb(env, endpoint, query, accessToken) {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
@@ -319,6 +443,13 @@ export default {
         return reply(endpoint === 'prices' ? await gamePrices(env, request) : await gameEditions(request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    if (endpoint === 'preview') {
+      try {
+        return reply(await linkPreview(request), 200)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, 200)
       }
     }
     if (['steam/profile', 'steam/owned', 'steam/achievements'].includes(endpoint)) {
