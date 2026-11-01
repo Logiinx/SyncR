@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **New:** GitHub and X links show as small cards with title, description and picture.
+
 ## [0.37.4] - 2026-10-31
 
 **Games**
