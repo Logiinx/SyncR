@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Fixed:** Small fixes: the trailer's full name shows on hover.
+
 ## [0.38.5] - 2026-11-01
 
 **Mail**

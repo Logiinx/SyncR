@@ -282,7 +282,7 @@ export function TrailerPanel({ igdbId }: { igdbId: number }) {
         referrerPolicy="strict-origin-when-cross-origin"
       />
       <div className="trailer-panel-foot">
-        <span>{trailer.name}</span>
+        <span title={trailer.name}>{trailer.name}</span>
         <button className="game-trailer-link" onClick={() => openLink(`https://www.youtube.com/watch?v=${trailer.id}`)}>
           Open on YouTube
         </button>
