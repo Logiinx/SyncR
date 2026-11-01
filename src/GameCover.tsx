@@ -29,6 +29,18 @@ export function CoverImage({ src, className, lazy }: { src: string; className: s
   )
 }
 
+// The big cover of the game window and the preview (className sets its size), or a gamepad when
+// IGDB has none
+export function WindowCover({ coverId, className }: { coverId?: string; className: string }) {
+  return coverId ? (
+    <CoverImage className={className} src={coverUrl(coverId, 'cover_big')} />
+  ) : (
+    <span className={`${className} gd-cover-none`}>
+      <Gamepad2 size={28} />
+    </span>
+  )
+}
+
 // A game's cover: small in list rows, big in the My games grid (or a gamepad when IGDB has none)
 function GameCover({ coverId, big }: { coverId?: string; big?: boolean }) {
   return coverId ? (

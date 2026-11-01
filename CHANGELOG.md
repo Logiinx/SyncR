@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- **Fixed:** Small fixes: plus icon on "Add to Upcoming".
+- **Fixed:** Small fixes: plus icon on "Add to Upcoming", gamepad in a preview without a cover.
 
 ## [0.38.3] - 2026-11-01
 

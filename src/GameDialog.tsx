@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, PackageCheck, Gamepad2, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, PackageCheck, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
@@ -13,8 +13,7 @@ import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerThe
 import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
 import { isHundred, playedTime, updateSteamStats } from './steam'
-import { coverUrl } from './igdb'
-import { CoverImage } from './GameCover'
+import { WindowCover } from './GameCover'
 import { FillSwitch } from './tabLines'
 
 // A game's details (click a game in the Games tab, the Board or the Reminders tab). PC: the
@@ -75,13 +74,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
     >
       {/* Left (PC): the cover and the actions. Phone: the cover beside the title, actions as icons */}
       <div className="gd-side">
-        {game.coverId ? (
-          <CoverImage className="gd-cover" src={coverUrl(game.coverId, 'cover_big')} />
-        ) : (
-          <span className="gd-cover gd-cover-none">
-            <Gamepad2 size={28} />
-          </span>
-        )}
+        <WindowCover coverId={game.coverId} className="gd-cover" />
         <div className="gd-actions">
           {/* The main action, in blue, first */}
           <TrailerButton

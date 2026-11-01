@@ -3,8 +3,8 @@ import { ChevronDown, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { ADD_PLACES, addGame, allPlatforms, isReleased, statusLabel } from './games'
-import { coverUrl, type FoundGame } from './igdb'
-import { CoverImage } from './GameCover'
+import type { FoundGame } from './igdb'
+import { WindowCover } from './GameCover'
 import type { GameStatus } from './db'
 import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
@@ -57,7 +57,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
       beside={trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
     >
       <div className="calendar-popup-head">
-        {game.coverId && <CoverImage className="calendar-popup-cover" src={coverUrl(game.coverId, 'cover_big')} />}
+        <WindowCover coverId={game.coverId} className="calendar-popup-cover" />
         <div className="calendar-popup-main">
           <div className="gd-head">
             <h2>{game.name}</h2>
