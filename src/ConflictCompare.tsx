@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TriangleAlert, UnfoldVertical } from 'lucide-react'
+import { ChevronRight, Square, SquareCheck, TriangleAlert, UnfoldVertical } from 'lucide-react'
 import BackButton from './BackButton'
 import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -248,20 +248,21 @@ const kindChanged = (row: Extract<Row, { op: 'changed' }>) => row.before.kind !=
 
 // ---------- One line ----------
 
-function marker(line: Line): string {
+// Checklists and sections: the icons (as in the note), lists: their bullet or number
+function marker(line: Line): ReactNode {
   switch (line.kind) {
     case 'bullet':
       return '•'
     case 'numbered':
       return line.number ?? '1.'
     case 'task':
-      return '☐'
+      return <Square size={13} />
     case 'task-done':
-      return '☑'
+      return <SquareCheck size={13} />
     case 'section':
-      return '›'
+      return <ChevronRight size={13} />
     default:
-      return ''
+      return null
   }
 }
 

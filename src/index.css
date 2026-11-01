@@ -2195,6 +2195,11 @@ button {
   color: var(--text-dim);
 }
 
+/* Checklist and section icons sit on the line's text */
+.cmp-cell svg {
+  vertical-align: -2px;
+}
+
 .cmp-kind-section .cmp-text,
 .cmp-kind-heading-1 .cmp-text,
 .cmp-kind-heading-2 .cmp-text,

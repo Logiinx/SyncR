@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **Fixed:** Small fixes: comparing a conflict copy shows checkbox and section icons like the note.
+
 **Games**
 - **Fixed:** Small fixes: the trailer's full name shows on hover.
 
