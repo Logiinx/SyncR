@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **Fixed:** A folded link group closes with one click, even with the cursor inside it.
+- **Fixed:** Link cards appear once the game search proxy is set up or synced, without a restart.
+- **Fixed:** Small fixes: an empty Sites field resets; link cards open once and don't drag Board cards.
+
 ## [0.38.1] - 2026-11-01
 
 **Notes**

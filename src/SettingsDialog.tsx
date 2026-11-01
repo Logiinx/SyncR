@@ -873,13 +873,15 @@ function GmailSettings() {
   )
 }
 
-// The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field
+// The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field.
+// Emptied: back to the default sites (as the placeholder shows).
 function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: boolean; onChange: (sites: string[]) => void }) {
   const [text, setText] = useState(sites.join(', '))
   const save = () => {
     const parsed = parseSites(text)
-    setText(parsed.join(', '))
-    onChange(parsed)
+    const chosen = parsed.length ? parsed : DEFAULT_SITES
+    setText(chosen.join(', '))
+    onChange(chosen)
   }
   return (
     <input

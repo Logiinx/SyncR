@@ -1,7 +1,8 @@
 import { Extension, type Editor } from '@tiptap/react'
 import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
-import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
+import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
+import { liveQuery } from 'dexie'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { db } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
@@ -136,6 +137,30 @@ function redrawAll() {
   for (const view of views) view.dispatch(view.state.tr.setMeta(key, {}).setMeta('addToHistory', false))
 }
 
+// Cards arriving one after another: one redraw for all those that arrived within 50 ms
+let redrawTimer: number | undefined
+function redrawSoon() {
+  redrawTimer ??= window.setTimeout(() => {
+    redrawTimer = undefined
+    redrawAll()
+  }, 50)
+}
+
+// Links seen before the proxy was set up (or synced to this device): asked again once it is
+const noProxy = new Set<string>()
+let watchingProxy = false
+function waitForProxy(url: string) {
+  noProxy.add(url)
+  if (watchingProxy) return
+  watchingProxy = true
+  liveQuery(loadConnection).subscribe((connection) => {
+    if (!isComplete(connection) || noProxy.size === 0) return
+    const urls = [...noProxy]
+    noProxy.clear()
+    for (const url of urls) void ask(url)
+  })
+}
+
 async function ask(url: string) {
   if (asking.has(url)) return
   asking.add(url)
@@ -143,12 +168,15 @@ async function ask(url: string) {
     const row = await db.linkPreviews.get(url)
     if (row) {
       previews.set(url, row.preview)
-      redrawAll()
+      redrawSoon()
       const fresh = Date.now() - row.fetchedAt < (row.preview ? FRESH_FOR : RETRY_AFTER)
       if (fresh && row.version === CACHE_VERSION) return
     }
-    // No proxy set up: plain links, asked again next time the app starts
-    if (!isComplete(await loadConnection())) return void (row || previews.set(url, null))
+    // No proxy set up: plain links, asked again once it is
+    if (!isComplete(await loadConnection())) {
+      waitForProxy(url)
+      return void (row || previews.set(url, null))
+    }
     const response = await readPage(url)
     // An older proxy without /preview (404) or a hiccup: plain link until the app starts again
     if (!response.ok) return void (row || previews.set(url, null))
@@ -158,7 +186,7 @@ async function ask(url: string) {
     if (!preview && row?.preview && row.version === CACHE_VERSION) return
     await db.linkPreviews.put({ url, preview, fetchedAt: Date.now(), version: CACHE_VERSION })
     previews.set(url, preview)
-    redrawAll()
+    redrawSoon()
   } catch {
     if (!previews.has(url)) previews.set(url, null) // offline: plain link
   } finally {
@@ -217,14 +245,16 @@ function parts(href: string, preview: LinkPreview) {
   }
 }
 
+// A small icon's pictures: GitHub: the repo owner's picture, like style C; else the site's icon
+const iconSources = (preview: LinkPreview) =>
+  preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
+
 // B: one line as high as the text: icon, title, dim description
 function lineCard(href: string, preview: LinkPreview) {
   const { title } = parts(href, preview)
   const root = element('span', 'link-card link-card-line-style')
   const label = preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
-  // GitHub: the repo owner's picture, like style C; else the site's icon
-  const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
-  root.append(picture('link-card-icon', sources), element('span', 'link-card-title', label))
+  root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
   if (preview.description) root.append(element('span', 'link-card-line', `· ${preview.description}`))
   return root
 }
@@ -263,8 +293,7 @@ function chipCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card link-card-line-style link-card-chip')
   const tweet = preview.kind === 'tweet' && preview.handle
   const label = tweet ? `@${preview.handle}${preview.description ? ` · ${preview.description}` : ''}` : title
-  const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
-  root.append(picture('link-card-icon', sources), element('span', 'link-card-title', label))
+  root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
   return root
 }
 
@@ -282,9 +311,19 @@ function card(href: string, preview: LinkPreview, style: Builder) {
   root.addEventListener('click', (event) => {
     event.preventDefault()
     event.stopPropagation()
-    openLink(href)
+    if (event.detail <= 1) openLink(href) // a double-click opens it once
   })
   return root
+}
+
+// A short key per preview for the widgets (a new preview object = a new key): cheaper than
+// writing the whole preview out on every redraw
+const previewIds = new WeakMap<LinkPreview, number>()
+let lastPreviewId = 0
+function previewId(preview: LinkPreview) {
+  let id = previewIds.get(preview)
+  if (id === undefined) previewIds.set(preview, (id = ++lastPreviewId))
+  return id
 }
 
 // ---------- Hover card (PC) ----------
@@ -357,9 +396,19 @@ interface PluginState {
 
 const key = new PluginKey<PluginState>('linkPreviews')
 
-// Links in the note: from, to, address, text (one link can be several pieces of text, e.g. part bold)
+// Links in the note: from, to, address, text (one link can be several pieces of text, e.g. part bold).
+// Kept per version of the note: moving the cursor doesn't look through the whole note again.
+type FoundLink = { from: number; to: number; href: string; text: string }
+const linksOf = new WeakMap<EditorState['doc'], FoundLink[]>()
+
 function findLinks(state: EditorState) {
-  const links: { from: number; to: number; href: string; text: string }[] = []
+  let links = linksOf.get(state.doc)
+  if (!links) linksOf.set(state.doc, (links = readLinks(state)))
+  return links
+}
+
+function readLinks(state: EditorState) {
+  const links: FoundLink[] = []
   state.doc.descendants((node, pos) => {
     if (!node.isText) return
     const href = node.marks.find((mark) => mark.type.name === 'link')?.attrs.href as string | undefined
@@ -391,15 +440,30 @@ function findGroups(lines: CardLine[]) {
   return groups.filter((group) => group.length > 1)
 }
 
+// A click on a folded group's line. Folding it with the cursor inside: the cursor goes below the
+// group (above it at the note's end), or it would keep it open.
+function toggleGroup(view: EditorView, summary: HTMLElement, groupKey: string, open: boolean) {
+  const tr = view.state.tr.setMeta(key, { toggle: groupKey, open }).setMeta('addToHistory', false)
+  if (open) {
+    const lines = key.getState(view.state)?.lines ?? []
+    const start = view.posAtDOM(summary, 0)
+    let end = start
+    for (let line = lines.find((l) => l.from === end); line; line = lines.find((l) => l.from === end)) end = line.to
+    const { from, to } = view.state.selection
+    if (to >= start && from <= end) {
+      const outside = Selection.findFrom(tr.doc.resolve(end), 1, true) ?? Selection.findFrom(tr.doc.resolve(start), -1, true)
+      if (outside) tr.setSelection(outside)
+    }
+  }
+  view.dispatch(tr)
+}
+
 // "▸ icons · 6 links": a folded group's line; a click opens or closes it
 function groupSummary(group: CardLine[], open: boolean, toggle: () => void) {
   const root = element('div', `link-group-summary${open ? ' open' : ''}`)
   root.contentEditable = 'false'
   root.innerHTML = CHEVRON
-  for (const { preview } of group.slice(0, 8)) {
-    const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
-    root.append(picture('link-card-icon', sources))
-  }
+  for (const { preview } of group.slice(0, 8)) root.append(picture('link-card-icon', iconSources(preview)))
   root.append(element('span', 'link-group-count', `${group.length} links`))
   root.addEventListener('mousedown', (event) => event.preventDefault())
   root.addEventListener('click', toggle)
@@ -445,9 +509,10 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>) 
         // The cursor inside opens it (an undo, a search result)
         const open = opened.has(groupKey) || touches(group[0].from, group[group.length - 1].to)
         found.push(
-          Decoration.widget(group[0].from, (view) => groupSummary(group, open, () => {
-            view.dispatch(view.state.tr.setMeta(key, { toggle: groupKey }).setMeta('addToHistory', false))
-          }), { key: `group|${open}|${group.map((line) => line.link.href).join(' ')}`, side: -1, ignoreSelection: true }),
+          Decoration.widget(group[0].from, (view) => {
+            const summary: HTMLElement = groupSummary(group, open, () => toggleGroup(view, summary, groupKey, open))
+            return summary
+          }, { key: `group|${open}|${group.map((line) => line.link.href).join(' ')}`, side: -1, ignoreSelection: true }),
         )
         if (!open) for (const line of group) {
           found.push(Decoration.node(line.from, line.to, { class: 'link-group-hidden' }))
@@ -473,7 +538,7 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>) 
     // Hidden in a folded group, or the cursor at or in the link: the address, so it can be edited
     if (!look || touches(link.from, link.to)) continue
     found.push(
-      Decoration.widget(link.from, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.from, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${previewId(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )
   }
@@ -489,7 +554,8 @@ function arrowIntoCardLine(view: EditorView, event: KeyboardEvent) {
   const direction = ARROWS[event.key]
   if (!direction || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return false
   const { selection, doc } = view.state
-  if (!selection.empty || !view.endOfTextblock(direction)) return false
+  // Not in a line of text (e.g. a gap cursor before a table): nothing to do here
+  if (!selection.empty || !selection.$from.parent.isTextblock || !view.endOfTextblock(direction)) return false
   const back = direction === 'left' || direction === 'up'
   const $from = selection.$from
   const edge = back ? $from.before() : $from.after()
@@ -510,13 +576,16 @@ export const LinkPreviews = Extension.create({
         state: {
           init: (_, state) => ({ ...decorations(state, false, new Set()), focused: false, opened: new Set() }),
           apply: (tr, old, _oldState, state) => {
-            const meta = tr.getMeta(key) as { focused?: boolean; toggle?: string } | undefined
-            if (!tr.docChanged && !tr.selectionSet && !meta) return old
+            const meta = tr.getMeta(key) as { focused?: boolean; toggle?: string; open?: boolean } | undefined
+            // The cursor only changes what's drawn while the text is being edited (focused)
+            if (!tr.docChanged && !meta && (!tr.selectionSet || !old.focused)) return old
             const focused = meta?.focused ?? old.focused
             let opened = old.opened
             if (meta?.toggle) {
+              // open: as the group was shown when clicked (also when the cursor opened it)
               opened = new Set(opened)
-              if (!opened.delete(meta.toggle)) opened.add(meta.toggle)
+              if (meta.open) opened.delete(meta.toggle)
+              else opened.add(meta.toggle)
             }
             return { ...decorations(state, focused, opened), focused, opened }
           },

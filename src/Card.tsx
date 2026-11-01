@@ -20,6 +20,8 @@ import { currentZoom } from './appearance'
 import { linkMenu } from './linkPreviews'
 
 const SAVE_DELAY_MS = 500
+// A link card and a folded link group's line (linkPreviews.ts): a click opens them, no drag or editing
+const LINK_CARD_PARTS = '.link-card, .link-group-summary'
 
 const LISTS = ['bulletList', 'orderedList', 'taskList']
 
@@ -243,12 +245,12 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
       data-card-id={card.id}
       ref={cardRef}
       onPointerDown={(event) => {
-        // Checkboxes, links and the buttons keep their own click
+        // Checkboxes, links (and link cards) and the buttons keep their own click
         const target = event.target as HTMLElement
-        if (!editing && !target.closest('input, label, a, button')) onPress(event)
+        if (!editing && !target.closest(`input, label, a, button, ${LINK_CARD_PARTS}`)) onPress(event)
       }}
       onDoubleClick={(event) => {
-        if (!editing) startEditing({ left: event.clientX, top: event.clientY })
+        if (!editing && !(event.target as HTMLElement).closest(LINK_CARD_PARTS)) startEditing({ left: event.clientX, top: event.clientY })
       }}
       onContextMenu={(event) => {
         // Phone: a long press on the text is for Android's menu (copy, paste); the card's menu

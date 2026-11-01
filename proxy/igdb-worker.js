@@ -335,10 +335,12 @@ async function tweetPreview(url) {
 }
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+// A number past Unicode's last character stays as written (fromCodePoint would throw)
+const character = (all, code) => (code <= 0x10ffff ? String.fromCodePoint(code) : all)
 const decodeHtml = (text) =>
   text
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, number) => String.fromCodePoint(Number(number)))
+    .replace(/&#x([0-9a-f]+);/gi, (all, hex) => character(all, parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (all, number) => character(all, Number(number)))
     .replace(/&([a-z]+);/gi, (all, name) => ENTITIES[name.toLowerCase()] ?? all)
     .replace(/\s+/g, ' ')
     .trim()
@@ -348,7 +350,9 @@ const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"
 // A page's title, description, picture and icon from its <head> (only the first 300 KB are read)
 async function pagePreview(url) {
   const response = await fetch(url.href, { headers: { ...PREVIEW_HEADERS, Accept: 'text/html' }, redirect: 'follow' })
-  if (!response.ok) return { error: `The site answered ${response.status}` }
+  // Too many requests, or the site is down for now: worth asking again later
+  const temporary = response.status === 429 || response.status >= 500
+  if (!response.ok) return { error: `The site answered ${response.status}`, temporary }
   if (!(response.headers.get('Content-Type') ?? '').includes('html')) return { error: 'Not a web page' }
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -458,11 +462,14 @@ export default {
         return reply({ error: String(error.message ?? error) }, 502)
       }
     }
+    // A page that can't be read now (busy, down, unreachable): 502, so the app doesn't keep
+    // "no card" for a day but asks again next time it starts
     if (endpoint === 'preview') {
       try {
-        return reply(await linkPreview(env, request), 200)
+        const { temporary, ...preview } = await linkPreview(env, request)
+        return reply(preview, temporary ? 502 : 200)
       } catch (error) {
-        return reply({ error: String(error.message ?? error) }, 200)
+        return reply({ error: String(error.message ?? error) }, 502)
       }
     }
     if (['steam/profile', 'steam/owned', 'steam/achievements'].includes(endpoint)) {
