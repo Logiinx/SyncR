@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.7] - 2026-11-01
+
 **Notes**
 - **Fixed:** At the end of a note, opening the note list no longer scrolls it up a bit.
 
