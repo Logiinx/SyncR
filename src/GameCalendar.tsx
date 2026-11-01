@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CalendarDays, List } from 'lucide-react'
-import { addGame, gameId, releaseText } from './games'
+import { addGame, gameId, releaseText, statusLabel, tabOf } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
 import type { GameStatus } from './db'
 import Cover from './GameCover'
@@ -207,18 +207,26 @@ function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
       months={months}
       count={(first) => games.filter((g) => (g.exact || g.monthOnly) && sameMonth(new Date(g.pcDate), first)).length}
       renderDay={(date) =>
-        (days.get(dayKey(date)) ?? []).map((game) => (
-          <button
-            key={game.igdbId}
-            className={statusOf(game) ? 'calendar-game in-list' : 'calendar-game'}
-            onClick={() => onShow(game)}
-            onContextMenu={(e) => onMenu(game, e)}
-            title={game.name}
-          >
-            <Cover coverId={game.coverId} />
-            <span>{game.name}</span>
-          </button>
-        ))
+        (days.get(dayKey(date)) ?? []).map((game) => {
+          // A game in your list: its list's icon (the tab's) before the name, "In Upcoming" on hover
+          const status = statusOf(game)
+          const ListIcon = status && tabOf(status).icon
+          return (
+            <button
+              key={game.igdbId}
+              className="calendar-game"
+              onClick={() => onShow(game)}
+              onContextMenu={(e) => onMenu(game, e)}
+              title={status ? `${game.name}\nIn ${statusLabel(status)}` : game.name}
+            >
+              <Cover coverId={game.coverId} />
+              <span>
+                {ListIcon && <ListIcon size={12} className="calendar-list-icon" />}
+                {game.name}
+              </span>
+            </button>
+          )
+        })
       }
       after={(first) =>
         monthOnly(first).length > 0 && (

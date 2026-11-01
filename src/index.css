@@ -5467,10 +5467,11 @@ h3.games-group-title {
   color: var(--link);
 }
 
-/* Grid: a game already in your list gets the flagged games' blue tint */
-.calendar-game.in-list,
-.calendar-game.in-list:hover {
-  background: color-mix(in srgb, var(--text-blue) 15%, var(--bg));
+/* Grid: a game already in your list: its list's icon before the name (no tint: blue = priority) */
+.calendar-list-icon {
+  margin-right: 3px;
+  vertical-align: -2px;
+  color: var(--text-dim);
 }
 
 .games-count {

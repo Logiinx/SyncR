@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, Library, List, Play, Search, ShoppingCart, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
 import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
@@ -160,8 +160,7 @@ function GamesView() {
                 <div className={shelf === 'grid' ? 'games-status-tabs wide' : 'games-status-tabs'}>
                   {/* Scrolls sideways when the screen is too narrow (phone, big app scale) */}
                   <div className="games-status-list" ref={statusList} onPointerLeave={lines.onRowLeave}>
-                    {TABS.map(({ tab, label }) => {
-                      const TabIcon = TAB_ICONS[tab]
+                    {TABS.map(({ tab, label, icon: TabIcon }) => {
                       const count = games.filter((g) => tabOf(g.status).tab === tab).length
                       let className = shown === tab ? 'active' : ''
                       if (lines.hovered === tab) className += ' hovered'
@@ -233,8 +232,6 @@ function GamesView() {
     </main>
   )
 }
-
-const TAB_ICONS: Record<GamesTab, typeof Play> = { waiting: CalendarClock, tobuy: ShoppingCart, toplay: Play, library: Library }
 
 // To play: two parts, Playing above Not started (owned, not started), each with its title and count
 function ToPlayShelf({ games, layout, onOpen, onMenu }: {

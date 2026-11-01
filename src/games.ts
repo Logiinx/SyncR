@@ -1,3 +1,4 @@
+import { CalendarClock, Library, Play, ShoppingCart, type LucideIcon } from 'lucide-react'
 import { changed, db, isWatched, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
 import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
@@ -19,11 +20,12 @@ export const GAMES_TAB = 'games' // its id among the open tabs (note ids never l
 
 // The Games tabs (user's names): To play shows two statuses, Playing above Not started
 export type GamesTab = 'waiting' | 'tobuy' | 'toplay' | 'library'
-export const TABS: { tab: GamesTab; label: string; statuses: GameStatus[] }[] = [
-  { tab: 'waiting', label: 'Upcoming', statuses: ['waiting'] },
-  { tab: 'tobuy', label: 'To buy', statuses: ['tobuy'] },
-  { tab: 'toplay', label: 'To play', statuses: ['playing', 'upnext'] },
-  { tab: 'library', label: 'Library', statuses: ['library'] },
+// icon: on the tab, and before a game of your list in the Games calendar grid
+export const TABS: { tab: GamesTab; label: string; icon: LucideIcon; statuses: GameStatus[] }[] = [
+  { tab: 'waiting', label: 'Upcoming', icon: CalendarClock, statuses: ['waiting'] },
+  { tab: 'tobuy', label: 'To buy', icon: ShoppingCart, statuses: ['tobuy'] },
+  { tab: 'toplay', label: 'To play', icon: Play, statuses: ['playing', 'upnext'] },
+  { tab: 'library', label: 'Library', icon: Library, statuses: ['library'] },
 ]
 // An old "toplay" not upgraded yet (until the first sync, upgradeOldStatuses) shows in To buy
 export const tabOf = (status: GameStatus) => TABS.find((t) => t.statuses.includes(status)) ?? TABS[1]

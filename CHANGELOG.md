@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **Improved:** Right-click a game of your list in the search or the calendar for its usual menu.
+- **Improved:** Calendar grid: games in your list show their list's icon instead of a blue tint.
 - **Fixed:** Small fixes: icons on "Add to Upcoming" and "Google Calendar", previews without a cover.
 
 ## [0.38.3] - 2026-11-01
