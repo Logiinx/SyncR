@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarDays, ChevronDown, CircleCheck, CirclePause, CircleX, Clock, PackageCheck, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, PackageCheck, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
@@ -106,7 +106,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           {/* Its release event (made by SyncR for Waiting games, games.ts) */}
           {releaseEvent && (
             <button className="gd-action" title="Open in Google Calendar" onClick={() => openLink(releaseEvent.link)}>
-              <CalendarDays size={15} /> <span>Google Calendar</span>
+              <ExternalLink size={15} /> <span>Google Calendar</span>
             </button>
           )}
           <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
