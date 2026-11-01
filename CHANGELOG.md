@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Notes**
-- **New:** GitHub and X links show as small cards with title, description and picture.
+- **New:** Links can show as cards with title and picture: 3 styles, sites chosen in Settings.
 
 ## [0.37.4] - 2026-10-31
 

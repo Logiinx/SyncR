@@ -220,6 +220,7 @@ export interface LinkPreviewRow {
   url: string
   preview: LinkPreview | null // null: the page couldn't be read
   fetchedAt: number
+  version?: number // CACHE_VERSION in linkPreviews.ts when it was read
 }
 
 // The local database, stored in the browser/app (IndexedDB).

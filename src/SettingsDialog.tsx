@@ -6,6 +6,15 @@ import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
 import { loadEditing, saveEditing, type Editing } from './editing'
+import {
+  CARD_STYLES,
+  DEFAULT_SITES,
+  loadLinkPreviewSettings,
+  parseSites,
+  saveLinkPreviewSettings,
+  type CardStyle,
+  type LinkPreviewSettings,
+} from './linkPreviews'
 import { isTauri } from '@tauri-apps/api/core'
 import { playSound, SOUNDS, type SoundId } from './sounds'
 import {
@@ -67,6 +76,12 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     const next = { ...loadAppearance(), ...change }
     setAppearance(next)
     saveAppearance(next)
+  }
+
+  const [links, setLinks] = useState(loadLinkPreviewSettings)
+  function updateLinks(change: Partial<LinkPreviewSettings>) {
+    saveLinkPreviewSettings(change)
+    setLinks(loadLinkPreviewSettings())
   }
 
   const [editing, setEditing] = useState(loadEditing)
@@ -171,6 +186,43 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </SettingRow>
         <SettingRow label="Dates in the note list">
           <input type="checkbox" checked={appearance.showDates} onChange={(e) => update({ showDates: e.target.checked })} />
+        </SettingRow>
+        <SettingRow
+          label={
+            <>
+              Link cards
+              <InfoTip label="About link cards">
+                A website link whose text is its address shows as a card with its title, description and
+                picture. A click opens it; put the cursor on it to edit the address. Links with their own
+                text stay as they are.
+              </InfoTip>
+            </>
+          }
+        >
+          <select value={links.style} onChange={(e) => updateLinks({ style: e.target.value as CardStyle })}>
+            {(Object.keys(CARD_STYLES) as CardStyle[]).map((id) => (
+              <option key={id} value={id}>
+                {CARD_STYLES[id]}
+              </option>
+            ))}
+          </select>
+        </SettingRow>
+        <SettingRow label="Cards for">
+          <select
+            value={links.allSites ? 'all' : 'sites'}
+            disabled={links.style === 'off'}
+            onChange={(e) => updateLinks({ allSites: e.target.value === 'all' })}
+          >
+            <option value="sites">These sites</option>
+            <option value="all">All links</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Sites" title="Links to these sites (and their subdomains) get a card. Separate them with commas.">
+          <SitesInput
+            sites={links.sites}
+            disabled={links.style === 'off' || links.allSites}
+            onChange={(sites) => updateLinks({ sites })}
+          />
         </SettingRow>
         <SettingRow label={<>Color rules <Synced /></>} value={rulesSummary}>
           <button className="setting-button" onClick={() => setShowRules(true)}>
@@ -765,6 +817,30 @@ function GmailSettings() {
         </section>
       )}
     </>
+  )
+}
+
+// The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field
+function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: boolean; onChange: (sites: string[]) => void }) {
+  const [text, setText] = useState(sites.join(', '))
+  const save = () => {
+    const parsed = parseSites(text)
+    setText(parsed.join(', '))
+    onChange(parsed)
+  }
+  return (
+    <input
+      className="settings-sites"
+      type="text"
+      value={text}
+      disabled={disabled}
+      placeholder={DEFAULT_SITES.join(', ')}
+      spellCheck={false}
+      aria-label="Sites"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+    />
   )
 }
 

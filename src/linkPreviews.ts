@@ -4,7 +4,8 @@ import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { db } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { openLink, simplify } from './links'
-import { read } from './localState'
+import { read, write } from './localState'
+import { shortDate } from './dates'
 
 // Link cards: a website link in a note is shown as a small card (title, description, picture),
 // so you know what it is without opening it. The page is read by our proxy (/preview in
@@ -30,21 +31,48 @@ export interface LinkPreview {
 
 // ---------- Settings (per device) ----------
 
+// off · B one line · C card (two lines) · D large card (Discord-like)
+export const CARD_STYLES = { off: 'Off', line: 'One line', card: 'Card', large: 'Large card' }
+export type CardStyle = keyof typeof CARD_STYLES
+
 export interface LinkPreviewSettings {
-  sites: string[] // only links to these sites (and their subdomains) get a card
+  style: CardStyle
+  allSites: boolean // every link, or only links to `sites` (and their subdomains)
+  sites: string[]
 }
 
 const SETTINGS_KEY = 'syncr.linkPreviews'
-const DEFAULTS: LinkPreviewSettings = { sites: ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com'] }
+export const DEFAULT_SITES = ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com']
+const DEFAULTS: LinkPreviewSettings = { style: 'card', allSites: false, sites: DEFAULT_SITES }
+
+// Read on every redraw, so kept in memory
+let settings: LinkPreviewSettings | undefined
 
 export function loadLinkPreviewSettings(): LinkPreviewSettings {
-  return { ...DEFAULTS, ...read<Partial<LinkPreviewSettings>>(SETTINGS_KEY, {}) }
+  settings ??= { ...DEFAULTS, ...read<Partial<LinkPreviewSettings>>(SETTINGS_KEY, {}) }
+  if (!(settings.style in CARD_STYLES)) settings.style = DEFAULTS.style
+  return settings
+}
+
+export function saveLinkPreviewSettings(change: Partial<LinkPreviewSettings>) {
+  settings = { ...loadLinkPreviewSettings(), ...change }
+  write(SETTINGS_KEY, settings)
+  redrawAll()
+}
+
+// "https://www.GitHub.com/x, x.com" → ["github.com", "x.com"]
+export function parseSites(text: string) {
+  const sites = text
+    .split(/[\s,;]+/)
+    .map((site) => site.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0])
+    .filter(Boolean)
+  return [...new Set(sites)]
 }
 
 // A link gets a card when its text is its address (links with their own text stay as they are)
 // and it goes to one of the chosen sites
 function wantsCard(href: string, text: string, settings: LinkPreviewSettings) {
-  if (simplify(href) !== simplify(text)) return false
+  if (settings.style === 'off' || simplify(href) !== simplify(text)) return false
   let host: string
   try {
     const url = new URL(href)
@@ -53,13 +81,15 @@ function wantsCard(href: string, text: string, settings: LinkPreviewSettings) {
   } catch {
     return false
   }
-  return settings.sites.some((site) => host === site || host.endsWith(`.${site}`))
+  return settings.allSites || settings.sites.some((site) => host === site || host.endsWith(`.${site}`))
 }
 
 // ---------- Cache ----------
 
 const FRESH_FOR = 14 * 24 * 3600_000 // then read again (a repo's description or stars change)
 const RETRY_AFTER = 24 * 3600_000 // a page that couldn't be read
+// Raised when the proxy's answers change: older cards are read again (shown meanwhile)
+const CACHE_VERSION = 2
 
 // In memory: undefined = not asked yet, null = no card (the link stays a link)
 const previews = new Map<string, LinkPreview | null>()
@@ -97,7 +127,8 @@ async function ask(url: string) {
     if (row) {
       previews.set(url, row.preview)
       redrawAll()
-      if (Date.now() - row.fetchedAt < (row.preview ? FRESH_FOR : RETRY_AFTER)) return
+      const fresh = Date.now() - row.fetchedAt < (row.preview ? FRESH_FOR : RETRY_AFTER)
+      if (fresh && row.version === CACHE_VERSION) return
     }
     // No proxy set up: plain links, asked again next time the app starts
     if (!isComplete(await loadConnection())) return void (row || previews.set(url, null))
@@ -106,9 +137,9 @@ async function ask(url: string) {
     if (!response.ok) return void (row || previews.set(url, null))
     const answer = await response.json()
     const preview: LinkPreview | null = answer.error ? null : answer
-    // Keep an older card rather than replacing it with nothing
-    if (!preview && row?.preview) return
-    await db.linkPreviews.put({ url, preview, fetchedAt: Date.now() })
+    // Keep an older card rather than replacing it with nothing (unless the proxy changed since)
+    if (!preview && row?.preview && row.version === CACHE_VERSION) return
+    await db.linkPreviews.put({ url, preview, fetchedAt: Date.now(), version: CACHE_VERSION })
     previews.set(url, preview)
     redrawAll()
   } catch {
@@ -151,18 +182,70 @@ function picture(className: string, sources: (string | null)[]) {
 
 const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '')
 
-// Style C: picture on the left, title, then "site · description"
-function card(href: string, preview: LinkPreview) {
-  const root = element('span', 'link-card')
-  root.contentEditable = 'false'
-  root.title = href
+// "1234" → "1.2K"
+const count = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+
+// What every style shows, from the preview: title, site, and a line of extras (stars, likes, date)
+function parts(href: string, preview: LinkPreview) {
   const tweet = preview.kind === 'tweet'
-  const title = tweet && preview.handle ? `${preview.author ?? ''} @${preview.handle}`.trim() : preview.title
-  const site = preview.site ?? hostOf(href)
+  const extras: string[] = []
+  if (preview.stars != null) extras.push(`★ ${count(preview.stars)}`)
+  if (preview.language) extras.push(preview.language)
+  if (preview.likes != null) extras.push(`♥ ${count(preview.likes)}`)
+  if (preview.date) extras.push(shortDate(preview.date))
+  return {
+    title: (tweet && preview.handle ? `${preview.author ?? ''} @${preview.handle}`.trim() : preview.title) ?? href,
+    site: preview.site ?? hostOf(href),
+    extras: extras.join(' · '),
+  }
+}
+
+// B: one line as high as the text: icon, title, dim description
+function lineCard(href: string, preview: LinkPreview) {
+  const { title } = parts(href, preview)
+  const root = element('span', 'link-card link-card-line-style')
+  const label = preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
+  // GitHub: the repo owner's picture, like style C; else the site's icon
+  const sources = preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
+  root.append(picture('link-card-icon', sources), element('span', 'link-card-title', label))
+  if (preview.description) root.append(element('span', 'link-card-line', `· ${preview.description}`))
+  return root
+}
+
+// C: picture on the left, title, then "site · description"
+function twoLineCard(href: string, preview: LinkPreview) {
+  const { title, site } = parts(href, preview)
+  const root = element('span', 'link-card')
   const text = element('span', 'link-card-text')
-  text.append(element('span', 'link-card-title', title ?? href))
+  text.append(element('span', 'link-card-title', title))
   text.append(element('span', 'link-card-line', preview.description ? `${site} · ${preview.description}` : site))
   root.append(picture('link-card-picture', [preview.image, preview.icon]), text)
+  return root
+}
+
+// D: like Discord: site with its icon, title, description (3 lines), extras, big picture.
+// GitHub's picture is the owner's avatar: not shown big.
+function largeCard(href: string, preview: LinkPreview) {
+  const { title, site, extras } = parts(href, preview)
+  const root = element('span', 'link-card link-card-large')
+  const head = element('span', 'link-card-site')
+  head.append(picture('link-card-icon', [preview.icon]), element('span', 'link-card-site-name', site))
+  root.append(head, element('span', 'link-card-title', title))
+  if (preview.description) root.append(element('span', 'link-card-description', preview.description))
+  if (extras) root.append(element('span', 'link-card-line', extras))
+  if (preview.image && preview.kind !== 'github') {
+    const image = picture('link-card-image', [preview.image])
+    root.append(image)
+  }
+  return root
+}
+
+const BUILDERS = { line: lineCard, card: twoLineCard, large: largeCard }
+
+function card(href: string, preview: LinkPreview, style: Exclude<CardStyle, 'off'>) {
+  const root = BUILDERS[style](href, preview)
+  root.contentEditable = 'false'
+  root.title = href
   // The card isn't a part of the text: a click opens the link, and doesn't move the cursor
   root.addEventListener('mousedown', (event) => event.preventDefault())
   root.addEventListener('click', (event) => {
@@ -196,13 +279,14 @@ function decorations(state: EditorState) {
   const found: Decoration[] = []
   for (const link of findLinks(state)) {
     if (!wantsCard(link.href, link.text, settings)) continue
+    const style = settings.style as Exclude<CardStyle, 'off'>
     if (!previews.has(link.href)) void ask(link.href)
     const preview = previews.get(link.href)
     if (!preview) continue
     // The cursor at or in the link: show the address, so it can be edited
     if (selTo >= link.from && selFrom <= link.to) continue
     found.push(
-      Decoration.widget(link.from, () => card(link.href, preview), { key: `${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.from, () => card(link.href, preview, style), { key: `${style}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )
   }

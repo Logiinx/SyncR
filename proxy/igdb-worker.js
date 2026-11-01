@@ -278,6 +278,8 @@ async function steam(env, endpoint, request) {
 // fxtwitter's API (X itself shows nothing to programs), other pages from their meta tags.
 const PREVIEW_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; SyncR-LinkPreview/1.0)' }
 const TWEET_HOSTS = ['x.com', 'twitter.com', 'fxtwitter.com', 'fixupx.com', 'vxtwitter.com', 'fixvx.com']
+// GitHub's white logo (its usual one is black, unseen on SyncR's dark cards)
+const GITHUB_ICON = 'https://github.githubassets.com/favicons/favicon-dark.png'
 
 const hostOf = (url) => url.hostname.replace(/^(www|mobile)\./, '')
 
@@ -301,7 +303,7 @@ async function githubPreview(env, url) {
     title: data.full_name,
     description: data.description,
     image: data.owner?.avatar_url ?? null,
-    icon: 'https://github.com/favicon.ico',
+    icon: GITHUB_ICON,
     stars: data.stargazers_count ?? null,
     language: data.language ?? null,
   }
@@ -311,9 +313,11 @@ async function tweetPreview(url) {
   const match = url.pathname.match(/^\/([^/]+)\/status(?:es)?\/(\d+)/)
   if (!match) return null
   const response = await fetch(`https://api.fxtwitter.com/${match[1]}/status/${match[2]}`, { headers: PREVIEW_HEADERS })
+  // A deleted or private post: no card (fxtwitter's own page would say "post doesn't exist")
+  if (response.status === 404) return { error: 'Post not found' }
   if (!response.ok) return null
   const tweet = (await response.json()).tweet
-  if (!tweet) return null
+  if (!tweet) return { error: 'Post not found' }
   const media = tweet.media ?? {}
   return {
     url: url.href,
@@ -394,7 +398,9 @@ async function linkPreview(env, request) {
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return { error: 'Not a web link' }
   const host = hostOf(url)
   const special = host === 'github.com' ? await githubPreview(env, url) : TWEET_HOSTS.includes(host) ? await tweetPreview(url) : null
-  return special ?? pagePreview(url)
+  const preview = special ?? (await pagePreview(url))
+  if (host === 'github.com' && !preview.error) preview.icon = GITHUB_ICON
+  return preview
 }
 
 function askIgdb(env, endpoint, query, accessToken) {
