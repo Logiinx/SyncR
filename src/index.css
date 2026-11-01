@@ -4,6 +4,7 @@
   --bg-raised: #202020;
   --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
   --border: #2a2a2a;
+  --border-strong: #3a3a3a; /* where --border barely shows (raised backgrounds), table cells, slider track */
   --text: #e4e4e4;
   --text-dim: #808080;
   --accent: #2d4f7c;
@@ -1939,7 +1940,7 @@ button {
 .reminder-popup {
   box-sizing: border-box;
   overflow: hidden;
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--bg-raised);
 }
@@ -3289,7 +3290,7 @@ button {
   position: relative;
   min-width: 60px;
   padding: 6px 10px;
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--border-strong);
   vertical-align: top;
   text-align: left;
 }
@@ -4002,8 +4003,7 @@ button {
 .settings-section {
   margin: 20px 0 10px;
   padding-top: 14px;
-  /* Lighter than --border, which barely shows on the dialog's background */
-  border-top: 1px solid #353535;
+  border-top: 1px solid var(--border-strong);
   color: var(--link);
   font-size: 0.75em;
   font-weight: 600;
@@ -4031,7 +4031,7 @@ button {
 
 .settings-card {
   padding: 10px 14px 6px;
-  border: 1px solid #353535; /* like the section lines: --border barely shows here */
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
 }
 
@@ -4234,7 +4234,7 @@ button {
   .settings-manage > div + div > section:first-child > .settings-section {
     margin-top: 20px;
     padding-top: 14px;
-    border-top: 1px solid #353535;
+    border-top: 1px solid var(--border-strong);
   }
 }
 
@@ -4383,7 +4383,7 @@ button {
 .ruler input[type='range']::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--link) var(--fill), #3a3a3a var(--fill));
+  background: linear-gradient(to right, var(--link) var(--fill), var(--border-strong) var(--fill));
 }
 
 .ruler input[type='range']::-webkit-slider-thumb {
