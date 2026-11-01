@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.6] - 2026-11-01
+
 **Notes**
 - **Fixed:** Small fixes: comparing a conflict copy shows checkbox and section icons like the note.
 
