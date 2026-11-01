@@ -77,6 +77,11 @@ function GamesView() {
   function openMenu(game: Game, x: number, y: number) {
     gameMenuAt(game, x, y).then(setMenu)
   }
+  // The same menu from the search results and the calendar (they know only the game's id)
+  function openMenuOf(id: string, x: number, y: number) {
+    const game = games?.find((g) => g.id === id)
+    if (game) openMenu(game, x, y)
+  }
 
   async function askRemove(game: Game) {
     setDialog(await removeGameQuestion(game, () => setOpenId(null)))
@@ -121,7 +126,7 @@ function GamesView() {
         </div>
         {view === 'calendar' ? (
           connected ? (
-            <GameCalendar inList={inList} layout={layout} top={top} onOpen={setOpenId} />
+            <GameCalendar inList={inList} layout={layout} top={top} onOpen={setOpenId} onMenu={openMenuOf} />
           ) : (
             connection && (
               <p className="games-empty">To see upcoming games, set up the game search in Settings → Accounts.</p>
@@ -130,7 +135,7 @@ function GamesView() {
         ) : (
           <>
             {games && <DelayBanner games={games} onOpen={setOpenId} />}
-            <GameSearch inList={inList} onOpen={setOpenId} />
+            <GameSearch inList={inList} onOpen={setOpenId} onMenu={openMenuOf} />
             {games && games.length === 0 && connected && (
               <p className="games-empty">
                 <Gamepad2 size={18} />
@@ -488,7 +493,11 @@ function NewsLine({ game, kind, icon: Icon, what, detail, onOpen, onDismiss }: {
 
 // The search box at the top. Results show below it; "Add" puts a game in the list. Click a result
 // for a preview (GamePreview.tsx), or for its details if it's already in your list.
-function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpen: (id: string) => void }) {
+function GameSearch({ inList, onOpen, onMenu }: {
+  inList: Map<string, GameStatus>
+  onOpen: (id: string) => void
+  onMenu: (id: string, x: number, y: number) => void // a game in your list: its right-click menu
+}) {
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const [text, setText] = useState('')
@@ -562,6 +571,11 @@ function GameSearch({ inList, onOpen }: { inList: Map<string, GameStatus>; onOpe
                 key={found.igdbId}
                 className="game-row game-result"
                 onClick={() => (status ? onOpen(id) : setPreview(found))}
+                onContextMenu={(e) => {
+                  if (!status) return
+                  e.preventDefault()
+                  onMenu(id, e.clientX, e.clientY)
+                }}
               >
                 <Cover coverId={found.coverId} />
                 <div className="game-text">

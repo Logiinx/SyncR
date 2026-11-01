@@ -37,8 +37,9 @@ function GameCalendar(props: {
   layout: CalendarLayout
   top: number
   onOpen: (id: string) => void // a game in your list: its game window
+  onMenu: (id: string, x: number, y: number) => void // a game in your list: its right-click menu
 }) {
-  const { inList, layout, top, onOpen } = props
+  const { inList, layout, top, onOpen, onMenu } = props
   const [loaded, setLoaded] = useState<UpcomingGame[] | null>(null) // Steam's top 1000
   const [error, setError] = useState('')
   const [shown, setShown] = useState<UpcomingGame | null>(null) // the game in the popup
@@ -66,17 +67,23 @@ function GameCalendar(props: {
 
   const statusOf = (game: UpcomingGame) => inList.get(gameId(game.igdbId))
   const show = (game: UpcomingGame) => (statusOf(game) ? onOpen(gameId(game.igdbId)) : setShown(game))
+  // Right-click: the game menu, like in My games (only for games in your list)
+  const menu: MenuGame = (game, event) => {
+    if (!statusOf(game)) return
+    event.preventDefault()
+    onMenu(gameId(game.igdbId), event.clientX, event.clientY)
+  }
   const grid = layout === 'grid' && !narrow
   const vague = games.filter((g) => !g.exact && !(grid && g.monthOnly))
   return (
     <div className="game-calendar">
       {grid ? (
-        <CalendarGrid games={games} statusOf={statusOf} onShow={show} />
+        <CalendarGrid games={games} statusOf={statusOf} onShow={show} onMenu={menu} />
       ) : (
-        <CalendarList games={games.filter((g) => g.exact)} statusOf={statusOf} onShow={show} />
+        <CalendarList games={games.filter((g) => g.exact)} statusOf={statusOf} onShow={show} onMenu={menu} />
       )}
       {vague.length > 0 && (
-        <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={show} />
+        <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={show} onMenu={menu} />
       )}
       {shown && (
         <GamePreview game={shown} release={releaseLine(shown)} status={statusOf(shown)} onClose={() => setShown(null)} />
@@ -130,6 +137,7 @@ function CalendarLoading({ grid }: { grid: boolean }) {
 }
 
 type ShowGame = (game: UpcomingGame) => void
+type MenuGame = (game: UpcomingGame, event: React.MouseEvent) => void
 type StatusOf = (game: UpcomingGame) => GameStatus | undefined
 
 // Add: the game goes to Waiting. Only the list's own fields are saved (not rank etc.). Its release
@@ -140,7 +148,7 @@ function pin(game: UpcomingGame) {
 }
 
 // List: one group per month
-function CalendarList({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
+function CalendarList({ games, statusOf, onShow, onMenu }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame; onMenu: MenuGame }) {
   const months = new Map<string, UpcomingGame[]>()
   for (const game of games) {
     const month = monthTitle(new Date(game.pcDate))
@@ -149,26 +157,26 @@ function CalendarList({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
   return (
     <>
       {[...months].map(([title, group]) => (
-        <CalendarGroup key={title} title={title} games={group} statusOf={statusOf} onShow={onShow} />
+        <CalendarGroup key={title} title={title} games={group} statusOf={statusOf} onShow={onShow} onMenu={onMenu} />
       ))}
     </>
   )
 }
 
-function CalendarGroup(props: { title: string; games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
+function CalendarGroup(props: { title: string; games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame; onMenu: MenuGame }) {
   return (
     <section className="games-group">
       <h3 className="games-group-title">
         {props.title} <span className="games-count">{props.games.length}</span>
       </h3>
-      <CalendarRows games={props.games} statusOf={props.statusOf} onShow={props.onShow} />
+      <CalendarRows games={props.games} statusOf={props.statusOf} onShow={props.onShow} onMenu={props.onMenu} />
     </section>
   )
 }
 
-function CalendarRows({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
+function CalendarRows({ games, statusOf, onShow, onMenu }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame; onMenu: MenuGame }) {
   return games.map((game) => (
-    <div key={game.igdbId} className="game-row calendar-row" onClick={() => onShow(game)}>
+    <div key={game.igdbId} className="game-row calendar-row" onClick={() => onShow(game)} onContextMenu={(e) => onMenu(game, e)}>
       <Cover coverId={game.coverId} />
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
@@ -186,7 +194,7 @@ const releaseLine = (game: UpcomingGame) =>
 
 // Grid: every month from this one to the end of the range, stacked (MonthGrid.tsx). A day shows
 // its games' covers and names; a month's month-only games are listed under its grid.
-function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame }) {
+function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame[]; statusOf: StatusOf; onShow: ShowGame; onMenu: MenuGame }) {
   const days = byDay(
     games.filter((g) => g.exact),
     (g) => g.pcDate,
@@ -204,6 +212,7 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
             key={game.igdbId}
             className={statusOf(game) ? 'calendar-game in-list' : 'calendar-game'}
             onClick={() => onShow(game)}
+            onContextMenu={(e) => onMenu(game, e)}
             title={game.name}
           >
             <Cover coverId={game.coverId} />
@@ -215,7 +224,7 @@ function CalendarGrid({ games, statusOf, onShow }: { games: UpcomingGame[]; stat
         monthOnly(first).length > 0 && (
           <div className="calendar-month-only">
             <p>Sometime in {first.toLocaleDateString('en-GB', { month: 'long' })}</p>
-            <CalendarRows games={monthOnly(first)} statusOf={statusOf} onShow={onShow} />
+            <CalendarRows games={monthOnly(first)} statusOf={statusOf} onShow={onShow} onMenu={onMenu} />
           </div>
         )
       }

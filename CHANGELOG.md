@@ -5,7 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- **Fixed:** Small fixes: plus icon on "Add to Upcoming", gamepad in a preview without a cover, open-elsewhere icon on "Google Calendar".
+- **Improved:** Right-click a game of your list in the search or the calendar for its usual menu.
+- **Fixed:** Small fixes: icons on "Add to Upcoming" and "Google Calendar", previews without a cover.
 
 ## [0.38.3] - 2026-11-01
 
