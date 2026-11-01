@@ -14,7 +14,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Small fixes: an ⓘ by Settings' Gmail title explains the account checkboxes.
 
 **Sync**
-- **Fixed:** Small fixes: short error messages end without a period, like everywhere else.
+- **Fixed:** Small fixes: errors end without a period; a failed Dropbox sign-in says why only once.
 
 ## [0.38.5] - 2026-11-01
 

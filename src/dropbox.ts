@@ -127,7 +127,7 @@ export async function connect() {
 }
 
 // Call once at startup. If we just came back from Dropbox, finish the sign-in.
-// Returns an error message if the sign-in failed.
+// Returns why the sign-in failed, if it did (shown after "Dropbox sign-in failed: ", SyncButton.tsx).
 export async function finishConnect(): Promise<string | null> {
   const url = new URL(location.href)
   // Google Calendar's or a Gmail account's sign-in (google.ts, gmail.ts)
@@ -141,8 +141,8 @@ export async function finishConnect(): Promise<string | null> {
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
 
-  if (error) return `Dropbox: ${error}`
-  if (!verifier) return 'Dropbox sign-in expired. Please try again.'
+  if (error) return error // Dropbox's own words
+  if (!verifier) return 'it expired'
 
   const res = await request('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
@@ -154,7 +154,7 @@ export async function finishConnect(): Promise<string | null> {
       redirect_uri: redirectUri(),
     }),
   })
-  if (!res.ok) return `Dropbox sign-in failed (${res.status})`
+  if (!res.ok) return `Dropbox answered ${res.status}`
   const data = await res.json()
   saveAuth({
     refreshToken: data.refresh_token,
