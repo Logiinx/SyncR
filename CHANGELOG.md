@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.4] - 2026-11-01
+
 **Games**
 - **Improved:** Right-click a game of your list in the search or the calendar for its usual menu.
 - **Improved:** Calendar grid: games in your list show their list's icon instead of a blue tint.
