@@ -1444,7 +1444,7 @@ button {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  opacity: 0.75;
+  color: var(--text-dim);
   font-size: 13px;
   line-height: 1.4;
 }

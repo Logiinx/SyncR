@@ -109,26 +109,31 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         </div>
         {results?.length === 0 && <p className="sidebar-no-results">No notes found</p>}
         <ul className="note-list" ref={listRef}>
-          {(results ?? notes?.map((note) => ({ note, snippet: null })))?.map(({ note, snippet }) => (
-            <li key={note.id} data-item={note.id}>
-              <button
-                className={note.id === activeId ? 'active' : ''}
-                onClick={() => onOpen(note.id)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  onMenu(note.id, e.clientX, e.clientY)
-                }}
-              >
-                <span className="note-date">{formatDate(note.updatedAt)}</span>
-                <span className="note-title" title={noteTitle(note)}>
-                  {/* A conflict copy made by sync: open it to compare it with the original */}
-                  {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
-                  {noteTitle(note)}
-                </span>
-                <span className="note-preview">{snippet ? <SnippetText parts={snippet} /> : notePreview(note)}</span>
-              </button>
-            </li>
-          ))}
+          {(results ?? notes?.map((note) => ({ note, snippet: null })))?.map(({ note, snippet }) => {
+            const preview = snippet ? snippet.map((part) => part.text).join('') : notePreview(note)
+            return (
+              <li key={note.id} data-item={note.id}>
+                <button
+                  className={note.id === activeId ? 'active' : ''}
+                  onClick={() => onOpen(note.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    onMenu(note.id, e.clientX, e.clientY)
+                  }}
+                >
+                  <span className="note-date">{formatDate(note.updatedAt)}</span>
+                  <span className="note-title" title={noteTitle(note)}>
+                    {/* A conflict copy made by sync: open it to compare it with the original */}
+                    {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
+                    {noteTitle(note)}
+                  </span>
+                  <span className="note-preview" title={preview}>
+                    {snippet ? <SnippetText parts={snippet} /> : preview}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
         <div className="sidebar-footer">
           <button className="footer-button" onClick={onSettings}>
