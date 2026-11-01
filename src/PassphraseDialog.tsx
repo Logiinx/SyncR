@@ -30,11 +30,11 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
     setError(null)
     if (mode === 'create') {
       if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-        setError(`Use at least ${MIN_PASSPHRASE_LENGTH} characters.`)
+        setError(`Use at least ${MIN_PASSPHRASE_LENGTH} characters`)
         return
       }
       if (passphrase !== repeat) {
-        setError('The two passphrases are different.')
+        setError('The two passphrases are different')
         return
       }
     }
@@ -42,7 +42,7 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
     try {
       if (mode === 'create') await createPassphrase(passphrase)
       else if (!(await unlock(passphrase))) {
-        setError('Wrong passphrase.')
+        setError('Wrong passphrase')
         setBusy(false)
         inputRef.current?.select()
         return

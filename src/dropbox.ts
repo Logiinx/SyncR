@@ -154,7 +154,7 @@ export async function finishConnect(): Promise<string | null> {
       redirect_uri: redirectUri(),
     }),
   })
-  if (!res.ok) return `Dropbox sign-in failed (${res.status}).`
+  if (!res.ok) return `Dropbox sign-in failed (${res.status})`
   const data = await res.json()
   saveAuth({
     refreshToken: data.refresh_token,

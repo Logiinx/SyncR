@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Games**
 - **Fixed:** Small fixes: the trailer's full name shows on hover.
 
+**Sync**
+- **Fixed:** Small fixes: short error messages end without a period, like everywhere else.
+
 ## [0.38.5] - 2026-11-01
 
 **Mail**

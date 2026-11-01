@@ -128,7 +128,7 @@ export async function createPassphrase(passphrase: string) {
 // Returns false if the passphrase is wrong.
 export async function unlock(passphrase: string) {
   const raw = await download(CRYPTO_FILE)
-  if (!raw) throw new Error('No passphrase found in Dropbox.')
+  if (!raw) throw new Error('No passphrase found in Dropbox')
   const file: CryptoFile = JSON.parse(new TextDecoder().decode(raw))
   const key = await deriveKey(passphrase, fromBase64(file.salt), file.iterations)
   try {

@@ -100,7 +100,7 @@ async function forEachAtOnce<T>(items: Iterable<T>, handle: (item: T) => Promise
 let running = false
 
 export async function syncNow(): Promise<SyncResult> {
-  if (running) throw new Error('Sync is already running.')
+  if (running) throw new Error('Sync is already running')
   running = true
   try {
     return await runSync()
@@ -111,7 +111,7 @@ export async function syncNow(): Promise<SyncResult> {
 
 async function runSync(): Promise<SyncResult> {
   const key = await getKey()
-  if (!key) throw new Error('Enter your passphrase first.')
+  if (!key) throw new Error('Enter your passphrase first')
   const result: SyncResult = { uploaded: 0, downloaded: 0, deleted: 0, conflicts: 0, unreadable: 0, cursor: '' }
 
   // ---------- Encrypted read / write ----------
@@ -120,7 +120,7 @@ async function runSync(): Promise<SyncResult> {
     const data: RemoteNote = { ...note, device: deviceName() }
     const encrypted = await encrypt(key!, new TextEncoder().encode(JSON.stringify(data)))
     const rev = await upload(notePath(note.id), encrypted, mode)
-    if (!rev) throw new RetrySoonError('A note changed in Dropbox during sync.')
+    if (!rev) throw new RetrySoonError('A note changed in Dropbox during sync')
     await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
     result.uploaded++
   }
@@ -508,7 +508,7 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
       const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
       const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
       const rev = await upload(path(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
-      if (!rev) throw new RetrySoonError(`Something in /${folder} changed in Dropbox during sync.`)
+      if (!rev) throw new RetrySoonError(`Something in /${folder} changed in Dropbox during sync`)
       await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<TInsert>)
       result.uploaded++
     } else if (remote && remoteRev) {
