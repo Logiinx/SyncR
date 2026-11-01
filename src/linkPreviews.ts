@@ -66,6 +66,25 @@ const previews = new Map<string, LinkPreview | null>()
 const asking = new Set<string>()
 const views = new Set<EditorView>()
 
+// At most 6 pages read at once, in the order asked (top of the note first): a note full of new
+// links doesn't flood GitHub or fxtwitter (they may refuse a burst) or the phone's connection
+const AT_ONCE = 6
+let reading = 0
+const waiting: (() => void)[] = []
+
+async function readPage(url: string) {
+  // A finished read hands its place straight to the next one waiting
+  if (reading >= AT_ONCE) await new Promise<void>((resolve) => waiting.push(resolve))
+  else reading++
+  try {
+    return await igdbProxyFetch('preview', JSON.stringify({ url }), 15_000)
+  } finally {
+    const next = waiting.shift()
+    if (next) next()
+    else reading--
+  }
+}
+
 function redrawAll() {
   for (const view of views) view.dispatch(view.state.tr.setMeta(key, 'redraw').setMeta('addToHistory', false))
 }
@@ -82,7 +101,7 @@ async function ask(url: string) {
     }
     // No proxy set up: plain links, asked again next time the app starts
     if (!isComplete(await loadConnection())) return void (row || previews.set(url, null))
-    const response = await igdbProxyFetch('preview', JSON.stringify({ url }), 15_000)
+    const response = await readPage(url)
     // An older proxy without /preview (404) or a hiccup: plain link until the app starts again
     if (!response.ok) return void (row || previews.set(url, null))
     const answer = await response.json()

@@ -16,6 +16,9 @@
 //   GGDEALS_KEY           gg.deals → Settings → API key (game prices, see /prices)
 //   STEAM_KEY             steamcommunity.com/dev/apikey (your Steam games and achievements,
 //                         see /steam/…; your profile's "Game details" must be public)
+//   GITHUB_TOKEN          optional: github.com → Settings → Developer settings → Fine-grained
+//                         tokens, "Public repositories", no permissions. Link cards of GitHub
+//                         repos: 5,000 lookups per hour instead of 60 (see /preview)
 //
 // The app sends: POST https://<worker>/<endpoint>, header "X-SyncR-Password", body = an IGDB
 // query (Apicalypse), e.g. 'search "Guild Wars"; fields name; limit 5;'.
@@ -278,14 +281,18 @@ const TWEET_HOSTS = ['x.com', 'twitter.com', 'fxtwitter.com', 'fixupx.com', 'vxt
 
 const hostOf = (url) => url.hostname.replace(/^(www|mobile)\./, '')
 
-async function githubPreview(url) {
+async function githubPreview(env, url) {
   const [owner, repo, more] = url.pathname.split('/').filter(Boolean)
   // Only a repo's main page; issues, files… use the page's meta tags
   if (!owner || !repo || more) return null
   const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-    headers: { ...PREVIEW_HEADERS, Accept: 'application/vnd.github+json' },
+    headers: {
+      ...PREVIEW_HEADERS,
+      Accept: 'application/vnd.github+json',
+      ...(env.GITHUB_TOKEN ? { Authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}),
+    },
   })
-  if (!response.ok) return null // e.g. GitHub's limit for programs without a key
+  if (!response.ok) return null // e.g. over GitHub's limit: the page's meta tags instead
   const data = await response.json()
   return {
     url: url.href,
@@ -377,7 +384,7 @@ async function pagePreview(url) {
   }
 }
 
-async function linkPreview(request) {
+async function linkPreview(env, request) {
   let url
   try {
     url = new URL((await request.json()).url)
@@ -386,7 +393,7 @@ async function linkPreview(request) {
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return { error: 'Not a web link' }
   const host = hostOf(url)
-  const special = host === 'github.com' ? await githubPreview(url) : TWEET_HOSTS.includes(host) ? await tweetPreview(url) : null
+  const special = host === 'github.com' ? await githubPreview(env, url) : TWEET_HOSTS.includes(host) ? await tweetPreview(url) : null
   return special ?? pagePreview(url)
 }
 
@@ -447,7 +454,7 @@ export default {
     }
     if (endpoint === 'preview') {
       try {
-        return reply(await linkPreview(request), 200)
+        return reply(await linkPreview(env, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 200)
       }
