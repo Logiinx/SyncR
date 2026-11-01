@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-01
+
 **Notes**
 - **New:** Links can show as cards with title and picture (3 styles), and a bigger card on hover.
 
