@@ -81,6 +81,21 @@ export function shrinkShut(el: Element | null | undefined, display = 'block') {
   el.animate(heightFrames(el, display).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE })
 }
 
+// Things the text editor hides (a folded link group's lines): they shrink while still shown, then
+// done() hides them. Copies can't be used there: the editor would read them as typed text.
+export function shrinkThen(els: Element[], done: () => void) {
+  if (els.length === 0 || !animationsOn()) return done()
+  const frames = els.map((el) => heightFrames(el).reverse())
+  const animations = els.map((el, i) => el.animate(frames[i], { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' }))
+  void Promise.all(animations.map((animation) => animation.finished)).finally(() => {
+    try {
+      done()
+    } finally {
+      animations.forEach((animation) => animation.cancel())
+    }
+  })
+}
+
 // A Board card or group folding (not on its first render): grow open or shrink shut. A group's
 // cards are removed when it folds: its click calls closeCopy() to shrink them.
 export function useFoldAnimation(folded: boolean, content: () => Element | null | undefined) {

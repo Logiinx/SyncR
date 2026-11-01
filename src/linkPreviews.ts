@@ -10,6 +10,7 @@ import { openLink, simplify } from './links'
 import { read, write } from './localState'
 import { shortDate } from './dates'
 import { svgIcon, type SvgIconName } from './svgIcons'
+import { animationsOn, growOpen, shrinkThen } from './animations'
 
 // Link cards: a website link in a note is shown as a small card (title, description, picture),
 // so you know what it is without opening it. The page is read by our proxy (/preview in
@@ -457,22 +458,44 @@ function findGroups(lines: CardLine[]) {
   return groups.filter((group) => group.length > 1)
 }
 
-// A click on a folded group's line. Folding it with the cursor inside: the cursor goes below the
-// group (above it at the note's end), or it would keep it open.
+// A click on a folded group's line: its lines grow open or shrink shut and its arrow turns, like
+// a section's. Folding it with the cursor inside: the cursor goes below the group (above it at
+// the note's end), or it would keep it open.
 function toggleGroup(view: EditorView, summary: HTMLElement, groupKey: string, open: boolean) {
-  const tr = view.state.tr.setMeta(key, { toggle: groupKey, open }).setMeta('addToHistory', false)
-  if (open) {
-    const lines = key.getState(view.state)?.lines ?? []
-    const start = view.posAtDOM(summary, 0)
-    let end = start
-    for (let line = lines.find((l) => l.from === end); line; line = lines.find((l) => l.from === end)) end = line.to
+  if (summary.classList.contains('busy')) return // still shrinking
+  const lines = key.getState(view.state)?.lines ?? []
+  const start = view.posAtDOM(summary, 0)
+  const groupLines: number[] = [] // where each of its lines starts
+  let end = start
+  for (let line = lines.find((l) => l.from === end); line; line = lines.find((l) => l.from === end)) {
+    groupLines.push(line.from)
+    end = line.to
+  }
+  const lineElements = () => groupLines.map((pos) => view.nodeDOM(pos)).filter((el) => el instanceof HTMLElement)
+
+  const toggle = () => {
+    if (view.isDestroyed) return
+    const tr = view.state.tr.setMeta(key, { toggle: groupKey, open }).setMeta('addToHistory', false)
     const { from, to } = view.state.selection
-    if (to >= start && from <= end) {
+    if (open && to >= start && from <= end) {
       const outside = Selection.findFrom(tr.doc.resolve(end), 1, true) ?? Selection.findFrom(tr.doc.resolve(start), -1, true)
       if (outside) tr.setSelection(outside)
     }
+    view.dispatch(tr)
+    // The new line (a widget is made again) turns its arrow from where the old one was
+    const arrow = [...view.dom.querySelectorAll('.link-group-summary')].find((el) => view.posAtDOM(el, 0) === start)?.querySelector('svg')
+    if (arrow && animationsOn()) {
+      const angles = [{ transform: 'rotate(0deg)' }, { transform: 'rotate(90deg)' }]
+      arrow.animate(open ? angles.reverse() : angles, { duration: 150 }) // as a section's (index.css)
+    }
   }
-  view.dispatch(tr)
+  if (!open) {
+    toggle()
+    lineElements().forEach(growOpen)
+    return
+  }
+  summary.classList.add('busy')
+  shrinkThen(lineElements(), toggle)
 }
 
 // "▸ icons · 6 links": a folded group's line; a click opens or closes it
