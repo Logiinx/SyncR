@@ -14,7 +14,7 @@ const FIRST = 3
 function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] }) {
   const [all, setAll] = useState(false)
   const [busy, setBusy] = useState<number[]>([]) // files downloading
-  const [error, setError] = useState<{ text: string; details: string } | null>(null)
+  const [error, setError] = useState<{ name: string; text: string; details: string } | null>(null)
   if (!files.length) return null
 
   async function run(index: number, action: typeof openFile) {
@@ -24,7 +24,7 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
     try {
       await action(alert, files[index])
     } catch (e) {
-      setError({ text: `${files[index].name}: ${gmailErrorText(e)}`, details: errorDetails(e) })
+      setError({ name: files[index].name, text: gmailErrorText(e), details: errorDetails(e) })
     }
     setBusy((list) => list.filter((i) => i !== index))
   }
@@ -57,7 +57,13 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
           +{files.length - FIRST} more
         </button>
       )}
-      {error && <span className="mail-files-error" title={error.details}>{error.text}</span>}
+      {/* A long file name is cut, never the reason */}
+      {error && (
+        <span className="mail-files-error">
+          <span className="mail-files-error-name" title={error.name}>{error.name}</span>
+          <span title={error.details}>: {error.text}</span>
+        </span>
+      )}
     </div>
   )
 }

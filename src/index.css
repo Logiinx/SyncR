@@ -1847,12 +1847,24 @@ button {
   color: var(--text);
 }
 
+/* "report.pdf: No connection to Gmail": only the file name is cut */
 .mail-files-error {
+  display: flex;
   flex-basis: 100%;
+  min-width: 0;
+  color: var(--error);
+}
+
+.mail-files-error-name {
+  min-width: 4em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--error);
+}
+
+.mail-files-error-name + span {
+  flex-shrink: 0;
+  max-width: calc(100% - 4em);
 }
 
 /* An HTML mail's original design is made for a white page */
