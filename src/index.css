@@ -4056,6 +4056,11 @@ button {
   min-width: 0;
 }
 
+/* An icon inside a setting's name ("✕ hides SyncR in the tray") */
+.settings-row-label > svg {
+  vertical-align: -2px;
+}
+
 /* ⓘ after a label (InfoTip.tsx): a dim icon; its box (over the whole app, placed by InfoTip) looks
    like a menu and unfolds like one (above the ⓘ: fades in) */
 .info-tip {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, type LucideIcon } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, X, type LucideIcon } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import InfoTip from './InfoTip'
@@ -294,7 +294,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <SettingRow label="Email sound">
               <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
             </SettingRow>
-            <SettingRow label="Email pop-ups fade" title="A faded email stays unread, as missed (Mail tab)">
+            <SettingRow
+              label={
+                <>
+                  Email pop-ups fade
+                  <InfoTip label="About fading">A faded email stays unread, as missed (Mail tab).</InfoTip>
+                </>
+              }
+            >
               <select value={background.emailFade} onChange={(e) => updateBackground({ emailFade: Number(e.target.value) })}>
                 {FADE_CHOICES.map(({ seconds, name }) => (
                   <option key={seconds} value={seconds}>
@@ -360,14 +367,28 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </SettingRow>
         {isTauri() && (
           <>
-            <SettingRow label="✕ hides SyncR in the tray" title="Keeps reminders working; Quit is in the tray menu">
+            <SettingRow
+              label={
+                <>
+                  <X size={13} aria-label="Close" /> hides SyncR in the tray
+                  <InfoTip label="About the tray">Keeps reminders working. Quit is in the tray menu.</InfoTip>
+                </>
+              }
+            >
               <input
                 type="checkbox"
                 checked={background.closeToTray}
                 onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
               />
             </SettingRow>
-            <SettingRow label="Start with Windows" title="When you sign in to Windows">
+            <SettingRow
+              label={
+                <>
+                  Start with Windows
+                  <InfoTip label="About starting with Windows">When you sign in to Windows.</InfoTip>
+                </>
+              }
+            >
               <input
                 type="checkbox"
                 checked={autostart ?? false}
@@ -375,7 +396,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 onChange={(e) => toggleAutostart(e.target.checked)}
               />
             </SettingRow>
-            <SettingRow label="Start hidden in the tray" title="When started with Windows; otherwise the window shows">
+            <SettingRow
+              label={
+                <>
+                  Start hidden in the tray
+                  <InfoTip label="About starting hidden">When started with Windows. Otherwise the window shows.</InfoTip>
+                </>
+              }
+            >
               <input
                 type="checkbox"
                 checked={background.startHidden}
