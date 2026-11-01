@@ -1,4 +1,6 @@
-import { Extension } from '@tiptap/react'
+import { Extension, type Editor } from '@tiptap/react'
+import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
+import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, type EditorState } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { db } from './db'
@@ -43,11 +45,12 @@ export interface LinkPreviewSettings {
   hover: HoverSize
   allSites: boolean // every link, or only links to `sites` (and their subdomains)
   sites: string[]
+  plain: string[] // addresses shown as plain links ("Show as plain link" in the right-click menu)
 }
 
 const SETTINGS_KEY = 'syncr.linkPreviews'
 export const DEFAULT_SITES = ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com']
-const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', allSites: false, sites: DEFAULT_SITES }
+const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', allSites: false, sites: DEFAULT_SITES, plain: [] }
 
 // Read on every redraw, so kept in memory
 let settings: LinkPreviewSettings | undefined
@@ -77,7 +80,7 @@ export function parseSites(text: string) {
 // A link gets a card when its text is its address (links with their own text stay as they are)
 // and it goes to one of the chosen sites
 function wantsCard(href: string, text: string, settings: LinkPreviewSettings) {
-  return settings.style !== 'off' && simplify(href) === simplify(text) && forChosenSite(href, settings)
+  return settings.style !== 'off' && simplify(href) === simplify(text) && forChosenSite(href, settings) && !settings.plain.includes(href)
 }
 
 // A web link to one of the chosen sites (or any, with "All links")
@@ -125,7 +128,7 @@ async function readPage(url: string) {
 }
 
 function redrawAll() {
-  for (const view of views) view.dispatch(view.state.tr.setMeta(key, 'redraw').setMeta('addToHistory', false))
+  for (const view of views) view.dispatch(view.state.tr.setMeta(key, {}).setMeta('addToHistory', false))
 }
 
 async function ask(url: string) {
@@ -296,7 +299,44 @@ export function hoverCard(href: string, onInlineCard: boolean) {
   return root
 }
 
-const key = new PluginKey<DecorationSet>('linkPreviews')
+// ---------- Right-click menu ----------
+
+// The link's own items for a right-click (long press) on a link card or on a link shown plain by
+// "Show as plain link"; null elsewhere (the normal menu stays). canEdit: the text can be edited
+// now (a Board card only while editing it). header: the card's title and address.
+export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) {
+  const card = target.closest<HTMLElement>('.link-card')
+  const link = target.closest<HTMLElement>('a[href]')
+  const href = card?.dataset.href ?? link?.getAttribute('href')
+  if (!href || !editor.view.dom.contains(card ?? link)) return null
+  const settings = loadLinkPreviewSettings()
+  if (!card && !settings.plain.includes(href)) return null
+  const items: MenuItem[] = [{ label: 'Copy link', icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
+  if (card && canEdit) {
+    const from = editor.view.posAtDOM(card, 0)
+    items.push({ label: 'Edit link', icon: Pencil, onClick: () => editLink(editor, from, href) })
+  }
+  items.push(
+    card
+      ? { label: 'Show as plain link', icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }
+      : { label: 'Show as card', icon: RectangleHorizontal, divider: true, onClick: () => saveLinkPreviewSettings({ plain: settings.plain.filter((h) => h !== href) }) },
+  )
+  const preview = previews.get(href)
+  return { items, header: { title: (preview && parts(href, preview).title) || href, subtitle: preview ? href : undefined } }
+}
+
+// The cursor at the end of the link: its address shows instead of the card, ready to edit
+function editLink(editor: Editor, from: number, href: string) {
+  const link = findLinks(editor.state).find((l) => l.from === from && l.href === href)
+  if (link) editor.chain().focus().setTextSelection(link.to).run()
+}
+
+interface PluginState {
+  set: DecorationSet
+  focused: boolean
+}
+
+const key = new PluginKey<PluginState>('linkPreviews')
 
 // Links in the note: from, to, address, text (one link can be several pieces of text, e.g. part bold)
 function findLinks(state: EditorState) {
@@ -313,7 +353,9 @@ function findLinks(state: EditorState) {
   return links
 }
 
-function decorations(state: EditorState) {
+// focused: the cursor only shows a link's address while the text is being edited (a Board card
+// that isn't, or a note after clicking elsewhere, keeps its cursor at the end)
+function decorations(state: EditorState, focused: boolean) {
   const settings = loadLinkPreviewSettings()
   const { from: selFrom, to: selTo } = state.selection
   const found: Decoration[] = []
@@ -324,7 +366,7 @@ function decorations(state: EditorState) {
     const preview = previews.get(link.href)
     if (!preview) continue
     // The cursor at or in the link: show the address, so it can be edited
-    if (selTo >= link.from && selFrom <= link.to) continue
+    if (focused && selTo >= link.from && selFrom <= link.to) continue
     found.push(
       Decoration.widget(link.from, () => card(link.href, preview, style), { key: `${style}|${settings.hover}|${link.href}|${JSON.stringify(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
@@ -338,14 +380,23 @@ export const LinkPreviews = Extension.create({
 
   addProseMirrorPlugins() {
     return [
-      new Plugin<DecorationSet>({
+      new Plugin<PluginState>({
         key,
         state: {
-          init: (_, state) => decorations(state),
-          apply: (tr, old, _oldState, state) =>
-            tr.docChanged || tr.selectionSet || tr.getMeta(key) ? decorations(state) : old,
+          init: (_, state) => ({ set: decorations(state, false), focused: false }),
+          apply: (tr, old, _oldState, state) => {
+            const meta = tr.getMeta(key) as { focused?: boolean } | undefined
+            const focused = meta?.focused ?? old.focused
+            return tr.docChanged || tr.selectionSet || meta ? { set: decorations(state, focused), focused } : old
+          },
         },
-        props: { decorations: (state) => key.getState(state) },
+        props: {
+          decorations: (state) => key.getState(state)?.set,
+          handleDOMEvents: {
+            focus: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: true }).setMeta('addToHistory', false)), false),
+            blur: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: false }).setMeta('addToHistory', false)), false),
+          },
+        },
         view: (view) => {
           views.add(view)
           return { destroy: () => views.delete(view) }

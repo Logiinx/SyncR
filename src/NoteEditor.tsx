@@ -15,7 +15,7 @@ import Toolbar from './Toolbar'
 import ContextMenu from './ContextMenu'
 import { copyImage, Image } from './image'
 import { OpenLinksOnClick } from './links'
-import { LinkPreviews } from './linkPreviews'
+import { LinkPreviews, linkMenu } from './linkPreviews'
 import { tableExtensions } from './tables'
 import { ColorRules } from './colorRules'
 import { EmptyLineAbove, ListAfterBreak, ListEnter } from './lists'
@@ -107,6 +107,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const saving = useRef<Promise<void> | undefined>(undefined)
   const [imageMenu, setImageMenu] = useState<{ pos: number; src: string; x: number; y: number } | null>(null)
   const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
+  const [cardMenu, setCardMenu] = useState<(NonNullable<ReturnType<typeof linkMenu>> & { x: number; y: number }) | null>(null)
 
   const editor = useEditor({
     extensions,
@@ -183,9 +184,16 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   }, [editor, note.id])
 
   // Right-click (long press on a phone) on an image: menu with "Copy image" and "Delete image". In a table:
-  // the table menu. Elsewhere in the note, the normal menu (copy, paste, spelling) stays.
+  // the table menu. On a link card: its menu (linkPreviews.ts). Elsewhere in the note, the normal
+  // menu (copy, paste, spelling) stays.
   function onContextMenu(e: React.MouseEvent) {
     const target = e.target as HTMLElement
+    const menu = linkMenu(editor, target, editor.isEditable)
+    if (menu) {
+      e.preventDefault()
+      setCardMenu({ ...menu, x: e.clientX, y: e.clientY })
+      return
+    }
     if (target.closest('td, th')) {
       e.preventDefault()
       // The menu works on the cell under the mouse, unless several cells are selected
@@ -213,6 +221,9 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
     <>
       <Toolbar editor={editor} noteId={note.id} title={noteTitle(note)} />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
+      {cardMenu && (
+        <ContextMenu x={cardMenu.x} y={cardMenu.y} header={cardMenu.header} items={cardMenu.items} onClose={() => setCardMenu(null)} />
+      )}
       {tableMenu && <TableMenu editor={editor} x={tableMenu.x} y={tableMenu.y} onClose={() => setTableMenu(null)} />}
       {imageMenu && (
         <ContextMenu

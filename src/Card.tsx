@@ -17,6 +17,7 @@ import ContextMenu from './ContextMenu'
 import ColorPicker from './ColorPicker'
 import { useFoldAnimation, useListItem } from './animations'
 import { currentZoom } from './appearance'
+import { linkMenu } from './linkPreviews'
 
 const SAVE_DELAY_MS = 500
 
@@ -59,7 +60,14 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // colors: the "Color…" list instead of the menu. editing: as it was when the menu opened, so
   // the items don't move when pressing one ends editing ("Edit" appeared above and the click
   // landed on the wrong item)
-  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean; editing?: boolean } | null>(null)
+  // link: right-clicked on a link card (its items come first, linkPreviews.ts)
+  const [menu, setMenu] = useState<{
+    x: number
+    y: number
+    colors?: boolean
+    editing?: boolean
+    link?: ReturnType<typeof linkMenu>
+  } | null>(null)
   const [editing, setEditing] = useState(autoFocus)
   const [editingTitle, setEditingTitle] = useState(false)
   const cancelTitle = useRef(false) // Escape: the title's blur doesn't save
@@ -247,7 +255,8 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         // is on the "⋯" button instead, so the two never open together
         if (window.matchMedia('(pointer: coarse)').matches) return
         event.preventDefault()
-        setMenu({ x: event.clientX, y: event.clientY, editing })
+        const link = editor ? linkMenu(editor, event.target as HTMLElement, editing) : null
+        setMenu({ x: event.clientX, y: event.clientY, editing, link })
       }}
     >
       {(card.title || editingTitle) && (
@@ -309,7 +318,9 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
+          header={menu.colors ? undefined : menu.link?.header}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
+            ...(menu.link?.items ?? []),
             // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
             ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
               ? []

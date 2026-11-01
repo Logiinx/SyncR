@@ -116,6 +116,7 @@ export const OpenLinksOnClick = Extension.create({
               return false
             },
             mousedown: () => (tooltip?.hide(), false),
+            contextmenu: () => (tooltip?.hide(), false), // not over the right-click menu
             // handleClick below opens the link, but it runs on mouseup: its preventDefault
             // doesn't stop the browser's own click on the <a> (target="_blank"), which opened
             // the link a second time. Block that one here.
