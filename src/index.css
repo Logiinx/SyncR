@@ -4491,7 +4491,7 @@ button {
 
 .dialog-buttons .danger,
 .dialog-buttons .danger:hover {
-  background: #5c2626;
+  background: color-mix(in srgb, var(--error) 40%, black); /* a dark red from the error color */
 }
 
 .dialog-buttons .primary:hover,
