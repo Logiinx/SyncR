@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { TriangleAlert, UnfoldVertical } from 'lucide-react'
-import CloseButton from './CloseButton'
+import BackButton from './BackButton'
 import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { diffNotes, type Line, type Row, type Segment, type Token } from './noteDiff'
@@ -92,6 +92,7 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
   return (
     <div className="compare">
       <div className="compare-header">
+        <BackButton onClick={onClose} title="Back to the note" />
         <span className="compare-title">
           {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
         </span>
@@ -108,7 +109,6 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
             Keep this copy
           </button>
         </span>
-        <CloseButton onClick={onClose} />
       </div>
 
       <div className={`compare-body${narrow ? ' merged' : ' columns'}`}>
