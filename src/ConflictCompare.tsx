@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TriangleAlert } from 'lucide-react'
+import { TriangleAlert, UnfoldVertical } from 'lucide-react'
 import CloseButton from './CloseButton'
 import { db, deleteNote, noteTitle, saveNoteContent, type Note } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -114,7 +114,9 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
       <div className={`compare-body${narrow ? ' merged' : ' columns'}`}>
         {!narrow && (
           <>
-            <div className="compare-side-title">Original · {noteTitle(original)}</div>
+            <div className="compare-side-title" title={noteTitle(original)}>
+              Original · {noteTitle(original)}
+            </div>
             <div className="compare-side-title">This copy</div>
           </>
         )}
@@ -125,7 +127,7 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
               className="compare-fold"
               onClick={() => setOpened(new Set(opened).add(part.start))}
             >
-              ⋯ {part.rows.length} unchanged lines
+              <UnfoldVertical size={14} /> {part.rows.length} unchanged lines
             </button>
           ) : (
             part.rows.map((row, k) => (
