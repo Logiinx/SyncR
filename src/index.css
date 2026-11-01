@@ -4652,6 +4652,12 @@ button {
   color: var(--text-dim);
 }
 
+/* A load that failed (Mail tab, Reminders): red, like every error */
+.games-empty.error,
+.mail-reader-error {
+  color: var(--error);
+}
+
 /* Group title: like the Settings section titles, and it folds the group */
 .games-group {
   margin-top: 10px;

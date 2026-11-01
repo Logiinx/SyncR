@@ -240,7 +240,7 @@ function RemindersView() {
 
         {/* The last refresh failed: the stored events still show */}
         {calendar.error && (
-          <p className="games-empty">Google Calendar: {calendar.error} (showing the last loaded events)</p>
+          <p className="games-empty error">Google Calendar: {calendar.error} (showing the last loaded events)</p>
         )}
         {grid && waitingGames && (
           <ReminderGrid

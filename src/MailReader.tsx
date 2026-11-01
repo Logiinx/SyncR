@@ -171,7 +171,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
         <div className="mail-reader-status">
           {error ? (
             <>
-              <span title={error.details}>{error.text}</span>
+              <span className="mail-reader-error" title={error.details}>{error.text}</span>
               <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
             </>
           ) : (

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **Fixed:** Small fixes: errors in the Mail tab, the email reader and Reminders show in red
+
 ## [0.38.4] - 2026-11-01
 
 **Games**
