@@ -2434,6 +2434,13 @@ button {
   max-width: 100%;
 }
 
+/* The cursor's spot and the editor's line-end break after a grid card (a block, filling its
+   cell) would add an empty line */
+.tiptap p.link-group-grid .ProseMirror-separator,
+.tiptap p.link-group-grid br.ProseMirror-trailingBreak {
+  display: none !important;
+}
+
 .tiptap p.link-group-chips {
   display: inline-block;
   max-width: 100%;
@@ -2515,7 +2522,7 @@ button {
 }
 
 /* Link cards (linkPreviews.ts): drawn in place of the link's address, which is hidden
-   (it comes back while the cursor is in it) */
+   (it comes back while the link is being edited) */
 .tiptap .link-carded {
   display: none;
 }

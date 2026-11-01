@@ -334,6 +334,14 @@ function card(href: string, preview: LinkPreview, style: Builder) {
   return root
 }
 
+// An empty image (the editor's own "separator" look: no size, no border) behind a card
+function caretSpot() {
+  const spot = document.createElement('img')
+  spot.className = 'ProseMirror-separator'
+  spot.alt = ''
+  return spot
+}
+
 // A short key per preview for the widgets (a new preview object = a new key): cheaper than
 // writing the whole preview out on every redraw
 const previewIds = new WeakMap<LinkPreview, number>()
@@ -387,8 +395,8 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
   if (!card && !settings.plain.includes(href)) return null
   const items: MenuItem[] = [{ label: 'Copy link', icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
   if (card && canEdit) {
-    const from = editor.view.posAtDOM(card, 0)
-    items.push({ label: 'Edit link', icon: Pencil, onClick: () => editLink(editor, from, href) })
+    const end = editor.view.posAtDOM(card, 0) // the card sits at its link's end
+    items.push({ label: 'Edit link', icon: Pencil, onClick: () => editLink(editor, end, href) })
   }
   items.push(
     card
@@ -400,14 +408,16 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
 }
 
 // The cursor at the end of the link: its address shows instead of the card, ready to edit
-function editLink(editor: Editor, from: number, href: string) {
-  const link = findLinks(editor.state).find((l) => l.from === from && l.href === href)
-  if (link) editor.chain().focus().setTextSelection(link.to).run()
+function editLink(editor: Editor, end: number, href: string) {
+  const link = findLinks(editor.state).find((l) => l.to === end && l.href === href)
+  if (link) editor.chain().focus().setTextSelection(link.to).setMeta(key, { reveal: link.from }).run()
 }
 
 interface PluginState {
   set: DecorationSet
-  lines: { from: number; to: number }[] // lines holding only a link card
+  lines: { from: number; to: number; link: { from: number; to: number } }[] // lines holding only a link card
+  shown: { from: number; to: number; link: number }[] // cards drawn: where the cursor sits beside each, its link's start
+  revealed: number | null // the link showing its address while the cursor is beside it (its start)
   focused: boolean
   opened: Set<string> // folded link groups opened in this editor (first link's address)
 }
@@ -515,16 +525,29 @@ const CHEVRON = svgIcon('chevronRight', 14) // the same as a section's
 // focused: the cursor only shows a link's address while the text is being edited (a Board card
 // that isn't, or a note after clicking elsewhere, keeps its cursor at the end).
 // opened: the folded groups opened in this editor.
-function decorations(state: EditorState, focused: boolean, opened: Set<string>) {
+// revealed: the link whose address shows though the cursor is only beside it (stepped in with an
+// arrow key, "Edit link"). Otherwise the cursor beside a card keeps the card: a click there puts
+// the cursor next to it to type or delete it, without the address taking its place mid-click.
+function decorations(state: EditorState, focused: boolean, opened: Set<string>, revealed: number | null) {
   const settings = loadLinkPreviewSettings()
   const { from: selFrom, to: selTo } = state.selection
-  const touches = (from: number, to: number) => focused && selTo >= from && selFrom <= to
+  const near = (from: number, to: number) => selTo >= from && selFrom <= to
+  const touches = (from: number, to: number) => focused && near(from, to)
+  const inside = (from: number, to: number) => selTo > from && selFrom < to
+  const editing = (from: number, to: number) => focused && (inside(from, to) || (from === revealed && near(from, to)))
+  // Still revealed while the cursor stays at or in that link; the cursor inside a link reveals it
+  const links = findLinks(state)
+  const keep =
+    links.find((l) => l.from === revealed && near(l.from, l.to)) ??
+    (focused && state.selection.empty ? links.find((l) => inside(l.from, l.to)) : undefined)
   const found: Decoration[] = []
+  const shown: PluginState['shown'] = []
+  const edges = new Map<number, { from: number; to: number }>() // link start → its line, spaces hidden
 
   // Links that get a card, and the lines that hold nothing else
   const cards: { link: ReturnType<typeof findLinks>[number]; preview: LinkPreview }[] = []
   const lines: CardLine[] = []
-  for (const link of findLinks(state)) {
+  for (const link of links) {
     if (!wantsCard(link.href, link.text, settings)) continue
     if (!previews.has(link.href)) void ask(link.href)
     const preview = previews.get(link.href)
@@ -564,9 +587,10 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>) 
         found.push(Decoration.node(line.from, line.to, { class: `link-group-item link-group-${settings.groups}` }))
         inGroup.set(String(line.link.from), look)
         // Spaces around the link would take room next to the card
-        if (!touches(line.link.from, line.link.to)) {
+        if (!editing(line.link.from, line.link.to)) {
           if (line.from + 1 < line.link.from) found.push(Decoration.inline(line.from + 1, line.link.from, { class: 'link-carded' }))
           if (line.link.to < line.to - 1) found.push(Decoration.inline(line.link.to, line.to - 1, { class: 'link-carded' }))
+          edges.set(line.link.from, { from: line.from + 1, to: line.to - 1 })
         }
       }
     }
@@ -574,19 +598,48 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>) 
 
   for (const { link, preview } of cards) {
     const look = inGroup.has(String(link.from)) ? inGroup.get(String(link.from)) : (settings.style as Builder)
-    // Hidden in a folded group, or the cursor at or in the link: the address, so it can be edited
-    if (!look || touches(link.from, link.to)) continue
+    // Hidden in a folded group, or the link being edited: the address, so it can be edited
+    if (!look || editing(link.from, link.to)) continue
+    // After the hidden address, so the cursor at the link's end shows after the card. The browser
+    // draws no cursor right behind a card: an invisible image after it gives the cursor a place.
     found.push(
-      Decoration.widget(link.from, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${previewId(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.to, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${previewId(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.to, caretSpot, { key: 'caret-spot', side: -1, raw: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )
+    shown.push({ ...(edges.get(link.from) ?? link), link: link.from })
   }
-  return { set: DecorationSet.create(state.doc, found), lines: lines.map(({ from, to }) => ({ from, to })) }
+  return {
+    set: DecorationSet.create(state.doc, found),
+    lines: lines.map(({ from, to, link }) => ({ from, to, link: { from: link.from, to: link.to } })),
+    shown,
+    revealed: keep?.from ?? null,
+  }
+}
+
+// The cursor beside a card: Backspace (after it) or Delete (before it) removes the whole link,
+// and an arrow key towards it shows its address, ready to edit (the next one moves into it)
+function keyBesideCard(view: EditorView, event: KeyboardEvent) {
+  const { selection } = view.state
+  if (!selection.empty || event.shiftKey || event.altKey || event.metaKey) return false
+  const pos = selection.from
+  const shown = key.getState(view.state)?.shown ?? []
+  const after = shown.find((c) => c.to === pos)
+  const before = shown.find((c) => c.from === pos)
+  const remove = event.key === 'Backspace' ? after : event.key === 'Delete' ? before : undefined
+  if (remove) {
+    view.dispatch(view.state.tr.delete(remove.from, remove.to).scrollIntoView())
+    return true
+  }
+  const reveal = event.ctrlKey ? undefined : event.key === 'ArrowLeft' ? after : event.key === 'ArrowRight' ? before : undefined
+  if (!reveal) return false
+  view.dispatch(view.state.tr.setMeta(key, { reveal: reveal.link }).setMeta('addToHistory', false))
+  return true
 }
 
 // The arrow keys into a line holding only a card: the browser finds no place for the cursor
 // there (side by side in a grid or chips, it skips the whole group), so the editor moves it.
-// To the line's end going back, its start going forward: the address shows, ready to edit.
+// To the link's end going back, its start going forward: the address shows, ready to edit.
 const ARROWS: Record<string, 'left' | 'right' | 'up' | 'down'> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
 
 function arrowIntoCardLine(view: EditorView, event: KeyboardEvent) {
@@ -600,8 +653,8 @@ function arrowIntoCardLine(view: EditorView, event: KeyboardEvent) {
   const edge = back ? $from.before() : $from.after()
   const line = key.getState(view.state)?.lines.find((l) => (back ? l.to === edge : l.from === edge))
   if (!line) return false
-  const target = back ? line.to - 1 : line.from + 1
-  view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, target)).scrollIntoView())
+  const target = back ? line.link.to : line.link.from
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, target)).setMeta(key, { reveal: line.link.from }).scrollIntoView())
   return true
 }
 
@@ -613,9 +666,9 @@ export const LinkPreviews = Extension.create({
       new Plugin<PluginState>({
         key,
         state: {
-          init: (_, state) => ({ ...decorations(state, false, new Set()), focused: false, opened: new Set() }),
+          init: (_, state) => ({ ...decorations(state, false, new Set(), null), focused: false, opened: new Set() }),
           apply: (tr, old, _oldState, state) => {
-            const meta = tr.getMeta(key) as { focused?: boolean; toggle?: string; open?: boolean } | undefined
+            const meta = tr.getMeta(key) as { focused?: boolean; toggle?: string; open?: boolean; reveal?: number } | undefined
             // The cursor only changes what's drawn while the text is being edited (focused)
             if (!tr.docChanged && !meta && (!tr.selectionSet || !old.focused)) return old
             const focused = meta?.focused ?? old.focused
@@ -626,12 +679,13 @@ export const LinkPreviews = Extension.create({
               if (meta.open) opened.delete(meta.toggle)
               else opened.add(meta.toggle)
             }
-            return { ...decorations(state, focused, opened), focused, opened }
+            const revealed = meta?.reveal ?? (old.revealed === null ? null : tr.mapping.map(old.revealed))
+            return { ...decorations(state, focused, opened, revealed), focused, opened }
           },
         },
         props: {
           decorations: (state) => key.getState(state)?.set,
-          handleKeyDown: arrowIntoCardLine,
+          handleKeyDown: (view, event) => keyBesideCard(view, event) || arrowIntoCardLine(view, event),
           handleDOMEvents: {
             focus: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: true }).setMeta('addToHistory', false)), false),
             blur: (view) => (view.dispatch(view.state.tr.setMeta(key, { focused: false }).setMeta('addToHistory', false)), false),

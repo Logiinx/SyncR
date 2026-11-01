@@ -93,6 +93,7 @@ export const OpenLinksOnClick = Extension.create({
 
   addProseMirrorPlugins() {
     let tooltip: ReturnType<typeof linkTooltip> | undefined
+    let pressedOn: string | null | undefined // the link under the mouse when its button went down
     return [
       new Plugin({
         view: () => {
@@ -115,7 +116,11 @@ export const OpenLinksOnClick = Extension.create({
               if (!from?.contains(event.relatedTarget as Node | null)) tooltip?.hide()
               return false
             },
-            mousedown: () => (tooltip?.hide(), false),
+            mousedown: (_view, event) => {
+              tooltip?.hide()
+              pressedOn = (event.target as HTMLElement).closest('a[href]')?.getAttribute('href')
+              return false
+            },
             contextmenu: () => (tooltip?.hide(), false), // not over the right-click menu
             // handleClick below opens the link, but it runs on mouseup: its preventDefault
             // doesn't stop the browser's own click on the <a> (target="_blank"), which opened
@@ -133,6 +138,8 @@ export const OpenLinksOnClick = Extension.create({
             if (!link) return false
             event.preventDefault()
             const href = link.getAttribute('href')!
+            // Pressed elsewhere (e.g. beside a card, then the address showed under the mouse): no opening
+            if (href !== pressedOn) return true
             if (parseNoteLink(href)) followNoteLink(href)
             else openLink(href)
             return true
