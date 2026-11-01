@@ -2560,6 +2560,18 @@ button {
   font-size: 13px;
 }
 
+/* Stars and likes in the extras line: a filled icon and the number, like a game's rating */
+.link-card-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: bottom;
+}
+
+.link-card-count svg {
+  fill: currentColor;
+}
+
 /* B, one line: as high as the text around it */
 .link-card.link-card-line-style {
   gap: 6px;

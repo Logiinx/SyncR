@@ -9,6 +9,7 @@ import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { openLink, simplify } from './links'
 import { read, write } from './localState'
 import { shortDate } from './dates'
+import { svgIcon, type SvgIconName } from './svgIcons'
 
 // Link cards: a website link in a note is shown as a small card (title, description, picture),
 // so you know what it is without opening it. The page is read by our proxy (/preview in
@@ -230,19 +231,34 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '')
 // "1234" → "1.2K"
 const count = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 
-// What every style shows, from the preview: title, site, and a line of extras (stars, likes, date)
+// What every style shows, from the preview: title and site
 function parts(href: string, preview: LinkPreview) {
   const tweet = preview.kind === 'tweet'
-  const extras: string[] = []
-  if (preview.stars != null) extras.push(`★ ${count(preview.stars)}`)
-  if (preview.language) extras.push(preview.language)
-  if (preview.likes != null) extras.push(`♥ ${count(preview.likes)}`)
-  if (preview.date) extras.push(shortDate(preview.date))
   return {
     title: (tweet && preview.handle ? `${preview.author ?? ''} @${preview.handle}`.trim() : preview.title) ?? href,
     site: preview.site ?? hostOf(href),
-    extras: extras.join(' · '),
   }
+}
+
+// The dim line of extras, "first · stars · language · likes · date"; null when there are none.
+// Stars and likes: a filled icon and the number, like a game's rating.
+function extrasLine(preview: LinkPreview, first?: string) {
+  const items: (string | HTMLElement)[] = first ? [first] : []
+  if (preview.stars != null) items.push(counted('star', preview.stars, 'stars'))
+  if (preview.language) items.push(preview.language)
+  if (preview.likes != null) items.push(counted('heart', preview.likes, 'likes'))
+  if (preview.date) items.push(shortDate(preview.date))
+  if (items.length === 0) return null
+  const line = element('span', 'link-card-line')
+  items.forEach((item, i) => (i ? line.append(' · ', item) : line.append(item)))
+  return line
+}
+
+function counted(icon: SvgIconName, n: number, what: string) {
+  const node = element('span', 'link-card-count', count(n))
+  node.insertAdjacentHTML('afterbegin', svgIcon(icon, 12))
+  node.setAttribute('aria-label', `${count(n)} ${what}`)
+  return node
 }
 
 // A small icon's pictures: GitHub: the repo owner's picture, like style C; else the site's icon
@@ -273,13 +289,14 @@ function twoLineCard(href: string, preview: LinkPreview) {
 // D: like Discord: site with its icon, title, description (3 lines), extras, big picture.
 // GitHub's picture is the owner's avatar: not shown big.
 function largeCard(href: string, preview: LinkPreview) {
-  const { title, site, extras } = parts(href, preview)
+  const { title, site } = parts(href, preview)
   const root = element('span', 'link-card link-card-large')
   const head = element('span', 'link-card-site')
   head.append(picture('link-card-icon', [preview.icon]), element('span', 'link-card-site-name', site))
   root.append(head, element('span', 'link-card-title', title))
   if (preview.description) root.append(element('span', 'link-card-description', preview.description))
-  if (extras) root.append(element('span', 'link-card-line', extras))
+  const extras = extrasLine(preview)
+  if (extras) root.append(extras)
   if (preview.image && preview.kind !== 'github') {
     const image = picture('link-card-image', [preview.image])
     root.append(image)
@@ -346,11 +363,11 @@ export function hoverCard(href: string, onInlineCard: boolean) {
     return root
   }
   // Small: title, the whole description, the address
-  const { title, site, extras } = parts(href, preview)
+  const { title, site } = parts(href, preview)
   const root = element('span', 'link-card link-card-small link-hover-card')
   root.append(element('span', 'link-card-title', title))
   if (preview.description) root.append(element('span', 'link-card-description', preview.description))
-  else root.append(element('span', 'link-card-line', [site, extras].filter(Boolean).join(' · ')))
+  else root.append(extrasLine(preview, site)!)
   root.append(element('span', 'link-card-address', href))
   return root
 }
@@ -470,8 +487,7 @@ function groupSummary(group: CardLine[], open: boolean, toggle: () => void) {
   return root
 }
 
-const CHEVRON =
-  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
+const CHEVRON = svgIcon('chevronRight', 14) // the same as a section's
 
 // focused: the cursor only shows a link's address while the text is being edited (a Board card
 // that isn't, or a note after clicking elsewhere, keeps its cursor at the end).

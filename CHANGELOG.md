@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **Fixed:** Small fixes: link card stars and likes drawn as icons.
+
 ## [0.38.2] - 2026-11-01
 
 **Notes**

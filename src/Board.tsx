@@ -20,6 +20,7 @@ import GameDialog from './GameDialog'
 import { removeGameQuestion } from './games'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useList, useSlideIn } from './animations'
+import { svgIcon } from './svgIcons'
 
 // The Board: a panel on the right with small cards (quick tasks, priority things),
 // visible whatever note is open. Opened with the small tab in the middle of the window's right
@@ -33,12 +34,9 @@ const UNDO_MS = 5000
 const HOLD_MS = 300 // touch screens: hold a card this long before it moves (a swipe scrolls)
 const GAP = 6 // px between cards (.board-cards gap)
 
-// The drag's temporary drop zone (made outside React): Lucide's arrow-down / arrow-up as plain
-// SVG, like the sections' fold arrow (NoteEditor.tsx)
-const arrow = (paths: string) =>
-  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
-const DROP_NORMAL = `${arrow('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>')} Normal`
-const DROP_PRIORITY = `${arrow('<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>')} Priority`
+// The drag's temporary drop zone (made outside React): Lucide's arrow-down / arrow-up as plain SVG
+const DROP_NORMAL = `${svgIcon('arrowDown', 12)} Normal`
+const DROP_PRIORITY = `${svgIcon('arrowUp', 12)} Priority`
 
 // Priority cards first, then the others; inside each part, in their order (new = bottom)
 const byPart = (a: CardData, b: CardData) => Number(b.priority) - Number(a.priority) || a.order - b.order
