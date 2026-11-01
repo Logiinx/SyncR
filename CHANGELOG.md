@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Mail**
-- **Fixed:** Small fixes: errors in the Mail tab, the email reader and Reminders show in red, row hover = account.
+- **Fixed:** Small fixes: errors in the Mail tab, the email reader and Reminders show in red, account on "N new emails".
 
 ## [0.38.4] - 2026-11-01
 

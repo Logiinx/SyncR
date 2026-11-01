@@ -32,11 +32,16 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
   )
 }
 
-// A mail's top line, on its card and in the reader: when it came + which account
-export function MailWhen({ alert, children }: { alert: MailAlert; children?: ReactNode }) {
+// A mail's top line, on its card, the folded card and in the reader: when it came + which
+// account ("2 accounts" on a folded card, the addresses on hover)
+export function MailWhen({ alert, title = alert.account, children }: {
+  alert: Pick<MailAlert, 'date' | 'account'>
+  title?: string
+  children?: ReactNode
+}) {
   return (
     <span className="reminder-alert-due">
-      <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account" title={alert.account}>{alert.account}</span>
+      <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account" title={title}>{alert.account}</span>
       {children}
     </span>
   )
@@ -90,9 +95,10 @@ export function MailCards({ alerts, fading, loadingKey = null, onAction, onRead 
         style={{ borderLeftColor: color }}
       >
         <button className="reminder-alert-body" onClick={() => setUnfolded(true)} title="Show all">
-          <span className="reminder-alert-due">
-            <Mail size={12} /> {formatDue(alerts[0].date)}
-          </span>
+          <MailWhen
+            alert={{ date: alerts[0].date, account: accounts.size === 1 ? alerts[0].account : `${accounts.size} accounts` }}
+            title={[...accounts].join('\n')}
+          />
           <span className="reminder-alert-text">{alerts.length} new emails</span>
           <span className="reminder-alert-note">{senders.join(', ')}</span>
         </button>
