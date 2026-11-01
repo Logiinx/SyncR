@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.3] - 2026-11-01
+
 **Notes**
 - **Improved:** Folded link groups grow open and shrink shut, like sections.
 - **Fixed:** Small fixes: link card star/like icons, ‹ Back in Compare, note previews in full on hover.
