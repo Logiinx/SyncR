@@ -151,12 +151,13 @@ fn unprotect_secret(data: Vec<u8>) -> Result<String, String> {
 
 // ---------- An email's attached files (mailFiles.ts) ----------
 
-// Files that run something when opened (often how malware comes): saved only, never opened.
-// Same list as RISKY in mailFiles.ts.
-const RISKY: &[&str] = &[
-  "exe", "com", "bat", "cmd", "msi", "msix", "msp", "scr", "pif", "cpl", "jar", "js", "jse", "vbs", "vbe",
-  "wsf", "wsh", "hta", "ps1", "psm1", "lnk", "reg", "appx", "appxbundle", "application", "gadget", "iso",
-  "img", "vhd", "vhdx",
+// The only kinds of files opened with a click: documents, pictures, audio and video, zip,
+// invites and contact cards. Anything else (programs, scripts, shortcuts, macro documents, and
+// types nobody thought of) can only be saved. Same list as OPENABLE in mailFiles.ts.
+const OPENABLE: &[&str] = &[
+  "pdf", "txt", "md", "rtf", "csv", "docx", "xlsx", "pptx", "odt", "ods", "odp", "jpg", "jpeg", "png", "gif",
+  "webp", "bmp", "tif", "tiff", "heic", "avif", "mp3", "m4a", "aac", "wav", "flac", "ogg", "mp4", "m4v", "mov",
+  "webm", "mkv", "avi", "zip", "ics", "vcf",
 ];
 
 // Gmail gives a file as base64url text (with or without the trailing "=")
@@ -184,8 +185,17 @@ fn safe_file_name(name: &str) -> String {
   if cleaned.is_empty() { "file".to_string() } else { cleaned.to_string() }
 }
 
-fn is_risky(name: &str) -> bool {
-  name.rsplit_once('.').is_some_and(|(_, ext)| RISKY.contains(&ext.to_ascii_lowercase().as_str()))
+fn can_open(name: &str) -> bool {
+  name.rsplit_once('.').is_some_and(|(_, ext)| OPENABLE.contains(&ext.to_ascii_lowercase().as_str()))
+}
+
+// Marks a file as downloaded from the internet (like browsers do), so Windows and the programs
+// that open it stay careful: SmartScreen, warnings before running what's inside a zip. A drive
+// that can't hold the mark (a USB stick) still gets the file.
+fn mark_from_internet(path: &std::path::Path) {
+  let mut mark = path.as_os_str().to_owned();
+  mark.push(":Zone.Identifier");
+  let _ = std::fs::write(mark, "[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=https://mail.google.com/\r\n");
 }
 
 // Opens a file in its normal program: written to a new folder in Windows' temporary files
@@ -196,8 +206,8 @@ async fn open_attachment(app: tauri::AppHandle, name: String, data: String) -> R
   use std::time::{Duration, SystemTime, UNIX_EPOCH};
   use tauri_plugin_opener::OpenerExt;
   let name = safe_file_name(&name);
-  if is_risky(&name) {
-    return Err("Programs and scripts can only be saved".to_string());
+  if !can_open(&name) {
+    return Err("This kind of file can only be saved".to_string());
   }
   let bytes = attachment_bytes(&data)?;
   let folder = std::env::temp_dir().join("SyncR attachments");
@@ -219,6 +229,7 @@ async fn open_attachment(app: tauri::AppHandle, name: String, data: String) -> R
   std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
   let path = dir.join(&name);
   std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  mark_from_internet(&path);
   app.opener().open_path(path.to_string_lossy().to_string(), None::<&str>).map_err(|e| e.to_string())
 }
 
@@ -247,6 +258,7 @@ async fn save_attachment(
   let Some(path) = picked else { return Ok(false) };
   let path = path.into_path().map_err(|e| e.to_string())?;
   std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  mark_from_internet(&path);
   Ok(true)
 }
 

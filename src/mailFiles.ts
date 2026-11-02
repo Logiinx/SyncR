@@ -4,14 +4,16 @@ import type { MailAlert, MailFile } from './mailAlerts'
 
 // Attached files of an email (the row under it, MailReader.tsx): downloaded from Gmail only
 // when opened or saved. Opening saves them to a temporary folder and opens them in their
-// normal program; risky types (programs, scripts) can only be saved.
+// normal program; only common documents, pictures, audio and video, zip, invites and contact
+// cards: anything else can only be saved.
 
-// Files that run something when opened: often how malware comes. Save… only. (The same list
-// is in lib.rs, which refuses to open them too.)
-const RISKY = /\.(exe|com|bat|cmd|msi|msix|msp|scr|pif|cpl|jar|js|jse|vbs|vbe|wsf|wsh|hta|ps1|psm1|lnk|reg|appx|appxbundle|application|gadget|iso|img|vhd|vhdx)$/i
+// The kinds of files opened with a click. Others (programs, scripts, shortcuts, macro documents,
+// types nobody thought of) are Save… only, often how malware comes. (The same list is in
+// lib.rs, which refuses to open anything else too.)
+const OPENABLE = /\.(pdf|txt|md|rtf|csv|docx|xlsx|pptx|odt|ods|odp|jpe?g|png|gif|webp|bmp|tiff?|heic|avif|mp3|m4a|aac|wav|flac|ogg|mp4|m4v|mov|webm|mkv|avi|zip|ics|vcf)$/i
 
-// (Windows drops trailing dots and spaces: "x.exe." is a program too)
-export const isRisky = (file: MailFile) => RISKY.test(file.name.trim().replace(/[. ]+$/, ''))
+// (Windows drops trailing dots and spaces: "x.exe." is a program)
+export const canOpen = (file: MailFile) => OPENABLE.test(file.name.trim().replace(/[. ]+$/, ''))
 
 // 1234567 → "1.2 MB"
 export function fileSize(bytes: number) {
@@ -35,7 +37,7 @@ async function fileData(alert: MailAlert, file: MailFile): Promise<string> {
 // Opened in its normal program (lib.rs, open_attachment). The browser version (development)
 // downloads it instead.
 export async function openFile(alert: MailAlert, file: MailFile) {
-  if (isRisky(file)) return saveFile(alert, file)
+  if (!canOpen(file)) return saveFile(alert, file)
   const data = await fileData(alert, file)
   if (isTauri()) await invoke('open_attachment', { name: file.name, data })
   else browserDownload(file, data)

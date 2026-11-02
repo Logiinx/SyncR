@@ -5,6 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Mail**
+- **Improved:** Only common documents, pictures, media, zips and invites open with a click; others save.
+- **Improved:** Opened or saved email files get Windows' "from the internet" warnings.
 - **Fixed:** Emails can no longer open web pages inside the reader, stay blank or load images unasked.
 - **Fixed:** Small fixes: links on pictures and drawings inside emails open in the browser.
 

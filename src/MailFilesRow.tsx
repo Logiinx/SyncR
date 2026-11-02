@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Download, File, FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, type LucideIcon } from 'lucide-react'
 import { errorDetails, gmailErrorText } from './gmail'
 import type { MailAlert, MailFile } from './mailAlerts'
-import { fileSize, isRisky, openFile, saveFile } from './mailFiles'
+import { canOpen, fileSize, openFile, saveFile } from './mailFiles'
 import Spinner from './Spinner'
 
 // The email's attached files (MailReader.tsx), between the email and its buttons: one chip per
 // file (icon, name, size); a click opens it, ⬇ saves it. The first 3, then "+N more". A spinner
-// while it downloads. Programs and scripts can only be saved (mailFiles.ts).
+// while it downloads. Only common kinds of files open; others can only be saved (mailFiles.ts).
 
 const FIRST = 3
 
@@ -34,13 +34,13 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
     <div className="mail-files">
       {shown.map((file, index) => {
         const Icon = fileIcon(file)
-        const risky = isRisky(file)
+        const openable = canOpen(file)
         return (
           <div key={index} className="mail-file">
             <button
               className="mail-file-open"
-              title={risky ? `${file.name}\nA program or script: it can only be saved` : `Open ${file.name}`}
-              onClick={() => run(index, risky ? saveFile : openFile)}
+              title={openable ? `Open ${file.name}` : `${file.name}\nThis kind of file can only be saved`}
+              onClick={() => run(index, openable ? openFile : saveFile)}
             >
               {busy.includes(index) ? <Spinner size={14} /> : <Icon size={14} />}
               <span className="mail-file-name">{file.name}</span>
