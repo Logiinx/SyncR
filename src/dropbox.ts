@@ -3,6 +3,7 @@
 // on the PC).
 
 import { DROPBOX_SECRET, getSecret, setSecret } from './secrets'
+import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind } from './signIn'
 
 const APP_KEY = '5600l0im00ni2so'
 const VERIFIER_KEY = 'syncr.dropbox.verifier'
@@ -95,29 +96,16 @@ export function connectedName() {
   return loadAuth()?.name
 }
 
-// ---------- PKCE helpers ----------
-
-function base64Url(bytes: Uint8Array) {
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
-async function challengeFor(verifier: string) {
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
-  return base64Url(new Uint8Array(hash))
-}
-
 // ---------- Sign in / out ----------
 
-// Leaves the app and opens the Dropbox sign-in page. Dropbox comes back with ?code=…
+// Leaves the app and opens the Dropbox sign-in page. Dropbox comes back with ?state=dropbox-…&code=…
 export async function connect() {
   const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)))
   localStorage.setItem(VERIFIER_KEY, verifier)
   const params = new URLSearchParams({
     client_id: APP_KEY,
     response_type: 'code',
+    state: newSignInState('dropbox'),
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
     redirect_uri: redirectUri(),
@@ -126,23 +114,32 @@ export async function connect() {
   location.href = `https://www.dropbox.com/oauth2/authorize?${params}`
 }
 
+// True right after coming back from the Dropbox sign-in page. Also with no state at all: a
+// sign-in started before v0.38.9 (it fails as expired).
+export function isDropboxReturn() {
+  const params = new URL(location.href).searchParams
+  if (params.has('state')) return returnKind() === 'dropbox'
+  return params.has('code') || params.has('error')
+}
+
 // Call once at startup. If we just came back from Dropbox, finish the sign-in.
 // Returns why the sign-in failed, if it did (shown after "Dropbox sign-in failed: ", SyncButton.tsx).
 export async function finishConnect(): Promise<string | null> {
+  if (!isDropboxReturn()) return null
   const url = new URL(location.href)
-  // Google Calendar's or a Gmail account's sign-in (google.ts, gmail.ts): Dropbox's has no state
-  if (url.searchParams.has('state')) return null
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error_description') ?? url.searchParams.get('error')
-  if (!code && !error) return null
 
   // Remove ?code=… from the address bar
   history.replaceState(null, '', redirectUri())
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
 
+  const ownState = isOwnSignInState('dropbox', url.searchParams.get('state'))
+
   if (error) return error // Dropbox's own words
-  if (!verifier) return 'it expired'
+  // Not the latest sign-in started here (an older tab, or a link from someone else)
+  if (!verifier || !ownState) return 'it expired'
 
   const res = await request('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',

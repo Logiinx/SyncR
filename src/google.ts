@@ -2,6 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { db } from './db'
 import { igdbProxyFetch } from './igdb'
 import { getSecret, GOOGLE_SECRET, setSecret } from './secrets'
+import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind } from './signIn'
 
 // Google Calendar sign-in (OAuth 2 with PKCE). Google only gives a lasting sign-in (refresh
 // token) to a web app when the request includes the client secret, which can't be in the app
@@ -52,46 +53,8 @@ function saveAuth(auth: Auth | null) {
 export const isConnected = () => loadAuth() !== null
 export const connectedName = () => loadAuth()?.name
 
-// True right after coming back from Google's sign-in page (Dropbox's sign-in leaves this alone)
+// True right after coming back from Google Calendar's sign-in page
 export const isGoogleReturn = () => returnKind() === 'google'
-
-// ---------- Sign-in state (also for gmail.ts) ----------
-
-// The "state" sent with a Google sign-in: what it's for ("google" = Calendar, or "gmail") plus a
-// random part, remembered until Google comes back with it. The first part tells the returns
-// apart (Dropbox's comes back without a state). The random part shows that a return answers the
-// sign-in started on this device, not a link someone else made.
-export function newSignInState(kind: 'google' | 'gmail') {
-  const state = `${kind}-${base64Url(crypto.getRandomValues(new Uint8Array(16)))}`
-  localStorage.setItem(`syncr.${kind}.state`, state)
-  return state
-}
-
-// What the address's sign-in return is for: 'google', 'gmail' or null (none, or Dropbox's).
-// Also a plain "google"/"gmail": a sign-in started before v0.38.9 (it fails as expired).
-export const returnKind = () => new URL(location.href).searchParams.get('state')?.match(/^(google|gmail)(-|$)/)?.[1] ?? null
-
-// True if the return brings back the state this device sent. Works once: the state is forgotten.
-export function isOwnSignInState(kind: 'google' | 'gmail', state: string | null) {
-  const key = `syncr.${kind}.state`
-  const expected = localStorage.getItem(key)
-  localStorage.removeItem(key)
-  return !!expected && state === expected
-}
-
-// ---------- PKCE helpers (like dropbox.ts) ----------
-
-export function base64Url(bytes: Uint8Array) {
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
-export async function challengeFor(verifier: string) {
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
-  return base64Url(new Uint8Array(hash))
-}
 
 // ---------- Sign in / out ----------
 

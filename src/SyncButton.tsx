@@ -4,7 +4,7 @@ import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from '.
 import { currentZoom } from './appearance'
 import ContextMenu from './ContextMenu'
 import { dropOldKey, forgetKey, getKey } from './crypto'
-import { connect, disconnect, finishConnect, isConnected } from './dropbox'
+import { connect, disconnect, finishConnect, isConnected, isDropboxReturn } from './dropbox'
 import { finishConnect as finishGoogleConnect } from './google'
 import { finishGmailConnect } from './gmail'
 import PassphraseDialog from './PassphraseDialog'
@@ -126,9 +126,7 @@ function SyncButton() {
     })
 
     // Just came back from the Dropbox sign-in: ask for the passphrase right away
-    // (Google's sign-ins come back with a state, Dropbox's without: dropbox.ts)
-    const url = new URL(location.href)
-    const justConnected = url.searchParams.has('code') && !url.searchParams.has('state')
+    const justConnected = isDropboxReturn()
     finishConnect()
       .then((error) => {
         setSignInError(error)

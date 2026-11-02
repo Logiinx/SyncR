@@ -1,18 +1,8 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { useEffect, useState } from 'react'
-import {
-  appAddress,
-  base64Url,
-  challengeFor,
-  CLIENT_ID,
-  idTokenClaims,
-  isOwnSignInState,
-  newSignInState,
-  redirectUri,
-  returnKind,
-  tokenRequest,
-} from './google'
+import { appAddress, CLIENT_ID, idTokenClaims, redirectUri, tokenRequest } from './google'
 import { getSecret, GMAIL_SECRET, setSecret } from './secrets'
+import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind } from './signIn'
 
 // Gmail accounts (PC: pop-ups for new mail). Each account has its own Google sign-in, apart
 // from the Google Calendar one (google.ts): adding or removing a Gmail account never touches
@@ -98,7 +88,7 @@ export async function connectGmail(pubsub = false): Promise<Result | null> {
     client_id: CLIENT_ID,
     response_type: 'code',
     scope: `${SCOPE} openid email${pubsub ? ` ${PUBSUB_SCOPE}` : ''}`, // email: which account it is
-    state: newSignInState('gmail'), // google.ts
+    state: newSignInState('gmail'),
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
     redirect_uri: redirectUri(),
