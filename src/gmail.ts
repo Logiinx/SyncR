@@ -6,7 +6,10 @@ import {
   challengeFor,
   CLIENT_ID,
   idTokenClaims,
+  isOwnSignInState,
+  newSignInState,
   redirectUri,
+  returnKind,
   tokenRequest,
 } from './google'
 import { getSecret, GMAIL_SECRET, setSecret } from './secrets'
@@ -20,7 +23,6 @@ const SCOPE = 'https://www.googleapis.com/auth/gmail.modify' // read, mark as re
 // Instant mail (instantMail.ts): reads Gmail's "new mail" signals from SyncR's Google Cloud queue
 export const PUBSUB_SCOPE = 'https://www.googleapis.com/auth/pubsub'
 const VERIFIER_KEY = 'syncr.gmail.verifier'
-const STATE = 'gmail' // tells this sign-in's return apart from Calendar's and Dropbox's
 
 export interface GmailAccount {
   email: string
@@ -83,7 +85,7 @@ export function useGmailAccounts() {
 
 type Result = { ok: boolean; text: string }
 
-export const isGmailReturn = () => new URL(location.href).searchParams.get('state') === STATE
+export const isGmailReturn = () => returnKind() === 'gmail'
 
 // Opens Google's sign-in page, where the user picks the account to add (or one already added:
 // it's signed in again). PC app: the page opens in the normal browser and this waits for its
@@ -96,7 +98,7 @@ export async function connectGmail(pubsub = false): Promise<Result | null> {
     client_id: CLIENT_ID,
     response_type: 'code',
     scope: `${SCOPE} openid email${pubsub ? ` ${PUBSUB_SCOPE}` : ''}`, // email: which account it is
-    state: STATE,
+    state: newSignInState('gmail'), // google.ts
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
     redirect_uri: redirectUri(),
@@ -127,8 +129,10 @@ async function finish(params: URLSearchParams): Promise<Result> {
   const granted = params.get('scope') ?? ''
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
+  const ownState = isOwnSignInState('gmail', params.get('state'))
   if (error) return fail(error === 'access_denied' ? 'Gmail: sign-in cancelled.' : `Gmail: ${error}`)
-  if (!verifier || !code) return fail('Gmail sign-in expired. Please try again.')
+  // Not the latest sign-in started here (an older tab, or a link from someone else)
+  if (!verifier || !code || !ownState) return fail('Gmail sign-in expired. Please try again.')
   // Google's consent page lets the user untick the Gmail permission
   if (!granted.split(' ').includes(SCOPE)) {
     return fail('Gmail: SyncR needs the permission to read your emails. Add the account again and keep it ticked.')

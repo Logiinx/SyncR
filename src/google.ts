@@ -13,7 +13,6 @@ import { getSecret, GOOGLE_SECRET, setSecret } from './secrets'
 export const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com'
 const SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 const VERIFIER_KEY = 'syncr.google.verifier'
-const STATE = 'google' // tells Google's return apart from Dropbox's (both come back with ?code=…)
 
 const REQUEST_TIMEOUT_MS = 30_000
 
@@ -54,7 +53,31 @@ export const isConnected = () => loadAuth() !== null
 export const connectedName = () => loadAuth()?.name
 
 // True right after coming back from Google's sign-in page (Dropbox's sign-in leaves this alone)
-export const isGoogleReturn = () => new URL(location.href).searchParams.get('state') === STATE
+export const isGoogleReturn = () => returnKind() === 'google'
+
+// ---------- Sign-in state (also for gmail.ts) ----------
+
+// The "state" sent with a Google sign-in: what it's for ("google" = Calendar, or "gmail") plus a
+// random part, remembered until Google comes back with it. The first part tells the returns
+// apart (Dropbox's comes back without a state). The random part shows that a return answers the
+// sign-in started on this device, not a link someone else made.
+export function newSignInState(kind: 'google' | 'gmail') {
+  const state = `${kind}-${base64Url(crypto.getRandomValues(new Uint8Array(16)))}`
+  localStorage.setItem(`syncr.${kind}.state`, state)
+  return state
+}
+
+// What the address's sign-in return is for: 'google', 'gmail' or null (none, or Dropbox's).
+// Also a plain "google"/"gmail": a sign-in started before v0.38.9 (it fails as expired).
+export const returnKind = () => new URL(location.href).searchParams.get('state')?.match(/^(google|gmail)(-|$)/)?.[1] ?? null
+
+// True if the return brings back the state this device sent. Works once: the state is forgotten.
+export function isOwnSignInState(kind: 'google' | 'gmail', state: string | null) {
+  const key = `syncr.${kind}.state`
+  const expected = localStorage.getItem(key)
+  localStorage.removeItem(key)
+  return !!expected && state === expected
+}
 
 // ---------- PKCE helpers (like dropbox.ts) ----------
 
@@ -74,7 +97,7 @@ export async function challengeFor(verifier: string) {
 
 type Result = { ok: boolean; text: string }
 
-// Opens Google's sign-in page. Google comes back with ?state=google&code=…
+// Opens Google's sign-in page. Google comes back with ?state=google-…&code=…
 // Phone/browser: leaves the app (finishConnect() completes it on return; returns null).
 // PC app: the page opens in the normal browser and this waits for its return (lib.rs), then
 // completes the sign-in and returns the result.
@@ -85,7 +108,7 @@ export async function connect(): Promise<Result | null> {
     client_id: CLIENT_ID,
     response_type: 'code',
     scope: `${SCOPE} openid profile`, // profile: the name shown in Settings ("Connected as …")
-    state: STATE,
+    state: newSignInState('google'),
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
     redirect_uri: redirectUri(),
@@ -123,9 +146,11 @@ async function finish(params: URLSearchParams): Promise<Result> {
   const granted = params.get('scope') ?? ''
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
+  const ownState = isOwnSignInState('google', params.get('state'))
 
   if (error) return fail(error === 'access_denied' ? 'Google Calendar: sign-in cancelled.' : `Google Calendar: ${error}`)
-  if (!verifier || !code) return fail('Google Calendar sign-in expired. Please try again.')
+  // Not the latest sign-in started here (an older tab, or a link from someone else)
+  if (!verifier || !code || !ownState) return fail('Google Calendar sign-in expired. Please try again.')
   // Google's consent page lets the user untick the calendar permission
   if (!granted.split(' ').includes(SCOPE)) {
     return fail('Google Calendar: SyncR needs the calendar permission. Connect again and keep it ticked.')

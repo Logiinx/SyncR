@@ -130,8 +130,8 @@ export async function connect() {
 // Returns why the sign-in failed, if it did (shown after "Dropbox sign-in failed: ", SyncButton.tsx).
 export async function finishConnect(): Promise<string | null> {
   const url = new URL(location.href)
-  // Google Calendar's or a Gmail account's sign-in (google.ts, gmail.ts)
-  if (['google', 'gmail'].includes(url.searchParams.get('state') ?? '')) return null
+  // Google Calendar's or a Gmail account's sign-in (google.ts, gmail.ts): Dropbox's has no state
+  if (url.searchParams.has('state')) return null
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error_description') ?? url.searchParams.get('error')
   if (!code && !error) return null
