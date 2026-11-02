@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.38.9] - 2026-11-02
+
 **Mail**
 - **Improved:** Only common documents, pictures, media, zips and invites open with a click; others save.
 - **Improved:** Opened or saved email files get Windows' "from the internet" warnings.
