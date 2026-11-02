@@ -4147,12 +4147,18 @@ button {
   accent-color: var(--accent);
 }
 
-/* Settings → Notes → Sites (link cards) */
-.dialog .settings-row input.settings-sites {
+/* Settings → Notes → Sites (link cards): a text area that looks like a one-line field (it wraps
+   on a phone, below) */
+.dialog .settings-row textarea.settings-sites {
+  display: block;
   width: 200px;
   margin: 0;
   padding: 3px 6px;
   font-size: 0.95em;
+  line-height: normal;
+  white-space: pre;
+  overflow: hidden;
+  resize: none;
 }
 
 /* A connection's state (Accounts card): dim, green when it works, one line */
@@ -4232,6 +4238,24 @@ button {
 
   .settings-row .ruler {
     width: 110px;
+  }
+
+  /* Sites: under its label, full width, as many lines as it needs */
+  .settings-row-sites {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding-bottom: 6px;
+  }
+
+  .settings-row-sites .settings-row-control {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .dialog .settings-row textarea.settings-sites {
+    width: 100%;
+    white-space: pre-wrap;
+    field-sizing: content;
   }
 
   .settings-manage {

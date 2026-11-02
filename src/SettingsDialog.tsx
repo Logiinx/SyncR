@@ -264,6 +264,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </select>
         </SettingRow>
         <SettingRow
+          className="settings-row-sites"
           label={
             <>
               Sites
@@ -470,14 +471,15 @@ function SettingsCard({ icon: Icon, title, children }: { icon: LucideIcon; title
 
 // One setting: its name (and a dim detail) on the left, its control on the right. `title`: a
 // longer explanation on hover.
-function SettingRow({ label, value, title, children }: {
+function SettingRow({ label, value, title, className, children }: {
   label: React.ReactNode
   value?: string
   title?: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
-    <div className="settings-row" title={title}>
+    <div className={`settings-row${className ? ` ${className}` : ''}`} title={title}>
       <span className="settings-row-label">
         {label}
         {value && <span className="setting-value"> {value}</span>}
@@ -906,7 +908,9 @@ function GmailSettings() {
 }
 
 // The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field.
-// Emptied: back to the default sites (as the placeholder shows).
+// Emptied: back to the default sites (as the placeholder shows). A text area: one line on the PC,
+// but on a phone it wraps onto several lines (Chrome on Android doesn't scroll a one-line field
+// when the keyboard moves the cursor, so the cursor went out of view).
 function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: boolean; onChange: (sites: string[]) => void }) {
   const [text, setText] = useState(sites.join(', '))
   const save = () => {
@@ -916,17 +920,24 @@ function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: 
     onChange(chosen)
   }
   return (
-    <input
+    <textarea
       className="settings-sites"
-      type="text"
+      rows={1}
       value={text}
       disabled={disabled}
       placeholder={DEFAULT_SITES.join(', ')}
       spellCheck={false}
       aria-label="Sites"
-      onChange={(e) => setText(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      onChange={(e) => setText(e.target.value.replace(/\s*[\r\n]+\s*/g, ', '))} // pasted lines
+      onBlur={(e) => {
+        e.currentTarget.scrollLeft = 0 // back to the list's start, like a one-line field
+        save()
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter') return
+        e.preventDefault() // no new line: Enter is done
+        e.currentTarget.blur()
+      }}
     />
   )
 }

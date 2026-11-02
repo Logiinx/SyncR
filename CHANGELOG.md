@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Emails can no longer open web pages inside the reader, stay blank or load images unasked.
 - **Fixed:** Small fixes: links on pictures and drawings inside emails open in the browser.
 
+**Notes**
+- **Fixed:** On a phone, Settings' Sites box wraps onto several lines, so the cursor stays in view.
+
 ## [0.38.8] - 2026-11-01
 
 **Notes**
