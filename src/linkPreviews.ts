@@ -20,7 +20,7 @@ import { animationsOn, growOpen, shrinkThen } from './animations'
 
 export interface LinkPreview {
   url: string
-  kind: 'github' | 'tweet' | 'page'
+  kind: 'github' | 'tweet' | 'reddit' | 'page'
   site: string | null
   title: string | null
   description: string | null
@@ -28,10 +28,12 @@ export interface LinkPreview {
   icon: string | null
   stars?: number | null // github
   language?: string | null // github
-  author?: string | null // tweet
+  author?: string | null // tweet, reddit ("u/name")
   handle?: string | null // tweet
   likes?: number | null // tweet
   date?: number | null // tweet
+  score?: number | null // reddit: votes
+  comments?: number | null // reddit (none for a comment)
 }
 
 // ---------- Settings (per device) ----------
@@ -109,7 +111,7 @@ function forChosenSite(href: string, settings: LinkPreviewSettings) {
 const FRESH_FOR = 14 * 24 * 3600_000 // then read again (a repo's description or stars change)
 const RETRY_AFTER = 24 * 3600_000 // a page that couldn't be read
 // Raised when the proxy's answers change: older cards are read again (shown meanwhile)
-const CACHE_VERSION = 2
+const CACHE_VERSION = 3
 
 // In memory: undefined = not asked yet, null = no card (the link stays a link)
 const previews = new Map<string, LinkPreview | null>()
@@ -241,13 +243,17 @@ function parts(href: string, preview: LinkPreview) {
   }
 }
 
-// The dim line of extras, "first · stars · language · likes · date"; null when there are none.
-// Stars and likes: a filled icon and the number, like a game's rating.
+// The dim line of extras, "first · stars · language · likes · date", for Reddit
+// "first · u/name · votes · comments"; null when there are none.
+// Stars, likes, votes and comments: a filled icon and the number, like a game's rating.
 function extrasLine(preview: LinkPreview, first?: string) {
   const items: (string | HTMLElement)[] = first ? [first] : []
   if (preview.stars != null) items.push(counted('star', preview.stars, 'stars'))
   if (preview.language) items.push(preview.language)
   if (preview.likes != null) items.push(counted('heart', preview.likes, 'likes'))
+  if (preview.kind === 'reddit' && preview.author) items.push(preview.author)
+  if (preview.score != null) items.push(counted('arrowBigUp', preview.score, 'votes'))
+  if (preview.comments != null) items.push(counted('messageSquare', preview.comments, 'comments'))
   if (preview.date) items.push(shortDate(preview.date))
   if (items.length === 0) return null
   const line = element('span', 'link-card-line')

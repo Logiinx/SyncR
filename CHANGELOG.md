@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Small fixes: links on pictures and drawings inside emails open in the browser.
 
 **Notes**
+- **Improved:** Reddit link cards show the post's title, subreddit, author, votes, comments and picture.
 - **Fixed:** On a phone, Settings' Sites box wraps onto several lines, so the cursor stays in view.
 
 ## [0.38.8] - 2026-11-01

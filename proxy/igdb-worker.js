@@ -272,10 +272,12 @@ async function steam(env, endpoint, request) {
 
 // ---------- Link previews ----------
 // Body (JSON): { url } → what a note's link card shows: { url, kind, site, title, description,
-// image, icon } (any of them may be null), plus for kind "github" { stars, language } and for
-// kind "tweet" { author, handle, likes, date }; { error } when the page can't be read.
+// image, icon } (any of them may be null), plus for kind "github" { stars, language }, for
+// kind "tweet" { author, handle, likes, date } and for kind "reddit" { author, score, comments };
+// { error } when the page can't be read.
 // GitHub repos come from GitHub's API, posts on X (x.com, twitter.com, fxtwitter.com…) from
-// fxtwitter's API (X itself shows nothing to programs), other pages from their meta tags.
+// fxtwitter's API (X itself shows nothing to programs), Reddit from vxreddit (see
+// redditPreview), other pages from their meta tags.
 const PREVIEW_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; SyncR-LinkPreview/1.0)' }
 const TWEET_HOSTS = ['x.com', 'twitter.com', 'fxtwitter.com', 'fixupx.com', 'vxtwitter.com', 'fixvx.com']
 // GitHub's white logo (its usual one is black, unseen on SyncR's dark cards)
@@ -334,6 +336,76 @@ async function tweetPreview(url) {
   }
 }
 
+// Reddit shows programs on Cloudflare only a "Prove your humanity" page. vxreddit (like
+// fxtwitter for X) reads posts for chat apps' link previews, so it's asked as one; Reddit's own
+// embed answer (title, subreddit, author only) when that fails.
+const REDDIT_ICON = 'https://www.redditstatic.com/shreddit/assets/favicon/64x64.png'
+const VXREDDIT_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; Discordbot/2.0; SyncR-LinkPreview/1.0)', Accept: 'text/html' }
+const isRedditHost = (host) => /(^|\.)reddit\.com$/.test(host) || ['redd.it', 'vxreddit.com', 'rxddit.com'].includes(host)
+
+async function redditPreview(url) {
+  let path = url.pathname
+  if (hostOf(url) === 'redd.it') path = `/comments${path}` // redd.it/abc = post abc
+  // A share link from the Reddit app (/r/x/s/abc) only forwards to the post
+  if (/^\/r\/[^/]+\/s\/[^/]+/.test(path)) {
+    const response = await fetch(`https://www.reddit.com${path}`, { headers: PREVIEW_HEADERS, redirect: 'manual' })
+    const target = response.headers.get('Location')
+    if (!target) return { error: `Reddit answered ${response.status}`, temporary: response.status !== 404 }
+    path = new URL(target, 'https://www.reddit.com').pathname
+  }
+  const base = { url: url.href, kind: 'reddit', site: 'Reddit', description: null, image: null, icon: REDDIT_ICON }
+  if (!/^\/(?:(?:r|u|user)\/[^/]+\/)?comments\/[a-z0-9]+/i.test(path)) {
+    // Not a post: a subreddit or a user, named from the address
+    const place = path.match(/^\/(r|u|user)\/([^/]+)/)
+    return { ...base, title: place ? `${place[1] === 'r' ? 'r' : 'u'}/${decodeURIComponent(place[2])}` : 'Reddit' }
+  }
+  return (await vxredditPost(path, base)) ?? (await redditEmbed(path, base))
+}
+
+// vxreddit's page: og:site_name = "u/name on r/sub - ⬆️ 123 | 💬 45" (no comments count for a
+// comment), the title in its oEmbed link, the post's text in og:description (unless og:title is
+// "vxReddit": then og:description is the title), og:image the picture. Null when not readable.
+async function vxredditPost(path, base) {
+  const response = await fetch(`https://vxreddit.com${path}`, { headers: VXREDDIT_HEADERS, redirect: 'manual' }).catch(() => null)
+  if (!response?.ok) return null
+  const html = await response.text()
+  const meta = metaTags(html)
+  const about = (meta['og:site_name'] ?? '').match(/^u\/(\S+) on r\/(\S+)\s*-\s*\D*?(-?\d+)(?:\s*\|\s*\D*?(\d+))?/)
+  if (!about) return null
+  const oembed = (html.match(/<link\s[^>]*>/gi) ?? []).find((tag) => /json\+oembed/i.test(attribute(tag, 'type') ?? ''))
+  const linkTitle = oembed ? attribute(oembed, 'title') : undefined
+  const ownTitle = meta['og:title'] && meta['og:title'] !== 'vxReddit'
+  const image = meta['og:image'] ?? meta['twitter:image'] ?? null
+  // A post's text can be very long; cards show a few lines
+  const text = ownTitle ? (meta['og:description'] ?? null) : null
+  return {
+    ...base,
+    site: `r/${about[2]}`,
+    title: linkTitle ? decodeHtml(linkTitle) : ownTitle ? meta['og:title'] : (meta['og:description'] ?? null),
+    description: text && text.length > 300 ? `${text.slice(0, 300).trimEnd()}…` : text,
+    image: image ? image.replace(/^http:/, 'https:') : null,
+    author: `u/${about[1]}`,
+    score: Number(about[3]),
+    comments: about[4] !== undefined ? Number(about[4]) : null,
+  }
+}
+
+// Reddit's embed answer (it lets Cloudflare in): title, author and subreddit, nothing more
+async function redditEmbed(path, base) {
+  const address = encodeURIComponent(`https://www.reddit.com${path}`)
+  const response = await fetch(`https://www.reddit.com/oembed?url=${address}`, { headers: PREVIEW_HEADERS })
+  if (response.status === 404) return { error: 'Post not found' }
+  if (!response.ok) return { error: `Reddit answered ${response.status}`, temporary: true }
+  const data = await response.json()
+  const subreddit = (data.html ?? '').match(/reddit\.com\/r\/([^/"]+)\//)?.[1]
+  return {
+    ...base,
+    site: subreddit ? `r/${subreddit}` : 'Reddit',
+    title: data.title ?? null,
+    author: data.author_name ? `u/${data.author_name}` : null,
+  }
+}
+
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
 // A number past Unicode's last character stays as written (fromCodePoint would throw)
 const character = (all, code) => (code <= 0x10ffff ? String.fromCodePoint(code) : all)
@@ -346,6 +418,17 @@ const decodeHtml = (text) =>
     .trim()
 
 const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'))?.slice(2).find((v) => v !== undefined)
+
+// A page's <meta> tags: { "og:title": "…", description: "…" } (the first of each name)
+function metaTags(html) {
+  const meta = {}
+  for (const tag of html.match(/<meta\s[^>]*>/gi) ?? []) {
+    const key = (attribute(tag, 'property') ?? attribute(tag, 'name') ?? '').toLowerCase()
+    const content = attribute(tag, 'content')
+    if (key && content !== undefined && !(key in meta)) meta[key] = decodeHtml(content)
+  }
+  return meta
+}
 
 // A page's title, description, picture and icon from its <head> (only the first 300 KB are read)
 async function pagePreview(url) {
@@ -365,12 +448,7 @@ async function pagePreview(url) {
   }
   reader.cancel().catch(() => {})
   const page = new URL(response.url || url.href)
-  const meta = {}
-  for (const tag of html.match(/<meta\s[^>]*>/gi) ?? []) {
-    const key = (attribute(tag, 'property') ?? attribute(tag, 'name') ?? '').toLowerCase()
-    const content = attribute(tag, 'content')
-    if (key && content !== undefined && !(key in meta)) meta[key] = decodeHtml(content)
-  }
+  const meta = metaTags(html)
   const absolute = (address) => {
     try {
       const href = address ? new URL(address, page).href : null
@@ -401,7 +479,14 @@ async function linkPreview(env, request) {
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return { error: 'Not a web link' }
   const host = hostOf(url)
-  const special = host === 'github.com' ? await githubPreview(env, url) : TWEET_HOSTS.includes(host) ? await tweetPreview(url) : null
+  const special =
+    host === 'github.com'
+      ? await githubPreview(env, url)
+      : TWEET_HOSTS.includes(host)
+        ? await tweetPreview(url)
+        : isRedditHost(host)
+          ? await redditPreview(url)
+          : null
   const preview = special ?? (await pagePreview(url))
   if (host === 'github.com' && !preview.error) preview.icon = GITHUB_ICON
   return preview
