@@ -100,10 +100,10 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
     })
     frameDoc.addEventListener('click', (e) => {
       const target = e.target as Element
-      const link = target.closest?.('a[href]')
+      const link = linkOf(target)
       if (link) {
         e.preventDefault()
-        openLink((link as HTMLAnchorElement).href)
+        openLink(link)
       } else if (target instanceof frameDoc.defaultView!.HTMLImageElement && viewable(target)) {
         openImageViewer(target.currentSrc || target.src)
       }
@@ -185,9 +185,16 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   )
 }
 
+// The address of the link around an element, '' if none: HTML links, image-map areas and SVG
+// links (their address can be in xlink:href)
+function linkOf(el: Element) {
+  const link = el.closest?.('a, area')
+  return link?.getAttribute('href') ?? link?.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ?? ''
+}
+
 // A picture worth opening full size: not inside a link, at least 50 px both ways (real size)
 const viewable = (img: HTMLImageElement) =>
-  !img.closest('a[href]') && img.naturalWidth >= 50 && img.naturalHeight >= 50
+  !linkOf(img) && img.naturalWidth >= 50 && img.naturalHeight >= 50
 
 // Scales the mail down (CSS zoom, so the page gets shorter too) when it's wider than the frame
 function fitToWidth(doc: Document) {
@@ -239,8 +246,14 @@ function cleanHtml(html: string) {
   // Tracking pixels never load, even with images shown (safeSenders.ts)
   const trackers = [...parsed.querySelectorAll('img')].filter(isTracker)
   trackers.forEach((el) => el.remove())
-  const styles = [...parsed.querySelectorAll('style')].map((el) => el.outerHTML).join('')
-  parsed.querySelectorAll('style').forEach((el) => el.remove())
+  // <img name="defaultView"> would hide the frame's own document.defaultView (and the like)
+  // from SyncR's code, which then stops darkening the mail or catching its links
+  parsed.querySelectorAll('img[name]').forEach((el) => el.removeAttribute('name'))
+  // Only HTML styles move up: an SVG <style> keeps markup (comments) that would turn into
+  // real tags once it's read again as HTML
+  const htmlStyles = [...parsed.querySelectorAll('style')].filter((el) => el.namespaceURI === 'http://www.w3.org/1999/xhtml')
+  const styles = htmlStyles.map((el) => el.outerHTML).join('')
+  htmlStyles.forEach((el) => el.remove())
   const wrapper = parsed.createElement('div')
   const bgcolor = parsed.body.getAttribute('bgcolor') // old-style page color: only works on <body>
   wrapper.setAttribute('style', `${bgcolor ? `background-color: ${bgcolor}; ` : ''}${parsed.body.getAttribute('style') ?? ''}`)

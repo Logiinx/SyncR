@@ -13,9 +13,11 @@ const FREE_MAIL = /^(gmail|googlemail|outlook|hotmail|live|msn|yahoo|ymail|aol|i
 // Endings that take two parts (example.co.uk → main domain example.co.uk, not co.uk)
 const TWO_PART_END = /\.(co|com|org|net|gov|ac|edu|ne|or|go)\.[a-z]{2}$/
 
-// "Jane <jane@example.com>" or a bare address → jane@example.com (lower case), else ''
+// "Jane <jane@example.com>" or a bare address → jane@example.com (lower case), else ''. The
+// address is the last <…> outside quotes: a name like "<news@amazon.com>" can't pose as it.
 export function senderAddress(from: string) {
-  const address = (/<([^>]+)>/.exec(from)?.[1] ?? from).trim().toLowerCase()
+  const unquoted = from.replace(/"(?:[^"\\]|\\.)*"/g, '')
+  const address = ([...unquoted.matchAll(/<([^<>]+)>/g)].pop()?.[1] ?? unquoted).trim().toLowerCase()
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? address : ''
 }
 
