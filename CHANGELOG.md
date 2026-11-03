@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-03
+
 **Mail**
 - **New:** The Mail tab shows how many emails you missed, on its icon, pinned or not.
 
