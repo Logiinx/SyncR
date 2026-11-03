@@ -4478,10 +4478,11 @@ button {
   display: none;
 }
 
-/* Stretches over the full height of the field, so the icon is centered */
+/* Stretches over the field's height, centered on the letters: the font leaves more room above
+   them than below, so they sit ~2px under the box's middle (top: 4px moves the eye down 2px) */
 .secret-field .eye {
   position: absolute;
-  top: 0;
+  top: 4px;
   bottom: 0;
   right: 0;
   width: 34px;
