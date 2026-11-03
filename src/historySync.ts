@@ -1,6 +1,6 @@
-import { encrypt } from './crypto'
+import { decrypt, encrypt, getKey } from './crypto'
 import { db, type Snapshot } from './db'
-import { deleteFile, listFolder, upload } from './dropbox'
+import { deleteFile, download, listFolder, upload } from './dropbox'
 import { cleanUpSnapshots, versionsToKeep } from './noteHistory'
 
 // Note history in Dropbox (see noteHistory.ts): /history/<note id>/<details>, one encrypted file
@@ -60,6 +60,22 @@ export async function listVersions(noteId: string): Promise<VersionInfo[]> {
     else shown.push({ ...version, device: version.device.toLowerCase() })
   }
   return shown.reverse()
+}
+
+export type VersionText = Pick<Snapshot, 'title' | 'content' | 'text'>
+
+// No passphrase entered on this device: versions in Dropbox can't be read
+export class NeedsPassphraseError extends Error {}
+
+// One version's text: from this device if it still has it, else from Dropbox (decrypted)
+export async function loadVersion(version: VersionInfo): Promise<VersionText> {
+  const local = await db.snapshots.get(`${version.noteId}-${version.savedAt}`)
+  if (local) return local
+  const key = await getKey()
+  if (!key) throw new NeedsPassphraseError()
+  const raw = await download(version.path)
+  if (!raw) throw new Error('This version is gone from Dropbox')
+  return JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
 }
 
 const CLEANED_KEY = 'syncr.history.cleanedAt'

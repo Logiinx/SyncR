@@ -45,8 +45,6 @@ export function ConflictBanner({ note }: { note: Note }) {
 function ConflictCompare({ original, copy, onClose }: { original: Note; copy: Note; onClose: () => void }) {
   const rows = useMemo(() => diffNotes(original.content, copy.content), [original.content, copy.content])
   const narrow = useNarrow() // phone: one merged view instead of two columns
-  // Folded runs of unchanged lines the user opened (by the index of their first row)
-  const [opened, setOpened] = useState<Set<number>>(new Set())
   const changes = rows.filter((row) => row.op !== 'same').length
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
@@ -86,9 +84,6 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, dialog])
 
-  // Which rows are shown: changes, plus a little context; the rest folds into one line
-  const parts = useMemo(() => fold(rows, opened), [rows, opened])
-
   return (
     <div className="compare">
       <div className="compare-header">
@@ -111,32 +106,49 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
         </span>
       </div>
 
-      <div className={`compare-body${narrow ? ' merged' : ' columns'}`}>
-        {!narrow && (
-          <>
-            <div className="compare-side-title" title={noteTitle(original)}>
-              Original · {noteTitle(original)}
-            </div>
-            <div className="compare-side-title">This copy</div>
-          </>
-        )}
-        {parts.map((part) =>
-          part.folded ? (
-            <button
-              key={`fold-${part.start}`}
-              className="compare-fold"
-              onClick={() => setOpened(new Set(opened).add(part.start))}
-            >
-              <UnfoldVertical size={14} /> {part.rows.length} unchanged lines
-            </button>
-          ) : (
-            part.rows.map((row, k) => (
-              <Fragment key={part.start + k}>{narrow ? <MergedRow row={row} /> : <SideRows row={row} />}</Fragment>
-            ))
-          ),
-        )}
-      </div>
+      <CompareBody rows={rows} narrow={narrow} leftTitle={`Original · ${noteTitle(original)}`} rightTitle="This copy" />
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
+    </div>
+  )
+}
+
+// ---------- The comparison ----------
+
+// The lines of two versions (diffNotes: before = left, after = right), also used by note history
+// (HistoryView.tsx). PC: side by side under the two titles. Phone: one merged view. Long runs of
+// unchanged lines fold into one line, which opens on a click.
+export function CompareBody(props: { rows: Row[]; narrow: boolean; leftTitle: string; rightTitle: string }) {
+  const { rows, narrow, leftTitle, rightTitle } = props
+  // Folded runs of unchanged lines the user opened (by the index of their first row)
+  const [opened, setOpened] = useState<Set<number>>(new Set())
+  // Which rows are shown: changes, plus a little context; the rest folds into one line
+  const parts = useMemo(() => fold(rows, opened), [rows, opened])
+
+  return (
+    <div className={`compare-body${narrow ? ' merged' : ' columns'}`}>
+      {!narrow && (
+        <>
+          <div className="compare-side-title" title={leftTitle}>
+            {leftTitle}
+          </div>
+          <div className="compare-side-title">{rightTitle}</div>
+        </>
+      )}
+      {parts.map((part) =>
+        part.folded ? (
+          <button
+            key={`fold-${part.start}`}
+            className="compare-fold"
+            onClick={() => setOpened(new Set(opened).add(part.start))}
+          >
+            <UnfoldVertical size={14} /> {part.rows.length} unchanged lines
+          </button>
+        ) : (
+          part.rows.map((row, k) => (
+            <Fragment key={part.start + k}>{narrow ? <MergedRow row={row} /> : <SideRows row={row} />}</Fragment>
+          ))
+        ),
+      )}
     </div>
   )
 }
