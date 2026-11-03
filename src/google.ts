@@ -205,6 +205,7 @@ export async function calendarApi(path: string, init: RequestInit = {}) {
   const send = async () =>
     fetch(`https://www.googleapis.com/calendar/v3/${path}`, {
       ...init,
+      cache: 'no-store', // events never kept in the browser's cache files (Google doesn't forbid it)
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),

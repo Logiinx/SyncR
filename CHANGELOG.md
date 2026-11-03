@@ -9,7 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Small fixes: the passphrase box showed two eye buttons on the PC.
 
 **Mail**
-- **Improved:** On the PC, new-mail cards are now stored encrypted too (and behind the PIN lock).
+- **Improved:** On the PC, mail cards are stored encrypted, and emails no longer stay in the cache.
 
 ## [0.40.0] - 2026-11-03
 

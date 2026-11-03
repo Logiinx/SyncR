@@ -239,6 +239,7 @@ export async function googleApi(
     try {
       return await fetch(url, {
         ...init,
+        cache: 'no-store', // emails never kept in the browser's cache files (Google doesn't forbid it)
         signal: AbortSignal.timeout(timeoutMs),
         headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` },
       })
