@@ -29,7 +29,7 @@ import { createCard } from './db'
 import { insertImages } from './image'
 import { hasLineBreaks, splitLineBreaks } from './lineBreaks'
 import { alignLine, pathAbove } from './alignPaths'
-import { useHistoryAvailable } from './HistoryView'
+import { useHistoryAvailable } from './historySync'
 import { copyLinkToBlock } from './noteLinks'
 import { useNarrow } from './useNarrow'
 

@@ -1,4 +1,4 @@
-import { db, savePendingEdits, watchNoteEdits, type Note, type Snapshot } from './db'
+import { db, saveNoteContent, savePendingEdits, watchNoteEdits, type Note, type Snapshot } from './db'
 import { deviceName } from './device'
 
 // Note history: older versions of each note ("snapshots"), saved at moments that matter
@@ -194,6 +194,23 @@ export function endSession(noteId: string): Promise<void> {
 export async function endAllSessions() {
   await savePendingEdits()
   await Promise.all(Object.keys(sessions).map(endSession))
+}
+
+// ---------- Restoring ----------
+
+// Puts an older version's text back into the note (its name stays: a rename isn't what a restore
+// is for). The note as it was is kept as a protected version first, so the restore can be undone
+// from History too.
+export async function restoreVersion(noteId: string, version: Pick<Note, 'content' | 'text'>) {
+  await savePendingEdits()
+  await endSession(noteId)
+  const note = await db.notes.get(noteId)
+  if (!note || !version.content) return
+  await inOrder(async () => {
+    await snapshot(note, true)
+  })
+  await saveNoteContent(noteId, version.content, version.text)
+  await endSession(noteId) // the restored text is the newest version
 }
 
 // ---------- What is kept ----------

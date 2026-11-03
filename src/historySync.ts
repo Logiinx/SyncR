@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import { decrypt, encrypt, getKey } from './crypto'
 import { db, type Snapshot } from './db'
-import { deleteFile, download, listFolder, upload } from './dropbox'
+import { deleteFile, download, isConnected, listFolder, upload } from './dropbox'
 import { cleanUpSnapshots, versionsToKeep } from './noteHistory'
 
 // Note history in Dropbox (see noteHistory.ts): /history/<note id>/<details>, one encrypted file
@@ -60,6 +61,22 @@ export async function listVersions(noteId: string): Promise<VersionInfo[]> {
     else shown.push({ ...version, device: version.device.toLowerCase() })
   }
   return shown.reverse()
+}
+
+// True while the history can be read: Dropbox connected and online (the History button, Toolbar.tsx)
+export function useHistoryAvailable() {
+  const check = () => isConnected() && navigator.onLine
+  const [available, setAvailable] = useState(check)
+  useEffect(() => {
+    const update = () => setAvailable(check())
+    for (const event of ['online', 'offline']) window.addEventListener(event, update)
+    window.addEventListener('dropbox-change', update)
+    return () => {
+      for (const event of ['online', 'offline']) window.removeEventListener(event, update)
+      window.removeEventListener('dropbox-change', update)
+    }
+  }, [])
+  return available
 }
 
 export type VersionText = Pick<Snapshot, 'title' | 'content' | 'text'>

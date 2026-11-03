@@ -4868,23 +4868,27 @@ h3.games-group-title {
   }
 }
 
-.games-views button {
+.games-views button,
+.history-switch button {
   padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.games-views button:hover {
+.games-views button:hover,
+.history-switch button:hover {
   color: var(--text);
 }
 
 /* The blue fill: .tab-fill (FillSwitch), over the border */
-.games-views button.active {
+.games-views button.active,
+.history-switch button.active {
   color: var(--text);
 }
 
-.games-views .tab-fill {
+.games-views .tab-fill,
+.history-switch .tab-fill {
   inset: -1px;
 }
 
@@ -6038,6 +6042,39 @@ img[data-fade] {
   padding: 24px;
   color: var(--text-dim);
   text-align: center;
+}
+
+/* Differences | Full text */
+.history-switch {
+  display: flex;
+  gap: 4px;
+}
+
+.history-switch button {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+
+/* Full text: the version alone, as in the note (read only), to select and copy from */
+.history-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.history-text .editor .tiptap {
+  min-height: 0;
+  padding-top: 8px;
+}
+
+/* Phone: the version's time, as small as in the list */
+.history-detail-head .history-device {
+  font-size: 13px;
+}
+
+/* Restore this version: at the right end */
+.history-detail-head .compare-actions {
+  margin-left: auto;
 }
 
 /* Above the comparison: how many differences (phone: the legend and the version's time) */

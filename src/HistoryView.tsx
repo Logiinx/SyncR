@@ -1,39 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { EditorContent, useEditor } from '@tiptap/react'
 import { TriangleAlert } from 'lucide-react'
 import BackButton from './BackButton'
 import { CompareBody } from './ConflictCompare'
 import { clockTime, nearDay, shortDate } from './dates'
 import { noteTitle, type Note } from './db'
-import { isConnected } from './dropbox'
+import Dialog, { type DialogRequest } from './Dialog'
 import { listVersions, loadVersion, NeedsPassphraseError, type VersionInfo, type VersionText } from './historySync'
-import { hashOf } from './noteHistory'
+import { hashOf, restoreVersion } from './noteHistory'
+import { extensions } from './NoteEditor'
 import { diffNotes } from './noteDiff'
+import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 
 // Note history (noteHistory.ts): the older versions of a note, over the note like a conflict
 // compare. The list is read from Dropbox each time it opens, so it needs sync and internet
 // (useHistoryAvailable). Picking a version compares it with the note as it is now: on the PC
 // the list stays on the left, on the phone the comparison replaces the list ("‹ Back" returns).
-
-// True while the history can be read: Dropbox connected and online
-export function useHistoryAvailable() {
-  const check = () => isConnected() && navigator.onLine
-  const [available, setAvailable] = useState(check)
-  useEffect(() => {
-    const update = () => setAvailable(check())
-    for (const event of ['online', 'offline']) window.addEventListener(event, update)
-    window.addEventListener('dropbox-change', update)
-    return () => {
-      for (const event of ['online', 'offline']) window.removeEventListener(event, update)
-      window.removeEventListener('dropbox-change', update)
-    }
-  }, [])
-  return available
-}
+// "Full text" shows the version alone (read only), to select and copy parts of it; "Restore this
+// version" puts it back into the note (noteHistory.ts restoreVersion), after asking.
 
 const DEVICES: Record<string, string> = { pc: 'PC', phone: 'Phone', browser: 'Browser' }
 
 const dayLabel = (time: number) => nearDay(time) ?? shortDate(time)
+
+type Mode = 'diff' | 'text'
+const MODES: { value: Mode; label: string }[] = [
+  { value: 'diff', label: 'Differences' },
+  { value: 'text', label: 'Full text' },
+]
 
 type Loaded = { path: string; text: VersionText } | { path: string; state: 'loading' | 'error' | 'passphrase' }
 
@@ -45,6 +40,8 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   // Versions already read (they never change), by path
   const cache = useRef(new Map<string, VersionText>())
+  const [mode, setMode] = useState<Mode>('diff')
+  const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
   function load() {
     setVersions('loading')
@@ -81,11 +78,24 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
 
   // Phone with a version open: back to the list. Otherwise: back to the note.
   const back = narrow && selected ? () => setSelected(null) : onClose
+  // (While the question is open, Escape is for that)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && back()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !dialog && back()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [back])
+  }, [back, dialog])
+
+  function askRestore(version: VersionInfo, text: VersionText) {
+    setDialog({
+      title: 'Restore this version?',
+      message: `The note's text is replaced by the version from ${when(version)}. The text it has now stays in History, so you can go back to it.`,
+      confirmLabel: 'Restore',
+      onConfirm: async () => {
+        await restoreVersion(note.id, text)
+        onClose()
+      },
+    })
+  }
 
   // Grouped by day, newest first
   const days: { label: string; versions: VersionInfo[] }[] = []
@@ -150,7 +160,15 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
             {!selected || !loaded ? (
               <div className="history-hint">Pick a version to compare it with the note.</div>
             ) : 'text' in loaded ? (
-              <VersionCompare version={selected} text={loaded.text} note={note} narrow={narrow} />
+              <VersionCompare
+                version={selected}
+                text={loaded.text}
+                note={note}
+                narrow={narrow}
+                mode={mode}
+                onMode={setMode}
+                onRestore={() => askRestore(selected, loaded.text)}
+              />
             ) : loaded.state === 'loading' ? (
               <div className="history-hint">
                 <span className="skeleton" style={{ width: 220 }} />
@@ -168,34 +186,67 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
           </div>
         )}
       </div>
+      {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </div>
   )
 }
 
-// The chosen version (left) next to the note now (right); on the phone merged
-function VersionCompare(props: { version: VersionInfo; text: VersionText; note: Note; narrow: boolean }) {
-  const { version, text, note, narrow } = props
+const when = (version: VersionInfo) => `${dayLabel(version.savedAt)}, ${clockTime(version.savedAt)}`
+
+// The chosen version: compared with the note now (left / right; on the phone merged), or alone
+interface VersionCompareProps {
+  version: VersionInfo
+  text: VersionText
+  note: Note
+  narrow: boolean
+  mode: Mode
+  onMode: (mode: Mode) => void
+  onRestore: () => void
+}
+
+function VersionCompare({ version, text, note, narrow, mode, onMode, onRestore }: VersionCompareProps) {
   const rows = useMemo(() => diffNotes(text.content, note.content), [text.content, note.content])
   const changes = rows.filter((row) => row.op !== 'same').length
-  const when = `${dayLabel(version.savedAt)}, ${clockTime(version.savedAt)}`
   return (
     <>
       <div className="history-detail-head">
-        <span className="compare-title">
-          {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
-        </span>
-        {narrow && (
+        <FillSwitch className="history-switch" options={MODES} value={mode} onChange={onMode} label="Show" />
+        {mode === 'diff' && (
+          <span className="compare-title">
+            {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
+          </span>
+        )}
+        {narrow && mode === 'diff' && (
           <span className="compare-legend">
             <span className="cmp-removed">only in this version</span>
             <span className="cmp-added">only now</span>
             <span className="cmp-formatted">formatting</span>
           </span>
         )}
-        {narrow && <span className="history-device">{when}</span>}
+        {narrow && <span className="history-device">{when(version)}</span>}
+        <span className="compare-actions">
+          <button onClick={onRestore} disabled={!changes} title="Put this version back into the note">
+            Restore this version
+          </button>
+        </span>
       </div>
-      {/* A new comparison for each version (folded lines start folded again) */}
-      <CompareBody key={version.path} rows={rows} narrow={narrow} leftTitle={`This version · ${when}`} rightTitle="Now" />
+      {/* A new view for each version (folded lines start folded again) */}
+      {mode === 'diff' ? (
+        <CompareBody key={version.path} rows={rows} narrow={narrow} leftTitle={`This version · ${when(version)}`} rightTitle="Now" />
+      ) : (
+        <FullText key={version.path} text={text} />
+      )}
     </>
+  )
+}
+
+// The version as it looks in the note, read only: select and copy (with its formatting)
+function FullText({ text }: { text: VersionText }) {
+  const editor = useEditor({ extensions, content: text.content, editable: false })
+  return (
+    <div className="history-text">
+      <EditorContent editor={editor} className="editor" />
+    </div>
   )
 }
 
