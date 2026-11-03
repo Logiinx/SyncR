@@ -58,6 +58,9 @@ import {
 } from './appearance'
 import Spinner from './Spinner'
 import CloseButton from './CloseButton'
+import PinDialog, { type PinDialogMode } from './PinDialog'
+import { pinLockOn } from './secrets'
+import { getKey } from './crypto'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
 // setting one row: name on the left, its control on the right. The Accounts card shows how
@@ -136,6 +139,18 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // "What's new" also opens in place of Settings, like the color rules
   const [showWhatsNew, setShowWhatsNew] = useState(false)
 
+  // PIN lock (PC, pinLock.ts): needs sync set up (its passphrase opens a forgotten PIN)
+  const [pinOn, setPinOn] = useState(pinLockOn)
+  const [pinDialog, setPinDialog] = useState<PinDialogMode | null>(null)
+  const [syncReady, setSyncReady] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!isTauri()) return
+    const check = () => void getKey().then((key) => setSyncReady(key !== undefined))
+    check()
+    window.addEventListener('sync-key-change', check)
+    return () => window.removeEventListener('sync-key-change', check)
+  }, [])
+
   // The Accounts card: each connection's state (the details: "Manage accounts…")
   const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
   const gmailAccounts = useGmailAccounts()
@@ -150,6 +165,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   }, [])
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
+  if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
   const cards = (
@@ -410,6 +426,29 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 checked={background.startHidden}
                 disabled={!autostart}
                 onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+              />
+            </SettingRow>
+            <SettingRow
+              label={
+                <>
+                  PIN lock
+                  <InfoTip label="About the PIN lock">
+                    {!pinOn && syncReady === false && 'Needs sync set up. '}
+                    Asks for a PIN when SyncR starts. Notes, sign-ins and the sync key stay locked until then.
+                  </InfoTip>
+                </>
+              }
+            >
+              {pinOn && (
+                <button className="setting-button" onClick={() => setPinDialog('change')}>
+                  Change PIN…
+                </button>
+              )}
+              <input
+                type="checkbox"
+                checked={pinOn}
+                disabled={!pinOn && !syncReady}
+                onChange={(e) => setPinDialog(e.target.checked ? 'on' : 'off')}
               />
             </SettingRow>
           </>
