@@ -1,7 +1,8 @@
 import Dexie, { type Table } from 'dexie'
 import { isTauri } from '@tauri-apps/api/core'
+import { emit, listen } from '@tauri-apps/api/event'
 import { db, defineSchema, LOCAL_DB_FLAG, sealedDb } from './db'
-import { previewKey, readyBlob, sealingLayer, setSealKey } from './sealing'
+import { currentSealKey, previewKey, readyBlob, sealingLayer, setSealKey } from './sealing'
 import { getSecret, LOCAL_KEY_SECRET, openWaitingSecrets, pinLockOn, setSecret } from './secrets'
 import { encrypt, fromBase64, getKey, toBase64 } from './crypto'
 
@@ -27,6 +28,7 @@ export type LocalDbState = 'ready' | 'moved' | 'key-missing' | 'locked'
 export async function prepareLocalDb(isPopup: boolean): Promise<LocalDbState> {
   if (!isTauri()) return 'ready'
   if (sealedDb) {
+    if (!isPopup) shareLocalKey()
     const stored = getSecret(LOCAL_KEY_SECRET)
     if (!stored) return 'key-missing'
     if (pinLockOn()) return 'locked'
@@ -56,6 +58,32 @@ export function openWithKey(key: Uint8Array, isPopup: boolean) {
   setSealKey(key)
   void openWaitingSecrets()
   if (!isPopup) cleanUp().catch((error) => console.error('Local database clean-up failed', error))
+}
+
+// PIN lock on: the reminder pop-up can't open the key's lockboxes (nobody types the PIN there),
+// so the main window hands it the key once unlocked (Tauri events, between SyncR's own windows).
+// The main window answers from the start: the lock may be turned on while SyncR runs, and the
+// pop-up opened after that finds it locked.
+const KEY_REQUEST = 'local-key-request'
+const KEY_GIVEN = 'local-key'
+
+function shareLocalKey() {
+  void listen(KEY_REQUEST, () => {
+    const key = currentSealKey()
+    if (key) void emit(KEY_GIVEN, toBase64(key))
+  })
+}
+
+// In the pop-up: waits for the main window's key (it only opens the pop-up once unlocked)
+export function receiveLocalKey() {
+  return new Promise<void>((resolve) => {
+    const stop = listen<string>(KEY_GIVEN, (event) => {
+      void stop.then((unlisten) => unlisten())
+      openWithKey(fromBase64(event.payload), true)
+      resolve()
+    })
+    void stop.then(() => emit(KEY_REQUEST))
+  })
 }
 
 function notice(message: string) {

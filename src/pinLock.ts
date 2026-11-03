@@ -117,6 +117,17 @@ export async function turnPinOff() {
   localStorage.removeItem(TRIES)
 }
 
+// A passphrase entered or created on this PC (crypto.ts). Another passphrase than the lockbox's
+// (a new salt: crypto.json was made again, e.g. the Dropbox folder was reset): the lockbox is
+// locked with the new one, so the passphrase that works for sync also opens a forgotten PIN.
+export async function refreshPassphraseBox(syncKey: CryptoKey, salt: string, iterations: number) {
+  const lock = readLock()
+  const localKey = currentSealKey()
+  if (!lock || !localKey || (lock.pass.salt === salt && lock.pass.iterations === iterations)) return
+  const pass = { salt, iterations, box: toBase64(await encrypt(syncKey, localKey as Uint8Array<ArrayBuffer>)) }
+  if (!(await setSecret(LOCAL_KEY_SECRET, JSON.stringify({ ...lock, pass })))) console.error('Passphrase lockbox not updated')
+}
+
 // The key or its lockboxes, then the sign-ins the new way. If Windows didn't store the first,
 // everything stays as before. If a sign-in didn't get saved, it's done after the next unlock.
 async function saveLock(value: string, before: string) {

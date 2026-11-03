@@ -2,6 +2,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { db } from './db'
 import { download, upload } from './dropbox'
 import { getSecret, setSecret, SYNC_KEY_SECRET } from './secrets'
+import { refreshPassphraseBox } from './pinLock' // (pinLock.ts imports this file too: both only call each other later)
 
 // End-to-end encryption for everything stored in Dropbox.
 // AES-256-GCM, key derived from the passphrase with PBKDF2-SHA256.
@@ -123,6 +124,12 @@ export async function createPassphrase(passphrase: string) {
   const created = await upload(CRYPTO_FILE, new TextEncoder().encode(JSON.stringify(file)), 'add')
   if (!created) throw new Error('A passphrase was just created on another device. Close this and enter that one.')
   await saveKey(key)
+  refreshPinLock(key, file)
+}
+
+// PIN lock on (PC): its passphrase lockbox follows a new passphrase
+function refreshPinLock(key: CryptoKey, file: CryptoFile) {
+  if (isPc()) void refreshPassphraseBox(key, file.salt, file.iterations)
 }
 
 // ---------- For the PIN lock's passphrase lockbox (pinLock.ts) ----------
@@ -158,5 +165,6 @@ export async function unlock(passphrase: string) {
     return false
   }
   await saveKey(key)
+  refreshPinLock(key, file)
   return true
 }

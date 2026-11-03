@@ -10,7 +10,7 @@ import { setUpScrollbars } from './scrollbars'
 import { setUpBoardTab } from './boardTab'
 import { startClosingAnimations } from './animations'
 import { loadSecrets } from './secrets'
-import { prepareLocalDb } from './localDb'
+import { prepareLocalDb, receiveLocalKey } from './localDb'
 import KeyMissing from './KeyMissing'
 import LockScreen from './LockScreen'
 
@@ -29,9 +29,14 @@ if (!isPopup) startClosingAnimations()
 // at start (Windows), so the side panels' second without animation counts from the first draw.
 // Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).
 // PIN lock on: the lock screen first, the app in its place once unlocked (LockScreen.tsx).
-void loadSecrets().then(() => prepareLocalDb(isPopup)).then((state) => {
+// The pop-up gets the key from the main window instead (PIN lock on, receiveLocalKey).
+void loadSecrets().then(() => prepareLocalDb(isPopup)).then(async (state) => {
   if (state === 'moved') return location.reload() // opens the new database
-  if ((state === 'key-missing' || state === 'locked') && isPopup) return
+  if (state === 'key-missing' && isPopup) return
+  if (state === 'locked' && isPopup) {
+    await receiveLocalKey()
+    state = 'ready'
+  }
   const root = createRoot(document.getElementById('root')!)
   // Side panels slide in only when opened, not when the app starts with them open (useSlideIn)
   const ready = () => setTimeout(() => document.documentElement.classList.add('ready'), 1000)
