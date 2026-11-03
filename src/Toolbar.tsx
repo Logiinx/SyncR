@@ -42,7 +42,8 @@ const ICON_SIZE = 16
 // selection, the line buttons act on the cursor's line. On a phone not all fit: Strikethrough and
 // the buttons after Checklist (except Image) and History are in a "⋯" list. Scrolls sideways if it still
 // doesn't fit.
-function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; title: string }) {
+function Toolbar(props: { editor: Editor; noteId: string; title: string; conflictCopy: boolean }) {
+  const { editor, noteId, title, conflictCopy } = props
   const narrow = useNarrow()
   const fileInput = useRef<HTMLInputElement>(null)
   // Color picker under the color button (fixed: the toolbar itself may scroll sideways)
@@ -139,7 +140,8 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
   }
 
   // Note history (HistoryView.tsx, shown by NoteView): needs Dropbox and internet
-  const historyAvailable = useHistoryAvailable()
+  // Conflict copies have none (noteHistory.ts)
+  const historyAvailable = useHistoryAvailable() && !conflictCopy
   const openHistory = () => window.dispatchEvent(new CustomEvent('open-history', { detail: { id: noteId } }))
 
   // Phone: the "⋯" list, with only what can be used right now
@@ -290,7 +292,13 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
             </ToolButton>
 
             <ToolButton
-              title={historyAvailable ? 'History (older versions of this note)' : 'History (needs Dropbox sync and internet)'}
+              title={
+                conflictCopy
+                  ? 'History (conflict copies have none: see the original note)'
+                  : historyAvailable
+                    ? 'History (older versions of this note)'
+                    : 'History (needs Dropbox sync and internet)'
+              }
               className="toolbar-end"
               disabled={!historyAvailable}
               onClick={openHistory}

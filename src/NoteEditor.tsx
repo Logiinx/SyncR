@@ -221,7 +221,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
 
   return (
     <>
-      <Toolbar editor={editor} noteId={note.id} title={noteTitle(note)} />
+      <Toolbar editor={editor} noteId={note.id} title={noteTitle(note)} conflictCopy={!!note.conflictOf} />
       <EditorContent editor={editor} className="editor" onContextMenu={onContextMenu} />
       {cardMenu && (
         <ContextMenu x={cardMenu.x} y={cardMenu.y} header={cardMenu.header} items={cardMenu.items} onClose={() => setCardMenu(null)} />

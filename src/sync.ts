@@ -22,7 +22,8 @@ import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from
 //   /cards/<id>        one file per Board card (a deleted one stays as a row with deleted = true)
 //   /games/<id>        one file per game in the Games tab (same as cards)
 //   /history/<note id>/<details>  older versions of notes (noteHistory.ts, historySync.ts)
-// (/reminders/ held SyncR's own reminders, replaced by Google Calendar events: removed, step 4c.)
+// (/reminders/ held SyncR's own reminders, replaced by Google Calendar events in v0.16; syncs up to
+// v0.38 removed it.)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
 // - Changed on both sides: the newest keeps the note, the other becomes a conflict copy.
@@ -55,7 +56,7 @@ export class RetrySoonError extends Error {}
 
 
 // The folders sync reads each time (not history/: see noteHistory.ts)
-const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/reminders', '/cards', '/games']
+const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games']
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
@@ -180,7 +181,6 @@ async function runSync(): Promise<SyncResult> {
   const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
   const remoteSettings = new Map<string, string>() // name -> rev
-  const oldReminders: string[] = [] // paths in /reminders/ (removed in step 4c)
   const remoteCards = new Map<string, string>() // id -> rev
   const remoteGames = new Map<string, string>() // id -> rev
   ownWrites.clear()
@@ -192,7 +192,6 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'deleted') remoteDeleted.set(id, file.modified)
     if (folder === 'attachments') remoteAttachments.add(id)
     if (folder === 'settings') remoteSettings.set(id, file.rev)
-    if (folder === 'reminders') oldReminders.push(file.path)
     if (folder === 'cards') remoteCards.set(id, file.rev)
     if (folder === 'games') remoteGames.set(id, file.rev)
   }
@@ -353,13 +352,6 @@ async function runSync(): Promise<SyncResult> {
 
   // ---------- 4c. Board cards and games ----------
   // Like settings: changed on both sides means the newest wins. See syncRecords().
-
-  // SyncR's own reminders, replaced by Google Calendar events (v0.16): the first sync that still
-  // finds their folder removes it. Its files count as our own changes (see the cursor below).
-  if (oldReminders.length) {
-    await deleteFile('/reminders')
-    for (const path of oldReminders) ownWrites.set(path.toLowerCase(), null)
-  }
 
   // Deleted ones older than 90 days disappear here and from Dropbox
   for (const id of await removeOldDeletedCards()) {
