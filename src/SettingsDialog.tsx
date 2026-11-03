@@ -61,6 +61,7 @@ import CloseButton from './CloseButton'
 import PinDialog, { type PinDialogMode } from './PinDialog'
 import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
+import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
 // setting one row: name on the left, its control on the right. The Accounts card shows how
@@ -154,6 +155,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // The Accounts card: each connection's state (the details: "Manage accounts…")
   const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
   const gmailAccounts = useGmailAccounts()
+  const allDayAlert = useAllDayAlert()
   const instant = useInstantStatus()
   const proxyStatus = useProxyStatus(useConnection() ?? null)
   const steam = useSteamProfile()
@@ -305,6 +307,30 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
         <SettingRow label="Reminder sound">
           <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
+        </SettingRow>
+        <SettingRow
+          label={
+            <>
+              All-day events <Synced />
+              <InfoTip label="About all-day alerts">
+                Google doesn't share its default alert for all-day events with apps. SyncR uses this one for
+                all-day events that have no alert it can see.
+              </InfoTip>
+            </>
+          }
+        >
+          {allDayAlert !== undefined && (
+            <select
+              value={allDayAlert === null ? 'none' : String(allDayAlert)}
+              onChange={(e) => saveAllDayAlert(e.target.value === 'none' ? null : Number(e.target.value))}
+            >
+              {ALL_DAY_ALERTS.map((minutes) => (
+                <option key={String(minutes)} value={minutes === null ? 'none' : String(minutes)}>
+                  {minutes === null ? 'No alert' : allDayAlertText(minutes)}
+                </option>
+              ))}
+            </select>
+          )}
         </SettingRow>
         {mail && gmailAccounts.length > 0 && (
           <>

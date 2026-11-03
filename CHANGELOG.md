@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Fixed:** All-day events with Google's default alert now alert, at the time set in Settings → Alerts.
+- **Fixed:** Small fixes: a game release's alert reads "2 days before at 10:00", not "38 hours before".
+
 ## [0.41.0] - 2026-11-03
 
 **App**
