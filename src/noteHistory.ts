@@ -149,7 +149,7 @@ async function noteEdited(before: Note, after: Note | null) {
     }
 
     if (!after) {
-      // The note is deleted: its last version is kept, protected (for a trash later)
+      // The note is deleted: its last version is kept, protected (recoverable by hand from Dropbox)
       await snapshot(before, true)
       delete sessions[before.id]
       window.clearTimeout(idleTimers.get(before.id))
