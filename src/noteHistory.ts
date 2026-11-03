@@ -1,5 +1,5 @@
 import { db, savePendingEdits, watchNoteEdits, type Note, type Snapshot } from './db'
-import { deviceName } from './sync'
+import { deviceName } from './device'
 
 // Note history: older versions of each note ("snapshots"), saved at moments that matter
 // instead of at every autosave (see DECISIONS.md, "Note history"):
@@ -196,6 +196,50 @@ export async function endAllSessions() {
   await Promise.all(Object.keys(sessions).map(endSession))
 }
 
+// ---------- What is kept ----------
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const KEEP_ALL_MS = 2 * DAY_MS
+export const KEEP_MS = 30 * DAY_MS
+
+// Which versions of one note stay: all from the last 2 days, protected ones for 30 days, and the
+// last one of each day for 30 days. Every device uses the same rule, so two devices cleaning up
+// at the same time remove the same ones.
+export function versionsToKeep<T extends { savedAt: number; protected: boolean }>(versions: T[], now = Date.now()) {
+  const keep = new Set<T>()
+  const days = new Set<string>()
+  for (const version of [...versions].sort((a, b) => b.savedAt - a.savedAt)) {
+    const age = now - version.savedAt
+    if (age > KEEP_MS) continue
+    const day = new Date(version.savedAt).toDateString()
+    if (age <= KEEP_ALL_MS || version.protected || !days.has(day)) keep.add(version)
+    days.add(day)
+  }
+  return keep
+}
+
+// Removes the snapshots this device doesn't need anymore. Uploaded ones are in Dropbox, so only
+// the newest of each note stays (the next one is compared with it), and those an open session
+// started from. Ones not uploaded (Dropbox not set up) follow the keep rule.
+export function cleanUpSnapshots() {
+  return inOrder(async () => {
+    const now = Date.now()
+    const bases = new Set(Object.values(sessions).map((session) => session.baseId))
+    const byNote = new Map<string, Snapshot[]>()
+    for (const row of await db.snapshots.toArray()) byNote.set(row.noteId, [...(byNote.get(row.noteId) ?? []), row])
+    const remove: string[] = []
+    for (const rows of byNote.values()) {
+      const latest = rows.reduce((a, b) => (b.savedAt > a.savedAt ? b : a))
+      const kept = versionsToKeep(rows.filter((row) => !row.uploaded), now)
+      for (const row of rows) {
+        const needed = bases.has(row.id) || (now - row.savedAt <= KEEP_MS && (row === latest || kept.has(row)))
+        if (!needed) remove.push(row.id)
+      }
+    }
+    await db.snapshots.bulkDelete(remove)
+  })
+}
+
 // Started once by the app
 let started = false
 export function startNoteHistory() {
@@ -204,6 +248,7 @@ export function startNoteHistory() {
   watchNoteEdits(noteEdited)
   // Sessions the app couldn't end last time (closed suddenly)
   for (const noteId of Object.keys(sessions)) void endSession(noteId)
+  void cleanUpSnapshots()
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void endAllSessions()
   })

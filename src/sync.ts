@@ -1,4 +1,3 @@
-import { isTauri } from '@tauri-apps/api/core'
 import type { Table, UpdateSpec } from 'dexie'
 import {
   db,
@@ -11,6 +10,8 @@ import {
 } from './db'
 import { decrypt, encrypt, getKey } from './crypto'
 import { clockTime, shortDate } from './dates'
+import { deviceName } from './device'
+import { syncHistory } from './historySync'
 import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
@@ -20,6 +21,7 @@ import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
 //   /cards/<id>        one file per Board card (a deleted one stays as a row with deleted = true)
 //   /games/<id>        one file per game in the Games tab (same as cards)
+//   /history/<note id>/<details>  older versions of notes (noteHistory.ts, historySync.ts)
 // (/reminders/ held SyncR's own reminders, replaced by Google Calendar events: removed, step 4c.)
 // Rules (see DECISIONS.md, "Sync plan"):
 // - A note changed on one side only: that version is copied to the other side.
@@ -51,16 +53,14 @@ export interface SyncResult {
 // Something changed in Dropbox during the sync. Trying again a bit later fixes it.
 export class RetrySoonError extends Error {}
 
-export function deviceName() {
-  if (isTauri()) return 'PC'
-  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) return 'phone'
-  return 'browser'
-}
+
+// The folders sync reads each time (not history/: see noteHistory.ts)
+const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/reminders', '/cards', '/games']
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
-const UNUSED_IMAGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+const UNUSED_IMAGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days, as long as note history keeps versions
 const OLD_MARKER_MS = 90 * 24 * 60 * 60 * 1000 // 90 days
 
 // A version that lost a conflict, kept as a note (see saveConflictCopy)
@@ -184,7 +184,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteCards = new Map<string, string>() // id -> rev
   const remoteGames = new Map<string, string>() // id -> rev
   ownWrites.clear()
-  const { files, cursor } = await listFiles()
+  const { files, cursor } = await listFiles(SYNC_FOLDERS)
   result.cursor = cursor
   for (const file of files) {
     const [, folder, id] = file.path.split('/')
@@ -371,6 +371,15 @@ async function runSync(): Promise<SyncResult> {
   await syncRecords(db.cards, 'cards', remoteCards, key, result, byId)
   await syncRecords(db.games, 'games', remoteGames, key, result, byId)
 
+  // ---------- 4d. Note history (historySync.ts) ----------
+  // Never stops the sync: what isn't sent now is sent next time.
+
+  try {
+    await syncHistory(key)
+  } catch (e) {
+    console.warn('Note history sync failed', e)
+  }
+
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
   // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
   // `used` is shared with step 6 (neither step changes notes). An edit made since step 4 only
@@ -395,8 +404,9 @@ async function runSync(): Promise<SyncResult> {
   })
 
   // ---------- 6. Clean up images no note uses anymore ----------
-  // Deleted here and in Dropbox once no note on this device has used them for a week.
-  // The wait keeps Undo working and gives other devices time to sync. If another device
+  // Deleted here and in Dropbox once no note on this device has used them for 30 days.
+  // The wait keeps Undo working, gives other devices time to sync, and keeps the images of
+  // older versions in note history (kept 30 days too). If another device
   // still uses the image, it uploads it again (step 0).
 
   const now = Date.now()

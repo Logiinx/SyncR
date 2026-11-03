@@ -315,18 +315,33 @@ export interface FileInfo {
   modified: number // when it was last written to Dropbox, ms since epoch
 }
 
-// All files in the app folder, including subfolders. The cursor marks this moment,
-// for waitForChanges().
-export async function listFiles(): Promise<{ files: FileInfo[]; cursor: string }> {
+// The files in these folders, and a cursor for the whole app folder, for waitForChanges().
+// The cursor is taken first, so a change made during the listing is still reported (at worst
+// one extra sync). Not one listing of everything: the history/ folder (older versions of notes,
+// noteHistory.ts) would make every sync download thousands of names.
+export async function listFiles(folders: string[]): Promise<{ files: FileInfo[]; cursor: string }> {
+  const { cursor } = await api('files/list_folder/get_latest_cursor', { path: '', recursive: true })
+  const lists = await Promise.all(folders.map((folder) => listFolder(folder)))
+  return { files: lists.flat(), cursor }
+}
+
+// The files in a folder (recursive: in its subfolders too). A missing folder has none.
+export async function listFolder(path: string, recursive = false): Promise<FileInfo[]> {
   const files: FileInfo[] = []
-  let page = await api('files/list_folder', { path: '', recursive: true })
+  let page
+  try {
+    page = await api('files/list_folder', { path, recursive })
+  } catch (e) {
+    if (String(e).includes('not_found')) return files
+    throw e
+  }
   for (;;) {
     for (const entry of page.entries) {
       if (entry['.tag'] === 'file') {
         files.push({ path: entry.path_lower, rev: entry.rev, modified: Date.parse(entry.server_modified) })
       }
     }
-    if (!page.has_more) return { files, cursor: page.cursor }
+    if (!page.has_more) return files
     page = await api('files/list_folder/continue', { cursor: page.cursor })
   }
 }
