@@ -5,6 +5,7 @@ import {
   Check,
   Ellipsis,
   FoldVertical,
+  History,
   IndentIncrease,
   ImageIcon,
   Italic,
@@ -28,16 +29,18 @@ import { createCard } from './db'
 import { insertImages } from './image'
 import { hasLineBreaks, splitLineBreaks } from './lineBreaks'
 import { alignLine, pathAbove } from './alignPaths'
+import { useHistoryAvailable } from './HistoryView'
 import { copyLinkToBlock } from './noteLinks'
 import { useNarrow } from './useNarrow'
 
 const ICON_SIZE = 16
 
 // Slim bar above the note, pinned while the note scrolls. Groups: undo · text style · what the
-// lines are (checklist, section, code, separate lines) · insert · use elsewhere (link, pin).
+// lines are (checklist, section, code, separate lines) · insert · use elsewhere (link, pin), and
+// History at the far right (about the whole note, not editing).
 // Buttons that can't be used right now are grayed out, so the others never move. Without a
 // selection, the line buttons act on the cursor's line. On a phone not all fit: Strikethrough and
-// the buttons after Checklist (except Image) are in a "⋯" list. Scrolls sideways if it still
+// the buttons after Checklist (except Image) and History are in a "⋯" list. Scrolls sideways if it still
 // doesn't fit.
 function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; title: string }) {
   const narrow = useNarrow()
@@ -135,6 +138,10 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
     showDone('pin')
   }
 
+  // Note history (HistoryView.tsx, shown by NoteView): needs Dropbox and internet
+  const historyAvailable = useHistoryAvailable()
+  const openHistory = () => window.dispatchEvent(new CustomEvent('open-history', { detail: { id: noteId } }))
+
   // Phone: the "⋯" list, with only what can be used right now
   const [more, setMore] = useState<{ x: number; y: number } | null>(null)
   const moreItems = [
@@ -157,6 +164,7 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
     { label: 'Table', icon: Table, show: true, onClick: insertTable },
     { label: 'Copy link to this spot', icon: Link, show: true, onClick: copyLink },
     { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
+    { label: 'History', icon: History, show: historyAvailable, divider: true, onClick: openHistory },
   ].filter((item) => item.show)
 
   return (
@@ -279,6 +287,15 @@ function Toolbar({ editor, noteId, title }: { editor: Editor; noteId: string; ti
               onClick={pin}
             >
               {done === 'pin' ? <Check size={ICON_SIZE} /> : <Pin size={ICON_SIZE} />}
+            </ToolButton>
+
+            <ToolButton
+              title={historyAvailable ? 'History (older versions of this note)' : 'History (needs Dropbox sync and internet)'}
+              className="toolbar-end"
+              disabled={!historyAvailable}
+              onClick={openHistory}
+            >
+              <History size={ICON_SIZE} />
             </ToolButton>
           </>
         )}

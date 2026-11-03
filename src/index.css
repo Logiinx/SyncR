@@ -2335,6 +2335,11 @@ button {
   cursor: default;
 }
 
+/* History: at the far right, apart from the editing buttons */
+.toolbar-end {
+  margin-left: auto;
+}
+
 /* Thin line between groups of buttons */
 .toolbar-separator {
   flex-shrink: 0;
@@ -5982,6 +5987,108 @@ img[data-fade] {
   padding: 5px;
   border-radius: 6px;
   color: var(--text-dim);
+}
+
+/* ---------- Note history (HistoryView.tsx): uses the comparison's frame ---------- */
+
+.history-note-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+/* PC: the list on the left, the chosen version on the right. Phone: the list only. */
+.history-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.history-list {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 4px 8px 24px;
+  border-right: 1px solid var(--border);
+}
+
+@media (max-width: 699px) {
+  .history-list {
+    width: auto;
+    flex: 1;
+    border-right: none;
+  }
+}
+
+.history-detail {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.history-day {
+  padding: 12px 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.history-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.history-device,
+.history-change,
+.history-current {
+  color: var(--text-dim);
+}
+
+.history-change {
+  display: flex;
+  gap: 6px;
+}
+
+.history-added {
+  color: var(--ok);
+}
+
+.history-removed {
+  color: var(--error);
+}
+
+/* Saved just before a lot of text was removed */
+.history-warn {
+  display: flex;
+  color: var(--warn);
+}
+
+.history-current {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.history-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 8px;
+  color: var(--text-dim);
+  font-size: 13px;
 }
 
 /* In a bar whose items are centered (conflict compare): no nudge */

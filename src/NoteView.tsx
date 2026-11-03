@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Note } from './db'
 import { getScroll, setScroll } from './localState'
 import NoteEditor from './NoteEditor'
 import { ConflictBanner } from './ConflictCompare'
+import HistoryView from './HistoryView'
 import { usePage } from './animations'
 
 const SAVE_SCROLL_MS = 200
@@ -14,13 +15,22 @@ const isAtBottom = (page: HTMLElement) => page.scrollHeight - page.scrollTop - p
 
 // The scrollable page around the editor. Restores and remembers the scroll position.
 // A conflict copy gets a banner above the page (it stays in view while scrolling), with
-// "Compare" opening the comparison over the note (ConflictCompare.tsx).
+// "Compare" opening the comparison over the note (ConflictCompare.tsx). The toolbar's History
+// button opens the note's history over it the same way (HistoryView.tsx).
 function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const pageRef = useRef<HTMLElement>(null)
   const columnRef = useRef<HTMLDivElement>(null)
   usePage(columnRef)
   const saveTimer = useRef<number | undefined>(undefined)
   const atBottom = useRef(false)
+  const [history, setHistory] = useState(false)
+
+  // The toolbar's History button
+  useEffect(() => {
+    const onOpen = (e: Event) => (e as CustomEvent<{ id: string }>).detail.id === note.id && setHistory(true)
+    window.addEventListener('open-history', onOpen)
+    return () => window.removeEventListener('open-history', onOpen)
+  }, [note.id])
 
   // On open: go back to where we were (bottom by default).
   // Runs after the editor has put the note's text on the page.
@@ -71,6 +81,7 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       <main className="page" ref={pageRef} onScroll={onScroll}>
         <NoteEditor note={note} autoFocus={autoFocus} />
       </main>
+      {history && <HistoryView note={note} onClose={() => setHistory(false)} />}
     </div>
   )
 }

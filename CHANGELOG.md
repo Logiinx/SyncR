@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **New:** Note history: older versions of each note, kept 30 days (History, right end of the toolbar).
+
 ## [0.38.9] - 2026-11-02
 
 **Mail**

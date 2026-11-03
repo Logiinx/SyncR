@@ -45,6 +45,23 @@ export function parseVersionPath(path: string): VersionInfo | null {
   }
 }
 
+// The versions of a note, newest first: the ones in Dropbox and those not sent yet. A version
+// saved twice in a row (the other device saved the same one when it started editing) shows
+// once: the first time it was saved, protected if either was.
+export async function listVersions(noteId: string): Promise<VersionInfo[]> {
+  const versions = (await listFolder(`/history/${noteId}`)).map((file) => parseVersionPath(file.path))
+  const waiting = await db.snapshots.where('noteId').equals(noteId).filter((row) => !row.uploaded).toArray()
+  const all = [...versions.filter((v) => v !== null), ...waiting.map((row) => ({ ...row, path: versionPath(row) }))]
+  all.sort((a, b) => a.savedAt - b.savedAt)
+  const shown: VersionInfo[] = []
+  for (const version of all) {
+    const previous = shown[shown.length - 1]
+    if (previous?.hash === version.hash) previous.protected ||= version.protected
+    else shown.push({ ...version, device: version.device.toLowerCase() })
+  }
+  return shown.reverse()
+}
+
 const CLEANED_KEY = 'syncr.history.cleanedAt'
 const CLEAN_EVERY_MS = 24 * 60 * 60 * 1000
 

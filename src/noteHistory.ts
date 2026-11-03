@@ -80,7 +80,7 @@ function isBigDeletion(before: string, after: string) {
   return removed >= BIG_WORDS || (removed >= BIG_MIN_WORDS && removed * 3 >= wordCount(before))
 }
 
-async function hashOf(note: Pick<Note, 'title' | 'content'>) {
+export async function hashOf(note: Pick<Note, 'title' | 'content'>) {
   const data = new TextEncoder().encode(JSON.stringify([note.title, note.content]))
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data))
   return Array.from(digest.slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('')
