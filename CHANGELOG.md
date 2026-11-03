@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-03
+
 **App**
 - **New:** On the PC, notes, cards, games and reminders are now stored encrypted (Windows keeps the key).
 
