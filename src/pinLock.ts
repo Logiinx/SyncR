@@ -2,6 +2,7 @@ import { scryptAsync } from '@noble/hashes/scrypt.js'
 import { decrypt, encrypt, fromBase64, getKey, passphraseKey, passphraseSettings, toBase64 } from './crypto'
 import { getSecret, LOCAL_KEY_SECRET, pinLockOn, saveSignInsAgain, setSecret } from './secrets'
 import { currentSealKey } from './sealing'
+import { sealedDb } from './db'
 
 // The PIN lock (PC only, a Settings option, off by default). Off: the local database's key
 // (localDb.ts) is kept as it is, encrypted by Windows. On: it's kept in two lockboxes instead
@@ -81,7 +82,10 @@ export async function unlockWithPassphrase(passphrase: string) {
 // Throws with a message to show. Needs sync set up (the passphrase lockbox) and Dropbox reachable.
 export async function turnPinOn(pin: string) {
   const stored = getSecret(LOCAL_KEY_SECRET)
-  if (!stored || pinLockOn()) throw new Error('The PIN lock is already on')
+  if (pinLockOn()) throw new Error('The PIN lock is already on')
+  // Not moved into the encrypted database yet (localDb.ts tries again at each start): the key
+  // must stay as it is until then
+  if (!sealedDb || !stored) throw new Error("Your notes on this PC aren't encrypted yet. Restart SyncR and try again.")
   const passphrase = await passphraseSettings()
   const syncKey = await getKey()
   if (!passphrase || !syncKey) throw new Error("Sync isn't set up, or Dropbox can't be reached right now")
