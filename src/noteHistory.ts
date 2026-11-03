@@ -1,4 +1,4 @@
-import { db, saveNoteContent, savePendingEdits, watchNoteEdits, type Note, type Snapshot } from './db'
+import { changed, db, saveNoteContent, savePendingEdits, watchNoteEdits, type Note, type Snapshot } from './db'
 import { deviceName } from './device'
 
 // Note history: older versions of each note ("snapshots"), saved at moments that matter
@@ -103,7 +103,10 @@ async function snapshot(note: Note, protect = false): Promise<Snapshot | undefin
   const hash = await hashOf(note)
   const latest = await latestSnapshot(note.id)
   if (latest?.hash === hash) {
-    if (protect && !latest.protected) await db.snapshots.update(latest.id, { protected: true, uploaded: 0 })
+    if (protect && !latest.protected) {
+      await db.snapshots.update(latest.id, { protected: true, uploaded: 0 })
+      changed() // sync sends it again
+    }
     return latest
   }
   // Never two snapshots of one note in the same millisecond (the id would be the same)
@@ -123,6 +126,7 @@ async function snapshot(note: Note, protect = false): Promise<Snapshot | undefin
     uploaded: 0,
   }
   await db.snapshots.put(row)
+  changed() // sync sends it soon (also after an idle end, with no edit to start a sync)
   return row
 }
 
@@ -180,6 +184,7 @@ export function endSession(noteId: string): Promise<void> {
       const base = session.baseId ? await db.snapshots.get(session.baseId) : undefined
       if (base && isBigDeletion(base.text, note.text) && !base.protected) {
         await db.snapshots.update(base.id, { protected: true, uploaded: 0 })
+        changed()
       }
       await snapshot(note)
     }

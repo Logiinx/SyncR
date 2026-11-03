@@ -121,10 +121,11 @@ export async function syncHistory(key: CryptoKey) {
     const version = parseVersionPath(file.path)
     if (version) byNote.set(version.noteId, [...(byNote.get(version.noteId) ?? []), version])
   }
-  for (const [noteId, versions] of byNote) {
+  // File by file, never a note's whole folder: the other device may be adding a version to it
+  // right now. A folder left empty stays (sync never reads history/).
+  for (const versions of byNote.values()) {
     const keep = versionsToKeep(versions)
-    if (!keep.size) await deleteFile(`/history/${noteId}`) // the whole folder
-    else for (const version of versions) if (!keep.has(version)) await deleteFile(version.path)
+    for (const version of versions) if (!keep.has(version)) await deleteFile(version.path)
   }
   localStorage.setItem(CLEANED_KEY, String(Date.now()))
 }
