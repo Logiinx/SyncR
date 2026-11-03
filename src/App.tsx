@@ -20,6 +20,7 @@ import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
 import { MAIL_TAB } from './mailbox'
+import { useMissed } from './mailAlerts'
 import MailView from './MailView'
 import { startCalendarChecks } from './calendarEvents'
 import { startNoteHistory } from './noteHistory'
@@ -109,7 +110,7 @@ function App() {
   const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
     if (id === GAMES_TAB) return [{ id, title: 'Games', icon: <Gamepad2 size={14} className="tab-icon" /> }]
     if (id === REMINDERS_TAB) return [{ id, title: 'Reminders', icon: <Bell size={14} className="tab-icon" /> }]
-    if (id === MAIL_TAB) return [{ id, title: 'Mail', icon: <Mail size={14} className="tab-icon" /> }]
+    if (id === MAIL_TAB) return [{ id, title: 'Mail', icon: <MailTabIcon /> }]
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
@@ -331,6 +332,21 @@ function App() {
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       <WhatsNew />
     </div>
+  )
+}
+
+// The Mail tab's icon, with the missed emails' count (like the sidebar's) on its top right corner
+function MailTabIcon() {
+  const missed = useMissed().length
+  return (
+    <span className="tab-icon mail-tab-icon">
+      <Mail size={14} className="tab-icon" />
+      {missed > 0 && (
+        <span className="mail-tab-count" title="Missed emails">
+          {missed > 9 ? '9+' : missed}
+        </span>
+      )}
+    </span>
   )
 }
 

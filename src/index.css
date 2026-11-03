@@ -642,6 +642,32 @@ button {
   height: 16px;
 }
 
+/* The Mail tab's missed count (App.tsx): accent blue like the sidebar's, on the icon's top right
+   corner. The pinned tab's title box doesn't clip it (nothing to cut there) */
+.mail-tab-icon {
+  position: relative;
+  display: flex;
+}
+
+.tab.icon-only .tab-title:has(.mail-tab-icon) {
+  overflow: visible;
+}
+
+/* Unpinned: room for it before the word "Mail" */
+.tab:not(.icon-only) .mail-tab-icon:has(.mail-tab-count) {
+  margin-right: 7px;
+}
+
+.mail-tab-count {
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 4px);
+  color: var(--link);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .tab-new {
   display: flex;
   align-items: center;
