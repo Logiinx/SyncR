@@ -1,6 +1,7 @@
 import { Node, type Editor } from '@tiptap/react'
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { db } from './db'
+import { readyBlob } from './sealing'
 import { openImageViewer } from './ImageViewer'
 
 const MAX_WIDTH = 2000 // wider images are scaled down
@@ -34,7 +35,7 @@ async function prepareImage(file: Blob): Promise<{ blob: Blob; width: number; he
 async function addAttachment(file: Blob) {
   const { blob, width, height } = await prepareImage(file)
   const id = crypto.randomUUID()
-  await db.attachments.add({ id, blob, createdAt: Date.now() })
+  await db.attachments.add({ id, blob: await readyBlob(blob), createdAt: Date.now() }) // readyBlob: see sealing.ts
   return { id, width, height }
 }
 

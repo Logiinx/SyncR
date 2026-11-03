@@ -5,6 +5,7 @@ import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@
 import { liveQuery } from 'dexie'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { db } from './db'
+import { previewKey } from './sealing'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { openLink, simplify } from './links'
 import { read, write } from './localState'
@@ -169,7 +170,7 @@ async function ask(url: string) {
   if (asking.has(url)) return
   asking.add(url)
   try {
-    const row = await db.linkPreviews.get(url)
+    const row = await db.linkPreviews.get(await previewKey(url))
     if (row) {
       previews.set(url, row.preview)
       redrawSoon()
@@ -188,7 +189,7 @@ async function ask(url: string) {
     const preview: LinkPreview | null = answer.error ? null : answer
     // Keep an older card rather than replacing it with nothing (unless the proxy changed since)
     if (!preview && row?.preview && row.version === CACHE_VERSION) return
-    await db.linkPreviews.put({ url, preview, fetchedAt: Date.now(), version: CACHE_VERSION })
+    await db.linkPreviews.put({ url: await previewKey(url), preview, fetchedAt: Date.now(), version: CACHE_VERSION })
     previews.set(url, preview)
     redrawSoon()
   } catch {

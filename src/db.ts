@@ -1,4 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { isTauri } from '@tauri-apps/api/core'
+import { keyReady, sealingLayer } from './sealing'
 import type { JSONContent } from '@tiptap/react'
 import type { LinkPreview } from './linkPreviews'
 
@@ -224,7 +226,7 @@ export interface LinkPreviewRow {
 }
 
 // An older version of a note (noteHistory.ts). Saved here first, then uploaded to Dropbox's
-// history/ folder by sync. Not encrypted here, like the notes themselves.
+// history/ folder by sync. Encrypted here only on the PC, like the notes (sealing.ts).
 export interface Snapshot {
   id: string // "<note id>-<savedAt>"
   noteId: string
@@ -240,8 +242,13 @@ export interface Snapshot {
   uploaded: 0 | 1 // in Dropbox already (0 again when it becomes protected)
 }
 
+// On the PC, once moved (localDb.ts), the database is sealed (sealing.ts). It has another name,
+// so a move cut short never mixes sealed and plain rows.
+export const LOCAL_DB_FLAG = 'syncr.local-db'
+export const sealedDb = isTauri() && localStorage.getItem(LOCAL_DB_FLAG) === 'sealed'
+
 // The local database, stored in the browser/app (IndexedDB).
-export const db = new Dexie('syncr') as Dexie & {
+export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
   deletions: EntityTable<Deletion, 'id'>
   keys: EntityTable<StoredKey, 'name'>
@@ -257,57 +264,67 @@ export const db = new Dexie('syncr') as Dexie & {
   snapshots: EntityTable<Snapshot, 'id'>
 }
 
-db.version(1).stores({
-  notes: 'id, updatedAt', // fields we can look up / sort by
-})
+// The tables and their lookup fields, version by version. Also used by the move to the sealed
+// database (localDb.ts).
+export function defineSchema(d: Dexie) {
+  d.version(1).stores({
+    notes: 'id, updatedAt', // fields we can look up / sort by
+  })
 
-db.version(2).stores({
-  deletions: 'id',
-})
+  d.version(2).stores({
+    deletions: 'id',
+  })
 
-db.version(3).stores({
-  keys: 'name',
-})
+  d.version(3).stores({
+    keys: 'name',
+  })
 
-db.version(4).stores({
-  synced: 'id',
-})
+  d.version(4).stores({
+    synced: 'id',
+  })
 
-db.version(5).stores({
-  attachments: 'id',
-})
+  d.version(5).stores({
+    attachments: 'id',
+  })
 
-db.version(6).stores({
-  settings: 'name',
-})
+  d.version(6).stores({
+    settings: 'name',
+  })
 
-db.version(7).stores({
-  reminders: 'id',
-})
+  d.version(7).stores({
+    reminders: 'id',
+  })
 
-db.version(8).stores({
-  cards: 'id',
-})
+  d.version(8).stores({
+    cards: 'id',
+  })
 
-db.version(9).stores({
-  games: 'id',
-})
+  d.version(9).stores({
+    games: 'id',
+  })
 
-db.version(10).stores({
-  events: 'id',
-})
+  d.version(10).stores({
+    events: 'id',
+  })
 
-db.version(11).stores({
-  alertStates: 'key',
-})
+  d.version(11).stores({
+    alertStates: 'key',
+  })
 
-db.version(12).stores({
-  linkPreviews: 'url',
-})
+  d.version(12).stores({
+    linkPreviews: 'url',
+  })
 
-db.version(13).stores({
-  snapshots: 'id, noteId, uploaded',
-})
+  d.version(13).stores({
+    snapshots: 'id, noteId, uploaded',
+  })
+}
+
+defineSchema(db)
+if (sealedDb) {
+  db.use(sealingLayer)
+  db.on('ready', () => keyReady) // nothing reads or writes before the key is there (localDb.ts)
+}
 
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.
 // Sync's own writes don't call this, so they don't start another sync.

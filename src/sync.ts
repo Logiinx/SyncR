@@ -12,6 +12,7 @@ import { decrypt, encrypt, getKey } from './crypto'
 import { clockTime, shortDate } from './dates'
 import { deviceName } from './device'
 import { syncHistory } from './historySync'
+import { blobFromBytes } from './sealing'
 import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
@@ -389,7 +390,7 @@ async function runSync(): Promise<SyncResult> {
       result.unreadable++
       return
     }
-    await db.attachments.put({ id, blob: new Blob([bytes], { type: imageType(bytes) }), createdAt: Date.now() })
+    await db.attachments.put({ id, blob: blobFromBytes(bytes, imageType(bytes)), createdAt: Date.now() }) // see sealing.ts
     localAttachments.add(id)
     // Open notes show it right away (see image.ts)
     window.dispatchEvent(new Event('attachments-changed'))

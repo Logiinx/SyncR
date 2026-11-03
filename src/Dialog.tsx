@@ -9,6 +9,7 @@ export interface DialogRequest {
   confirmLabel: string
   danger?: boolean // red confirm button (for delete)
   noCancel?: boolean // just a message with an OK button
+  cancelLabel?: string // default "Cancel"
   onConfirm: (value: string, checked: boolean) => void
 }
 
@@ -59,7 +60,7 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
       <div className="dialog-buttons">
         {!request.noCancel && (
           <button ref={cancelRef} onClick={onClose}>
-            Cancel
+            {request.cancelLabel ?? 'Cancel'}
           </button>
         )}
         <button ref={confirmRef} className={request.danger ? 'danger' : 'primary'} onClick={confirm}>

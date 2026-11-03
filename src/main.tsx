@@ -10,6 +10,8 @@ import { setUpScrollbars } from './scrollbars'
 import { setUpBoardTab } from './boardTab'
 import { startClosingAnimations } from './animations'
 import { loadSecrets } from './secrets'
+import { prepareLocalDb } from './localDb'
+import KeyMissing from './KeyMissing'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -23,10 +25,13 @@ setUpBoardTab()
 // Not in the pop-up: it sizes its window from its cards, a closing one would still count
 if (!isPopup) startClosingAnimations()
 // The sign-ins are decrypted first, both windows read them. On the PC that can take a moment
-// at start (Windows), so the side panels' second without animation counts from the first draw
-void loadSecrets().then(() => {
+// at start (Windows), so the side panels' second without animation counts from the first draw.
+// Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).
+void loadSecrets().then(() => prepareLocalDb(isPopup)).then((state) => {
+  if (state === 'moved') return location.reload() // opens the new database
+  if (state === 'key-missing' && isPopup) return
   createRoot(document.getElementById('root')!).render(
-    <StrictMode>{isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
+    <StrictMode>{state === 'key-missing' ? <KeyMissing /> : isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
   )
   // Side panels slide in only when opened, not when the app starts with them open (useSlideIn)
   setTimeout(() => document.documentElement.classList.add('ready'), 1000)
