@@ -4461,18 +4461,25 @@ button {
   outline: none;
 }
 
-.passphrase-field {
+/* A passphrase or PIN box with our own eye (SecretField.tsx) */
+.secret-field {
   position: relative;
   margin-bottom: 16px;
 }
 
-.dialog .passphrase-field input {
+.dialog .secret-field input {
   margin-bottom: 0;
   padding-right: 36px;
 }
 
+/* Edge's own reveal eye (PC app), in the box and in its "Repeat" box: ours is there instead */
+.secret-field input::-ms-reveal,
+.secret-field + input::-ms-reveal {
+  display: none;
+}
+
 /* Stretches over the full height of the field, so the icon is centered */
-.passphrase-field .eye {
+.secret-field .eye {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -4484,16 +4491,77 @@ button {
   color: var(--text-dim);
 }
 
-.passphrase-field .eye:hover {
+.secret-field .eye:hover {
   color: var(--text);
 }
 
-.passphrase-field svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.25;
+/* PIN lock screen (LockScreen.tsx): an empty page with the window buttons and a card */
+.lock-screen {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh / var(--zoom, 1));
+  user-select: none;
+}
+
+.lock-screen-bar {
+  display: flex;
+  justify-content: flex-end;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.lock-screen-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+}
+
+.dialog.lock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(320px, 100%);
+  text-align: center;
+}
+
+.lock-card .lock-icon {
+  margin-bottom: 8px;
+  color: var(--text-dim);
+}
+
+.lock-card .lock-icon.open {
+  color: var(--ok);
+}
+
+.lock-card .secret-field,
+.lock-card input {
+  width: 100%;
+}
+
+.lock-card .dialog-buttons {
+  align-self: stretch;
+}
+
+.lock-card .dialog-buttons button {
+  flex: 1;
+  padding: 8px 14px;
+}
+
+.lock-link {
+  margin-top: 12px;
+  color: var(--link);
+  font-size: 0.9em;
+}
+
+.lock-link:hover {
+  text-decoration: underline;
+}
+
+.lock-card .back-button {
+  margin-top: 8px;
 }
 
 .dialog .dialog-error {

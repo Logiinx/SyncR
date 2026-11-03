@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPassphrase, hasPassphrase, MIN_PASSPHRASE_LENGTH, unlock } from './crypto'
 import Window from './Window'
 import Spinner from './Spinner'
+import SecretField from './SecretField'
 
 // Asks for the sync passphrase. First device: create it (typed twice). Other devices: enter it.
 // Closing it without a passphrase is fine: sync just stays locked.
@@ -82,28 +83,15 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
 
       {mode !== 'loading' && (
         <>
-          <div className="passphrase-field">
-            <input
-              ref={inputRef}
-              type={type}
-              value={passphrase}
-              placeholder="Passphrase"
-              autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
-              onChange={(e) => setPassphrase(e.target.value)}
-            />
-            <button
-              type="button"
-              className="eye"
-              onClick={() => setVisible(!visible)}
-              title={visible ? 'Hide passphrase' : 'Show passphrase'}
-            >
-              <svg viewBox="0 0 16 16">
-                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" />
-                <circle cx="8" cy="8" r="2" />
-                {visible && <path d="M2 14L14 2" />}
-              </svg>
-            </button>
-          </div>
+          <SecretField
+            inputRef={inputRef}
+            value={passphrase}
+            placeholder="Passphrase"
+            autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
+            onChange={setPassphrase}
+            visible={visible}
+            onToggle={() => setVisible(!visible)}
+          />
           {mode === 'create' && (
             <input
               type={type}
