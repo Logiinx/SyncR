@@ -125,6 +125,26 @@ export async function createPassphrase(passphrase: string) {
   await saveKey(key)
 }
 
+// ---------- For the PIN lock's passphrase lockbox (pinLock.ts) ----------
+
+export const passphraseKey = (passphrase: string, salt: string, iterations: number) =>
+  deriveKey(passphrase, fromBase64(salt), iterations)
+
+// The passphrase's salt and slow-key setting (Dropbox), if this device's sync key belongs to it.
+// null without sync, or if Dropbox can't be reached.
+export async function passphraseSettings() {
+  const key = await getKey()
+  const raw = key && (await download(CRYPTO_FILE).catch(() => null))
+  if (!key || !raw) return null
+  const file: CryptoFile = JSON.parse(new TextDecoder().decode(raw))
+  try {
+    if (new TextDecoder().decode(await decrypt(key, fromBase64(file.check))) !== CHECK_TEXT) return null
+  } catch {
+    return null
+  }
+  return { salt: file.salt, iterations: file.iterations }
+}
+
 // Returns false if the passphrase is wrong.
 export async function unlock(passphrase: string) {
   const raw = await download(CRYPTO_FILE)

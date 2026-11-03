@@ -29,7 +29,8 @@ if (!isPopup) startClosingAnimations()
 // Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).
 void loadSecrets().then(() => prepareLocalDb(isPopup)).then((state) => {
   if (state === 'moved') return location.reload() // opens the new database
-  if (state === 'key-missing' && isPopup) return
+  if ((state === 'key-missing' || state === 'locked') && isPopup) return
+  if (state === 'locked') return // the lock screen comes next (PIN lock, step 2)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>{state === 'key-missing' ? <KeyMissing /> : isPopup ? <ReminderPopup /> : <App />}</StrictMode>,
   )

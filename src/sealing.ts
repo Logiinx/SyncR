@@ -27,7 +27,11 @@ export function setSealKey(bytes: Uint8Array) {
   keyArrived()
 }
 
-function sealBytes(bytes: Uint8Array) {
+// The key, for the PIN lock's lockboxes (pinLock.ts); undefined while locked
+export const currentSealKey = () => key
+
+// Also used for the sign-ins behind the PIN lock (secrets.ts)
+export function sealBytes(bytes: Uint8Array) {
   if (!key) throw new Error('The local key is missing')
   const nonce = crypto.getRandomValues(new Uint8Array(12))
   const sealed = gcm(key, nonce).encrypt(bytes)
@@ -37,7 +41,7 @@ function sealBytes(bytes: Uint8Array) {
   return out
 }
 
-function openBytes(data: Uint8Array) {
+export function openBytes(data: Uint8Array) {
   if (!key) throw new Error('The local key is missing')
   return gcm(key, data.subarray(0, 12)).decrypt(data.subarray(12))
 }

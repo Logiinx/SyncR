@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import { isTauri } from '@tauri-apps/api/core'
 import { db, defineSchema, LOCAL_DB_FLAG, sealedDb } from './db'
 import { previewKey, readyBlob, sealingLayer, setSealKey } from './sealing'
-import { getSecret, LOCAL_KEY_SECRET, setSecret } from './secrets'
+import { getSecret, LOCAL_KEY_SECRET, openWaitingSecrets, pinLockOn, setSecret } from './secrets'
 import { encrypt, fromBase64, getKey, toBase64 } from './crypto'
 
 // At the start on the PC, before the app shows (main.tsx): the key of the sealed local
@@ -20,16 +20,17 @@ const BACKUP_NAME = 'syncr-backup'
 const BACKUP_DAYS = 14
 
 // 'moved': the page must reload to open the new database. 'key-missing': the database is
-// sealed but Windows didn't give back its key (KeyMissing.tsx).
-export type LocalDbState = 'ready' | 'moved' | 'key-missing'
+// sealed but Windows didn't give back its key (KeyMissing.tsx). 'locked': the PIN lock is on,
+// the key comes from the lock screen (pinLock.ts), then openWithKey.
+export type LocalDbState = 'ready' | 'moved' | 'key-missing' | 'locked'
 
 export async function prepareLocalDb(isPopup: boolean): Promise<LocalDbState> {
   if (!isTauri()) return 'ready'
   if (sealedDb) {
     const stored = getSecret(LOCAL_KEY_SECRET)
     if (!stored) return 'key-missing'
-    setSealKey(fromBase64(stored))
-    if (!isPopup) cleanUp().catch((error) => console.error('Local database clean-up failed', error))
+    if (pinLockOn()) return 'locked'
+    openWithKey(fromBase64(stored), isPopup)
     return 'ready'
   }
   if (isPopup) return 'ready' // the main window moves it
@@ -48,6 +49,13 @@ export async function prepareLocalDb(isPopup: boolean): Promise<LocalDbState> {
     setTimeout(() => notice("Your notes on this PC couldn't be encrypted yet: SyncR tries again at the next start."), 5000)
     return 'ready'
   }
+}
+
+// The database opens, and the sign-ins behind the PIN lock with it (secrets.ts)
+export function openWithKey(key: Uint8Array, isPopup: boolean) {
+  setSealKey(key)
+  void openWaitingSecrets()
+  if (!isPopup) cleanUp().catch((error) => console.error('Local database clean-up failed', error))
 }
 
 function notice(message: string) {
