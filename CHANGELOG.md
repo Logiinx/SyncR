@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-03
+
 **App**
 - **New:** PIN lock on the PC (Settings → App): asked at start; forgot it? Your passphrase opens it.
 - **Fixed:** Small fixes: the passphrase box showed two eye buttons on the PC.
