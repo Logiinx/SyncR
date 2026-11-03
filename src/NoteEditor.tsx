@@ -11,6 +11,7 @@ import { Color, TextStyle } from '@tiptap/extension-text-style'
 import { Highlight } from '@tiptap/extension-highlight'
 import { syncSoon } from './autoSync'
 import { noteTitle, registerFlush, saveNoteContent, type Note } from './db'
+import { endSession } from './noteHistory'
 import Toolbar from './Toolbar'
 import ContextMenu from './ContextMenu'
 import { copyImage, Image } from './image'
@@ -161,8 +162,9 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       editor.off('blur', saveAndSync)
       document.removeEventListener('visibilitychange', onVisibility)
       unregister()
-      // The note is closed (tab closed, other note opened): save a waiting edit
-      saveNow()
+      // The note is closed (tab closed, other note opened): save a waiting edit, then end its
+      // editing session (a note history snapshot, noteHistory.ts)
+      saveNow().then(() => endSession(note.id))
     }
   }, [editor, note.id])
 

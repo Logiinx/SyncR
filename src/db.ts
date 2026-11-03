@@ -223,6 +223,23 @@ export interface LinkPreviewRow {
   version?: number // CACHE_VERSION in linkPreviews.ts when it was read
 }
 
+// An older version of a note (noteHistory.ts). Saved here first, then uploaded to Dropbox's
+// history/ folder by sync. Not encrypted here, like the notes themselves.
+export interface Snapshot {
+  id: string // "<note id>-<savedAt>"
+  noteId: string
+  savedAt: number
+  title: string | null
+  content: JSONContent | null
+  text: string
+  hash: string // of the title and content: equal hash = same version
+  device: string // which device saved it (sync.ts deviceName)
+  added: number // words added since this device's previous snapshot of the note
+  removed: number // words removed since then
+  protected: boolean // before a big deletion: kept the full 30 days
+  uploaded: 0 | 1 // in Dropbox already (0 again when it becomes protected)
+}
+
 // The local database, stored in the browser/app (IndexedDB).
 export const db = new Dexie('syncr') as Dexie & {
   notes: EntityTable<Note, 'id'>
@@ -237,6 +254,7 @@ export const db = new Dexie('syncr') as Dexie & {
   events: EntityTable<CalendarEvent, 'id'>
   alertStates: EntityTable<AlertState, 'key'>
   linkPreviews: EntityTable<LinkPreviewRow, 'url'>
+  snapshots: EntityTable<Snapshot, 'id'>
 }
 
 db.version(1).stores({
@@ -287,6 +305,10 @@ db.version(12).stores({
   linkPreviews: 'url',
 })
 
+db.version(13).stores({
+  snapshots: 'id, noteId, uploaded',
+})
+
 // Tells auto-sync (autoSync.ts) that the user changed something on this device.
 // Sync's own writes don't call this, so they don't start another sync.
 export function changed() {
@@ -317,9 +339,19 @@ export async function createNote(): Promise<string> {
   return id
 }
 
+// Note history (noteHistory.ts) hears about every saved edit and deleted note
+type EditWatcher = (before: Note, after: Note | null) => Promise<void>
+let editWatcher: EditWatcher | undefined
+
+export function watchNoteEdits(watcher: EditWatcher) {
+  editWatcher = watcher
+}
+
 export async function saveNoteContent(id: string, content: JSONContent, text: string) {
+  const before = await db.notes.get(id)
   await db.notes.update(id, { content, text, updatedAt: Date.now() })
   changed()
+  if (before) await editWatcher?.(before, { ...before, content, text }).catch(() => {})
 }
 
 // Empty title = go back to the automatic title (first line).
@@ -329,6 +361,8 @@ export async function renameNote(id: string, title: string) {
 }
 
 export async function deleteNote(id: string) {
+  const before = await db.notes.get(id)
+  if (before) await editWatcher?.(before, null).catch(() => {})
   await db.transaction('rw', db.notes, db.deletions, async () => {
     await db.notes.delete(id)
     await db.deletions.put({ id, deletedAt: Date.now() })

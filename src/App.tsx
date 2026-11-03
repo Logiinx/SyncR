@@ -22,6 +22,7 @@ import { GAMES_TAB, startGameChecks } from './games'
 import { MAIL_TAB } from './mailbox'
 import MailView from './MailView'
 import { startCalendarChecks } from './calendarEvents'
+import { startNoteHistory } from './noteHistory'
 import UpdateBanner from './UpdateBanner'
 import WhatsNew from './WhatsNew'
 import SyncButton from './SyncButton'
@@ -54,6 +55,9 @@ function App() {
 
   // Google Calendar: events kept fresh in the background, for their alerts (calendarEvents.ts)
   useEffect(startCalendarChecks, [])
+
+  // Note history: snapshots of notes at the moments that matter (noteHistory.ts)
+  useEffect(startNoteHistory, [])
 
   // A conflict was resolved (ConflictCompare.tsx): show the note that was kept, close the copy
   useEffect(() => {

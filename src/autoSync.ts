@@ -1,6 +1,6 @@
-import { savePendingEdits } from './db'
 import { cancelStuckRequests, waitForChanges } from './dropbox'
 import { read, write } from './localState'
+import { endAllSessions } from './noteHistory'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
@@ -172,11 +172,11 @@ export function syncByUser() {
 
 const FINAL_SYNC_TIMEOUT_MS = 5000
 
-// Saves waiting edits and sends everything that's waiting to Dropbox. Gives up after
+// Saves waiting edits (and their note history snapshots) and sends everything that's waiting to Dropbox. Gives up after
 // 5 seconds (e.g. offline): the changes stay safe on this device and sync next time.
 export async function finalSync() {
   const work = async () => {
-    await savePendingEdits()
+    await endAllSessions() // saves waiting edits first
     if (!enabled) return
     while (running) await sleep(50) // let a running sync finish first
     if (status !== 'synced') await run()
