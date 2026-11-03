@@ -8,6 +8,9 @@ All notable changes to SyncR. Newest version first.
 - **New:** PIN lock on the PC (Settings → App): asked at start; forgot it? Your passphrase opens it.
 - **Fixed:** Small fixes: the passphrase box showed two eye buttons on the PC.
 
+**Mail**
+- **Improved:** On the PC, new-mail cards are now stored encrypted too (and behind the PIN lock).
+
 ## [0.40.0] - 2026-11-03
 
 **App**

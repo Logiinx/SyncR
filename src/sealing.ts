@@ -46,6 +46,19 @@ export function openBytes(data: Uint8Array) {
   return gcm(key, data.subarray(0, 12)).decrypt(data.subarray(12))
 }
 
+// Text sealed into base64 and back: the mail cards, kept in localStorage (mailAlerts.ts).
+// Opening throws without the key (locked) or if the text was changed.
+export function sealString(text: string) {
+  const bytes = sealBytes(new TextEncoder().encode(text))
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(binary)
+}
+
+export function openString(base64: string) {
+  return new TextDecoder().decode(openBytes(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))))
+}
+
 // ---------- Images ----------
 // A Blob's bytes can only be read with waiting, which a save can't do. So the bytes of each
 // image are noted when it's made (readyBlob / blobFromBytes) or opened (below), and sealing

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { gmailApi, loadAccounts } from './gmail'
 import { read, write } from './localState'
+import { currentSealKey, openString, sealString } from './sealing'
 import { senderAddress } from './safeSenders'
 
 // New emails for the pop-up (PC). The main window checks each Gmail account that's on every
@@ -43,7 +44,37 @@ export const QUERY = 'in:inbox is:unread category:primary'
 const MAX_SEEN = 500 // per account; new mail always has a new id, so older ones can go
 const MAX_NEW = 10 // cards added per check and account at most (e.g. after a long time off)
 
-export const loadMailAlerts = () => read<MailAlert[]>(ALERTS_KEY, [])
+// The cards hold the user's words (sender, subject, first lines): on the PC they're stored
+// sealed with the local database's key (sealing.ts), like the notes, as localStorage is plain
+// files. Both windows have the key (the pop-up gets it from the main window, localDb.ts), and
+// nothing reads or writes cards while SyncR is locked. Phone and browser: plain (no key there).
+const SEALED_MARK = 'sealed:'
+
+export function loadMailAlerts(): MailAlert[] {
+  const stored = localStorage.getItem(ALERTS_KEY)
+  if (!stored?.startsWith(SEALED_MARK)) return read<MailAlert[]>(ALERTS_KEY, [])
+  try {
+    return JSON.parse(openString(stored.slice(SEALED_MARK.length)))
+  } catch (error) {
+    console.error('Mail cards could not be opened', error)
+    return []
+  }
+}
+
+function writeMailAlerts(alerts: MailAlert[]) {
+  if (!currentSealKey()) return write(ALERTS_KEY, alerts)
+  try {
+    localStorage.setItem(ALERTS_KEY, SEALED_MARK + sealString(JSON.stringify(alerts)))
+  } catch (error) {
+    console.error('Mail cards not saved', error) // storage full
+  }
+}
+
+// Cards stored plain by a version before they were sealed: sealed at the first mail check
+function sealOldMailAlerts() {
+  const stored = localStorage.getItem(ALERTS_KEY)
+  if (stored && !stored.startsWith(SEALED_MARK) && currentSealKey()) writeMailAlerts(loadMailAlerts())
+}
 export const loadMissed = () => read<string[]>(MISSED_KEY, [])
 
 function saveMissed(keys: string[]) {
@@ -69,7 +100,7 @@ export function useMissed() {
 }
 
 function saveMailAlerts(alerts: MailAlert[]) {
-  write(ALERTS_KEY, alerts)
+  writeMailAlerts(alerts)
   window.dispatchEvent(new Event('mail-alerts-change')) // this window; others get "storage"
 }
 
@@ -234,6 +265,7 @@ function decodeEntities(text: string) {
 export function useMailCheck() {
   useEffect(() => {
     if (!isTauri() && !import.meta.env.DEV) return
+    sealOldMailAlerts()
     const run = () => void checkMail().catch((error) => console.error(error))
     run()
     const timer = setInterval(run, CHECK_EVERY_MS)
