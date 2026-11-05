@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { Archive, BellOff, ExternalLink, Mail, MailOpen, RefreshCw, Trash2 } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
@@ -146,24 +147,24 @@ function MailView() {
       <div className="games" ref={listRef} hidden={reading !== null}>
         <div className="games-views reminders-toolbar">
           <div className="reminders-tools">
-            <label className="reminders-hide-repeating" title="Show only unread mail">
+            <label className="reminders-hide-repeating" title={t('Show only unread mail')}>
               <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
-              Unread only
+              {t('Unread only')}
             </label>
-            <button className="reminders-refresh" onClick={refresh} disabled={loading} title="Refresh from Gmail">
-              {loading ? <Spinner label="Refreshing" /> : <RefreshCw size={15} />}
+            <button className="reminders-refresh" onClick={refresh} disabled={loading} title={t('Refresh from Gmail')}>
+              {loading ? <Spinner label={t('Refreshing')} /> : <RefreshCw size={15} />}
             </button>
           </div>
         </div>
-        {accounts.length === 0 && <p className="games-empty">Add a Gmail account in Settings → Accounts.</p>}
+        {accounts.length === 0 && <p className="games-empty">{t('Add a Gmail account in Settings → Accounts.')}</p>}
         {errors.map(({ email, text, details, retry }) => (
           <p key={email} className="games-empty error" title={details || undefined}>
-            {email}: {text}{retry && '. Trying again…'}
+            {email}: {text}{retry && t('. Trying again…')}
           </p>
         ))}
         {/* Before the first list (right after start): placeholder rows shaped like mails */}
         {!rows && accounts.length > 0 && errors.length === 0 && (
-          <section className="games-group" aria-label="Loading mail">
+          <section className="games-group" aria-label={t('Loading mail')}>
             {[62, 48, 70, 55, 66, 44].map((width, i) => (
               <div key={i} className="reminder-row mail-row">
                 <span className="menu-swatch skeleton" />
@@ -177,10 +178,10 @@ function MailView() {
           </section>
         )}
         {rows && accounts.length > 0 && errors.length === 0 && missedRows.length + otherRows.length === 0 && (
-          <p className="games-empty">{unreadOnly ? 'No unread mail in Primary' : 'No mail in Primary'}</p>
+          <p className="games-empty">{unreadOnly ? t('No unread mail in Primary') : t('No mail in Primary')}</p>
         )}
-        {group('Missed', missedRows)}
-        {group(unreadOnly ? 'Unread' : 'Inbox', otherRows)}
+        {group(t('Missed'), missedRows)}
+        {group(unreadOnly ? t('Unread') : t('Inbox'), otherRows)}
       </div>
       {menu && (
         <ContextMenu
@@ -191,14 +192,14 @@ function MailView() {
           // "Open in …" after the mail's own actions, like a Reminders event's menu
           items={[
             isUnread(menu.mail)
-              ? { label: 'Mark as read', icon: MailOpen, onClick: () => change(menu.mail, 'read') }
-              : { label: 'Mark as unread', icon: Mail, onClick: () => change(menu.mail, 'unread') },
+              ? { label: t('Mark as read'), icon: MailOpen, onClick: () => change(menu.mail, 'read') }
+              : { label: t('Mark as unread'), icon: Mail, onClick: () => change(menu.mail, 'unread') },
             ...(missedRows.includes(menu.mail)
-              ? [{ label: 'Remove from Missed', icon: BellOff, onClick: () => change(menu.mail, 'keep') }]
+              ? [{ label: t('Remove from Missed'), icon: BellOff, onClick: () => change(menu.mail, 'keep') }]
               : []),
-            { label: 'Archive', icon: Archive, onClick: () => change(menu.mail, 'archive') },
-            { label: 'Open in Gmail', icon: ExternalLink, onClick: () => openLink(gmailLink(menu.mail)) },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: () => change(menu.mail, 'trash') },
+            { label: t('Archive'), icon: Archive, onClick: () => change(menu.mail, 'archive') },
+            { label: t('Open in Gmail'), icon: ExternalLink, onClick: () => openLink(gmailLink(menu.mail)) },
+            { label: t('Delete'), icon: Trash2, danger: true, onClick: () => change(menu.mail, 'trash') },
           ]}
         />
       )}

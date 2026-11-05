@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { plural, t } from './i18n'
 import { ImageOff, Moon, ShieldCheck, Sun } from 'lucide-react'
 import BackButton from './BackButton'
 import CloseButton from './CloseButton'
@@ -113,7 +114,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   return (
     <div className="reminder-alert mail-reader" style={{ borderLeftColor: accountColor(alert.account) }}>
       <div className="mail-reader-head">
-        <BackButton onClick={onBack} title="Back to the list" />
+        <BackButton onClick={onBack} title={t('Back to the list')} />
         <div className="mail-reader-title">
           <MailWhen alert={alert} />
           <span className="reminder-alert-text">{alert.from}</span>
@@ -125,31 +126,31 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
         <div className="mail-reader-images">
           {body.remoteImages && !showImages && (
             <span className="mail-reader-note">
-              <ImageOff size={13} /> Web images blocked
+              <ImageOff size={13} /> {t('Web images blocked')}
             </span>
           )}
           {showImages && !!frame?.trackers && (
-            <span className="mail-reader-note" title="Hidden images that tell the sender the email was opened: not loaded">
-              <ShieldCheck size={13} /> {frame.trackers} {frame.trackers === 1 ? 'tracker' : 'trackers'} blocked
+            <span className="mail-reader-note" title={t('Hidden images that tell the sender the email was opened: not loaded')}>
+              <ShieldCheck size={13} /> {plural(frame.trackers, '{n} tracker blocked', '{n} trackers blocked')}
             </span>
           )}
           <div className="mail-reader-image-buttons">
-            {body.remoteImages && !showImages && <button onClick={() => setImages(true)}>Show images</button>}
+            {body.remoteImages && !showImages && <button onClick={() => setImages(true)}>{t('Show images')}</button>}
             {body.remoteImages && !showImages && body.sender && (
               <button
                 className="mail-reader-always"
-                title={`Always show images in emails from ${trustFor(body.sender)}`}
+                title={t('Always show images in emails from {sender}', { sender: trustFor(body.sender) })}
                 onClick={() => {
                   addSafeSender(trustFor(body.sender))
                   setImages(true)
                 }}
               >
-                <span>Always for {trustFor(body.sender)}</span>
+                <span>{t('Always for {sender}', { sender: trustFor(body.sender) })}</span>
               </button>
             )}
             {!body.plain && !alreadyDark && (
-              <button onClick={() => setOriginal(!original)} title={original ? 'Show it dark, like a note' : "Show the sender's design (on white)"}>
-                {original ? <Moon size={13} /> : <Sun size={13} />} {original ? 'Show dark' : 'Show original'}
+              <button onClick={() => setOriginal(!original)} title={original ? t('Show it dark, like a note') : t("Show the sender's design (on white)")}>
+                {original ? <Moon size={13} /> : <Sun size={13} />} {original ? t('Show dark') : t('Show original')}
               </button>
             )}
           </div>
@@ -162,7 +163,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           // Dark: asks the mail for its own dark version (prefers-color-scheme); hidden until
           // its colors are done, so it never flashes white
           style={{ colorScheme: body?.plain || dark ? 'dark' : 'light', visibility: ready ? undefined : 'hidden' }}
-          title="Email"
+          title={t('Email')}
           sandbox="allow-same-origin" // no scripts; lets SyncR catch link clicks
           srcDoc={doc}
           onLoad={onFrameLoad}
@@ -172,7 +173,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
           {error ? (
             <>
               <span className="mail-reader-error" title={error.details}>{error.text}</span>
-              {error.retry && <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>Try again</button>}
+              {error.retry && <button className="setting-button" onClick={() => setAttempt((n) => n + 1)}>{t('Try again')}</button>}
             </>
           ) : (
             <Spinner size={16} />

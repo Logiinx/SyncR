@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from './i18n'
 import { Download, File, FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, type LucideIcon } from 'lucide-react'
 import { errorDetails, gmailErrorText } from './gmail'
 import type { MailAlert, MailFile } from './mailAlerts'
@@ -39,14 +40,14 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
           <div key={index} className="mail-file">
             <button
               className="mail-file-open"
-              title={openable ? `Open ${file.name}` : `${file.name}\nThis kind of file can only be saved`}
+              title={openable ? t('Open {name}', { name: file.name }) : t('{name}\nThis kind of file can only be saved', { name: file.name })}
               onClick={() => run(index, openable ? openFile : saveFile)}
             >
               {busy.includes(index) ? <Spinner size={14} /> : <Icon size={14} />}
               <span className="mail-file-name">{file.name}</span>
               <span className="mail-file-size">{fileSize(file.size)}</span>
             </button>
-            <button className="mail-file-save" title="Save…" aria-label="Save…" onClick={() => run(index, saveFile)}>
+            <button className="mail-file-save" title={t('Save…')} aria-label={t('Save…')} onClick={() => run(index, saveFile)}>
               <Download size={14} />
             </button>
           </div>
@@ -54,7 +55,7 @@ function MailFilesRow({ alert, files }: { alert: MailAlert; files: MailFile[] })
       })}
       {!all && files.length > FIRST && (
         <button className="mail-file-more" onClick={() => setAll(true)}>
-          +{files.length - FIRST} more
+          {t('+{n} more', { n: files.length - FIRST })}
         </button>
       )}
       {/* A long file name is cut, never the reason */}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { gmailApi, loadAccounts } from './gmail'
 import { read, write } from './localState'
@@ -242,8 +243,8 @@ export async function fetchAlert(account: string, id: string): Promise<MailAlert
     account,
     id,
     threadId: message.threadId,
-    from: senderName(header('From')),
-    subject: header('Subject') || '(no subject)',
+    from: senderName(header('From')), // i18n-ok
+    subject: header('Subject') || t('(no subject)'), // i18n-ok
     snippet: decodeEntities(message.snippet ?? ''),
     date: Number(message.internalDate) || Date.now(),
   }
@@ -252,7 +253,7 @@ export async function fetchAlert(account: string, id: string): Promise<MailAlert
 // "Jane Doe <jane@example.com>" → Jane Doe; "<jane@example.com>" or a bare address → the address
 function senderName(from: string) {
   const name = from.replace(/<[^>]*>/, '').replace(/"/g, '').trim()
-  return name || from.replace(/[<>]/g, '').trim() || 'Unknown sender'
+  return name || from.replace(/[<>]/g, '').trim() || t('Unknown sender')
 }
 
 // Gmail's snippets come with HTML entities (&#39; &amp; …)
@@ -356,7 +357,7 @@ export async function fetchMailBody(alert: MailAlert): Promise<MailBody> {
   const part = findPart(message.payload, 'text/html') ?? findPart(message.payload, 'text/plain')
   if (!part) {
     const files = attachedFiles(message.payload, '')
-    return { html: '<p><i>This email has no text.</i></p>', plain: true, remoteImages: false, sender, files }
+    return { html: `<p><i>${t('This email has no text.')}</i></p>`, plain: true, remoteImages: false, sender, files }
   }
   let data = part.body?.data
   if (!data && part.body?.attachmentId) {

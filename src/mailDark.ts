@@ -95,7 +95,7 @@ export function darkenMail(doc: Document): number {
     for (const side of SIDES) {
       if (parseFloat(style.getPropertyValue(`border-${side}-width`)) === 0) continue
       const border = parse(style.getPropertyValue(`border-${side}-color`))
-      if (border && border[3] > 0 && isLight(border)) changes.push([el, `border-${side}-color`, darkBg(border)])
+      if (border && border[3] > 0 && isLight(border)) changes.push([el, `border-${side}-color`, darkBg(border)]) // i18n-ok
     }
   }
   // Inline + important: beats the mail's own rules, even its "!important" ones

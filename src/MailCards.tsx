@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { plural, t } from './i18n'
 import { Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
@@ -21,7 +22,7 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
 }) {
   return (
     <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
-      <button className="reminder-alert-body" onClick={onRead} title="Read">
+      <button className="reminder-alert-body" onClick={onRead} title={t('Read')}>
         <MailWhen alert={alert}>{loading && <Spinner size={12} />}</MailWhen>
         <span className="reminder-alert-text">{alert.from}</span>
         <span className="mail-alert-subject">{alert.subject}</span>
@@ -54,12 +55,12 @@ export function MailButtons({ opened, onAction }: { opened?: boolean; onAction: 
   return (
     <div className="reminder-alert-buttons">
       <button className="primary" onClick={() => onAction(opened ? 'mail-close' : 'mail-read')}>
-        {opened ? 'Done' : 'Mark as read'}
+        {opened ? t('Done') : t('Mark as read')}
       </button>
       <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-close')}>
-        {opened ? 'Mark as unread' : 'Keep unread'}
+        {opened ? t('Mark as unread') : t('Keep unread')}
       </button>
-      <button className="mail-delete" onClick={() => onAction('mail-delete')} title="Delete" aria-label="Delete">
+      <button className="mail-delete" onClick={() => onAction('mail-delete')} title={t('Delete')} aria-label={t('Delete')}>
         <Trash2 size={15} />
       </button>
     </div>
@@ -94,19 +95,19 @@ export function MailCards({ alerts, fading, loadingKey = null, onAction, onRead 
         className={`reminder-alert${alerts.every((a) => fading.has(a.key)) ? ' fading' : ''}`}
         style={{ borderLeftColor: color }}
       >
-        <button className="reminder-alert-body" onClick={() => setUnfolded(true)} title="Show all">
+        <button className="reminder-alert-body" onClick={() => setUnfolded(true)} title={t('Show all')}>
           <MailWhen
-            alert={{ date: alerts[0].date, account: accounts.size === 1 ? alerts[0].account : `${accounts.size} accounts` }}
+            alert={{ date: alerts[0].date, account: accounts.size === 1 ? alerts[0].account : t('{n} accounts', { n: accounts.size }) }}
             title={[...accounts].join('\n')}
           />
-          <span className="reminder-alert-text">{alerts.length} new emails</span>
+          <span className="reminder-alert-text">{plural(alerts.length, '{n} new email', '{n} new emails')}</span>
           <span className="reminder-alert-note">{senders.join(', ')}</span>
         </button>
         <div className="reminder-alert-buttons">
           <button className="primary" onClick={() => all('mail-read')}>
-            Mark all read
+            {t('Mark all read')}
           </button>
-          <button onClick={() => setUnfolded(true)}>Show all</button>
+          <button onClick={() => setUnfolded(true)}>{t('Show all')}</button>
         </div>
       </div>
     )
@@ -115,8 +116,8 @@ export function MailCards({ alerts, fading, loadingKey = null, onAction, onRead 
     <>
       {alerts.length > 1 && (
         <div className="reminder-alerts-head">
-          <span>{alerts.length} new emails</span>
-          <button onClick={() => all('mail-read')}>Mark all read</button>
+          <span>{plural(alerts.length, '{n} new email', '{n} new emails')}</span>
+          <button onClick={() => all('mail-read')}>{t('Mark all read')}</button>
         </div>
       )}
       {alerts.map((alert) => (

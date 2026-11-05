@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { t } from './i18n'
 import { useEffect, useState } from 'react'
 import { appAddress, CLIENT_ID, idTokenClaims, redirectUri, tokenRequest } from './google'
 import { getSecret, GMAIL_SECRET, setSecret } from './secrets'
@@ -120,18 +121,18 @@ async function finish(params: URLSearchParams): Promise<Result> {
   const verifier = localStorage.getItem(VERIFIER_KEY)
   localStorage.removeItem(VERIFIER_KEY)
   const ownState = isOwnSignInState('gmail', params.get('state'))
-  if (error) return fail(error === 'access_denied' ? 'Gmail: sign-in cancelled.' : `Gmail: ${error}`)
+  if (error) return fail(error === 'access_denied' ? t('Gmail: sign-in cancelled.') : t('Gmail: {error}', { error }))
   // Not the latest sign-in started here (an older tab, or a link from someone else)
-  if (!verifier || !code || !ownState) return fail('Gmail sign-in expired. Please try again.')
+  if (!verifier || !code || !ownState) return fail(t('Gmail sign-in expired. Please try again.'))
   // Google's consent page lets the user untick the Gmail permission
   if (!granted.split(' ').includes(SCOPE)) {
-    return fail('Gmail: SyncR needs the permission to read your emails. Add the account again and keep it ticked.')
+    return fail(t('Gmail: SyncR needs the permission to read your emails. Add the account again and keep it ticked.'))
   }
   const res = await tokenRequest({ code, code_verifier: verifier, redirect_uri: redirectUri() })
-  if (!res.ok) return fail(`Gmail sign-in failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) return fail(t('Gmail sign-in failed ({status}): {details}', { status: res.status, details: await res.text() }))
   const data = await res.json()
   const email = idTokenClaims(data.id_token).email
-  if (!email) return fail('Gmail: Google didn’t say which account it is. Please try again.')
+  if (!email) return fail(t('Gmail: Google didn’t say which account it is. Please try again.'))
 
   accessTokens.set(email, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
   const tokens = {
@@ -145,12 +146,12 @@ async function finish(params: URLSearchParams): Promise<Result> {
     saveAccounts(accounts.map((a) => (a.email === email ? { ...a, ...tokens, expired: false } : a)))
     // The new tokens only carry what this sign-in asked for (Add account…: no Pub/Sub)
     if (existing.pubsub && !tokens.pubsub) {
-      return { ok: false, text: `${email} signed in again, without the Pub/Sub permission: instant mail is off until "Sign in…" under Instant mail.` }
+      return { ok: false, text: t('{email} signed in again, without the Pub/Sub permission: instant mail is off until "Sign in…" under Instant mail.', { email }) }
     }
-    return { ok: true, text: `${email} signed in again.` }
+    return { ok: true, text: t('{email} signed in again.', { email }) }
   }
   saveAccounts([...accounts, { email, ...tokens, color: nextColor(accounts), enabled: true }])
-  return { ok: true, text: `${email} added.` }
+  return { ok: true, text: t('{email} added.', { email }) }
 }
 
 // Account colors, in the order new accounts get them (calm ones first; red looks urgent)
@@ -175,7 +176,7 @@ const accessTokens = new Map<string, { token: string; expiresAt: number }>()
 // Google refusing the sign-in marks the account "signed out" (Settings).
 async function accessToken(email: string) {
   const account = loadAccounts().find((a) => a.email === email)
-  if (!account || account.expired) throw Object.assign(new Error(`Gmail: ${email} isn't signed in`), { signedOut: true })
+  if (!account || account.expired) throw Object.assign(new Error(t("Gmail: {email} isn't signed in", { email })), { signedOut: true })
   const known = accessTokens.get(email)
   if (known && known.expiresAt > Date.now() + 60_000) return known.token
   const res = await tokenRequest({ refresh_token: account.refreshToken })
@@ -184,9 +185,9 @@ async function accessToken(email: string) {
     if ((await res.text()).includes('invalid_grant')) {
       accessTokens.delete(email)
       updateAccount(email, { expired: true })
-      throw Object.assign(new Error(`Gmail: ${email} was signed out. Sign in again in Settings.`), { signedOut: true })
+      throw Object.assign(new Error(t('Gmail: {email} was signed out. Sign in again in Settings.', { email })), { signedOut: true })
     }
-    throw Object.assign(new Error(`Gmail sign-in renewal failed (${res.status})`), { status: res.status })
+    throw Object.assign(new Error(t('Gmail sign-in renewal failed ({status})', { status: res.status })), { status: res.status })
   }
   const data = await res.json()
   accessTokens.set(email, { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
@@ -198,11 +199,11 @@ async function accessToken(email: string) {
 export function gmailErrorText(error: unknown) {
   const e = asGmailError(error)
   const status = e.status ?? 0
-  if (e.signedOut) return 'Signed out, sign in again in Settings → Accounts'
-  if (e.offline) return 'No connection to Gmail (offline?)'
-  if (status === 404) return 'This email is gone (deleted or moved in Gmail)'
-  if (isBusy(e)) return 'Gmail is busy right now'
-  if (status) return `Gmail error (${status})`
+  if (e.signedOut) return t('Signed out, sign in again in Settings → Accounts')
+  if (e.offline) return t('No connection to Gmail (offline?)')
+  if (status === 404) return t('This email is gone (deleted or moved in Gmail)')
+  if (isBusy(e)) return t('Gmail is busy right now')
+  if (status) return t('Gmail error ({status})', { status })
   return error instanceof Error ? error.message : String(error)
 }
 
@@ -260,7 +261,7 @@ export async function googleApi(
     } catch {
       // not JSON: the text as it is
     }
-    throw Object.assign(new Error(`${name} failed (${res.status}): ${reason}`), { status: res.status })
+    throw Object.assign(new Error(t('{name} failed ({status}): {reason}', { name, status: res.status, reason })), { status: res.status })
   }
   const text = await res.text()
   return text ? JSON.parse(text) : null

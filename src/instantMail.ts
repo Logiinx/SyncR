@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { gmailApi, googleApi, loadAccounts } from './gmail'
 import { read, write } from './localState'
@@ -109,11 +110,11 @@ async function round(): Promise<number> {
   const projectId = loadProjectId()
   const collector = loadAccounts().find((a) => a.pubsub && !a.expired)
   if (!projectId) {
-    setStatus({ ok: false, text: 'Instant mail: off (no project ID) · checking every minute' })
+    setStatus({ ok: false, text: t('Instant mail: off (no project ID) · checking every minute') })
     return RETRY_MS
   }
   if (!collector) {
-    setStatus({ ok: false, text: 'Instant mail: needs a sign-in with the Pub/Sub permission (button above)' })
+    setStatus({ ok: false, text: t('Instant mail: needs a sign-in with the Pub/Sub permission (button above)') })
     return RETRY_MS
   }
   const failing = await renewWatches(projectId)
@@ -121,19 +122,19 @@ async function round(): Promise<number> {
   const startedAt = Date.now()
   const answer = await googleApi(
     collector.email,
-    `${subscription}:pull`,
+    `${subscription}:pull`, // i18n-ok
     { method: 'POST', body: JSON.stringify({ maxMessages: 20 }) },
     { name: 'Pub/Sub pull', timeoutMs: PULL_TIMEOUT_MS },
   )
-  const notFor = failing.length ? ` · not for ${failing.join(', ')} (checked every minute)` : ''
-  setStatus({ ok: true, text: `Instant mail: on (via ${collector.email})${notFor}` })
+  const notFor = failing.length ? t(' · not for {emails} (checked every minute)', { emails: failing.join(', ') }) : ''
+  setStatus({ ok: true, text: t('Instant mail: on (via {email})', { email: collector.email }) + notFor })
   const ackIds: string[] = (answer?.receivedMessages ?? []).map((m: { ackId: string }) => m.ackId)
   if (ackIds.length > 0) {
     // Which account changed doesn't matter: the check asks every account what changed (cheap)
     await checkMail()
     await googleApi(
       collector.email,
-      `${subscription}:acknowledge`,
+      `${subscription}:acknowledge`, // i18n-ok
       { method: 'POST', body: JSON.stringify({ ackIds }) },
       { name: 'Pub/Sub acknowledge' },
     )
@@ -160,7 +161,7 @@ export function startInstantMail() {
         wait = await round()
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error)
-        setStatus({ ok: false, text: `Instant mail: not working (${reason}) · checking every minute` })
+        setStatus({ ok: false, text: t('Instant mail: not working ({reason}) · checking every minute', { reason }) })
         wait = RETRY_MS
       }
       if (running && wait > 0) await pause(wait)
