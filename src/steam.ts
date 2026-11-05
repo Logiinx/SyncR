@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { decimal } from './i18n'
+import { decimal, t } from './i18n'
 import { changed, db, setGameStatus, updateGame, type Game, type SteamStats } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { steamRefs } from './prices'
@@ -37,7 +37,7 @@ export function useSteamProfile() {
 async function steamApi<T>(path: string, body: object, timeoutMs = 20_000): Promise<T> {
   const response = await igdbProxyFetch(`steam/${path}`, JSON.stringify(body), timeoutMs)
   const answer = await response.json().catch(() => ({}))
-  if (!response.ok || answer.error) throw new Error(answer.error ?? `Steam failed (${response.status})`)
+  if (!response.ok || answer.error) throw new Error(answer.error ?? t('Steam failed ({status})', { status: response.status }))
   return answer
 }
 
@@ -211,7 +211,7 @@ export async function followSteam(force = false) {
 }
 
 // "42 h played", "4.5 h played", "35 min played"
-export const playedText = (minutes: number) => `${playedTime(minutes)} played`
+export const playedText = (minutes: number) => t('{time} played', { time: playedTime(minutes) })
 
 // "42 h", "4.5 h", "35 min"
 export function playedTime(minutes: number) {

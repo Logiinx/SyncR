@@ -7,7 +7,7 @@ import Dialog, { type DialogRequest } from './Dialog'
 import GameDialog from './GameDialog'
 import Cover from './GameCover'
 import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
-import { CALENDAR_LAYOUTS, type CalendarLayout } from './GameCalendar'
+import { calendarLayouts, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
@@ -198,7 +198,7 @@ function RemindersView() {
         </span>
         <span className="reminder-due">
           {formatDue(game.releaseDate!, true)}
-          {countdown !== 'today' && countdown !== 'tomorrow' && ` · ${countdown}`}
+          {countdown !== t('today') && countdown !== t('tomorrow') && ` · ${countdown}`}
         </span>
       </button>
     )
@@ -237,7 +237,7 @@ function RemindersView() {
                 )}
               </button>
             )}
-            <FillSwitch className="calendar-layouts" options={CALENDAR_LAYOUTS} value={layout} onChange={setLayout} />
+            <FillSwitch className="calendar-layouts" options={calendarLayouts()} value={layout} onChange={setLayout} />
           </div>
         </div>
 

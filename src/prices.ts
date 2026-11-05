@@ -1,6 +1,7 @@
 // Game prices in euros: Steam's own price and the cheapest key (GG.deals), through our proxy's
 // /prices route (proxy/igdb-worker.js). Looked up live, never saved or synced.
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { db, isWatched, type Game } from './db'
 import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
 
@@ -146,11 +147,11 @@ export async function steamPrices(refs: SteamRef[], { background }: LookupOption
     if (minute && minute.remaining < batch.length + keepFree && Date.now() < minute.reset) await sleep(minute.reset - Date.now() + 1000)
     asked += batch.length
     const response = await igdbProxyFetch('prices', JSON.stringify(body), 20_000)
-    if (!response.ok) throw new Error(`Price lookup failed (${response.status})`)
+    if (!response.ok) throw new Error(t('Price lookup failed ({status})', { status: response.status }))
     const { _rate: rate, ...answer }: Record<string, Omit<GamePrices, 'steamUrl'>> & { _rate?: Rate } = await response.json()
     if (rate?.remaining != null && rate.reset != null) minute = { remaining: Number(rate.remaining), reset: Number(rate.reset) * 1000 }
     // Over GG.deals' limit: no key prices came. Fail, rather than show (and keep) prices without them.
-    if (rate?.limited) throw new Error('GG.deals limit reached, try again later')
+    if (rate?.limited) throw new Error(t('GG.deals limit reached, try again later'))
     for (const ref of batch) {
       const found = answer[ref.kind === 'app' ? ref.id : `${ref.kind}${ref.id}`]
       result.set(refKey(ref), found ? { steamUrl: `https://store.steampowered.com/${ref.kind}/${ref.id}/`, ...found } : null)

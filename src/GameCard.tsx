@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Ellipsis, FolderInput, Gamepad2, Palette, PinOff, Sparkles } from 'lucide-react'
 import { changed, db, setCardColor, setCardPriority, type Card } from './db'
@@ -46,7 +47,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
       style={tintStyle(card.color)}
       data-card-id={card.id}
       ref={ref}
-      title={inList ? undefined : 'No longer in your games'}
+      title={inList ? undefined : t('No longer in your games')}
       onPointerDown={(event) => {
         if (!(event.target as HTMLElement).closest('button')) onPress(event)
       }}
@@ -68,7 +69,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
             const box = event.currentTarget.getBoundingClientRect()
             setMenu({ x: box.left, y: box.bottom + 4 })
           }}
-          title="More"
+          title={t('More')}
         >
           <Ellipsis size={13} />
         </button>
@@ -78,18 +79,18 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: 'Card color' } : undefined}
+          header={menu.colors ? { title: t('Card color') } : undefined}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
-            ...(inList ? [{ label: 'Open', icon: Gamepad2, onClick: () => onOpen(card.game.id) }] : []),
-            { label: 'Card color…', icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: true }) },
+            ...(inList ? [{ label: t('Open'), icon: Gamepad2, onClick: () => onOpen(card.game.id) }] : []),
+            { label: t('Card color…'), icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: true }) },
             {
-              label: card.priority ? 'Remove priority' : 'Mark as priority',
+              label: card.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Unpin from Board', icon: PinOff, danger: true, onClick: onDelete },
+            { label: t('Move to group…'), icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: t('Unpin from Board'), icon: PinOff, danger: true, onClick: onDelete },
           ]}
         />
       )}

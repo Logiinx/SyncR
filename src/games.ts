@@ -1,4 +1,5 @@
 import { CalendarClock, Library, Play, ShoppingCart, type LucideIcon } from 'lucide-react'
+import { plural, t, textKey, type TextKey } from './i18n'
 import { changed, db, isWatched, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
 import type { DialogRequest } from './Dialog'
 import { fetchGames, isComplete, loadConnection, moveOldConnection, type FoundGame } from './igdb'
@@ -21,33 +22,33 @@ export const GAMES_TAB = 'games' // its id among the open tabs (note ids never l
 // The Games tabs (user's names): To play shows two statuses, Playing above Not started
 export type GamesTab = 'waiting' | 'tobuy' | 'toplay' | 'library'
 // icon: on the tab, and before a game of your list in the Games calendar grid
-export const TABS: { tab: GamesTab; label: string; icon: LucideIcon; statuses: GameStatus[] }[] = [
-  { tab: 'waiting', label: 'Upcoming', icon: CalendarClock, statuses: ['waiting'] },
-  { tab: 'tobuy', label: 'To buy', icon: ShoppingCart, statuses: ['tobuy'] },
-  { tab: 'toplay', label: 'To play', icon: Play, statuses: ['playing', 'upnext'] },
-  { tab: 'library', label: 'Library', icon: Library, statuses: ['library'] },
+export const TABS: { tab: GamesTab; label: TextKey; icon: LucideIcon; statuses: GameStatus[] }[] = [
+  { tab: 'waiting', label: textKey('Upcoming'), icon: CalendarClock, statuses: ['waiting'] },
+  { tab: 'tobuy', label: textKey('To buy'), icon: ShoppingCart, statuses: ['tobuy'] },
+  { tab: 'toplay', label: textKey('To play'), icon: Play, statuses: ['playing', 'upnext'] },
+  { tab: 'library', label: textKey('Library'), icon: Library, statuses: ['library'] },
 ]
 // An old "toplay" not upgraded yet (until the first sync, upgradeOldStatuses) shows in To buy
 export const tabOf = (status: GameStatus) => TABS.find((t) => t.statuses.includes(status)) ?? TABS[1]
 // "In To play" (search, calendar, preview): the tab a game shows in
-export const statusLabel = (status?: GameStatus) => (status ? tabOf(status).label : undefined)
+export const statusLabel = (status?: GameStatus) => (status ? t(tabOf(status).label) : undefined)
 
 // Every status a game can be moved to (game window, right-click menu), in the tabs' order
-export const STATUSES: { status: GameStatus; label: string }[] = [
-  { status: 'waiting', label: 'Upcoming' },
-  { status: 'tobuy', label: 'To buy' },
-  { status: 'upnext', label: 'Not started' },
-  { status: 'playing', label: 'Playing' },
-  { status: 'library', label: 'Library' },
+export const STATUSES: { status: GameStatus; label: TextKey }[] = [
+  { status: 'waiting', label: textKey('Upcoming') },
+  { status: 'tobuy', label: textKey('To buy') },
+  { status: 'upnext', label: textKey('Not started') },
+  { status: 'playing', label: textKey('Playing') },
+  { status: 'library', label: textKey('Library') },
 ]
 
 // Where a released game can be added (search's "Add ▾", the preview's "Add to list ▾"), in the
 // tabs' order. No Upcoming: it's out already.
-export interface AddPlace { label: string; status: GameStatus; completed?: boolean }
+export interface AddPlace { label: TextKey; status: GameStatus; completed?: boolean }
 export const ADD_PLACES: AddPlace[] = [
-  { label: 'To buy', status: 'tobuy' },
-  { label: 'To play', status: 'upnext' },
-  { label: 'Library', status: 'library' },
+  { label: textKey('To buy'), status: 'tobuy' },
+  { label: textKey('To play'), status: 'upnext' },
+  { label: textKey('Library'), status: 'library' },
 ]
 
 // Rating, heart, review and "Completed": only for games being played or in the Library (the
@@ -59,8 +60,8 @@ export const isPlayed = (game: Game) => game.status === 'playing' || game.status
 export const isFavoriteTab = (game: { status: GameStatus }) => game.status === 'library'
 export const priorityLabel = (game: { status: GameStatus; priority: boolean }) =>
   isFavoriteTab(game)
-    ? (game.priority ? 'Remove favorite' : 'Mark as favorite')
-    : (game.priority ? 'Remove priority' : 'Mark as priority')
+    ? (game.priority ? t('Remove favorite') : t('Mark as favorite'))
+    : (game.priority ? t('Remove priority') : t('Mark as priority'))
 
 // How a Library game ended: Completed, Paused or Dropped, or nothing (just put away). Stored as
 // completed (older apps know it) or ending, never both (endingChange).
@@ -114,9 +115,11 @@ export async function addGame(found: FoundGame, status?: GameStatus, completed?:
 export async function removeGameQuestion(game: Game, onRemoved: () => void): Promise<DialogRequest> {
   const pinned = await pinnedCard(game.id)
   return {
-    title: 'Remove game?',
-    message: `"${game.name}" will be removed from your list, with its note and review.${pinned ? ' Its card stays on the Board.' : ''}`,
-    confirmLabel: 'Remove',
+    title: t('Remove game?'),
+    message: pinned
+      ? t('"{name}" will be removed from your list, with its note and review. Its card stays on the Board.', { name: game.name })
+      : t('"{name}" will be removed from your list, with its note and review.', { name: game.name }),
+    confirmLabel: t('Remove'),
     danger: true,
     onConfirm: () => {
       onRemoved()
@@ -155,7 +158,7 @@ export function shortPlatforms(platforms: string[]) {
   const sorted = sortPlatforms(platforms)
   const shown = sorted.slice(0, SHOWN_PLATFORMS).join(', ')
   const more = sorted.length - SHOWN_PLATFORMS
-  return more > 0 ? `${shown} +${more} more` : shown
+  return more > 0 ? plural(more, '{platforms} +{n} more|one', '{platforms} +{n} more', { platforms: shown }) : shown
 }
 
 // How long until a release: "today", "tomorrow", "in 34 days", "in 5 months", or "out now" once
@@ -165,16 +168,16 @@ export function releaseCountdown(time?: number) {
   if (!time) return ''
   const midnight = (t: number) => new Date(t).setHours(0, 0, 0, 0)
   const days = Math.round((midnight(time) - midnight(Date.now())) / DAY)
-  if (days < 0) return 'out now'
-  if (days === 0) return 'today'
-  if (days === 1) return 'tomorrow'
-  if (days < 60) return `in ${days} days`
-  return `in ${Math.round(days / 30.4)} months`
+  if (days < 0) return t('out now')
+  if (days === 0) return t('today')
+  if (days === 1) return t('tomorrow')
+  if (days < 60) return t('in {n} days', { n: days })
+  return t('in {n} months', { n: Math.round(days / 30.4) })
 }
 
 // "12 Mar 2027", a vague date ("Q1 2027"), or "TBA" when there's no date yet
 export function formatRelease(time?: number, label?: string) {
-  if (!time) return label || 'TBA'
+  if (!time) return label || t('TBA')
   return shortDate(time)
 }
 
@@ -187,7 +190,7 @@ export function releaseText(game: { releaseDate?: number; releaseLabel?: string;
   const date = formatRelease(game.releaseDate, game.releaseLabel)
   if (!game.releaseDate) return date
   // ('full' still counts down on the release day itself: "22 Oct 2026 · today")
-  const upcoming = form === 'full' ? releaseCountdown(game.releaseDate) !== 'out now' : game.status === 'waiting'
+  const upcoming = form === 'full' ? releaseCountdown(game.releaseDate) !== t('out now') : game.status === 'waiting'
   if (!upcoming) return form === 'full' ? date : String(new Date(game.releaseDate).getFullYear())
   const countdown = releaseCountdown(game.releaseDate)
   return form === 'short' ? countdown : `${date} · ${countdown}`

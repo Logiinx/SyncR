@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { t } from './i18n'
 import { changed, db } from './db'
 import { read } from './localState'
 
@@ -52,7 +53,7 @@ function proxyUrl(typed: string) {
 // Another request to the same proxy, e.g. Google Calendar's sign-in (google.ts)
 export async function igdbProxyFetch(path: string, body: string, timeoutMs: number) {
   const connection = await loadConnection()
-  if (!isComplete(connection)) throw new Error('Set up the game search proxy first (Settings → Accounts)')
+  if (!isComplete(connection)) throw new Error(t('Set up the game search proxy first (Settings → Accounts)'))
   try {
     return await fetch(`${proxyUrl(connection.url)}/${path}`, {
       method: 'POST',
@@ -61,7 +62,7 @@ export async function igdbProxyFetch(path: string, body: string, timeoutMs: numb
       signal: AbortSignal.timeout(timeoutMs),
     })
   } catch {
-    throw Object.assign(new Error("Could not reach SyncR's proxy (offline, or wrong address?)"), { offline: true })
+    throw Object.assign(new Error(t("Could not reach SyncR's proxy (offline, or wrong address?)")), { offline: true })
   }
 }
 
@@ -69,7 +70,7 @@ export async function igdbProxyFetch(path: string, body: string, timeoutMs: numb
 // connection: to check one that isn't saved yet (Settings); otherwise the saved one.
 export async function igdb<T>(endpoint: string, query: string, connection?: IgdbConnection): Promise<T[]> {
   connection ??= await loadConnection()
-  if (!isComplete(connection)) throw new Error('Game search is not set up (Settings → Accounts)')
+  if (!isComplete(connection)) throw new Error(t('Game search is not set up (Settings → Accounts)'))
   let response: Response
   try {
     response = await fetch(`${proxyUrl(connection.url)}/${endpoint}`, {
@@ -78,12 +79,12 @@ export async function igdb<T>(endpoint: string, query: string, connection?: Igdb
       body: query,
     })
   } catch {
-    throw new Error('Could not reach the game search proxy (offline, or wrong address?)')
+    throw new Error(t('Could not reach the game search proxy (offline, or wrong address?)'))
   }
-  if (response.status === 401) throw new Error('Wrong password for the game search proxy')
-  if (!response.ok) throw new Error(`Game search failed (${response.status}): ${await response.text()}`)
+  if (response.status === 401) throw new Error(t('Wrong password for the game search proxy'))
+  if (!response.ok) throw new Error(t('Game search failed ({status}): {details}', { status: response.status, details: await response.text() }))
   if (!response.headers.get('Content-Type')?.includes('application/json')) {
-    throw new Error('The game search proxy address is wrong (it answered with a web page)')
+    throw new Error(t('The game search proxy address is wrong (it answered with a web page)'))
   }
   return response.json()
 }
@@ -119,7 +120,7 @@ interface IgdbGame {
 
 // Everything SyncR reads about a game, in one request
 const GAME_FIELDS =
-  'name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name'
+  'name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name' // i18n-ok
 
 // IGDB game types: main game 0, standalone expansion 4, remake 8, remaster 9,
 // expanded game 10, port 11. Left out unless asked: DLC 1, expansion 2, bundle 3, mod 5,

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { t, textKey, type TextKey } from './i18n'
 import { ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
 import BackButton from './BackButton'
 import Window from './Window'
@@ -16,10 +17,10 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   const extras = useGameExtras(igdbId)
   if (extras === undefined) return <Spinner />
   if (!extras) return null
-  const lines: [string, string[]][] = [
-    ['Developer', extras.developers],
-    ['Publisher', extras.publishers],
-    ['Modes', extras.modes],
+  const lines: [TextKey, string[]][] = [
+    [textKey('Developer'), extras.developers],
+    [textKey('Publisher'), extras.publishers],
+    [textKey('Modes'), extras.modes],
   ]
   return (
     <dl className="game-extras">
@@ -27,7 +28,7 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
         .filter(([, values]) => values.length > 0)
         .map(([label, values]) => (
           <div key={label}>
-            <dt>{label}</dt>
+            <dt>{t(label)}</dt>
             <dd>{values.join(', ')}</dd>
           </div>
         ))}
@@ -48,7 +49,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
   const { steam, deals } = prices
   const check = !pricesFit(name, prices) && (
     <p className="price-mismatch">
-      <TriangleAlert size={13} /> Prices for: {prices.name}
+      <TriangleAlert size={13} /> {t('Prices for: {name}', { name: prices.name ?? '' })}
     </p>
   )
   if (isFree(prices)) {
@@ -56,7 +57,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
       <div className="game-prices">
         <div>
           <button className="price-link" onClick={() => openLink(prices.steamUrl)}>
-            <SteamIcon /> Free
+            <SteamIcon /> {t('Free')}
           </button>
         </div>
         {check}
@@ -64,8 +65,8 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
     )
   }
   const lows = [
-    deals?.retailLow && lowText('store', deals.retailLow),
-    deals?.keyshopsLow && lowText('key', deals.keyshopsLow),
+    deals?.retailLow && lowText(t('store'), deals.retailLow),
+    deals?.keyshopsLow && lowText(t('key'), deals.keyshopsLow),
   ].filter(Boolean)
   const steamWins = steamIsCheapest(prices)
   const keyWins = !!steam && deals?.keyshops != null && !steamWins
@@ -73,7 +74,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
     <div className="game-prices">
       <div>
         <button className={keyWins ? 'price-link price-dearer' : 'price-link'} onClick={() => openLink(prices.steamUrl)}>
-          <SteamIcon cheapest={steamWins} /> {steam ? formatEuros(steam.final) : 'No price'}
+          <SteamIcon cheapest={steamWins} /> {steam ? formatEuros(steam.final) : t('No price')}
         </button>
         {steam && steam.discount > 0 && (
           <>
@@ -86,19 +87,19 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
       {deals && (
         <div>
           <button className={steamWins ? 'price-link price-dearer' : 'price-link'} onClick={() => openLink(deals.url)}>
-            <KeyRound className="price-icon" aria-label="Key" /> {deals.keyshops ? formatEuros(deals.keyshops) : 'None'}
+            <KeyRound className="price-icon" aria-label={t('Key')} /> {deals.keyshops ? formatEuros(deals.keyshops) : t('None')}
           </button>
           {keyAtLowest(prices) && <LowestEver />}
         </div>
       )}
-      {lows.length > 0 && <p className="price-lows">Lowest ever: {lows.join(' · ')}</p>}
+      {lows.length > 0 && <p className="price-lows">{t('Lowest ever: {prices}', { prices: lows.join(' · ') })}</p>}
       {check}
     </div>
   )
 }
 
 // An all-time low, e.g. "store 16,55 €"; just "Free" rather than "store 0,00 €" (a past giveaway)
-const lowText = (where: string, price: string) => (Number(price) === 0 ? 'Free' : `${where} ${formatEuros(price)}`)
+const lowText = (where: string, price: string) => (Number(price) === 0 ? t('Free') : `${where} ${formatEuros(price)}`)
 
 // Free to play: Steam gives no price and GG.deals says 0 in stores (key shops may still list odd
 // prices for it, e.g. Dota 2: hidden)
@@ -126,8 +127,8 @@ function keyAtLowest({ deals }: GamePrices) {
 // A small orange flame after a price at its lowest ever
 function LowestEver() {
   return (
-    <span className="price-flame" title="Lowest price ever">
-      <Flame aria-label="Lowest price ever" fill="currentColor" />
+    <span className="price-flame" title={t('Lowest price ever')}>
+      <Flame aria-label={t('Lowest price ever')} fill="currentColor" />
     </span>
   )
 }
@@ -140,9 +141,9 @@ function SteamIcon({ cheapest }: { cheapest?: boolean }) {
       className={cheapest ? 'price-icon steam-cheapest' : 'price-icon'}
       viewBox="0 0 24 24"
       fill="currentColor"
-      aria-label={cheapest ? 'Steam, cheaper than keys' : 'Steam'}
+      aria-label={cheapest ? t('Steam, cheaper than keys') : 'Steam'}
     >
-      {cheapest && <title>Cheaper on Steam than keys</title>}
+      {cheapest && <title>{t('Cheaper on Steam than keys')}</title>}
       <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z" />
     </svg>
   )
@@ -155,7 +156,7 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
   const prices = useKnownPrice(igdbId)
   if (prices === undefined && listPricesLoading()) {
     return (
-      <div className="game-price-line" aria-label="Loading prices">
+      <div className="game-price-line" aria-label={t('Loading prices')}>
         <span className="skeleton" style={{ width: '4.5em' }} />
         <span className="skeleton" style={{ width: '3.5em' }} />
       </div>
@@ -167,7 +168,7 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
     return (
       <div className="game-price-line">
         <span>
-          <SteamIcon /> Free
+          <SteamIcon /> {t('Free')}
         </span>
       </div>
     )
@@ -186,7 +187,7 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
       )}
       {deals?.keyshops && (
         <span className={steamWins ? 'price-dearer' : undefined}>
-          <KeyRound className="price-icon" aria-label="Key" /> {formatEuros(deals.keyshops)}
+          <KeyRound className="price-icon" aria-label={t('Key')} /> {formatEuros(deals.keyshops)}
           {keyAtLowest(prices) && <LowestEver />}
         </span>
       )}
@@ -205,13 +206,13 @@ export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: 
     return (
       <button className={`gd-action trailer-toggle${loading ? ' loading' : ''}`} disabled>
         <Play size={15} fill="currentColor" />
-        <span>{loading ? 'Watch trailer' : extras ? 'No trailer' : 'Trailer unavailable'}</span>
+        <span>{loading ? t('Watch trailer') : extras ? t('No trailer') : t('Trailer unavailable')}</span>
       </button>
     )
   }
   return (
     <button className={`gd-action trailer-toggle${props.open ? ' open' : ''}`} onClick={props.onToggle}>
-      <Play size={15} fill="currentColor" /> <span>Watch trailer</span>
+      <Play size={15} fill="currentColor" /> <span>{t('Watch trailer')}</span>
       <ChevronRight size={15} className="trailer-arrow" />
     </button>
   )
@@ -236,21 +237,21 @@ export function TrailerTheater(props: {
   if (!trailer) return null
   const details = [props.release, props.platforms, extras.modes.join(', ')].filter(Boolean)
   const companies = [
-    extras.developers.length > 0 && `Developer: ${extras.developers.join(', ')}`,
-    extras.publishers.length > 0 && `Publisher: ${extras.publishers.join(', ')}`,
+    extras.developers.length > 0 && t('Developer: {names}', { names: extras.developers.join(', ') }),
+    extras.publishers.length > 0 && t('Publisher: {names}', { names: extras.publishers.join(', ') }),
   ].filter(Boolean)
   return (
     // A click outside or Escape goes back to the game; ✕ closes it
     <Window className="trailer-theater" label={`${props.title}: ${trailer.name}`} onClose={props.onBack} ref={theaterRef}>
       <header className="trailer-theater-bar">
-        <BackButton onClick={props.onBack} title="Back to the game" />
+        <BackButton onClick={props.onBack} title={t('Back to the game')} />
         <div className="trailer-theater-info">
           <h2>{props.title}</h2>
           <p>{details.join(' · ')}</p>
           {companies.length > 0 && <p>{companies.join(' · ')}</p>}
         </div>
         <button className="game-trailer-link" onClick={() => openLink(`https://www.youtube.com/watch?v=${trailer.id}`)}>
-          Open on YouTube
+          {t('Open on YouTube')}
         </button>
         <CloseButton onClick={props.onClose} />
       </header>
@@ -284,7 +285,7 @@ export function TrailerPanel({ igdbId }: { igdbId: number }) {
       <div className="trailer-panel-foot">
         <span title={trailer.name}>{trailer.name}</span>
         <button className="game-trailer-link" onClick={() => openLink(`https://www.youtube.com/watch?v=${trailer.id}`)}>
-          Open on YouTube
+          {t('Open on YouTube')}
         </button>
       </div>
     </div>

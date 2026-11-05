@@ -1,4 +1,5 @@
 import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
+import { t, textKey, type TextKey } from './i18n'
 import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
 import { endingChange, endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
@@ -14,7 +15,7 @@ export function gameMenuItems(
 ): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
-      label: status === 'playing' ? 'Start playing' : `Move to ${label}`,
+      label: status === 'playing' ? t('Start playing') : t('Move to {place}', { place: t(label) }),
       icon: status === 'playing' ? Play : ArrowRight,
       onClick: () =>
         status === 'library' && game.status === 'playing' && view.onAskEnding
@@ -24,7 +25,7 @@ export function gameMenuItems(
     // Library: how it ended, like the game window's pills (✓ = the current one, again = none)
     ...(game.status !== 'library' ? [] : ENDINGS.filter((e) => e.ending).map(({ ending, label, icon }, i) => {
       const on = endingOf(game) === ending
-      return { label, icon, checked: on, divider: i === 0, onClick: () => updateGame(game.id, endingChange(on ? undefined : ending)) }
+      return { label: t(label), icon, checked: on, divider: i === 0, onClick: () => updateGame(game.id, endingChange(on ? undefined : ending)) }
     })),
     {
       label: priorityLabel(game),
@@ -34,42 +35,42 @@ export function gameMenuItems(
     },
     // Upcoming: pre-ordered or not (a pre-order has no price alert)
     ...(game.status !== 'waiting' ? [] : game.preordered
-      ? [{ label: 'Not pre-ordered', icon: PackageX, onClick: () => setPreordered(game.id, false) }]
-      : [{ label: 'Mark as pre-ordered', icon: PackageCheck, onClick: () => setPreordered(game.id, true) }]),
+      ? [{ label: t('Not pre-ordered'), icon: PackageX, onClick: () => setPreordered(game.id, false) }]
+      : [{ label: t('Mark as pre-ordered'), icon: PackageCheck, onClick: () => setPreordered(game.id, true) }]),
     // To buy and Upcoming: the price alert, set in the game window
     ...(!canWatch(game) ? [] : isWatched(game)
-      ? [{ label: 'Stop watching', icon: BellOff, onClick: () => stopWatching(game) }]
-      : [{ label: 'Watch price…', icon: Bell, onClick: view.onWatch }]),
+      ? [{ label: t('Stop watching'), icon: BellOff, onClick: () => stopWatching(game) }]
+      : [{ label: t('Watch price…'), icon: Bell, onClick: view.onWatch }]),
     view.pinned
-      ? { label: 'Unpin from Board', icon: PinOff, onClick: () => unpinGameFromBoard(game.id) }
+      ? { label: t('Unpin from Board'), icon: PinOff, onClick: () => unpinGameFromBoard(game.id) }
       : {
-          label: 'Pin to Board',
+          label: t('Pin to Board'),
           icon: Pin,
           onClick: async () => {
             await pinGameToBoard(game)
             window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
           },
         },
-    { label: 'Remove from list', icon: Trash2, danger: true, onClick: view.onRemove },
+    { label: t('Remove from list'), icon: Trash2, danger: true, onClick: view.onRemove },
   ]
 }
 
 // How a game ended, in the Library (✓ = the current one). Asked when a Playing game moves to the
 // Library ("How did it end?" menu, Games tab and game window), also the game window's choices.
-export const ENDINGS: { ending?: Ending; label: string; icon: typeof Archive }[] = [
-  { ending: 'completed', label: 'Completed', icon: CircleCheck },
-  { ending: 'paused', label: 'Paused', icon: CirclePause },
-  { ending: 'dropped', label: 'Dropped', icon: CircleX },
-  { label: 'Just put away', icon: Archive },
+export const ENDINGS: { ending?: Ending; label: TextKey; icon: typeof Archive }[] = [
+  { ending: 'completed', label: textKey('Completed'), icon: CircleCheck },
+  { ending: 'paused', label: textKey('Paused'), icon: CirclePause },
+  { ending: 'dropped', label: textKey('Dropped'), icon: CircleX },
+  { label: textKey('Just put away'), icon: Archive },
 ]
 export const endingMenuItems = (game: Game): MenuItem[] =>
   ENDINGS.map(({ ending, label, icon }) => ({
-    label,
+    label: t(label),
     icon,
     checked: endingOf(game) === ending && !!ending,
     onClick: () => moveToLibrary(game.id, ending),
   }))
-export const ENDING_HEADER = { title: 'How did it end?', subtitle: 'Moves it to the Library' }
+export const endingHeader = () => ({ title: t('How did it end?'), subtitle: t('Moves it to the Library') })
 
 // The menu to open at x, y: whether the game has a Board card ("Pin to Board" or "Unpin from
 // Board") is looked up once here, not kept up to date while no menu is open

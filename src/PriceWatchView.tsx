@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
+import { t, textKey, type TextKey } from './i18n'
 import { Bell, BellOff, BellRing, ExternalLink, PackageCheck } from 'lucide-react'
 import type { Game, PriceWatch } from './db'
 import { shortDate } from './dates'
@@ -14,9 +15,9 @@ import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWa
 // filters, bundles, subscriptions). Uses the prices the window already loaded (GamePricesInfo).
 // Without prices (not on Steam, no prices for this connection) it says so.
 
-const WHEN: [PriceWatch['when'], string][] = [
-  ['price', 'At my price'],
-  ['low', 'At lowest ever'],
+const WHEN: [PriceWatch['when'], TextKey][] = [
+  ['price', textKey('At my price')],
+  ['low', textKey('At lowest ever')],
 ]
 
 // A watched game (or edition) in the Games grid and list: a round badge on the cover's left
@@ -25,7 +26,7 @@ const WHEN: [PriceWatch['when'], string][] = [
 // "· reached 9,50 €" once it rang).
 // A pre-ordered Upcoming game: a green box in the same corner (it never has a bell)
 export function PreorderBadge() {
-  return <span className="game-badge preorder" title="Pre-ordered"><PackageCheck /></span>
+  return <span className="game-badge preorder" title={t('Pre-ordered')}><PackageCheck /></span>
 }
 
 export function WatchBell({ game }: { game: Game }) {
@@ -35,9 +36,9 @@ export function WatchBell({ game }: { game: Game }) {
   ]
   const lines = watches.map(({ watch, name }) => {
     const alert =
-      watch.when === 'price' ? (watch.target !== undefined ? `alert at ≤ ${formatEuros(watch.target)}` : 'alert at my price')
-      : 'alert at lowest ever'
-    const reached = watch.firedAt ? ` · reached${watch.firedPrice !== undefined ? ` ${formatEuros(watch.firedPrice)}` : ''}` : ''
+      watch.when === 'price' ? (watch.target !== undefined ? t('alert at ≤ {price}', { price: formatEuros(watch.target) }) : t('alert at my price'))
+      : t('alert at lowest ever')
+    const reached = !watch.firedAt ? '' : watch.firedPrice !== undefined ? ` · ${t('reached {price}', { price: formatEuros(watch.firedPrice) })}` : ` · ${t('reached')}`
     const line = `${alert}${reached}`
     return name ? `${name}: ${line}` : line[0].toUpperCase() + line.slice(1)
   })
@@ -54,7 +55,7 @@ export function WatchBell({ game }: { game: Game }) {
 
 const euroText = (cents?: number) => (cents === undefined ? '' : (cents / 100).toFixed(2).replace('.', ','))
 const nowText = (now: ReturnType<typeof currentPrice>) =>
-  now !== null ? `${formatEuros(now.price)} ${now.store === 'steam' ? 'on Steam' : 'for a key'}` : 'Not sold now'
+  now === null ? t('Not sold now') : now.store === 'steam' ? t('{price} on Steam', { price: formatEuros(now.price) }) : t('{price} for a key', { price: formatEuros(now.price) })
 
 type WatchFields = Pick<PriceWatch, 'when' | 'target'>
 
@@ -107,18 +108,18 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
 
   return (
     <div className="gd-field">
-      <span>Price alerts</span>
+      <span>{t('Price alerts')}</span>
       {canWatch && (
         <WatchRow
           name={game.name}
-          note={editionRows.length > 0 ? '(base game)' : undefined}
+          note={editionRows.length > 0 ? t('(base game)') : undefined}
           watch={watch}
           prices={prices}
           whenRef={whenRef}
           onSave={(fields) => setWatch(game, fields)}
         />
       )}
-      {prices === null && !watch && <p className="watch-state">No prices known for this game</p>}
+      {prices === null && !watch && <p className="watch-state">{t('No prices known for this game')}</p>}
       {editionRows.map((edition) => (
         <WatchRow
           key={`${edition.kind}${edition.id}`}
@@ -130,20 +131,20 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
           onSave={(fields) => setEditionWatch(game, edition, fields)}
         />
       ))}
-      {editions === undefined && (looking || prices === undefined) && <p className="watch-state watch-looking">Looking for editions…</p>}
+      {editions === undefined && (looking || prices === undefined) && <p className="watch-state watch-looking">{t('Looking for editions…')}</p>}
       <div className="watch-actions">
         {watchingAny && (
           <button className="gd-action" onClick={() => stopWatching(game)}>
-            <BellOff size={15} /> <span>Stop watching</span>
+            <BellOff size={15} /> <span>{t('Stop watching')}</span>
           </button>
         )}
         {prices?.deals && (
           <button
             className="gd-action"
             onClick={() => openLink(prices.deals!.url)}
-            title="Open its GG.deals page, to set an alert there (stores, bundles, subscriptions)"
+            title={t('Open its GG.deals page, to set an alert there (stores, bundles, subscriptions)')}
           >
-            <ExternalLink size={15} /> <span>GG.deals alert</span>
+            <ExternalLink size={15} /> <span>{t('GG.deals alert')}</span>
           </button>
         )}
       </div>
@@ -202,7 +203,7 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
         className={watch?.firedAt ? 'watch-toggle reached' : watch ? 'watch-toggle on' : 'watch-toggle'}
         onClick={toggle}
         aria-pressed={!!watch}
-        title={watch ? 'Stop this alert' : 'Alert me when the price drops'}
+        title={watch ? t('Stop this alert') : t('Alert me when the price drops')}
       >
         {watch?.firedAt ? <BellRing size={15} /> : <Bell size={15} />}
       </button>
@@ -212,31 +213,31 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
           {note && <span className="watch-row-note"> {note}</span>}
         </span>
         <span>
-          {prices === null ? 'Not on Steam now' : prices === undefined ? '' : nowText(now)}
+          {prices === null ? t('Not on Steam now') : prices === undefined ? '' : nowText(now)}
           {watch?.firedAt ? (
             <>
-              {` · reached ${shortDate(watch.firedAt)}${watch.firedPrice !== undefined ? `: ${formatEuros(watch.firedPrice)}` : ''}`}
+              {` · ${watch.firedPrice !== undefined ? t('reached {date}: {price}', { date: shortDate(watch.firedAt), price: formatEuros(watch.firedPrice) }) : t('reached {date}', { date: shortDate(watch.firedAt) })}`}
               <button className="watch-again" onClick={() => save({})}>
-                Watch again
+                {t('Watch again')}
               </button>
             </>
           ) : (
-            limit != null && ` · alerts at ≤ ${formatEuros(limit)}`
+            limit != null && ` · ${t('alerts at ≤ {price}', { price: formatEuros(limit) })}`
           )}
         </span>
         {watch?.ignoredKeys && (
-          <span title="Marked “Wrong key” on an alert (turn the alert off and on to forget them)">
-            Ignoring keys at {watch.ignoredKeys.map(formatEuros).join(', ')}
+          <span title={t('Marked “Wrong key” on an alert (turn the alert off and on to forget them)')}>
+            {t('Ignoring keys at {prices}', { prices: watch.ignoredKeys.map(formatEuros).join(', ') })}
           </span>
         )}
         {suggested && when === 'price' && <span>{suggested}</span>}
       </div>
       {when && (
         <div className="watch-row-choices">
-          <select value={when} aria-label="Alert when" onChange={(e) => save({ when: e.target.value as PriceWatch['when'] })}>
+          <select value={when} aria-label={t('Alert when')} onChange={(e) => save({ when: e.target.value as PriceWatch['when'] })}>
             {WHEN.map(([value, label]) => (
               <option key={value} value={value} disabled={noHistory && value === 'low'}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
@@ -245,7 +246,7 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
               ref={priceRef}
               inputMode="decimal"
               value={target}
-              aria-label="My price (€)"
+              aria-label={t('My price (€)')}
               placeholder="€"
               onChange={(e) => {
                 setTarget(e.target.value)

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { locale, plural, t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, PackageCheck, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
-import { ENDING_HEADER, endingMenuItems, ENDINGS } from './gameMenu'
+import { endingHeader, endingMenuItems, ENDINGS } from './gameMenu'
 import ContextMenu from './ContextMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
@@ -89,8 +90,8 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
             aria-pressed={game.priority}
           >
             {isFavoriteTab(game)
-              ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>Favorite</span></>
-              : <><Sparkles size={15} /> <span>Priority</span></>}
+              ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>{t('Favorite')}</span></>
+              : <><Sparkles size={15} /> <span>{t('Priority')}</span></>}
           </button>
           <button
             className="gd-action"
@@ -99,18 +100,18 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               await pinGameToBoard(game)
               window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
             }}
-            title={pinned ? 'Unpin from Board' : 'Pin to Board'}
+            title={pinned ? t('Unpin from Board') : t('Pin to Board')}
           >
-            {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? 'Unpin from Board' : 'Pin to Board'}</span>
+            {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? t('Unpin from Board') : t('Pin to Board')}</span>
           </button>
           {/* Its release event (made by SyncR for Waiting games, games.ts) */}
           {releaseEvent && (
-            <button className="gd-action" title="Open in Google Calendar" onClick={() => openLink(releaseEvent.link)}>
-              <ExternalLink size={15} /> <span>Google Calendar</span>
+            <button className="gd-action" title={t('Open in Google Calendar')} onClick={() => openLink(releaseEvent.link)}>
+              <ExternalLink size={15} /> <span>{t('Google Calendar')}</span>
             </button>
           )}
-          <button className="gd-action gd-remove" onClick={onRemove} title="Remove from list">
-            <Trash2 size={15} /> <span>Remove from list</span>
+          <button className="gd-action gd-remove" onClick={onRemove} title={t('Remove from list')}>
+            <Trash2 size={15} /> <span>{t('Remove from list')}</span>
           </button>
         </div>
       </div>
@@ -124,7 +125,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
             </p>
             {releaseEvent && releaseEvent.alerts.length > 0 && (
-              <p>Alert: {formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000)}</p>
+              <p>{t('Alert: {when}', { when: formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000) })}</p>
             )}
             <GameExtrasInfo igdbId={game.igdbId} />
             <GamePricesInfo igdbId={game.igdbId} name={game.name} />
@@ -134,7 +135,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
 
         <FillSwitch
           className="gd-status"
-          options={STATUSES.map(({ status, label }) => ({ value: status, label }))}
+          options={STATUSES.map(({ status, label }) => ({ value: status, label: t(label) }))}
           value={game.status}
           onChange={(status) => {
             if (status === game.status) return
@@ -144,10 +145,10 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
             const box = library.getBoundingClientRect()
             setEndingAt({ x: box.left, y: box.bottom + 4 })
           }}
-          label="Status"
+          label={t('Status')}
         />
         {endingAt && (
-          <ContextMenu x={endingAt.x} y={endingAt.y} header={ENDING_HEADER} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
+          <ContextMenu x={endingAt.x} y={endingAt.y} header={endingHeader()} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
         )}
 
         {/* Upcoming: a pre-order is owned (no price alerts; Not started on release day) */}
@@ -159,7 +160,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               aria-pressed={!!game.preordered}
             >
               <PackageCheck size={16} />
-              Pre-ordered
+              {t('Pre-ordered')}
             </button>
           </div>
         )}
@@ -169,10 +170,10 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
         {played && (
           <>
             <div className="gd-field">
-              <span>Your rating</span>
+              <span>{t('Your rating')}</span>
               <div className="game-rating">
                 <Stars value={game.rating} onChange={(rating) => updateGame(game.id, { rating })} />
-                {!!game.rating && <span className="game-rating-number">{game.rating} / 5</span>}
+                {!!game.rating && <span className="game-rating-number">{ratingText(game.rating)} / 5</span>}
                 {/* Playing: just Completed here; the Library has its "How it ended" row below */}
                 {game.status === 'playing' && (
                   <button
@@ -181,7 +182,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                     aria-pressed={!!game.completed}
                   >
                     <CircleCheck size={16} />
-                    Completed
+                    {t('Completed')}
                   </button>
                 )}
               </div>
@@ -189,7 +190,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
             {/* Library: Completed, Paused or Dropped (one at a time; click again for none) */}
             {game.status === 'library' && (
               <div className="gd-field">
-                <span>How it ended</span>
+                <span>{t('How it ended')}</span>
                 <div className="game-endings">
                   {ENDINGS.filter((e) => e.ending).map(({ ending, label, icon: Icon }) => {
                     const on = endingOf(game) === ending
@@ -201,7 +202,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
                         aria-pressed={on}
                       >
                         <Icon size={16} />
-                        {label}
+                        {t(label)}
                       </button>
                     )
                   })}
@@ -211,10 +212,10 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
             {/* From Steam: hours played and achievements (gold at 100%) */}
             {game.steamStats && <SteamStatsView stats={game.steamStats} />}
             <HiddenText
-              label="Review"
+              label={t('Review')}
               rows={3}
               value={review}
-              placeholder="What did you think?"
+              placeholder={t('What did you think?')}
               onChange={(text) => {
                 setReview(text)
                 updateGame(game.id, { review: text })
@@ -224,10 +225,10 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
         )}
 
         <HiddenText
-          label="Note"
+          label={t('Note')}
           rows={2}
           value={note}
-          placeholder="Optional"
+          placeholder={t('Optional')}
           onChange={(text) => {
             setNote(text)
             updateGame(game.id, { note: text })
@@ -275,7 +276,7 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
   const [hover, setHover] = useState<number | null>(null)
   const shown = hover ?? value ?? 0
   return (
-    <div className="stars" onMouseLeave={() => setHover(null)} role="group" aria-label="Rating">
+    <div className="stars" onMouseLeave={() => setHover(null)} role="group" aria-label={t('Rating')}>
       {[1, 2, 3, 4, 5].map((star) => {
         const fill = shown >= star ? 100 : shown >= star - 0.5 ? 50 : 0
         return (
@@ -288,7 +289,7 @@ function Stars({ value, onChange }: { value?: number; onChange: (value: number |
               <button
                 key={half}
                 className={half % 1 ? 'star-half left' : 'star-half right'}
-                aria-label={`${half} stars`}
+                aria-label={plural(half, '{count} star', '{count} stars', { count: ratingText(half) })}
                 onMouseEnter={() => setHover(half)}
                 onClick={() => onChange(half === value ? undefined : half)}
               />
@@ -306,7 +307,7 @@ export function AchievementBar({ stats }: { stats: SteamStats }) {
   const percent = stats.total ? Math.round(((stats.done ?? 0) / stats.total) * 100) : 0
   const color = isHundred(stats) ? undefined : `color-mix(in oklab, var(--text-green) ${percent}%, var(--text-blue))`
   return (
-    <div className="gd-bar" role="progressbar" aria-label="Achievements" aria-valuenow={percent}>
+    <div className="gd-bar" role="progressbar" aria-label={t('Achievements')} aria-valuenow={percent}>
       <div style={{ width: `${percent}%`, background: color }} />
     </div>
   )
@@ -321,7 +322,7 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
         <Clock size={18} />
         <div>
           <strong>{playedTime(stats.minutes)}</strong>
-          <span>played</span>
+          <span>{t('played')}</span>
         </div>
       </div>
       {!!stats.total && (
@@ -332,7 +333,7 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
               <strong>
                 {stats.done ?? 0} / {stats.total}
               </strong>
-              <span>achievements</span>
+              <span>{t('achievements')}</span>
               <span className="gd-percent">{percent}%</span>
             </div>
             <AchievementBar stats={stats} />
@@ -343,12 +344,15 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
   )
 }
 
+// 4.5 → "4,5" in French
+const ratingText = (rating: number) => rating.toLocaleString(locale())
+
 // A played game's rating in the Games grid and list: "★ 4.5" (only when rated: showsRated)
 export const showsRated = (game: Game) => isPlayed(game) && !!game.rating
 export function GameRated({ game }: { game: Game }) {
   return (
-    <span className="game-rated" aria-label={`${game.rating} stars`}>
-      <Star size={12} /> {game.rating}
+    <span className="game-rated" aria-label={plural(game.rating!, '{count} star', '{count} stars', { count: ratingText(game.rating!) })}>
+      <Star size={12} /> {ratingText(game.rating!)}
     </span>
   )
 }
@@ -366,10 +370,10 @@ export const gameClass = (base: string, game: Game) =>
 
 export function GameBadge({ game }: { game: Game }) {
   if (!isPlayed(game)) return null
-  if (game.ending === 'paused') return <span className="game-badge paused" title="Paused"><CirclePause /></span>
-  if (game.ending === 'dropped') return <span className="game-badge dropped" title="Dropped"><CircleX /></span>
+  if (game.ending === 'paused') return <span className="game-badge paused" title={t('Paused')}><CirclePause /></span>
+  if (game.ending === 'dropped') return <span className="game-badge dropped" title={t('Dropped')}><CircleX /></span>
   if (isHundred(game.steamStats)) return null // Library: the gold ring (gameClass); Playing: the gold bar
-  if (game.completed) return <span className="game-badge done" title="Completed"><CircleCheck /></span>
+  if (game.completed) return <span className="game-badge done" title={t('Completed')}><CircleCheck /></span>
   return null
 }
 

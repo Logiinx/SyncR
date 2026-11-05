@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { igdb, isComplete, loadConnection } from './igdb'
 
 // Extra details shown in the game windows (GameDialog.tsx, GameCalendar.tsx): developer,
@@ -24,13 +25,13 @@ const MAX_COMPANIES = 3 // big games list many regional publishers
 function pickTrailer(videos: IgdbExtras['videos'] = []) {
   const newestFirst = [...videos].sort((a, b) => b.id - a.id)
   const video = newestFirst.find((v) => /trailer/i.test(v.name ?? '')) ?? newestFirst[0]
-  return video && { id: video.video_id, name: video.name || 'Trailer' }
+  return video && { id: video.video_id, name: video.name || t('Trailer') }
 }
 
 async function fetchExtras(igdbId: number): Promise<GameExtras> {
   const [game] = await igdb<IgdbExtras>(
     'games',
-    `fields involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_modes.name, videos.video_id, videos.name; where id = ${igdbId};`,
+    `fields involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_modes.name, videos.video_id, videos.name; where id = ${igdbId};`, // i18n-ok
   )
   const companies = (role: 'developer' | 'publisher') =>
     (game?.involved_companies ?? [])

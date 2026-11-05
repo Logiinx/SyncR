@@ -21,9 +21,9 @@ import { useNarrow } from './useNarrow'
 
 export type CalendarLayout = 'grid' | 'list'
 // The grid / list switch (Games → Calendar, Reminders)
-export const CALENDAR_LAYOUTS: { value: CalendarLayout; label: React.ReactNode; title: string }[] = [
-  { value: 'grid', label: <CalendarDays size={15} />, title: 'Month grid' },
-  { value: 'list', label: <List size={15} />, title: 'List' },
+export const calendarLayouts = (): { value: CalendarLayout; label: React.ReactNode; title: string }[] => [
+  { value: 'grid', label: <CalendarDays size={15} />, title: t('Month grid') },
+  { value: 'list', label: <List size={15} />, title: t('List') },
 ]
 
 // How many of Steam's most wishlisted upcoming games to show (buttons in GamesView.tsx)
@@ -64,7 +64,7 @@ function GameCalendar(props: {
   if (error) return <p className="game-search-message error">{error}</p>
   if (!loaded) return <CalendarLoading grid={layout === 'grid' && !narrow} />
   const games = loaded.filter((g) => g.rank <= top) // the chosen level (top 100 / 300 / 500 / 1000)
-  if (games.length === 0) return <p className="game-search-message">No upcoming games found</p>
+  if (games.length === 0) return <p className="game-search-message">{t('No upcoming games found')}</p>
 
   const statusOf = (game: UpcomingGame) => inList.get(gameId(game.igdbId))
   const show = (game: UpcomingGame) => (statusOf(game) ? onOpen(gameId(game.igdbId)) : setShown(game))
@@ -84,7 +84,7 @@ function GameCalendar(props: {
         <CalendarList games={games.filter((g) => g.exact)} statusOf={statusOf} onShow={show} onMenu={menu} />
       )}
       {vague.length > 0 && (
-        <CalendarGroup title="No exact date yet" games={vague} statusOf={statusOf} onShow={show} onMenu={menu} />
+        <CalendarGroup title={t('No exact date yet')} games={vague} statusOf={statusOf} onShow={show} onMenu={menu} />
       )}
       {shown && (
         <GamePreview game={shown} release={releaseLine(shown)} status={statusOf(shown)} onClose={() => setShown(null)} />
@@ -108,7 +108,7 @@ function CalendarLoading({ grid }: { grid: boolean }) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return (
-    <div className="game-calendar" aria-label="Loading upcoming games">
+    <div className="game-calendar" aria-label={t('Loading upcoming games')}>
       {grid ? (
         <MonthGrid
           months={calendarMonths()}
@@ -218,7 +218,7 @@ function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
               className="calendar-game"
               onClick={() => onShow(game)}
               onContextMenu={(e) => onMenu(game, e)}
-              title={status ? `${game.name}\nIn ${statusLabel(status)}` : game.name}
+              title={status ? `${game.name}\n${t('In {place}', { place: statusLabel(status)! })}` : game.name}
             >
               <Cover coverId={game.coverId} />
               <span>

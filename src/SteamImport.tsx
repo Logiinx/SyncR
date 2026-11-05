@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import Cover from './GameCover'
@@ -38,7 +39,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
       try {
         const profile = await loadSteamProfile()
         const owned = profile.steamId ? await ownedGames(profile.steamId) : null
-        if (!owned) throw new Error("Steam doesn't share your games: set Game details to Public (Steam → Profile → Privacy)")
+        if (!owned) throw new Error(t("Steam doesn't share your games: set Game details to Public (Steam → Profile → Privacy)"))
         const [matches, skippedIds, inList] = await Promise.all([
           gamesBySteamIds(owned.map((g) => g.appId)),
           loadSkipped(),
@@ -92,7 +93,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
       await saveSkipped([...nextSkipped])
     } catch (e) {
       // Shown in place of the list; games already added stay (a new import skips them)
-      setError(`Saving failed: ${e instanceof Error ? e.message : String(e)}`)
+      setError(t('Saving failed: {error}', { error: e instanceof Error ? e.message : String(e) }))
       setBusy(false)
       return
     }
@@ -103,35 +104,35 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Window className="dialog steam-import" label="Import from Steam" onClose={onClose} ref={dialogRef}>
+    <Window className="dialog steam-import" label={t('Import from Steam')} onClose={onClose} ref={dialogRef}>
       <div className="dialog-head">
-        <h2>Import from Steam</h2>
+        <h2>{t('Import from Steam')}</h2>
         <CloseButton onClick={onClose} />
       </div>
       {error ? (
         <p className="steam-import-note">{error}</p>
       ) : !rows ? (
         <p className="steam-import-note">
-          <Spinner size={14} /> Loading your Steam games…
+          <Spinner size={14} /> {t('Loading your Steam games…')}
         </p>
       ) : (
         <>
           <div className="steam-import-head">
             <span>
               {shown.length > 0
-                ? `${shown.length} not in SyncR yet`
-                : skippedCount > 0 ? 'Nothing new: the rest is skipped' : 'All your Steam games are in SyncR'}
+                ? t('{n} not in SyncR yet', { n: shown.length })
+                : skippedCount > 0 ? t('Nothing new: the rest is skipped') : t('All your Steam games are in SyncR')}
             </span>
             {shown.length > 0 && (
               <>
-                <button onClick={() => setTicked(new Set(shown.filter((r) => r.game).map((r) => r.appId)))}>All</button>
-                <button onClick={() => setTicked(new Set())}>None</button>
+                <button onClick={() => setTicked(new Set(shown.filter((r) => r.game).map((r) => r.appId)))}>{t('All')}</button>
+                <button onClick={() => setTicked(new Set())}>{t('None')}</button>
               </>
             )}
             {skippedCount > 0 && (
               <label className="dialog-check">
                 <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} />
-                Show skipped ({skippedCount})
+                {t('Show skipped ({n})', { n: skippedCount })}
               </label>
             )}
           </div>
@@ -149,9 +150,9 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
                   <span className="steam-import-name" title={row.name}>{row.name}</span>
                   <span className="steam-import-details">
                     {[
-                      row.minutes > 0 ? playedText(row.minutes) : 'Never played',
-                      !row.game && 'Not found on IGDB',
-                      skipped.has(row.appId) && 'Skipped',
+                      row.minutes > 0 ? playedText(row.minutes) : t('Never played'),
+                      !row.game && t('Not found on IGDB'),
+                      skipped.has(row.appId) && t('Skipped'),
                     ].filter(Boolean).join(' · ')}
                   </span>
                 </span>
@@ -161,10 +162,10 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
         </>
       )}
       <div className="dialog-buttons">
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('Cancel')}</button>
         {!error && rows && shown.length > 0 && (
           <button className="primary" onClick={confirm} disabled={busy}>
-            {chosen.length > 0 ? `Add ${chosen.length} to Library` : 'Skip all'}
+            {chosen.length > 0 ? t('Add {n} to Library', { n: chosen.length }) : t('Skip all')}
           </button>
         )}
       </div>

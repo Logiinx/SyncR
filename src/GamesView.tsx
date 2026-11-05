@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
-import { ENDING_HEADER, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
+import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine } from './GameExtrasView'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
@@ -13,7 +14,7 @@ import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
-import GameCalendar, { CALENDAR_LAYOUTS, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
+import GameCalendar, { calendarLayouts, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { AchievementBar, GameBadge, gameClass, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -33,13 +34,13 @@ type GamesViewName = 'mine' | 'calendar'
 // The open tab: To buy at each start (the user checks it most), then the last one opened
 let sessionTab: GamesTab = 'tobuy'
 type ShelfLayout = 'grid' | 'list'
-const VIEWS: { value: GamesViewName; label: string }[] = [
-  { value: 'mine', label: 'My games' },
-  { value: 'calendar', label: 'Calendar' },
+const views = (): { value: GamesViewName; label: string }[] => [
+  { value: 'mine', label: t('My games') },
+  { value: 'calendar', label: t('Calendar') },
 ]
-const SHELF_LAYOUTS: { value: ShelfLayout; label: React.ReactNode; title: string }[] = [
-  { value: 'grid', label: <LayoutGrid size={15} />, title: 'Covers' },
-  { value: 'list', label: <List size={15} />, title: 'List' },
+const shelfLayouts = (): { value: ShelfLayout; label: React.ReactNode; title: string }[] => [
+  { value: 'grid', label: <LayoutGrid size={15} />, title: t('Covers') },
+  { value: 'list', label: <List size={15} />, title: t('List') },
 ]
 
 function GamesView() {
@@ -107,20 +108,20 @@ function GamesView() {
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
         <div className="games-views">
-          <FillSwitch className="games-views-switch" options={VIEWS} value={view} onChange={setView} />
+          <FillSwitch className="games-views-switch" options={views()} value={view} onChange={setView} />
           {/* Only with the game search set up: otherwise they do nothing, and the taller header
               put the "set up the game search" text lower than in My games */}
           {view === 'calendar' && connected && (
             <div className="calendar-controls">
               <FillSwitch
                 className="calendar-top"
-                title="How many of Steam's most wishlisted upcoming games to show"
-                before="Top"
+                title={t("How many of Steam's most wishlisted upcoming games to show")}
+                before={t('Top')}
                 options={TOP_LEVELS.map((level) => ({ value: level, label: level }))}
                 value={top}
                 onChange={setTop}
               />
-              <FillSwitch className="calendar-layouts" options={CALENDAR_LAYOUTS} value={layout} onChange={setLayout} />
+              <FillSwitch className="calendar-layouts" options={calendarLayouts()} value={layout} onChange={setLayout} />
             </div>
           )}
         </div>
@@ -129,7 +130,7 @@ function GamesView() {
             <GameCalendar inList={inList} layout={layout} top={top} onOpen={setOpenId} onMenu={openMenuOf} />
           ) : (
             connection && (
-              <p className="games-empty">To see upcoming games, set up the game search in Settings → Accounts.</p>
+              <p className="games-empty">{t('To see upcoming games, set up the game search in Settings → Accounts.')}</p>
             )
           )
         ) : (
@@ -140,12 +141,12 @@ function GamesView() {
               <p className="games-empty">
                 <Gamepad2 size={18} />
                 <span>
-                  Search for a game above to start your list
+                  {t('Search for a game above to start your list')}
                   {steam?.steamId ? (
                     <>
-                      , or{' '}
+                      {t(', or')}{' '}
                       <button className="games-empty-import" onClick={() => setImporting(true)}>
-                        import from Steam…
+                        {t('import from Steam…')}
                       </button>
                     </>
                   ) : '.'}
@@ -167,7 +168,7 @@ function GamesView() {
                       return (
                         <button key={tab} {...lines.tabProps(tab)} className={className} onClick={() => setShown(tab)}>
                           <TabIcon size={16} className="games-tab-icon" />
-                          {label}
+                          {t(label)}
                           {count > 0 && <span className="games-count">{count}</span>}
                           <TabLines />
                         </button>
@@ -178,10 +179,10 @@ function GamesView() {
                     {/* Library, with a Steam profile set (Settings → Accounts) */}
                     {shown === 'library' && steam?.steamId && (
                       <button className="games-import" onClick={() => setImporting(true)}>
-                        <Download size={14} /> Import from Steam…
+                        <Download size={14} /> {t('Import from Steam…')}
                       </button>
                     )}
-                    <FillSwitch className="calendar-layouts games-layouts" options={SHELF_LAYOUTS} value={shelf} onChange={setShelf} />
+                    <FillSwitch className="calendar-layouts games-layouts" options={shelfLayouts()} value={shelf} onChange={setShelf} />
                   </div>
                 </div>
                 {/* A new list for each tab and layout (switching isn't games coming and going),
@@ -193,7 +194,7 @@ function GamesView() {
                     <GameShelf
                       games={sortGames(games.filter((g) => tabOf(g.status).tab === shown))}
                       layout={shelf}
-                      emptyText={`No games in ${TABS.find((t) => t.tab === shown)!.label}`}
+                      emptyText={t('No games in {place}', { place: t(TABS.find((tab) => tab.tab === shown)!.label) })}
                       onOpen={setOpenId}
                       onMenu={openMenu}
                     />
@@ -223,7 +224,7 @@ function GamesView() {
         <ContextMenu
           x={endingMenu.x}
           y={endingMenu.y}
-          header={ENDING_HEADER}
+          header={endingHeader()}
           items={endingMenuItems(endingMenu.game)}
           onClose={() => setEndingMenu(null)}
         />
@@ -241,18 +242,18 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   onMenu: (game: Game, x: number, y: number) => void
 }) {
   const parts = [
-    { title: 'Playing', games: games.filter((g) => g.status === 'playing'), empty: 'Nothing being played right now' },
-    { title: 'Not started', games: games.filter((g) => g.status === 'upnext'), empty: "Games you own and haven't started yet" },
+    { status: 'playing', title: t('Playing'), games: games.filter((g) => g.status === 'playing'), empty: t('Nothing being played right now') },
+    { status: 'upnext', title: t('Not started'), games: games.filter((g) => g.status === 'upnext'), empty: t("Games you own and haven't started yet") },
   ]
   return (
     <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>
       {parts.map((part) => (
-        <section key={part.title} className={part.title === 'Playing' ? 'games-part' : 'games-part later'}>
+        <section key={part.status} className={part.status === 'playing' ? 'games-part' : 'games-part later'}>
           <h3 className="games-part-title">
             {part.title}
             {part.games.length > 0 && <span className="games-count">{part.games.length}</span>}
           </h3>
-          {part.title === 'Playing' && part.games.length > 0 ? (
+          {part.status === 'playing' && part.games.length > 0 ? (
             <div className="playing-cards">
               {sortGames(part.games).map((game) => (
                 <PlayingCard key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
@@ -273,7 +274,7 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 // side on the PC, slim full-width rows on the phone (CSS).
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
-  const since = `since ${shortDate(game.statusAt)}`
+  const since = t('since {date}', { date: shortDate(game.statusAt) })
   const details = stats ? `${playedText(stats.minutes)} · ${since}` : since[0].toUpperCase() + since.slice(1)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
@@ -301,7 +302,7 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
           <div className={isHundred(stats) ? 'playing-achievements hundred' : 'playing-achievements'}>
             <AchievementBar stats={stats} />
             <span>
-              {stats.done ?? 0} / {stats.total} achievements
+              {t('{done} / {total} achievements', { done: stats.done ?? 0, total: stats.total })}
             </span>
           </div>
         )}
@@ -411,7 +412,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
 // the game, so it shows on both devices. Also the games SyncR moved by itself (blue, first):
 // "Released · now in To buy", "Started on Steam · now in Playing" (To play's part, clearer than
 // the tab). Each line: small cover, the game's name, what happened under it; a click opens it.
-const MOVED_LABELS = { released: 'Released', bought: 'Owned on Steam', started: 'Started on Steam' }
+const MOVED_LABELS = { released: textKey('Released'), bought: textKey('Owned on Steam'), started: textKey('Started on Steam') }
 
 function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
   const moved = games.filter((g) => g.movedBy)
@@ -426,8 +427,8 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           game={game}
           kind="games-moved"
           icon={ArrowRight}
-          what={MOVED_LABELS[game.movedBy!]}
-          detail={`now in ${game.status === 'playing' ? 'Playing' : statusLabel(game.status)}`}
+          what={t(MOVED_LABELS[game.movedBy!])}
+          detail={t('now in {place}', { place: game.status === 'playing' ? t('Playing') : statusLabel(game.status)! })}
           onOpen={onOpen}
           onDismiss={() => updateGame(game.id, { movedBy: undefined })}
         />
@@ -438,7 +439,7 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           game={game}
           kind="games-dated"
           icon={CalendarCheck}
-          what="Date set"
+          what={t('Date set')}
           detail={`${game.datedFrom} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
           onOpen={onOpen}
           onDismiss={() => updateGame(game.id, { datedFrom: undefined })}
@@ -450,7 +451,7 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           game={game}
           kind=""
           icon={CalendarClock}
-          what="Delayed"
+          what={t('Delayed')}
           detail={`${formatRelease(game.delayedFrom, game.delayedFromLabel)} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
           onOpen={onOpen}
           onDismiss={() => updateGame(game.id, { delayedFrom: undefined, delayedFromLabel: undefined })}
@@ -481,7 +482,7 @@ function NewsLine({ game, kind, icon: Icon, what, detail, onOpen, onDismiss }: {
           </span>
         </span>
       </span>
-      <button onClick={onDismiss} title="Dismiss">
+      <button onClick={onDismiss} title={t('Dismiss')}>
         <X size={15} />
       </button>
     </div>
@@ -531,7 +532,7 @@ function GameSearch({ inList, onOpen, onMenu }: {
 
   if (connection === undefined) return null
   if (!connected) {
-    return <p className="games-empty">To search for games, set up the game search in Settings → Accounts.</p>
+    return <p className="games-empty">{t('To search for games, set up the game search in Settings → Accounts.')}</p>
   }
 
   return (
@@ -542,24 +543,24 @@ function GameSearch({ inList, onOpen, onMenu }: {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && setText('')}
-          placeholder="Search for a game to add"
+          placeholder={t('Search for a game to add')}
           spellCheck={false}
         />
-        {searching && <Spinner label="Searching" />}
+        {searching && <Spinner label={t('Searching')} />}
         {text && (
-          <button className="game-search-clear" onClick={() => setText('')} title="Clear">
+          <button className="game-search-clear" onClick={() => setText('')} title={t('Clear')}>
             <X size={15} />
           </button>
         )}
       </div>
       <label className="game-search-dlc">
         <input type="checkbox" checked={includeDlc} onChange={(e) => setIncludeDlc(e.target.checked)} />
-        Include DLCs, editions and bundles
+        {t('Include DLCs, editions and bundles')}
       </label>
       {error && <p className="game-search-message error">{error}</p>}
       {results && !error && (
         <div className="game-results">
-          {results.length === 0 && !searching && <p className="game-search-message">No games found</p>}
+          {results.length === 0 && !searching && <p className="game-search-message">{t('No games found')}</p>}
           {results.map((found) => {
             const id = gameId(found.igdbId)
             const status = inList.get(id)

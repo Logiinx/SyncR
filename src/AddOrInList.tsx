@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from './i18n'
 import { ChevronDown, Plus } from 'lucide-react'
 import type { GameStatus } from './db'
 import { ADD_PLACES, statusLabel, type AddPlace } from './games'
@@ -13,17 +14,17 @@ function AddOrInList({ status, onAdd, onAddTo }: {
   onAddTo?: (place: AddPlace) => void
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
-  if (status) return <span className="game-in-list">In {statusLabel(status)}</span>
+  if (status) return <span className="game-in-list">{t('In {place}', { place: statusLabel(status)! })}</span>
   return (
     // Clicks here aren't the row's own click (it opens the preview)
     <span className={onAddTo ? 'add-split' : 'add-single'} onClick={(e) => e.stopPropagation()}>
       <button className="setting-button" onClick={onAdd}>
-        Add
+        {t('Add')}
       </button>
       {onAddTo && (
         <button
           className="setting-button add-more"
-          title="Add to…"
+          title={t('Add to…')}
           onClick={(e) => {
             const box = e.currentTarget.getBoundingClientRect()
             setMenu({ x: box.left, y: box.bottom + 4 })
@@ -36,7 +37,7 @@ function AddOrInList({ status, onAdd, onAddTo }: {
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => onAddTo(place) }))}
+          items={ADD_PLACES.map((place) => ({ label: t(place.label), icon: Plus, onClick: () => onAddTo(place) }))}
           onClose={() => setMenu(null)}
         />
       )}

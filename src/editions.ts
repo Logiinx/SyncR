@@ -3,6 +3,7 @@
 // game page; options whose name lacks the game's name (franchise bundles like "The Witcher
 // Trilogy") are left out. Looked up live, never saved; a watched edition keeps its id and name.
 import { canWatch, db } from './db'
+import { t } from './i18n'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { nameFits, refKey, steamPrices, steamRefs, words, type GamePrices, type LookupOptions } from './prices'
 
@@ -36,7 +37,7 @@ export async function gameEditions(games: { igdbId: number; name: string }[], op
   const ids = [...apps.keys()]
   for (let i = 0; i < ids.length; i += 100) {
     const response = await igdbProxyFetch('editions', JSON.stringify({ steamIds: ids.slice(i, i + 100) }), 20_000)
-    if (!response.ok) throw new Error(`Edition lookup failed (${response.status})`)
+    if (!response.ok) throw new Error(t('Edition lookup failed ({status})', { status: response.status }))
     Object.assign(found, await response.json())
   }
   // Their key price and lows from GG.deals (/prices). Packages: with Steam's price again.

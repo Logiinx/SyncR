@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { ChevronDown, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
@@ -68,13 +69,13 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
             {release}
             {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
           </p>
-          {label && <p className="calendar-popup-info">In {label}</p>}
+          {label && <p className="calendar-popup-info">{t('In {place}', { place: label })}</p>}
           <GameExtrasInfo igdbId={game.igdbId} />
           <GamePricesInfo igdbId={game.igdbId} name={game.name} />
           <div className="calendar-popup-actions">
             {!status && !released && (
               <button className="gd-action calendar-popup-pin" onClick={() => add('waiting')}>
-                <Plus size={15} /> <span>Add to Upcoming</span>
+                <Plus size={15} /> <span>{t('Add to Upcoming')}</span>
               </button>
             )}
             {!status && released && (
@@ -85,7 +86,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
                   setMenu({ x: box.left, y: box.bottom + 4 })
                 }}
               >
-                <Plus size={15} /> <span>Add to list</span> <ChevronDown size={14} />
+                <Plus size={15} /> <span>{t('Add to list')}</span> <ChevronDown size={14} />
               </button>
             )}
             <TrailerButton
@@ -100,7 +101,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          items={ADD_PLACES.map((place) => ({ label: place.label, icon: Plus, onClick: () => add(place.status, place.completed) }))}
+          items={ADD_PLACES.map((place) => ({ label: t(place.label), icon: Plus, onClick: () => add(place.status, place.completed) }))}
           onClose={() => setMenu(null)}
         />
       )}

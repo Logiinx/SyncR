@@ -1,4 +1,5 @@
 import { canWatch, db, updateGame, type EditionWatch, type Game, type PriceWatch } from './db'
+import { t } from './i18n'
 import { formatEuros, gamePrices, lookupsAsked, type GamePrices } from './prices'
 import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
@@ -48,11 +49,11 @@ export function suggestedTarget(prices: GamePrices): { target: number | null; wh
   const target = Math.min(Math.round(Math.max(near, floor) / 100) * 100, Math.floor(now / 100) * 100)
   if (now - target < MIN_SAVING) {
     // A 0 € low (a giveaway) says "free", like the price lines
-    const lowText = low === null ? '' : ` (lowest ever ${low === 0 ? 'free' : formatEuros(low)})`
-    return { target: null, why: `Already a good price${lowText}` }
+    if (low === null) return { target: null, why: t('Already a good price') }
+    return { target: null, why: t('Already a good price (lowest ever {price})', { price: low === 0 ? t('free') : formatEuros(low) }) }
   }
-  const why = near >= floor ? `near the lowest ever (${formatEuros(low!)})` : '30% under today\'s price'
-  return { target, why: `Suggested: ${why}` }
+  const why = near >= floor ? t('near the lowest ever ({price})', { price: formatEuros(low!) }) : t("30% under today's price")
+  return { target, why: t('Suggested: {why}', { why }) }
 }
 
 // The price that makes the watch alert: at or below it. null = not known. Anything but 'price'
@@ -140,7 +141,7 @@ const ALERT_IN = 5 * 60 * 1000 // the event starts (and alerts) this much later:
 // The Calendar event of one watch, "price<IGDB id>t<setAt>", "…e<Steam id>" for an edition
 // (Google allows only 0-9 and a-v)
 const priceEventId = (game: Game, watch: PriceWatch | EditionWatch) =>
-  `price${game.igdbId}t${watch.setAt}${'kind' in watch ? `e${watch.id}` : ''}`
+  `price${game.igdbId}t${watch.setAt}${'kind' in watch ? `e${watch.id}` : ''}` // i18n-ok
 // The game of a price alert event ("igdb-..."), or null for other events
 export function priceEventGame(eventId: string) {
   const match = eventId.match(/^price(\d+)t\d+(e\d+)?$/)
@@ -150,10 +151,10 @@ export function priceEventGame(eventId: string) {
 // What the event says: "Hollow Knight: 7,49 € on Steam" (or "for a key"; an edition: Steam's
 // name for it), and why, with the shop's page
 function alertText(name: string, watch: PriceWatch, { price, store }: { price: number; store: 'steam' | 'key' }, prices: GamePrices) {
-  const why = watch.when === 'price' ? `Your price: ${formatEuros(watch.target!)} or less` : 'Its lowest price ever'
+  const why = watch.when === 'price' ? t('Your price: {price} or less', { price: formatEuros(watch.target!) }) : t('Its lowest price ever')
   const link = store === 'steam' ? prices.steamUrl : prices.deals?.url
   return {
-    title: `${name}: ${formatEuros(price)} ${store === 'steam' ? 'on Steam' : 'for a key'}`,
+    title: `${name}: ${store === 'steam' ? t('{price} on Steam', { price: formatEuros(price) }) : t('{price} for a key', { price: formatEuros(price) })}`,
     description: [why, link].filter(Boolean).join('\n'),
   }
 }
