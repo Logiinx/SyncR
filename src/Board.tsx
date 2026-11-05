@@ -477,6 +477,7 @@ function Board({ onClose }: Props) {
             x={groupMenu.x}
             y={groupMenu.y}
             onClose={() => setGroupMenu(null)}
+            header={{ title: 'Move to group' }}
             items={groupMenuItems(groupMenu.cardId)}
           />
         )}

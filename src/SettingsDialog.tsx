@@ -933,6 +933,7 @@ function GmailSettings() {
           x={colorMenu.x}
           y={colorMenu.y}
           onClose={() => setColorMenu(null)}
+          header={{ title: 'Account color' }}
           items={colorMenuItems(colorMenu.color, (color) => color && setAccountColor(colorMenu.email, color), false)}
         />
       )}
