@@ -107,8 +107,8 @@ export function useDueReminders({ runsCheck = false } = {}): DueItem[] | undefin
     if (runsCheck) localStorage.removeItem(CHECKED_KEY)
     return readChecked()
   })
-  const [leaving, setLeaving] = useState<DueItem[]>([])
-  const shown = useRef<DueItem[]>([])
+  const [shown, setShown] = useState<DueItem[]>([])
+  const [leaving, setLeaving] = useState<(DueItem & { goneAt: number })[]>([])
 
   // Wake up exactly when the next one is due (and at least every minute, in case the
   // clock or the sleep of the computer shifts things), and when the app comes back into view
@@ -140,21 +140,28 @@ export function useDueReminders({ runsCheck = false } = {}): DueItem[] | undefin
     return () => window.removeEventListener('storage', onStorage)
   }, [runsCheck])
 
-  // Cards that just went: the other device's doing?
-  useEffect(() => {
-    if (!due || !marks) return
-    const gone = shown.current.filter((item) => !due.some((other) => other.key === item.key))
-    shown.current = due
-    const told: DueItem[] = gone.flatMap((item) => {
-      const elsewhere = markedElsewhere(marks.get(item.key))
-      return elsewhere ? [{ ...item, elsewhere }] : []
+  // Cards that just went: the other device's doing? Worked out while drawing, not after: gone for
+  // even one draw, the card would slide out while its new self slides in.
+  const keysOf = (cards: DueItem[]) => cards.map((card) => card.key).join()
+  if (due && marks && keysOf(due) !== keysOf(shown)) {
+    setShown(due)
+    const told = shown.flatMap((item) => {
+      const elsewhere = due.some((other) => other.key === item.key) ? undefined : markedElsewhere(marks.get(item.key))
+      return elsewhere ? [{ ...item, elsewhere, goneAt: Date.now() + ELSEWHERE_MS }] : []
     })
-    if (!told.length) return
-    setLeaving((cards) => [...cards, ...told])
-    setTimeout(() => setLeaving((cards) => cards.filter((card) => !told.includes(card))), ELSEWHERE_MS)
-  }, [due, marks])
+    if (told.length) setLeaving((cards) => [...cards, ...told])
+  }
 
-  return due && [...due, ...leaving].sort((a, b) => a.dueAt - b.dueAt)
+  useEffect(() => {
+    if (!leaving.length) return
+    const next = Math.min(...leaving.map((card) => card.goneAt))
+    const timer = setTimeout(() => setLeaving((cards) => cards.filter((card) => card.goneAt > Date.now())), next - Date.now() + 10)
+    return () => clearTimeout(timer)
+  }, [leaving])
+
+  // Always in the same order: a card that changes place counts as removed for the closing
+  // animation (animations.ts), which would take it away
+  return due && [...due, ...leaving].sort((a, b) => a.dueAt - b.dueAt || a.key.localeCompare(b.key))
 }
 
 // Chimes once for each item that newly comes due (a snoozed one counts as new again)
