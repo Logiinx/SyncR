@@ -12,8 +12,10 @@ import { richText } from './richText'
 
 const SEEN_KEY = 'syncr.lastVersion'
 
-// In an update's notes, between the English and the French (build-desktop.yml)
+// In an update's notes (build-desktop.yml): English, a --- line and a title for GitHub's page,
+// this hidden marker, French
 const FRENCH_NOTES = '<!-- fr -->'
+const ENGLISH_END = /^---\s*$/m
 
 interface Release {
   version: string
@@ -84,7 +86,7 @@ export function recentReleases(count = 5) {
 // release, in the app's language. Older releases only have the English.
 export function updateRelease(version: string, notes: string): Release {
   const [english, french] = notes.split(FRENCH_NOTES)
-  const text = currentLanguage() === 'fr' && french ? frenchSpaces(french) : english
+  const text = currentLanguage() === 'fr' && french ? frenchSpaces(french) : english.split(ENGLISH_END)[0]
   return { version, body: text.split(/\r?\n/).filter((line) => line.trim()) }
 }
 
