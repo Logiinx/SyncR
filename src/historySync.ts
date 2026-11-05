@@ -91,7 +91,7 @@ export async function loadVersion(version: VersionInfo): Promise<VersionText> {
   const key = await getKey()
   if (!key) throw new NeedsPassphraseError()
   const raw = await download(version.path)
-  if (!raw) throw new Error('This version is gone from Dropbox')
+  if (!raw) throw new Error('This version is gone from Dropbox') // i18n-ok
   return JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
 }
 

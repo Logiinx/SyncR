@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { plural, t, useLanguage } from './i18n'
 import { ChevronRight } from 'lucide-react'
 import {
   NodeViewContent,
@@ -32,20 +33,20 @@ import yaml from 'highlight.js/lib/languages/yaml'
 // The languages you can pick in a code block's header. Only these grammars are bundled
 // (all of highlight.js would add ~1 MB). The language is saved in the note (attrs.language).
 const LANGUAGES = {
-  bash: { name: 'Bash', grammar: bash },
+  bash: { name: 'Bash', grammar: bash }, // i18n-ok
   c: { name: 'C', grammar: c },
   cpp: { name: 'C++', grammar: cpp },
   csharp: { name: 'C#', grammar: csharp },
   css: { name: 'CSS', grammar: css },
-  go: { name: 'Go', grammar: go },
-  xml: { name: 'HTML / XML', grammar: xml },
-  java: { name: 'Java', grammar: java },
+  go: { name: 'Go', grammar: go }, // i18n-ok
+  xml: { name: 'HTML / XML', grammar: xml }, // i18n-ok
+  java: { name: 'Java', grammar: java }, // i18n-ok
   javascript: { name: 'JavaScript', grammar: javascript },
   json: { name: 'JSON', grammar: json },
-  markdown: { name: 'Markdown', grammar: markdown },
+  markdown: { name: 'Markdown', grammar: markdown }, // i18n-ok
   powershell: { name: 'PowerShell', grammar: powershell },
-  python: { name: 'Python', grammar: python },
-  rust: { name: 'Rust', grammar: rust },
+  python: { name: 'Python', grammar: python }, // i18n-ok
+  rust: { name: 'Rust', grammar: rust }, // i18n-ok
   sql: { name: 'SQL', grammar: sql },
   typescript: { name: 'TypeScript', grammar: typescript },
   yaml: { name: 'YAML', grammar: yaml },
@@ -68,6 +69,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
 }).configure({ lowlight: lowlightNoGuess, enableTabIndentation: true, tabSize: 2 })
 
 function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeViewProps) {
+  useLanguage() // drawn apart from the app, so it doesn't redraw with it
   // Folded or not isn't saved (like sections); code blocks start open
   const [open, setOpen] = useState(true)
   const language: string = node.attrs.language ?? ''
@@ -92,8 +94,8 @@ function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeView
         <button
           className="code-toggle"
           onClick={toggle}
-          aria-label={open ? 'Fold code block' : 'Unfold code block'}
-          title={open ? 'Fold' : 'Unfold'}
+          aria-label={open ? t('Fold code block') : t('Unfold code block')}
+          title={open ? t('Fold') : t('Unfold')}
         >
           <ChevronRight size={14} />
         </button>
@@ -101,9 +103,9 @@ function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeView
           className="code-language"
           value={language in LANGUAGES ? language : ''}
           onChange={(e) => updateAttributes({ language: e.target.value || null })}
-          title="Language"
+          title={t('Language')}
         >
-          <option value="">Plain text</option>
+          <option value="">{t('Plain text')}</option>
           {Object.entries(LANGUAGES).map(([id, { name }]) => (
             <option key={id} value={id}>
               {name}
@@ -112,7 +114,7 @@ function CodeBlockView({ node, editor, getPos, updateAttributes }: ReactNodeView
         </select>
         {!open && (
           <span className="code-lines">
-            {lines} {lines === 1 ? 'line' : 'lines'}
+            {plural(lines, '{n} line', '{n} lines')}
           </span>
         )}
       </div>

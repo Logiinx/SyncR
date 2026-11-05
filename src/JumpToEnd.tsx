@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
+import { t } from './i18n'
 import { ArrowDownToLine } from 'lucide-react'
 import { animationsOn } from './animations'
 import { deviceName } from './device'
@@ -64,8 +65,8 @@ function JumpToEnd({ pageRef, noteId }: { pageRef: RefObject<HTMLElement | null>
     <button
       type="button"
       className={`jump-to-end${show ? ' visible' : ''}`}
-      title="Jump to the end of the note"
-      aria-label="Jump to the end of the note"
+      title={t('Jump to the end of the note')}
+      aria-label={t('Jump to the end of the note')}
       tabIndex={show ? 0 : -1}
       // Keep the cursor in the note
       onMouseDown={(e) => e.preventDefault()}

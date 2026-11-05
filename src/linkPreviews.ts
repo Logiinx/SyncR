@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { locale, textKey } from './i18n'
+import { locale, plural, t, textKey, type TextKey } from './i18n'
 import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
@@ -250,12 +250,12 @@ function parts(href: string, preview: LinkPreview) {
 // Stars, likes, votes and comments: a filled icon and the number, like a game's rating.
 function extrasLine(preview: LinkPreview, first?: string) {
   const items: (string | HTMLElement)[] = first ? [first] : []
-  if (preview.stars != null) items.push(counted('star', preview.stars, 'stars'))
+  if (preview.stars != null) items.push(counted('star', preview.stars, '{count} star', '{count} stars'))
   if (preview.language) items.push(preview.language)
-  if (preview.likes != null) items.push(counted('heart', preview.likes, 'likes'))
+  if (preview.likes != null) items.push(counted('heart', preview.likes, '{count} like', '{count} likes'))
   if (preview.kind === 'reddit' && preview.author) items.push(preview.author)
-  if (preview.score != null) items.push(counted('arrowBigUp', preview.score, 'votes'))
-  if (preview.comments != null) items.push(counted('messageSquare', preview.comments, 'comments'))
+  if (preview.score != null) items.push(counted('arrowBigUp', preview.score, '{count} vote', '{count} votes'))
+  if (preview.comments != null) items.push(counted('messageSquare', preview.comments, '{count} comment', '{count} comments'))
   if (preview.date) items.push(shortDate(preview.date))
   if (items.length === 0) return null
   const line = element('span', 'link-card-line')
@@ -263,10 +263,10 @@ function extrasLine(preview: LinkPreview, first?: string) {
   return line
 }
 
-function counted(icon: SvgIconName, n: number, what: string) {
+function counted(icon: SvgIconName, n: number, one: TextKey, other: TextKey) {
   const node = element('span', 'link-card-count', count(n))
   node.insertAdjacentHTML('afterbegin', svgIcon(icon, 12))
-  node.setAttribute('aria-label', `${count(n)} ${what}`)
+  node.setAttribute('aria-label', plural(n, one, other, { count: count(n) }))
   return node
 }
 
@@ -401,21 +401,21 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
   if (!href || !editor.view.dom.contains(card ?? link)) return null
   const settings = loadLinkPreviewSettings()
   if (!card && !settings.plain.includes(href)) return null
-  const items: MenuItem[] = [{ label: 'Copy link', icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
+  const items: MenuItem[] = [{ label: t('Copy link'), icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
   if (card) {
     const end = editor.view.posAtDOM(card, 0) // the card sits at its link's end
     items.push({
-      label: 'Edit link',
+      label: t('Edit link'),
       icon: Pencil,
       disabled: !canEdit,
-      hint: canEdit ? undefined : 'While editing',
+      hint: canEdit ? undefined : t('While editing'),
       onClick: () => editLink(editor, end, href),
     })
   }
   items.push(
     card
-      ? { label: 'Show as plain link', icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }
-      : { label: 'Show as card', icon: RectangleHorizontal, divider: true, onClick: () => saveLinkPreviewSettings({ plain: settings.plain.filter((h) => h !== href) }) },
+      ? { label: t('Show as plain link'), icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }
+      : { label: t('Show as card'), icon: RectangleHorizontal, divider: true, onClick: () => saveLinkPreviewSettings({ plain: settings.plain.filter((h) => h !== href) }) },
   )
   const preview = previews.get(href)
   return { items, header: { title: (preview && parts(href, preview).title) || href, subtitle: preview ? href : undefined } }

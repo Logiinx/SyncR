@@ -2906,7 +2906,7 @@ button {
 }
 
 .tiptap .note-image.missing::after {
-  content: 'Image loading…';
+  content: attr(data-loading);
 }
 
 /* Full-screen view: image fitted to the screen, or at real size (scroll to move around) */

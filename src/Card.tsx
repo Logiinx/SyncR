@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { t } from './i18n'
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
@@ -264,7 +265,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
       {(card.title || editingTitle) && (
         <div
           className="card-title"
-          title={editingTitle ? undefined : folded ? 'Unfold' : 'Fold'}
+          title={editingTitle ? undefined : folded ? t('Unfold') : t('Fold')}
           onClick={() => !editingTitle && updateCardTitle(card.id, { folded: card.folded ? undefined : true })}
           onDoubleClick={(event) => event.stopPropagation()} // folds twice, doesn't edit the text
         >
@@ -273,7 +274,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
             <input
               autoFocus
               defaultValue={card.title ?? ''}
-              placeholder="Title"
+              placeholder={t('Title')}
               spellCheck={false}
               onBlur={(event) => {
                 const toText = !!editor && editor.view.dom.contains(event.relatedTarget as Node | null)
@@ -315,7 +316,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               const box = event.currentTarget.getBoundingClientRect()
               setMenu({ x: box.left, y: box.bottom + 4, editing })
             }}
-            title="More"
+            title={t('More')}
           >
             <Ellipsis size={13} />
           </button>
@@ -326,32 +327,32 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: menu.colors === 'text' ? 'Text color' : 'Card color' } : menu.link?.header}
+          header={menu.colors ? { title: menu.colors === 'text' ? t('Text color') : t('Card color') } : menu.link?.header}
           items={menu.colors === 'text' && editor ? textColorItems(editor) : menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
             ...(menu.link?.items ?? []),
             // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
             ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
               ? []
-              : [{ label: 'Edit', icon: Pencil, onClick: () => startEditing() }]),
-            { label: card.title ? 'Edit title' : 'Add title', icon: Heading, divider: true, onClick: () => setEditingTitle(true) },
+              : [{ label: t('Edit'), icon: Pencil, onClick: () => startEditing() }]),
+            { label: card.title ? t('Edit title') : t('Add title'), icon: Heading, divider: true, onClick: () => setEditingTitle(true) },
             {
-              label: 'Text color…',
+              label: t('Text color…'),
               icon: Baseline,
               divider: true,
               disabled: !menu.editing,
-              hint: menu.editing ? undefined : 'While editing',
+              hint: menu.editing ? undefined : t('While editing'),
               keepFocus: true,
               onClick: () => setMenu({ ...menu, colors: 'text' }),
             },
-            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'card' }) },
+            { label: t('Card color…'), icon: Palette, onClick: () => setMenu({ ...menu, colors: 'card' }) },
             {
-              label: card.priority ? 'Remove priority' : 'Mark as priority',
+              label: card.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: onDelete },
+            { label: t('Move to group…'), icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: t('Delete'), icon: Trash2, danger: true, onClick: onDelete },
           ]}
         />
       )}
@@ -365,7 +366,7 @@ function textColorItems(editor: Editor) {
   return colorMenuItems(currentTextColor(editor), (color) => pickTextColor(editor, color)).map((item) => ({
     ...item,
     keepFocus: true,
-    ...(item.label === 'Default' && { swatch: 'var(--text)' }),
+    ...(item.label === t('Default') && { swatch: 'var(--text)' }),
   }))
 }
 
@@ -457,8 +458,8 @@ function CardColorButton({ editor }: { editor: Editor }) {
       <button
         ref={button}
         className={['card-color', near && 'near', colors && 'active'].filter(Boolean).join(' ')}
-        title="Text color"
-        aria-label="Text color"
+        title={t('Text color')}
+        aria-label={t('Text color')}
         // Keep the selection or cursor (and the phone keyboard) in the card
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => toggle(e.currentTarget)}

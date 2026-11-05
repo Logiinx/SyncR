@@ -1,4 +1,5 @@
 import { Extension } from '@tiptap/react'
+import { t } from './i18n'
 import { Plugin } from '@tiptap/pm/state'
 import { isTauri } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
@@ -20,7 +21,7 @@ export function openLink(href: string) {
   }
   if (!SAFE_PROTOCOLS.includes(url.protocol)) return
   if (isTauri()) openUrl(url.href).catch((error) => console.error(error))
-  else window.open(url.href, '_blank', 'noopener,noreferrer')
+  else window.open(url.href, '_blank', 'noopener,noreferrer') // i18n-ok
 }
 
 // "https://www.example.com/" and "example.com" count as the same address
@@ -75,7 +76,7 @@ function linkTooltip() {
       } else {
         if (onCard || simplify(href) === simplify(link.textContent ?? '')) return
         // Links to notes: the note's title instead of the syncr:note/… address
-        tooltip.textContent = parseNoteLink(href) ? `→ ${linkTargetTitle(href) ?? 'Note not found'}` : href
+        tooltip.textContent = parseNoteLink(href) ? `→ ${linkTargetTitle(href) ?? t('Note not found')}` : href
       }
       tooltip.classList.toggle('has-card', !!card)
       shownFor = link

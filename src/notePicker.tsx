@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import { t } from './i18n'
 import { Extension, ReactRenderer, type Editor, type JSONContent } from '@tiptap/react'
 import { PluginKey } from '@tiptap/pm/state'
 import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
@@ -41,9 +42,9 @@ function outline(content: JSONContent | null | undefined, path: number[] = [], d
   content?.content?.forEach((child, index) => {
     const childPath = [...path, index]
     if (child.type === 'heading') {
-      out.push({ part: textOf(child) || 'Heading', path: childPath, blockId: child.attrs?.blockId ?? null, depth, kind: 'heading' })
+      out.push({ part: textOf(child) || t('Heading'), path: childPath, blockId: child.attrs?.blockId ?? null, depth, kind: 'heading' })
     } else if (child.type === 'details') {
-      out.push({ part: textOf(child.content?.[0]) || 'Section', path: childPath, blockId: child.attrs?.blockId ?? null, depth, kind: 'section' })
+      out.push({ part: textOf(child.content?.[0]) || t('Section'), path: childPath, blockId: child.attrs?.blockId ?? null, depth, kind: 'section' })
       outline(child, childPath, depth + 1, out)
       return
     }
@@ -238,7 +239,7 @@ const NotePickerList = forwardRef<PickerHandle, PickerProps>(function NotePicker
     <div className="slash-menu note-picker" role="listbox">
       {items.map((item, index) => {
         const Icon = ICONS[item.kind]
-        const label = item.part ?? (showsNotes ? item.title : 'Whole note')
+        const label = item.part ?? (showsNotes ? item.title : t('Whole note'))
         return (
           <div
             key={item.key}
@@ -255,13 +256,13 @@ const NotePickerList = forwardRef<PickerHandle, PickerProps>(function NotePicker
             >
               <Icon size={16} />
               <span className="picker-label" title={label}>{label}</span>
-              {item.current && showsNotes && <span className="picker-hint">this note</span>}
+              {item.current && showsNotes && <span className="picker-hint">{t('this note')}</span>}
             </button>
             {showsNotes && (
               <button
                 className="picker-into"
-                title="Link to a heading or section in this note (Tab)"
-                aria-label="Show headings and sections"
+                title={t('Link to a heading or section in this note (Tab)')}
+                aria-label={t('Show headings and sections')}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => openNote(item)}
               >

@@ -1,4 +1,5 @@
 import { Node, type Editor } from '@tiptap/react'
+import { t } from './i18n'
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { db } from './db'
 import { readyBlob } from './sealing'
@@ -27,7 +28,7 @@ async function prepareImage(file: Blob): Promise<{ blob: Blob; width: number; he
   bitmap.close()
   const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, JPEG_QUALITY))
-  if (!blob) throw new Error('Could not convert the image')
+  if (!blob) throw new Error('Could not convert the image') // i18n-ok
   return { blob, width: canvas.width, height: canvas.height }
 }
 
@@ -81,7 +82,7 @@ export const Image = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'img[data-attachment]' }]
+    return [{ tag: 'img[data-attachment]' }] // i18n-ok
   },
 
   // Used when copying: pasting it into a note keeps the same image
@@ -94,9 +95,10 @@ export const Image = Node.create({
     return ({ node }) => {
       const { id, width, height } = node.attrs
       // A box around the image. While the image isn't on this device yet (sync is still
-      // downloading it), the box shows "Image loading…" at the image's size.
+      // downloading it), the box shows "Image loading…" at the image's size (index.css reads data-loading).
       const box = document.createElement('div')
       box.className = 'note-image'
+      box.dataset.loading = t('Image loading…')
       if (width && height) {
         box.style.width = `${width}px`
         box.style.aspectRatio = `${width} / ${height}`
@@ -165,7 +167,7 @@ export async function insertImages(editor: Editor, files: File[]) {
       editor.chain().focus().insertContent({ type: 'image', attrs }).command(cursorBelow).run()
     } catch (error) {
       console.error(error)
-      window.alert('This image could not be added. Its format may not be supported.')
+      window.alert(t('This image could not be added. Its format may not be supported.'))
     }
   }
 }
@@ -184,13 +186,13 @@ export async function copyImage(src: string) {
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
     bitmap.close()
     return new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG failed'))), 'image/png'),
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG failed'))), 'image/png'), // i18n-ok
     )
   })()
   try {
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
   } catch (error) {
     console.error(error)
-    window.alert("This image couldn't be copied.")
+    window.alert(t("This image couldn't be copied."))
   }
 }

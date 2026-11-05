@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { Copy, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor, wrappingInputRule } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -96,7 +97,7 @@ export const extensions = [
   ...tableExtensions,
   Placeholder.configure({
     includeChildren: true,
-    placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? 'Section title' : ''),
+    placeholder: ({ node }) => (node.type.name === 'detailsSummary' ? t('Section title') : ''),
   }),
 ]
 
@@ -235,13 +236,13 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
           items={[
             // Not while the image is still downloading (nothing to copy yet)
             {
-              label: 'Copy image',
+              label: t('Copy image'),
               icon: Copy,
               disabled: !imageMenu.src,
-              hint: imageMenu.src ? undefined : 'Still downloading',
+              hint: imageMenu.src ? undefined : t('Still downloading'),
               onClick: () => copyImage(imageMenu.src),
             },
-            { label: 'Delete image', icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) },
+            { label: t('Delete image'), icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) },
           ]}
         />
       )}

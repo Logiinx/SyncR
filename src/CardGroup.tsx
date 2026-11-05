@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { plural, t } from './i18n'
 import { ChevronDown, Ellipsis, Layers, PaintBucket, Palette, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { deleteGroup, setCardPriority, setGroupColor, updateCardTitle, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
@@ -29,21 +30,21 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
 
   function rename() {
     onDialog({
-      title: 'Rename group',
-      input: { initial: name, placeholder: 'Group name' },
-      confirmLabel: 'Rename',
+      title: t('Rename group'),
+      input: { initial: name, placeholder: t('Group name') },
+      confirmLabel: t('Rename'),
       onConfirm: (value) => value.trim() && updateCardTitle(group.id, { title: value.trim() }),
     })
   }
 
   function askDelete() {
     onDialog({
-      title: 'Delete group?',
+      title: t('Delete group?'),
       message: count
-        ? `The group "${name}" will be removed. Its cards go back on the Board, unless you tick the box.`
-        : `The group "${name}" will be removed.`,
-      ...(count > 0 && { checkbox: count === 1 ? 'Delete its card too' : `Delete its ${count} cards too` }),
-      confirmLabel: 'Delete',
+        ? t('The group "{name}" will be removed. Its cards go back on the Board, unless you tick the box.', { name })
+        : t('The group "{name}" will be removed.', { name }),
+      ...(count > 0 && { checkbox: plural(count, 'Delete its card too', 'Delete its {n} cards too') }),
+      confirmLabel: t('Delete'),
       danger: true,
       onConfirm: async (_, withCards) => onDeleted(await deleteGroup(group.id, withCards)),
     })
@@ -84,7 +85,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
           event.preventDefault()
           setMenu({ x: event.clientX, y: event.clientY })
         }}
-        title={group.folded ? 'Unfold' : 'Fold'}
+        title={group.folded ? t('Unfold') : t('Fold')}
       >
         <ChevronDown size={14} className="card-group-chevron" />
         <Layers size={14} className="card-group-icon" />
@@ -97,7 +98,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
             const box = event.currentTarget.getBoundingClientRect()
             setMenu({ x: box.left, y: box.bottom + 4 })
           }}
-          title="More"
+          title={t('More')}
         >
           <Ellipsis size={13} />
         </button>
@@ -107,31 +108,31 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: menu.colors === 'all' ? 'Color with its cards' : 'Group color' } : undefined}
+          header={menu.colors ? { title: menu.colors === 'all' ? t('Color with its cards') : t('Group color') } : undefined}
           items={menu.colors ? colorItems(menu.colors === 'all') : [
             {
-              label: 'New card',
+              label: t('New card'),
               icon: Plus,
               onClick: () => {
                 if (group.folded) updateCardTitle(group.id, { folded: undefined }) // unfolded to show it
                 onNewCard()
               },
             },
-            { label: 'Rename', icon: Pencil, onClick: rename },
-            { label: 'Group color…', icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: 'group' }) },
-            { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
+            { label: t('Rename'), icon: Pencil, onClick: rename },
+            { label: t('Group color…'), icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: 'group' }) },
+            { label: t('Color with its cards…'), icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
             {
-              label: group.priority ? 'Remove priority' : 'Mark as priority',
+              label: group.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Delete group', icon: Trash2, danger: true, onClick: askDelete },
+            { label: t('Delete group'), icon: Trash2, danger: true, onClick: askDelete },
           ]}
         />
       )}
       {!group.folded && (
-        <div className="card-group-cards" ref={cardsRef}>{count ? children : <div className="card-group-empty">No cards</div>}</div>
+        <div className="card-group-cards" ref={cardsRef}>{count ? children : <div className="card-group-empty">{t('No cards')}</div>}</div>
       )}
     </div>
   )

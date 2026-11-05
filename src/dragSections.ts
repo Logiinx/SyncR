@@ -1,4 +1,5 @@
 import { Extension } from '@tiptap/react'
+import { t } from './i18n'
 import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { currentZoom } from './appearance'
@@ -251,7 +252,7 @@ class SectionDragger {
     const zoom = currentZoom()
     this.ghost = document.createElement('div')
     this.ghost.className = 'section-ghost'
-    this.ghost.textContent = press.summary.textContent?.trim() || 'Section'
+    this.ghost.textContent = press.summary.textContent?.trim() || t('Section')
     this.ghost.style.left = `${(press.summary.getBoundingClientRect().left - this.wrapper.getBoundingClientRect().left) / zoom}px`
     this.ghost.style.maxWidth = `${press.section.getBoundingClientRect().width / zoom}px`
     this.wrapper.append(this.ghost)

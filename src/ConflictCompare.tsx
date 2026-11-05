@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { plural, t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Square, SquareCheck, TriangleAlert, UnfoldVertical } from 'lucide-react'
 import BackButton from './BackButton'
@@ -29,12 +30,12 @@ export function ConflictBanner({ note }: { note: Note }) {
         {original ? (
           <>
             <span>
-              Conflict copy of <strong>{noteTitle(original)}</strong>
+              {t('Conflict copy of')} <strong>{noteTitle(original)}</strong>
             </span>
-            <button onClick={() => setComparing(true)}>Compare</button>
+            <button onClick={() => setComparing(true)}>{t('Compare')}</button>
           </>
         ) : (
-          <span>Conflict copy (its original note was deleted)</span>
+          <span>{t('Conflict copy (its original note was deleted)')}</span>
         )}
       </div>
       {comparing && original && <ConflictCompare original={original} copy={note} onClose={() => setComparing(false)} />}
@@ -56,9 +57,9 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
 
   function keepOriginal() {
     setDialog({
-      title: 'Keep the original?',
-      message: `This conflict copy will be deleted; "${noteTitle(original)}" stays as it is. This can't be undone.`,
-      confirmLabel: 'Keep original',
+      title: t('Keep the original?'),
+      message: t('This conflict copy will be deleted; "{title}" stays as it is. This can\'t be undone.', { title: noteTitle(original) }),
+      confirmLabel: t('Keep original'),
       danger: true,
       onConfirm: finish,
     })
@@ -66,9 +67,9 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
 
   function keepCopy() {
     setDialog({
-      title: 'Keep this copy?',
-      message: `Its text replaces the text of "${noteTitle(original)}", and this copy is deleted. This can't be undone.`,
-      confirmLabel: 'Keep this copy',
+      title: t('Keep this copy?'),
+      message: t('Its text replaces the text of "{title}", and this copy is deleted. This can\'t be undone.', { title: noteTitle(original) }),
+      confirmLabel: t('Keep this copy'),
       danger: true,
       onConfirm: async () => {
         await saveNoteContent(original.id, copy.content!, copy.text)
@@ -87,27 +88,27 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
   return (
     <div className="compare">
       <div className="compare-header">
-        <BackButton onClick={onClose} title="Back to the note" />
+        <BackButton onClick={onClose} title={t('Back to the note')} />
         <span className="compare-divider" />
         <span className="compare-title">
-          {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
+          {changes ? plural(changes, '{n} difference', '{n} differences') : t('No differences')}
         </span>
         {narrow && (
           <span className="compare-legend">
-            <span className="cmp-removed">only in the original</span>
-            <span className="cmp-added">only in this copy</span>
-            <span className="cmp-formatted">formatting</span>
+            <span className="cmp-removed">{t('only in the original')}</span>
+            <span className="cmp-added">{t('only in this copy')}</span>
+            <span className="cmp-formatted">{t('formatting')}</span>
           </span>
         )}
         <span className="compare-actions">
-          <button onClick={keepOriginal}>Keep original</button>
+          <button onClick={keepOriginal}>{t('Keep original')}</button>
           <button onClick={keepCopy} disabled={!copy.content}>
-            Keep this copy
+            {t('Keep this copy')}
           </button>
         </span>
       </div>
 
-      <CompareBody rows={rows} narrow={narrow} leftTitle={`Original · ${noteTitle(original)}`} rightTitle="This copy" />
+      <CompareBody rows={rows} narrow={narrow} leftTitle={t('Original · {title}', { title: noteTitle(original) })} rightTitle={t('This copy')} />
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </div>
   )
@@ -142,7 +143,7 @@ export function CompareBody(props: { rows: Row[]; narrow: boolean; leftTitle: st
             className="compare-fold"
             onClick={() => setOpened(new Set(opened).add(part.start))}
           >
-            <UnfoldVertical size={14} /> {part.rows.length} unchanged lines
+            <UnfoldVertical size={14} /> {plural(part.rows.length, '{n} unchanged line', '{n} unchanged lines')}
           </button>
         ) : (
           part.rows.map((row, k) => (

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Folder, FolderOutput, FolderPlus, Plus, StickyNote } from 'lucide-react'
 import { useLocalState } from './localState'
@@ -33,10 +34,6 @@ const MAX_WIDTH = 600
 const UNDO_MS = 5000
 const HOLD_MS = 300 // touch screens: hold a card this long before it moves (a swipe scrolls)
 const GAP = 6 // px between cards (.board-cards gap)
-
-// The drag's temporary drop zone (made outside React): Lucide's arrow-down / arrow-up as plain SVG
-const DROP_NORMAL = `${svgIcon('arrowDown', 12)} Normal`
-const DROP_PRIORITY = `${svgIcon('arrowUp', 12)} Priority`
 
 // Priority cards first, then the others; inside each part, in their order (new = bottom)
 const byPart = (a: CardData, b: CardData) => Number(b.priority) - Number(a.priority) || a.order - b.order
@@ -105,7 +102,7 @@ function Board({ onClose }: Props) {
 
   function deleteCard(id: string) {
     setCardDeleted(id, true)
-    setUndo({ ids: [id], label: 'Card deleted' }) // a newer delete replaces the offer (the older one stays deleted)
+    setUndo({ ids: [id], label: t('Card deleted') }) // a newer delete replaces the offer (the older one stays deleted)
   }
 
   // Moving a card (or a group, by its header): press on it and drag (on a touch screen, hold it
@@ -151,7 +148,8 @@ function Board({ onClose }: Props) {
         const side = rest.length ? rest[0].priority : card!.priority
         zone = document.createElement('div')
         zone.className = 'board-separator board-drop-zone'
-        zone.innerHTML = side ? DROP_NORMAL : DROP_PRIORITY
+        // The drag's temporary drop zone (made outside React): Lucide's arrow-down / arrow-up as plain SVG
+        zone.innerHTML = `${svgIcon(side ? 'arrowDown' : 'arrowUp', 12)} ${side ? t('Normal') : t('Priority')}`
         if (side) list!.append(zone)
         else list!.prepend(zone)
       }
@@ -344,20 +342,20 @@ function Board({ onClose }: Props) {
       ...groups
         .filter((group) => group.id !== card.groupId)
         .sort(byPart)
-        .map((group) => ({ label: group.title ?? 'Group', icon: Folder, onClick: () => moveToGroup(card.id, group.id) })),
+        .map((group) => ({ label: group.title ?? t('Group'), icon: Folder, onClick: () => moveToGroup(card.id, group.id) })),
       {
-        label: 'New group…',
+        label: t('New group…'),
         icon: FolderPlus,
         divider: true,
         onClick: () =>
           setDialog({
-            title: 'New group',
-            input: { initial: '', placeholder: 'Group name' },
-            confirmLabel: 'Create',
+            title: t('New group'),
+            input: { initial: '', placeholder: t('Group name') },
+            confirmLabel: t('Create'),
             onConfirm: (name) => name.trim() && createGroup(name.trim(), card.id),
           }),
       },
-      ...(inGroup(card) ? [{ label: 'Remove from group', icon: FolderOutput, divider: true, onClick: () => moveToGroup(card.id, undefined) }] : []),
+      ...(inGroup(card) ? [{ label: t('Remove from group'), icon: FolderOutput, divider: true, onClick: () => moveToGroup(card.id, undefined) }] : []),
     ]
   }
 
@@ -429,15 +427,15 @@ function Board({ onClose }: Props) {
           onPointerUp={() => (drag.current = null)}
           onPointerCancel={() => (drag.current = null)}
         />
-        <button className="board-toggle" onClick={onClose} title="Hide the Board">
+        <button className="board-toggle" onClick={onClose} title={t('Hide the Board')}>
           <ChevronRight size={14} />
         </button>
         <div className="board-header">
           <StickyNote size={15} className="board-icon" />
-          <span className="board-title">Board</span>
+          <span className="board-title">{t('Board')}</span>
           {!!rows?.length && <span className="board-count">{rows.filter((row) => !row.group).length}</span>}
           {/* New card: lands at the bottom of the normal cards, scrolled into view */}
-          <button className="board-add" onClick={() => addCard()} title="New card">
+          <button className="board-add" onClick={() => addCard()} title={t('New card')}>
             <Plus size={16} />
           </button>
         </div>
@@ -452,7 +450,7 @@ function Board({ onClose }: Props) {
                   cards={inside}
                   onPress={(event) => pressCard(card.id, event)}
                   onDialog={setDialog}
-                  onDeleted={(ids) => setUndo({ ids, label: 'Group deleted' })}
+                  onDeleted={(ids) => setUndo({ ids, label: t('Group deleted') })}
                   onNewCard={() => addCard(card.id)}
                 >
                   {withSeparator(inside, renderCard)}
@@ -463,13 +461,13 @@ function Board({ onClose }: Props) {
         {undo && (
           <div className="board-undo">
             {undo.label}
-            <button onClick={undoDelete}>Undo</button>
+            <button onClick={undoDelete}>{t('Undo')}</button>
           </div>
         )}
         {/* Phone only (CSS): the header "+" is hard to reach with the thumb */}
         <button className="board-add-row" onClick={() => addCard()}>
           <Plus size={16} />
-          New card
+          {t('New card')}
         </button>
         {openGame &&<GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
         {groupMenu && (
@@ -477,7 +475,7 @@ function Board({ onClose }: Props) {
             x={groupMenu.x}
             y={groupMenu.y}
             onClose={() => setGroupMenu(null)}
-            header={{ title: 'Move to group' }}
+            header={{ title: t('Move to group') }}
             items={groupMenuItems(groupMenu.cardId)}
           />
         )}

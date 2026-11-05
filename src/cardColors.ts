@@ -1,9 +1,22 @@
 import type { MenuItem } from './ContextMenu'
+import { t, textKey } from './i18n'
+
+// The fixed palette. Notes store "var(--text-red)" etc., not the color itself, so the
+// colors can be tuned later in index.css and every note follows.
+export const COLORS = [
+  { id: 'red', name: textKey('Red') },
+  { id: 'orange', name: textKey('Orange') },
+  { id: 'yellow', name: textKey('Yellow') },
+  { id: 'green', name: textKey('Green') },
+  { id: 'blue', name: textKey('Blue') },
+  { id: 'purple', name: textKey('Purple') },
+  { id: 'pink', name: textKey('Pink') },
+  { id: 'gray', name: textKey('Gray') },
+]
 
 // Background colors for Board cards and groups ("Card color…" / "Group color…" in their menu). A card stores the
 // name; the tint comes from the same palette as text colors (--text-red…, index.css), so it
 // follows palette changes. Synced with the card.
-export const CARD_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray']
 
 // The card's tint for its CSS (.card.colored / .card-group.colored)
 export function tintStyle(color: string | undefined): React.CSSProperties | undefined {
@@ -19,10 +32,10 @@ export function colorMenuItems(
 ): MenuItem[] {
   return [
     ...(withDefault
-      ? [{ label: 'Default', swatch: 'var(--bg)', checked: current === undefined, onClick: () => pick(undefined) }]
+      ? [{ label: t('Default'), swatch: 'var(--bg)', checked: current === undefined, onClick: () => pick(undefined) }]
       : []),
-    ...CARD_COLORS.map((color, index) => ({
-      label: color[0].toUpperCase() + color.slice(1),
+    ...COLORS.map(({ id: color, name }, index) => ({
+      label: t(name),
       swatch: `var(--text-${color})`,
       checked: current === color,
       divider: withDefault && index === 0,

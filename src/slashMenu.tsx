@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import { t, textKey, type TextKey } from './i18n'
 import { Extension, ReactRenderer, type ChainedCommands, type Editor } from '@tiptap/react'
 import { PluginKey } from '@tiptap/pm/state'
 import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
@@ -23,37 +24,40 @@ import { closeCopy } from './animations'
 // filters it ("/tab" → Table), ↑ ↓ choose, Enter inserts, Esc closes. Not inside code.
 
 interface SlashItem {
-  title: string
-  keywords: string // other words that find it
+  title: TextKey
+  keywords: TextKey // other words that find it
   icon: LucideIcon
   run: (chain: ChainedCommands) => ChainedCommands
 }
 
 const ITEMS: SlashItem[] = [
-  { title: 'Section', keywords: 'details fold collapse toggle', icon: FoldVertical, run: (c) => c.setDetails() },
-  { title: 'Code block', keywords: 'code pre snippet', icon: SquareCode, run: (c) => c.setCodeBlock() },
-  { title: 'Checklist', keywords: 'todo task checkbox', icon: ListTodo, run: (c) => c.toggleTaskList() },
-  { title: 'Bullet list', keywords: 'unordered list ul', icon: List, run: (c) => c.toggleBulletList() },
-  { title: 'Numbered list', keywords: 'ordered list ol', icon: ListOrdered, run: (c) => c.toggleOrderedList() },
+  { title: textKey('Section'), keywords: textKey('details fold collapse toggle'), icon: FoldVertical, run: (c) => c.setDetails() },
+  { title: textKey('Code block'), keywords: textKey('code pre snippet'), icon: SquareCode, run: (c) => c.setCodeBlock() },
+  { title: textKey('Checklist'), keywords: textKey('todo task checkbox'), icon: ListTodo, run: (c) => c.toggleTaskList() },
+  { title: textKey('Bullet list'), keywords: textKey('unordered list ul'), icon: List, run: (c) => c.toggleBulletList() },
+  { title: textKey('Numbered list'), keywords: textKey('ordered list ol'), icon: ListOrdered, run: (c) => c.toggleOrderedList() },
   {
-    title: 'Table',
-    keywords: 'grid columns rows',
+    title: textKey('Table'),
+    keywords: textKey('grid columns rows'),
     icon: Table,
     run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
   },
-  { title: 'Heading 1', keywords: 'title h1 big', icon: Heading1, run: (c) => c.setHeading({ level: 1 }) },
-  { title: 'Heading 2', keywords: 'subtitle h2', icon: Heading2, run: (c) => c.setHeading({ level: 2 }) },
-  { title: 'Heading 3', keywords: 'h3', icon: Heading3, run: (c) => c.setHeading({ level: 3 }) },
-  { title: 'Quote', keywords: 'blockquote citation', icon: TextQuote, run: (c) => c.setBlockquote() },
-  { title: 'Divider', keywords: 'horizontal rule line separator hr', icon: Minus, run: (c) => c.setHorizontalRule() },
+  { title: textKey('Heading 1'), keywords: textKey('title h1 big'), icon: Heading1, run: (c) => c.setHeading({ level: 1 }) },
+  { title: textKey('Heading 2'), keywords: textKey('subtitle h2'), icon: Heading2, run: (c) => c.setHeading({ level: 2 }) },
+  { title: textKey('Heading 3'), keywords: textKey('h3'), icon: Heading3, run: (c) => c.setHeading({ level: 3 }) },
+  { title: textKey('Quote'), keywords: textKey('blockquote citation'), icon: TextQuote, run: (c) => c.setBlockquote() },
+  { title: textKey('Divider'), keywords: textKey('horizontal rule line separator hr'), icon: Minus, run: (c) => c.setHorizontalRule() },
 ]
+
+// So "separateur" also finds "Séparateur"
+const plainLetters = (text: string) => text.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
 
 // Only what fits at the cursor (e.g. no Quote inside a list item): editor.can() tries the
 // command without changing anything
 function filterItems(query: string, editor: Editor) {
-  const q = query.toLowerCase()
+  const q = plainLetters(query)
   return ITEMS.filter(
-    (item) => `${item.title} ${item.keywords}`.toLowerCase().includes(q) && item.run(editor.can().chain()).run(),
+    (item) => plainLetters(`${t(item.title)} ${t(item.keywords)}`).includes(q) && item.run(editor.can().chain()).run(),
   )
 }
 
@@ -178,7 +182,7 @@ const SlashMenuList = forwardRef<SlashMenuHandle, SlashMenuListProps>(function S
           onClick={() => command(item)}
         >
           <item.icon size={16} />
-          {item.title}
+          {t(item.title)}
         </button>
       ))}
     </div>

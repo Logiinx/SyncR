@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { t } from './i18n'
 import type { Editor } from '@tiptap/react'
 import {
   Ban,
@@ -10,7 +11,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { currentZoom } from './appearance'
-import { COLORS, highlightColor } from './ColorPicker'
+import { COLORS } from './cardColors'
+import { highlightColor } from './ColorPicker'
 
 interface Props {
   editor: Editor
@@ -54,25 +56,25 @@ function TableMenu({ editor, x, y, onClose }: Props) {
       }}
     >
       <div className="context-menu table-menu" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()}>
-        <button onClick={run(() => chain().addRowBefore().run())}><BetweenHorizontalStart size={15} className="menu-icon" />Add row above</button>
-        <button onClick={run(() => chain().addRowAfter().run())}><BetweenHorizontalEnd size={15} className="menu-icon" />Add row below</button>
-        <button onClick={run(() => chain().addColumnBefore().run())}><BetweenVerticalStart size={15} className="menu-icon" />Add column left</button>
-        <button onClick={run(() => chain().addColumnAfter().run())}><BetweenVerticalEnd size={15} className="menu-icon" />Add column right</button>
+        <button onClick={run(() => chain().addRowBefore().run())}><BetweenHorizontalStart size={15} className="menu-icon" />{t('Add row above')}</button>
+        <button onClick={run(() => chain().addRowAfter().run())}><BetweenHorizontalEnd size={15} className="menu-icon" />{t('Add row below')}</button>
+        <button onClick={run(() => chain().addColumnBefore().run())}><BetweenVerticalStart size={15} className="menu-icon" />{t('Add column left')}</button>
+        <button onClick={run(() => chain().addColumnAfter().run())}><BetweenVerticalEnd size={15} className="menu-icon" />{t('Add column right')}</button>
         <div className="menu-separator" />
-        <button onClick={run(() => chain().deleteRow().run())}><Trash2 size={15} className="menu-icon" />Delete row</button>
-        <button onClick={run(() => chain().deleteColumn().run())}><Trash2 size={15} className="menu-icon" />Delete column</button>
+        <button onClick={run(() => chain().deleteRow().run())}><Trash2 size={15} className="menu-icon" />{t('Delete row')}</button>
+        <button onClick={run(() => chain().deleteColumn().run())}><Trash2 size={15} className="menu-icon" />{t('Delete column')}</button>
         <div className="menu-separator" />
         <button onClick={run(() => chain().toggleHeaderRow().run())}>
           <PanelTop size={15} className="menu-icon" />
-          {hasHeader ? 'Remove header row' : 'Make first row a header'}
+          {hasHeader ? t('Remove header row') : t('Make first row a header')}
         </button>
-        <div className="menu-label">Cell color</div>
+        <div className="menu-label">{t('Cell color')}</div>
         <div className="color-picker">
           <div className="color-row">
             <button
               className={!cellColor ? 'swatch selected' : 'swatch'}
-              title="No color"
-              aria-label="No color"
+              title={t('No color')}
+              aria-label={t('No color')}
               onClick={run(() => chain().setCellAttribute('backgroundColor', null).run())}
             >
               <Ban size={14} />
@@ -81,8 +83,8 @@ function TableMenu({ editor, x, y, onClose }: Props) {
               <button
                 key={id}
                 className={cellColor === highlightColor(id) ? 'swatch selected' : 'swatch'}
-                title={name}
-                aria-label={name}
+                title={t(name)}
+                aria-label={t(name)}
                 onClick={run(() => chain().setCellAttribute('backgroundColor', highlightColor(id)).run())}
               >
                 <span className="highlight-swatch" style={{ background: highlightColor(id) }} />
@@ -93,7 +95,7 @@ function TableMenu({ editor, x, y, onClose }: Props) {
         <div className="menu-separator" />
         <button className="danger" onClick={run(() => chain().deleteTable().run())}>
           <Trash2 size={15} className="menu-icon" />
-          Delete table
+          {t('Delete table')}
         </button>
       </div>
     </div>

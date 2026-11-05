@@ -1,18 +1,8 @@
 import { useEditorState, type Editor } from '@tiptap/react'
+import { t } from './i18n'
 import { Ban } from 'lucide-react'
+import { COLORS } from './cardColors'
 
-// The fixed palette. Notes store "var(--text-red)" etc., not the color itself, so the
-// colors can be tuned later in index.css and every note follows.
-export const COLORS = [
-  { id: 'red', name: 'Red' },
-  { id: 'orange', name: 'Orange' },
-  { id: 'yellow', name: 'Yellow' },
-  { id: 'green', name: 'Green' },
-  { id: 'blue', name: 'Blue' },
-  { id: 'purple', name: 'Purple' },
-  { id: 'pink', name: 'Pink' },
-  { id: 'gray', name: 'Gray' },
-]
 const textColor = (id: string) => `var(--text-${id})`
 export const highlightColor = (id: string) => `var(--hl-${id})`
 
@@ -56,30 +46,30 @@ function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; 
 
   return (
     <div className="color-picker">
-      <div className="color-row" role="group" aria-label="Text color">
-        <Swatch title="Default color" selected={!color} onClick={() => pick(() => pickTextColor(editor, undefined))}>
+      <div className="color-row" role="group" aria-label={t('Text color')}>
+        <Swatch title={t('Default color')} selected={!color} onClick={() => pick(() => pickTextColor(editor, undefined))}>
           <Ban size={14} />
         </Swatch>
         {COLORS.map(({ id, name }) => (
           <Swatch
             key={id}
-            title={name}
+            title={t(name)}
             selected={color === textColor(id)}
             onClick={() => pick(() => pickTextColor(editor, id))}
           >
-            <span style={{ color: textColor(id) }}>A</span>
+            <span style={{ color: textColor(id) }}>{'A'}</span>
           </Swatch>
         ))}
       </div>
       {highlights && (
-        <div className="color-row" role="group" aria-label="Highlight">
-          <Swatch title="No highlight" selected={!highlight} onClick={() => pick(() => chain().unsetHighlight().run())}>
+        <div className="color-row" role="group" aria-label={t('Highlight')}>
+          <Swatch title={t('No highlight')} selected={!highlight} onClick={() => pick(() => chain().unsetHighlight().run())}>
             <Ban size={14} />
           </Swatch>
           {COLORS.map(({ id, name }) => (
             <Swatch
               key={id}
-              title={`${name} highlight`}
+              title={t('{color} highlight', { color: t(name) })}
               selected={highlight === highlightColor(id)}
               onClick={() => pick(() => chain().setHighlight({ color: highlightColor(id) }).run())}
             >

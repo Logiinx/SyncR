@@ -1,4 +1,5 @@
 import { Extension, type Editor, type JSONContent } from '@tiptap/react'
+import { t } from './i18n'
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model'
@@ -31,7 +32,7 @@ export interface LinkTarget {
 }
 
 export function noteLinkHref({ noteId, blockId }: LinkTarget) {
-  return `${PROTOCOL}:note/${noteId}${blockId ? `#${blockId}` : ''}`
+  return `${PROTOCOL}:note/${noteId}${blockId ? `#${blockId}` : ''}` // i18n-ok
 }
 
 export function parseNoteLink(href: string): LinkTarget | null {
@@ -262,7 +263,7 @@ export async function followNoteLink(href: string) {
   const target = parseNoteLink(href)
   if (!target) return
   if (!(await db.notes.get(target.noteId))) {
-    notFoundHandler('Link target not found: the note was deleted.')
+    notFoundHandler(t('Link target not found: the note was deleted.'))
     return
   }
   pendingJump = target
@@ -286,7 +287,7 @@ export function jumpToBlock(editor: Editor, blockId: string) {
   const { view } = editor
   const pos = findBlock(view.state.doc, blockId)
   if (pos === null) {
-    notFoundHandler('Link target not found: that part of the note was deleted. The note is open.')
+    notFoundHandler(t('Link target not found: that part of the note was deleted. The note is open.'))
     return
   }
   // Closed sections around it (and the block itself, if it's a section): open them

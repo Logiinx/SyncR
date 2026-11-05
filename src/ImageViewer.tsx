@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { X } from 'lucide-react'
 import { currentZoom } from './appearance'
 
@@ -162,7 +163,7 @@ function ImageViewer() {
           }
         />
       </div>
-      <button className="image-viewer-close" aria-label="Close" title="Close (Esc)" onClick={close}>
+      <button className="image-viewer-close" aria-label={t('Close')} title={t('Close (Esc)')} onClick={close}>
         <X size={18} />
       </button>
     </div>

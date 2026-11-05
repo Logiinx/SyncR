@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { t } from './i18n'
 import { useEditorState, type Editor, type JSONContent } from '@tiptap/react'
 import {
   Baseline,
@@ -147,52 +148,52 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
   // Phone: the "⋯" list, with only what can be used right now
   const [more, setMore] = useState<{ x: number; y: number } | null>(null)
   const moreItems = [
-    { label: 'Strikethrough', icon: Strikethrough, show: true, checked: state.strike, onClick: () => chain().toggleStrike().run() },
+    { label: t('Strikethrough'), icon: Strikethrough, show: true, checked: state.strike, onClick: () => chain().toggleStrike().run() },
     {
-      label: state.inSection ? 'Remove section' : 'Section',
+      label: state.inSection ? t('Remove section') : t('Section'),
       icon: FoldVertical,
       show: state.inSection || state.canMakeSection,
       divider: true,
       onClick: toggleSection,
     },
     {
-      label: state.inCodeBlock ? 'Back to normal text' : 'Code block',
+      label: state.inCodeBlock ? t('Back to normal text') : t('Code block'),
       icon: SquareCode,
       show: state.inCodeBlock || state.canMakeCodeBlock,
       onClick: toggleCodeBlock,
     },
-    { label: 'Separate lines', icon: Rows3, show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
-    { label: 'Align under ">"', icon: IndentIncrease, show: state.canAlign, onClick: alignUnder },
-    { label: 'Table', icon: Table, show: true, onClick: insertTable },
-    { label: 'Copy link to this spot', icon: Copy, show: true, onClick: copyLink },
-    { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
-    { label: 'History', icon: History, show: historyAvailable, divider: true, onClick: openHistory },
+    { label: t('Separate lines'), icon: Rows3, show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
+    { label: t('Align under ">"'), icon: IndentIncrease, show: state.canAlign, onClick: alignUnder },
+    { label: t('Table'), icon: Table, show: true, onClick: insertTable },
+    { label: t('Copy link to this spot'), icon: Copy, show: true, onClick: copyLink },
+    { label: t('Pin to Board'), icon: Pin, show: state.hasSelection, onClick: pin },
+    { label: t('History'), icon: History, show: historyAvailable, divider: true, onClick: openHistory },
   ].map(({ show, ...item }) => ({ ...item, disabled: !show })) // grayed like the PC's toolbar, never hidden
 
   return (
     <>
       <div className="toolbar">
-        <ToolButton title="Undo (Ctrl+Z)" disabled={!state.canUndo} onClick={() => chain().undo().run()}>
+        <ToolButton title={t('Undo (Ctrl+Z)')} disabled={!state.canUndo} onClick={() => chain().undo().run()}>
           <Undo2 size={ICON_SIZE} />
         </ToolButton>
-        <ToolButton title="Redo (Ctrl+Y)" disabled={!state.canRedo} onClick={() => chain().redo().run()}>
+        <ToolButton title={t('Redo (Ctrl+Y)')} disabled={!state.canRedo} onClick={() => chain().redo().run()}>
           <Redo2 size={ICON_SIZE} />
         </ToolButton>
   
         <span className="toolbar-separator" />
   
-        <ToolButton title="Bold (Ctrl+B)" active={state.bold} onClick={() => chain().toggleBold().run()}>
+        <ToolButton title={t('Bold (Ctrl+B)')} active={state.bold} onClick={() => chain().toggleBold().run()}>
           <Bold size={ICON_SIZE} />
         </ToolButton>
-        <ToolButton title="Italic (Ctrl+I)" active={state.italic} onClick={() => chain().toggleItalic().run()}>
+        <ToolButton title={t('Italic (Ctrl+I)')} active={state.italic} onClick={() => chain().toggleItalic().run()}>
           <Italic size={ICON_SIZE} />
         </ToolButton>
-        <ToolButton title="Underline (Ctrl+U)" active={state.underline} onClick={() => chain().toggleUnderline().run()}>
+        <ToolButton title={t('Underline (Ctrl+U)')} active={state.underline} onClick={() => chain().toggleUnderline().run()}>
           <Underline size={ICON_SIZE} />
         </ToolButton>
         {!narrow && (
           <ToolButton
-            title="Strikethrough (Ctrl+Shift+S)"
+            title={t('Strikethrough (Ctrl+Shift+S)')}
             active={state.strike}
             onClick={() => chain().toggleStrike().run()}
           >
@@ -201,7 +202,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
         )}
   
         <ToolButton
-          title="Text color and highlight"
+          title={t('Text color and highlight')}
           className="color-button"
           active={!!colors}
           onClick={(e) => toggleColors(e.currentTarget)}
@@ -216,16 +217,16 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
   
         <span className="toolbar-separator" />
   
-        <ToolButton title="Checklist" active={state.checklist} onClick={() => chain().toggleTaskList().run()}>
+        <ToolButton title={t('Checklist')} active={state.checklist} onClick={() => chain().toggleTaskList().run()}>
           <ListTodo size={ICON_SIZE} />
         </ToolButton>
         {narrow ? (
           <>
-            <ToolButton title="Insert image" onClick={pickImage}>
+            <ToolButton title={t('Insert image')} onClick={pickImage}>
               <ImageIcon size={ICON_SIZE} />
             </ToolButton>
             <ToolButton
-              title="More"
+              title={t('More')}
               active={!!more}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -238,7 +239,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
         ) : (
           <>
             <ToolButton
-              title={state.inSection ? 'Remove the section around the cursor (keeps its text)' : 'Fold the selected lines into a section'}
+              title={state.inSection ? t('Remove the section around the cursor (keeps its text)') : t('Fold the selected lines into a section')}
               active={state.inSection}
               disabled={!state.inSection && !state.canMakeSection}
               onClick={toggleSection}
@@ -246,7 +247,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
               <FoldVertical size={ICON_SIZE} />
             </ToolButton>
             <ToolButton
-              title={state.inCodeBlock ? 'Turn the code block back into normal text' : 'Make the selected lines a code block'}
+              title={state.inCodeBlock ? t('Turn the code block back into normal text') : t('Make the selected lines a code block')}
               active={state.inCodeBlock}
               disabled={!state.inCodeBlock && !state.canMakeCodeBlock}
               onClick={toggleCodeBlock}
@@ -254,14 +255,14 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
               <SquareCode size={ICON_SIZE} />
             </ToolButton>
             <ToolButton
-              title="Separate lines (turns Shift+Enter line breaks into real lines)"
+              title={t('Separate lines (turns Shift+Enter line breaks into real lines)')}
               disabled={!state.hasLineBreaks}
               onClick={() => splitLineBreaks(editor)}
             >
               <Rows3 size={ICON_SIZE} />
             </ToolButton>
             <ToolButton
-              title={'Line up this line under the next ">" of the line above (Tab, Shift+Tab to go back)'}
+              title={t('Line up this line under the next ">" of the line above (Tab, Shift+Tab to go back)')}
               active={state.aligned}
               disabled={!state.canAlign}
               onClick={alignUnder}
@@ -271,20 +272,20 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
   
             <span className="toolbar-separator" />
   
-            <ToolButton title="Insert table" onClick={insertTable}>
+            <ToolButton title={t('Insert table')} onClick={insertTable}>
               <Table size={ICON_SIZE} />
             </ToolButton>
-            <ToolButton title="Insert image" onClick={pickImage}>
+            <ToolButton title={t('Insert image')} onClick={pickImage}>
               <ImageIcon size={ICON_SIZE} />
             </ToolButton>
   
             <span className="toolbar-separator" />
   
-            <ToolButton title="Copy a link to this spot (paste it in any note)" onClick={copyLink}>
+            <ToolButton title={t('Copy a link to this spot (paste it in any note)')} onClick={copyLink}>
               {done === 'link' ? <Check size={ICON_SIZE} /> : <Copy size={ICON_SIZE} />}
             </ToolButton>
             <ToolButton
-              title="Pin to the Board (copies the selection into a priority card)"
+              title={t('Pin to the Board (copies the selection into a priority card)')}
               disabled={!state.hasSelection}
               onClick={pin}
             >
@@ -294,10 +295,10 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
             <ToolButton
               title={
                 conflictCopy
-                  ? 'History (conflict copies have none: see the original note)'
+                  ? t('History (conflict copies have none: see the original note)')
                   : historyAvailable
-                    ? 'History (older versions of this note)'
-                    : 'History (needs Dropbox sync and internet)'
+                    ? t('History (older versions of this note)')
+                    : t('History (needs Dropbox sync and internet)')
               }
               className="toolbar-end"
               disabled={!historyAvailable}

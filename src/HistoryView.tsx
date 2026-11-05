@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { plural, t } from './i18n'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { TriangleAlert } from 'lucide-react'
 import BackButton from './BackButton'
@@ -20,14 +21,14 @@ import { useNarrow } from './useNarrow'
 // "Full text" shows the version alone (read only), to select and copy parts of it; "Restore this
 // version" puts it back into the note (noteHistory.ts restoreVersion), after asking.
 
-const DEVICES: Record<string, string> = { pc: 'PC', phone: 'Phone', browser: 'Browser' }
+const deviceName = (device: string) => (device === 'pc' ? 'PC' : device === 'phone' ? t('Phone') : device === 'browser' ? t('Browser') : device)
 
 const dayLabel = (time: number) => nearDay(time) ?? shortDate(time)
 
 type Mode = 'diff' | 'text'
-const MODES: { value: Mode; label: string }[] = [
-  { value: 'diff', label: 'Differences' },
-  { value: 'text', label: 'Full text' },
+const modes = (): { value: Mode; label: string }[] => [
+  { value: 'diff', label: t('Differences') },
+  { value: 'text', label: t('Full text') },
 ]
 
 type Loaded = { path: string; text: VersionText } | { path: string; state: 'loading' | 'error' | 'passphrase' }
@@ -91,9 +92,9 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
 
   function askRestore(version: VersionInfo, text: VersionText) {
     setDialog({
-      title: 'Restore this version?',
-      message: `The note's text is replaced by the version from ${when(version)}. The text it has now stays in History, so you can go back to it.`,
-      confirmLabel: 'Restore',
+      title: t('Restore this version?'),
+      message: t("The note's text is replaced by the version from {when}. The text it has now stays in History, so you can go back to it.", { when: when(version) }),
+      confirmLabel: t('Restore'),
       onConfirm: async () => {
         await restoreVersion(note.id, text)
         onClose()
@@ -127,10 +128,10 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
   return (
     <div className="compare">
       <div className="compare-header">
-        <BackButton onClick={back} title={back === onClose ? 'Back to the note' : 'Back to the list'} />
+        <BackButton onClick={back} title={back === onClose ? t('Back to the note') : t('Back to the list')} />
         <span className="compare-divider" />
         <span className="history-title" title={noteTitle(note)}>
-          History of <strong>{noteTitle(note)}</strong>
+          {t('History of')} <strong>{noteTitle(note)}</strong>
         </span>
         {!narrow && controls}
       </div>
@@ -146,16 +147,15 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
               ))}
             {versions === 'error' && (
               <div className="history-message">
-                Couldn't load the history.
+                {t("Couldn't load the history.")}
                 <button className="setting-button" onClick={load}>
-                  Try again
+                  {t('Try again')}
                 </button>
               </div>
             )}
             {Array.isArray(versions) && !versions.length && (
               <div className="history-message">
-                No older versions yet. One is saved when you stop editing for a few minutes, leave
-                the note or close the app.
+                {t('No older versions yet. One is saved when you stop editing for a few minutes, leave the note or close the app.')}
               </div>
             )}
             {days.map((day) => (
@@ -177,13 +177,13 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
         {showDetail && (
           <div className="history-detail">
             {!selected || !loaded ? (
-              <div className="history-hint">Pick a version to compare it with the note.</div>
+              <div className="history-hint">{t('Pick a version to compare it with the note.')}</div>
             ) : 'text' in loaded ? (
               <>
                 {narrow && <div className="history-detail-head">{controls}</div>}
                 {/* A new view for each version (folded lines start folded again) */}
                 {mode === 'diff' ? (
-                  <CompareBody key={selected.path} rows={rows} narrow={narrow} leftTitle={`This version · ${when(selected)}`} rightTitle="Now" />
+                  <CompareBody key={selected.path} rows={rows} narrow={narrow} leftTitle={t('This version · {when}', { when: when(selected) })} rightTitle={t('Now')} />
                 ) : (
                   <FullText key={selected.path} text={loaded.text} />
                 )}
@@ -193,12 +193,12 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
                 <span className="skeleton" style={{ width: 220 }} />
               </div>
             ) : loaded.state === 'passphrase' ? (
-              <div className="history-hint">Enter your sync passphrase on this device to see older versions.</div>
+              <div className="history-hint">{t('Enter your sync passphrase on this device to see older versions.')}</div>
             ) : (
               <div className="history-hint">
-                Couldn't load this version.
+                {t("Couldn't load this version.")}
                 <button className="setting-button" onClick={() => pick(selected)}>
-                  Try again
+                  {t('Try again')}
                 </button>
               </div>
             )}
@@ -225,10 +225,10 @@ interface VersionControlsProps {
 }
 
 function VersionControls({ version, changes, narrow, mode, onMode, onRestore }: VersionControlsProps) {
-  const fill = <FillSwitch className="history-switch" options={MODES} value={mode} onChange={onMode} label="Show" />
+  const fill = <FillSwitch className="history-switch" options={modes()} value={mode} onChange={onMode} label={t('Show')} />
   const count = mode === 'diff' && (
     <span className="compare-title">
-      {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
+      {changes ? plural(changes, '{n} difference', '{n} differences') : t('No differences')}
     </span>
   )
   return (
@@ -238,15 +238,15 @@ function VersionControls({ version, changes, narrow, mode, onMode, onRestore }: 
       {narrow && count}
       {narrow && mode === 'diff' && (
         <span className="compare-legend">
-          <span className="cmp-removed">only in this version</span>
-          <span className="cmp-added">only now</span>
-          <span className="cmp-formatted">formatting</span>
+          <span className="cmp-removed">{t('only in this version')}</span>
+          <span className="cmp-added">{t('only now')}</span>
+          <span className="cmp-formatted">{t('formatting')}</span>
         </span>
       )}
       {narrow && <span className="history-device">{when(version)}</span>}
       <span className="compare-actions">
-        <button onClick={onRestore} disabled={!changes} title="Put this version back into the note">
-          Restore this version
+        <button onClick={onRestore} disabled={!changes} title={t('Put this version back into the note')}>
+          {t('Restore this version')}
         </button>
       </span>
     </>
@@ -269,10 +269,10 @@ function VersionRow(props: { version: VersionInfo; current: boolean; selected: b
   return (
     <button className={`history-row${selected ? ' selected' : ''}`} onClick={onClick}>
       <span className="history-time">{clockTime(version.savedAt)}</span>
-      <span className="history-device">{DEVICES[version.device] ?? version.device}</span>
+      <span className="history-device">{deviceName(version.device)}</span>
       <span
         className="history-change"
-        title={`${added} ${added === 1 ? 'word' : 'words'} added, ${removed} removed since the version before`}
+        title={plural(added, '{n} word added, {removed} removed since the version before', '{n} words added, {removed} removed since the version before', { removed })}
       >
         {added || removed ? (
           <>
@@ -280,15 +280,15 @@ function VersionRow(props: { version: VersionInfo; current: boolean; selected: b
             {removed > 0 && <span className="history-removed">−{removed}</span>}
           </>
         ) : (
-          'formatting'
+          t('formatting')
         )}
       </span>
       {version.protected && (
-        <span className="history-warn" title="Saved just before a lot of text was removed">
+        <span className="history-warn" title={t('Saved just before a lot of text was removed')}>
           <TriangleAlert size={13} />
         </span>
       )}
-      {current && <span className="history-current">same as now</span>}
+      {current && <span className="history-current">{t('same as now')}</span>}
     </button>
   )
 }

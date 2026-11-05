@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { Trash2 } from 'lucide-react'
 import { loadRuleGroups, saveRuleGroups, type ColorRule, type RuleGroup } from './colorRules'
 import Window from './Window'
-import { COLORS } from './ColorPicker'
+import { COLORS } from './cardColors'
 import CloseButton from './CloseButton'
 
 const newRule = (): ColorRule => ({ id: crypto.randomUUID(), words: '', color: 'red', enabled: true })
@@ -33,14 +34,13 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Window className="dialog color-rules" label="Color rules" onClose={onClose} ref={dialogRef}>
+    <Window className="dialog color-rules" label={t('Color rules')} onClose={onClose} ref={dialogRef}>
       <div className="dialog-head">
-        <h2>Color rules</h2>
+        <h2>{t('Color rules')}</h2>
         <CloseButton onClick={onClose} />
       </div>
       <p className="settings-note">
-        Words in your notes get these colors automatically (whole words, any case). Separate several words with
-        commas. Switch a group off when you don't need it.
+        {t("Words in your notes get these colors automatically (whole words, any case). Separate several words with commas. Switch a group off when you don't need it.")}
       </p>
 
       {groups?.map((group) => (
@@ -50,13 +50,13 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
               type="checkbox"
               checked={group.enabled}
               onChange={(e) => updateGroup(group.id, { enabled: e.target.checked })}
-              aria-label="Group on"
-              title={group.enabled ? 'Switch this group off' : 'Switch this group on'}
+              aria-label={t('Group on')}
+              title={group.enabled ? t('Switch this group off') : t('Switch this group on')}
             />
             <input
               className="rule-group-name"
               value={group.name}
-              placeholder="Group name (e.g. a game)"
+              placeholder={t('Group name (e.g. a game)')}
               onChange={(e) => updateGroup(group.id, { name: e.target.value })}
             />
             <button
@@ -69,10 +69,10 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
                 update(groups.filter((g) => g.id !== group.id))
               }}
               onBlur={() => setConfirmDelete(null)}
-              title="Delete group"
-              aria-label="Delete group"
+              title={t('Delete group')}
+              aria-label={t('Delete group')}
             >
-              {confirmDelete === group.id ? 'Delete?' : <Trash2 size={15} />}
+              {confirmDelete === group.id ? t('Delete?') : <Trash2 size={15} />}
             </button>
           </div>
 
@@ -83,12 +83,12 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
                   type="checkbox"
                   checked={rule.enabled}
                   onChange={(e) => updateRule(group, rule.id, { enabled: e.target.checked })}
-                  aria-label="Rule on"
+                  aria-label={t('Rule on')}
                 />
                 <input
                   className="rule-words"
                   value={rule.words}
-                  placeholder="Fire, Flame"
+                  placeholder={t('Fire, Flame')}
                   style={{ color: `var(--text-${rule.color})` }}
                   onChange={(e) => updateRule(group, rule.id, { words: e.target.value })}
                 />
@@ -96,14 +96,14 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
                   className="rule-color"
                   style={{ background: `var(--text-${rule.color})` }}
                   onClick={() => setColorsFor(colorsFor === rule.id ? null : rule.id)}
-                  title="Color"
-                  aria-label="Color"
+                  title={t('Color')}
+                  aria-label={t('Color')}
                 />
                 <button
                   className="icon-button"
                   onClick={() => updateGroup(group.id, { rules: group.rules.filter((r) => r.id !== rule.id) })}
-                  title="Delete rule"
-                  aria-label="Delete rule"
+                  title={t('Delete rule')}
+                  aria-label={t('Delete rule')}
                 >
                   <Trash2 size={15} />
                 </button>
@@ -119,8 +119,8 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
                         updateRule(group, rule.id, { color: id })
                         setColorsFor(null)
                       }}
-                      title={name}
-                      aria-label={name}
+                      title={t(name)}
+                      aria-label={t(name)}
                     />
                   ))}
                 </div>
@@ -128,14 +128,14 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
             </div>
           ))}
           <button className="add-button" onClick={() => updateGroup(group.id, { rules: [...group.rules, newRule()] })}>
-            + Add rule
+            {t('+ Add rule')}
           </button>
         </section>
       ))}
 
       {groups && (
         <button className="add-button" onClick={addGroup}>
-          + New group
+          {t('+ New group')}
         </button>
       )}
     </Window>
