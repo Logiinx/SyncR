@@ -12,6 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Suppression** des lignes rouges du correcteur orthographique dans toutes les zones de texte
+- **Correction** d’un problème où l’écran choisi pour le pop-up pouvait apparaître débranché alors qu’il était branché
 
 ## [0.45.1] - 2026-11-05
 

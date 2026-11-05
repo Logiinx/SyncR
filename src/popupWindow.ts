@@ -5,7 +5,7 @@ import { emit, listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { availableMonitors, getCurrentWindow, primaryMonitor, type Monitor } from '@tauri-apps/api/window'
-import { loadBackground } from './desktop'
+import { findPopupScreen, loadBackground, popupScreenChange, saveBackground } from './desktop'
 import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
 import { runMailAction, type MailAction, type MailAlert } from './mailAlerts'
 
@@ -55,11 +55,16 @@ export const isPopupPage = () =>
   (isTauri() && getCurrentWindow().label === POPUP_LABEL)
 
 // The screen the pop-up shows on (Settings): the chosen one while it's plugged in, else the
-// main one
+// main one. Keeps the chosen screen's name and spot up to date (also called once at start, so
+// they're known before Windows next renumbers its screens).
 export async function popupMonitor(): Promise<Monitor | null> {
-  const { popupScreen } = loadBackground()
-  const monitors = popupScreen ? await availableMonitors() : []
-  return monitors.find((monitor) => monitor.name === popupScreen) ?? (await primaryMonitor())
+  const background = loadBackground()
+  const main = await primaryMonitor()
+  if (!background.popupScreen) return main
+  const monitors = await availableMonitors()
+  const change = popupScreenChange(monitors, main, background)
+  if (change) saveBackground({ ...background, ...change })
+  return findPopupScreen(monitors, background) ?? main
 }
 
 // Where a pop-up of this height and width (logical pixels) goes: the chosen corner of its screen's work

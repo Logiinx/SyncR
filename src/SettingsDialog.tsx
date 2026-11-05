@@ -36,8 +36,11 @@ import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
 import { checkSteamProfile, followSteam, saveSteamFollow, saveSteamProfile, useSteamFollow, useSteamProfile, type SteamProfile } from './steam'
 import {
+  findPopupScreen,
   loadBackground,
+  popupScreenChange,
   saveBackground,
+  screenSpot,
   setStartWithWindows,
   startsWithWindows,
   type Background,
@@ -1118,7 +1121,8 @@ const CORNERS: { id: PopupCorner; name: TextKey }[] = [
 
 // PC: where the pop-up shows (screen + corner), e.g. on a second screen, away from a game.
 // The screens are read from Windows when Settings opens; a chosen screen that isn't plugged
-// in is kept, and the pop-up uses the main screen meanwhile.
+// in is kept, and the pop-up uses the main screen meanwhile. One that Windows renamed is found
+// by its place and size (desktop.ts); one that's the main screen by now shows as Main screen.
 function PopupPlace({
   background,
   onChange,
@@ -1126,21 +1130,24 @@ function PopupPlace({
   background: Background
   onChange: (change: Partial<Background>) => void
 }) {
-  const [screens, setScreens] = useState<{ name: string | null; size: string }[]>([])
+  const [monitors, setMonitors] = useState<Monitor[]>([])
+  const [main, setMain] = useState<Monitor | null>(null)
   useEffect(() => {
     Promise.all([availableMonitors(), primaryMonitor()])
       .then(([monitors, main]) => {
-        const others = monitors.filter((m) => m.name !== main?.name).sort((a, b) => a.position.x - b.position.x)
-        const size = (m: Monitor) => `${m.size.width} × ${m.size.height}`
-        setScreens([
-          { name: null, size: main ? size(main) : '' },
-          ...others.map((m) => ({ name: m.name, size: size(m) })),
-        ])
+        setMonitors(monitors)
+        setMain(main)
+        const change = popupScreenChange(monitors, main, loadBackground())
+        if (change) onChange(change)
       })
       .catch((error) => console.error(error))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when Settings opens
   }, [])
-  const unplugged =
-    background.popupScreen !== null && screens.length > 0 && !screens.some((s) => s.name === background.popupScreen)
+  const size = (m: Monitor) => `${m.size.width} × ${m.size.height}`
+  const others = monitors.filter((m) => m.name !== main?.name).sort((a, b) => a.position.x - b.position.x)
+  const chosen = findPopupScreen(monitors, background)
+  const unplugged = background.popupScreen !== null && monitors.length > 0 && !chosen
+  const isMain = !chosen || chosen.name === main?.name
   return (
     <>
       <SettingRow
@@ -1149,13 +1156,19 @@ function PopupPlace({
         value={unplugged ? t('not plugged in') : undefined}
       >
         <select
-          value={background.popupScreen ?? ''}
-          onChange={(e) => onChange({ popupScreen: e.target.value || null })}
+          value={unplugged ? background.popupScreen! : isMain ? '' : (chosen.name ?? '')}
+          onChange={(e) => {
+            const picked = others.find((m) => m.name === e.target.value)
+            onChange({ popupScreen: picked?.name ?? null, popupScreenSpot: picked ? screenSpot(picked) : null })
+          }}
         >
           {unplugged && <option value={background.popupScreen!}>{t('Unplugged screen')}</option>}
-          {screens.map((screen, i) => (
-            <option key={screen.name ?? ''} value={screen.name ?? ''}>
-              {i === 0 ? t('Main screen') : t('Screen {n}', { n: i + 1 })}{screen.size && ` (${screen.size})`}
+          <option value="">
+            {t('Main screen')}{main && ` (${size(main)})`}
+          </option>
+          {others.map((screen, i) => (
+            <option key={screen.name} value={screen.name ?? ''}>
+              {t('Screen {n}', { n: i + 2 })} ({size(screen)})
             </option>
           ))}
         </select>

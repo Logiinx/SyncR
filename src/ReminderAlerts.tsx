@@ -6,7 +6,7 @@ import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, typ
 import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useInstantMail } from './instantMail'
 import { startMailbox } from './mailbox'
-import { useReminderPopup } from './popupWindow'
+import { popupMonitor, useReminderPopup } from './popupWindow'
 import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
 
@@ -90,6 +90,9 @@ function ReminderAlerts() {
   const due = useDueReminders({ runsCheck: true })
   useMailCheck() // PC: new emails go to the pop-up too
   useEffect(startMailbox, []) // PC: the Mail tab's list, ready before the tab opens
+  useEffect(() => {
+    if (isTauri()) popupMonitor().catch((error) => console.error(error)) // PC: notes where the pop-up's screen is
+  }, [])
   useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
   const popupFailed = useReminderPopup(due, mails)

@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **Removed** the red spell-check lines from all text boxes
+- **Fixed** an issue where the chosen pop-up screen could show as unplugged while still plugged in
 
 ## [0.45.1] - 2026-11-05
 
