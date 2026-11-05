@@ -107,6 +107,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
+          header={menu.colors ? { title: menu.colors === 'all' ? 'Color with its cards' : 'Group color' } : undefined}
           items={menu.colors ? colorItems(menu.colors === 'all') : [
             {
               label: 'New card',
@@ -117,14 +118,14 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
               },
             },
             { label: 'Rename', icon: Pencil, divider: true, onClick: rename },
+            { label: 'Group color…', icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: 'group' }) },
+            { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
             {
               label: group.priority ? 'Remove priority' : 'Mark as priority',
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Group color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'group' }) },
-            { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
             { label: 'Delete group', icon: Trash2, danger: true, onClick: askDelete },
           ]}
         />

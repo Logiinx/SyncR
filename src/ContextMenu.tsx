@@ -9,6 +9,9 @@ export interface MenuItem {
   divider?: boolean // a thin line above it (starts a new group of actions)
   swatch?: string // a small round color dot before the label (a CSS color)
   checked?: boolean // a ✓ after the label (the current choice)
+  disabled?: boolean // grayed, can't be pressed
+  hint?: string // tooltip
+  keepFocus?: boolean // pressing it leaves the cursor where it is (e.g. in the text being edited)
   onClick: () => void
 }
 
@@ -59,6 +62,9 @@ function ContextMenu({ x, y, items, header, onClose }: Props) {
             {(item.divider || item.danger) && index > 0 && <div className="context-menu-divider" />}
             <button
               className={item.danger ? 'danger' : ''}
+              disabled={item.disabled}
+              title={item.hint}
+              onMouseDown={item.keepFocus ? (e) => e.preventDefault() : undefined}
               onClick={() => {
                 onClose()
                 item.onClick()

@@ -3521,8 +3521,13 @@ button {
   text-align: left;
 }
 
-.context-menu button:hover {
+.context-menu button:hover:not(:disabled) {
   background: var(--border);
+}
+
+.context-menu button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* An icon before the label; "Color…" lists: a dot before the name, a ✓ after the current one */

@@ -16,6 +16,27 @@ export const COLORS = [
 const textColor = (id: string) => `var(--text-${id})`
 export const highlightColor = (id: string) => `var(--hl-${id})`
 
+// Phone: Android draws its own selection (white text), ignoring our ::selection style, so
+// the new color only shows once unselected. Put the cursor at the end of the text instead.
+// (Only with a selection: moving a plain cursor would forget the color just picked for it.)
+function showPickedColor(editor: Editor) {
+  if (window.matchMedia('(pointer: coarse)').matches && !editor.state.selection.empty) {
+    editor.commands.setTextSelection(editor.state.selection.to)
+  }
+}
+
+// Text color for the selected text, or for what's typed next. No id: the default color.
+export function pickTextColor(editor: Editor, id: string | undefined) {
+  const chain = editor.chain().focus()
+  if (id) chain.setColor(textColor(id)).run()
+  else chain.unsetColor().run()
+  showPickedColor(editor)
+}
+
+// The palette id of the text color at the selection or cursor (undefined: the default color)
+export const currentTextColor = (editor: Editor) =>
+  COLORS.find(({ id }) => editor.getAttributes('textStyle').color === textColor(id))?.id
+
 // Two rows of swatches: text color, then highlighter. The first swatch of each row removes it.
 // Cards only get the text color row (highlights = false).
 function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; onPicked: () => void; highlights?: boolean }) {
@@ -29,19 +50,14 @@ function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; 
   const chain = () => editor.chain().focus()
   const pick = (run: () => void) => {
     run()
-    // Phone: Android draws its own selection (white text), ignoring our ::selection style, so
-    // the new color only shows once unselected. Put the cursor at the end of the text instead.
-    // (Only with a selection: moving a plain cursor would forget the color just picked for it.)
-    if (window.matchMedia('(pointer: coarse)').matches && !editor.state.selection.empty) {
-      editor.commands.setTextSelection(editor.state.selection.to)
-    }
+    showPickedColor(editor)
     onPicked()
   }
 
   return (
     <div className="color-picker">
       <div className="color-row" role="group" aria-label="Text color">
-        <Swatch title="Default color" selected={!color} onClick={() => pick(() => chain().unsetColor().run())}>
+        <Swatch title="Default color" selected={!color} onClick={() => pick(() => pickTextColor(editor, undefined))}>
           <Ban size={14} />
         </Swatch>
         {COLORS.map(({ id, name }) => (
@@ -49,7 +65,7 @@ function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; 
             key={id}
             title={name}
             selected={color === textColor(id)}
-            onClick={() => pick(() => chain().setColor(textColor(id)).run())}
+            onClick={() => pick(() => pickTextColor(editor, id))}
           >
             <span style={{ color: textColor(id) }}>A</span>
           </Swatch>

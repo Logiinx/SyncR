@@ -78,15 +78,16 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
+          header={menu.colors ? { title: 'Card color' } : undefined}
           items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
             ...(inList ? [{ label: 'Open', icon: Gamepad2, onClick: () => onOpen(card.game.id) }] : []),
+            { label: 'Card color…', icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: true }) },
             {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Unpin from Board', icon: PinOff, danger: true, onClick: onDelete },
           ]}

@@ -5,9 +5,10 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Board**
+- **New:** Text color in a card's right-click menu, available while you edit the card.
 - **Improved:** On the PC, a card's text color button stays hidden until the mouse nears the corner.
 - **Improved:** In a long card, the text color button stays in view while you scroll.
-- **Improved:** The menus now say "Card color…" and "Group color…", no longer just "Color…".
+- **Improved:** Clearer menus: "Card color…" and "Group color…", colors together, each list titled.
 - **Fixed:** After coloring text in a card, you can now change the color of what you type next.
 
 **Notes**

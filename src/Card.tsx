@@ -14,7 +14,7 @@ import {
 import { extensions } from './NoteEditor'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
-import ColorPicker from './ColorPicker'
+import ColorPicker, { currentTextColor, pickTextColor } from './ColorPicker'
 import { useFoldAnimation, useListItem } from './animations'
 import { currentZoom } from './appearance'
 import { linkMenu } from './linkPreviews'
@@ -59,14 +59,14 @@ interface Props {
 function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
-  // colors: the "Card color…" list instead of the menu. editing: as it was when the menu opened, so
+  // colors: a color list instead of the menu. editing: as it was when the menu opened, so
   // the items don't move when pressing one ends editing ("Edit" appeared above and the click
   // landed on the wrong item)
   // link: right-clicked on a link card (its items come first, linkPreviews.ts)
   const [menu, setMenu] = useState<{
     x: number
     y: number
-    colors?: boolean
+    colors?: 'card' | 'text'
     editing?: boolean
     link?: ReturnType<typeof linkMenu>
   } | null>(null)
@@ -104,9 +104,9 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
     editable: autoFocus,
     editorProps: {
       attributes: { spellcheck: 'false' },
-      // Escape ends editing (unless the "/" menu is open: then Escape closes that)
+      // Escape ends editing (unless a menu is open, like "/": then Escape closes that)
       handleKeyDown: (view, event) => {
-        if (event.key !== 'Escape' || document.querySelector('.slash-menu-popup, .card-colors')) return false
+        if (event.key !== 'Escape' || document.querySelector('.slash-menu-popup, .card-colors, .context-menu')) return false
         view.dom.blur()
         return true
       },
@@ -308,6 +308,8 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
           <button
             className="card-more"
+            // Keep editing: the menu's "Text color…" needs the selection or cursor
+            onMouseDown={(event) => event.preventDefault()}
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect()
               setMenu({ x: box.left, y: box.bottom + 4, editing })
@@ -323,8 +325,8 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? undefined : menu.link?.header}
-          items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
+          header={menu.colors ? { title: menu.colors === 'text' ? 'Text color' : 'Card color' } : menu.link?.header}
+          items={menu.colors === 'text' && editor ? textColorItems(editor) : menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
             ...(menu.link?.items ?? []),
             // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
             ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
@@ -332,12 +334,21 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               : [{ label: 'Edit', icon: Pencil, onClick: () => startEditing() }]),
             { label: card.title ? 'Edit title' : 'Add title', icon: Heading, divider: true, onClick: () => setEditingTitle(true) },
             {
+              label: 'Text color…',
+              icon: Baseline,
+              divider: true,
+              disabled: !menu.editing,
+              hint: menu.editing ? undefined : 'While editing the card',
+              keepFocus: true,
+              onClick: () => setMenu({ ...menu, colors: 'text' }),
+            },
+            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'card' }) },
+            {
               label: card.priority ? 'Remove priority' : 'Mark as priority',
               icon: Sparkles,
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Delete', icon: Trash2, danger: true, onClick: onDelete },
           ]}
@@ -345,6 +356,16 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
       )}
     </div>
   )
+}
+
+// The menu's "Text color…" list: like the card's list, but Default is the text's own color, and
+// the cursor stays in the text
+function textColorItems(editor: Editor) {
+  return colorMenuItems(currentTextColor(editor), (color) => pickTextColor(editor, color)).map((item) => ({
+    ...item,
+    keepFocus: true,
+    ...(item.label === 'Default' && { swatch: 'var(--text)' }),
+  }))
 }
 
 const HAS_MOUSE = window.matchMedia('(hover: hover) and (pointer: fine)').matches
