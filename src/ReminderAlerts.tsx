@@ -28,7 +28,9 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
           <span className="reminder-alert-warning">Snoozed in SyncR only: Google Calendar couldn't be reached.</span>
         )}
       </button>
-      {snoozing ? (
+      {item.elsewhere ? (
+        <div className="reminder-alert-elsewhere">{item.elsewhere}</div>
+      ) : snoozing ? (
         <div className="reminder-alert-buttons">
           <button className="reminder-alert-back" onClick={() => setSnoozing(false)} title="Back" aria-label="Back">
             <ArrowLeft size={15} />
@@ -61,12 +63,13 @@ export function ReminderCards({ due, onAction }: {
   due: DueItem[]
   onAction: (item: DueItem, action: ReminderAction) => void
 }) {
+  const open = due.filter((item) => !item.elsewhere)
   return (
     <>
-      {due.length > 1 && (
+      {open.length > 1 && (
         <div className="reminder-alerts-head">
-          <span>{due.length} reminders</span>
-          <button onClick={() => due.forEach((item) => onAction(item, 'done'))}>Done all</button>
+          <span>{open.length} reminders</span>
+          <button onClick={() => open.forEach((item) => onAction(item, 'done'))}>Done all</button>
         </div>
       )}
       {due.map((item) => (
@@ -80,7 +83,7 @@ export function ReminderCards({ due, onAction }: {
 // (popupWindow.ts), which shows even while SyncR is hidden; the cards here are the
 // fallback if the pop-up can't open. In the browser / on the phone: cards, bottom-right.
 function ReminderAlerts() {
-  const due = useDueReminders()
+  const due = useDueReminders({ runsCheck: true })
   useMailCheck() // PC: new emails go to the pop-up too
   useEffect(startMailbox, []) // PC: the Mail tab's list, ready before the tab opens
   useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)

@@ -1641,6 +1641,13 @@ button {
   margin: 10px 0 0 6px;
 }
 
+/* Handled on the other device: in place of the buttons, for a few seconds */
+.reminder-alert-elsewhere {
+  margin: 10px 0 0 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 .reminder-alert-buttons button {
   display: flex;
   flex: 1;

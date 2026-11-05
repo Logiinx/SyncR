@@ -1,4 +1,4 @@
-import { cancelStuckRequests, waitForChanges } from './dropbox'
+import { cancelStuckRequests, isConnected, waitForChanges } from './dropbox'
 import { read, write } from './localState'
 import { endAllSessions } from './noteHistory'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
@@ -166,6 +166,16 @@ export function syncSoon() {
 export function syncByUser() {
   if (running) cancelStuckRequests()
   return run(true)
+}
+
+// One sync, waiting for its end (and first for one that's running). For what must be up to date
+// before it shows (dueReminders.ts). Never throws. At the app's start, sync may be about to be
+// turned on (SyncButton): gives that a moment.
+export async function syncAndWait() {
+  for (let i = 0; !enabled && isConnected() && i < 20; i++) await sleep(50)
+  if (!enabled) return
+  while (running) await sleep(50)
+  await run().catch(() => {})
 }
 
 // ---------- Last sync before closing or updating ----------

@@ -215,6 +215,7 @@ export interface AlertMark {
   doneAt?: number
   snoozedUntil?: number
   notMoved?: boolean // snoozed, but the event couldn't be moved in Google (offline…)
+  by?: string // the device that marked it (deviceName): the other one's card says so
   updatedAt: number
   syncedRev?: string // Dropbox revision last synced
   syncedUpdatedAt?: number

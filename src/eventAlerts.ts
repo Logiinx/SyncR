@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { refreshEvents, updateEvent } from './calendarEvents'
-import { alertMarkId, changed, db, type CalendarEvent } from './db'
+import { alertMarkId, changed, db, type AlertMark, type CalendarEvent } from './db'
 import { clockTime, nearDay, shortDate } from './dates'
+import { deviceName } from './device'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
 // (its own, or the calendar's default: CalendarEvent.alerts; all-day events: see alertsOf) come
@@ -94,10 +95,19 @@ async function save(key: string, change: { doneAt?: number; snoozedUntil?: numbe
   const id = alertMarkId(key)
   const before = await db.alertMarks.get(id)
   await db.alertMarks.put({
-    id, key, at: alertTime(key), ...change, updatedAt: Date.now(),
+    id, key, at: alertTime(key), ...change, by: deviceName(), updatedAt: Date.now(),
     syncedRev: before?.syncedRev, syncedUpdatedAt: before?.syncedUpdatedAt,
   })
   changed()
+}
+
+// What happened to an alert whose card is on screen, if the other device did it: for that card
+export function markedElsewhere(mark: AlertMark | undefined): string | undefined {
+  if (!mark || mark.by === deviceName()) return undefined
+  if (mark.doneAt) return 'Marked done on another device.'
+  if (!mark.snoozedUntil || mark.snoozedUntil <= Date.now()) return undefined
+  const back = mark.snoozedUntil
+  return `Snoozed on another device. Back: ${nearDay(back) ?? shortDate(back)}, ${clockTime(back)}.`
 }
 
 export const markAlertDone = (key: string) => save(key, { doneAt: Date.now() })
