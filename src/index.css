@@ -2047,6 +2047,32 @@ button {
   overflow-y: auto;
 }
 
+/* Phone: jump to the end of the note (JumpToEnd.tsx). Fades, and can't be tapped while gone. */
+.jump-to-end {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--close-small) var(--ease-close);
+}
+
+.jump-to-end.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity var(--open-small) var(--ease-open);
+}
+
 /* ---------- Conflict copies (ConflictCompare.tsx) ---------- */
 
 .conflict-banner {

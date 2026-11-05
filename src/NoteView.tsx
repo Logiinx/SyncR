@@ -4,6 +4,7 @@ import { getScroll, setScroll } from './localState'
 import NoteEditor from './NoteEditor'
 import { ConflictBanner } from './ConflictCompare'
 import HistoryView from './HistoryView'
+import JumpToEnd from './JumpToEnd'
 import { usePage } from './animations'
 
 const SAVE_SCROLL_MS = 200
@@ -81,6 +82,7 @@ function NoteView({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       <main className="page" ref={pageRef} onScroll={onScroll}>
         <NoteEditor note={note} autoFocus={autoFocus} />
       </main>
+      <JumpToEnd pageRef={pageRef} noteId={note.id} />
       {history && <HistoryView note={note} onClose={() => setHistory(false)} />}
     </div>
   )
