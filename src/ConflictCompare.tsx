@@ -88,6 +88,7 @@ function ConflictCompare({ original, copy, onClose }: { original: Note; copy: No
     <div className="compare">
       <div className="compare-header">
         <BackButton onClick={onClose} title="Back to the note" />
+        <span className="compare-divider" />
         <span className="compare-title">
           {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
         </span>

@@ -43,6 +43,10 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
   const [mode, setMode] = useState<Mode>('diff')
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
 
+  // The picked version once it's loaded, compared with the note as it is now
+  const openText = selected && loaded && 'text' in loaded ? loaded.text : null
+  const rows = useMemo(() => (openText ? diffNotes(openText.content, note.content) : []), [openText, note.content])
+
   function load() {
     setVersions('loading')
     listVersions(note.id).then(setVersions, (e) => {
@@ -108,12 +112,27 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
   const showList = !narrow || !selected
   const showDetail = !narrow || selected
 
+  // In the top bar on the PC, in a row of their own under it on the phone (no room)
+  const controls = selected && openText && (
+    <VersionControls
+      version={selected}
+      changes={rows.filter((row) => row.op !== 'same').length}
+      narrow={narrow}
+      mode={mode}
+      onMode={setMode}
+      onRestore={() => askRestore(selected, openText)}
+    />
+  )
+
   return (
     <div className="compare">
       <div className="compare-header">
         <BackButton onClick={back} title={back === onClose ? 'Back to the note' : 'Back to the list'} />
-        <span className="compare-title">History</span>
-        <span className="history-note-title">{noteTitle(note)}</span>
+        <span className="compare-divider" />
+        <span className="history-title" title={noteTitle(note)}>
+          History of <strong>{noteTitle(note)}</strong>
+        </span>
+        {!narrow && controls}
       </div>
       <div className="history-body">
         {showList && (
@@ -160,15 +179,15 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
             {!selected || !loaded ? (
               <div className="history-hint">Pick a version to compare it with the note.</div>
             ) : 'text' in loaded ? (
-              <VersionCompare
-                version={selected}
-                text={loaded.text}
-                note={note}
-                narrow={narrow}
-                mode={mode}
-                onMode={setMode}
-                onRestore={() => askRestore(selected, loaded.text)}
-              />
+              <>
+                {narrow && <div className="history-detail-head">{controls}</div>}
+                {/* A new view for each version (folded lines start folded again) */}
+                {mode === 'diff' ? (
+                  <CompareBody key={selected.path} rows={rows} narrow={narrow} leftTitle={`This version · ${when(selected)}`} rightTitle="Now" />
+                ) : (
+                  <FullText key={selected.path} text={loaded.text} />
+                )}
+              </>
             ) : loaded.state === 'loading' ? (
               <div className="history-hint">
                 <span className="skeleton" style={{ width: 220 }} />
@@ -193,49 +212,43 @@ function HistoryView({ note, onClose }: { note: Note; onClose: () => void }) {
 
 const when = (version: VersionInfo) => `${dayLabel(version.savedAt)}, ${clockTime(version.savedAt)}`
 
-// The chosen version: compared with the note now (left / right; on the phone merged), or alone
-interface VersionCompareProps {
+// What goes with the chosen version: how it's shown (compared with the note now, or alone),
+// how many differences, Restore. The count sits before the switch on the PC, so the switch stays
+// under the mouse when the count goes away (Full text).
+interface VersionControlsProps {
   version: VersionInfo
-  text: VersionText
-  note: Note
+  changes: number
   narrow: boolean
   mode: Mode
   onMode: (mode: Mode) => void
   onRestore: () => void
 }
 
-function VersionCompare({ version, text, note, narrow, mode, onMode, onRestore }: VersionCompareProps) {
-  const rows = useMemo(() => diffNotes(text.content, note.content), [text.content, note.content])
-  const changes = rows.filter((row) => row.op !== 'same').length
+function VersionControls({ version, changes, narrow, mode, onMode, onRestore }: VersionControlsProps) {
+  const fill = <FillSwitch className="history-switch" options={MODES} value={mode} onChange={onMode} label="Show" />
+  const count = mode === 'diff' && (
+    <span className="compare-title">
+      {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
+    </span>
+  )
   return (
     <>
-      <div className="history-detail-head">
-        <FillSwitch className="history-switch" options={MODES} value={mode} onChange={onMode} label="Show" />
-        {mode === 'diff' && (
-          <span className="compare-title">
-            {changes ? `${changes} ${changes === 1 ? 'difference' : 'differences'}` : 'No differences'}
-          </span>
-        )}
-        {narrow && mode === 'diff' && (
-          <span className="compare-legend">
-            <span className="cmp-removed">only in this version</span>
-            <span className="cmp-added">only now</span>
-            <span className="cmp-formatted">formatting</span>
-          </span>
-        )}
-        {narrow && <span className="history-device">{when(version)}</span>}
-        <span className="compare-actions">
-          <button onClick={onRestore} disabled={!changes} title="Put this version back into the note">
-            Restore this version
-          </button>
+      {!narrow && count}
+      {fill}
+      {narrow && count}
+      {narrow && mode === 'diff' && (
+        <span className="compare-legend">
+          <span className="cmp-removed">only in this version</span>
+          <span className="cmp-added">only now</span>
+          <span className="cmp-formatted">formatting</span>
         </span>
-      </div>
-      {/* A new view for each version (folded lines start folded again) */}
-      {mode === 'diff' ? (
-        <CompareBody key={version.path} rows={rows} narrow={narrow} leftTitle={`This version · ${when(version)}`} rightTitle="Now" />
-      ) : (
-        <FullText key={version.path} text={text} />
       )}
+      {narrow && <span className="history-device">{when(version)}</span>}
+      <span className="compare-actions">
+        <button onClick={onRestore} disabled={!changes} title="Put this version back into the note">
+          Restore this version
+        </button>
+      </span>
     </>
   )
 }

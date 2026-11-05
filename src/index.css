@@ -2087,13 +2087,23 @@ button {
   background: var(--bg);
 }
 
+/* As tall as the toolbar it covers, so nothing jumps; a second row only if it doesn't fit */
 .compare-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px 12px;
   flex-wrap: wrap;
-  padding: 8px 16px 8px 12px;
+  min-height: 30px;
+  padding: 1px 16px 1px 12px;
   border-bottom: 1px solid var(--border);
+}
+
+/* Between "‹ Back" and the bar's title */
+.compare-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
 }
 
 .compare-title {
@@ -2361,9 +2371,11 @@ button {
   cursor: default;
 }
 
-/* History: at the far right, apart from the editing buttons */
+/* History: at the far right, apart from the editing buttons, closer to the edge than the bar's
+   padding (only on the PC: on a phone it's in the "⋯" list) */
 .toolbar-end {
   margin-left: auto;
+  margin-right: -16px;
 }
 
 /* Thin line between groups of buttons */
@@ -6090,12 +6102,20 @@ img[data-fade] {
 
 /* ---------- Note history (HistoryView.tsx): uses the comparison's frame ---------- */
 
-.history-note-title {
+/* "History of <note>": the note's name stands out. Takes the room left, and a long name is cut
+   before the buttons move to a second row. */
+.history-title {
+  flex: 1 1 120px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-dim);
+}
+
+.history-title strong {
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* PC: the list on the left, the chosen version on the right. Phone: the list only. */

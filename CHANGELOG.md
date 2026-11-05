@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **Improved:** History has a slimmer, clearer top bar, and its button sits closer to the right edge.
+
 ## [0.42.0] - 2026-11-03
 
 **Mail**
