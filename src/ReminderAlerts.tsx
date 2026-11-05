@@ -25,7 +25,7 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
         <span className="reminder-alert-text">{item.text}</span>
         {item.note && <span className="reminder-alert-note">{item.note}</span>}
         {item.notMoved && (
-          <span className="reminder-alert-warning">Snoozed on this device only: Google Calendar couldn't be reached.</span>
+          <span className="reminder-alert-warning">Snoozed in SyncR only: Google Calendar couldn't be reached.</span>
         )}
       </button>
       {snoozing ? (

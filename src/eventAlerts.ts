@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { updateEvent } from './calendarEvents'
+import { refreshEvents, updateEvent } from './calendarEvents'
 import { alertMarkId, changed, db, type CalendarEvent } from './db'
 import { clockTime } from './dates'
 
@@ -59,7 +59,7 @@ export interface EventAlert {
   allDay: boolean
   at: number
   dueAt: number
-  notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
+  notMoved: boolean // snoozed in SyncR only: the event couldn't be moved in Google
   colorId?: string // the event's Google color
 }
 
@@ -112,30 +112,38 @@ function snoozeEnd(key: string, minutes: number | 'tomorrow') {
   return next.getTime()
 }
 
-// Snooze: the card goes away at once (this device), then the event moves in Google so that its
-// alert comes back at the snooze's end, on every device (event 14:30, 15-min alert shown at 14:15,
-// 10 min → event at 14:40). For a repeating event only this date moves. All-day events (game
-// releases: moving them would change the release day) are only snoozed here. If Google can't be
-// reached, the snooze stays on this device and the card says so when it's back.
+// Snooze: the card goes away at once, then the event moves in Google so that its alert comes back
+// at the snooze's end, on every device (event 14:30, 15-min alert shown at 14:15, 10 min → event at
+// 14:40). For a repeating event only this date moves. All-day events (game releases: moving them
+// would change the release day) only get the mark. If Google can't be reached, the mark stays and
+// the card says so when it's back.
+// The event is read again from Google first. If the other device has snoozed it already, this alert
+// isn't on the event anymore and nothing moves: adding this snooze on top would delay it twice.
 export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
   const until = snoozeEnd(key, minutes)
   await save(key, { snoozedUntil: until })
-  const event = await db.events.get(eventId(key))
-  if (!event || event.allDay) return
-  // Google keeps whole minutes
-  const start = Math.round((event.start + until - alertTime(key)) / MINUTE_MS) * MINUTE_MS
+  const at = alertTime(key)
+  const stored = await db.events.get(eventId(key))
+  if (!stored || stored.allDay) return
+  let event: CalendarEvent | undefined
+  let start: number
   try {
+    await refreshEvents()
+    event = await db.events.get(stored.id)
+    if (!event || !event.alerts.some((before) => event!.start - before * MINUTE_MS === at)) return
+    // Google keeps whole minutes
+    start = Math.round((event.start + until - at) / MINUTE_MS) * MINUTE_MS
     await updateEvent(event, { title: event.title, description: event.description, start, alert: 'keep' })
   } catch (error) {
     console.error(error)
     await save(key, { snoozedUntil: until, notMoved: true })
     return
   }
-  // The moved event's other alerts that are now past (e.g. "1 day before") stay done, instead of
-  // coming back as missed ones (a moved event's alerts are new alerts: new keys)
+  // The moved event's alerts that come before this one (e.g. "1 day before") stay done: they
+  // would come back as missed ones, or ring before the snooze ends (a moved event's alerts are
+  // new alerts: new keys)
   const now = Date.now()
   for (const before of event.alerts) {
-    const at = start - before * MINUTE_MS
-    if (at < now) await save(`${ALERT_PREFIX}${event.id}@${at}`, { doneAt: now })
+    if (start - before * MINUTE_MS < until - MINUTE_MS) await save(`${ALERT_PREFIX}${event.id}@${start - before * MINUTE_MS}`, { doneAt: now })
   }
 }

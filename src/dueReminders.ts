@@ -18,7 +18,7 @@ export interface DueItem {
   time: number // shown on the card: the event's start
   allDay: boolean
   dueAt: number // when it came due (a snoozed one: when the snooze ended)
-  notMoved: boolean // snoozed on this device only: the event couldn't be moved in Google
+  notMoved: boolean // snoozed in SyncR only: the event couldn't be moved in Google
   colorId?: string // the event's Google color (the card's strip)
   keyAlert: boolean // a price alert for a key: also "Wrong key" (priceWatch.ts ignoreAlertKey)
 }
