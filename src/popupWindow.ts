@@ -63,7 +63,7 @@ export async function popupMonitor(): Promise<Monitor | null> {
   if (!background.popupScreen) return main
   const monitors = await availableMonitors()
   const change = popupScreenChange(monitors, main, background)
-  if (change) saveBackground({ ...background, ...change })
+  if (change) saveBackground({ ...loadBackground(), ...change }) // read again: Settings may have saved meanwhile
   return findPopupScreen(monitors, background) ?? main
 }
 
