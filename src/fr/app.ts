@@ -2,4 +2,11 @@
 export const app = {
   Language: 'Langue',
   'Device language': 'Langue de l’appareil',
+  Today: 'Aujourd’hui',
+  Tomorrow: 'Demain',
+  Yesterday: 'Hier',
+  B: 'o',
+  KB: 'Ko',
+  MB: 'Mo',
+  GB: 'Go',
 }

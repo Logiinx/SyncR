@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Bell, Repeat } from 'lucide-react'
 import type { CalendarEvent } from './db'
-import { clockTime } from './dates'
+import { clockTime, fullDate } from './dates'
 import Window from './Window'
 import CloseButton from './CloseButton'
 import { alertsOf, allDayAlertText, useAllDayAlert } from './eventAlerts'
@@ -23,8 +23,7 @@ function alertText(minutes: number, allDay: boolean) {
 
 // "Tuesday 27 October 2026, 04:00" (an all-day event: without the time)
 function whenText(event: CalendarEvent) {
-  const date = new Date(event.start)
-  const day = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const day = fullDate(event.start)
   if (event.allDay) return day
   return `${day}, ${clockTime(event.start)}`
 }

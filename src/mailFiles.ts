@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { decimal, t } from './i18n'
 import { gmailApi } from './gmail'
 import type { MailAlert, MailFile } from './mailAlerts'
 
@@ -17,15 +18,15 @@ export const canOpen = (file: MailFile) => OPENABLE.test(file.name.trim().replac
 
 // 1234567 → "1.2 MB"
 export function fileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ['KB', 'MB', 'GB']
+  if (bytes < 1024) return `${bytes} ${t('B')}`
+  const units = [t('KB'), t('MB'), t('GB')]
   let value = bytes / 1024
   let unit = 0
   while (value >= 1024 && unit < units.length - 1) {
     value /= 1024
     unit++
   }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
+  return `${value < 10 ? decimal(value, 1) : Math.round(value)} ${units[unit]}`
 }
 
 // The file as Gmail gives it (base64url text), from the message or downloaded apart. The

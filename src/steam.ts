@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { decimal } from './i18n'
 import { changed, db, setGameStatus, updateGame, type Game, type SteamStats } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { steamRefs } from './prices'
@@ -216,7 +217,7 @@ export const playedText = (minutes: number) => `${playedTime(minutes)} played`
 export function playedTime(minutes: number) {
   if (minutes < 60) return `${minutes} min`
   const hours = minutes / 60
-  return `${hours < 10 ? hours.toFixed(1).replace(/\.0$/, '') : Math.round(hours)} h`
+  return `${hours < 10 ? decimal(hours, 1).replace(/[.,]0$/, '') : Math.round(hours)} h`
 }
 
 // ---------- Skipped in the import (SteamImport.tsx) ----------

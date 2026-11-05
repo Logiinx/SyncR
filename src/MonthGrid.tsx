@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
+import { capitalize, locale } from './i18n'
 
 // Month grids, stacked (used by the Games calendar and the Reminders tab): for each month a
 // title with a count, a weekday header (Monday first) and one cell per day. A day with many
 // items grows taller (the whole week row with it). Past days are dimmed, today is blue.
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+// Short day names, Monday first (1 January 2024 was a Monday)
+const weekdays = () =>
+  Array.from({ length: 7 }, (_, i) => new Date(2024, 0, i + 1).toLocaleDateString(locale(), { weekday: 'short' }))
 
 export const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-export const monthTitle = (date: Date) => date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+export const monthTitle = (date: Date) => capitalize(date.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }))
 
 interface Props {
   months: Date[] // the first day of each month to show
@@ -29,7 +32,7 @@ function MonthGrid({ months, renderDay, count, after }: Props) {
           {monthTitle(first)} <span className="games-count">{count(first)}</span>
         </h3>
         <div className="calendar-grid">
-          {WEEKDAYS.map((day) => (
+          {weekdays().map((day) => (
             <div key={day} className="calendar-weekday">
               {day}
             </div>

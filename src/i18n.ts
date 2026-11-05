@@ -42,6 +42,16 @@ export function setLanguageChoice(next: LanguageChoice) {
 
 export const currentLanguage = () => language
 
+// For dates and numbers. en-GB, not en: day before month and a 24-hour clock.
+export const locale = () => (language === 'fr' ? 'fr-FR' : 'en-GB')
+
+// 4.5 → "4.5" or "4,5"
+export const decimal = (n: number, digits: number) =>
+  n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+
+// French dates and months come in lower case: for those starting a line or a title
+export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

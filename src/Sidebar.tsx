@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { t } from './i18n'
 import { useEffect, useRef, useState } from 'react'
 import { useListItems, useSlideIn } from './animations'
 import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
@@ -33,7 +34,7 @@ interface Props {
 // except from a device whose clock runs fast: then its date, not "Tomorrow"
 function formatDate(time: number) {
   const near = nearDay(time)
-  return near && near !== 'Tomorrow' ? `${near}, ${clockTime(time)}` : shortDate(time)
+  return near && near !== t('Tomorrow') ? `${near}, ${clockTime(time)}` : shortDate(time)
 }
 
 // A search snippet with the matched words in bold

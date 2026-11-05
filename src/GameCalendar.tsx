@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { locale, t } from './i18n'
 import { CalendarDays, List } from 'lucide-react'
 import { addGame, gameId, releaseText, statusLabel, tabOf } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
@@ -231,7 +232,7 @@ function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
       after={(first) =>
         monthOnly(first).length > 0 && (
           <div className="calendar-month-only">
-            <p>Sometime in {first.toLocaleDateString('en-GB', { month: 'long' })}</p>
+            <p>{t('Sometime in {month}', { month: first.toLocaleDateString(locale(), { month: 'long' }) })}</p>
             <CalendarRows games={monthOnly(first)} statusOf={statusOf} onShow={onShow} onMenu={onMenu} />
           </div>
         )
