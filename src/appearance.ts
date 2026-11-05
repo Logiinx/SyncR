@@ -22,7 +22,7 @@ export const FONTS = {
   'jetbrains-mono': { name: 'JetBrains Mono', css: "'JetBrains Mono Variable', monospace" },
 }
 export type FontId = keyof typeof FONTS
-export const fontName = (id: FontId) => (id === 'system' ? t('System default') : FONTS[id].name)
+export const fontName = (id: FontId) => (id === 'system' ? t('Default font') : FONTS[id].name)
 
 export const SCALE_MIN = 80
 export const SCALE_MAX = 150

@@ -396,7 +396,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow label={<>{t('Language')} <Synced /></>}>
           {languageChoice !== undefined && (
             <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
-              <option value="device">{t('System default')}</option>
+              <option value="device">{t('System language')}</option>
               {/* Each in its own language, so it can be found from the other one */}
               <option value="fr">Français</option>
               <option value="en">English</option>

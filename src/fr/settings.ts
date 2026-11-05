@@ -1,7 +1,8 @@
 // French for the Settings window ('English text': 'its French')
 export const settings = {
   Font: 'Police',
-  'System default': 'Par défaut du système',
+  'Default font': 'Police par défaut',
+  'System language': 'Langue du système',
   'Text size': 'Taille du texte',
   'Smart typography': 'Typographie intelligente',
   'Dates in the note list': 'Dates dans la liste des notes',
