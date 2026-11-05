@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Improved** Settings: all dropdowns, sliders and buttons now have the same width and line up
+- **Improved** the Sites field in Settings: it shows all its lines and the cursor reaches the end
+
 ## [0.46.0] - 2026-11-05
 
 **Mail**

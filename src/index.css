@@ -4195,10 +4195,11 @@ button {
 }
 
 .settings-row {
+  --settings-control: 170px; /* every dropdown, slider, field and button: fits the longest French and English choice */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   min-height: 34px;
 }
 
@@ -4269,14 +4270,28 @@ button {
 }
 
 .dialog .settings-row select {
-  width: auto;
+  width: var(--settings-control);
   max-width: 100%;
   padding: 3px 6px;
   font-size: 0.95em;
 }
 
+/* Beside ▶ (padding included) or a checkbox: both together fill the same width */
+.dialog .settings-row select:has(+ .settings-play) {
+  width: calc(var(--settings-control) - 29px);
+}
+
 .settings-row .ruler {
-  width: 150px;
+  width: var(--settings-control);
+}
+
+.settings-row-control > .setting-button {
+  width: var(--settings-control);
+  padding-inline: 8px;
+}
+
+.settings-row-control > .setting-button:has(+ input[type='checkbox']) {
+  width: calc(var(--settings-control) - 19px);
 }
 
 .dialog .settings-row input[type='checkbox'] {
@@ -4285,16 +4300,26 @@ button {
   accent-color: var(--accent);
 }
 
-/* Settings → Notes → Sites (link cards): a text area that looks like a one-line field (it wraps
-   on a phone, below) */
+/* Settings → Notes → Sites (link cards): a text area as tall as its text. Its name stays beside
+   the first line */
+.settings-row-sites {
+  align-items: flex-start;
+  min-height: 0;
+  padding-block: 3px;
+}
+
+.settings-row-sites .settings-row-label {
+  padding-top: 3px;
+}
+
 .dialog .settings-row textarea.settings-sites {
   display: block;
-  width: 200px;
+  width: var(--settings-control);
   margin: 0;
   padding: 3px 6px;
   font-size: 0.95em;
   line-height: normal;
-  white-space: pre;
+  field-sizing: content;
   overflow: hidden;
   resize: none;
 }
@@ -4374,6 +4399,11 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Too narrow for one width: a 170 px column would wrap most names. Each control fits its text */
+  .settings-row {
+    --settings-control: auto;
+  }
+
   .settings-row .ruler {
     width: 110px;
   }
@@ -4382,7 +4412,11 @@ button {
   .settings-row-sites {
     flex-wrap: wrap;
     row-gap: 6px;
-    padding-bottom: 6px;
+    padding-block: 0 6px;
+  }
+
+  .settings-row-sites .settings-row-label {
+    padding-top: 0;
   }
 
   .settings-row-sites .settings-row-control {
@@ -4392,8 +4426,6 @@ button {
 
   .dialog .settings-row textarea.settings-sites {
     width: 100%;
-    white-space: pre-wrap;
-    field-sizing: content;
   }
 
   .settings-manage {

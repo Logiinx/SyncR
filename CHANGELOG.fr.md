@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Amélioration** des Paramètres : listes, curseurs et boutons ont la même largeur et sont alignés
+- **Amélioration** du champ Sites des Paramètres : toutes ses lignes s’affichent, le curseur va jusqu’au bout
+
 ## [0.46.0] - 2026-11-05
 
 **Mail**

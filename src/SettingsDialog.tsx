@@ -302,9 +302,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onChange={(sites) => updateLinks({ sites })}
           />
         </SettingRow>
-        <SettingRow label={<>{t('Color rules')} <Synced /></>} value={rulesSummary}>
+        <SettingRow label={<>{t('Color rules')} <Synced /></>}>
+          {/* The count is in the button: beside the name, the French doesn't fit on one line */}
           <button className="setting-button" onClick={() => setShowRules(true)}>
-            {t('Edit…')}
+            {rulesSummary && `${rulesSummary} · `}{t('Edit…')}
           </button>
         </SettingRow>
       </SettingsCard>
@@ -362,8 +363,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         )}
         {mail && gmailAccounts.length === 0 && (
           <SettingRow label={t('Emails')}>
-            <button className="version-link" onClick={() => showManage(true)}>
-              {t('Add a Gmail account…')}
+            <button className="setting-button" onClick={() => showManage(true)}>
+              {t('Add account…')}
             </button>
           </SettingRow>
         )}
@@ -993,9 +994,9 @@ function GmailSettings() {
 }
 
 // The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field.
-// Emptied: back to the default sites (as the placeholder shows). A text area: one line on the PC,
-// but on a phone it wraps onto several lines (Chrome on Android doesn't scroll a one-line field
-// when the keyboard moves the cursor, so the cursor went out of view).
+// Emptied: back to the default sites (as the placeholder shows). A text area that wraps and grows
+// with its text: scrolling a single line sideways kept the cursor out of view at the end (PC) or
+// when the keyboard moved it (Chrome on Android).
 function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: boolean; onChange: (sites: string[]) => void }) {
   const [text, setText] = useState(sites.join(', '))
   const save = () => {
@@ -1014,10 +1015,7 @@ function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: 
       spellCheck={false}
       aria-label={t('Sites')}
       onChange={(e) => setText(e.target.value.replace(/\s*[\r\n]+\s*/g, ', '))} // pasted lines
-      onBlur={(e) => {
-        e.currentTarget.scrollLeft = 0 // back to the list's start, like a one-line field
-        save()
-      }}
+      onBlur={save}
       onKeyDown={(e) => {
         if (e.key !== 'Enter') return
         e.preventDefault() // no new line: Enter is done
@@ -1148,12 +1146,14 @@ function PopupPlace({
   const chosen = findPopupScreen(monitors, background)
   const unplugged = background.popupScreen !== null && monitors.length > 0 && !chosen
   const isMain = !chosen || chosen.name === main?.name
+  const current = unplugged ? null : isMain ? main : chosen
+  // The chosen one without its size (on the row's tooltip), so it fits the dropdown; the others with it
+  const screenName = (name: string, screen: Monitor | null) => (!screen || screen === current ? name : `${name} (${size(screen)})`)
   return (
     <>
       <SettingRow
         label={t('Pop-up screen')}
-        title={unplugged ? t("The chosen screen isn't plugged in: main screen meanwhile") : undefined}
-        value={unplugged ? t('not plugged in') : undefined}
+        title={unplugged ? t("The chosen screen isn't plugged in: main screen meanwhile") : current ? size(current) : undefined}
       >
         <select
           value={unplugged ? background.popupScreen! : isMain ? '' : (chosen.name ?? '')}
@@ -1164,11 +1164,11 @@ function PopupPlace({
         >
           {unplugged && <option value={background.popupScreen!}>{t('Unplugged screen')}</option>}
           <option value="">
-            {t('Main screen')}{main && ` (${size(main)})`}
+            {screenName(t('Main screen'), main)}
           </option>
           {others.map((screen, i) => (
             <option key={screen.name} value={screen.name ?? ''}>
-              {t('Screen {n}', { n: i + 2 })} ({size(screen)})
+              {screenName(t('Screen {n}', { n: i + 2 }), screen)}
             </option>
           ))}
         </select>

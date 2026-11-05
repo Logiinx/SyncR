@@ -39,10 +39,10 @@ export function alertsOf(event: CalendarEvent, allDayAlert: number | null | unde
   return [allDayAlert]
 }
 
-// An all-day event's alert: "On the day at 09:00", "The day before at 18:00", "2 days before at 10:00"
+// An all-day event's alert: "On the day at 09:00", "Day before at 18:00", "2 days before at 10:00"
 export function allDayAlertText(minutes: number) {
   const days = Math.max(0, Math.ceil(minutes / 1440))
-  const day = days === 0 ? t('On the day') : days === 1 ? t('The day before') : t('{n} days before', { n: days })
+  const day = days === 0 ? t('On the day') : days === 1 ? t('Day before') : t('{n} days before', { n: days })
   return t('{day} at {time}', { day, time: clockTime(new Date(2000, 0, 1, 0, days * 1440 - minutes).getTime()) })
 }
 
