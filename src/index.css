@@ -5478,6 +5478,15 @@ h3.games-group-title {
   background: color-mix(in srgb, var(--text) 2%, var(--bg));
 }
 
+/* Reminders: a click on its empty part adds an event on that day */
+.calendar-day.addable {
+  cursor: pointer;
+}
+
+.calendar-day.addable:hover:not(:has(button:hover)) {
+  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+
 .calendar-day.past .calendar-date {
   opacity: 0.4;
 }

@@ -7,6 +7,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Mail**
 - **Ajout** d’une case par compte dans l’onglet Mail pour voir les 50 derniers e-mails d’un compte ou des deux
 
+**Rappels**
+- **Ajout** d’un clic ou clic droit sur un jour de la grille du mois pour y ajouter un événement
+
+**Application**
+- **Suppression** des lignes rouges du correcteur orthographique dans toutes les zones de texte
+
 ## [0.45.1] - 2026-11-05
 
 **Application**

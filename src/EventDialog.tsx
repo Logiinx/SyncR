@@ -60,6 +60,14 @@ function nextFullHour() {
   return date.getTime()
 }
 
+// A new event added on a day of the month grid: today at the next full hour (the last minute of
+// the day in its last hour, so it stays on the day clicked), later days at 09:00
+export function startOnDay(day: Date) {
+  const today = new Date()
+  if (day.toDateString() !== today.toDateString()) return new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9).getTime()
+  return today.getHours() === 23 ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59).getTime() : nextFullHour()
+}
+
 // The event's alert as one of the choices: its single alert, none, or 'keep' when it has
 // several (or one that isn't in the list): then the choice "Keep current alerts" shows
 function alertChoice(event: CalendarEvent | null): number | null | 'keep' {
@@ -69,11 +77,16 @@ function alertChoice(event: CalendarEvent | null): number | null | 'keep' {
   return 'keep'
 }
 
-function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: CalendarEvent) => void; onClose: () => void }) {
+function EventDialog(props: {
+  event: CalendarEvent | null
+  start?: number // a new event's start (default: the next full hour)
+  onDelete: (event: CalendarEvent) => void
+  onClose: () => void
+}) {
   const { event, onClose } = props
   const allDay = event?.allDay ?? false // older all-day events stay all-day: date only, alerts kept
   const [title, setTitle] = useState(event?.title ?? '')
-  const [when, setWhen] = useState(allDay ? toDayValue(event!.start) : toInputValue(event?.start ?? nextFullHour()))
+  const [when, setWhen] = useState(allDay ? toDayValue(event!.start) : toInputValue(event?.start ?? props.start ?? nextFullHour()))
   const [alert, setAlert] = useState(() => alertChoice(event))
   const [repeat, setRepeat] = useState<Repeat | SeriesRepeat>('none')
   // A repeating event: "All events in the series" ticked, and how the series repeats (loaded from

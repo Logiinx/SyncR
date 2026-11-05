@@ -7,6 +7,12 @@ All notable changes to SyncR. Newest version first.
 **Mail**
 - **Added** a checkbox per account in the Mail tab to show the last 50 mails of one account or of both
 
+**Reminders**
+- **Added** a click or right-click on a day in the month grid to add an event on that day
+
+**App**
+- **Removed** the red spell-check lines from all text boxes
+
 ## [0.45.1] - 2026-11-05
 
 **App**

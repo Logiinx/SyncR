@@ -14,7 +14,7 @@ import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
 import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, eventColor, useCalendarEvents } from './calendarEvents'
-import EventDialog from './EventDialog'
+import EventDialog, { startOnDay } from './EventDialog'
 import EventPreview from './EventPreview'
 import Spinner from './Spinner'
 import { openLink } from './links'
@@ -66,6 +66,8 @@ function RemindersView() {
   const [gameMenu, setGameMenu] = useState<GameMenu | null>(null)
   const openGameMenu = (game: Game, x: number, y: number) => gameMenuAt(game, x, y).then(setGameMenu)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
+  const [newEventStart, setNewEventStart] = useState<number | undefined>() // added from a day in the grid
+  const [dayMenu, setDayMenu] = useState<{ date: Date; x: number; y: number } | null>(null)
   const [previewEvent, setPreviewEvent] = useState<CalendarEvent | null>(null) // left click: shown big
   const [eventMenu, setEventMenu] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
@@ -104,9 +106,11 @@ function RemindersView() {
   ].sort((a, b) => a.time - b.time)
 
   // New things go to Google Calendar, so it must be connected on this device
-  function newEvent() {
-    if (calendar.connected) setEditingEvent('new')
-    else
+  function newEvent(day?: Date) {
+    if (calendar.connected) {
+      setNewEventStart(day && startOnDay(day))
+      setEditingEvent('new')
+    } else
       setDialog({
         title: t('Connect Google Calendar'),
         message: t('New events go to your Google Calendar. Connect it first in Settings → Accounts.'),
@@ -210,7 +214,7 @@ function RemindersView() {
         {/* One row: New event on the left; refresh and grid / list on the right (the phone has
             no grid: only refresh there) */}
         <div className="games-views reminders-toolbar">
-          <button className="reminders-new" onClick={newEvent}>
+          <button className="reminders-new" onClick={() => newEvent()}>
             <Plus size={15} /> {t('New event')}
           </button>
           <div className="reminders-tools">
@@ -252,6 +256,8 @@ function RemindersView() {
             now={now}
             onOpenEvent={setPreviewEvent}
             onEventMenu={(event, x, y) => setEventMenu({ event, x, y })}
+            onNewEvent={newEvent}
+            onDayMenu={(date, x, y) => setDayMenu({ date, x, y })}
             onGame={setOpenGame}
             onGameMenu={openGameMenu}
           />
@@ -276,6 +282,7 @@ function RemindersView() {
       {editingEvent && (
         <EventDialog
           event={editingEvent === 'new' ? null : editingEvent}
+          start={newEventStart}
           onDelete={askDeleteEvent}
           onClose={() => setEditingEvent(null)}
         />
@@ -301,6 +308,14 @@ function RemindersView() {
             { label: t('Open in Google Calendar'), icon: ExternalLink, onClick: () => openLink(eventMenu.event.link) },
             { label: t('Delete'), icon: Trash2, danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
           ]}
+        />
+      )}
+      {dayMenu && (
+        <ContextMenu
+          x={dayMenu.x}
+          y={dayMenu.y}
+          onClose={() => setDayMenu(null)}
+          items={[{ label: t('New event'), icon: Plus, onClick: () => newEvent(dayMenu.date) }]}
         />
       )}
       {gameMenu && (
@@ -349,13 +364,16 @@ function byMonth<T extends { time: number }>(items: T[]) {
 // Month grid: calendar events ("14:30 Call the bank", on their first day; all-day ones without a
 // time) and Waiting games (cover + name) on their day. Today's timed events fade once
 // their start time has passed (all-day ones with their day). From this month to the last upcoming
-// event or release, at least 3 months, at most 12.
+// event or release, at least 3 months, at most 12. A click or right-click on the empty part of
+// today or a later day adds an event there.
 function ReminderGrid(props: {
   events: CalendarEvent[]
   games: Game[]
   now: number
   onOpenEvent: (event: CalendarEvent) => void
   onEventMenu: (event: CalendarEvent, x: number, y: number) => void
+  onNewEvent: (day: Date) => void
+  onDayMenu: (day: Date, x: number, y: number) => void
   onGame: (id: string) => void
   onGameMenu: (game: Game, x: number, y: number) => void
 }) {
@@ -375,6 +393,8 @@ function ReminderGrid(props: {
   return (
     <MonthGrid
       months={months}
+      onDayClick={props.onNewEvent}
+      onDayMenu={props.onDayMenu}
       count={(first) =>
         events.filter((e) => sameMonth(new Date(e.start), first)).length +
         games.filter((g) => sameMonth(new Date(g.releaseDate!), first)).length

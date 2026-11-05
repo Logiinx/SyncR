@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { capitalize, locale } from './i18n'
 
 // Month grids, stacked (used by the Games calendar and the Reminders tab): for each month a
@@ -17,9 +17,15 @@ interface Props {
   renderDay: (date: Date) => ReactNode // the items in a day's cell
   count: (first: Date) => number | null // the number next to the month's title (null: none)
   after?: (first: Date) => ReactNode // under a month's grid (e.g. games with only a month)
+  // Left or right click on the empty part of today or a later day (Reminders: add an event)
+  onDayClick?: (date: Date) => void
+  onDayMenu?: (date: Date, x: number, y: number) => void
 }
 
-function MonthGrid({ months, renderDay, count, after }: Props) {
+// A click on one of the day's items is that item's own
+const onItem = (e: MouseEvent) => (e.target as Element).closest('button') !== null
+
+function MonthGrid({ months, renderDay, count, after, onDayClick, onDayMenu }: Props) {
   const today = new Date()
   return months.map((first) => {
     const year = first.getFullYear()
@@ -44,8 +50,22 @@ function MonthGrid({ months, renderDay, count, after }: Props) {
             const date = new Date(year, month, i + 1)
             const isToday = dayKey(date) === dayKey(today)
             const past = !isToday && date < today
+            const addable = !past && onDayClick !== undefined
             return (
-              <div key={i} className={`calendar-day${isToday ? ' today' : ''}${past ? ' past' : ''}`}>
+              <div
+                key={i}
+                className={`calendar-day${isToday ? ' today' : ''}${past ? ' past' : ''}${addable ? ' addable' : ''}`}
+                onClick={addable ? (e) => !onItem(e) && onDayClick(date) : undefined}
+                onContextMenu={
+                  !past && onDayMenu
+                    ? (e) => {
+                        if (onItem(e)) return
+                        e.preventDefault()
+                        onDayMenu(date, e.clientX, e.clientY)
+                      }
+                    : undefined
+                }
+              >
                 <span className="calendar-date">{i + 1}</span>
                 {renderDay(date)}
               </div>
