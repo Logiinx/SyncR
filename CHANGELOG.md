@@ -4,6 +4,13 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- **Improved:** In a long card, the text color button stays in view while you scroll.
+- **Fixed:** The color button now also shows in colored text, so you can change what you type next.
+
+**Notes**
+- **Fixed:** Small fixes: on the phone, a color picked with no text selected was forgotten.
+
 ## [0.43.0] - 2026-11-05
 
 **Reminders**

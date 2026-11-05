@@ -301,19 +301,22 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         </div>
       )}
       <EditorContent editor={editor} className="card-editor" />
-      <div className="card-buttons">
-        {editing && editor && <CardColorButton editor={editor} />}
-        {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
-        <button
-          className="card-more"
-          onClick={(event) => {
-            const box = event.currentTarget.getBoundingClientRect()
-            setMenu({ x: box.left, y: box.bottom + 4, editing })
-          }}
-          title="More"
-        >
-          <Ellipsis size={13} />
-        </button>
+      {/* Covers the card, so the buttons can stay in view while a long card scrolls (CSS) */}
+      <div className="card-corner">
+        <div className="card-buttons">
+          {editing && editor && <CardColorButton editor={editor} />}
+          {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
+          <button
+            className="card-more"
+            onClick={(event) => {
+              const box = event.currentTarget.getBoundingClientRect()
+              setMenu({ x: box.left, y: box.bottom + 4, editing })
+            }}
+            title="More"
+          >
+            <Ellipsis size={13} />
+          </button>
+        </div>
       </div>
       {menu && (
         <ContextMenu
@@ -344,17 +347,28 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   )
 }
 
-// While editing: text colors for the selected text (no highlights on cards), like the toolbar's
-// color button in notes. Only shown while some text is selected; the colors close by themselves
-// when the selection goes (a color picked, a click elsewhere, Escape).
+// While editing: text colors (no highlights on cards), like the toolbar's color button in notes.
+// Only shown while some text is selected, or while what you type next would be colored (so that
+// color can be changed); the colors close by themselves when the cursor moves.
 function CardColorButton({ editor }: { editor: Editor }) {
-  const hasSelection = useEditorState({ editor, selector: ({ editor }) => !editor.state.selection.empty })
+  const { show, cursor } = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const { selection, storedMarks } = editor.state
+      // Stored marks = what a color just picked at the cursor will do to the next letter
+      const next = storedMarks ?? selection.$from.marks()
+      return {
+        show: !selection.empty || next.some((mark) => mark.type.name === 'textStyle' && mark.attrs.color),
+        cursor: `${selection.from}-${selection.to}`,
+      }
+    },
+  })
   const [colors, setColors] = useState<{ right: number; top: number } | null>(null)
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!hasSelection) setColors(null)
-  }, [hasSelection])
+    setColors(null)
+  }, [show, cursor])
 
   useEffect(() => {
     if (!colors) return
@@ -379,14 +393,14 @@ function CardColorButton({ editor }: { editor: Editor }) {
     setColors({ right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 4 })
   }
 
-  if (!hasSelection) return null
+  if (!show) return null
   return (
     <>
       <button
         className={['card-color', colors && 'active'].filter(Boolean).join(' ')}
         title="Text color"
         aria-label="Text color"
-        // Keep the selection (and the phone keyboard) in the card
+        // Keep the selection or cursor (and the phone keyboard) in the card
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => toggle(e.currentTarget)}
       >

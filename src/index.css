@@ -1169,9 +1169,30 @@ button {
   gap: 2px;
 }
 
-/* While editing, with text selected: the text color button. It floats over the end of the
-   first line (no room kept for it: the text would rewrap when editing starts), so it has the
-   card's own background to cover the letters under it */
+/* Text cards: the buttons follow the scroll, so they stay in view in a long card. The cover is
+   as big as the card (so they stop at its end) and lets clicks through to the text. */
+.card-corner {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.card-corner .card-buttons {
+  position: sticky;
+  right: auto;
+  width: fit-content;
+  margin: calc(8px + 0.75em - 8px) 8px 0 auto;
+  pointer-events: auto;
+}
+
+/* Sticky keeps what's inside at its own level: the colors must still show over the next cards */
+.card-corner .card-buttons:has(.card-colors) {
+  z-index: 20;
+}
+
+/* While editing, with text selected or the cursor in colored text: the text color button. It
+   floats over the end of a line (no room kept for it: the text would rewrap when editing
+   starts), so it has the card's own background to cover the letters under it */
 .card-color {
   --card-bg: color-mix(in srgb, var(--tint) var(--tile-hi), var(--bg));
   width: 20px;
