@@ -117,7 +117,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
                 onNewCard()
               },
             },
-            { label: 'Rename', icon: Pencil, divider: true, onClick: rename },
+            { label: 'Rename', icon: Pencil, onClick: rename },
             { label: 'Group color…', icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: 'group' }) },
             { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
             {
