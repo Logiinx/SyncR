@@ -1,5 +1,5 @@
 import Dialog from './Dialog'
-import { useLanguage } from './i18n'
+import { t, useLanguage } from './i18n'
 import { startFresh } from './localDb'
 
 // Shown instead of the app when the notes on this PC are sealed (sealing.ts) but Windows didn't
@@ -10,12 +10,10 @@ function KeyMissing() {
   return (
     <Dialog
       request={{
-        title: "Notes on this PC can't be opened",
-        message:
-          "Windows didn't give back the key that unlocks SyncR's notes on this PC (for example after Windows was reinstalled). " +
-          'Your synced notes are safe in Dropbox: "Start fresh" downloads them again, but changes that weren\'t synced yet are lost.',
-        cancelLabel: 'Try again',
-        confirmLabel: 'Start fresh',
+        title: t("Notes on this PC can't be opened"),
+        message: t("Windows didn't give back the key that unlocks SyncR's notes on this PC (for example after Windows was reinstalled). Your synced notes are safe in Dropbox: \"Start fresh\" downloads them again, but changes that weren't synced yet are lost."),
+        cancelLabel: t('Try again'),
+        confirmLabel: t('Start fresh'),
         danger: true,
         onConfirm: () => {
           starting = true

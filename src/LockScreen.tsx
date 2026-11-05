@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLanguage } from './i18n'
+import { plural, t, useLanguage } from './i18n'
 import { KeyRound, Lock, LockOpen } from 'lucide-react'
 import WindowControls from './WindowControls'
 import SecretField from './SecretField'
@@ -53,8 +53,8 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
     if (busy) return
     setError(null)
     if (step === 'new-pin') {
-      if (value.length < MIN_PIN_LENGTH) return setError(`Use at least ${MIN_PIN_LENGTH} characters`)
-      if (value !== repeat) return setError('The two PINs are different')
+      if (value.length < MIN_PIN_LENGTH) return setError(t('Use at least {n} characters', { n: MIN_PIN_LENGTH }))
+      if (value !== repeat) return setError(t('The two PINs are different'))
     } else if (!value) return
     setBusy(true)
     try {
@@ -63,10 +63,10 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
         return onUnlocked()
       }
       const key = step === 'pin' ? await unlockWithPin(value) : await unlockWithPassphrase(value)
-      if (!key && step === 'passphrase') return wrong('Wrong passphrase')
+      if (!key && step === 'passphrase') return wrong(t('Wrong passphrase'))
       if (!key) {
         const left = MAX_TRIES - wrongTries()
-        if (left > 0) return wrong(`Wrong PIN · ${left} ${left === 1 ? 'try' : 'tries'} left`)
+        if (left > 0) return wrong(plural(left, 'Wrong PIN · {n} try left', 'Wrong PIN · {n} tries left'))
         setBusy(false)
         return go('passphrase')
       }
@@ -110,29 +110,29 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
           {step === 'pin' && (
             <>
               <Lock className="lock-icon" size={22} strokeWidth={1.5} />
-              <h2>SyncR is locked</h2>
-              <p>Enter your PIN to open your notes.</p>
-              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder="PIN" autoComplete="current-password" visible={visible} onToggle={toggle} />
+              <h2>{t('SyncR is locked')}</h2>
+              <p>{t('Enter your PIN to open your notes.')}</p>
+              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder={t('PIN')} autoComplete="current-password" visible={visible} onToggle={toggle} />
             </>
           )}
           {step === 'passphrase' && (
             <>
               <KeyRound className="lock-icon" size={22} strokeWidth={1.5} />
-              <h2>Enter your passphrase</h2>
-              <p>{pinsLeft > 0 ? 'Your sync passphrase opens your notes too.' : 'Too many wrong PINs. Your sync passphrase opens your notes.'}</p>
-              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder="Passphrase" autoComplete="current-password" visible={visible} onToggle={toggle} />
+              <h2>{t('Enter your passphrase')}</h2>
+              <p>{pinsLeft > 0 ? t('Your sync passphrase opens your notes too.') : t('Too many wrong PINs. Your sync passphrase opens your notes.')}</p>
+              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder={t('Passphrase')} autoComplete="current-password" visible={visible} onToggle={toggle} />
             </>
           )}
           {step === 'new-pin' && (
             <>
               <LockOpen className="lock-icon open" size={22} strokeWidth={1.5} />
-              <h2>Choose a new PIN</h2>
-              <p>At least {MIN_PIN_LENGTH} characters, digits or letters.</p>
-              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder="New PIN" autoComplete="new-password" visible={visible} onToggle={toggle} />
+              <h2>{t('Choose a new PIN')}</h2>
+              <p>{t('At least {n} characters, digits or letters.', { n: MIN_PIN_LENGTH })}</p>
+              <SecretField inputRef={inputRef} value={value} onChange={setValue} placeholder={t('New PIN')} autoComplete="new-password" visible={visible} onToggle={toggle} />
               <input
                 type={visible ? 'text' : 'password'}
                 value={repeat}
-                placeholder="Repeat PIN"
+                placeholder={t('Repeat PIN')}
                 autoComplete="new-password"
                 spellCheck={false}
                 onChange={(e) => setRepeat(e.target.value)}
@@ -144,21 +144,21 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
 
           <div className="dialog-buttons">
             <button type="submit" className="primary" disabled={busy}>
-              {busy ? (step === 'new-pin' ? 'Saving…' : 'Unlocking…') : step === 'new-pin' ? 'Save PIN' : 'Unlock'}
+              {busy ? (step === 'new-pin' ? t('Saving…') : t('Unlocking…')) : step === 'new-pin' ? t('Save PIN') : t('Unlock')}
             </button>
           </div>
 
           {step === 'pin' && (
             <button type="button" className="lock-link" onClick={() => go('passphrase')}>
-              Forgot your PIN?
+              {t('Forgot your PIN?')}
             </button>
           )}
           {step === 'passphrase' && pinsLeft > 0 && (
-            <BackButton onClick={() => go('pin')} title="Back to PIN" />
+            <BackButton onClick={() => go('pin')} title={t('Back to PIN')} />
           )}
           {step === 'new-pin' && (
             <button type="button" className="lock-link" onClick={() => void lockOff()}>
-              Turn the PIN lock off instead
+              {t('Turn the PIN lock off instead')}
             </button>
           )}
         </form>

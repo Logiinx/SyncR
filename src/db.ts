@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { keyReady, sealingLayer } from './sealing'
 import type { JSONContent } from '@tiptap/react'
@@ -437,7 +438,7 @@ export function imageIds(content: JSONContent | null): string[] {
 export function noteTitle(note: Note): string {
   if (note.title) return note.title
   const firstLine = note.text.split('\n').find((line) => line.trim() !== '')
-  return firstLine?.trim() || 'Untitled'
+  return firstLine?.trim() || t('Untitled')
 }
 
 // ---------- Board cards ----------

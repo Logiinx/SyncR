@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t, textKey } from './i18n'
 import Window from './Window'
 import SecretField from './SecretField'
 import { changePin, checkPin, MIN_PIN_LENGTH, turnPinOff, turnPinOn } from './pinLock'
@@ -10,9 +11,9 @@ import { changePin, checkPin, MIN_PIN_LENGTH, turnPinOff, turnPinOn } from './pi
 export type PinDialogMode = 'on' | 'change' | 'off'
 
 const TEXT = {
-  on: { title: 'Turn on the PIN lock', button: 'Turn on', busy: 'Turning on…' },
-  change: { title: 'Change your PIN', button: 'Change', busy: 'Changing…' },
-  off: { title: 'Turn off the PIN lock', button: 'Turn off', busy: 'Turning off…' },
+  on: { title: textKey('Turn on the PIN lock'), button: textKey('Turn on'), busy: textKey('Turning on…') },
+  change: { title: textKey('Change your PIN'), button: textKey('Change'), busy: textKey('Changing…') },
+  off: { title: textKey('Turn off the PIN lock'), button: textKey('Turn off'), busy: textKey('Turning off…') },
 }
 
 function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void }) {
@@ -33,14 +34,14 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
     if (busy) return
     setError(null)
     if (asksCurrent && !current) return firstRef.current?.focus()
-    if (asksNew && pin.length < MIN_PIN_LENGTH) return setError(`Use at least ${MIN_PIN_LENGTH} characters`)
-    if (asksNew && pin !== repeat) return setError('The two PINs are different')
+    if (asksNew && pin.length < MIN_PIN_LENGTH) return setError(t('Use at least {n} characters', { n: MIN_PIN_LENGTH }))
+    if (asksNew && pin !== repeat) return setError(t('The two PINs are different'))
     setBusy(true)
     try {
       if (asksCurrent && !(await checkPin(current))) {
         setBusy(false)
         setCurrent('')
-        setError('Wrong PIN')
+        setError(t('Wrong PIN'))
         return firstRef.current?.focus()
       }
       if (mode === 'on') await turnPinOn(pin)
@@ -63,15 +64,15 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
         void submit()
       }}
     >
-      <h2>{TEXT[mode].title}</h2>
-      {mode === 'on' && <p>SyncR will ask for it at every start. Forgot it? Your sync passphrase opens your notes too.</p>}
-      {mode === 'off' && <p>SyncR will open without a PIN. Your notes stay encrypted on this PC.</p>}
+      <h2>{t(TEXT[mode].title)}</h2>
+      {mode === 'on' && <p>{t('SyncR will ask for it at every start. Forgot it? Your sync passphrase opens your notes too.')}</p>}
+      {mode === 'off' && <p>{t('SyncR will open without a PIN. Your notes stay encrypted on this PC.')}</p>}
       {asksCurrent && (
         <SecretField
           inputRef={firstRef}
           value={current}
           onChange={setCurrent}
-          placeholder="Current PIN"
+          placeholder={t('Current PIN')}
           autoComplete="current-password"
           visible={showCurrent}
           onToggle={() => setShowCurrent(!showCurrent)}
@@ -83,7 +84,7 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
             inputRef={asksCurrent ? undefined : firstRef}
             value={pin}
             onChange={setPin}
-            placeholder="New PIN"
+            placeholder={t('New PIN')}
             autoComplete="new-password"
             visible={showNew}
             onToggle={() => setShowNew(!showNew)}
@@ -91,7 +92,7 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
           <input
             type={showNew ? 'text' : 'password'}
             value={repeat}
-            placeholder="Repeat PIN"
+            placeholder={t('Repeat PIN')}
             autoComplete="new-password"
             spellCheck={false}
             onChange={(e) => setRepeat(e.target.value)}
@@ -103,10 +104,10 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
 
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>
-          Cancel
+          {t('Cancel')}
         </button>
         <button type="submit" className="primary" disabled={busy}>
-          {busy ? TEXT[mode].busy : TEXT[mode].button}
+          {t(busy ? TEXT[mode].busy : TEXT[mode].button)}
         </button>
       </div>
     </Window>

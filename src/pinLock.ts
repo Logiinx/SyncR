@@ -1,4 +1,5 @@
 import { scryptAsync } from '@noble/hashes/scrypt.js'
+import { t } from './i18n'
 import { decrypt, encrypt, fromBase64, getKey, passphraseKey, passphraseSettings, toBase64 } from './crypto'
 import { getSecret, LOCAL_KEY_SECRET, pinLockOn, saveSignInsAgain, setSecret } from './secrets'
 import { currentSealKey } from './sealing'
@@ -38,7 +39,7 @@ async function pinKey(pin: string, salt: string, settings: typeof SCRYPT) {
 }
 
 async function makePinBox(pin: string, localKey: Uint8Array): Promise<PinBox> {
-  if (pin.length < MIN_PIN_LENGTH) throw new Error(`Use at least ${MIN_PIN_LENGTH} characters`)
+  if (pin.length < MIN_PIN_LENGTH) throw new Error(t('Use at least {n} characters', { n: MIN_PIN_LENGTH }))
   const salt = toBase64(crypto.getRandomValues(new Uint8Array(16)))
   const box = await encrypt(await pinKey(pin, salt, SCRYPT), localKey as Uint8Array<ArrayBuffer>)
   return { salt, ...SCRYPT, box: toBase64(box) }
@@ -82,13 +83,13 @@ export async function unlockWithPassphrase(passphrase: string) {
 // Throws with a message to show. Needs sync set up (the passphrase lockbox) and Dropbox reachable.
 export async function turnPinOn(pin: string) {
   const stored = getSecret(LOCAL_KEY_SECRET)
-  if (pinLockOn()) throw new Error('The PIN lock is already on')
+  if (pinLockOn()) throw new Error(t('The PIN lock is already on'))
   // Not moved into the encrypted database yet (localDb.ts tries again at each start): the key
   // must stay as it is until then
-  if (!sealedDb || !stored) throw new Error("Your notes on this PC aren't encrypted yet. Restart SyncR and try again.")
+  if (!sealedDb || !stored) throw new Error(t("Your notes on this PC aren't encrypted yet. Restart SyncR and try again."))
   const passphrase = await passphraseSettings()
   const syncKey = await getKey()
-  if (!passphrase || !syncKey) throw new Error("Sync isn't set up, or Dropbox can't be reached right now")
+  if (!passphrase || !syncKey) throw new Error(t("Sync isn't set up, or Dropbox can't be reached right now"))
   const localKey = fromBase64(stored)
   const lock: Lock = {
     version: 1,
@@ -103,7 +104,7 @@ export async function turnPinOn(pin: string) {
 export async function changePin(pin: string) {
   const lock = readLock()
   const localKey = currentSealKey()
-  if (!lock || !localKey) throw new Error('The PIN lock is off')
+  if (!lock || !localKey) throw new Error(t('The PIN lock is off'))
   await saveLock(JSON.stringify({ ...lock, pin: await makePinBox(pin, localKey) }), getSecret(LOCAL_KEY_SECRET)!)
   localStorage.removeItem(TRIES)
 }
@@ -116,7 +117,7 @@ export async function checkPin(pin: string) {
 
 export async function turnPinOff() {
   const localKey = currentSealKey()
-  if (!pinLockOn() || !localKey) throw new Error('The PIN lock is off')
+  if (!pinLockOn() || !localKey) throw new Error(t('The PIN lock is off'))
   await saveLock(toBase64(localKey), getSecret(LOCAL_KEY_SECRET)!)
   localStorage.removeItem(TRIES)
 }
@@ -137,7 +138,7 @@ export async function refreshPassphraseBox(syncKey: CryptoKey, salt: string, ite
 async function saveLock(value: string, before: string) {
   if (!(await setSecret(LOCAL_KEY_SECRET, value))) {
     await setSecret(LOCAL_KEY_SECRET, before)
-    throw new Error("Windows couldn't store it, nothing changed")
+    throw new Error(t("Windows couldn't store it, nothing changed"))
   }
   await saveSignInsAgain()
 }

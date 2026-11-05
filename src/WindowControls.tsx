@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { finalSync } from './autoSync'
@@ -46,12 +47,12 @@ function WindowControls() {
 
   return (
     <div className="window-controls">
-      <button onClick={() => win.minimize()} title="Minimize">
+      <button onClick={() => win.minimize()} title={t('Minimize')}>
         <svg viewBox="0 0 10 10">
           <path d="M0 5h10" />
         </svg>
       </button>
-      <button onClick={() => win.toggleMaximize()} title={maximized ? 'Restore' : 'Maximize'}>
+      <button onClick={() => win.toggleMaximize()} title={maximized ? t('Restore') : t('Maximize')}>
         {maximized ? (
           <svg viewBox="0 0 10 10">
             <rect x="0.625" y="2.625" width="6.75" height="6.75" rx="1" />
@@ -63,7 +64,7 @@ function WindowControls() {
           </svg>
         )}
       </button>
-      <button className="close" onClick={() => win.close()} title="Close">
+      <button className="close" onClick={() => win.close()} title={t('Close')}>
         <svg viewBox="0 0 10 10">
           <path d="M0.75 0.75l8.5 8.5M9.25 0.75l-8.5 8.5" />
         </svg>

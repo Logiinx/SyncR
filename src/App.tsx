@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLanguage } from './i18n'
+import { t, useLanguage } from './i18n'
 import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
@@ -110,9 +110,9 @@ function App() {
   )
   // The tabs that exist: notes found in the database, and the Games, Reminders and Mail tabs
   const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
-    if (id === GAMES_TAB) return [{ id, title: 'Games', icon: <Gamepad2 size={14} className="tab-icon" /> }]
-    if (id === REMINDERS_TAB) return [{ id, title: 'Reminders', icon: <Bell size={14} className="tab-icon" /> }]
-    if (id === MAIL_TAB) return [{ id, title: 'Mail', icon: <MailTabIcon /> }]
+    if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <Gamepad2 size={14} className="tab-icon" /> }]
+    if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <Bell size={14} className="tab-icon" /> }]
+    if (id === MAIL_TAB) return [{ id, title: t('Mail'), icon: <MailTabIcon /> }]
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
@@ -145,7 +145,7 @@ function App() {
   // Clicking a link to a note (noteLinks.ts) opens it here, or says the target is gone
   useEffect(() => {
     onFollowLink(openNote, (message) =>
-      setDialog({ title: 'Link', message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} }),
+      setDialog({ title: t('Link'), message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} }),
     )
   })
 
@@ -189,9 +189,9 @@ function App() {
     const note = await db.notes.get(id)
     if (!note) return
     setDialog({
-      title: 'Rename note',
-      input: { initial: note.title ?? '', placeholder: `Leave empty to use the first line ("${noteTitle({ ...note, title: null })}")` },
-      confirmLabel: 'Rename',
+      title: t('Rename note'),
+      input: { initial: note.title ?? '', placeholder: t('Leave empty to use the first line ("{title}")', { title: noteTitle({ ...note, title: null }) }) },
+      confirmLabel: t('Rename'),
       onConfirm: (title) => renameNote(id, title),
     })
   }
@@ -200,9 +200,9 @@ function App() {
     const note = await db.notes.get(id)
     if (!note) return
     setDialog({
-      title: 'Delete note?',
-      message: `"${noteTitle(note)}" will be deleted. This can't be undone.`,
-      confirmLabel: 'Delete',
+      title: t('Delete note?'),
+      message: t('"{title}" will be deleted. This can\'t be undone.', { title: noteTitle(note) }),
+      confirmLabel: t('Delete'),
       danger: true,
       onConfirm: () => {
         closeTab(id)
@@ -225,7 +225,7 @@ function App() {
             if (isNarrowScreen()) setBoardOpen(false)
             setSidebarOpen(!sidebarOpen)
           }}
-          title="Notes"
+          title={t('Notes')}
         >
           <Menu size={18} />
         </button>
@@ -279,10 +279,10 @@ function App() {
           <EmptyPage>
             <div className="empty">
               <button className="empty-new" onClick={newNote}>
-                <Plus size={16} /> New note
+                <Plus size={16} /> {t('New note')}
               </button>
               <p>
-                or open one with <Menu size={15} className="empty-icon" aria-label="the notes button" />
+                {t('or open one with')} <Menu size={15} className="empty-icon" aria-label={t('the notes button')} />
               </p>
             </div>
           </EmptyPage>
@@ -298,7 +298,7 @@ function App() {
               if (isNarrowScreen()) setSidebarOpen(false)
               setBoardOpen(true)
             }}
-            title="Board"
+            title={t('Board')}
           >
             <ChevronLeft size={14} />
           </button>
@@ -314,16 +314,16 @@ function App() {
             ...(menu.tab
               ? [
                   pinned.includes(menu.noteId)
-                    ? { label: 'Unpin tab', icon: PinOff, onClick: () => togglePin(menu.noteId) }
-                    : { label: 'Pin tab', icon: Pin, onClick: () => togglePin(menu.noteId) },
-                  { label: 'Close tab', icon: X, onClick: () => closeTab(menu.noteId) },
+                    ? { label: t('Unpin tab'), icon: PinOff, onClick: () => togglePin(menu.noteId) }
+                    : { label: t('Pin tab'), icon: Pin, onClick: () => togglePin(menu.noteId) },
+                  { label: t('Close tab'), icon: X, onClick: () => closeTab(menu.noteId) },
                 ]
               : []),
             ...(isPageTab(menu.noteId)
               ? []
               : [
-                  { label: 'Rename', icon: Pencil, divider: menu.tab, onClick: () => askRename(menu.noteId) },
-                  { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDelete(menu.noteId) },
+                  { label: t('Rename'), icon: Pencil, divider: menu.tab, onClick: () => askRename(menu.noteId) },
+                  { label: t('Delete'), icon: Trash2, danger: true, onClick: () => askDelete(menu.noteId) },
                 ]),
           ]}
         />
@@ -344,7 +344,7 @@ function MailTabIcon() {
     <span className="tab-icon mail-tab-icon">
       <Mail size={14} className="tab-icon" />
       {missed > 0 && (
-        <span className="mail-tab-count" title="Missed emails">
+        <span className="mail-tab-count" title={t('Missed emails')}>
           {missed > 9 ? '9+' : missed}
         </span>
       )}

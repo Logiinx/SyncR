@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { db, defineSchema, LOCAL_DB_FLAG, sealedDb } from './db'
@@ -40,7 +41,7 @@ export async function prepareLocalDb(isPopup: boolean): Promise<LocalDbState> {
     let stored = getSecret(LOCAL_KEY_SECRET)
     if (!stored) {
       stored = toBase64(crypto.getRandomValues(new Uint8Array(32)))
-      if (!(await setSecret(LOCAL_KEY_SECRET, stored))) throw new Error("Windows couldn't store the key")
+      if (!(await setSecret(LOCAL_KEY_SECRET, stored))) throw new Error(t("Windows couldn't store the key"))
     }
     await move(fromBase64(stored))
     return 'moved'
@@ -48,7 +49,7 @@ export async function prepareLocalDb(isPopup: boolean): Promise<LocalDbState> {
     // Stays plain for now, tried again at the next start
     console.error('Local database not encrypted', error)
     await db.open().catch(() => {})
-    setTimeout(() => notice("Your notes on this PC couldn't be encrypted yet: SyncR tries again at the next start."), 5000)
+    setTimeout(() => notice(t("Your notes on this PC couldn't be encrypted yet: SyncR tries again at the next start.")), 5000)
     return 'ready'
   }
 }
@@ -115,7 +116,7 @@ async function move(key: Uint8Array) {
       const back = await table.toArray()
       const expected = new Set(rows[table.name].map(canonical))
       if (back.length !== expected.size || back.some((row) => !expected.has(canonical(row)))) {
-        throw new Error(`Moved ${table.name} differs`)
+        throw new Error(`Moved ${table.name} differs`) // i18n-ok: only logged, never shown
       }
     }
     next.close()

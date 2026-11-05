@@ -4774,7 +4774,8 @@ button {
   min-width: 0;
 }
 
-.update-text b {
+.update-text b,
+.update-text strong {
   font-weight: 600;
 }
 

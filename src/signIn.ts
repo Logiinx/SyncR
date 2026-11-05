@@ -24,7 +24,7 @@ export const returnKind = () =>
 
 // True if the return brings back the state this device sent. Works once: the state is forgotten.
 export function isOwnSignInState(kind: SignInKind, state: string | null) {
-  const key = `syncr.${kind}.state`
+  const key = `syncr.${kind}.state` // i18n-ok
   const expected = localStorage.getItem(key)
   localStorage.removeItem(key)
   return !!expected && state === expected

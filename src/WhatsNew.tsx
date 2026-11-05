@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { t } from './i18n'
 import changelog from '../CHANGELOG.md?raw'
 import { read, write } from './localState'
 import Window from './Window'
@@ -63,7 +64,7 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
   flushList()
   return (
     <section>
-      {showVersion && <h3 className="whats-new-version">v{release.version}</h3>}
+      {showVersion && <h3 className="whats-new-version">{`v${release.version}`}</h3>}
       {blocks}
     </section>
   )
@@ -92,9 +93,9 @@ export function WhatsNewDialog(props: {
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), []) // so Escape works
 
   return (
-    <Window className="dialog whats-new" label="What's new" onClose={onClose} ref={dialogRef}>
+    <Window className="dialog whats-new" label={t("What's new")} onClose={onClose} ref={dialogRef}>
       <div className="dialog-head">
-        <h2>What's new in v{props.version ?? __APP_VERSION__}</h2>
+        <h2>{t("What's new in v{version}", { version: props.version ?? __APP_VERSION__ })}</h2>
         <CloseButton onClick={onClose} />
       </div>
       <div className="whats-new-body">
@@ -105,7 +106,7 @@ export function WhatsNewDialog(props: {
       {onUpdate && (
         <div className="dialog-buttons">
           <button className="primary" onClick={onUpdate}>
-            Update now
+            {t('Update now')}
           </button>
         </div>
       )}

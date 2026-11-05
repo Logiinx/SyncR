@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -112,7 +113,7 @@ async function createPopup(onError: () => void) {
   const { position, scale } = await popupPlace(height)
   const popup = new WebviewWindow(POPUP_LABEL, {
     url: 'index.html?view=reminder-popup',
-    title: 'SyncR reminder',
+    title: t('SyncR reminder'),
     x: position.x / scale, // the window options take logical pixels
     y: position.y / scale,
     width: POPUP_WIDTH,

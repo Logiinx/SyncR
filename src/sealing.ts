@@ -1,4 +1,5 @@
 import { gcm } from '@noble/ciphers/aes.js'
+import { t } from './i18n'
 import type { DBCore, DBCoreGetManyRequest, DBCoreGetRequest, DBCoreMutateRequest, DBCoreOpenCursorRequest, DBCoreQueryRequest, DBCoreTable, Middleware } from 'dexie'
 
 // On the PC, everything with the user's own words is stored encrypted ("sealed") in the
@@ -13,7 +14,9 @@ import type { DBCore, DBCoreGetManyRequest, DBCoreGetRequest, DBCoreMutateReques
 
 export const SEALED_TABLES = ['notes', 'attachments', 'settings', 'reminders', 'cards', 'games', 'events', 'linkPreviews', 'snapshots']
 
+// i18n-ok
 const SEALED = '_sealed' // the encrypted block: 12 bytes nonce + the encrypted JSON of the other fields
+// i18n-ok
 const BLOBS = '_blobs' // images: { field: { type, data: nonce + encrypted bytes } }
 
 let key: Uint8Array | undefined
@@ -32,7 +35,7 @@ export const currentSealKey = () => key
 
 // Also used for the sign-ins behind the PIN lock (secrets.ts)
 export function sealBytes(bytes: Uint8Array) {
-  if (!key) throw new Error('The local key is missing')
+  if (!key) throw new Error(t('The local key is missing'))
   const nonce = crypto.getRandomValues(new Uint8Array(12))
   const sealed = gcm(key, nonce).encrypt(bytes)
   const out = new Uint8Array(12 + sealed.length)
@@ -42,7 +45,7 @@ export function sealBytes(bytes: Uint8Array) {
 }
 
 export function openBytes(data: Uint8Array) {
-  if (!key) throw new Error('The local key is missing')
+  if (!key) throw new Error(t('The local key is missing'))
   return gcm(key, data.subarray(0, 12)).decrypt(data.subarray(12))
 }
 
@@ -90,7 +93,7 @@ function seal(row: Record<string, unknown>, plainFields: string[]) {
     if (plainFields.includes(field)) out[field] = value
     else if (value instanceof Blob) {
       const bytes = blobBytes.get(value)
-      if (!bytes) throw new Error(`Image not ready for encryption (${field})`)
+      if (!bytes) throw new Error(`Image not ready for encryption (${field})`) // i18n-ok: a bug in the app, not a message for the user
       blobs[field] = { type: value.type, data: sealBytes(bytes) }
     } else rest[field] = value
   }
@@ -198,7 +201,7 @@ let previewHmac: Promise<CryptoKey> | undefined
 
 async function makePreviewHmac(bytes: Uint8Array<ArrayBuffer>) {
   const base = await crypto.subtle.importKey('raw', bytes, 'HKDF', false, ['deriveKey'])
-  const info = new TextEncoder().encode('syncr link cards')
+  const info = new TextEncoder().encode('syncr link cards') // i18n-ok
   const params = { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info }
   return crypto.subtle.deriveKey(params, base, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
 }

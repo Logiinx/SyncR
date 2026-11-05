@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
+import { richText } from './richText'
 import { isTauri } from '@tauri-apps/api/core'
 import { Check, CircleArrowDown, TriangleAlert } from 'lucide-react'
 import type { Update } from '@tauri-apps/plugin-updater'
@@ -40,7 +42,7 @@ function UpdateBanner() {
   useEffect(() => {
     const onCheck = async (event: Event) => {
       const done = (event as CustomEvent<() => void>).detail
-      setNotice('Checking for updates…')
+      setNotice(t('Checking for updates…'))
       try {
         if (isTauri()) {
           const found = await checkDesktopUpdate()
@@ -51,12 +53,12 @@ function UpdateBanner() {
           }
         } else if (await checkWebUpdate()) {
           // The bar with "Reload" appears once it's downloaded
-          setNotice('Downloading the new version…')
+          setNotice(t('Downloading the new version…'))
           return
         }
-        setNotice(`SyncR is up to date (v${__APP_VERSION__}).`)
+        setNotice(t('SyncR is up to date (v{version}).', { version: __APP_VERSION__ }))
       } catch (error) {
-        setNotice(`Couldn't check for updates: ${errorText(error)}`)
+        setNotice(t("Couldn't check for updates: {error}", { error: errorText(error) }))
       } finally {
         done?.()
       }
@@ -76,7 +78,7 @@ function UpdateBanner() {
     return (
       <div className="update-banner">
         {installing ? <Spinner /> : <CircleArrowDown size={16} className="update-icon" />}
-        <span className="update-text">{installing ? 'Reloading…' : 'A new version of SyncR is ready.'}</span>
+        <span className="update-text">{installing ? t('Reloading…') : t('A new version of SyncR is ready.')}</span>
         {!installing && (
           <button
             className="update-button"
@@ -86,7 +88,7 @@ function UpdateBanner() {
               applyWebUpdate()
             }}
           >
-            Reload
+            {t('Reload')}
           </button>
         )}
       </div>
@@ -111,10 +113,10 @@ function UpdateBanner() {
     const version = `SyncR ${update.version}`
     const status =
       progress === undefined
-        ? 'Syncing before the update…'
+        ? t('Syncing before the update…')
         : progress === 1
-          ? `Installing ${version}…`
-          : `Downloading ${version}…`
+          ? t('Installing {version}…', { version })
+          : t('Downloading {version}…', { version })
 
     return (
       <div className={installError ? 'update-banner failed' : 'update-banner'}>
@@ -134,15 +136,15 @@ function UpdateBanner() {
               )}
             </>
           ) : installError ? (
-            `Update failed: ${installError}`
+            t('Update failed: {error}', { error: installError })
           ) : (
             <>
-              <b>{version}</b> is ready.
+              {richText(t('**{version}** is ready.', { version }))}
               {update.body?.trim() && (
                 <>
                   <span className="update-dim"> · </span>
                   <button className="update-link" onClick={() => setNotesOpen(true)}>
-                    What's new
+                    {t("What's new")}
                   </button>
                 </>
               )}
@@ -151,7 +153,7 @@ function UpdateBanner() {
         </span>
         {!installing && (
           <button className="update-button" onClick={onInstall}>
-            {installError ? 'Try again' : 'Update now'}
+            {installError ? t('Try again') : t('Update now')}
           </button>
         )}
         {installing && typeof progress === 'number' && (
@@ -175,9 +177,9 @@ function UpdateBanner() {
   if (notice) {
     return (
       <div className="update-notice">
-        {LOADING_NOTICES.includes(notice) ? (
+        {notice === t('Checking for updates…') || notice === t('Downloading the new version…') ? (
           <Spinner size={13} />
-        ) : notice.startsWith("Couldn't") ? (
+        ) : notice.startsWith(t("Couldn't check for updates: {error}", { error: '' })) ? (
           <TriangleAlert size={13} className="update-notice-error" />
         ) : (
           <Check size={13} className="update-notice-ok" />
@@ -188,8 +190,5 @@ function UpdateBanner() {
   }
   return null
 }
-
-// Notices that mean "wait": shown with the loading ring
-const LOADING_NOTICES = ['Checking for updates…', 'Downloading the new version…']
 
 export default UpdateBanner

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
+import { t } from './i18n'
 import { Eye, EyeOff } from 'lucide-react'
 
 // A passphrase or PIN box with an eye that shows what's typed (PassphraseDialog, LockScreen).
@@ -51,7 +52,7 @@ function SecretField({
         onChange={(e) => onChange(e.target.value)}
       />
       {/* mousedown prevented: typing goes on in the box. Skipped by Tab, which goes to the next box. */}
-      <button type="button" className="eye" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={toggle} title={visible ? `Hide ${what}` : `Show ${what}`}>
+      <button type="button" className="eye" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={toggle} title={visible ? t('Hide {what}', { what }) : t('Show {what}', { what })}>
         {visible ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
       </button>
     </div>

@@ -1,4 +1,5 @@
 import { Plus, X } from 'lucide-react'
+import { t } from './i18n'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { currentZoom } from './appearance'
 import { TabLines, useTabLines } from './tabLines'
@@ -182,8 +183,8 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
     const isDragged = drag?.id === tab.id
     // Measured in screen pixels; the page is scaled by the app scaling setting
     const offset = (drag && group.some((t) => t.id === drag.id) ? (isDragged ? drag.dx : drag.shifts[index]) : 0) / currentZoom()
-    let className = tab.id === activeId ? 'tab active' : 'tab'
-    if (tab.pinned) className += tab.icon ? ' pinned icon-only' : ' pinned'
+    let className = tab.id === activeId ? 'tab active' : 'tab' // i18n-ok
+    if (tab.pinned) className += tab.icon ? ' pinned icon-only' : ' pinned' // i18n-ok
     if (lines.hovered === tab.id) className += ' hovered'
     if (isDragged) className += ' drag-source'
     if (lifted === tab.id) className += ' lifted'
@@ -226,7 +227,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
               e.stopPropagation()
               onClose(tab.id)
             }}
-            title="Close tab"
+            title={t('Close tab')}
           >
             <X size={13} />
           </button>
@@ -256,7 +257,7 @@ function TabBar({ tabs, activeId, onSelect, onClose, onNew, onMenu, onRename, on
         </nav>
       </div>
       {/* Outside the scrolling strip, so it stays visible when there are many tabs */}
-      <button className="tab-new" onClick={onNew} title="New note">
+      <button className="tab-new" onClick={onNew} title={t('New note')}>
         <Plus size={18} />
       </button>
     </>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import Window from './Window'
 
 export interface DialogRequest {
@@ -60,7 +61,7 @@ function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => v
       <div className="dialog-buttons">
         {!request.noCancel && (
           <button ref={cancelRef} onClick={onClose}>
-            {request.cancelLabel ?? 'Cancel'}
+            {request.cancelLabel ?? t('Cancel')}
           </button>
         )}
         <button ref={confirmRef} className={request.danger ? 'danger' : 'primary'} onClick={confirm}>

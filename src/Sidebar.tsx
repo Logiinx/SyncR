@@ -76,20 +76,20 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
       <div className={'backdrop' + slideIn} onClick={onClose} />
       <aside className={'sidebar' + slideIn}>
         <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
-          <Gamepad2 size={15} /> Games
+          <Gamepad2 size={15} /> {t('Games')}
         </button>
         <button
           className={activeId === REMINDERS_TAB ? 'sidebar-games active' : 'sidebar-games'}
           onClick={onReminders}
         >
-          <Bell size={15} /> Reminders
+          <Bell size={15} /> {t('Reminders')}
         </button>
         {/* PC only (the phone has the Gmail app), once a Gmail account is added. The count:
             emails whose pop-up faded by itself, still unread ("missed") */}
         {(isTauri() || import.meta.env.DEV) && accounts.length > 0 && (
           <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
-            <Mail size={15} /> Mail
-            {missed.length > 0 && <span className="sidebar-count" title="Missed emails">{missed.length}</span>}
+            <Mail size={15} /> {t('Mail')}
+            {missed.length > 0 && <span className="sidebar-count" title={t('Missed emails')}>{missed.length}</span>}
           </button>
         )}
         <div className="game-search-bar sidebar-search">
@@ -99,16 +99,16 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Escape' && onQuery('')}
-            placeholder="Search notes"
+            placeholder={t('Search notes')}
             spellCheck={false}
           />
           {query && (
-            <button className="game-search-clear" onClick={() => onQuery('')} title="Clear">
+            <button className="game-search-clear" onClick={() => onQuery('')} title={t('Clear')}>
               <X size={15} />
             </button>
           )}
         </div>
-        {results?.length === 0 && <p className="sidebar-no-results">No notes found</p>}
+        {results?.length === 0 && <p className="sidebar-no-results">{t('No notes found')}</p>}
         <ul className="note-list" ref={listRef}>
           {(results ?? notes?.map((note) => ({ note, snippet: null })))?.map(({ note, snippet }) => {
             const preview = snippet ? snippet.map((part) => part.text).join('') : notePreview(note)
@@ -125,7 +125,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
                   <span className="note-date">{formatDate(note.updatedAt)}</span>
                   <span className="note-title" title={noteTitle(note)}>
                     {/* A conflict copy made by sync: open it to compare it with the original */}
-                    {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label="Conflict copy" />}
+                    {note.conflictOf && <TriangleAlert size={13} className="conflict-mark" aria-label={t('Conflict copy')} />}
                     {noteTitle(note)}
                   </span>
                   <span className="note-preview" title={preview}>
@@ -138,7 +138,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         </ul>
         <div className="sidebar-footer">
           <button className="footer-button" onClick={onSettings}>
-            <Settings size={15} /> Settings
+            <Settings size={15} /> {t('Settings')}
           </button>
           {/* Check for updates: the result shows in the bar at the top; the loading ring while checking */}
           <button
@@ -149,10 +149,10 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
               await checkForUpdates()
               setChecking(false)
             }}
-            title="Check for updates"
-            aria-label="Check for updates"
+            title={t('Check for updates')}
+            aria-label={t('Check for updates')}
           >
-            {checking ? <Spinner label="Checking for updates" /> : <RefreshCw size={15} />}
+            {checking ? <Spinner label={t('Checking for updates')} /> : <RefreshCw size={15} />}
           </button>
         </div>
       </aside>
