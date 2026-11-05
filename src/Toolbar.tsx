@@ -4,13 +4,13 @@ import {
   Baseline,
   Bold,
   Check,
+  Copy,
   Ellipsis,
   FoldVertical,
   History,
   IndentIncrease,
   ImageIcon,
   Italic,
-  Link,
   ListTodo,
   Pin,
   Redo2,
@@ -164,7 +164,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
     { label: 'Separate lines', icon: Rows3, show: state.hasLineBreaks, onClick: () => splitLineBreaks(editor) },
     { label: 'Align under ">"', icon: IndentIncrease, show: state.canAlign, onClick: alignUnder },
     { label: 'Table', icon: Table, show: true, onClick: insertTable },
-    { label: 'Copy link to this spot', icon: Link, show: true, onClick: copyLink },
+    { label: 'Copy link to this spot', icon: Copy, show: true, onClick: copyLink },
     { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
     { label: 'History', icon: History, show: historyAvailable, divider: true, onClick: openHistory },
   ].map(({ show, ...item }) => ({ ...item, disabled: !show })) // grayed like the PC's toolbar, never hidden
@@ -281,7 +281,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
             <span className="toolbar-separator" />
   
             <ToolButton title="Copy a link to this spot (paste it in any note)" onClick={copyLink}>
-              {done === 'link' ? <Check size={ICON_SIZE} /> : <Link size={ICON_SIZE} />}
+              {done === 'link' ? <Check size={ICON_SIZE} /> : <Copy size={ICON_SIZE} />}
             </ToolButton>
             <ToolButton
               title="Pin to the Board (copies the selection into a priority card)"

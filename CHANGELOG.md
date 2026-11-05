@@ -17,7 +17,7 @@ All notable changes to SyncR. Newest version first.
 
 **Notes**
 - **Improved:** The text color button has a new icon, the same in notes and in Board cards.
-- **Fixed:** Small fixes: on the phone, a color picked with no text selected was forgotten.
+- **Fixed:** Small fixes: a color picked with no text selected on the phone; table and copy-link icons.
 
 ## [0.43.0] - 2026-11-05
 

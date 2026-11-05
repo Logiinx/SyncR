@@ -6,7 +6,7 @@ import type { MenuItem } from './ContextMenu'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
 // Groups: Move to … ("Start playing" for Playing) | Library: how it ended | priority, price alert,
-// Board (priority first, like a Board card's menu) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
+// Board (priority first) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
 // With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
 export function gameMenuItems(
   game: Game,
