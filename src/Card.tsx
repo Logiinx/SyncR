@@ -308,8 +308,9 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
           {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
           <button
             className="card-more"
-            // Keep editing: the menu's "Text color…" needs the selection or cursor
-            onMouseDown={(event) => event.preventDefault()}
+            // This card is being edited: keep editing, the menu's "Text color…" needs the selection
+            // or cursor (another card's "⋯" ends that editing, like any click elsewhere)
+            onMouseDown={(event) => editing && event.preventDefault()}
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect()
               setMenu({ x: box.left, y: box.bottom + 4, editing })
