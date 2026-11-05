@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-11-05
+
 **Board**
 - **New:** Text color in a card's right-click menu, available while you edit the card.
 - **Improved:** On the PC, a card's text color button stays hidden until the mouse nears the corner.
