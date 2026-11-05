@@ -13,6 +13,7 @@ import { loadSecrets } from './secrets'
 import { prepareLocalDb, receiveLocalKey } from './localDb'
 import KeyMissing from './KeyMissing'
 import LockScreen from './LockScreen'
+import { followLanguageChoice } from './language'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -41,12 +42,16 @@ void loadSecrets().then(() => prepareLocalDb(isPopup)).then(async (state) => {
   // Side panels slide in only when opened, not when the app starts with them open (useSlideIn)
   const ready = () => setTimeout(() => document.documentElement.classList.add('ready'), 1000)
   const showApp = () => {
+    followLanguageChoice()
     root.render(<StrictMode><App /></StrictMode>)
     ready()
   }
   if (state === 'locked') root.render(<StrictMode><LockScreen onUnlocked={showApp} /></StrictMode>)
   else if (state === 'key-missing') root.render(<StrictMode><KeyMissing /></StrictMode>)
-  else if (isPopup) root.render(<StrictMode><ReminderPopup /></StrictMode>)
+  else if (isPopup) {
+    followLanguageChoice()
+    root.render(<StrictMode><ReminderPopup /></StrictMode>)
+  }
   if (state === 'ready' && !isPopup) showApp()
   else if (state !== 'locked') ready()
 })

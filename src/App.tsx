@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLanguage } from './i18n'
 import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
@@ -36,6 +37,7 @@ const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id === MAIL_TAB
 
 function App() {
+  useLanguage()
   // Remembered after a restart (per device)
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)

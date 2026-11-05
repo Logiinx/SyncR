@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useLanguage } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -20,6 +21,7 @@ import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWi
 // ?view=reminder-popup, see main.tsx). Shows the due reminders and new emails, plays a sound
 // for new ones, sizes the window to fit them, and sends button clicks to the main window.
 function ReminderPopup() {
+  useLanguage()
   const due = useDueReminders()
   const mails = useMailAlerts()
   useGmailAccounts() // redraws the cards when an account's color changes

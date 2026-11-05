@@ -62,6 +62,8 @@ import PinDialog, { type PinDialogMode } from './PinDialog'
 import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
+import { FRENCH_READY, t, validChoice } from './i18n'
+import { saveLanguageChoice, useLanguageChoice } from './language'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
 // setting one row: name on the left, its control on the right. The Accounts card shows how
@@ -156,6 +158,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
   const gmailAccounts = useGmailAccounts()
   const allDayAlert = useAllDayAlert()
+  const languageChoice = useLanguageChoice()
   const instant = useInstantStatus()
   const proxyStatus = useProxyStatus(useConnection() ?? null)
   const steam = useSteamProfile()
@@ -391,6 +394,18 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       </SettingsCard>
 
       <SettingsCard icon={AppWindow} title="App">
+        {FRENCH_READY && (
+          <SettingRow label={<>{t('Language')} <Synced /></>}>
+            {languageChoice !== undefined && (
+              <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
+                <option value="device">{t('Device language')}</option>
+                {/* Each in its own language, so it can be found from the other one */}
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+              </select>
+            )}
+          </SettingRow>
+        )}
         <SettingRow label="App scaling" value={`${scale} %`}>
           <RulerSlider
             min={SCALE_MIN}

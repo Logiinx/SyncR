@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLanguage } from './i18n'
 import { KeyRound, Lock, LockOpen } from 'lucide-react'
 import WindowControls from './WindowControls'
 import SecretField from './SecretField'
@@ -15,6 +16,7 @@ import { changePin, MAX_TRIES, MIN_PIN_LENGTH, turnPinOff, unlockWithPassphrase,
 type Step = 'pin' | 'passphrase' | 'new-pin'
 
 function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
+  useLanguage()
   const [step, setStep] = useState<Step>(wrongTries() >= MAX_TRIES ? 'passphrase' : 'pin')
   const [value, setValue] = useState('')
   const [repeat, setRepeat] = useState('')

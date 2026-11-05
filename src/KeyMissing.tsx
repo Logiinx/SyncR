@@ -1,9 +1,11 @@
 import Dialog from './Dialog'
+import { useLanguage } from './i18n'
 import { startFresh } from './localDb'
 
 // Shown instead of the app when the notes on this PC are sealed (sealing.ts) but Windows didn't
 // give back their key (localDb.ts), e.g. after Windows was reinstalled. "Try again" (or closing it) reloads.
 function KeyMissing() {
+  useLanguage()
   let starting = false
   return (
     <Dialog
