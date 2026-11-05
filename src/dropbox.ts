@@ -3,9 +3,10 @@
 // on the PC).
 
 import { DROPBOX_SECRET, getSecret, setSecret } from './secrets'
+import { t } from './i18n'
 import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind } from './signIn'
 
-const APP_KEY = '5600l0im00ni2so'
+const APP_KEY = '5600l0im00ni2so' // i18n-ok
 const VERIFIER_KEY = 'syncr.dropbox.verifier'
 
 // A request that hangs longer than this fails, so a dead connection (e.g. after the PC slept)
@@ -25,7 +26,7 @@ const active = new Set<{ startedAt: number; controller: AbortController }>()
 async function request(url: string, init: RequestInit, bytes = 0) {
   const controller = new AbortController()
   const entry = { startedAt: Date.now(), controller }
-  const timeout = new DOMException('Dropbox is not answering', 'TimeoutError')
+  const timeout = new DOMException(t('Dropbox is not answering'), 'TimeoutError')
   let timer = window.setTimeout(() => controller.abort(timeout), timeoutFor(bytes))
   active.add(entry)
   try {
@@ -55,7 +56,7 @@ export function cancelStuckRequests() {
   let cancelled = false
   for (const entry of active) {
     if (Date.now() - entry.startedAt < STUCK_MS) continue
-    entry.controller.abort(new DOMException('Dropbox request cancelled', 'AbortError'))
+    entry.controller.abort(new DOMException('Dropbox request cancelled', 'AbortError')) // i18n-ok
     active.delete(entry)
     cancelled = true
   }
@@ -139,7 +140,7 @@ export async function finishConnect(): Promise<string | null> {
 
   if (error) return error // Dropbox's own words
   // Not the latest sign-in started here (an older tab, or a link from someone else)
-  if (!verifier || !ownState) return 'it expired'
+  if (!verifier || !ownState) return t('it expired')
 
   const res = await request('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
@@ -151,7 +152,7 @@ export async function finishConnect(): Promise<string | null> {
       redirect_uri: redirectUri(),
     }),
   })
-  if (!res.ok) return `Dropbox answered ${res.status}`
+  if (!res.ok) return t('Dropbox answered {status}', { status: res.status })
   const data = await res.json()
   saveAuth({
     refreshToken: data.refresh_token,
@@ -184,7 +185,7 @@ export async function disconnect() {
 // A valid access token, refreshed when it is (almost) expired.
 async function accessToken() {
   const auth = loadAuth()
-  if (!auth) throw new Error('Not connected to Dropbox')
+  if (!auth) throw new Error(t('Not connected to Dropbox'))
   if (auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now() + 60_000) {
     return auth.accessToken
   }
@@ -201,9 +202,9 @@ async function accessToken() {
     // Other errors (also 400s) may pass: keep the sign-in, sync tries again later.
     if ((await res.text()).includes('invalid_grant')) {
       saveAuth(null)
-      throw new Error('Dropbox sign-in expired. Please connect again.')
+      throw new Error(t('Dropbox sign-in expired. Please connect again.'))
     }
-    throw new Error(`Dropbox error (${res.status})`)
+    throw new Error(t('Dropbox error ({status})', { status: res.status }))
   }
   const data = await res.json()
   saveAuth({ ...auth, accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
@@ -217,7 +218,7 @@ async function authorizedPost(url: string, headers: Record<string, string>, body
   const send = async () =>
     request(
       url,
-      { method: 'POST', headers: { ...headers, Authorization: `Bearer ${await accessToken()}` }, body },
+      { method: 'POST', headers: { ...headers, Authorization: `Bearer ${await accessToken()}` }, body }, // i18n-ok
       typeof body === 'string' ? 0 : (body?.byteLength ?? 0),
     )
   let res = await send()
@@ -262,7 +263,7 @@ export async function api(endpoint: string, args?: unknown) {
     args !== undefined ? { 'Content-Type': 'application/json' } : {},
     args !== undefined ? JSON.stringify(args) : undefined,
   )
-  if (!res.ok) throw new Error(`Dropbox ${endpoint} failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) throw new Error(t('Dropbox {endpoint} failed ({status}): {details}', { endpoint, status: res.status, details: await res.text() }))
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }
@@ -279,7 +280,7 @@ export async function download(path: string): Promise<Uint8Array | null> {
     'Dropbox-API-Arg': JSON.stringify({ path }),
   })
   if (res.status === 409 && (await res.text()).includes('not_found')) return null
-  if (!res.ok) throw new Error(`Dropbox download failed (${res.status})`)
+  if (!res.ok) throw new Error(t('Dropbox download failed ({status})', { status: res.status }))
   return new Uint8Array(await res.arrayBuffer())
 }
 
@@ -303,7 +304,7 @@ export async function upload(
     ),
   )
   if (res.status === 409 && mode !== 'overwrite' && (await res.text()).includes('conflict')) return null
-  if (!res.ok) throw new Error(`Dropbox upload failed (${res.status})`)
+  if (!res.ok) throw new Error(t('Dropbox upload failed ({status})', { status: res.status }))
   const rev: string = (await res.json()).rev
   ownWrites.set(path.toLowerCase(), rev)
   return rev
@@ -371,7 +372,7 @@ export async function waitForChanges(cursor: string, signal: AbortSignal) {
     // Dropbox answers within 8 minutes (+ up to 90 s random delay); fail if it doesn't
     signal: AbortSignal.any([signal, AbortSignal.timeout(600_000)]),
   })
-  if (!res.ok) throw new Error(`Dropbox longpoll failed (${res.status})`)
+  if (!res.ok) throw new Error(t('Dropbox longpoll failed ({status})', { status: res.status }))
   const data = await res.json()
   return { changes: data.changes as boolean, backoff: (data.backoff as number | undefined) ?? 0 }
 }

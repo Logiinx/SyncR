@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { plural, t } from './i18n'
 import { Check, RefreshCw, Unplug } from 'lucide-react'
 import { getStatus, startAutoSync, stopAutoSync, subscribe, syncByUser } from './autoSync'
 import { currentZoom } from './appearance'
@@ -14,13 +15,13 @@ import { shortDate } from './dates'
 // "2 sent · 1 received · 1 conflict copy" (shown after a ✓)
 function describe(r: SyncResult) {
   const parts = [
-    r.uploaded && `${r.uploaded} sent`,
-    r.downloaded && `${r.downloaded} received`,
-    r.deleted && `${r.deleted} deleted`,
-    r.conflicts && `${r.conflicts} conflict ${r.conflicts === 1 ? 'copy' : 'copies'}`,
-    r.unreadable && `${r.unreadable} unreadable in Dropbox (skipped)`,
+    r.uploaded && plural(r.uploaded, '{n} sent|one', '{n} sent'),
+    r.downloaded && plural(r.downloaded, '{n} received|one', '{n} received'),
+    r.deleted && plural(r.deleted, '{n} deleted|one', '{n} deleted'),
+    r.conflicts && plural(r.conflicts, '{n} conflict copy', '{n} conflict copies'),
+    r.unreadable && plural(r.unreadable, '{n} unreadable in Dropbox (skipped)|one', '{n} unreadable in Dropbox (skipped)'),
   ].filter(Boolean)
-  return parts.length ? parts.join(' · ') : 'Up to date'
+  return parts.length ? parts.join(' · ') : t('Up to date')
 }
 
 // A short message under the button. `ok`: the result of a sync the user started (gets a ✓).
@@ -45,13 +46,13 @@ function placeUnder(button: HTMLElement) {
 // "just now", "5 min ago", "3 h ago", "yesterday", otherwise "14 Oct 2026"
 function timeAgo(time: number) {
   const minutes = Math.floor((Date.now() - time) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`
+  if (minutes < 1) return t('just now')
+  if (minutes < 60) return t('{n} min ago', { n: minutes })
+  if (minutes < 24 * 60) return t('{n} h ago', { n: Math.floor(minutes / 60) })
   const date = new Date(time)
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) return 'yesterday'
+  if (date.toDateString() === yesterday.toDateString()) return t('yesterday')
   return shortDate(time)
 }
 
@@ -184,19 +185,19 @@ function SyncButton() {
   const ago = lastSuccessAt ? timeAgo(lastSuccessAt) : null
   // Hover info: what's going on, then a dim hint about what a click does
   const [info, hint] = signInError
-    ? [`Dropbox sign-in failed: ${signInError}`, 'Click to try again']
+    ? [t('Dropbox sign-in failed: {error}', { error: signInError }), t('Click to try again')]
     : !connected
-      ? ['Dropbox not connected', 'Click to connect']
+      ? [t('Dropbox not connected'), t('Click to connect')]
       : locked
-        ? ['Passphrase needed', 'Click to enter it']
+        ? [t('Passphrase needed'), t('Click to enter it')]
         : (
             {
-              off: ['Dropbox connected', ''],
-              synced: [`Synced${ago ? ` · ${ago}` : ''}`, ''],
-              syncing: ['Syncing…', ''],
-              pending: ['Changes waiting to sync', ''],
-              offline: [`Offline${ago ? ` · last synced ${ago}` : ''}`, "Changes will sync when you're back online"],
-              error: [`Sync error: ${errorMessage}`, 'Retrying every minute. Click to try now.'],
+              off: [t('Dropbox connected'), ''],
+              synced: [ago ? `${t('Synced')} · ${ago}` : t('Synced'), ''],
+              syncing: [t('Syncing…'), ''],
+              pending: [t('Changes waiting to sync'), ''],
+              offline: [ago ? `${t('Offline')} · ${t('last synced {when}', { when: ago })}` : t('Offline'), t("Changes will sync when you're back online")],
+              error: [t('Sync error: {error}', { error: errorMessage ?? '' }), t('Retrying every minute. Click to try now.')],
             } as const
           )[status]
 
@@ -237,7 +238,7 @@ function SyncButton() {
       {hover && !menu && !message && (
         <div className="sync-info" style={hover}>
           <div>{info}</div>
-          <div className="sync-info-hint">{hint || 'Click to sync · right-click for more'}</div>
+          <div className="sync-info-hint">{hint || t('Click to sync · right-click for more')}</div>
         </div>
       )}
       {menu && (
@@ -247,13 +248,13 @@ function SyncButton() {
           onClose={() => setMenu(null)}
           items={[
             {
-              label: 'Sync now',
+              label: t('Sync now'),
               icon: RefreshCw,
               disabled: !unlocked,
-              hint: unlocked ? undefined : 'Enter your passphrase first',
+              hint: unlocked ? undefined : t('Enter your passphrase first'),
               onClick,
             },
-            { label: 'Disconnect Dropbox', icon: Unplug, danger: true, onClick: onDisconnect },
+            { label: t('Disconnect Dropbox'), icon: Unplug, danger: true, onClick: onDisconnect },
           ]}
         />
       )}
@@ -269,7 +270,7 @@ function SyncButton() {
       )}
       {askPassphrase && !unlocked && connected && (
         <PassphraseDialog
-          note={keyMoved ? 'SyncR now keeps the sync key encrypted by Windows. Enter your passphrase once to set it up.' : undefined}
+          note={keyMoved ? t('SyncR now keeps the sync key encrypted by Windows. Enter your passphrase once to set it up.') : undefined}
           onClose={() => setAskPassphrase(false)}
         />
       )}

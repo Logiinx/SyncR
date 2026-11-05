@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { createPassphrase, hasPassphrase, MIN_PASSPHRASE_LENGTH, unlock } from './crypto'
 import Window from './Window'
 import Spinner from './Spinner'
@@ -31,11 +32,11 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
     setError(null)
     if (mode === 'create') {
       if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-        setError(`Use at least ${MIN_PASSPHRASE_LENGTH} characters`)
+        setError(t('Use at least {n} characters', { n: MIN_PASSPHRASE_LENGTH }))
         return
       }
       if (passphrase !== repeat) {
-        setError('The two passphrases are different')
+        setError(t('The two passphrases are different'))
         return
       }
     }
@@ -43,7 +44,7 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
     try {
       if (mode === 'create') await createPassphrase(passphrase)
       else if (!(await unlock(passphrase))) {
-        setError('Wrong passphrase')
+        setError(t('Wrong passphrase'))
         setBusy(false)
         inputRef.current?.select()
         return
@@ -60,33 +61,32 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
   return (
     <Window
       className="dialog"
-      label="Passphrase"
+      label={t('Passphrase')}
       onClose={onClose}
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
     >
-      <h2>{mode === 'create' ? 'Create a passphrase' : 'Enter your passphrase'}</h2>
+      <h2>{mode === 'create' ? t('Create a passphrase') : t('Enter your passphrase')}</h2>
       {mode === 'loading' && !error && (
         <p className="loading-line">
-          <Spinner /> Checking Dropbox…
+          <Spinner /> {t('Checking Dropbox…')}
         </p>
       )}
       {mode === 'create' && (
         <p>
-          Your notes are encrypted with it before they go to Dropbox. You'll enter it once on each device.
-          If you forget it, the copies in Dropbox can't be read. Your notes on each device are still fine.
+          {t("Your notes are encrypted with it before they go to Dropbox. You'll enter it once on each device. If you forget it, the copies in Dropbox can't be read. Your notes on each device are still fine.")}
         </p>
       )}
-      {mode === 'unlock' && <p>{note ?? 'The passphrase you created on your other device.'}</p>}
+      {mode === 'unlock' && <p>{note ?? t('The passphrase you created on your other device.')}</p>}
 
       {mode !== 'loading' && (
         <>
           <SecretField
             inputRef={inputRef}
             value={passphrase}
-            placeholder="Passphrase"
+            placeholder={t('Passphrase')}
             autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
             onChange={setPassphrase}
             visible={visible}
@@ -96,7 +96,7 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
             <input
               type={type}
               value={repeat}
-              placeholder="Repeat passphrase"
+              placeholder={t('Repeat passphrase')}
               autoComplete="new-password"
               onChange={(e) => setRepeat(e.target.value)}
             />
@@ -108,10 +108,10 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
 
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>
-          Not now
+          {t('Not now')}
         </button>
         <button type="submit" className="primary" disabled={busy || mode === 'loading'}>
-          {busy ? 'Working…' : mode === 'create' ? 'Create' : 'Unlock'}
+          {busy ? t('Working…') : mode === 'create' ? t('Create') : t('Unlock')}
         </button>
       </div>
     </Window>

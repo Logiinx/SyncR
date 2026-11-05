@@ -1,4 +1,5 @@
 import { cancelStuckRequests, isConnected, waitForChanges } from './dropbox'
+import { plural, t } from './i18n'
 import { read, write } from './localState'
 import { endAllSessions } from './noteHistory'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
@@ -97,11 +98,11 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
     if (!manual && result.conflicts) {
-      notify(`${result.conflicts} conflict ${result.conflicts === 1 ? 'copy' : 'copies'} created.`)
+      notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
     }
     // Unreadable files are skipped every sync: told once, and again if their number changes
     if (!manual && result.unreadable && result.unreadable !== lastUnreadable) {
-      notify(`${result.unreadable} ${result.unreadable === 1 ? 'item' : 'items'} in Dropbox couldn't be read and ${result.unreadable === 1 ? 'was' : 'were'} skipped (saved with another passphrase?).`)
+      notify(plural(result.unreadable, "{n} item in Dropbox couldn't be read and was skipped (saved with another passphrase?).", "{n} items in Dropbox couldn't be read and were skipped (saved with another passphrase?)."))
     }
     lastUnreadable = result.unreadable
     poll()
@@ -109,7 +110,7 @@ async function run(manual = false): Promise<SyncResult | undefined> {
   } catch (e) {
     const message =
       e instanceof DOMException && e.name === 'TimeoutError'
-        ? 'Dropbox is not answering'
+        ? t('Dropbox is not answering')
         : e instanceof Error
           ? e.message
           : String(e)
@@ -123,7 +124,7 @@ async function run(manual = false): Promise<SyncResult | undefined> {
       schedule(RETRY_SOON_MS)
     } else if (e instanceof TypeError || !navigator.onLine) {
       // fetch() throws TypeError when there's no connection
-      if (manual) notify("You're offline. Changes will sync when you're back online.")
+      if (manual) notify(t("You're offline. Changes will sync when you're back online."))
       setStatus('offline')
       schedule(RETRY_LATER_MS)
     } else {

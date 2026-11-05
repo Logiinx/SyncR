@@ -1,4 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core'
+import { t } from './i18n'
 import { db } from './db'
 import { download, upload } from './dropbox'
 import { getSecret, setSecret, SYNC_KEY_SECRET } from './secrets'
@@ -12,7 +13,7 @@ import { refreshPassphraseBox } from './pinLock' // (pinLock.ts imports this fil
 
 const CRYPTO_FILE = '/crypto.json'
 const ITERATIONS = 600_000
-const CHECK_TEXT = 'SyncR passphrase check'
+const CHECK_TEXT = 'SyncR passphrase check' // i18n-ok: never shown, and must stay the same on every device
 
 // Stored in Dropbox, not secret. "check" is CHECK_TEXT encrypted, to detect a wrong passphrase.
 interface CryptoFile {
@@ -88,7 +89,7 @@ async function saveKey(key: CryptoKey | null) {
     const raw = key && toBase64(new Uint8Array(await crypto.subtle.exportKey('raw', key)))
     // Not stored (Windows refused): works until SyncR closes; said, so the next ask isn't a mystery
     if (!(await setSecret(SYNC_KEY_SECRET, raw)) && raw) {
-      const message = "Unlocked for now, but Windows couldn't store the sync key: SyncR will ask for the passphrase again at the next start."
+      const message = t("Unlocked for now, but Windows couldn't store the sync key: SyncR will ask for the passphrase again at the next start.")
       window.dispatchEvent(new CustomEvent('sync-notice', { detail: message })) // SyncButton
     }
     await db.keys.delete('sync') // an old one (up to v0.26), see dropOldKey
@@ -122,7 +123,7 @@ export async function createPassphrase(passphrase: string) {
   const file: CryptoFile = { version: 1, salt: toBase64(salt), iterations: ITERATIONS, check: toBase64(check) }
   // "add" fails instead of overwriting, in case another device created one just now
   const created = await upload(CRYPTO_FILE, new TextEncoder().encode(JSON.stringify(file)), 'add')
-  if (!created) throw new Error('A passphrase was just created on another device. Close this and enter that one.')
+  if (!created) throw new Error(t('A passphrase was just created on another device. Close this and enter that one.'))
   await saveKey(key)
   refreshPinLock(key, file)
 }
@@ -155,7 +156,7 @@ export async function passphraseSettings() {
 // Returns false if the passphrase is wrong.
 export async function unlock(passphrase: string) {
   const raw = await download(CRYPTO_FILE)
-  if (!raw) throw new Error('No passphrase found in Dropbox')
+  if (!raw) throw new Error(t('No passphrase found in Dropbox'))
   const file: CryptoFile = JSON.parse(new TextDecoder().decode(raw))
   const key = await deriveKey(passphrase, fromBase64(file.salt), file.iterations)
   try {
