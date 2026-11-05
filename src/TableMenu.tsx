@@ -6,7 +6,6 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalEnd,
   BetweenVerticalStart,
-  Minus,
   PanelTop,
   Trash2,
 } from 'lucide-react'
@@ -60,8 +59,8 @@ function TableMenu({ editor, x, y, onClose }: Props) {
         <button onClick={run(() => chain().addColumnBefore().run())}><BetweenVerticalStart size={15} className="menu-icon" />Add column left</button>
         <button onClick={run(() => chain().addColumnAfter().run())}><BetweenVerticalEnd size={15} className="menu-icon" />Add column right</button>
         <div className="menu-separator" />
-        <button onClick={run(() => chain().deleteRow().run())}><Minus size={15} className="menu-icon" />Delete row</button>
-        <button onClick={run(() => chain().deleteColumn().run())}><Minus size={15} className="menu-icon" />Delete column</button>
+        <button onClick={run(() => chain().deleteRow().run())}><Trash2 size={15} className="menu-icon" />Delete row</button>
+        <button onClick={run(() => chain().deleteColumn().run())}><Trash2 size={15} className="menu-icon" />Delete column</button>
         <div className="menu-separator" />
         <button onClick={run(() => chain().toggleHeaderRow().run())}>
           <PanelTop size={15} className="menu-icon" />
