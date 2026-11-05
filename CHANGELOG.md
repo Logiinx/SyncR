@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** After coloring text in a card, you can now change the color of what you type next.
 
 **App**
+- **Improved:** Menu items you can't use right now are grayed out instead of disappearing.
 - **Fixed:** Menus opened near the window's edge now stay fully on screen.
 
 **Notes**

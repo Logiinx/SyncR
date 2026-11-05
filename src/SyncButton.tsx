@@ -246,7 +246,13 @@ function SyncButton() {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            ...(unlocked ? [{ label: 'Sync now', icon: RefreshCw, onClick }] : []),
+            {
+              label: 'Sync now',
+              icon: RefreshCw,
+              disabled: !unlocked,
+              hint: unlocked ? undefined : 'Enter your passphrase first',
+              onClick,
+            },
             { label: 'Disconnect Dropbox', icon: Unplug, danger: true, onClick: onDisconnect },
           ]}
         />

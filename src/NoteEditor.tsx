@@ -234,7 +234,13 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
           onClose={() => setImageMenu(null)}
           items={[
             // Not while the image is still downloading (nothing to copy yet)
-            ...(imageMenu.src ? [{ label: 'Copy image', icon: Copy, onClick: () => copyImage(imageMenu.src) }] : []),
+            {
+              label: 'Copy image',
+              icon: Copy,
+              disabled: !imageMenu.src,
+              hint: imageMenu.src ? undefined : 'Still downloading',
+              onClick: () => copyImage(imageMenu.src),
+            },
             { label: 'Delete image', icon: Trash2, danger: true, onClick: () => deleteImage(imageMenu.pos) },
           ]}
         />

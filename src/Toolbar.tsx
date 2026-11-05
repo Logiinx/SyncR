@@ -167,7 +167,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
     { label: 'Copy link to this spot', icon: Link, show: true, onClick: copyLink },
     { label: 'Pin to Board', icon: Pin, show: state.hasSelection, onClick: pin },
     { label: 'History', icon: History, show: historyAvailable, divider: true, onClick: openHistory },
-  ].filter((item) => item.show)
+  ].map(({ show, ...item }) => ({ ...item, disabled: !show })) // grayed like the PC's toolbar, never hidden
 
   return (
     <>

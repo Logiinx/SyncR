@@ -339,7 +339,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               icon: Baseline,
               divider: true,
               disabled: !menu.editing,
-              hint: menu.editing ? undefined : 'While editing the card',
+              hint: menu.editing ? undefined : 'While editing',
               keepFocus: true,
               onClick: () => setMenu({ ...menu, colors: 'text' }),
             },

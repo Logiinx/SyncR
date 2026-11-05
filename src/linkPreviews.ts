@@ -401,9 +401,15 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
   const settings = loadLinkPreviewSettings()
   if (!card && !settings.plain.includes(href)) return null
   const items: MenuItem[] = [{ label: 'Copy link', icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
-  if (card && canEdit) {
+  if (card) {
     const end = editor.view.posAtDOM(card, 0) // the card sits at its link's end
-    items.push({ label: 'Edit link', icon: Pencil, onClick: () => editLink(editor, end, href) })
+    items.push({
+      label: 'Edit link',
+      icon: Pencil,
+      disabled: !canEdit,
+      hint: canEdit ? undefined : 'While editing',
+      onClick: () => editLink(editor, end, href),
+    })
   }
   items.push(
     card
