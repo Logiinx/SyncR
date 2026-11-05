@@ -10,9 +10,6 @@ export type TextKey = keyof typeof fr
 export type Language = 'en' | 'fr'
 export type LanguageChoice = 'device' | Language
 
-// Off in released apps until every screen is translated: they stay in English, without the setting.
-export const FRENCH_READY = import.meta.env.DEV
-
 const CHOICE_KEY = 'syncr.language' // a copy on this device: the lock screen shows before the database opens
 
 export function validChoice(value: unknown): LanguageChoice {
@@ -20,7 +17,6 @@ export function validChoice(value: unknown): LanguageChoice {
 }
 
 function resolve(picked: LanguageChoice): Language {
-  if (!FRENCH_READY) return 'en'
   if (picked !== 'device') return picked
   return navigator.language.toLowerCase().startsWith('fr') ? 'fr' : 'en'
 }

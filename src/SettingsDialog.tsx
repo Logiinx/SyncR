@@ -63,7 +63,7 @@ import PinDialog, { type PinDialogMode } from './PinDialog'
 import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
-import { FRENCH_READY, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
+import { plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
 import { richText } from './richText'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
@@ -393,18 +393,16 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       </SettingsCard>
 
       <SettingsCard icon={AppWindow} title={t('App')}>
-        {FRENCH_READY && (
-          <SettingRow label={<>{t('Language')} <Synced /></>}>
-            {languageChoice !== undefined && (
-              <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
-                <option value="device">{t('Device language')}</option>
-                {/* Each in its own language, so it can be found from the other one */}
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-              </select>
-            )}
-          </SettingRow>
-        )}
+        <SettingRow label={<>{t('Language')} <Synced /></>}>
+          {languageChoice !== undefined && (
+            <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
+              <option value="device">{t('Device language')}</option>
+              {/* Each in its own language, so it can be found from the other one */}
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+            </select>
+          )}
+        </SettingRow>
         <SettingRow label={t('App scaling')} value={`${scale} %`}>
           <RulerSlider
             min={SCALE_MIN}

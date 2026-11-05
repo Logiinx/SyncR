@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Ajout** du français dans toute l’application : à choisir dans Paramètres → Application → Langue (suit l’appareil par défaut)
+
 ## [0.44.0] - 2026-11-05
 
 **Board**
