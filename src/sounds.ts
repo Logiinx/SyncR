@@ -1,4 +1,5 @@
 import { loadBackground } from './desktop'
+import { textKey, type TextKey } from './i18n'
 
 // Short sounds for pop-ups (reminders; emails later), made with Web Audio (no sound files
 // needed). Chosen per kind in Settings; "None" is silent. Also silent when the browser
@@ -7,17 +8,17 @@ import { loadBackground } from './desktop'
 export type SoundId = 'chime' | 'soft' | 'ping' | 'double' | 'drop' | 'glass' | 'wood' | 'rise' | 'bubble' | 'none'
 
 // In the order Settings lists them
-export const SOUNDS: { id: SoundId; name: string }[] = [
-  { id: 'chime', name: 'Chime' },
-  { id: 'soft', name: 'Soft' },
-  { id: 'ping', name: 'Ping' },
-  { id: 'double', name: 'Double ping' },
-  { id: 'drop', name: 'Drop' },
-  { id: 'glass', name: 'Glass' },
-  { id: 'wood', name: 'Wood' },
-  { id: 'rise', name: 'Rise' },
-  { id: 'bubble', name: 'Bubble' },
-  { id: 'none', name: 'None' },
+export const SOUNDS: { id: SoundId; name: TextKey }[] = [
+  { id: 'chime', name: textKey('Chime') },
+  { id: 'soft', name: textKey('Soft') },
+  { id: 'ping', name: textKey('Ping') },
+  { id: 'double', name: textKey('Double ping') },
+  { id: 'drop', name: textKey('Drop') },
+  { id: 'glass', name: textKey('Glass') },
+  { id: 'wood', name: textKey('Wood') },
+  { id: 'rise', name: textKey('Rise') },
+  { id: 'bubble', name: textKey('Bubble') },
+  { id: 'none', name: textKey('None') },
 ]
 
 let audio: AudioContext | null = null

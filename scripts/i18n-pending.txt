@@ -33,7 +33,6 @@ src/PriceWatchView.tsx
 src/ReminderAlerts.tsx
 src/RemindersView.tsx
 src/SecretField.tsx
-src/SettingsDialog.tsx
 src/Sidebar.tsx
 src/Spinner.tsx
 src/SteamImport.tsx
@@ -44,7 +43,6 @@ src/Toolbar.tsx
 src/UpdateBanner.tsx
 src/WhatsNew.tsx
 src/WindowControls.tsx
-src/appearance.ts
 src/autoSync.ts
 src/calendarEvents.ts
 src/cardColors.ts
@@ -55,6 +53,7 @@ src/dragSections.ts
 src/dropbox.ts
 src/editions.ts
 src/eventAlerts.ts
+src/gameExtras.ts
 src/gameMenu.ts
 src/games.ts
 src/gmail.ts

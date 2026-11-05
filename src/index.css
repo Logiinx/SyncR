@@ -3680,6 +3680,8 @@ button {
 
 /* Settings: a button on the right of a setting ("Edit…") */
 .setting-button {
+  flex-shrink: 0;
+  white-space: nowrap; /* longer French labels stay on one line */
   padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;

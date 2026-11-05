@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { locale } from './i18n'
+import { locale, textKey } from './i18n'
 import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
@@ -41,13 +41,13 @@ export interface LinkPreview {
 // ---------- Settings (per device) ----------
 
 // off · B one line · C card (two lines) · D large card (Discord-like)
-export const CARD_STYLES = { off: 'Off', line: 'One line', card: 'Card', large: 'Large card' }
+export const CARD_STYLES = { off: textKey('Off'), line: textKey('One line'), card: textKey('Card'), large: textKey('Large card') }
 export type CardStyle = keyof typeof CARD_STYLES
 // The card shown while the mouse is on a link (PC): off · small (the text the inline card cut) · large
-export const HOVER_SIZES = { off: 'Off', small: 'Small', large: 'Large' }
+export const HOVER_SIZES = { off: textKey('Off'), small: textKey('Small'), large: textKey('Large') }
 export type HoverSize = keyof typeof HOVER_SIZES
 // 2+ lines in a row holding only a link card: as today (list), side by side, as chips, or folded
-export const GROUP_STYLES = { list: 'List', grid: 'Grid', chips: 'Chips', folded: 'Folded' }
+export const GROUP_STYLES = { list: textKey('List'), grid: textKey('Grid'), chips: textKey('Chips'), folded: textKey('Folded') }
 export type GroupStyle = keyof typeof GROUP_STYLES
 
 export interface LinkPreviewSettings {

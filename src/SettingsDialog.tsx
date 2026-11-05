@@ -48,6 +48,7 @@ import {
   DEFAULTS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  fontName,
   FONTS,
   loadAppearance,
   saveAppearance,
@@ -62,7 +63,8 @@ import PinDialog, { type PinDialogMode } from './PinDialog'
 import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
-import { FRENCH_READY, t, validChoice } from './i18n'
+import { FRENCH_READY, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
+import { richText } from './richText'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
@@ -131,13 +133,14 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
   const [rulesSummary, setRulesSummary] = useState('')
+  const language = useLanguage()
   useEffect(() => {
     if (showRules) return
     loadRuleGroups().then((groups) => {
       const on = groups.filter((g) => g.enabled).flatMap((g) => g.rules.filter((r) => r.enabled && r.words.trim()))
-      setRulesSummary(groups.length === 0 ? 'None yet' : `${on.length} on`)
+      setRulesSummary(groups.length === 0 ? t('None yet') : plural(on.length, '{n} on|one', '{n} on'))
     })
-  }, [showRules])
+  }, [showRules, language])
 
   // "What's new" also opens in place of Settings, like the color rules
   const [showWhatsNew, setShowWhatsNew] = useState(false)
@@ -175,8 +178,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   const cards = (
     <div className="settings-cards">
-      <SettingsCard icon={NotebookPen} title="Notes">
-        <SettingRow label="Font">
+      <SettingsCard icon={NotebookPen} title={t('Notes')}>
+        <SettingRow label={t('Font')}>
           {/* Each choice is shown in its own font */}
           <select
             value={appearance.font}
@@ -185,41 +188,39 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           >
             {(Object.keys(FONTS) as FontId[]).map((id) => (
               <option key={id} value={id} style={{ fontFamily: FONTS[id].css }}>
-                {FONTS[id].name}
+                {fontName(id)}
               </option>
             ))}
           </select>
         </SettingRow>
         {/* The note behind the dialog changes while dragging */}
-        <SettingRow label="Text size" value={`${appearance.fontSize} px`}>
+        <SettingRow label={t('Text size')} value={`${appearance.fontSize} px`}>
           <RulerSlider
             min={FONT_SIZE_MIN}
             max={FONT_SIZE_MAX}
             step={1}
             mark={DEFAULTS.fontSize}
             value={appearance.fontSize}
-            aria-label="Text size"
+            aria-label={t('Text size')}
             onChange={(e) => update({ fontSize: Number(e.target.value) })}
           />
         </SettingRow>
-        <SettingRow label="Smart typography" value="“ ” — → … ½ ©">
+        <SettingRow label={t('Smart typography')} value="“ ” — → … ½ ©">
           <input
             type="checkbox"
             checked={editing.smartTypography}
             onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
           />
         </SettingRow>
-        <SettingRow label="Dates in the note list">
+        <SettingRow label={t('Dates in the note list')}>
           <input type="checkbox" checked={appearance.showDates} onChange={(e) => update({ showDates: e.target.checked })} />
         </SettingRow>
         <SettingRow
           label={
             <>
-              Link cards
-              <InfoTip label="About link cards">
-                A website link whose text is its address shows as a card with its title, description and
-                picture. A click opens it; put the cursor on it to edit the address. Links with their own
-                text stay as they are.
+              {t('Link cards')}
+              <InfoTip label={t('About link cards')}>
+                {t('A website link whose text is its address shows as a card with its title, description and picture. A click opens it; put the cursor on it to edit the address. Links with their own text stay as they are.')}
               </InfoTip>
             </>
           }
@@ -227,7 +228,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <select value={links.style} onChange={(e) => updateLinks({ style: e.target.value as CardStyle })}>
             {(Object.keys(CARD_STYLES) as CardStyle[]).map((id) => (
               <option key={id} value={id}>
-                {CARD_STYLES[id]}
+                {t(CARD_STYLES[id])}
               </option>
             ))}
           </select>
@@ -237,15 +238,15 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           <SettingRow
             label={
               <>
-                Hover card
-                <InfoTip label="About hover cards">Shown while the mouse is on a link card, and on links with their own text.</InfoTip>
+                {t('Hover card')}
+                <InfoTip label={t('About hover cards')}>{t('Shown while the mouse is on a link card, and on links with their own text.')}</InfoTip>
               </>
             }
           >
             <select value={links.hover} onChange={(e) => updateLinks({ hover: e.target.value as HoverSize })}>
               {(Object.keys(HOVER_SIZES) as HoverSize[]).map((id) => (
                 <option key={id} value={id}>
-                  {HOVER_SIZES[id]}
+                  {t(HOVER_SIZES[id])}
                 </option>
               ))}
             </select>
@@ -254,10 +255,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow
           label={
             <>
-              Link groups
-              <InfoTip label="About link groups">
-                2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips,
-                or folded into one line.
+              {t('Link groups')}
+              <InfoTip label={t('About link groups')}>
+                {t('2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips, or folded into one line.')}
               </InfoTip>
             </>
           }
@@ -269,27 +269,27 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           >
             {(Object.keys(GROUP_STYLES) as GroupStyle[]).map((id) => (
               <option key={id} value={id}>
-                {GROUP_STYLES[id]}
+                {t(GROUP_STYLES[id])}
               </option>
             ))}
           </select>
         </SettingRow>
-        <SettingRow label="Cards for">
+        <SettingRow label={t('Cards for')}>
           <select
             value={links.allSites ? 'all' : 'sites'}
             disabled={links.style === 'off' && links.hover === 'off'}
             onChange={(e) => updateLinks({ allSites: e.target.value === 'all' })}
           >
-            <option value="sites">These sites</option>
-            <option value="all">All links</option>
+            <option value="sites">{t('These sites')}</option>
+            <option value="all">{t('All links')}</option>
           </select>
         </SettingRow>
         <SettingRow
           className="settings-row-sites"
           label={
             <>
-              Sites
-              <InfoTip label="About sites">Links to these sites (and their subdomains) get a card. Separate them with commas.</InfoTip>
+              {t('Sites')}
+              <InfoTip label={t('About sites')}>{t('Links to these sites (and their subdomains) get a card. Separate them with commas.')}</InfoTip>
             </>
           }
         >
@@ -299,25 +299,24 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onChange={(sites) => updateLinks({ sites })}
           />
         </SettingRow>
-        <SettingRow label={<>Color rules <Synced /></>} value={rulesSummary}>
+        <SettingRow label={<>{t('Color rules')} <Synced /></>} value={rulesSummary}>
           <button className="setting-button" onClick={() => setShowRules(true)}>
-            Edit…
+            {t('Edit…')}
           </button>
         </SettingRow>
       </SettingsCard>
 
-      <SettingsCard icon={Bell} title="Alerts">
+      <SettingsCard icon={Bell} title={t('Alerts')}>
         {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
-        <SettingRow label="Reminder sound">
+        <SettingRow label={t('Reminder sound')}>
           <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
         </SettingRow>
         <SettingRow
           label={
             <>
-              All-day events <Synced />
-              <InfoTip label="About all-day alerts">
-                Google doesn't share its default alert for all-day events with apps. SyncR uses this one for
-                all-day events that have no alert it can see.
+              {t('All-day events')} <Synced />
+              <InfoTip label={t('About all-day alerts')}>
+                {t("Google doesn't share its default alert for all-day events with apps. SyncR uses this one for all-day events that have no alert it can see.")}
               </InfoTip>
             </>
           }
@@ -329,7 +328,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             >
               {ALL_DAY_ALERTS.map((minutes) => (
                 <option key={String(minutes)} value={minutes === null ? 'none' : String(minutes)}>
-                  {minutes === null ? 'No alert' : allDayAlertText(minutes)}
+                  {minutes === null ? t('No alert') : allDayAlertText(minutes)}
                 </option>
               ))}
             </select>
@@ -337,21 +336,21 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         </SettingRow>
         {mail && gmailAccounts.length > 0 && (
           <>
-            <SettingRow label="Email sound">
+            <SettingRow label={t('Email sound')}>
               <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
             </SettingRow>
             <SettingRow
               label={
                 <>
-                  Email pop-ups fade
-                  <InfoTip label="About fading">A faded email stays unread, as missed (Mail tab).</InfoTip>
+                  {t('Email pop-ups fade')}
+                  <InfoTip label={t('About fading')}>{t('A faded email stays unread, as missed (Mail tab).')}</InfoTip>
                 </>
               }
             >
               <select value={background.emailFade} onChange={(e) => updateBackground({ emailFade: Number(e.target.value) })}>
                 {FADE_CHOICES.map(({ seconds, name }) => (
                   <option key={seconds} value={seconds}>
-                    {seconds ? `after ${name}` : name}
+                    {seconds ? t('after {time}', { time: name }) : t('Never')}
                   </option>
                 ))}
               </select>
@@ -359,41 +358,41 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </>
         )}
         {mail && gmailAccounts.length === 0 && (
-          <SettingRow label="Emails">
+          <SettingRow label={t('Emails')}>
             <button className="version-link" onClick={() => showManage(true)}>
-              Add a Gmail account…
+              {t('Add a Gmail account…')}
             </button>
           </SettingRow>
         )}
       </SettingsCard>
 
-      <SettingsCard icon={Plug} title="Accounts">
-        <SettingRow label={<>Game search <Synced /></>}>
+      <SettingsCard icon={Plug} title={t('Accounts')}>
+        <SettingRow label={<>{t('Game search')} <Synced /></>}>
           <Status ok={proxyStatus.ok} text={proxyStatus.text} />
         </SettingRow>
         <SettingRow label="Steam">
-          <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? 'Not checked yet' : 'Not set up')} />
+          <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))} />
         </SettingRow>
         <SettingRow label="Google Calendar">
-          <Status ok={calendar} text={calendar ? `Connected${googleName() ? ` as ${googleName()}` : ''}` : 'Not connected'} />
+          <Status ok={calendar} text={calendar ? connectedText() : t('Not connected')} />
         </SettingRow>
         {mail && (
           <SettingRow label="Gmail">
             <Status
               ok={gmailAccounts.length > 0}
-              text={gmailAccounts.length === 0 ? 'No account yet'
-                : `${gmailAccounts.length} account${gmailAccounts.length > 1 ? 's' : ''}${instant.ok ? ' · instant mail on' : ''}`}
+              text={gmailAccounts.length === 0 ? t('No account yet')
+                : `${plural(gmailAccounts.length, '{n} account', '{n} accounts')}${instant.ok ? ` · ${t('instant mail on')}` : ''}`}
             />
           </SettingRow>
         )}
         <div className="settings-card-foot">
           <button className="setting-button" onClick={() => showManage(true)}>
-            Manage accounts…
+            {t('Manage accounts…')}
           </button>
         </div>
       </SettingsCard>
 
-      <SettingsCard icon={AppWindow} title="App">
+      <SettingsCard icon={AppWindow} title={t('App')}>
         {FRENCH_READY && (
           <SettingRow label={<>{t('Language')} <Synced /></>}>
             {languageChoice !== undefined && (
@@ -406,21 +405,21 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             )}
           </SettingRow>
         )}
-        <SettingRow label="App scaling" value={`${scale} %`}>
+        <SettingRow label={t('App scaling')} value={`${scale} %`}>
           <RulerSlider
             min={SCALE_MIN}
             max={SCALE_MAX}
             step={5}
             mark={DEFAULTS.scale}
             value={scale}
-            aria-label="App scaling"
+            aria-label={t('App scaling')}
             onChange={(e) => setScale(Number(e.target.value))}
             onPointerUp={applyScale}
             onKeyUp={applyScale}
             onBlur={applyScale}
           />
         </SettingRow>
-        <SettingRow label="Animations">
+        <SettingRow label={t('Animations')}>
           <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
         </SettingRow>
         {isTauri() && (
@@ -428,8 +427,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <SettingRow
               label={
                 <>
-                  <X size={13} aria-label="Close" /> hides SyncR in the tray
-                  <InfoTip label="About the tray">Keeps reminders working. Quit is in the tray menu.</InfoTip>
+                  <X size={13} aria-label={t('Close')} /> {t('hides SyncR in the tray')}
+                  <InfoTip label={t('About the tray')}>{t('Keeps reminders working. Quit is in the tray menu.')}</InfoTip>
                 </>
               }
             >
@@ -442,8 +441,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <SettingRow
               label={
                 <>
-                  Start with Windows
-                  <InfoTip label="About starting with Windows">When you sign in to Windows.</InfoTip>
+                  {t('Start with Windows')}
+                  <InfoTip label={t('About starting with Windows')}>{t('When you sign in to Windows.')}</InfoTip>
                 </>
               }
             >
@@ -457,8 +456,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <SettingRow
               label={
                 <>
-                  Start hidden in the tray
-                  <InfoTip label="About starting hidden">When started with Windows. Otherwise the window shows.</InfoTip>
+                  {t('Start hidden in the tray')}
+                  <InfoTip label={t('About starting hidden')}>{t('When started with Windows. Otherwise the window shows.')}</InfoTip>
                 </>
               }
             >
@@ -472,17 +471,17 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             <SettingRow
               label={
                 <>
-                  PIN lock
-                  <InfoTip label="About the PIN lock">
-                    {!pinOn && syncReady === false && 'Needs sync set up. '}
-                    Asks for a PIN when SyncR starts. Notes, sign-ins and the sync key stay locked until then.
+                  {t('PIN lock')}
+                  <InfoTip label={t('About the PIN lock')}>
+                    {!pinOn && syncReady === false && `${t('Needs sync set up.')} `}
+                    {t('Asks for a PIN when SyncR starts. Notes, sign-ins and the sync key stay locked until then.')}
                   </InfoTip>
                 </>
               }
             >
               {pinOn && (
                 <button className="setting-button" onClick={() => setPinDialog('change')}>
-                  Change PIN…
+                  {t('Change PIN…')}
                 </button>
               )}
               <input
@@ -499,23 +498,23 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       <p className="settings-about">
         SyncR{' '}
         {/* Click the version: what's new in it */}
-        <button className="version-link" title="What's new" onClick={() => setShowWhatsNew(true)}>
-          v{__APP_VERSION__}
+        <button className="version-link" title={t("What's new")} onClick={() => setShowWhatsNew(true)}>
+          {`v${__APP_VERSION__}`}
         </button>
-        {' '}· by Logiinx
+        {' '}· {t('by Logiinx')}
       </p>
     </div>
   )
 
   return (
-    <Window className="dialog settings" label="Settings" onClose={onClose} ref={dialogRef}>
+    <Window className="dialog settings" label={t('Settings')} onClose={onClose} ref={dialogRef}>
       <div className="dialog-head">
         {manage ? (
           <button className="settings-back" onClick={() => showManage(false)}>
-            <ChevronLeft size={18} /> Accounts
+            <ChevronLeft size={18} /> {t('Accounts')}
           </button>
         ) : (
-          <h2>Settings</h2>
+          <h2>{t('Settings')}</h2>
         )}
         <CloseButton onClick={onClose} />
       </div>
@@ -569,11 +568,17 @@ function SettingRow({ label, value, title, className, children }: {
   )
 }
 
+// Google Calendar's state when signed in
+const connectedText = () => {
+  const name = googleName()
+  return name ? t('Connected as {name}', { name }) : t('Connected')
+}
+
 // A connection's state in the Accounts card: green when it works, cut with … if long
 function Status({ ok, text }: { ok: boolean; text: string }) {
   return (
     <span className={`settings-status${ok ? ' ok' : ''}`} title={text}>
-      {text === 'Checking…' && <Spinner size={12} />}
+      {text === t('Checking…') && <Spinner size={12} />}
       {text}
     </span>
   )
@@ -581,7 +586,7 @@ function Status({ ok, text }: { ok: boolean; text: string }) {
 
 // Shared by all devices (synced through Dropbox); everything else is for this device only
 function Synced() {
-  return <span className="settings-synced">synced</span>
+  return <span className="settings-synced">{t('synced')}</span>
 }
 
 // Game search: the address and password of SyncR's IGDB proxy (igdb.ts), synced to all devices.
@@ -598,8 +603,9 @@ let lastGoodConnection: string | null = null
 // if the saved one is different now)
 function useProxyStatus(connection: IgdbConnection | null) {
   const [status, setStatus] = useState(() =>
-    lastGoodConnection ? { ok: true, text: 'Connected' } : { ok: false, text: 'Waiting for connection…' },
+    lastGoodConnection ? { ok: true, text: t('Connected') } : { ok: false, text: t('Waiting for connection…') },
   )
+  const language = useLanguage()
   const openedAt = useRef(Date.now())
 
   useEffect(() => {
@@ -608,21 +614,21 @@ function useProxyStatus(connection: IgdbConnection | null) {
     // (a brief flash of it looked jumpy), then "Not set up"
     if (!isComplete(connection)) {
       const wait = Math.max(0, 1000 - (Date.now() - openedAt.current))
-      const timer = window.setTimeout(() => setStatus({ ok: false, text: 'Not set up' }), wait)
+      const timer = window.setTimeout(() => setStatus({ ok: false, text: t('Not set up') }), wait)
       return () => window.clearTimeout(timer)
     }
     // Same address and password as the last check that worked: "Connected" right away, and
     // the check below runs quietly (the status only changes if it fails now)
     const key = `${connection.url}\n${connection.password}`
     const knownGood = key === lastGoodConnection
-    if (knownGood) setStatus({ ok: true, text: 'Connected' })
+    if (knownGood) setStatus({ ok: true, text: t('Connected') })
     let current = true
     const timer = window.setTimeout(async () => {
-      if (!knownGood) setStatus({ ok: false, text: 'Checking…' })
+      if (!knownGood) setStatus({ ok: false, text: t('Checking…') })
       try {
         await igdb('games', 'fields name; limit 1;', connection)
         lastGoodConnection = key
-        if (current) setStatus({ ok: true, text: 'Connected' })
+        if (current) setStatus({ ok: true, text: t('Connected') })
       } catch (error) {
         if (lastGoodConnection === key) lastGoodConnection = null
         if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
@@ -632,7 +638,7 @@ function useProxyStatus(connection: IgdbConnection | null) {
       current = false
       window.clearTimeout(timer)
     }
-  }, [connection])
+  }, [connection, language])
   return status
 }
 
@@ -655,9 +661,9 @@ function GamesSettings() {
 
   return (
     <section className="settings-group">
-      <SectionTitle title="Games" synced />
+      <SectionTitle title={t('Games')} synced />
       <label className="setting">
-        <span className="setting-label">Game search proxy address</span>
+        <span className="setting-label">{t('Game search proxy address')}</span>
         <input
           type="url"
           placeholder="https://….workers.dev"
@@ -668,7 +674,7 @@ function GamesSettings() {
         />
       </label>
       <label className="setting">
-        <span className="setting-label">Proxy password</span>
+        <span className="setting-label">{t('Proxy password')}</span>
         <input
           type="password"
           value={connection?.password ?? ''}
@@ -684,7 +690,7 @@ function GamesSettings() {
         title={status.text}
         onClick={() => setFullStatus(!fullStatus)}
       >
-        {status.text === 'Checking…' && <Spinner size={12} />}
+        {status.text === t('Checking…') && <Spinner size={12} />}
         {status.text}
       </p>
       <SteamSetting proxyReady={status.ok} />
@@ -699,6 +705,7 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
   const follow = useSteamFollow()
   const [profile, setProfile] = useState<SteamProfile | null>(null) // null until loaded
   const [status, setStatus] = useState({ ok: false, text: '' })
+  const language = useLanguage()
 
   useEffect(() => {
     if (saved) setProfile((current) => current ?? saved)
@@ -706,12 +713,12 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
 
   useEffect(() => {
     if (!profile) return
-    if (!profile.link.trim()) return setStatus({ ok: false, text: 'Not set up' })
-    if (!proxyReady) return setStatus({ ok: false, text: 'Needs the game search proxy (above)' })
-    if (profile.name) setStatus({ ok: true, text: `Connected as ${profile.name}` })
+    if (!profile.link.trim()) return setStatus({ ok: false, text: t('Not set up') })
+    if (!proxyReady) return setStatus({ ok: false, text: t('Needs the game search proxy (above)') })
+    if (profile.name) setStatus({ ok: true, text: t('Connected as {name}', { name: profile.name }) })
     let current = true
     const timer = window.setTimeout(async () => {
-      if (!profile.name) setStatus({ ok: false, text: 'Checking…' })
+      if (!profile.name) setStatus({ ok: false, text: t('Checking…') })
       try {
         const found = await checkSteamProfile(profile.link)
         const name = found.name ?? found.steamId
@@ -719,8 +726,8 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
         if (found.steamId !== profile.steamId || name !== profile.name) {
           await saveSteamProfile({ link: profile.link, steamId: found.steamId, name })
         }
-        if (found.games === null) setStatus({ ok: false, text: `${name}: game details are private (Steam → Profile → Privacy)` })
-        else setStatus({ ok: true, text: `Connected as ${name} · ${found.games} games` })
+        if (found.games === null) setStatus({ ok: false, text: t('{name}: game details are private (Steam → Profile → Privacy)', { name }) })
+        else setStatus({ ok: true, text: plural(found.games, 'Connected as {name} · {n} game', 'Connected as {name} · {n} games', { name }) })
       } catch (error) {
         if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
       }
@@ -730,12 +737,12 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
       window.clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.link, proxyReady])
+  }, [profile?.link, proxyReady, language])
 
   return (
     <>
       <label className="setting">
-        <span className="setting-label">Steam profile</span>
+        <span className="setting-label">{t('Steam profile')}</span>
         <input
           type="url"
           placeholder="https://steamcommunity.com/id/…"
@@ -751,25 +758,21 @@ function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
         />
       </label>
       <p className={`setting-status${status.ok ? ' ok' : ''}`} title={status.text}>
-        {status.text === 'Checking…' && <Spinner size={12} />}
+        {status.text === t('Checking…') && <Spinner size={12} />}
         {status.text}
       </p>
       {/* Games move by themselves (steam.ts followSteam); checked right away when switched on */}
       <SettingRow
         label={
           <>
-            Follow my Steam account
-            <InfoTip label="How Follow my Steam account works">
-              Moves games for you, based on your Steam account (checked about every 30 minutes):
+            {t('Follow my Steam account')}
+            <InfoTip label={t('How Follow my Steam account works')}>
+              {t('Moves games for you, based on your Steam account (checked about every 30 minutes):')}
               <ul>
-                <li>
-                  A <b>To buy</b> game you own on Steam → <b>To play › Not started</b>
-                </li>
-                <li>
-                  A <b>Not started</b> game you play for 1 hour on Steam → <b>Playing</b>
-                </li>
+                <li>{richText(t('A **To buy** game you own on Steam → **To play › Not started**'))}</li>
+                <li>{richText(t('A **Not started** game you play for 1 hour on Steam → **Playing**'))}</li>
               </ul>
-              Each move shows a line at the top of Games. Nothing else moves, and you can always move a game back.
+              {t('Each move shows a line at the top of Games. Nothing else moves, and you can always move a game back.')}
             </InfoTip>
           </>
         }
@@ -805,8 +808,8 @@ function GoogleSettings() {
   }, [])
 
   const status = connected
-    ? `Connected${googleName() ? ` as ${googleName()}` : ''}`
-    : (message ?? (!isComplete(proxy) ? 'Needs the game search proxy (above)' : 'Not connected'))
+    ? connectedText()
+    : (message ?? (!isComplete(proxy) ? t('Needs the game search proxy (above)') : t('Not connected')))
 
   async function toggle() {
     setBusy(true)
@@ -815,7 +818,7 @@ function GoogleSettings() {
       if (connected) await disconnectGoogle()
       else {
         // Phone/browser: leaves the app. PC app: waits here for the sign-in in the browser
-        if (isTauri()) setMessage('Finish the sign-in in your browser…')
+        if (isTauri()) setMessage(t('Finish the sign-in in your browser…'))
         const result = await connectGoogle()
         setMessage(result && !result.ok ? result.text : null)
       }
@@ -829,13 +832,13 @@ function GoogleSettings() {
     <section className="settings-group">
       <SectionTitle title="Google Calendar" />
       <div className="setting setting-toggle">
-        <span>Main calendar</span>
+        <span>{t('Main calendar')}</span>
         <button
           className="setting-button"
           disabled={busy || (!connected && !isComplete(proxy))}
           onClick={toggle}
         >
-          {connected ? 'Disconnect' : 'Connect…'}
+          {connected ? t('Disconnect') : t('Connect…')}
         </button>
       </div>
       {/* Same status line as Games: green when connected */}
@@ -849,7 +852,7 @@ function GoogleSettings() {
 
 // Email pop-ups fade by themselves after… (0: they stay until closed)
 const FADE_CHOICES = [
-  { seconds: 0, name: 'Never' },
+  { seconds: 0, name: '' },
   { seconds: 10, name: '10 s' },
   { seconds: 30, name: '30 s' },
   { seconds: 60, name: '1 min' },
@@ -872,7 +875,7 @@ function GmailSettings() {
 
   async function add(pubsub = false) {
     setBusy(true)
-    setMessage(isTauri() ? { text: 'Finish the sign-in in your browser…', ok: false } : null)
+    setMessage(isTauri() ? { text: t('Finish the sign-in in your browser…'), ok: false } : null)
     try {
       setMessage(await connectGmail(pubsub)) // browser: leaves the app
     } catch (error) {
@@ -882,13 +885,13 @@ function GmailSettings() {
   }
 
   const status = message?.text ??
-    (!isComplete(proxy) ? 'Needs the game search proxy (above)' : accounts.length === 0 ? 'No account yet' : null)
+    (!isComplete(proxy) ? t('Needs the game search proxy (above)') : accounts.length === 0 ? t('No account yet') : null)
   return (
     <>
     <section className="settings-group">
       <SectionTitle title="Gmail">
-        <InfoTip label="About the checkboxes">
-          An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.
+        <InfoTip label={t('About the checkboxes')}>
+          {t("An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.")}
         </InfoTip>
       </SectionTitle>
       {accounts.map((account) => (
@@ -898,25 +901,25 @@ function GmailSettings() {
                 opens the color list, like Board cards' "Card color…" */}
             <button
               className="gmail-account-color"
-              title="Color"
-              aria-label="Color"
+              title={t('Color')}
+              aria-label={t('Color')}
               onClick={(e) => setColorMenu({ email: account.email, color: account.color, x: e.clientX, y: e.clientY })}
             >
               <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
             </button>
             <span className="gmail-account-email" title={account.email}>{account.email}</span>
-            {account.expired && <span className="setting-value">signed out</span>}
+            {account.expired && <span className="setting-value">{t('signed out')}</span>}
           </span>
           {account.expired ? (
             // The instant mail account asks for the Pub/Sub permission again, or it would lose it
             <button className="setting-button" disabled={busy} onClick={() => add(account.pubsub)}>
-              Sign in…
+              {t('Sign in…')}
             </button>
           ) : (
             <input
               type="checkbox"
               checked={account.enabled}
-              aria-label={`Emails from ${account.email}`}
+              aria-label={t('Emails from {email}', { email: account.email })}
               onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
             />
           )}
@@ -927,14 +930,14 @@ function GmailSettings() {
               forgetAccountMail(account.email) // its stored emails go too (privacy page)
             }}
           >
-            Remove
+            {t('Remove')}
           </button>
         </div>
       ))}
       <div className="setting setting-toggle">
-        <span>New emails in Primary</span>
+        <span>{t('New emails in Primary')}</span>
         <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add()}>
-          Add account…
+          {t('Add account…')}
         </button>
       </div>
       {status && (
@@ -948,19 +951,19 @@ function GmailSettings() {
           x={colorMenu.x}
           y={colorMenu.y}
           onClose={() => setColorMenu(null)}
-          header={{ title: 'Account color' }}
+          header={{ title: t('Account color') }}
           items={colorMenuItems(colorMenu.color, (color) => color && setAccountColor(colorMenu.email, color), false)}
         />
       )}
     </section>
       {accounts.length > 0 && (
         <section className="settings-group">
-          <SectionTitle title="Instant mail" />
+          <SectionTitle title={t('Instant mail')} />
           <label className="setting">
-            <span className="setting-label">Google Cloud project ID</span>
+            <span className="setting-label">{t('Google Cloud project ID')}</span>
             <input
               type="text"
-              placeholder="e.g. syncr-123456"
+              placeholder={t('e.g. syncr-123456')}
               value={projectId}
               onChange={(e) => {
                 setProjectId(e.target.value.trim())
@@ -971,10 +974,10 @@ function GmailSettings() {
           </label>
           <div className="setting setting-toggle">
             <span>
-              Pub/Sub permission <span className="setting-value">{collector?.email ?? 'not yet'}</span>
+              {t('Pub/Sub permission')} <span className="setting-value">{collector?.email ?? t('not yet')}</span>
             </span>
             <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add(true)}>
-              Sign in…
+              {t('Sign in…')}
             </button>
           </div>
           {instant.text && (
@@ -1008,7 +1011,7 @@ function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: 
       disabled={disabled}
       placeholder={DEFAULT_SITES.join(', ')}
       spellCheck={false}
-      aria-label="Sites"
+      aria-label={t('Sites')}
       onChange={(e) => setText(e.target.value.replace(/\s*[\r\n]+\s*/g, ', '))} // pasted lines
       onBlur={(e) => {
         e.currentTarget.scrollLeft = 0 // back to the list's start, like a one-line field
@@ -1034,7 +1037,7 @@ function SafeSenders() {
   }, [])
   return (
     <section className="settings-group">
-      <SectionTitle title="Safe senders" />
+      <SectionTitle title={t('Safe senders')} />
       {list.map((entry) => (
         <div key={entry} className="setting setting-toggle">
           <span className="gmail-account-name">
@@ -1047,12 +1050,12 @@ function SafeSenders() {
               setList(loadSafeSenders())
             }}
           >
-            Remove
+            {t('Remove')}
           </button>
         </div>
       ))}
-      <p className="setting-status" title='Web images show by themselves in their emails. Add one from an email: "Always for …"'>
-        {list.length ? 'Web images show by themselves in their emails' : 'None yet. Add one from an email: "Always for …"'}
+      <p className="setting-status" title={t('Web images show by themselves in their emails. Add one from an email: "Always for …"')}>
+        {list.length ? t('Web images show by themselves in their emails') : t('None yet. Add one from an email: "Always for …"')}
       </p>
     </section>
   )
@@ -1097,22 +1100,22 @@ function SoundChoice({ value, onChange }: { value: SoundId; onChange: (id: Sound
       >
         {SOUNDS.map(({ id, name }) => (
           <option key={id} value={id}>
-            {name}
+            {t(name)}
           </option>
         ))}
       </select>
-      <button className="settings-play" title="Play" aria-label="Play" disabled={value === 'none'} onClick={() => playSound(value)}>
+      <button className="settings-play" title={t('Play')} aria-label={t('Play')} disabled={value === 'none'} onClick={() => playSound(value)}>
         <Play size={13} />
       </button>
     </>
   )
 }
 
-const CORNERS: { id: PopupCorner; name: string }[] = [
-  { id: 'top-left', name: 'Top left' },
-  { id: 'top-right', name: 'Top right' },
-  { id: 'bottom-left', name: 'Bottom left' },
-  { id: 'bottom-right', name: 'Bottom right' },
+const CORNERS: { id: PopupCorner; name: TextKey }[] = [
+  { id: 'top-left', name: textKey('Top left') },
+  { id: 'top-right', name: textKey('Top right') },
+  { id: 'bottom-left', name: textKey('Bottom left') },
+  { id: 'bottom-right', name: textKey('Bottom right') },
 ]
 
 // PC: where the pop-up shows (screen + corner), e.g. on a second screen, away from a game.
@@ -1125,15 +1128,15 @@ function PopupPlace({
   background: Background
   onChange: (change: Partial<Background>) => void
 }) {
-  const [screens, setScreens] = useState<{ name: string | null; label: string; size: string }[]>([])
+  const [screens, setScreens] = useState<{ name: string | null; size: string }[]>([])
   useEffect(() => {
     Promise.all([availableMonitors(), primaryMonitor()])
       .then(([monitors, main]) => {
         const others = monitors.filter((m) => m.name !== main?.name).sort((a, b) => a.position.x - b.position.x)
         const size = (m: Monitor) => `${m.size.width} × ${m.size.height}`
         setScreens([
-          { name: null, label: 'Main screen', size: main ? size(main) : '' },
-          ...others.map((m, i) => ({ name: m.name, label: `Screen ${i + 2}`, size: size(m) })),
+          { name: null, size: main ? size(main) : '' },
+          ...others.map((m) => ({ name: m.name, size: size(m) })),
         ])
       })
       .catch((error) => console.error(error))
@@ -1143,27 +1146,27 @@ function PopupPlace({
   return (
     <>
       <SettingRow
-        label="Pop-up screen"
-        title={unplugged ? "The chosen screen isn't plugged in: main screen meanwhile" : undefined}
-        value={unplugged ? 'not plugged in' : undefined}
+        label={t('Pop-up screen')}
+        title={unplugged ? t("The chosen screen isn't plugged in: main screen meanwhile") : undefined}
+        value={unplugged ? t('not plugged in') : undefined}
       >
         <select
           value={background.popupScreen ?? ''}
           onChange={(e) => onChange({ popupScreen: e.target.value || null })}
         >
-          {unplugged && <option value={background.popupScreen!}>Unplugged screen</option>}
-          {screens.map((screen) => (
+          {unplugged && <option value={background.popupScreen!}>{t('Unplugged screen')}</option>}
+          {screens.map((screen, i) => (
             <option key={screen.name ?? ''} value={screen.name ?? ''}>
-              {screen.label}{screen.size && ` (${screen.size})`}
+              {i === 0 ? t('Main screen') : t('Screen {n}', { n: i + 1 })}{screen.size && ` (${screen.size})`}
             </option>
           ))}
         </select>
       </SettingRow>
-      <SettingRow label="Pop-up corner">
+      <SettingRow label={t('Pop-up corner')}>
         <select value={background.popupCorner} onChange={(e) => onChange({ popupCorner: e.target.value as PopupCorner })}>
           {CORNERS.map(({ id, name }) => (
             <option key={id} value={id}>
-              {name}
+              {t(name)}
             </option>
           ))}
         </select>

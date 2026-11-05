@@ -76,8 +76,11 @@ export function t(key: TextKey, values?: Record<string, string | number>) {
   return text
 }
 
+// For a text kept in a constant outside a function: checked like t(), translated with t() when shown.
+export const textKey = (key: TextKey) => key
+
 // plural(n, '{n} note', '{n} notes'). French uses the singular for 0 and 1, English only for 1.
-export function plural(n: number, one: TextKey, other: TextKey) {
+export function plural(n: number, one: TextKey, other: TextKey, values?: Record<string, string | number>) {
   const single = language === 'fr' ? n < 2 : n === 1
-  return t(single ? one : other, { n })
+  return t(single ? one : other, { ...values, n })
 }

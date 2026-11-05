@@ -3,6 +3,7 @@ import { refreshEvents, updateEvent } from './calendarEvents'
 import { alertMarkId, changed, db, type AlertMark, type CalendarEvent } from './db'
 import { clockTime, nearDay, shortDate } from './dates'
 import { deviceName } from './device'
+import { t } from './i18n'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
 // (its own, or the calendar's default: CalendarEvent.alerts; all-day events: see alertsOf) come
@@ -41,8 +42,8 @@ export function alertsOf(event: CalendarEvent, allDayAlert: number | null | unde
 // An all-day event's alert: "On the day at 09:00", "The day before at 18:00", "2 days before at 10:00"
 export function allDayAlertText(minutes: number) {
   const days = Math.max(0, Math.ceil(minutes / 1440))
-  const day = days === 0 ? 'On the day' : days === 1 ? 'The day before' : `${days} days before`
-  return `${day} at ${clockTime(new Date(2000, 0, 1, 0, days * 1440 - minutes).getTime())}`
+  const day = days === 0 ? t('On the day') : days === 1 ? t('The day before') : t('{n} days before', { n: days })
+  return t('{day} at {time}', { day, time: clockTime(new Date(2000, 0, 1, 0, days * 1440 - minutes).getTime()) })
 }
 
 const MINUTE_MS = 60 * 1000

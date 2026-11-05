@@ -3,6 +3,7 @@ import changelog from '../CHANGELOG.md?raw'
 import { read, write } from './localState'
 import Window from './Window'
 import CloseButton from './CloseButton'
+import { richText } from './richText'
 
 // After an update, shows once what changed since the version last used on this device.
 // The text comes from CHANGELOG.md, built into the app. A new device shows nothing.
@@ -36,11 +37,6 @@ function releasesSince(since: string): Release[] {
   return releases.filter((r) => newer(r.version, since) && !newer(r.version, __APP_VERSION__))
 }
 
-// **bold** → <strong>, the only formatting the changelog uses
-function inline(text: string): ReactNode[] {
-  return text.split(/\*\*(.+?)\*\*/).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part))
-}
-
 function ReleaseNotes({ release, showVersion }: { release: Release; showVersion: boolean }) {
   const blocks: ReactNode[] = []
   let items: string[] = []
@@ -49,7 +45,7 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
       blocks.push(
         <ul key={blocks.length}>
           {items.map((item, i) => (
-            <li key={i}>{inline(item)}</li>
+            <li key={i}>{richText(item)}</li>
           ))}
         </ul>
       )
@@ -61,7 +57,7 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
       flushList()
       const heading = line.match(/^###\s+(.*)/)
       if (heading) blocks.push(<h3 key={blocks.length}>{heading[1]}</h3>)
-      else blocks.push(<p key={blocks.length}>{inline(line)}</p>)
+      else blocks.push(<p key={blocks.length}>{richText(line)}</p>)
     }
   }
   flushList()

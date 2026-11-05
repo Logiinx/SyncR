@@ -1,3 +1,4 @@
+import { t } from './i18n'
 import { read, write } from './localState'
 
 // How the app looks on this device (Settings dialog). Stored per device, never synced.
@@ -13,7 +14,7 @@ export interface Appearance {
 // Fonts for the note text. The four named ones are built into the app (fonts.css),
 // so they look the same on every device.
 export const FONTS = {
-  system: { name: 'System default', css: 'system-ui, sans-serif' },
+  system: { name: '', css: 'system-ui, sans-serif' },
   'sans-serif': { name: 'Sans-serif', css: 'sans-serif' },
   inter: { name: 'Inter', css: "'Inter Variable', sans-serif" },
   'google-sans-flex': { name: 'Google Sans Flex', css: "'Google Sans Flex Variable', sans-serif" },
@@ -21,6 +22,7 @@ export const FONTS = {
   'jetbrains-mono': { name: 'JetBrains Mono', css: "'JetBrains Mono Variable', monospace" },
 }
 export type FontId = keyof typeof FONTS
+export const fontName = (id: FontId) => (id === 'system' ? t('System default') : FONTS[id].name)
 
 export const SCALE_MIN = 80
 export const SCALE_MAX = 150

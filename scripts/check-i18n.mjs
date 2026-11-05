@@ -24,7 +24,7 @@ const NOT_TEXT_ATTRIBUTES = new Set(['className', 'style', 'key', 'href', 'src',
   'tabIndex', 'step', 'min', 'max', 'pattern', 'accept', 'lang', 'dir', 'xmlns', 'htmlFor', 'draggable', 'size', 'color'])
 
 // Calls whose strings go to code, not to the screen
-const NOT_TEXT_CALLS = new Set(['t', 'plural', 'querySelector', 'querySelectorAll', 'closest', 'matches', 'getElementById',
+const NOT_TEXT_CALLS = new Set(['t', 'plural', 'textKey', 'querySelector', 'querySelectorAll', 'closest', 'matches', 'getElementById',
   'createElement', 'addEventListener', 'removeEventListener', 'dispatchEvent', 'Event', 'CustomEvent', 'getAttribute', 'setAttribute',
   'hasAttribute', 'removeAttribute', 'getPropertyValue', 'setProperty', 'add', 'remove', 'toggle', 'contains', 'startsWith', 'endsWith',
   'includes', 'split', 'replace', 'replaceAll', 'match', 'matchAll', 'test', 'join', 'padStart', 'indexOf', 'invoke', 'fetch', 'URL', 'URLSearchParams',
@@ -37,6 +37,7 @@ function looksLikeText(raw) {
   if (!/[A-Za-zÀ-ÿ]{2}/.test(text) || NAMES.test(text)) return false
   if (/^[a-z]+:|:\/\/|^[./#@[*-]|^\w+\/|\/\w+$|\bvar\(|\d(px|em|rem|ms|vh|vw|%)\b|[{};<>=]|^[\w-]+\(|^\(.*:.*\)$|:not\(/.test(text)) return false // addresses, paths, CSS, code
   if (/^[a-z][\w-]*(\.[\w-]+)+$/.test(text)) return false // ids with dots
+  if (/^\d+ [a-z]{1,3}$/.test(text)) return false // 1 min, 10 s
   const words = text.split(' ')
   if (words.every((word) => /^[a-z][a-zA-Z0-9_-]*$/.test(word) && (words.length === 1 || /[-_A-Z]/.test(word)))) return false // ids, class lists
   if (words.length === 1 && /^[A-Z0-9_-]+$|^[A-Z]\w*[A-Z_-]\w*$/.test(text)) return false // CONSTANTS, TypeNames, Content-Type
@@ -66,8 +67,11 @@ function hitsIn(path) {
         const name = ts.isPropertyAccessExpression(called) ? called.name.text : called.getText()
         if (called.getText().startsWith('console.') || NOT_TEXT_CALLS.has(name)) return true
       }
-      if (ts.isJsxAttribute(parent) && NOT_TEXT_ATTRIBUTES.has(parent.name.getText())) return true
-      if (ts.isPropertyAssignment(parent) && /^(className|style|type|kind|id|key|name)$/.test(parent.name.getText())) return true
+      if (ts.isJsxAttribute(parent) && NOT_TEXT_ATTRIBUTES.has(parent.name.getText())) {
+        const tag = parent.parent.parent.tagName.getText()
+        if (parent.name.getText() !== 'value' || /^[a-z]/.test(tag)) return true
+      }
+      if (ts.isPropertyAssignment(parent) && /^(className|style|type|kind|id|key|css)$/.test(parent.name.getText())) return true
     }
     return false
   }
