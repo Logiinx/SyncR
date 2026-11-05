@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.45.1] - 2026-11-05
+
 **App**
 - **Fixed** small issues: clearer names for the system choice under Font and Language
 

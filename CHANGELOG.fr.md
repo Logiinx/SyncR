@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.45.1] - 2026-11-05
+
 **Application**
 - **Correction** de petits problèmes : noms plus clairs pour le choix système sous Police et Langue
 
