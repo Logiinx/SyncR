@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
 import { Check, type LucideIcon } from 'lucide-react'
 import { currentZoom } from './appearance'
 
@@ -23,6 +23,8 @@ interface Props {
   onClose: () => void
 }
 
+const EDGE = 8 // px kept free between the menu and the window's edge
+
 // Right-click menu (long press on a phone). Closes on any click elsewhere or Escape.
 function ContextMenu({ x, y, items, header, onClose }: Props) {
   useEffect(() => {
@@ -31,11 +33,18 @@ function ContextMenu({ x, y, items, header, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // x / y are screen pixels (mouse position): convert to the zoomed page (app scaling),
-  // and keep the menu inside the window
-  const zoom = currentZoom()
-  const left = Math.min(x / zoom, window.innerWidth / zoom - 170)
-  const top = Math.min(y / zoom, window.innerHeight / zoom - 20 - items.length * 36 - (header ? 52 : 0))
+  // x / y are screen pixels (mouse position): keep the menu inside the window, from its real size
+  // (again when it changes, e.g. to a color list), and convert to the zoomed page (app scaling)
+  const box = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const zoom = currentZoom()
+    el.style.left = el.style.top = '0'
+    const { width, height } = el.getBoundingClientRect()
+    el.style.left = `${Math.max(EDGE, Math.min(x, window.innerWidth - width - EDGE)) / zoom}px`
+    el.style.top = `${Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE)) / zoom}px`
+  })
 
   return (
     <div
@@ -46,7 +55,7 @@ function ContextMenu({ x, y, items, header, onClose }: Props) {
         onClose()
       }}
     >
-      <div className="context-menu" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()}>
+      <div className="context-menu" ref={box} onMouseDown={(e) => e.stopPropagation()}>
         {header && (
           <>
             <div className="context-menu-header">

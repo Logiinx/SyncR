@@ -11,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 - **Improved:** Clearer menus: "Card color…" and "Group color…", colors together, each list titled.
 - **Fixed:** After coloring text in a card, you can now change the color of what you type next.
 
+**App**
+- **Fixed:** Menus opened near the window's edge now stay fully on screen.
+
 **Notes**
 - **Improved:** The text color button has a new icon, the same in notes and in Board cards.
 - **Fixed:** Small fixes: on the phone, a color picked with no text selected was forgotten.
