@@ -206,15 +206,33 @@ export interface CalendarEvent {
   link: string // opens the event in Google Calendar
 }
 
-// What was done with one alert of a calendar event on this device (eventAlerts.ts): Done, or
-// snoozed. Not synced (as decided: per device; a snooze also moves the event in Google, see
-// eventAlerts.ts). Removed a week after the alert.
-export interface AlertState {
-  key: string // "<event id>@<alert time>": a moved event or a new alert time is a new alert
+// What was done with one alert of a calendar event (eventAlerts.ts): Done, or snoozed. Synced,
+// so it counts on every device; changed on both, the newest wins. Removed a week after the alert.
+export interface AlertMark {
+  id: string // alertMarkId(key): also its file name in Dropbox
+  key: string // "event:<event id>@<alert time>": a moved event or a new alert time is a new alert
   at: number // the alert time (ms)
   doneAt?: number
   snoozedUntil?: number
   notMoved?: boolean // snoozed, but the event couldn't be moved in Google (offline…)
+  updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
+}
+
+// An alert's key can't be a file name: Google's event ids can have capitals, and Dropbox lists
+// names in lower case. So a short hash (it needn't be secure, only different per alert). Not
+// crypto.subtle: that isn't possible inside a database upgrade (it loses the transaction).
+export function alertMarkId(key: string) {
+  let a = 0xdeadbeef
+  let b = 0x41c6ce57
+  for (let i = 0; i < key.length; i++) {
+    a = Math.imul(a ^ key.charCodeAt(i), 2654435761)
+    b = Math.imul(b ^ key.charCodeAt(i), 1597334677)
+  }
+  a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909)
+  b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909)
+  return [b, a].map((n) => (n >>> 0).toString(16).padStart(8, '0')).join('')
 }
 
 // A link card's data (linkPreviews.ts), fetched by our proxy. Not synced: a cache, per device.
@@ -259,7 +277,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   cards: EntityTable<Card, 'id'>
   games: EntityTable<Game, 'id'>
   events: EntityTable<CalendarEvent, 'id'>
-  alertStates: EntityTable<AlertState, 'key'>
+  alertMarks: EntityTable<AlertMark, 'id'>
   linkPreviews: EntityTable<LinkPreviewRow, 'url'>
   snapshots: EntityTable<Snapshot, 'id'>
 }
@@ -317,6 +335,22 @@ export function defineSchema(d: Dexie) {
 
   d.version(13).stores({
     snapshots: 'id, noteId, uploaded',
+  })
+
+  // Done and snoozed alerts start to sync: they need a file name (alertMarkId) as their id, so
+  // a new table. What's marked so far comes along, and is sent at the next sync.
+  d.version(14)
+    .stores({
+      alertMarks: 'id',
+    })
+    .upgrade(async (tx) => {
+      const old: Pick<AlertMark, 'key' | 'at' | 'doneAt' | 'snoozedUntil' | 'notMoved'>[] = await tx.table('alertStates').toArray()
+      const updatedAt = Date.now()
+      await tx.table('alertMarks').bulkPut(old.map((mark) => ({ ...mark, id: alertMarkId(mark.key), updatedAt })))
+    })
+
+  d.version(15).stores({
+    alertStates: null,
   })
 }
 
@@ -409,6 +443,7 @@ export function noteTitle(note: Note): string {
 // Synced like reminders (sync.ts, step 4c). Every change calls changed() so auto-sync runs.
 
 const OLD_DELETED_CARD_MS = 90 * 24 * 60 * 60 * 1000 // like reminders (reminders.ts)
+const OLD_ALERT_MARK_MS = 7 * 24 * 60 * 60 * 1000
 
 // Higher than any card's order: a card given it lands at the bottom of its part.
 // Deleted cards count too, so Undo puts a card back in its place.
@@ -573,6 +608,15 @@ export async function removeOldDeletedCards(): Promise<string[]> {
   )
   await db.cards.bulkDelete(old.map((card) => card.id))
   return old.map((card) => card.id)
+}
+
+// Marks of alerts more than a week old aren't needed anymore (those alerts no longer show).
+// Returns their ids, so sync can remove them from Dropbox too.
+export async function removeOldAlertMarks(): Promise<string[]> {
+  const old = Date.now() - OLD_ALERT_MARK_MS
+  const marks = await db.alertMarks.filter((mark) => mark.at < old && (mark.snoozedUntil ?? 0) < old).toArray()
+  await db.alertMarks.bulkDelete(marks.map((mark) => mark.id))
+  return marks.map((mark) => mark.id)
 }
 
 // Dropped somewhere else on the Board (drag and drop): new part and position, and for a card

@@ -3,6 +3,7 @@ import {
   db,
   imageIds,
   noteTitle,
+  removeOldAlertMarks,
   removeOldDeletedCards,
   removeOldDeletedGames,
   savePendingEdits,
@@ -22,6 +23,7 @@ import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from
 //   /settings/<name>   app-wide settings that follow you, e.g. the color rules (lower-case names)
 //   /cards/<id>        one file per Board card (a deleted one stays as a row with deleted = true)
 //   /games/<id>        one file per game in the Games tab (same as cards)
+//   /alerts/<id>       one file per calendar alert marked Done or snoozed (eventAlerts.ts)
 //   /history/<note id>/<details>  older versions of notes (noteHistory.ts, historySync.ts)
 // (/reminders/ held SyncR's own reminders, replaced by Google Calendar events in v0.16; syncs up to
 // v0.38 removed it.)
@@ -57,7 +59,7 @@ export class RetrySoonError extends Error {}
 
 
 // The folders sync reads each time (not history/: see noteHistory.ts)
-const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games']
+const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games', '/alerts']
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
@@ -184,6 +186,7 @@ async function runSync(): Promise<SyncResult> {
   const remoteSettings = new Map<string, string>() // name -> rev
   const remoteCards = new Map<string, string>() // id -> rev
   const remoteGames = new Map<string, string>() // id -> rev
+  const remoteAlerts = new Map<string, string>() // id -> rev
   ownWrites.clear()
   const { files, cursor } = await listFiles(SYNC_FOLDERS)
   result.cursor = cursor
@@ -195,6 +198,7 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'settings') remoteSettings.set(id, file.rev)
     if (folder === 'cards') remoteCards.set(id, file.rev)
     if (folder === 'games') remoteGames.set(id, file.rev)
+    if (folder === 'alerts') remoteAlerts.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -363,6 +367,15 @@ async function runSync(): Promise<SyncResult> {
   }
   await syncRecords(db.cards, 'cards', remoteCards, key, result, byId)
   await syncRecords(db.games, 'games', remoteGames, key, result, byId)
+
+  // ---------- 4c2. Calendar alerts marked Done or snoozed ----------
+  // The same, without deleted rows: an old mark goes here and from Dropbox, and other devices
+  // remove theirs when they see its file is gone.
+
+  for (const id of await removeOldAlertMarks()) {
+    if (remoteAlerts.delete(id)) await deleteFile(`/alerts/${id}`)
+  }
+  await syncRecords(db.alertMarks, 'alerts', remoteAlerts, key, result, byId)
 
   // ---------- 4d. Note history (historySync.ts) ----------
   // Never stops the sync: what isn't sent now is sent next time.

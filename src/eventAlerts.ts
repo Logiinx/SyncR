@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { updateEvent } from './calendarEvents'
-import { changed, db, type CalendarEvent } from './db'
+import { alertMarkId, changed, db, type CalendarEvent } from './db'
 import { clockTime } from './dates'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
 // (its own, or the calendar's default: CalendarEvent.alerts; all-day events: see alertsOf) come
-// due and show in the pop-up / cards (dueReminders.ts). Done only changes this device
-// (db.alertStates, not synced); Snooze also moves the event in Google (snoozeAlert).
+// due and show in the pop-up / cards (dueReminders.ts). Done and Snooze are marks on the alert
+// (db.alertMarks, synced to the other device); Snooze also moves the event in Google (snoozeAlert).
 
 // ---------- Default alert for all-day events (Settings → Alerts, synced) ----------
 
@@ -47,7 +47,6 @@ export function allDayAlertText(minutes: number) {
 const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
 export const MISSED_MS = 24 * HOUR_MS // an alert missed while SyncR was closed still shows for a day
-const KEEP_STATES_MS = 7 * 24 * HOUR_MS
 
 const ALERT_PREFIX = 'event:' // starts an alert's key (DueItem.key)
 
@@ -67,19 +66,19 @@ export interface EventAlert {
 // Every alert of the stored events that isn't done, sorted by when they show. Which are due (and
 // not older than MISSED_MS) is decided by the caller (dueReminders.ts), which keeps the time.
 export async function listEventAlerts(): Promise<EventAlert[]> {
-  const [events, states, allDayAlert] = await Promise.all([db.events.toArray(), db.alertStates.toArray(), loadAllDayAlert()])
-  const byKey = new Map(states.map((state) => [state.key, state]))
+  const [events, marks, allDayAlert] = await Promise.all([db.events.toArray(), db.alertMarks.toArray(), loadAllDayAlert()])
+  const byKey = new Map(marks.map((mark) => [mark.key, mark]))
   const alerts: EventAlert[] = []
   for (const event of events) {
     for (const minutes of alertsOf(event, allDayAlert)) {
       const at = event.start - minutes * 60 * 1000
       const key = `${ALERT_PREFIX}${event.id}@${at}`
-      const state = byKey.get(key)
-      if (state?.doneAt) continue
-      const dueAt = state?.snoozedUntil ?? at
+      const mark = byKey.get(key)
+      if (mark?.doneAt) continue
+      const dueAt = mark?.snoozedUntil ?? at
       alerts.push({
         key, title: event.title, description: event.description, start: event.start, allDay: event.allDay, at, dueAt,
-        notMoved: !!state?.notMoved, colorId: event.colorId,
+        notMoved: !!mark?.notMoved, colorId: event.colorId,
       })
     }
   }
@@ -90,8 +89,15 @@ export async function listEventAlerts(): Promise<EventAlert[]> {
 const alertTime = (key: string) => Number(key.slice(key.lastIndexOf('@') + 1))
 export const eventId = (key: string) => key.slice(ALERT_PREFIX.length, key.lastIndexOf('@'))
 
+// Replaces what the alert was marked with before (keeps what sync remembers about it)
 async function save(key: string, change: { doneAt?: number; snoozedUntil?: number; notMoved?: boolean }) {
-  await db.alertStates.put({ key, at: alertTime(key), ...change })
+  const id = alertMarkId(key)
+  const before = await db.alertMarks.get(id)
+  await db.alertMarks.put({
+    id, key, at: alertTime(key), ...change, updatedAt: Date.now(),
+    syncedRev: before?.syncedRev, syncedUpdatedAt: before?.syncedUpdatedAt,
+  })
+  changed()
 }
 
 export const markAlertDone = (key: string) => save(key, { doneAt: Date.now() })
@@ -132,10 +138,4 @@ export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
     const at = start - before * MINUTE_MS
     if (at < now) await save(`${ALERT_PREFIX}${event.id}@${at}`, { doneAt: now })
   }
-}
-
-// States of alerts more than a week old aren't needed anymore (those alerts no longer show)
-export async function removeOldAlertStates() {
-  const old = Date.now() - KEEP_STATES_MS
-  await db.alertStates.filter((state) => state.at < old && (state.snoozedUntil ?? 0) < old).delete()
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type CalendarEvent } from './db'
-import { removeOldAlertStates } from './eventAlerts'
+import { db, removeOldAlertMarks, type CalendarEvent } from './db'
+import { isConnected as dropboxConnected } from './dropbox'
 import { calendarApi, isConnected } from './google'
 
 // The main Google Calendar's events, shown in the Reminders tab (see DECISIONS.md, "Reminders
@@ -381,7 +381,8 @@ export function startCalendarChecks() {
   if (checking) return
   checking = true
   const check = () => {
-    removeOldAlertStates().catch((e) => console.warn('Could not clean up event alerts', e))
+    // With Dropbox, sync does this (they must go from there too, or they'd come back)
+    if (!dropboxConnected()) removeOldAlertMarks().catch((e) => console.warn('Could not clean up event alerts', e))
     refreshEvents().catch((e) => console.warn('Calendar refresh failed', e))
   }
   check()

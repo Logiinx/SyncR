@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Improved:** Snooze and Done on one device now also count on your other device.
+
 **Notes**
 - **New:** On the phone, a button to jump to the end of a note shows while you scroll.
 - **Improved:** History has a slimmer, clearer top bar, and its button sits closer to the right edge.
