@@ -3,8 +3,9 @@ import { isTauri } from '@tauri-apps/api/core'
 import { errorDetails, gmailApi, gmailErrorPasses, gmailErrorText, loadAccounts } from './gmail'
 import { fetchAlert, QUERY, type MailAlert } from './mailAlerts'
 
-// The Mail tab's list (MailView.tsx): the last 50 mails in Primary of every Gmail account
-// that's on, read or not, plus any older unread ones; newest first, live from Gmail. Kept in
+// The Mail tab's list (MailView.tsx): the last 50 mails in Primary of each Gmail account that's
+// on, read or not, plus any older unread ones; newest first, live from Gmail. The tab then shows
+// the newest 50 of the accounts ticked there (newestMails), so switching needs no load. Kept in
 // memory while SyncR runs (never saved), so the tab opens at once: loaded a few seconds after
 // start (startMailbox), again when the tab opens (in the background, the old list stays shown),
 // with its refresh button, whenever the minute check or instant mail sees a change in a mailbox
@@ -85,8 +86,11 @@ async function loadInbox() {
     }
   }
   rows.sort((a, b) => b.date - a.date)
-  return { rows: rows.filter((row, i) => i < MAX_ROWS || row.unread), errors }
+  return { rows, errors }
 }
+
+// What the tab shows of a newest-first list: the newest 50, plus any older unread ones
+export const newestMails = (rows: MailboxRow[]) => rows.filter((row, i) => i < MAX_ROWS || row.unread)
 
 type Mailbox = {
   rows: MailboxRow[] | null // null: first load

@@ -8,7 +8,7 @@ import { openLink } from './links'
 import { accountColor } from './MailCards'
 import MailReader from './MailReader'
 import { changeMail, gmailLink, useMissed, type MailAlert } from './mailAlerts'
-import { useMailbox, type MailboxRow } from './mailbox'
+import { newestMails, useMailbox, type MailboxRow } from './mailbox'
 import { useLocalState } from './localState'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
@@ -17,7 +17,9 @@ import Spinner from './Spinner'
 type LocalChange = { what: 'read' | 'unread' | 'gone'; doneAt?: number }
 
 // The Mail tab (PC): the last mails in Primary of all Gmail accounts, read or not (mailbox.ts),
-// laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others.
+// laid out like the Reminders tab; unread ones in bold, "Unread only" hides the others. With 2+
+// accounts on, one box per account picks whose mail shows (at least one stays ticked); it only
+// changes this list, not the alerts or the Missed count on the tab.
 // "Missed" on top: unread emails whose pop-up faded by itself; then the others. A click reads
 // the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ‹ Back, ✕, Done or
 // Escape return to the list. Right-click (sender and subject on top): Mark as read / unread,
@@ -26,11 +28,19 @@ function MailView() {
   const pageRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   usePage(pageRef)
-  useListItems(listRef)
   const accounts = useGmailAccounts()
   const missed = useMissed()
-  const { rows, errors, loading, loadedFrom, refresh } = useMailbox()
+  const { rows, errors: allErrors, loading, loadedFrom, refresh } = useMailbox()
   const [unreadOnly, setUnreadOnly] = useLocalState('syncr.mail.unreadOnly', false)
+  // Unticked accounts are the ones stored, so a new account starts ticked. If every one is
+  // unticked (the only ticked one was turned off in Settings), all show.
+  const [hiddenAccounts, setHiddenAccounts] = useLocalState<string[]>('syncr.mail.hiddenAccounts', [])
+  const accountsOn = accounts.filter((a) => a.enabled).map((a) => a.email)
+  const ticked = accountsOn.filter((email) => !hiddenAccounts.includes(email))
+  const shownAccounts = ticked.length > 0 ? ticked : accountsOn
+  const errors = allErrors.filter((error) => shownAccounts.includes(error.email))
+  // Switching filter changes the list all at once: no item animations
+  useListItems(listRef, `${unreadOnly}-${shownAccounts.join()}`)
   // Changed here (marked read / unread, archived or deleted: "gone"), shown right away. Kept
   // until a list whose load started after Gmail took the change (one already loading still
   // has the old state); dropped at once if Gmail refused it (the list's state is the real one).
@@ -53,9 +63,16 @@ function MailView() {
     const local = changes.get(mail.key)?.what
     return local === 'read' || local === 'unread' ? local === 'unread' : mail.unread
   }
-  const shown = (rows ?? []).filter((mail) => changes.get(mail.key)?.what !== 'gone')
+  const shown = newestMails((rows ?? []).filter((mail) => shownAccounts.includes(mail.account))).filter(
+    (mail) => changes.get(mail.key)?.what !== 'gone',
+  )
   const missedRows = shown.filter((mail) => missed.includes(mail.key) && isUnread(mail))
   const otherRows = shown.filter((mail) => !missedRows.includes(mail) && (!unreadOnly || isUnread(mail)))
+
+  function toggleAccount(email: string, on: boolean) {
+    const next = on ? [...shownAccounts, email] : shownAccounts.filter((other) => other !== email)
+    setHiddenAccounts(accountsOn.filter((other) => !next.includes(other)))
+  }
 
   function change(mail: MailAlert, what: 'read' | 'unread' | 'archive' | 'trash' | 'keep') {
     if (what === 'keep') return void changeMail(mail.key, what) // only the "missed" mark
@@ -146,7 +163,23 @@ function MailView() {
       )}
       <div className="games" ref={listRef} hidden={reading !== null}>
         <div className="games-views reminders-toolbar">
-          <div className="reminders-tools">
+          <div className="reminders-tools mail-tools">
+            {accountsOn.length > 1 &&
+              accountsOn.map((email) => {
+                const on = shownAccounts.includes(email)
+                const last = on && shownAccounts.length === 1
+                return (
+                  <label
+                    key={email}
+                    className="reminders-hide-repeating mail-account-filter"
+                    title={last ? t('At least one account stays shown') : t('Show this account’s mail')}
+                  >
+                    <input type="checkbox" checked={on} disabled={last} onChange={(e) => toggleAccount(email, e.target.checked)} />
+                    <span className="menu-swatch" style={{ background: accountColor(email) ?? 'var(--link)' }} />
+                    {email}
+                  </label>
+                )
+              })}
             <label className="reminders-hide-repeating" title={t('Show only unread mail')}>
               <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
               {t('Unread only')}

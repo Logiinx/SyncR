@@ -3,6 +3,8 @@ export const mail = {
   // The Mail tab
   'Show only unread mail': 'Afficher seulement les e-mails non lus',
   'Unread only': 'Non lus seulement',
+  'Show this account’s mail': 'Afficher les e-mails de ce compte',
+  'At least one account stays shown': 'Au moins un compte reste affiché',
   'Refresh from Gmail': 'Actualiser depuis Gmail',
   'Add a Gmail account in Settings → Accounts.': 'Ajoutez un compte Gmail dans Paramètres → Comptes.',
   '. Trying again…': '. Nouvel essai…',

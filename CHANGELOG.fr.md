@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Mail**
+- **Ajout** d’une case par compte dans l’onglet Mail pour voir les 50 derniers e-mails d’un compte ou des deux
+
 ## [0.45.1] - 2026-11-05
 
 **Application**

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail**
+- **Added** a checkbox per account in the Mail tab to show the last 50 mails of one account or of both
+
 ## [0.45.1] - 2026-11-05
 
 **App**

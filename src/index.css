@@ -5578,6 +5578,20 @@ h3.games-group-title {
   cursor: pointer;
 }
 
+/* Mail tab: the account boxes, wrapping when the window is narrow */
+.mail-tools {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mail-account-filter {
+  white-space: nowrap;
+}
+
+.mail-account-filter input:disabled {
+  cursor: default;
+}
+
 /* A repeating event in the month grid: the icon after its time */
 .calendar-repeat {
   margin-right: 1px;
