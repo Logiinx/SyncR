@@ -1183,6 +1183,9 @@ button {
   right: auto;
   width: fit-content;
   margin: calc(8px + 0.75em - 8px) 8px 0 auto;
+}
+
+.card-corner .card-buttons > * {
   pointer-events: auto;
 }
 
@@ -1191,9 +1194,9 @@ button {
   z-index: 20;
 }
 
-/* While editing, with text selected or the cursor in colored text: the text color button. It
-   floats over the end of a line (no room kept for it: the text would rewrap when editing
-   starts), so it has the card's own background to cover the letters under it */
+/* While editing: the text color button (when it shows: Card.tsx). It floats over the end of a
+   line (no room kept for it: the text would rewrap when editing starts), so it has the card's
+   own background to cover the letters under it */
 .card-color {
   --card-bg: color-mix(in srgb, var(--tint) var(--tile-hi), var(--bg));
   width: 20px;
@@ -1211,6 +1214,21 @@ button {
 .card-color.active {
   background: linear-gradient(var(--hover), var(--hover)), var(--card-bg);
   color: var(--text);
+}
+
+/* With a mouse: hidden until the mouse is near; while hidden, clicks reach the text under it */
+@media (hover: hover) and (pointer: fine) {
+  .card-corner .card-color {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .card-corner .card-color.near,
+  .card-corner .card-color.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* "⋯" only on the phone: there a long press is for Android's text menu (or moves the card) */

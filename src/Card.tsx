@@ -347,9 +347,13 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   )
 }
 
+const HAS_MOUSE = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+const NEAR = 40 // px around the color button, like the Board's edge tab (boardTab.ts)
+
 // While editing: text colors (no highlights on cards), like the toolbar's color button in notes.
-// Only shown while some text is selected, or while what you type next would be colored (so that
-// color can be changed); the colors close by themselves when the cursor moves.
+// With a mouse it's hidden until the mouse comes near it (CSS: .card-color.near). Phone: only shown
+// while some text is selected, or while what you type next would be colored (so that color can be
+// changed). The colors close by themselves when the cursor moves.
 function CardColorButton({ editor }: { editor: Editor }) {
   const { show, cursor } = useEditorState({
     editor,
@@ -365,10 +369,42 @@ function CardColorButton({ editor }: { editor: Editor }) {
   })
   const [colors, setColors] = useState<{ right: number; top: number } | null>(null)
   const panel = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const [near, setNear] = useState(false)
 
   useEffect(() => {
     setColors(null)
   }, [show, cursor])
+
+  useEffect(() => {
+    if (!HAS_MOUSE) return
+    let x = -1 // last mouse position (-1: outside the window)
+    let y = -1
+    const check = () => {
+      const rect = button.current?.getBoundingClientRect()
+      setNear(
+        !!rect && x >= 0 && x >= rect.left - NEAR && x <= rect.right + NEAR && y >= rect.top - NEAR && y <= rect.bottom + NEAR,
+      )
+    }
+    const onMove = (e: MouseEvent) => {
+      x = e.clientX
+      y = e.clientY
+      check()
+    }
+    const onOut = (e: MouseEvent) => {
+      if (e.relatedTarget) return
+      x = y = -1
+      check()
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseout', onOut)
+    document.addEventListener('scroll', check, true) // the button can move under a still mouse
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseout', onOut)
+      document.removeEventListener('scroll', check, true)
+    }
+  }, [])
 
   useEffect(() => {
     if (!colors) return
@@ -393,11 +429,12 @@ function CardColorButton({ editor }: { editor: Editor }) {
     setColors({ right: (window.innerWidth - rect.right) / zoom, top: rect.bottom / zoom + 4 })
   }
 
-  if (!show) return null
+  if (!HAS_MOUSE && !show) return null
   return (
     <>
       <button
-        className={['card-color', colors && 'active'].filter(Boolean).join(' ')}
+        ref={button}
+        className={['card-color', near && 'near', colors && 'active'].filter(Boolean).join(' ')}
         title="Text color"
         aria-label="Text color"
         // Keep the selection or cursor (and the phone keyboard) in the card

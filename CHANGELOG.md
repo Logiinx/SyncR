@@ -5,8 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Board**
+- **Improved:** On the PC, a card's text color button stays hidden until the mouse nears the corner.
 - **Improved:** In a long card, the text color button stays in view while you scroll.
-- **Fixed:** The color button now also shows in colored text, so you can change what you type next.
+- **Fixed:** After coloring text in a card, you can now change the color of what you type next.
 
 **Notes**
 - **Fixed:** Small fixes: on the phone, a color picked with no text selected was forgotten.
