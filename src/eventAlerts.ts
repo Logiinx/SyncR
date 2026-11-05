@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { refreshEvents, updateEvent } from './calendarEvents'
 import { alertMarkId, changed, db, type CalendarEvent } from './db'
-import { clockTime } from './dates'
+import { clockTime, nearDay, shortDate } from './dates'
 
 // The alerts of the Google Calendar events (calendarEvents.ts): each event's alert times
 // (its own, or the calendar's default: CalendarEvent.alerts; all-day events: see alertsOf) come
@@ -119,6 +119,7 @@ function snoozeEnd(key: string, minutes: number | 'tomorrow') {
 // the card says so when it's back.
 // The event is read again from Google first. If the other device has snoozed it already, this alert
 // isn't on the event anymore and nothing moves: adding this snooze on top would delay it twice.
+// A short message says so, and when the event is now.
 export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
   const until = snoozeEnd(key, minutes)
   await save(key, { snoozedUntil: until })
@@ -130,7 +131,12 @@ export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
   try {
     await refreshEvents()
     event = await db.events.get(stored.id)
-    if (!event || !event.alerts.some((before) => event!.start - before * MINUTE_MS === at)) return
+    if (!event) return
+    if (!event.alerts.some((before) => event!.start - before * MINUTE_MS === at)) {
+      const when = `${nearDay(event.start) ?? shortDate(event.start)}, ${clockTime(event.start)}`
+      window.dispatchEvent(new CustomEvent('sync-notice', { detail: `Already moved from another device. Now: ${when}.` }))
+      return
+    }
     // Google keeps whole minutes
     start = Math.round((event.start + until - at) / MINUTE_MS) * MINUTE_MS
     await updateEvent(event, { title: event.title, description: event.description, start, alert: 'keep' })
