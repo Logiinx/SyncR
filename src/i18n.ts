@@ -52,7 +52,7 @@ export const decimal = (n: number, digits: number) =>
 // French dates and months come in lower case: for those starting a line or a title
 export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
-function subscribe(listener: () => void) {
+export function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
@@ -66,7 +66,7 @@ export function useLanguage() {
 }
 
 // French spacing: a space that never breaks before : ; ! ? » and after «, so src/fr/ can use plain spaces.
-const frenchSpaces = (text: string) => text.replace(/ ([:;!?»])/g, ' $1').replace(/« /g, '« ')
+export const frenchSpaces = (text: string) => text.replace(/ ([:;!?»])/g, ' $1').replace(/« /g, '« ')
 
 // t('Delete note') · t('{n} on', { n: 3 }). A word that needs two French versions gets a note after
 // a | that English drops: t('New|card') → "New" / "Nouvelle".

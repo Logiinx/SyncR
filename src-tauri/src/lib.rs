@@ -13,6 +13,22 @@ fn show_main(app: &tauri::AppHandle) {
 // True when Windows started SyncR at sign-in ("Start with Windows" adds --hidden):
 // then the window stays hidden in the tray if "Start hidden in the tray" is on
 // (WindowControls.tsx asks this and decides)
+// The tray menu's words, in the app's language: the page sends them at start and when it changes
+#[tauri::command]
+fn set_tray_texts(app: tauri::AppHandle, open: String, quit: String) -> Result<(), String> {
+  #[cfg(desktop)]
+  {
+    use tauri::menu::{Menu, MenuItem};
+    let open = MenuItem::with_id(&app, "open", open, true, None::<&str>).map_err(|e| e.to_string())?;
+    let quit = MenuItem::with_id(&app, "quit", quit, true, None::<&str>).map_err(|e| e.to_string())?;
+    let menu = Menu::with_items(&app, &[&open, &quit]).map_err(|e| e.to_string())?;
+    if let Some(tray) = app.tray_by_id("main") {
+      tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+    }
+  }
+  Ok(())
+}
+
 #[tauri::command]
 fn started_hidden() -> bool {
   std::env::args().any(|arg| arg == "--hidden")
@@ -285,6 +301,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       started_hidden,
+      set_tray_texts,
       google_sign_in,
       protect_secret,
       unprotect_secret,

@@ -8,6 +8,9 @@ export const app = {
   Mail: 'Mail',
   Settings: 'Paramètres',
   Close: 'Fermer',
+  // The tray icon's menu (language.ts)
+  'Open SyncR': 'Ouvrir SyncR',
+  'Quit SyncR': 'Quitter SyncR',
   Color: 'Couleur',
   Remove: 'Retirer',
   Back: 'Retour',

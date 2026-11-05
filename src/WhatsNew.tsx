@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { t } from './i18n'
+import { currentLanguage, frenchSpaces, t } from './i18n'
 import changelog from '../CHANGELOG.md?raw'
+import changelogFr from '../CHANGELOG.fr.md?raw'
 import { read, write } from './localState'
 import Window from './Window'
 import CloseButton from './CloseButton'
 import { richText } from './richText'
 
 // After an update, shows once what changed since the version last used on this device.
-// The text comes from CHANGELOG.md, built into the app. A new device shows nothing.
+// The text comes from CHANGELOG.md or CHANGELOG.fr.md, built into the app. A new device shows nothing.
 
 const SEEN_KEY = 'syncr.lastVersion'
+
+// In an update's notes, between the English and the French (build-desktop.yml)
+const FRENCH_NOTES = '<!-- fr -->'
 
 interface Release {
   version: string
@@ -29,7 +33,8 @@ function newer(a: string, b: string) {
 function releasesSince(since: string): Release[] {
   const releases: Release[] = []
   let current: Release | null = null
-  for (const line of changelog.split(/\r?\n/)) {
+  const french = currentLanguage() === 'fr'
+  for (const line of (french ? frenchSpaces(changelogFr) : changelog).split(/\r?\n/)) {
     const heading = line.match(/^## \[(\d+\.\d+\.\d+)\]/)
     if (heading) releases.push((current = { version: heading[1], body: [] }))
     else if (line.startsWith('## ')) current = null
@@ -75,9 +80,12 @@ export function recentReleases(count = 5) {
   return releasesSince('0.0.0').slice(0, count)
 }
 
-// An update's notes (update.body: its CHANGELOG.md lines, added by build-desktop.yml), as a release
+// An update's notes (update.body: its lines of both changelogs, added by build-desktop.yml), as a
+// release, in the app's language. Older releases only have the English.
 export function updateRelease(version: string, notes: string): Release {
-  return { version, body: notes.split(/\r?\n/).filter((line) => line.trim()) }
+  const [english, french] = notes.split(FRENCH_NOTES)
+  const text = currentLanguage() === 'fr' && french ? frenchSpaces(french) : english
+  return { version, body: text.split(/\r?\n/).filter((line) => line.trim()) }
 }
 
 // The notes window. The title names this version (or the update's); with several releases each
@@ -115,16 +123,18 @@ export function WhatsNewDialog(props: {
 }
 
 function WhatsNew() {
-  const [releases, setReleases] = useState<Release[]>(() => {
+  // The version it shows changes since. Not the texts: those follow the language while it's open.
+  const [since, setSince] = useState<string | null>(() => {
     const seen = read<string | null>(SEEN_KEY, null)
-    return seen && newer(__APP_VERSION__, seen) ? releasesSince(seen) : []
+    return seen && newer(__APP_VERSION__, seen) ? seen : null
   })
 
   // Remember this version right away, so the popup shows only once (even if the app is closed with it open)
   useEffect(() => write(SEEN_KEY, __APP_VERSION__), [])
 
+  const releases = since ? releasesSince(since) : []
   if (!releases.length) return null
-  return <WhatsNewDialog releases={releases} onClose={() => setReleases([])} />
+  return <WhatsNewDialog releases={releases} onClose={() => setSince(null)} />
 }
 
 export default WhatsNew

@@ -69,7 +69,7 @@ function UpdateBanner() {
 
   // Notices disappear after a few seconds (not "Checking…", which the result replaces)
   useEffect(() => {
-    if (!notice || notice === 'Checking for updates…') return
+    if (!notice || notice === t('Checking for updates…')) return
     const timer = window.setTimeout(() => setNotice(null), 5000)
     return () => window.clearTimeout(timer)
   }, [notice])
