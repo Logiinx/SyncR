@@ -1641,11 +1641,24 @@ button {
   margin: 10px 0 0 6px;
 }
 
-/* Handled on the other device: in place of the buttons, for a few seconds */
+/* Handled on the other device: in place of the buttons and as tall, for a few seconds */
 .reminder-alert-elsewhere {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
   margin: 10px 0 0 6px;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+  font-size: 14px;
+  text-wrap: balance; /* two lines: not one word alone on the second */
+}
+
+.reminder-alert-elsewhere svg {
+  flex-shrink: 0;
   color: var(--text-dim);
-  font-size: 13px;
 }
 
 .reminder-alert-buttons button {

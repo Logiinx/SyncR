@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
-import { ArrowLeft, Bell, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Bell, Check, ChevronDown, Clock } from 'lucide-react'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
 import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useInstantMail } from './instantMail'
@@ -25,11 +25,14 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
         <span className="reminder-alert-text">{item.text}</span>
         {item.note && <span className="reminder-alert-note">{item.note}</span>}
         {item.notMoved && (
-          <span className="reminder-alert-warning">Snoozed in SyncR only: Google Calendar couldn't be reached.</span>
+          <span className="reminder-alert-warning">Postponed in SyncR only: Google Calendar couldn't be reached.</span>
         )}
       </button>
       {item.elsewhere ? (
-        <div className="reminder-alert-elsewhere">{item.elsewhere}</div>
+        <div className="reminder-alert-elsewhere">
+          {item.elsewhere.done ? <Check size={16} /> : <Clock size={16} />}
+          {item.elsewhere.text}
+        </div>
       ) : snoozing ? (
         <div className="reminder-alert-buttons">
           <button className="reminder-alert-back" onClick={() => setSnoozing(false)} title="Back" aria-label="Back">
@@ -45,7 +48,7 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
             Done
           </button>
           <button onClick={() => setSnoozing(true)}>
-            Snooze <ChevronDown size={14} />
+            Postpone <ChevronDown size={14} />
           </button>
           {item.keyAlert && (
             <button onClick={() => onAction('wrongkey')} title="Not a key I can use (e.g. Xbox): keep watching, skip keys at this price">

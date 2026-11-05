@@ -102,12 +102,12 @@ async function save(key: string, change: { doneAt?: number; snoozedUntil?: numbe
 }
 
 // What happened to an alert whose card is on screen, if the other device did it: for that card
-export function markedElsewhere(mark: AlertMark | undefined): string | undefined {
+export function markedElsewhere(mark: AlertMark | undefined): { done: boolean; text: string } | undefined {
   if (!mark || mark.by === deviceName()) return undefined
-  if (mark.doneAt) return 'Marked done on another device.'
+  if (mark.doneAt) return { done: true, text: 'Done on another device' }
   if (!mark.snoozedUntil || mark.snoozedUntil <= Date.now()) return undefined
   const back = mark.snoozedUntil
-  return `Snoozed on another device. Back: ${nearDay(back) ?? shortDate(back)}, ${clockTime(back)}.`
+  return { done: false, text: `Postponed on another device until ${nearDay(back)?.toLowerCase() ?? shortDate(back)}, ${clockTime(back)}` }
 }
 
 export const markAlertDone = (key: string) => save(key, { doneAt: Date.now() })
@@ -144,7 +144,7 @@ export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
     if (!event) return
     if (!event.alerts.some((before) => event!.start - before * MINUTE_MS === at)) {
       const when = `${nearDay(event.start) ?? shortDate(event.start)}, ${clockTime(event.start)}`
-      window.dispatchEvent(new CustomEvent('sync-notice', { detail: `Already moved from another device. Now: ${when}.` }))
+      window.dispatchEvent(new CustomEvent('sync-notice', { detail: `Already postponed on another device. Now: ${when}.` }))
       return
     }
     // Google keeps whole minutes

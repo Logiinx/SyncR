@@ -24,7 +24,7 @@ export interface DueItem {
   notMoved: boolean // snoozed in SyncR only: the event couldn't be moved in Google
   colorId?: string // the event's Google color (the card's strip)
   keyAlert: boolean // a price alert for a key: also "Wrong key" (priceWatch.ts ignoreAlertKey)
-  elsewhere?: string // handled on the other device while its card showed: says so instead of buttons
+  elsewhere?: { done: boolean; text: string } // handled on the other device while its card showed: says so instead of buttons
 }
 
 // The buttons on a due item ('open': a click on the card's text)

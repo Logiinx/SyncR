@@ -5,8 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Reminders**
-- **Improved:** Snooze and Done on one device now also count on your other device.
-- **Fixed:** Snoozing on both devices no longer moves an event twice, or rings its earlier alerts.
+- **Improved:** Postpone and Done on one device now also count on your other device.
+- **Improved:** The Snooze button is now called Postpone, since it really moves the event.
+- **Fixed:** Postponing on both devices no longer moves an event twice, or rings its earlier alerts.
 
 **Notes**
 - **New:** On the phone, a button to jump to the end of a note shows while you scroll.
