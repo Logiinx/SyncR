@@ -116,7 +116,6 @@ export const app = {
 
   "What's new": 'Nouveautés',
   Language: 'Langue',
-  'Device language': 'Langue de l’appareil',
   Today: 'Aujourd’hui',
   Tomorrow: 'Demain',
   Yesterday: 'Hier',
