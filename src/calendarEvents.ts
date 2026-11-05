@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, removeOldAlertMarks, type CalendarEvent } from './db'
 import { isConnected as dropboxConnected } from './dropbox'
@@ -60,7 +61,7 @@ const popups = (reminders: Reminder[]) => reminders.filter((r) => r.method === '
 function toEvent(event: GoogleEvent, defaults: Reminder[]): CalendarEvent {
   return {
     id: event.id,
-    title: event.summary ?? '(No title)',
+    title: event.summary ?? t('(No title)'),
     description: event.description ? plainText(event.description) : '',
     start: toTime(event.start),
     end: toTime(event.end),
@@ -238,7 +239,7 @@ export async function updateSeries(event: CalendarEvent, fields: EventFields, re
   if (fields.start !== event.start) {
     // A rule with fixed days (every 3rd) would stay on them: refuse instead of mixing things up
     if (days !== 0 && current === 'custom') {
-      throw new Error("This event repeats in a way SyncR can't change: move its dates in Google Calendar.")
+      throw new Error(t("This event repeats in a way SyncR can't change: move its dates in Google Calendar."))
     }
     const start = new Date(toTime(master.start))
     const length = toTime(master.end) - start.getTime()

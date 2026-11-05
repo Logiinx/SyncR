@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ExternalLink, Pencil, Plus, RefreshCw, Repeat, Trash2 } from 'lucide-react'
 import ContextMenu from './ContextMenu'
@@ -107,8 +108,8 @@ function RemindersView() {
     if (calendar.connected) setEditingEvent('new')
     else
       setDialog({
-        title: 'Connect Google Calendar',
-        message: 'New events go to your Google Calendar. Connect it first in Settings → Accounts.',
+        title: t('Connect Google Calendar'),
+        message: t('New events go to your Google Calendar. Connect it first in Settings → Accounts.'),
         confirmLabel: 'OK',
         noCancel: true,
         onConfirm: () => {},
@@ -119,10 +120,12 @@ function RemindersView() {
   // A repeating event: only this date, unless "All events in the series" is ticked.
   function askDeleteEvent(event: CalendarEvent) {
     setDialog({
-      title: 'Delete event?',
-      message: `"${event.title}" will be deleted from your Google Calendar.${event.seriesId ? ' Only this date, unless you tick the box.' : ''}`,
-      checkbox: event.seriesId ? 'All events in the series' : undefined,
-      confirmLabel: 'Delete',
+      title: t('Delete event?'),
+      message: event.seriesId
+        ? t('"{title}" will be deleted from your Google Calendar. Only this date, unless you tick the box.', { title: event.title })
+        : t('"{title}" will be deleted from your Google Calendar.', { title: event.title }),
+      checkbox: event.seriesId ? t('All events in the series') : undefined,
+      confirmLabel: t('Delete'),
       danger: true,
       onConfirm: (_, wholeSeries) => {
         setEditingEvent(null)
@@ -130,7 +133,7 @@ function RemindersView() {
         const remove = wholeSeries ? deleteSeries : deleteEvent
         remove(event).catch((e) =>
           setDialog({
-            title: "Couldn't delete the event",
+            title: t("Couldn't delete the event"),
             message: e instanceof Error ? e.message : String(e),
             confirmLabel: 'OK',
             noCancel: true,
@@ -167,7 +170,7 @@ function RemindersView() {
       </span>
       <span className="reminder-due">
         {formatDue(event.start, event.allDay)}
-        {event.seriesId && <Repeat size={12} aria-label="Repeating event" />}
+        {event.seriesId && <Repeat size={12} aria-label={t('Repeating event')} />}
       </span>
     </button>
   )
@@ -191,7 +194,7 @@ function RemindersView() {
         <Cover coverId={game.coverId} />
         <span className="reminder-row-text">
           <span className="reminder-text" title={game.name}>{game.name}</span>
-          <span className="reminder-row-note">Comes out</span>
+          <span className="reminder-row-note">{t('Comes out')}</span>
         </span>
         <span className="reminder-due">
           {formatDue(game.releaseDate!, true)}
@@ -208,16 +211,16 @@ function RemindersView() {
             no grid: only refresh there) */}
         <div className="games-views reminders-toolbar">
           <button className="reminders-new" onClick={newEvent}>
-            <Plus size={15} /> New event
+            <Plus size={15} /> {t('New event')}
           </button>
           <div className="reminders-tools">
             {calendar.connected && (
               <label
                 className="reminders-hide-repeating"
-                title="Hide repeating events here (they stay in Google Calendar, and still alert)"
+                title={t('Hide repeating events here (they stay in Google Calendar, and still alert)')}
               >
                 <input type="checkbox" checked={hideRepeating} onChange={(e) => setHideRepeating(e.target.checked)} />
-                Hide repeating
+                {t('Hide repeating')}
               </label>
             )}
             {calendar.connected && (
@@ -225,10 +228,10 @@ function RemindersView() {
                 className="reminders-refresh"
                 onClick={calendar.refresh}
                 disabled={calendar.refreshing}
-                title="Refresh events from Google Calendar"
+                title={t('Refresh events from Google Calendar')}
               >
                 {calendar.refreshing ? (
-                  <Spinner label="Refreshing" />
+                  <Spinner label={t('Refreshing')} />
                 ) : (
                   <RefreshCw size={15} />
                 )}
@@ -240,7 +243,7 @@ function RemindersView() {
 
         {/* The last refresh failed: the stored events still show */}
         {calendar.error && (
-          <p className="games-empty error">Google Calendar: {calendar.error} (showing the last loaded events)</p>
+          <p className="games-empty error">{t('Google Calendar: {error} (showing the last loaded events)', { error: calendar.error })}</p>
         )}
         {grid && waitingGames && (
           <ReminderGrid
@@ -254,7 +257,7 @@ function RemindersView() {
           />
         )}
         {!grid && waitingGames && events.length + waitingGames.length === 0 && (
-          <p className="games-empty">No reminders yet</p>
+          <p className="games-empty">{t('No reminders yet')}</p>
         )}
         {/* One group per month ("November 2026 3"), for an easier read of what's coming */}
         {!grid &&
@@ -294,9 +297,9 @@ function RemindersView() {
           y={eventMenu.y}
           onClose={() => setEventMenu(null)}
           items={[
-            { label: 'Edit', icon: Pencil, onClick: () => setEditingEvent(eventMenu.event) },
-            { label: 'Open in Google Calendar', icon: ExternalLink, onClick: () => openLink(eventMenu.event.link) },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
+            { label: t('Edit'), icon: Pencil, onClick: () => setEditingEvent(eventMenu.event) },
+            { label: t('Open in Google Calendar'), icon: ExternalLink, onClick: () => openLink(eventMenu.event.link) },
+            { label: t('Delete'), icon: Trash2, danger: true, onClick: () => askDeleteEvent(eventMenu.event) },
           ]}
         />
       )}
@@ -391,7 +394,7 @@ function ReminderGrid(props: {
               style={{ '--event': eventColor(event.colorId) } as React.CSSProperties}
             >
               {!event.allDay && <span className="calendar-reminder-time">{clockTime(event.start)}</span>}
-              {event.seriesId && <Repeat size={11} className="calendar-repeat" aria-label="Repeating event" />} {event.title}
+              {event.seriesId && <Repeat size={11} className="calendar-repeat" aria-label={t('Repeating event')} />} {event.title}
             </button>
           ))}
           {(gamesByDay.get(dayKey(date)) ?? []).map((game) => (

@@ -2,7 +2,7 @@
 export const app = {
   // Names and words used in several windows
   Notes: 'Notes',
-  Board: 'Tableau',
+  Board: 'Panneau',
   Reminders: 'Rappels',
   Games: 'Jeux',
   Mail: 'Mail',

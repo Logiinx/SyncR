@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { plural, t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { ArrowLeft, Bell, Check, ChevronDown, Clock } from 'lucide-react'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
@@ -18,14 +19,14 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
   const color = eventColor(item.colorId)
   return (
     <div className="reminder-alert" style={color ? { borderLeftColor: color } : undefined}>
-      <button className="reminder-alert-body" onClick={() => onAction('open')} title="Show in SyncR">
+      <button className="reminder-alert-body" onClick={() => onAction('open')} title={t('Show in SyncR')}>
         <span className="reminder-alert-due">
           <Bell size={12} /> {formatDue(item.time, item.allDay)}
         </span>
         <span className="reminder-alert-text">{item.text}</span>
         {item.note && <span className="reminder-alert-note">{item.note}</span>}
         {item.notMoved && (
-          <span className="reminder-alert-warning">Postponed in SyncR only: Google Calendar couldn't be reached.</span>
+          <span className="reminder-alert-warning">{t("Postponed in SyncR only: Google Calendar couldn't be reached.")}</span>
         )}
       </button>
       {item.elsewhere ? (
@@ -35,24 +36,24 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
         </div>
       ) : snoozing ? (
         <div className="reminder-alert-buttons">
-          <button className="reminder-alert-back" onClick={() => setSnoozing(false)} title="Back" aria-label="Back">
+          <button className="reminder-alert-back" onClick={() => setSnoozing(false)} title={t('Back')} aria-label={t('Back')}>
             <ArrowLeft size={15} />
           </button>
-          <button onClick={() => onAction('snooze10')}>10 min</button>
-          <button onClick={() => onAction('snooze60')}>1 hour</button>
-          <button onClick={() => onAction('tomorrow')}>Tomorrow</button>
+          <button onClick={() => onAction('snooze10')}>{t('10 min')}</button>
+          <button onClick={() => onAction('snooze60')}>{t('1 hour')}</button>
+          <button onClick={() => onAction('tomorrow')}>{t('Tomorrow')}</button>
         </div>
       ) : (
         <div className="reminder-alert-buttons">
           <button className="primary" onClick={() => onAction('done')}>
-            Done
+            {t('Done')}
           </button>
           <button onClick={() => setSnoozing(true)}>
-            Postpone <ChevronDown size={14} />
+            {t('Postpone')} <ChevronDown size={14} />
           </button>
           {item.keyAlert && (
-            <button onClick={() => onAction('wrongkey')} title="Not a key I can use (e.g. Xbox): keep watching, skip keys at this price">
-              Wrong key
+            <button onClick={() => onAction('wrongkey')} title={t('Not a key I can use (e.g. Xbox): keep watching, skip keys at this price')}>
+              {t('Wrong key')}
             </button>
           )}
         </div>
@@ -71,8 +72,8 @@ export function ReminderCards({ due, onAction }: {
     <>
       {open.length > 1 && (
         <div className="reminder-alerts-head">
-          <span>{open.length} reminders</span>
-          <button onClick={() => open.forEach((item) => onAction(item, 'done'))}>Done all</button>
+          <span>{plural(open.length, '{n} reminder', '{n} reminders')}</span>
+          <button onClick={() => open.forEach((item) => onAction(item, 'done'))}>{t('Done all')}</button>
         </div>
       )}
       {due.map((item) => (

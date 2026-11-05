@@ -16,7 +16,7 @@ const PENDING_FILE = join(ROOT, 'scripts/i18n-pending.txt')
 const SKIPPED = /^src\/(fr\/|i18n\.ts$)|\.d\.ts$/
 
 // Names that are the same in both languages
-const NAMES = /^(SyncR|Dropbox|Google|Google Calendar|Gmail|Steam|IGDB|GG\.deals|Cloudflare|Pub\/Sub|Windows|Android|Twitter|Reddit|YouTube|Notesnook|Inter|Literata|JetBrains Mono|Google Sans Flex|Sans-serif|Français|English|PIN|URL|OK|by Logiinx|HTML|PDF)$/
+const NAMES = /^(SyncR|Dropbox|Google|Gmail|Steam|IGDB|GG\.deals|Cloudflare|Pub\/Sub|Windows|Android|Twitter|Reddit|YouTube|Notesnook|Inter|Literata|JetBrains Mono|Google Sans Flex|Sans-serif|Français|English|PIN|URL|OK|by Logiinx|HTML|PDF)$/
 
 // JSX attributes that never hold text
 const NOT_TEXT_ATTRIBUTES = new Set(['className', 'style', 'key', 'href', 'src', 'type', 'id', 'name', 'value', 'defaultValue',

@@ -373,7 +373,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow label="Steam">
           <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))} />
         </SettingRow>
-        <SettingRow label="Google Calendar">
+        <SettingRow label={t('Google Calendar')}>
           <Status ok={calendar} text={calendar ? connectedText() : t('Not connected')} />
         </SettingRow>
         {mail && (
@@ -830,7 +830,7 @@ function GoogleSettings() {
 
   return (
     <section className="settings-group">
-      <SectionTitle title="Google Calendar" />
+      <SectionTitle title={t('Google Calendar')} />
       <div className="setting setting-toggle">
         <span>{t('Main calendar')}</span>
         <button

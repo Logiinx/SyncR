@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { t } from './i18n'
 import { db } from './db'
 import { igdbProxyFetch } from './igdb'
 import { getSecret, GOOGLE_SECRET, setSecret } from './secrets'
@@ -11,7 +12,7 @@ import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind }
 // The sign-in is remembered per device, not synced (secrets.ts: encrypted on the PC).
 // Gmail accounts (gmail.ts) use the same client and helpers, with sign-ins of their own.
 
-export const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com'
+export const CLIENT_ID = '563825863957-5652bv9llkma5mp1ipll2hc9kt1ouc3o.apps.googleusercontent.com' // i18n-ok
 const SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 const VERIFIER_KEY = 'syncr.google.verifier'
 
@@ -111,16 +112,16 @@ async function finish(params: URLSearchParams): Promise<Result> {
   localStorage.removeItem(VERIFIER_KEY)
   const ownState = isOwnSignInState('google', params.get('state'))
 
-  if (error) return fail(error === 'access_denied' ? 'Google Calendar: sign-in cancelled.' : `Google Calendar: ${error}`)
+  if (error) return fail(error === 'access_denied' ? t('Google Calendar: sign-in cancelled.') : t('Google Calendar: {error}', { error }))
   // Not the latest sign-in started here (an older tab, or a link from someone else)
-  if (!verifier || !code || !ownState) return fail('Google Calendar sign-in expired. Please try again.')
+  if (!verifier || !code || !ownState) return fail(t('Google Calendar sign-in expired. Please try again.'))
   // Google's consent page lets the user untick the calendar permission
   if (!granted.split(' ').includes(SCOPE)) {
-    return fail('Google Calendar: SyncR needs the calendar permission. Connect again and keep it ticked.')
+    return fail(t('Google Calendar: SyncR needs the calendar permission. Connect again and keep it ticked.'))
   }
 
   const res = await tokenRequest({ code, code_verifier: verifier, redirect_uri: redirectUri() })
-  if (!res.ok) return fail(`Google Calendar sign-in failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) return fail(t('Google Calendar sign-in failed ({status}): {details}', { status: res.status, details: await res.text() }))
   const data = await res.json()
   saveAuth({
     refreshToken: data.refresh_token,
@@ -140,7 +141,7 @@ async function finish(params: URLSearchParams): Promise<Result> {
       // ignore
     }
   }
-  return { ok: true, text: 'Google Calendar connected.' }
+  return { ok: true, text: t('Google Calendar connected.') }
 }
 
 // What the "ID token" says (Google sends it with the "openid" permission): the profile's name
@@ -180,7 +181,7 @@ export async function disconnect() {
 // A valid access token (they last 1 hour), renewed through the proxy when (almost) expired.
 async function accessToken() {
   const auth = loadAuth()
-  if (!auth) throw new Error('Not connected to Google Calendar')
+  if (!auth) throw new Error(t('Not connected to Google Calendar'))
   if (auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now() + 60_000) {
     return auth.accessToken
   }
@@ -190,9 +191,9 @@ async function accessToken() {
     // means that. Other errors may pass: keep the sign-in, try again later.
     if ((await res.text()).includes('invalid_grant')) {
       saveAuth(null)
-      throw new Error('Google Calendar sign-in expired. Please connect again.')
+      throw new Error(t('Google Calendar sign-in expired. Please connect again.'))
     }
-    throw new Error(`Google Calendar error (${res.status})`)
+    throw new Error(t('Google Calendar error ({status})', { status: res.status }))
   }
   const data = await res.json()
   saveAuth({ ...auth, accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
@@ -218,7 +219,7 @@ export async function calendarApi(path: string, init: RequestInit = {}) {
     if (auth) saveAuth({ refreshToken: auth.refreshToken, name: auth.name }) // forget the access token
     res = await send()
   }
-  if (!res.ok) throw new Error(`Google Calendar ${path} failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) throw new Error(t('Google Calendar {path} failed ({status}): {details}', { path, status: res.status, details: await res.text() }))
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }

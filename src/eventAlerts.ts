@@ -105,10 +105,10 @@ async function save(key: string, change: { doneAt?: number; snoozedUntil?: numbe
 // What happened to an alert whose card is on screen, if the other device did it: for that card
 export function markedElsewhere(mark: AlertMark | undefined): { done: boolean; text: string } | undefined {
   if (!mark || mark.by === deviceName()) return undefined
-  if (mark.doneAt) return { done: true, text: 'Done on another device' }
+  if (mark.doneAt) return { done: true, text: t('Done on another device') }
   if (!mark.snoozedUntil || mark.snoozedUntil <= Date.now()) return undefined
   const back = mark.snoozedUntil
-  return { done: false, text: `Postponed on another device until ${nearDay(back)?.toLowerCase() ?? shortDate(back)}, ${clockTime(back)}` }
+  return { done: false, text: t('Postponed on another device until {when}, {time}', { when: nearDay(back)?.toLowerCase() ?? shortDate(back), time: clockTime(back) }) }
 }
 
 export const markAlertDone = (key: string) => save(key, { doneAt: Date.now() })

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { plural, t } from './i18n'
 import { Bell, Repeat } from 'lucide-react'
 import type { CalendarEvent } from './db'
 import { clockTime, fullDate } from './dates'
@@ -15,10 +16,10 @@ import { alertsOf, allDayAlertText, useAllDayAlert } from './eventAlerts'
 // 09:00" (allDayAlertText)
 function alertText(minutes: number, allDay: boolean) {
   if (allDay) return allDayAlertText(minutes)
-  if (minutes === 0) return 'At start'
-  const [count, unit] =
-    minutes % 1440 === 0 ? [minutes / 1440, 'day'] : minutes % 60 === 0 ? [minutes / 60, 'hour'] : [minutes, 'minute']
-  return `${count} ${unit}${count === 1 ? '' : 's'} before`
+  if (minutes === 0) return t('At start')
+  if (minutes % 1440 === 0) return plural(minutes / 1440, '{n} day before', '{n} days before')
+  if (minutes % 60 === 0) return plural(minutes / 60, '{n} hour before', '{n} hours before')
+  return plural(minutes, '{n} minute before', '{n} minutes before')
 }
 
 // "Tuesday 27 October 2026, 04:00" (an all-day event: without the time)
@@ -49,21 +50,21 @@ function EventPreview(props: {
       <p className="event-preview-when">{whenText(event)}</p>
       <p className="event-preview-info">
         <Bell size={14} />
-        {alerts.length === 0 ? 'No alert' : alerts.map((minutes) => alertText(minutes, event.allDay)).join(', ')}
+        {alerts.length === 0 ? t('No alert') : alerts.map((minutes) => alertText(minutes, event.allDay)).join(', ')}
       </p>
       {event.seriesId && (
         <p className="event-preview-info">
           <Repeat size={14} />
-          Repeating event
+          {t('Repeating event')}
         </p>
       )}
       {event.description && <p className="event-preview-notes">{event.description}</p>}
       <div className="dialog-buttons">
         <button className="danger event-delete" onClick={props.onDelete}>
-          Delete
+          {t('Delete')}
         </button>
         <button ref={editRef} className="primary" onClick={props.onEdit}>
-          Edit
+          {t('Edit')}
         </button>
       </div>
     </Window>

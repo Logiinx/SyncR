@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t, textKey, type TextKey } from './i18n'
 import type { CalendarEvent } from './db'
 import Window from './Window'
 import {
@@ -21,22 +22,22 @@ import Spinner from './Spinner'
 // title saves, Shift+Enter starts a new line. Phone (touch screen, no Shift): Enter starts a new
 // line, the Add/Save button saves. Escape cancels.
 
-const ALERTS: [number | null, string][] = [
-  [0, 'At start'],
-  [5, '5 minutes before'],
-  [10, '10 minutes before'],
-  [30, '30 minutes before'],
-  [60, '1 hour before'],
-  [1440, '1 day before'],
-  [null, 'No alert'],
+const ALERTS: [number | null, TextKey][] = [
+  [0, textKey('At start')],
+  [5, textKey('5 minutes before')],
+  [10, textKey('10 minutes before')],
+  [30, textKey('30 minutes before')],
+  [60, textKey('1 hour before')],
+  [1440, textKey('1 day before')],
+  [null, textKey('No alert')],
 ]
 
-const REPEATS: [Repeat, string][] = [
-  ['none', "Doesn't repeat"],
-  ['DAILY', 'Every day'],
-  ['WEEKLY', 'Every week'],
-  ['MONTHLY', 'Every month'],
-  ['YEARLY', 'Every year'],
+const REPEATS: [Repeat, TextKey][] = [
+  ['none', textKey("Doesn't repeat")],
+  ['DAILY', textKey('Every day')],
+  ['WEEKLY', textKey('Every week')],
+  ['MONTHLY', textKey('Every month')],
+  ['YEARLY', textKey('Every year')],
 ]
 
 // <input type="datetime-local"> works with local time as "2026-10-15T18:00"
@@ -133,7 +134,7 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
   return (
     <Window
       className="dialog reminder-dialog event-dialog"
-      label={event ? 'Edit event' : 'New event'}
+      label={event ? t('Edit event') : t('New event')}
       onClose={onClose}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && e.target === titleRef.current && !e.shiftKey && !touchScreen) {
@@ -142,48 +143,48 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
         }
       }}
     >
-      <h2>{event ? 'Edit event' : 'New event'}</h2>
+      <h2>{event ? t('Edit event') : t('New event')}</h2>
       <textarea
         ref={titleRef}
         className="event-title"
         rows={1}
         value={title}
-        placeholder="Title"
+        placeholder={t('Title')}
         onChange={(e) => setTitle(e.target.value)}
       />
       <input type={allDay ? 'date' : 'datetime-local'} value={when} onChange={(e) => setWhen(e.target.value)} />
       <div className="event-options">
         {!allDay && (
           <label>
-            <span>Alert</span>
+            <span>{t('Alert')}</span>
             <select
               value={alert === null ? 'none' : String(alert)}
               onChange={(e) => setAlert(e.target.value === 'none' ? null : e.target.value === 'keep' ? 'keep' : Number(e.target.value))}
             >
-              {alertChoice(event) === 'keep' && <option value="keep">Keep current alerts</option>}
+              {alertChoice(event) === 'keep' && <option value="keep">{t('Keep current alerts')}</option>}
               {ALERTS.map(([minutes, label]) => (
                 <option key={label} value={minutes === null ? 'none' : String(minutes)}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
           </label>
         )}
-        {/* New events, or all events of a series (no "Doesn't repeat" there: to end a series,
+        {/* New events, or all events of a series (no textKey("Doesn't repeat") there: to end a series,
             delete it). A rule SyncR can't show is kept as it is ("Custom") */}
         {(!event || wholeSeries) && (
           <label>
-            <span>Repeat</span>
+            <span>{t('Repeat')}</span>
             <select
               value={loadingSeries ? 'loading' : repeat}
               disabled={loadingSeries}
               onChange={(e) => setRepeat(e.target.value as Repeat | SeriesRepeat)}
             >
-              {loadingSeries && <option value="loading">Loading…</option>}
-              {seriesRule === 'custom' && <option value="custom">Custom (kept as is)</option>}
+              {loadingSeries && <option value="loading">{t('Loading…')}</option>}
+              {seriesRule === 'custom' && <option value="custom">{t('Custom (kept as is)')}</option>}
               {REPEATS.filter(([value]) => !event || value !== 'none').map(([value, label]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
@@ -193,33 +194,33 @@ function EventDialog(props: { event: CalendarEvent | null; onDelete: (event: Cal
       {event?.seriesId && (
         <label className="dialog-check">
           <input type="checkbox" checked={wholeSeries} onChange={(e) => toggleSeries(e.target.checked)} />
-          All events in the series
+          {t('All events in the series')}
         </label>
       )}
       {showNotes ? (
-        <textarea value={description} placeholder="Notes" rows={3} onChange={(e) => setDescription(e.target.value)} />
+        <textarea value={description} placeholder={t('Notes')} rows={3} onChange={(e) => setDescription(e.target.value)} />
       ) : (
         <button className="event-add-notes" onClick={() => setShowNotes(true)}>
-          + Add notes
+          {t('+ Add notes')}
         </button>
       )}
       {error && <p className="event-error">{error}</p>}
       <div className="dialog-buttons">
         {event && (
           <button className="danger event-delete" disabled={saving} onClick={() => props.onDelete(event)}>
-            Delete
+            {t('Delete')}
           </button>
         )}
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('Cancel')}</button>
         <button className="primary" disabled={!canSave} onClick={save}>
           {saving ? (
             <span className="loading-line">
-              <Spinner size={13} /> Saving…
+              <Spinner size={13} /> {t('Saving…')}
             </span>
           ) : event ? (
-            'Save'
+            t('Save')
           ) : (
-            'Add'
+            t('Add')
           )}
         </button>
       </div>
