@@ -7,1078 +7,1070 @@ All notable changes to SyncR. Newest version first.
 ## [0.44.0] - 2026-11-05
 
 **Board**
-- **New:** Text color in a card's right-click menu, available while you edit the card.
-- **Improved:** On the PC, a card's text color button stays hidden until the mouse nears the corner.
-- **Improved:** In a long card, the text color button stays in view while you scroll.
-- **Improved:** Clearer menus: "Card color…" and "Group color…", colors together, each list titled.
-- **Fixed:** After coloring text in a card, you can now change the color of what you type next.
+- **Added** an option to change a card's text color through the right-click menu, while editing
+- **Improved** the text color button on the PC, which stays hidden until the mouse nears the corner
+- **Improved** the text color button, which now stays in view while scrolling a long card
+- **Improved** the menus: "Card color…" and "Group color…", colors together, each list titled
+- **Fixed** an issue where, after coloring text in a card, the color of new text couldn't be changed
 
 **App**
-- **Improved:** Menu items you can't use right now are grayed out instead of disappearing.
-- **Fixed:** Menus opened near the window's edge now stay fully on screen.
+- **Improved** menus: items you can't use right now are grayed out instead of disappearing
+- **Fixed** an issue where menus opened near the window's edge could go off screen
 
 **Notes**
-- **Improved:** The text color button has a new icon, the same in notes and in Board cards.
-- **Fixed:** Small fixes: a color picked with no text selected on the phone; table and copy-link icons.
+- **Improved** the text color button with a new icon, the same in notes and Board cards
+- **Fixed** small issues: a color picked with no text selected on the phone; table and copy-link icons
 
 ## [0.43.0] - 2026-11-05
 
 **Reminders**
-- **Improved:** Postpone and Done on one device now also count on your other device.
-- **Improved:** The Snooze button is now called Postpone, since it really moves the event.
-- **Fixed:** Postponing on both devices no longer moves an event twice, or rings its earlier alerts.
+- **Improved** Postpone and Done: using them on one device now also counts on your other device
+- **Changed** the Snooze button's name to Postpone, since it really moves the event
+- **Fixed** an issue where postponing on both devices moved an event twice or rang earlier alerts
 
 **Notes**
-- **New:** On the phone, a button to jump to the end of a note shows while you scroll.
-- **Improved:** History has a slimmer, clearer top bar, and its button sits closer to the right edge.
+- **Added** a button on the phone to jump to the end of a note, shown while you scroll
+- **Improved** History with a slimmer, clearer top bar, and its button sits closer to the right edge
 
 ## [0.42.0] - 2026-11-03
 
 **Mail**
-- **New:** The Mail tab shows how many emails you missed, on its icon, pinned or not.
+- **Added** the number of missed emails on the Mail tab's icon, pinned or not
 
 ## [0.41.1] - 2026-11-03
 
 **Reminders**
-- **Fixed:** All-day events with Google's default alert now alert, at the time set in Settings → Alerts.
-- **Fixed:** Small fixes: a game release's alert reads "2 days before at 10:00", not "38 hours before".
+- **Fixed** an issue where all-day events with Google's default alert didn't alert
+- **Fixed** small issues: a game release's alert now reads "2 days before at 10:00", not "38 hours before"
 
 ## [0.41.0] - 2026-11-03
 
 **App**
-- **New:** PIN lock on the PC (Settings → App): asked at start; forgot it? Your passphrase opens it.
-- **Fixed:** Small fixes: the passphrase box showed two eye buttons on the PC.
+- **Added** a PIN lock on the PC (Settings → App), asked at start; your passphrase opens a forgotten one
+- **Fixed** small issues: the passphrase box showed two eye buttons on the PC
 
 **Mail**
-- **Improved:** On the PC, mail cards are stored encrypted, and emails no longer stay in the cache.
+- **Improved** privacy on the PC: mail cards are stored encrypted, and emails no longer stay in the cache
 
 ## [0.40.0] - 2026-11-03
 
 **App**
-- **New:** On the PC, notes, cards, games and reminders are now stored encrypted (Windows keeps the key).
+- **Added** encrypted storage on the PC for notes, cards, games and reminders (Windows keeps the key)
 
 ## [0.39.0] - 2026-11-03
 
 **Notes**
-- **New:** Note history: compare or restore older versions of a note, kept 30 days (toolbar, right end).
+- **Added** note history: compare or restore older versions of a note, kept 30 days (toolbar, right end)
 
 ## [0.38.9] - 2026-11-02
 
 **Mail**
-- **Improved:** Only common documents, pictures, media, zips and invites open with a click; others save.
-- **Improved:** Opened or saved email files get Windows' "from the internet" warnings.
-- **Fixed:** Emails can no longer open web pages inside the reader, stay blank or load images unasked.
-- **Fixed:** Small fixes: links on pictures and drawings inside emails open in the browser.
+- **Improved** file safety: only common documents, pictures, media, zips and invites open with a click
+- **Improved** opened or saved email files, which now get Windows' "from the internet" warnings
+- **Fixed** an issue where emails could open web pages in the reader, stay blank or load images unasked
+- **Fixed** small issues: links on pictures and drawings inside emails open in the browser
 
 **Notes**
-- **Improved:** Reddit link cards show the post's title, subreddit, author, votes, comments and picture.
-- **Fixed:** On a phone, Settings' Sites box wraps onto several lines, so the cursor stays in view.
+- **Improved** Reddit link cards with the post's title, subreddit, author, votes, comments and picture
+- **Fixed** an issue on the phone where the cursor left the view in Settings' Sites box
 
 ## [0.38.8] - 2026-11-01
 
 **Notes**
-- **Fixed:** A click beside a link card puts the cursor there; Backspace removes the card in one go.
+- **Fixed** clicks beside a link card, which now put the cursor there; Backspace removes the card in one go
 
 ## [0.38.7] - 2026-11-01
 
 **Notes**
-- **Fixed:** At the end of a note, opening the note list no longer scrolls it up a bit.
+- **Fixed** an issue where opening the note list at the end of a note scrolled it up a bit
 
 ## [0.38.6] - 2026-11-01
 
 **Notes**
-- **Fixed:** Small fixes: comparing a conflict copy shows checkbox and section icons like the note.
+- **Fixed** small issues: comparing a conflict copy shows checkbox and section icons like the note
 
 **Games**
-- **Fixed:** Small fixes: the trailer's full name shows on hover.
+- **Fixed** small issues: the trailer's full name shows on hover
 
 **Mail**
-- **Fixed:** Small fixes: an ⓘ by Settings' Gmail title explains the account checkboxes.
+- **Fixed** small issues: an ⓘ by Settings' Gmail title explains the account checkboxes
 
 **Sync**
-- **Fixed:** Small fixes: errors end without a period; a failed Dropbox sign-in says why only once.
+- **Fixed** small issues: errors end without a period; a failed Dropbox sign-in says why only once
 
 ## [0.38.5] - 2026-11-01
 
 **Mail**
-- **Improved:** Mail tab: a signed-out account stays listed as "Signed out" until you sign in again.
-- **Fixed:** Small fixes: red errors, "Try again" only when it helps, account on "N new emails".
+- **Improved** the Mail tab: a signed-out account stays listed as "Signed out" until you sign in again
+- **Fixed** small issues: red errors, "Try again" only when it helps, account on "N new emails"
 
 **App**
-- **Fixed:** Small fixes: four settings explain themselves in an info box (ⓘ), not only on hover.
+- **Fixed** small issues: four settings explain themselves in an info box (ⓘ), not only on hover
 
 ## [0.38.4] - 2026-11-01
 
 **Games**
-- **Improved:** Right-click a game of your list in the search or the calendar for its usual menu.
-- **Improved:** Calendar grid: games in your list show their list's icon instead of a blue tint.
-- **Fixed:** Small fixes: icons on "Add to Upcoming" and "Google Calendar", coverless previews, To play hints.
+- **Added** the usual right-click menu on games of your list, in the search and the calendar
+- **Improved** the calendar grid: games in your list show their list's icon instead of a blue tint
+- **Fixed** small issues: icons on "Add to Upcoming" and "Google Calendar", coverless previews, To play hints
 
 ## [0.38.3] - 2026-11-01
 
 **Notes**
-- **Improved:** Folded link groups grow open and shrink shut, like sections.
-- **Fixed:** Small fixes: link card star/like icons, ‹ Back in Compare, note previews in full on hover.
+- **Improved** folded link groups, which now grow open and shrink shut like sections
+- **Fixed** small issues: link card star/like icons, ‹ Back in Compare, note previews in full on hover
 
 ## [0.38.2] - 2026-11-01
 
 **Notes**
-- **Fixed:** A folded link group closes with one click, even with the cursor inside it.
-- **Fixed:** Link cards appear once the game search proxy is set up or synced, without a restart.
-- **Fixed:** Small fixes: an empty Sites field resets; link cards open once and don't drag Board cards.
+- **Fixed** an issue where closing a folded link group took more than one click with the cursor inside
+- **Fixed** an issue where link cards only appeared after a restart once the proxy was set up or synced
+- **Fixed** small issues: an empty Sites field resets; link cards open once and don't drag Board cards
 
 ## [0.38.1] - 2026-11-01
 
 **Notes**
-- **New:** Several link cards in a row can show side by side, as small chips, or folded into one line.
+- **Added** link groups: several link cards in a row show side by side, as chips, or folded into one line
 
 ## [0.38.0] - 2026-11-01
 
 **Notes**
-- **New:** Links can show as cards with title and picture (3 styles), and a bigger card on hover.
+- **Added** link cards with title and picture (3 styles), and a bigger card on hover
 
 ## [0.37.4] - 2026-10-31
 
 **Games**
-- **Improved:** Game covers fade in as they load; switching tabs and moving games look smoother.
-- **Improved:** Soft placeholders while prices and the Calendar load, instead of empty space.
+- **Improved** game covers, which fade in as they load; switching tabs and moving games look smoother
+- **Improved** loading: soft placeholders while prices and the Calendar load, instead of empty space
 
 **Mail**
-- **Improved:** The Mail list shows placeholder rows while it loads after starting the app.
+- **Improved** the Mail list, which shows placeholder rows while it loads after starting the app
 
 **App**
-- **Fixed:** Small fixes: no more blur while dragging a Board card.
+- **Fixed** small issues: no more blur while dragging a Board card
 
 ## [0.37.3] - 2026-10-31
 
 **App**
-- **Improved:** Windows and the mail pop-up open with sharp text: no more blur or shift at the end.
+- **Improved** windows and the mail pop-up, which open with sharp text: no more blur or shift at the end
 
 **Games**
-- **Improved:** "Follow my Steam account" has an ⓘ that explains which games it moves.
+- **Added** an ⓘ on "Follow my Steam account" that explains which games it moves
 
 ## [0.37.2] - 2026-10-31
 
 **Games**
-- **Improved:** Playing cards show slightly bigger covers.
+- **Improved** Playing cards with slightly bigger covers
 
 **App**
-- **Improved:** The PC app downloads and updates are about 30% smaller.
+- **Improved** the PC app's size: downloads and updates are about 30% smaller
 
 ## [0.37.1] - 2026-10-31
 
 **Games**
-- **Improved:** Library games with 100% achievements get a gold ring around the cover instead of a trophy.
-- **Improved:** To play: Not started shows smaller covers, so the Playing cards come first.
-- **Fixed:** Library games can be unpaused from their right-click menu (Completed, Paused, Dropped).
+- **Improved** To play: Not started shows smaller covers, so the Playing cards come first
+- **Changed** 100% achievements in Library: a gold ring around the cover instead of a trophy
+- **Fixed** an issue where Library games couldn't be unpaused from their right-click menu
 
 ## [0.37.0] - 2026-10-31
 
 **Games**
-- **New:** "Wrong key" on a key price alert (e.g. an Xbox key): keeps watching, skips that key price.
-- **Improved:** Tabs fill the width with icons; Upcoming (was Coming soon), Not started (was Up next).
-- **Improved:** Hours and achievements of Playing games update every 10 minutes (was once a day).
-- **Improved:** Playing and Not started titles in To play are bigger and easier to spot.
-- **Improved:** Achievement bars turn from blue to green as they fill, so progress is easy to read.
+- **Added** "Wrong key" on a key price alert (e.g. an Xbox key): keeps watching, skips that key price
+- **Improved** tabs, which fill the width with icons; Upcoming (was Coming soon), Not started (was Up next)
+- **Improved** hours and achievements of Playing games, updated every 10 minutes (was once a day)
+- **Improved** Playing and Not started titles in To play, which are bigger and easier to spot
+- **Improved** achievement bars, which turn from blue to green as they fill
 
 **Mail**
-- **Improved:** The Mail tab opens at once: its list loads in the background while SyncR runs.
+- **Improved** the Mail tab, which opens at once: its list loads in the background while SyncR runs
 
 ## [0.36.0] - 2026-10-30
 
 **Games**
-- **New:** Tabs Coming soon · To buy · To play · Library; To play shows Playing above Up next (owned).
-- **New:** Games you're playing show as cards with hours played and Steam achievements.
-- **New:** "Start playing" in a game's menu; Games opens on To buy. Your old To play games are in To buy.
-- **New:** Library games can be marked Completed, Paused or Dropped; SyncR asks when you stop playing.
-- **New:** A line at the top of Games tells you when a game moved by itself, e.g. on release day.
-- **New:** Mark a Coming soon game as pre-ordered: no price alerts, and it goes to To play when it's out.
-- **New:** Settings → Follow my Steam account: games you buy or start on Steam move by themselves.
-- **Improved:** To buy lists games on sale on Steam first, biggest discount first (after Priority).
-- **Improved:** "Delayed" and "Date set" lines show the game's cover and name; a click opens the game.
+- **Added** tabs Coming soon · To buy · To play · Library; To play shows Playing above Up next (owned)
+- **Added** cards for games you're playing, with hours played and Steam achievements
+- **Added** "Start playing" in a game's menu; Games opens on To buy; your old To play games are in To buy
+- **Added** Completed, Paused and Dropped marks for Library games; SyncR asks when you stop playing
+- **Added** a line at the top of Games when a game moved by itself, e.g. on release day
+- **Added** a pre-ordered mark for Coming soon games: no price alerts, goes to To play when it's out
+- **Added** Settings → Follow my Steam account: games you buy or start on Steam move by themselves
+- **Improved** To buy, which lists games on sale on Steam first, biggest discount first (after Priority)
+- **Improved** "Delayed" and "Date set" lines with the game's cover and name; a click opens the game
 
 ## [0.35.2] - 2026-10-30
 
 **Mail**
-- **Improved:** Mail errors say what went wrong in plain words; an email that fails to open has Try again.
-- **Fixed:** Small fixes: full account address on hover, tidier "Web images blocked" line.
+- **Improved** Mail errors, now in plain words; an email that fails to open has Try again
+- **Fixed** small issues: full account address on hover, tidier "Web images blocked" line
 
 ## [0.35.1] - 2026-10-29
 
 **Mail**
-- **Fixed:** Opening Mail right after starting SyncR no longer shows "Couldn't reach Gmail" for a moment.
+- **Fixed** an issue where opening Mail right after start showed "Couldn't reach Gmail" for a moment
 
 ## [0.35.0] - 2026-10-29
 
 **Mail**
-- **New:** A red trash button deletes an email, on pop-up cards and when reading one.
-- **Improved:** The email reader has a ✕ to close it, in place of "Open in Gmail".
+- **Added** a red trash button to delete an email, on pop-up cards and when reading one
+- **Changed** the email reader: a ✕ closes it, in place of "Open in Gmail"
 
 ## [0.34.0] - 2026-10-29
 
 **Mail**
-- **New:** Attached files show under each email: click one to open it, ⬇ to save it.
-- **New:** Click a picture in an email to see it full size; the scroll wheel zooms in and out.
+- **Added** attached files under each email: click one to open it, ⬇ to save it
+- **Added** full-size pictures in emails: click one to see it, the scroll wheel zooms in and out
 
 **Notes**
-- **Improved:** Pictures shown full size: the scroll wheel zooms around the mouse, drag to move.
+- **Improved** pictures shown full size: the scroll wheel zooms around the mouse, drag to move
 
 ## [0.33.0] - 2026-10-29
 
 **App**
-- **New:** Pin tabs (right-click a tab): they stay first in the row, compact, without ✕.
+- **Added** pinned tabs (right-click a tab): they stay first in the row, compact, without ✕
 
 **Mail**
-- **New:** "Always for amazon.com": a sender's web images show by themselves (list in Manage accounts).
-- **New:** Hidden tracking images never load, even with images shown ("2 trackers blocked").
-- **Fixed:** Pictures inside emails (logos, pasted images) now show instead of being left out.
+- **Added** "Always for amazon.com": a sender's web images show by themselves (list in Manage accounts)
+- **Added** a block on hidden tracking images, even with images shown ("2 trackers blocked")
+- **Fixed** an issue where pictures inside emails (logos, pasted images) were left out
 
 **Board**
-- **Fixed:** Cards' text no longer shifts when you double-click to edit them.
+- **Fixed** an issue where a card's text shifted when double-clicking to edit it
 
 ## [0.32.1] - 2026-10-29
 
 **App**
-- **Improved:** Settings: the SyncR version line now sits quietly under all the cards.
+- **Improved** Settings: the SyncR version line now sits quietly under all the cards
 
 ## [0.32.0] - 2026-10-29
 
 **Notes**
-- **New:** Right-click (long press on a phone) an image in a note to copy it.
-- **Improved:** Phone: the Image button is in the toolbar again; Strikethrough moved to the "⋯" list.
+- **Added** an option to copy an image in a note: right-click it (long press on a phone)
+- **Changed** the phone's toolbar: Image is back in it; Strikethrough moved to the "⋯" list
 
 **Reminders**
-- **New:** Five new soft sounds for reminders and emails: Drop, Glass, Wood, Rise and Bubble.
+- **Added** five new soft sounds for reminders and emails: Drop, Glass, Wood, Rise and Bubble
 
 **Mail**
-- **Improved:** Emails open at once in the pop-up, which grows to fit wide ones (no sideways scrolling).
-- **Fixed:** Emails show properly dark: their own dark version, or kept colors (no more white mails).
+- **Improved** emails in the pop-up, which open at once and grow to fit wide ones (no sideways scrolling)
+- **Fixed** an issue with white emails: they show their own dark version, or dark with kept colors
 
 **App**
-- **Improved:** Calmer, softer animations; side panels glide smoothly, windows settle into place.
+- **Improved** animations, now calmer and softer; side panels glide, windows settle into place
 
 **Board**
-- **Improved:** Text colors on cards: a small button shows on selected text, no more pop-up row.
+- **Improved** text colors on cards: a small button shows on selected text, no more pop-up row
 
 ## [0.31.3] - 2026-10-28
 
 **Mail**
-- **Fixed:** If Gmail can't be reached right at start, the Mail tab tries again by itself.
+- **Fixed** an issue where the Mail tab didn't try again if Gmail couldn't be reached right at start
 
 ## [0.31.2] - 2026-10-28
 
 **App**
-- **Fixed:** The note list and the Board no longer slide in a second after the app starts.
+- **Fixed** an issue where the note list and the Board slid in a second after the app started
 
 ## [0.31.1] - 2026-10-28
 
 **Notes**
-- **Fixed:** The note list no longer shows "Tomorrow" as a note's last edit.
+- **Fixed** an issue where the note list showed "Tomorrow" as a note's last edit
 
 **Board**
-- **Fixed:** "Move to group…" picks the right group when two have the same name.
+- **Fixed** an issue where "Move to group…" picked the wrong group when two had the same name
 
 **Games**
-- **Fixed:** After removing a game, the next one you open no longer jumps to its price alert.
+- **Fixed** an issue where, after removing a game, the next one opened jumped to its price alert
 
 **Mail**
-- **Fixed:** Instant mail stays on after signing in again; one bad account no longer stops it.
-- **Fixed:** Small fixes: read marks, archived mail, account changes, hourly reloads.
+- **Fixed** an issue where instant mail turned off after signing in again, or stopped on one bad account
+- **Fixed** small issues: read marks, archived mail, account changes, hourly reloads
 
 **Sync**
-- **Fixed:** PC: if Windows can't keep the sync key, a message says so (no asking at each start).
+- **Fixed** an issue on the PC: if Windows can't keep the sync key, a message says so (no asking at each start)
 
 ## [0.31.0] - 2026-10-28
 
-**Board**
-- **Improved:** A priority group shows only its blue frame, like cards (no blue icon).
-
 **Reminders**
-- **New:** Right-click a game for the same menu as in Games (move, priority, price, pin…).
-- **New:** Events show their Google Calendar color: a dot in the list, a stripe in the month.
+- **Added** a game's usual right-click menu in Reminders (move, priority, price, pin…)
+- **Added** events' Google Calendar colors: a dot in the list, a stripe in the month
+
+**Board**
+- **Improved** priority groups, which show only a blue frame, like cards (no blue icon)
 
 **Games**
-- **Improved:** Game window: the status switch slides to the chosen status.
-- **Improved:** Game preview: release date and platforms on one line.
+- **Improved** the game window's status switch, which slides to the chosen status
+- **Improved** the game preview: release date and platforms on one line
 
 **Mail**
-- **Improved:** "Open in Gmail" moved down in the right-click menu, just above Delete.
+- **Changed** the place of "Open in Gmail" in the right-click menu: lower, just above Delete
 
 **App**
-- **Improved:** Cut-off text shows in full on hover (mail subjects, Steam names, Gmail).
-- **Improved:** Real icons instead of text symbols in a few places; matching "‹ Back" buttons.
+- **Improved** cut-off text, which shows in full on hover (mail subjects, Steam names, Gmail)
+- **Improved** a few places with real icons instead of text symbols; matching "‹ Back" buttons
 
 ## [0.30.1] - 2026-10-28
 
 **Mail**
-- **Improved:** PC: an email opened in the pop-up grows smoothly, with a thin border.
-- **Improved:** An open email's back button now says "‹ Back".
+- **Improved** emails opened in the pop-up on the PC: smooth growth, with a thin border
+- **Changed** an open email's back button, which now says "‹ Back"
 
 ## [0.30.0] - 2026-10-28
 
 **App**
-- **Improved:** Settings fit in one view: four cards; account details under "Manage accounts…".
+- **Improved** Settings, which fit in one view: four cards, account details under "Manage accounts…"
 
 ## [0.29.0] - 2026-10-28
 
+**Mail**
+- **Added** a Mail tab on the PC: your last 50 emails, read ones dimmed, with an "Unread only" filter
+- **Added** a cleaner right-click menu on emails, with icons, sender and subject, and Delete (Gmail's Trash)
+- **Added** dark emails on the PC, like a note; "Show original" brings back the sender's design on white
+
 **App**
-- PC: Mail tab: your last 50 emails, read or not (read ones dimmed, "Unread only" filter); updates when you mark one unread in Gmail.
-- PC: Mail tab: a cleaner right-click menu with icons, the mail's sender and subject on top, and Delete (moves it to Gmail's Trash).
-- PC: emails now show dark, like a note (light text, links in blue). "Show original" brings back the sender's design on white.
-- Every right-click menu (and the phone's "⋯" list) now has an icon before each action, and a bit more room per line.
+- **Improved** right-click menus and the phone's "⋯" list: an icon before each action, more room per line
 
 ## [0.28.1] - 2026-10-28
 
 **App**
-- PC: the pop-up no longer stays open and empty after its last card is closed.
-- PC: side panels no longer slide in by themselves when SyncR starts.
-- Settings no longer jumps back to the top while you scroll it.
+- **Fixed** an issue on the PC where the pop-up stayed open and empty after its last card closed
+- **Fixed** an issue on the PC where side panels slid in by themselves when SyncR started
+- **Fixed** an issue where Settings jumped back to the top while scrolling
 
 ## [0.28.0] - 2026-10-28
 
-**App**
-- PC: instant mail: new emails pop up within seconds once set up in Settings → Gmail (your Google Cloud project ID + one sign-in).
+**Mail**
+- **Added** instant mail on the PC: new emails pop up within seconds, once set up in Settings → Gmail
 
 ## [0.27.0] - 2026-10-28
 
+**Mail**
+- **Added** a color for each Gmail account on the PC: click its dot in Settings → Gmail
+
 **App**
-- PC: click a Gmail account's dot in Settings → Gmail to pick its color (its pop-ups' strip and its dot in the Mail tab).
-- PC: sign-ins and the sync key are now stored encrypted for your Windows user only. Enter your passphrase once after updating.
+- **Improved** security on the PC: sign-ins and the sync key are stored encrypted for your Windows user
 
 ## [0.26.0] - 2026-10-28
 
-**Reminders**
-- Pick the reminder sound in Settings: Chime, Soft, Ping, Double ping or None. A click plays it.
+**Mail**
+- **Added** pop-ups for new Gmail emails on the PC (Primary tab), with Mark as read and Keep unread
+- **Added** reading in the pop-up: click it to grow it; web images stay blocked until "Show images"
+- **Added** fading for email pop-ups, after 10 s, 30 s or 1 min (Settings → Gmail); they stay unread
+- **Added** a Mail tab on the PC: unread Primary mail of all accounts, missed ones on top
+- **Added** a choice of screen and corner for pop-ups, e.g. on a second screen, away from a game
 
-**App**
-- PC: new Gmail emails (Primary tab) pop up, with Mark as read and Keep unread. Add your accounts in Settings → Gmail.
-- Click an email's pop-up to read it: the pop-up grows from its corner. Web images stay blocked until "Show images".
-- Email pop-ups can fade by themselves after 10 s, 30 s or 1 min (Settings → Gmail). They stay unread.
-- PC: new Mail tab in the sidebar: unread Primary mail of all accounts, missed ones on top. Click to read, right-click to archive.
-- PC: choose the screen and corner where pop-ups show (Settings → Pop-up), e.g. on a second screen, away from a game.
+**Reminders**
+- **Added** a choice of reminder sound in Settings: Chime, Soft, Ping, Double ping or None
 
 ## [0.25.1] - 2026-10-28
 
 **App**
-- Tabs you open or close, and notes and reminders you add or delete, now grow in and shrink away like Board cards.
+- **Improved** tabs, notes and reminders, which now grow in and shrink away like Board cards
 
 ## [0.25.0] - 2026-10-28
 
 **App**
-- The blue line under the open tab (and the blue of switches like My games | Calendar) slides to your pick; a faint one follows the mouse.
-- Smoother app: windows and pages fade, menus unfold, panels slide, sections grow, cards and games shrink away or grow in.
-- New "Animations" switch in Settings → Appearance (on by default) to turn off slides and fades.
+- **Added** an "Animations" switch in Settings → Appearance (on by default) to turn off slides and fades
+- **Improved** the blue line under the open tab and on switches, which slides to your pick
+- **Improved** the whole app's feel: windows fade, menus unfold, panels slide, sections and cards grow
 
 ## [0.24.3] - 2026-10-28
 
 **Games**
-- Price alerts are checked every 15 min to 1 h (fewer watches: more often), and when the PC wakes up or the app comes back.
-- Editions sold as Steam bundles (like Cyberpunk Ultimate) now show key prices and can alert at their lowest ever.
+- **Improved** price alert checks: every 15 min to 1 h, and when the PC wakes up or the app comes back
+- **Fixed** key prices and lowest-ever alerts for editions sold as Steam bundles (like Cyberpunk Ultimate)
 
 ## [0.24.2] - 2026-10-24
 
 **Games**
-- Turning a price alert on suggests a price from its lowest ever and today's price, or says it's already a good price.
+- **Added** a suggested price when turning on a price alert, or a note that it's already a good price
 
 ## [0.24.1] - 2026-10-24
 
 **Games**
-- Game window: price alerts are a compact list, a bell per row (game, then editions). Editions show at once; mixes with other games left out.
-- Game window: an empty note or review is folded into a small label; click it to write. One with text shows open.
+- **Improved** price alerts in the game window: a compact list with a bell per row (game, then editions)
+- **Improved** empty notes and reviews in the game window: folded into a small label, click it to write
 
 ## [0.24.0] - 2026-10-24
 
 **Games**
-- Price alerts for a game's other editions on Steam (Deluxe, Ultimate…), each with its own price, listed under the game's alert.
-- Price alerts: "Below lowest ever" is gone ("At lowest ever" already covers it). Alerts that used it now alert at lowest ever.
-- Right-click menu on a game in groups: moves, then priority · Watch price… · Pin to Board, then Remove.
+- **Added** price alerts for a game's other Steam editions (Deluxe, Ultimate…), each with its own price
+- **Improved** the right-click menu in groups: moves, then priority · Watch price… · Pin to Board, then Remove
+- **Removed** "Below lowest ever" from price alerts ("At lowest ever" already covers it)
 
 ## [0.23.1] - 2026-10-24
 
 **Board**
-- An empty line above a list (left after removing its first item) can now be removed with Backspace or Delete. Same in notes.
+- **Fixed** an issue where the empty line above a list couldn't be removed with Backspace or Delete (notes too)
 
 ## [0.23.0] - 2026-10-23
 
 **Games**
-- Steam hours and achievements in the game window: two clear blocks, with a progress bar and % for achievements (gold at 100%).
-- Library: the heart is now Favorite (replaces Priority there): favorites go first. Moving a game in or out of Library clears the mark.
-- Clearer rating: "Your rating" and a Completed pill in the game window. Tiles and rows: "★ 4.5", a check or trophy on the cover.
-- "Watch trailer" is there right away (pulses while loading, gray "No trailer" if none), so the buttons no longer jump.
-- Import from Steam: now next to the covers/list switch in Library (no own row), and a link when your game list is empty.
-- Search: "Add ▾" picks where a released game goes (To play, Playing, Library or Completed); "Add" alone still adds to To play.
-- Price watch: the bell is a badge on the cover's left corner (hover: your alert price), green and ringing once reached.
-- Prices: a warning in the game window when they're for another product (e.g. a DLC priced as its upgrade pack).
+- **Added** a warning in the game window when prices are for another product (e.g. a DLC's upgrade pack)
+- **Added** "Add ▾" in search, to pick where a released game goes; "Add" alone still adds to To play
+- **Improved** Steam hours and achievements in the game window: two blocks, a progress bar, gold at 100%
+- **Improved** ratings: "Your rating" and a Completed pill in the window; "★ 4.5" and a mark on tiles and rows
+- **Improved** "Watch trailer", which shows right away (gray "No trailer" if none), so buttons no longer jump
+- **Improved** the price watch bell: a badge on the cover, green and ringing once the price is reached
+- **Changed** the Library's heart to Favorite (replaces Priority there); favorites go first
+- **Changed** Import from Steam's place: next to the covers/list switch, and a link when your list is empty
 
 ## [0.22.0] - 2026-10-23
 
 **Games**
-- Price alerts: no more Watched tab. Right-click a To play or Waiting game → Watch price…; watched games get a bell and come first.
-- Price alerts: one target for both prices; it alerts when Steam or the cheapest key reaches it (no Steam/Key choice).
+- **Changed** price alerts: one target for both prices, reached by Steam or the cheapest key
+- **Removed** the Watched tab: right-click a To play or Waiting game → Watch price…; bell, and first in line
 
 ## [0.21.1] - 2026-10-23
 
 **Games**
-- Steam: when Steam doesn't answer, it says so (not "game details are private"); a failed daily update retries after an hour.
-- Steam: updating hours and achievements can no longer overwrite a game edit (review, rating…) made on your other device.
+- **Fixed** the message when Steam doesn't answer (not "game details are private"); retries after an hour
+- **Fixed** an issue where Steam updates could overwrite a game edit made on your other device
 
 ## [0.21.0] - 2026-10-23
 
 **Games**
-- Link your Steam profile (Settings → Games): game windows show achievements and hours played; a gold trophy at 100% (also ticks Completed).
-- Library: "Import from Steam…" lists your Steam games not in SyncR yet, most played first; tick the ones to add.
+- **Added** Steam profile link (Settings → Games): achievements and hours in game windows, gold trophy at 100%
+- **Added** "Import from Steam…" in Library: your Steam games not in SyncR yet, most played first
 
 ## [0.20.0] - 2026-10-23
 
 **Games**
-- New tabs: Watched · Waiting · To play · Playing · Library. Done games moved to Library, marked Completed (green check by the stars).
-- Price alerts for Watched games: Steam or key price, at my price or lowest ever, sent through Google Calendar. Bought → To play.
-- Watched games show their prices, and their window links to GG.deals to set an alert there.
+- **Added** tabs Watched · Waiting · To play · Playing · Library; Done games moved to Library as Completed
+- **Added** price alerts for Watched games: Steam or key, at my price or lowest ever, via Google Calendar
+- **Added** prices on Watched games, and a link to GG.deals in their window to set an alert there
 
 ## [0.19.7] - 2026-10-23
 
 **Notes**
-- Typing "> " on a line aligned under ">" no longer turns it into a quote.
+- **Fixed** an issue where typing "> " on a line aligned under ">" turned it into a quote
 
 ## [0.19.6] - 2026-10-22
 
 **Notes**
-- The "/" menu no longer opens when "/" is typed right after a colored or bold word.
+- **Fixed** an issue where the "/" menu opened when "/" was typed right after a colored or bold word
 
 ## [0.19.5] - 2026-10-22
 
 **Notes**
-- Tab aligns a line under ">" only with the cursor at its start (or right after its first ">"); further in it does nothing.
-- Tab no longer moves you out of the note where it has nothing to do (lists, tables and code blocks keep their Tab).
+- **Fixed** Tab under ">": it only aligns with the cursor at the line's start or right after its first ">"
+- **Fixed** an issue where Tab moved you out of the note where it had nothing to do
 
 ## [0.19.4] - 2026-10-22
 
 **Notes**
-- Tab lines a line up exactly under the next ">" of the line above (Shift+Tab goes back). Also a toolbar button, and on cards.
+- **Added** Tab to line up text under the next ">" of the line above (Shift+Tab goes back), with a button
 
 ## [0.19.3] - 2026-10-22
 
 **Notes**
-- Typing "> " makes a quote only at the very start of a line, no longer after spaces (handy to line up text).
-- Enter in a section always adds a line, even on an empty line: it no longer leaves the section (↓ or a click gets you out).
+- **Changed** "> ", which makes a quote only at the very start of a line (handy to line up text)
+- **Changed** Enter in a section, which always adds a line instead of leaving it (↓ or a click gets you out)
 
 ## [0.19.2] - 2026-10-22
 
 **Notes**
-- Pasted lines starting with "-", "*" or "•" become a list, also on cards (in a list or checklist: its items). Ctrl+Shift+V keeps them.
+- **Added** lists from pasted lines starting with "-", "*" or "•", also on cards; Ctrl+Shift+V keeps them as is
 
 ## [0.19.1] - 2026-10-22
 
 **App**
-- What's new: changes are grouped by area (Notes, Games…), and on the PC the scroll bar always shows when there's more below.
+- **Improved** What's new: changes are grouped by area, and the PC's scroll bar shows when there's more
 
 ## [0.19.0] - 2026-10-22
 
-**Notes**
-- Dates read "14 Oct 2026" (was "14-10-2026"), like in Games. Sync conflict copies use it too, with the time.
-
 **Games**
-- In the To play grid, prices sit at the bottom of each tile, so they line up across a row.
-- To play and game windows show the pricier of Steam and key in gray. When Steam is cheapest, its logo turns yellow (replaces the star).
-- In the grid, games with no exact release day show "Mar 2027" or "TBA" instead of nothing.
-- Search, game window and calendar all show a release as "29 Oct 2026 · in 39 days" (calendar dropped the weekday).
-- Game window and preview list all platforms, PC and Android first. Search results keep the short list.
-- Calendar rows get an "Add" button like search (was a pin). A game already in your list opens its game window.
-- Priority is a thin frame everywhere, also on Board cards (was ✨ or a bar, no more blue tint). A game and its card share it.
-- The game window's alert time reads like in Reminders ("Tomorrow, 10:00", "27 October 2026, 10:00").
+- **Added** "Mar 2027" or "TBA" in the grid for games with no exact release day
+- **Improved** the To play grid, where prices sit at the bottom of each tile and line up across a row
+- **Improved** prices: the pricier of Steam and key is gray; Steam's logo turns yellow when it's cheapest
+- **Improved** release dates, shown the same everywhere: "29 Oct 2026 · in 39 days"
+- **Improved** platforms in the game window and preview: all listed, PC and Android first
+- **Improved** calendar rows with an "Add" button like search; a game in your list opens its window
+- **Changed** Priority to a thin frame everywhere, also on Board cards; a game and its card share it
+- **Changed** the game window's alert time, which reads like in Reminders ("Tomorrow, 10:00")
+
+**Notes**
+- **Changed** dates to "14 Oct 2026" (was "14-10-2026"), like in Games; conflict copies too, with the time
 
 **App**
-- Hovering a name or line that's cut off shows it in full (Games, Reminders, note list, note links).
-- Menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line, like on the Board.
-- Windows that only show things (Settings, color rules, What's new, event preview) close with a ✕ at the top right, like the game window.
-- Error messages and red menu items all use the same red (the one sync errors use).
+- **Improved** cut-off names and lines, which show in full on hover (Games, Reminders, note list, note links)
+- **Improved** menus: red actions (Delete, Remove, Disconnect) are always last, below a thin line
+- **Improved** windows that only show things, which now close with a ✕ at the top right
+- **Improved** error messages and red menu items, which all use the same red
 
 ## [0.18.6] - 2026-10-21
 
 **Games**
-- A green "Date set" line when a Waiting game's date gets more precise (TBA → Q1 2027 → 15 Feb 2027). Delays from vague dates show too.
+- **Added** a green "Date set" line when a Waiting game's date gets more precise; vague-date delays show too
 
 ## [0.18.5] - 2026-10-21
 
 **Games**
-- "Lowest ever" says just "Free" when a game was once given away (was "store free").
+- **Changed** "Lowest ever" to just "Free" when a game was once given away (was "store free")
 
 ## [0.18.4] - 2026-10-21
 
 **Games**
-- Prices for editions sold on Steam as a package (e.g. Fallout: New Vegas Ultimate Edition), and for games IGDB links to an old Steam page.
-- "Lowest ever" says "free" instead of 0,00 € (e.g. after a giveaway).
+- **Added** prices for Steam package editions, and for games IGDB links to an old Steam page
+- **Changed** "Lowest ever" to "free" instead of 0,00 € (e.g. after a giveaway)
 
 ## [0.18.3] - 2026-10-21
 
 **Games**
-- Next to prices, a yellow star when Steam costs no more than the cheapest key, and an orange flame at the lowest price ever.
+- **Added** a yellow star when Steam costs no more than the cheapest key, an orange flame at the lowest ever
 
 ## [0.18.2] - 2026-10-21
 
-- Games: a game's window shows its prices like the To play list (Steam logo, key icon, green discount badge). Free games say "Free".
-- Games: "Watch trailer" lines up on the left like the other buttons in a game's window.
+**Games**
+- **Added** prices in a game's window, like the To play list (Steam logo, key icon, green discount badge)
+- **Improved** "Watch trailer", which lines up on the left like the window's other buttons
 
 ## [0.18.1] - 2026-10-21
 
-- Games: tidier prices on To play games: Steam logo and key icon on their own lines, discount in a green badge.
+**Games**
+- **Improved** prices on To play games: Steam logo and key icon on their own lines, discount in a green badge
 
 ## [0.18.0] - 2026-10-21
 
-- Games: Steam price (and discount), cheapest key that works in France and lowest ever, in a game's window and on To play games.
+**Games**
+- **Added** prices in a game's window and on To play games: Steam, cheapest key for France, lowest ever
 
 ## [0.17.1] - 2026-10-21
 
-- Sections: Enter in a title opens the section and moves into it. On PC, a click only folds/unfolds; right-click a title to edit it.
-- Notes: with the app scale above 100%, the "/" and "[[" menus no longer slip off the bottom of the window and make the note jump.
+**Notes**
+- **Changed** section titles: Enter opens and moves in; on the PC a click folds, right-click edits the title
+- **Fixed** an issue above 100% app scale where "/" and "[[" menus slipped off the window and the note jumped
 
 ## [0.17.0] - 2026-10-21
 
-- Reminders: once an event's start time has passed, it fades in the month grid (like past days) and leaves the list.
-- Reminders: Snooze on an alert now moves the event in Google Calendar (only this date; all-day events: the alert only).
-- Reminders: cleaner alert cards: big Done, Snooze opens its choices, Done all, event's color. Click a card to see its event.
+**Reminders**
+- **Improved** alert cards: big Done, Snooze opens its choices, Done all, event's color; a click shows the event
+- **Changed** past events, which fade in the month grid and leave the list once their start has passed
+- **Changed** Snooze, which now moves the event in Google Calendar (only this date; all-day: the alert only)
 
 ## [0.16.6] - 2026-10-21
 
-### Added
-- Board: right-click a group → "New card" adds a card at the bottom of that group (unfolds it, takes its color if it colors its cards).
-
-### Changed
-- Board: shorter card menu: no Align title / Remove title (empty the title instead); Edit only on the phone. All titles centered.
-- Board: a new card (+) starts in its title. Enter, Tab or ↓ go to the text (empty title = no title); Escape drops the card.
-
-### Fixed
-- Board: the card menu (e.g. "Add title") works on the first click while you're writing in the card.
+**Board**
+- **Added** "New card" in a group's right-click menu: adds a card at the bottom, unfolds it, takes its color
+- **Changed** new cards (+), which start in their title; Enter, Tab or ↓ go to the text; Escape drops the card
+- **Removed** Align title and Remove title from the card menu, and Edit on the PC; all titles are centered
+- **Fixed** an issue where the card menu needed a second click while writing in the card
 
 ## [0.16.5] - 2026-10-21
 
-### Changed
-- Reminders: SyncR's old reminders are gone; the tab and alerts use only Google Calendar. Their old Dropbox folder is removed.
+**Reminders**
+- **Removed** SyncR's old reminders: the tab and alerts use only Google Calendar; old Dropbox folder removed
 
 ## [0.16.4] - 2026-10-21
 
-### Changed
-- Settings: tighter spacing when the window is too narrow for more columns, so everything still fits without scrolling (PC).
+**App**
+- **Improved** Settings on narrow windows: tighter spacing, so everything fits without scrolling (PC)
 
 ## [0.16.3] - 2026-10-21
 
-### Changed
-- Games: click a search result to preview it (details, trailer) before adding it, or to open it if it's already in your list.
-- Settings: adds a third column (or more) when the window is short, so everything fits without scrolling (PC).
+**Games**
+- **Added** a preview when clicking a search result (details, trailer), or its window if it's in your list
+
+**App**
+- **Improved** Settings on short windows: a third column or more, so everything fits without scrolling (PC)
 
 ## [0.16.2] - 2026-10-21
 
-### Changed
-- Reminders and Games calendars: reminders, events and releases on days before today are slightly faded (full again on hover).
-- Tabs: the open note tab has a thinner, cleaner blue underline, like the Games status tabs.
-- Updates: slimmer bar with download progress and "What's new" (PC). From the next update on, installing shows no installer window.
+**Reminders**
+- **Improved** calendars: items on days before today are slightly faded (full again on hover)
+
+**App**
+- **Improved** the open note tab with a thinner, cleaner blue underline, like the Games status tabs
+- **Improved** the update bar: slimmer, with download progress and "What's new"; no installer window (PC)
 
 ## [0.16.1] - 2026-10-21
 
-### Changed
-- Sync: faster, never stuck for long: no needless second sync, several files at once, and a sync stuck on a dead connection starts over.
+**Sync**
+- **Improved** sync speed and reliability: no needless second sync, several files at once, restarts if stuck
 
 ## [0.16.0] - 2026-10-21
 
-### Added
-- Reminders: your Google Calendar events now alert you in SyncR too. Done and Snooze only affect that device; missed alerts show for a day.
-- Games: waiting games get a purple all-day event on their release day in Google Calendar, alerting 2 days before at 10:00.
-- Games: game windows show the developer, publisher and game modes, and "Watch trailer" (a big trailer view on the PC).
-- Reminders: a refresh button, and "Hide repeating" to hide repeating events from the list and grid (they still alert).
+**Reminders**
+- **Added** Google Calendar alerts in SyncR, with Done and Snooze on that device; missed ones show for a day
+- **Added** a refresh button, and "Hide repeating" for the list and grid (they still alert)
+- **Changed** the Reminders list: dates written out and grouped by month; a small icon on repeating events
 
-### Changed
-- Release reminders are now those Google Calendar events (needs Google Calendar connected). The old hidden reminders are removed.
-- Reminders list: dates are written out ("3 November 2026") and grouped by month. Repeating events have a small icon.
-- Games: bigger game windows and covers, clearer buttons, and cleaner status tabs.
-- Games: on wide screens, My games shows bigger covers, then more games per row.
-- "What's new" is easier to read (white text instead of gray).
-- Everywhere something loads (updates, game search, Settings…), SyncR shows the same turning blue ring.
+**Games**
+- **Added** a purple all-day Google Calendar event on waiting games' release day, alerting 2 days before
+- **Added** developer, publisher, game modes and "Watch trailer" in game windows
+- **Improved** game windows and covers (bigger), buttons and status tabs (clearer)
+- **Improved** My games on wide screens: bigger covers, then more games per row
+- **Changed** release reminders to those Google Calendar events; the old hidden reminders are removed
+
+**App**
+- **Improved** "What's new", which is easier to read (white text instead of gray)
+- **Improved** loading: the same turning blue ring everywhere
 
 ## [0.15.0] - 2026-10-20
 
-### Added
-- Reminders: "New event" adds an event to Google Calendar: title, date and time, alert and repeat. Shift+Enter adds a line on the PC.
-- Reminders: click an event to see it in full, with Edit and Delete. Right-click (long press on a phone) for more.
-- Repeating events: editing or deleting changes only that date, unless you tick "All events in the series".
+**Reminders**
+- **Added** "New event", which adds a Google Calendar event: title, date, time, alert and repeat
+- **Added** a full view of an event, with Edit and Delete; right-click or long press for more
+- **Added** "All events in the series" for repeating events; otherwise changes apply to that date only
 
 ## [0.14.0] - 2026-10-20
 
-### Added
-- Settings → Google Calendar: connect your main calendar (on the PC, the sign-in opens in your web browser).
-- Reminders: your Google Calendar events show in the grid and the list for the next 12 months, also offline.
+**Reminders**
+- **Added** Settings → Google Calendar, to connect your main calendar (the PC signs in through your browser)
+- **Added** Google Calendar events in the grid and list for the next 12 months, also offline
 
 ## [0.13.4] - 2026-10-20
 
-### Added
-- After an update, a small window shows what's new since the version you used before (PC and phone).
-- Settings → About: click the version number to see the notes of the last 5 versions again.
+**App**
+- **Added** a small window after an update, showing what's new since your last version (PC and phone)
+- **Added** the last 5 versions' notes: click the version number in Settings → About
 
 ## [0.13.3] - 2026-10-19
 
-### Changed
-- On a new PC, the notes sidebar and the Board start open, so you discover them. On a phone they still start closed.
+**App**
+- **Changed** new PCs: the notes sidebar and the Board start open; on a phone they still start closed
 
 ## [0.13.2] - 2026-10-19
 
-### Added
-- Board: a group's menu has "Color…" (just the group) and "Color with its cards…" (the group, its cards and cards added later).
-
-### Changed
-- Board: a group's stack icon takes the group's color.
+**Board**
+- **Added** "Color…" (just the group) and "Color with its cards…" (with its cards) in a group's menu
+- **Improved** a group's stack icon, which takes the group's color
 
 ## [0.13.1] - 2026-10-19
 
-### Added
-- Board: background colors for cards, game cards and groups. Right-click (⋯ on the phone) → "Color…" and pick one of 8 colors, or "Default" to remove it. A group's color shows on its header and its line; its cards keep their own.
-
-### Changed
-- Board: priority cards and groups now have a bar on their left edge, in their own color (blue when they have none), so priority still shows on a colored card.
+**Board**
+- **Added** background colors for cards, game cards and groups: "Color…" in their menu, 8 colors or "Default"
+- **Changed** priority cards and groups: a bar on the left edge, so priority still shows on a colored card
 
 ## [0.13.0] - 2026-10-19
 
-### Added
-- Board: card groups. Right-click a card (⋯ on the phone) → "Move to group…" to put it in a new or existing group, or take it out again. Click a group's header to fold its cards away; a folded group looks like a small pile of cards with the number of cards in it. Inside a group, priority cards stay on top, as on the Board. Groups can be dragged like cards, and cards can be dragged into a group (its line turns blue), out of it, or onto a folded group (it lights up). Right-click a group's header ("⋯" on the phone) to rename it, make it a priority, or delete it. When deleting, you choose whether its cards are deleted too or go back on the Board; "Undo" brings everything back. **Update the app on both PC and phone:** an older version shows a group as an empty card.
-
-### Changed
-- Board: clicking a card's title folds or unfolds it (not just the small arrow). To rename the title, use "Edit title" in the card's menu.
-- Board: the ✕ and ✨ buttons on cards are gone, for a cleaner Board. Delete (or Unpin) and priority are in the card's menu: right-click on the PC, "⋯" on the phone (game cards got the "⋯" too).
-- Board: the menus of cards and groups are sorted into groups of actions, with thin lines between them (edit · title · priority and group · delete).
+**Board**
+- **Added** card groups: "Move to group…", fold them, drag cards in and out; update on both PC and phone
+- **Improved** card and group menus, sorted into groups of actions with thin lines between them
+- **Changed** card titles: a click folds or unfolds the card; "Edit title" in its menu renames it
+- **Removed** the ✕ and ✨ buttons on cards: Delete (or Unpin) and priority are in the card's menu
 
 ## [0.12.19] - 2026-10-19
 
-### Changed
-- The menu that popped up over selected text is gone (it covered the text and got cut off after Ctrl+A). Its buttons are now in the toolbar, sorted into groups: undo · text style · what the lines are (checklist, section, code block, separate lines) · insert (table, image) · use elsewhere (copy link, pin to Board). Buttons that can't be used right now are grayed out, so the others never move. With nothing selected, section, code block, separate lines and copy link act on the line the cursor is in. Section and code block are one button each: lit when the cursor is inside one, click again to turn it back into normal lines.
-- Phone: the toolbar keeps undo, text style and checklist; the other buttons are in a "⋯" list, which only shows what can be used right now.
+**Notes**
+- **Changed** the toolbar: it now holds the buttons of the old selected-text menu, in groups, grayed when unavailable
+- **Changed** the toolbar on the phone: undo, text style and checklist stay; the rest is in a "⋯" list
+- **Removed** the menu that popped up over selected text (it covered the text)
 
 ## [0.12.18] - 2026-10-19
 
-### Added
-- Selection menu: a "Separate lines" button turns line breaks (Shift+Enter, or text pasted from Notesnook or web pages) into real lines. Both look the same, but lines joined by line breaks are one paragraph: triple-click selected all of them, and a heading, list or section applied to all of them at once. The button only shows when the selection contains line breaks; Ctrl+Z undoes it. In a list item, the lines stay in the same item.
-
-### Changed
-- Shift+Enter now makes a new line, like Enter, so pressing it out of habit no longer joins lines into one paragraph. Inside a list or checklist item it still makes a line break (a new line without a new bullet), and code blocks work as before. Ctrl+Enter still makes a line break anywhere. Also in Board cards.
-- Pasted text with line breaks (from Notesnook, many web pages) now becomes separate lines, as if you had pressed Enter between them. Same rule as the "Separate lines" button: in a list item the lines stay in the same item, headings keep their line breaks, and pasting into a code block works as before.
-
-### Fixed
-- Typing "- " (or "1. ", "[ ] ") right after a line break made a list whose first line had the same hidden link id as the line above, so a link to that spot could jump to the wrong line.
+**Notes**
+- **Added** a "Separate lines" button that turns line breaks into real lines; Ctrl+Z undoes it
+- **Changed** Shift+Enter, which now makes a new line like Enter (in lists: a line break); also in Board cards
+- **Changed** pasted line breaks (from Notesnook, many web pages), which now become separate lines
+- **Fixed** an issue where a list typed after a line break could make a link jump to the wrong line
 
 ## [0.12.17] - 2026-10-18
 
-### Fixed
-- Sync: an edit you were typing at the very moment a sync ran is no longer lost. Before, the half-second of typing still waiting to be saved was invisible to sync: a newer version from your other device could be stored and then overwritten by that save (the other device's edit vanished, without a conflict copy), and a note deleted on your other device was deleted here even though you had just typed in it (your words were dropped). Sync now saves waiting edits first, so these become a normal conflict copy, and an edit beats a deletion as intended.
-- Sync: deleting a note no longer deletes an edit your other device saved a moment earlier. The deletion now tells Dropbox "only if the note is still the version I saw" (its revision); if it changed, the edit wins and the note comes back, as with other edit-versus-deletion cases.
-- Sync: a conflict no longer creates the same conflict copy twice. When the step after making the copy failed (your other device saved again a moment later) or was skipped (you kept typing), the retry made a second, identical copy. A conflict copy's id now comes from the note and the time of the version it keeps, so a retry finds the copy it already made.
-- Sync: one file in Dropbox that can't be decrypted (for example saved with another passphrase, or put in the folder by hand) no longer stops all syncing. Before, sync stopped at that file with a cryptic error ("The operation failed for an operation-specific reason") and retried every minute, so nothing after it ever synced. Now such files are skipped and left untouched, everything else syncs, and a message says how many items couldn't be read.
-- Dropbox: you're no longer signed out by a passing error. The app renews its Dropbox access every few hours; any "400" error answer during that renewal used to erase the sign-in, although Dropbox also uses 400 for temporary problems. Now only Dropbox's "invalid_grant" answer (the sign-in was really revoked) signs you out; other errors are retried later.
+**Sync**
+- **Fixed** an issue where an edit typed at the very moment a sync ran could be lost
+- **Fixed** an issue where deleting a note could delete an edit your other device had just saved
+- **Fixed** an issue where a conflict could create the same conflict copy twice
+- **Fixed** an issue where one unreadable file in Dropbox stopped all syncing; it's now skipped and reported
+- **Fixed** an issue where a passing Dropbox error signed you out
 
 ## [0.12.16] - 2026-10-18
 
-### Added
-- Search across all notes: a search box in the sidebar (Ctrl+Shift+F on the PC opens it). Only the matching notes stay in the list, each with the text around the match and the found words in bold. Case and accents don't matter ("ete" finds "été"), and with several words a note must contain all of them, in any order. The search stays while you open notes, until you clear it (✕ or Escape).
-- Opening a search result scrolls the note to the match and makes it pulse in blue three times (fading in and out, about 3.5 seconds). With several words, it goes to the first line that has all of them (the snippet in the list shows that same spot). Collapsed sections around the match open. The cursor doesn't move there, so the phone keyboard stays closed.
-
-### Fixed
-- Phone: after picking a text color or highlight (in notes and cards), the color shows right away. Android draws its own selection (white text on blue) and ignores the app's selection style, so the new color stayed hidden until you unselected. Now the selection collapses to a cursor at the end of the colored text. On the PC the selection stays as before.
+**Notes**
+- **Added** search across all notes in the sidebar (Ctrl+Shift+F on the PC); case and accents don't matter
+- **Added** a jump to the match when opening a search result: it pulses in blue, collapsed sections open
+- **Fixed** an issue on the phone where a new text color stayed hidden until unselecting (cards too)
 
 ## [0.12.15] - 2026-10-18
 
-### Changed
-- Board on the phone: a long press on a card's text now only opens Android's own menu (copy, paste…), no longer the card's menu on top of it. The card's menu (title, priority, delete) moved to a new "⋯" button next to the flag and ✕. On the PC, right-click works as before.
+**Board**
+- **Changed** long press on a card's text on the phone: it opens Android's menu; the card's menu has a "⋯" button
 
 ## [0.12.14] - 2026-10-18
 
-### Added
-- Board on the phone: a "New card" button at the bottom of the panel, within reach of your thumb. The "+" at the top is still there.
-- Phone: swipe right from the left third of the screen to open the sidebar, swipe left on it to close it (like the Board on the right side).
-- Board: colored text in cards. While editing a card, select some text and a row of colors appears under it (the same colors as in notes).
+**Board**
+- **Added** a "New card" button on the phone, at the bottom of the panel, within reach of your thumb
+- **Added** colored text in cards: select text while editing, and pick a color (same as notes)
+
+**App**
+- **Added** swipes on the phone: right from the left third opens the sidebar, left closes it
 
 ## [0.12.13] - 2026-10-17
 
-### Changed
-- Games → My games: one status at a time. Tabs at the top ("Waiting 7 | To play 6 | …", with counts) replace the long page of collapsible groups, so there's much less scrolling. Your games show as big covers, 6 per row on the PC, with the countdown (Waiting), the year, or your stars underneath. Priority games get a blue ring. A switch on the right of the tabs goes back to the list with dates and notes. The tab and the layout you pick are remembered on each device.
+**Games**
+- **Changed** My games to one status at a time: tabs with counts, big covers; a switch goes back to the list
 
 ## [0.12.12] - 2026-10-17
 
-### Changed
-- Games: the search shows the most popular matches first, by how many IGDB users want to play each game, which works for upcoming games too. Games whose name is exactly what you typed stay on top. Before, results came in IGDB's name-match order, so a well-known game like "Blight: Survival" could be missing from the first 20 when you searched "Blight".
-
-### Fixed
-- Games: the search finds games while you're still typing a word ("Cronos the new d" now finds "Cronos: The New Dawn"). IGDB's own search only matches whole words, so a half-typed word gave no results. SyncR now also looks for names whose words start with what you typed, ignoring punctuation like ":".
+**Games**
+- **Improved** search results: most popular first, with exact name matches on top
+- **Fixed** an issue where search found nothing while a word was half typed
 
 ## [0.12.11] - 2026-10-17
 
-### Fixed
-- Notes: opening the sidebar (or the Board) at the end of a note no longer scrolls the end out of view. A note only counted as "at the bottom" within 4 pixels of its very end, but typing at the end leaves it about 21 pixels above that (the space under the last line). So the browser kept the top line in place instead, and as the narrower note's lines wrapped, the end slid down out of view. "At the bottom" now includes the last 50 pixels.
+**Notes**
+- **Fixed** an issue where opening the sidebar or Board at the end of a note scrolled the end out of view
 
 ## [0.12.10] - 2026-10-17
 
-### Fixed
-- Games: the "My games" and "Calendar" buttons no longer jump sideways when you switch. They're now centered at the top. The calendar's month grid makes the page wider, and since the buttons were attached to the page's left edge, they moved with it. In the calendar's list layout, "Top" and the grid/list buttons now sit on their own line below.
+**Games**
+- **Fixed** an issue where the "My games" and "Calendar" buttons jumped sideways; they're now centered
 
 ## [0.12.9] - 2026-10-17
 
-### Fixed
-- Games → Calendar: the popup when you click a game is small again (cover beside the name and release date). Since 0.12.1 it used the new game details window's two-column layout and showed the cover at full size.
+**Games**
+- **Fixed** the Calendar's popup, which is small again (cover beside the name and release date)
 
 ## [0.12.8] - 2026-10-17
 
-### Fixed
-- Clicking a link in a note (or a Board card) opened it twice in the browser: once by SyncR, and once more by the browser's own handling of the link, which SyncR didn't block. It now opens once.
+**Notes**
+- **Fixed** an issue where clicking a link in a note or Board card opened it twice in the browser
 
 ## [0.12.7] - 2026-10-17
 
-### Changed
-- Calendars (Reminders and Games): today's date is shown in white on a small blue rounded square, instead of blue text.
-- Tabs: the open tab's blue line is now a short rounded bar in a muted blue, only under the title, instead of a line along the whole tab.
-
-### Fixed
-- Settings → Games: a long error message stays on one line (cut with …) instead of making the dialog taller on the phone. Point at it or tap it to read it in full.
-- Settings → Games: when the game search isn't set up, "Waiting for connection…" stays for a second before "Not set up", instead of flashing for a split second.
+**App**
+- **Changed** today's date in calendars: white on a small blue rounded square, instead of blue text
+- **Changed** the open tab's blue line: a short rounded bar in a muted blue, only under the title
+- **Fixed** an issue where a long error made Settings → Games taller on the phone; tap it to read it in full
+- **Fixed** an issue where "Waiting for connection…" flashed for a split second in Settings → Games
 
 ## [0.12.6] - 2026-10-17
 
-### Fixed
-- Settings → Games: the status line now shows "Waiting for connection…" from the start, so the dialog no longer grows a little when "Connected" appears.
-- Settings → Games: once the connection has worked, reopening Settings shows "Connected" right away instead of checking again in view. A check still runs quietly, and the status only changes if it fails. Remembered until SyncR closes.
+**App**
+- **Improved** reopening Settings: "Connected" shows right away, and a check still runs quietly
+- **Fixed** an issue where Settings → Games grew a little when "Connected" appeared
 
 ## [0.12.5] - 2026-10-17
 
-### Changed
-- "Check for updates" moved from Settings to a small icon right of Settings at the bottom of the sidebar. It spins while checking; the result shows in the bar at the top as before.
-- Settings → About now says "by Logiinx" next to the version.
-- Tabs look more finished: the ✕ is a real icon, centered in its button (it was a text character, placed by the font). The open tab has a thin blue line along its bottom. With a mouse, other tabs have even spacing and show their ✕ only when you point at them (the tab widens a little and the ✕ slides in).
-- More symbols drawn as icons instead of text characters, so they're centered and match the rest: the ☰ menu button, the image viewer's ✕, the ✓ in sync messages, and the ♥ of liked games in the Games list. In conflict compare, sections are marked with › instead of the old ▸ triangle.
-- Color rules: deleting a rule now uses the trash icon, like deleting a group (✕ is for closing and dismissing).
-- Small icon buttons (toolbar, tab ✕, card buttons, fold arrows, dialog close, sidebar icons) now all light up the same way under the mouse. Before there were five slightly different greys, and on Board cards the hover was nearly invisible.
-- Game ratings: the stars are now icons (in the game's window and in the Games list) instead of ★ text characters. The list shows a real half star instead of "½".
-- Notes and cards: bullet, numbered and checklist items and section titles now all start their text at the same distance from the left (before: about 18, 23 and 26 px), so they line up in one column.
-- Section arrows sit 2px lower, level with the title's letters (the font draws letters a bit low in their line, so the exact middle looked high). The ✦ and ✕ on Board cards got the same correction, so they line up with the fold arrow again, and the arrow now has the same 8px space from the edge as the buttons on the right.
-- Game window: the ✕ is centered on the game's name, with the same space above it and to its right.
-- Phone: the toolbar buttons are centered with equal space on both sides (the bar was 1px too wide and scrolled).
+**App**
+- **Added** "by Logiinx" next to the version in Settings → About
+- **Improved** tabs: a real ✕ icon, a thin blue line on the open tab, even spacing, ✕ on hover with a mouse
+- **Improved** symbols, now drawn as icons: ☰, the image viewer's ✕, ✓ in sync messages, ♥ of liked games
+- **Improved** small icon buttons, which all light up the same way under the mouse
+- **Changed** "Check for updates": moved from Settings to a small icon at the bottom of the sidebar
+- **Changed** deleting a color rule, which now uses the trash icon, like deleting a group
+- **Fixed** the toolbar on the phone, which was 1px too wide and scrolled
+
+**Notes**
+- **Improved** list items and section titles (notes and cards), whose text now starts in one column
+- **Improved** section arrows, which sit level with the title's letters; same for ✦ and ✕ on Board cards
+
+**Games**
+- **Improved** game ratings: icon stars, with a real half star in the list
+- **Improved** the game window's ✕, centered on the game's name
 
 ## [0.12.4] - 2026-10-17
 
-### Added
-- Board cards can have a title: right-click a card → "Add title". It's bold and centered (right-click → "Align title left" to switch), double-click it to edit, and the small arrow beside it folds the card's text away. Title, alignment and folding sync to your other devices. A card with only a title is kept.
+**Board**
+- **Added** card titles: "Add title" in a card's menu; bold and centered, the small arrow folds the text
+- **Improved** the swipe that opens the Board on the phone: it can start anywhere in the right third
+- **Removed** the small blue dot on priority cards; the blue tint and ✦ still mark them
 
-### Changed
-- Board: priority cards (text and games) no longer have the small blue dot before their first line, which looked off next to bullets. The blue tint and the blue ✦ still mark them.
-- Notes: sections and code blocks now fold with the same small arrow (chevron) as Board card titles, instead of the ▶ triangle.
-- Phone: the swipe that opens the Board can now start anywhere in the right third of the screen, not just at the edge. With Android's gesture navigation, a swipe starting right at the edge is taken as "Back" and never reaches the app. Swipes on a wide table still scroll the table.
+**Notes**
+- **Changed** the fold arrow of sections and code blocks, now the same small chevron as card titles
 
 ## [0.12.3] - 2026-10-17
 
-### Changed
-- Notes and cards: "- ", "1. " or "[ ] " right after a Shift+Enter line break now starts a list too. Before, these shortcuts only worked at the start of a paragraph (after Enter), and a line break stays inside the paragraph. Now the paragraph is split at the line break and the new part becomes the list.
+**Notes**
+- **Improved** "- ", "1. " and "[ ] " right after a Shift+Enter line break, which now start a list (cards too)
 
-### Fixed
-- Board cards: after leaving a list with Enter, the new empty line was removed again half a second later (when the card saved), putting the cursor back in the list, so "- " no longer made a bullet. Broken in 0.12.2.
+**Board**
+- **Fixed** an issue where the new empty line after leaving a list was removed half a second later
 
 ## [0.12.2] - 2026-10-17
 
-### Added
-- Phone: swipe left from the right edge to open the Board, swipe right on it to close it.
-
-### Fixed
-- Board cards: a bullet, numbered or check list at the end of a card no longer leaves an empty line below it. TipTap's "trailing node" kept adding an empty paragraph after a final list. Cards don't use it anymore, and the empty line it already added is hidden.
+**Board**
+- **Added** swipes on the phone: left from the right edge opens the Board, right closes it
+- **Fixed** an issue where a list at the end of a card left an empty line below it
 
 ## [0.12.1] - 2026-10-17
 
-### Changed
-- Settings is wider with two columns, so everything shows at a glance without scrolling (on the phone it stays one column).
-- Games: a new details window. On the PC, the big cover is on the left with the actions under it: Priority, Pin to Board (or Unpin), Google Calendar for upcoming games, and "Remove from list" set apart at the bottom in a quiet red. On the right: the title with the date and the main platforms, the status as one joined bar, then (for finished or dropped games) the stars, heart and review, and the note. ✕ at the top right closes it (Escape and a click outside too); the Close button is gone. On the phone it's stacked: the cover beside the title, the actions as a row of icons, then the rest.
-- "Flag" is now called "Priority" everywhere, with a sparkle icon instead of a flag: games (the icon on their row, "Mark as priority" in their menu, the details) and Board cards (the button and the menu). It works the same: a priority game or card stays at the top with a light blue tint.
+**Games**
+- **Added** a new details window: big cover, actions under it, status bar, stars, review and note
+- **Changed** "Flag" to "Priority" everywhere, with a sparkle icon (games and Board cards)
 
-### Fixed
-- Settings opens at the top again (it used to open scrolled to the bottom), and the "Connected" text no longer pushes the Done button out of view: the Done button is gone. Close Settings with Escape or a click outside it, as before.
+**App**
+- **Improved** Settings: wider with two columns, so everything shows without scrolling (phone: one column)
+- **Removed** the Done button in Settings: close with Escape or a click outside
+- **Fixed** an issue where Settings opened scrolled to the bottom
 
 ## [0.12.0] - 2026-10-17
 
-### Added
-- Board: pin games to it. Right-click a game in the Games tab → "Pin to Board" (the Board opens). The card shows the game's cover and name; click it for the game's details, drag it like any card. A flagged game starts as a priority card; after that the card's priority and the game's flag are separate. Unpin with the card's ✕ (with Undo) or "Unpin from Board" in the game's menu. The card stays if you remove the game from your list (dimmed, no longer opens).
+**Board**
+- **Added** pinned games: "Pin to Board" on a game makes a card with its cover and name; a click opens it
 
-### Fixed
-- Games: the delay banner no longer shows for a release date that only moved by a few hours on the same day (it said e.g. "29 Oct 2026 → 29 Oct 2026"). Only a later day counts as a delay.
+**Games**
+- **Fixed** an issue where the delay banner showed when a release only moved a few hours on the same day
 
-### Changed
-- Sidebar: the Settings button has the same height and icon position as the Games and Reminders buttons.
+**App**
+- **Changed** the sidebar's Settings button: same height and icon position as Games and Reminders
 
 ## [0.11.1] - 2026-10-16
 
-### Changed
-- Settings → Games: the game search proxy address and password are now saved for all your devices (synced and encrypted like the rest), so you only set them up once. The values already set on a device are kept. The Test button is gone: SyncR checks the connection by itself when Settings opens and shortly after you type, and shows a green "Connected", or what went wrong (e.g. "Wrong password for the game search proxy").
+**Games**
+- **Improved** the game search proxy settings: synced to all devices, and checked by themselves
+- **Removed** the Test button: Settings shows a green "Connected", or what went wrong
 
-### Fixed
-- Sync: a reminder, Board card or game deleted on one device no longer comes back when it was changed (e.g. a reminder marked done) on another device that hadn't received the deletion yet. Before, the newest change won, so the deletion was undone. Deliberately bringing something back still works: adding a removed game again, Undo on a Board card, or a release reminder returning with a new date.
+**Sync**
+- **Fixed** an issue where a deleted reminder, card or game came back after a change on another device
 
 ## [0.11.0] - 2026-10-16
 
-### Added
-- Games: a Games tab (open it with "Games" at the top of the notes list; its tab shows a gamepad icon). Search the IGDB game database and add games to your list: a game that isn't out yet goes to Waiting, otherwise to To play. Main games only by default; a checkbox includes DLCs, editions and bundles. Search results show up to 3 platforms, PC and Android first ("+4 more" for the rest). Your games are grouped by status (Waiting, To play, Playing, Done, Dropped); click a group's title to fold it. Each row shows the cover, the release date with a countdown such as "in 34 days" (just the year once it's out) and a preview of your note or review, plus your stars and heart for finished or dropped games. Flagged games get a light blue tint and stay at the top of their group. Waiting games are sorted by release date, the others newest first.
-- Click a game for its details: platforms, status, flag, an optional note, and for finished or dropped games 5 stars (half stars allowed: click the left half of a star), a heart and an optional review. Right-click (long press on the phone) for a quick menu: move, flag, remove. Games sync between your devices, encrypted like notes.
-- Games tab: a Calendar view (buttons "My games" | "Calendar" at the top; the last one is remembered). It shows popular upcoming PC games for the next 6 months. On the PC: one month grid per month (Monday first), stacked so you scroll through them; each day shows the games' covers and names, and a busy day makes its week taller. A switch next to the buttons changes to a list grouped by month (with the day and a countdown), which the phone always uses. Click a game for a small popup with its release date, countdown and platforms. Buttons "Top 100 · 300 · 500 · 1000" choose how many of Steam's most wishlisted upcoming games to show (500 by default; remembered on each device). Only the real release counts (not betas, early access or pre-order early access). Games with only a month ("Nov 2026") are listed under that month's grid; with only a quarter or year ("Q1 2027"), last under "No exact date yet" (in the list, all of them). Pin a game (the pin in the list, or "Add to Waiting" in its popup) to put it in your Waiting list. Games already in your list show where they are ("In Waiting"), and get a light blue tint in the grid.
-- Games: release dates follow the PC release when a game comes to PC, else Android, else the first console release. A game with only a vague date shows it ("Q1 2027") instead of "TBA", and sorts last in Waiting. Once a day (after syncing) SyncR refreshes names, covers, platforms and release dates of your games from IGDB, and on release day a Waiting game moves to To play by itself. When a Waiting game gets delayed, a yellow banner at the top of My games says so ("Delayed: name · old date → new date"), on both devices, until you close it with ✕.
-- Games: each Waiting game with an exact release date gets a reminder at 10:00 two days before it comes out ("Phantom Blade Zero comes out on Thu 29 Oct"); it pops up like any reminder. It follows delays by itself and comes back with the new date, and goes away if the game leaves Waiting. In the Reminders tab only the game shows (on its release day); click it to see the reminder in its details. In a Waiting game's details, "Google Calendar" adds that reminder to Google Calendar, for the phone.
-- Reminders have their own tab: "Reminders" under "Games" in the sidebar (with the number of upcoming reminders) opens it. On the PC it shows a month grid (like the Games calendar) with your reminders ("14:30 text"; overdue in red, done crossed out) and the release days of your Waiting games; click a game for its details. A switch changes to the list, which the phone always uses. The list shows upcoming reminders and Waiting games together, soonest first (a reminder with a line of its note), then the folded "Done" group with "Clear". Click a reminder to edit it, right-click (long press on the phone) for the menu, "New reminder" at the top. The reminders list at the bottom of the sidebar is gone.
+**Games**
+- **Added** a Games tab: search IGDB, add games to your list, grouped by status, with countdowns
+- **Added** game details: platforms, status, flag, note, stars, heart and review; a quick right-click menu
+- **Added** a Calendar view: popular upcoming PC games for 6 months, as a month grid or a list; Top 100–1000
+- **Added** daily updates of your games from IGDB, a move to To play on release day, and a delay banner
+- **Added** a reminder at 10:00 two days before a Waiting game's release; it follows delays
+- **Fixed** the proxy address, which now works without "https://"; a wrong address gives a clear message
 
-### Fixed
-- Settings → Games: the proxy address works without "https://" in front. Before, the browser treated it as a page inside SyncR itself, and Test showed "Unexpected token '<'". A wrong address now gives a clear message.
+**Reminders**
+- **Added** a Reminders tab with a month grid (PC) and a list; the sidebar's reminders list is gone
 
 ## [0.10.7] - 2026-10-16
 
-### Added
-- Settings → Games: the address and password of your own game search proxy (a small Cloudflare Worker that talks to the IGDB game database), with a Test button. First step of the upcoming Games feature; the proxy's code is in `proxy/igdb-worker.js`.
+**Games**
+- **Added** the address and password of your game search proxy in Settings → Games, with a Test button
 
 ## [0.10.6] - 2026-10-16
 
-### Fixed
-- Phone: typing near the bottom of a note no longer pushes the toolbar off the top of the screen. When the keyboard opens, the app now shrinks to the space above it instead of the whole page sliding up.
+**App**
+- **Fixed** an issue on the phone where typing near a note's bottom pushed the toolbar off the screen
 
 ## [0.10.5] - 2026-10-16
 
-### Changed
-- PC: scrollbars (note, notes list, Board, dialogs) are now thin and invisible until you scroll; they fade out about a second after you stop. With the mouse over a scrollbar it stays visible, so you can still drag it. Their space stays reserved, so text doesn't shift when they appear. Tables and code blocks inside notes keep their normal scrollbars. The phone is unchanged (Android already shows scrollbars only while scrolling).
-- PC: the Board's small edge tab (‹ to open, › to close) is hidden until the mouse comes near it (at any height), or is over the open Board; it fades in and out. On the phone it stays visible.
+**App**
+- **Changed** scrollbars on the PC: thin, invisible until you scroll, fading out a second after you stop
+- **Changed** the Board's edge tab on the PC: hidden until the mouse comes near it
 
 ## [0.10.4] - 2026-10-16
 
-### Changed
-- The notes list and the Board now have the same dark background as the note, separated by the thin edge line, so the window looks calmer. Board cards keep the same contrast against the darker panel; the "Card deleted · Undo" bar is now slightly lighter so it still stands out.
+**App**
+- **Changed** the notes list and Board background: same dark as the note, separated by a thin line
 
 ## [0.10.3] - 2026-10-16
 
-### Fixed
-- Phone: holding a section title on its words now picks the section up. Before, Android's own long press selected the words and opened the keyboard, which cancelled the drag (only pressing beside the words worked). While your finger is down, the title is now briefly not editable or selectable; it is editable again as soon as you lift your finger.
+**Notes**
+- **Fixed** an issue on the phone where holding a section title on its words selected them instead of dragging
 
 ## [0.10.2] - 2026-10-16
 
-### Fixed
-- Phone: holding a section title now always moves the section, even right after tapping it (the tap put the cursor in the title, and a long press there selected the words instead). A tap still places the cursor in a title you are editing.
-- Dragging selected text that includes part of a section title is now blocked. Before, the browser's own text drag moved that piece, and the editor wrapped it in a new, broken "ghost" section and split the text around it. Dragging selected text elsewhere still works.
+**Notes**
+- **Fixed** an issue on the phone where holding a just-tapped section title selected its words
+- **Fixed** an issue where dragging selected text with part of a section title broke the section
 
 ## [0.10.1] - 2026-10-16
 
-### Fixed
-- Phone: sections and Board cards can now really be dragged after holding them. Before, the page scrolled instead and the drag stopped: the code that stops scrolling was attached only once the finger was already down, and Chrome on Android had by then decided the touch could not be held back (its scroll events can't be cancelled any more). It is now attached once, ahead of time, like for tabs.
-- PC: after moving a section, the cursor stays where it was before the drag, instead of jumping into the moved section's title (which also made the next click edit the title instead of opening the section). An open section stays open after moving.
+**Notes**
+- **Fixed** an issue on the phone where sections and Board cards couldn't really be dragged
+- **Fixed** an issue on the PC where the cursor jumped into a section's title after moving it
 
 ## [0.10.0] - 2026-10-16
 
-### Added
-- Board: a panel on the right for small cards (quick tasks, priority things). Open it with the small ‹ tab in the middle of the window's right edge; the › tab on its left edge hides it again. On the PC it sits beside the note and you can drag its left edge to make it wider or narrower; on the phone it slides over the note. Its header shows how many cards you have, and "+" there adds a card; cards use the same editor as notes (checklists, bold, links…) and save as you type. Select text in a note and press the pin in the menu that appears to copy it into a new priority card (the Board opens to show it). With a mouse, hovering a card shows the same corner marks as sections (blue on priority cards) and a grab hand. Click and drag a card to move it: it lifts and the other cards slide out of the way (on the phone, press and hold it a moment first, so swiping still scrolls). Drop it above or below the line to make it a priority or a normal card (while you drag, the card already shows the look it will get); when all cards are on one side, a "Priority ↑" or "Normal ↓" zone appears while dragging so you can still switch. Double-click a card (or right-click → Edit) to edit it; clicking outside or Escape ends editing. Checkboxes can be ticked without editing. ✕ deletes a card, with "Undo" for 5 seconds; a card left empty disappears by itself. The flag button (or right-click → "Mark as priority") makes a card a priority: it gets a light blue tint and a small blue dot, and moves up with the other priority cards, above a thin line. Cards are soft tiles without borders, so they read as notes rather than text boxes. Cards sync between your devices, encrypted like notes; if the same card was changed on both, the newest version wins.
-- Conflict copies (made by sync when a note was changed on two devices) are marked with an orange sign in the notes list, and show a banner when opened. "Compare" shows the differences with the original: side by side on the PC, in one view on the phone (red: only in the original, green: only in the copy, dotted: formatting changed). Only real changes count: text, formatting and ticked checkboxes. Long unchanged parts are folded. "Keep original" deletes the copy; "Keep this copy" puts its text into the original note (so links and tabs to it keep working) and deletes the copy.
+**Board**
+- **Added** the Board: a side panel of small cards, with priority, drag to move, and pin from a note; synced
 
-### Changed
-- Sections move without the ⋮⋮ grip: press a section title and drag it. A copy of the title follows the pointer and the blue line shows where it lands. A quick click still opens or closes the section (and a second click edits the title). With a mouse, hovering a title you can drag frames its section (a faint tint and two corner marks, like the app icon) and shows a grab hand; once you are editing that title it stays plain text. On the phone, hold the title a moment before dragging, so swiping still scrolls.
-
-### Fixed
-- In the menu that appears when you select text inside a section, the "make a section" and "remove the section, keep its text" buttons had almost identical icons (the same arrows, only pointing in or out). Removing a section now has its own icon (boxes coming apart).
+**Notes**
+- **Added** Compare for conflict copies: differences with the original; keep the original or the copy
+- **Changed** moving sections: press a title and drag it, without the ⋮⋮ grip
+- **Fixed** a section icon that looked like another one: removing a section has its own icon
 
 ## [0.9.5] - 2026-10-16
 
-### Fixed
-- The PC version of 0.9.4 never came out: its build failed because the `zip` package (used by the updater) withdrew all its older versions. The updater no longer uses it (it only unpacked .zip updates, and SyncR's updates are a plain installer). This update brings the 0.9.4 changes below to the PC. Nothing new on the phone.
+**App**
+- **Fixed** the PC build, so the 0.9.4 changes reach the PC (0.9.4 never came out there)
 
 ## [0.9.4] - 2026-10-16
 
-### Added
-- Settings → Window: "Start hidden in the tray" (off by default). With "Start with Windows" on, SyncR now opens its window when you sign in to Windows; turn this on to have it start quietly in the tray instead, as before.
+**App**
+- **Added** "Start hidden in the tray" in Settings → Window; otherwise SyncR now opens its window at sign-in
+- **Improved** the sync dot on the phone: bigger, with stronger colors
 
-### Changed
-- Bullet and numbered lists no longer leave a gap above and below them. Browsers give lists a default margin of 1em (one line of text) at the top and bottom; it's now 0, so a list sits right against the lines around it, like lines that start with a plain "-".
-- Phone: the sync status dot on the cloud button is bigger and uses stronger colors (a vivid green for synced, a vivid blue for waiting). The softer PC colors had the same brightness and looked alike on bright phone screens. The PC is unchanged.
+**Notes**
+- **Removed** the gap above and below bullet and numbered lists
 
 ## [0.9.3] - 2026-10-15
 
-### Fixed
-- The reminder pop-up on the PC was empty (no text, no buttons, no sound). It was opened from a different internal address than the main window (`http://` instead of `https://tauri.localhost`), and since each address gets its own local database, it found no reminders. It now uses the same address, so it shows the reminders.
+**Reminders**
+- **Fixed** an issue where the reminder pop-up on the PC was empty
 
 ## [0.9.2] - 2026-10-15
 
-### Added
-- Reminder pop-up on the PC: when a reminder is due, a small window appears in the bottom-right corner of the screen, on top of other windows, even when SyncR is minimized or hidden in the tray. It doesn't take the keyboard away from what you're typing. Buttons: Done, Snooze (10 min / 1 hour / tomorrow at the same time) and Open SyncR. It stays until you click Done or Snooze, and grows to fit several reminders.
-- A short chime when a reminder comes due (pop-up on the PC, card in the browser / on the phone). Settings → Reminders → "Sound when a reminder is due" turns it off; turning it on plays it once as a preview.
-- Tray icon on the PC: click it to open SyncR; right-click for "Open SyncR" and "Quit SyncR".
-- Settings → Window (PC only): "✕ hides SyncR in the tray" (off by default): ✕ then hides the window instead of quitting, so reminders and sync keep running in the background. "Start with Windows": SyncR starts hidden in the tray when you sign in to Windows.
-- Starting SyncR while it's already running (e.g. from the Start menu while it's in the tray) now brings up the running one instead of opening a second copy.
+**Reminders**
+- **Added** a reminder pop-up on the PC, on top of other windows, with Done, Snooze and Open SyncR
+- **Added** a short chime when a reminder comes due, with a switch in Settings → Reminders
+
+**App**
+- **Added** a tray icon on the PC: a click opens SyncR; right-click for "Open SyncR" and "Quit SyncR"
+- **Added** "✕ hides SyncR in the tray" and "Start with Windows" in Settings → Window (PC)
+- **Improved** starting SyncR while it's running, which now brings up the running one
 
 ## [0.9.1] - 2026-10-15
 
-### Added
-- Reminders: a small "Reminders" section at the bottom of the note list (click the header to fold it). The + button adds one: what to remember, a date and time, and an optional note (shown when hovering over the reminder). Reminders are listed soonest first; overdue ones show their time in red. Click a reminder to edit it; right-click for Done / Not done and Delete. Done reminders move into a folded "Done" group with a Clear button. Tick "Also on my phone (Google Calendar)" to add the reminder to Google Calendar: saving opens Calendar with the event filled in (a 15-minute event at the reminder's time, with the note as description), and you tap Save there. Your phone then notifies you through the Calendar app. This is a one-way link: changing, snoozing or deleting the reminder in SyncR doesn't change the calendar event (the dialog says when to delete the old one). Reminders on your phone show a small phone icon; right-click → "Add to Google Calendar" opens Calendar again. Reminders sync between devices, end-to-end encrypted like notes (the Google Calendar copy is not encrypted).
-- When a reminder is due and SyncR is open, a card appears in the bottom-right corner with the text, time and note: Done, or Snooze for 10 min, 1 hour, or until tomorrow at the same time. It stays until you click one. Reminders that came due while SyncR was closed show up when you open it. Done or snoozed on one device, the card also disappears on the other. (A pop-up while SyncR is in the background comes in a later update.)
+**Reminders**
+- **Added** reminders in the note list: text, date and time, note; synced and encrypted; optional Google Calendar
+- **Added** a card when a reminder is due, with Done or Snooze; missed ones show when you open SyncR
 
 ## [0.9.0] - 2026-10-15
 
-### Added
-- Settings → Typing → "Smart typography" (off by default, per device): while typing, `--` becomes —, `->` becomes →, `...` becomes …, `1/2` becomes ½, `(c)` becomes ©, and straight quotes become curly quotes. Not applied inside code. Backspace right after a replacement undoes it.
-- Code blocks with syntax highlighting. Each has a header like a section: ▶ folds it (showing the number of lines), and a menu picks the language (Bash, C, C++, C#, CSS, Go, HTML/XML, Java, JavaScript, JSON, Markdown, PowerShell, Python, Rust, SQL, TypeScript, YAML, or plain text). New code button in the selection menu: turns the selected lines into one code block (only plain text and lists, so images, tables or sections are never flattened), or a code block back into normal lines. Inside code, the selection menu hides bold/italic/underline/color, which don't apply there. Tab indents by 2 spaces inside code. Typing ``` and a space still creates one.
-- Move sections by dragging: a ⋮⋮ grip appears left of a section's title (on hover with a mouse; on the phone, for the section the cursor is in). A blue line shows where it will land, anywhere between blocks, also inside another section. The whole section moves with its content; Ctrl+Z puts it back.
-- "/" menu: type / at the start of a line or after a space to insert a Section, Code block, Checklist, Bullet list, Numbered list, Table, Heading 1–3, Quote or Divider. Typing more filters the list (e.g. /tab), ↑ ↓ choose, Enter inserts, Esc closes. Only what fits at the cursor is offered (e.g. no Quote inside a list). It doesn't open in code, after a digit (1/2) or inside a web address.
-- Links between notes: select some text, then the link button in the selection menu copies a link to that exact spot (paragraph, list item, heading, section, …). Paste it in any note: it shows as "Note title › start of the text". Clicking it opens the note, unfolds the sections around the spot, scrolls to it and briefly highlights it. Hovering shows the target note's name. If the note or the spot was deleted, the link is grayed out and struck through, and clicking it says so.
-- Type [[ to link to a note: a list of notes, filtered as you type. Enter links to the whole note; Tab, → or the › button shows the note's headings and sections, and Enter links to that one.
-
-### Changed
-- One way to create a note: the big "+ New note" button in the sidebar is gone, the "+" after the tabs is now an icon and sits outside the scrolling tab strip, so it stays visible when many tabs are open. When no note is open, the page shows a "New note" button.
+**Notes**
+- **Added** "Smart typography" in Settings (off by default): --, ->, ..., 1/2, (c) and curly quotes
+- **Added** code blocks with syntax highlighting, a fold arrow and a language menu
+- **Added** section dragging with a ⋮⋮ grip and a blue line; Ctrl+Z puts it back
+- **Added** a "/" menu to insert sections, code blocks, lists, tables, headings, quotes and dividers
+- **Added** links to an exact spot in a note, shown as "Note title › start of the text"
+- **Added** "[[" to link to a note, or to one of its headings and sections
+- **Changed** creating a note: one "+" after the tabs, always visible; "New note" on an empty page
 
 ## [0.8.2] - 2026-10-15
 
-### Changed
-- The program file is now called SyncR.exe instead of syncr.exe.
-- Faster desktop builds (~6 min → ~3 min): the Rust build cache is now saved on `main` (tag builds could only restore a stale `main` cache, so ~90 crates were recompiled each release), and the Rust toolchain is pinned to 1.99.0 so new stable releases no longer invalidate the cache.
+**App**
+- **Improved** desktop build times, from about 6 minutes to about 3
+- **Changed** the program file's name to SyncR.exe (was syncr.exe)
 
 ## [0.8.1] - 2026-10-15
 
-### Changed
-- Bullet and numbered lists line up with the text: the bullet stays where you typed the "-" instead of moving inward.
-- Pressing Enter on the first, still empty item of a list adds a second item instead of removing the list. Further down, Enter on an empty item still ends the list.
-- Typing "1." or "-" and pressing Enter makes the list and goes straight to the next item (before, Enter only made the list). Shift+Enter works the same way here.
-- Settings are grouped into sections (Appearance, Note list, Notes, About), each saying whether it applies to this device or all devices. The version and "Check for updates" moved from the bottom of the note list into Settings → About.
-- The text size and app scaling sliders have a slim bar as handle and a ruler underneath showing every value you can pick, with a longer mark at the default (16 px, 100 %).
-- The menu for selected text has bold, italic and underline buttons, and looks like the toolbar: icons only, with the section buttons after a thin line.
-- The color button (menu and toolbar) is now a palette, so it can't be mistaken for underline.
+**Notes**
+- **Improved** lists, whose bullets line up with the text
+- **Improved** the selected-text menu: bold, italic and underline buttons, looks like the toolbar
+- **Changed** Enter on a list's first empty item, which now adds a second item
+- **Changed** typing "1." or "-" then Enter, which now makes the list and goes to the next item
+- **Changed** the color button to a palette, so it can't be mistaken for underline
+- **Fixed** an issue where opening the note list at a long note's bottom moved its end out of view
 
-### Fixed
-- Opening the note list while at the bottom of a long note no longer moves the end of the note out of view.
+**App**
+- **Improved** Settings, grouped into sections, each saying if it applies to this device or all devices
+- **Improved** text size and app scaling sliders, with a slim handle and a ruler
 
 ## [0.8.0] - 2026-10-15
 
-### Added
-- Text colors and a highlighter (8 colors each). Select text and use the new color button in the menu above it, or the color button in the toolbar.
-- Tables. Insert one with the new table button in the toolbar (the first row is a header). Right-click a cell (long press on the phone) to add or delete rows and columns, switch the header row on or off, color the cell or delete the table. Tab jumps to the next cell, and adds a row at the end. Drag the line between two columns to resize them.
-- Color rules (Settings → Color rules): words like "Fire" get a color automatically in all your notes. Rules are kept in groups that you can switch on and off, and switching off removes the colors right away. Words you colored by hand keep their color. Rules sync between your devices.
-
-### Changed
-- The menu for selected text now appears below the selection, so it doesn't cover the text.
-- Selected text keeps its color (it used to turn white), so a new color shows right away.
+**Notes**
+- **Added** text colors and a highlighter (8 colors each), from the selected-text menu or the toolbar
+- **Added** tables: toolbar button; right-click a cell for rows, columns, header, color; Tab; drag to resize
+- **Added** color rules (Settings): words like "Fire" get a color in all notes; groups can be switched off; synced
+- **Changed** the selected-text menu, which appears below the selection so it doesn't cover the text
+- **Changed** selected text, which keeps its color (it used to turn white)
 
 ## [0.7.0] - 2026-10-15
 
-### Changed
-- Links in notes are underlined only when the mouse is over them (on the phone they stay underlined).
-- Hovering a link shows its address in a small popup, when the link text is something else.
-- The note list shows each note's last edit date ("Today, 14:32", "Yesterday", …), its title in bold and the start of its text. The open note is marked with a blue bar.
-- New sync button design: a plain cloud with a small status dot in the corner. Green: synced. Blue: changes waiting. A turning blue ring: syncing. Red: error. Empty gray dot: offline. Orange padlock: enter your passphrase.
-- Hovering the sync button shows its status and when the last sync was ("Synced · 2 min ago"), in a small box instead of the plain tooltip.
-- The message after clicking the sync button is shorter ("✓ 2 sent · 1 received", "✓ Up to date"), sits right under the button and fades in and out after 3 seconds.
+**Notes**
+- **Added** a Settings option to hide dates in the note list
+- **Improved** the note list: last edit date, bold title, start of the text, blue bar on the open note
+- **Changed** links: underlined only on hover (phone: always); hovering shows the address in a small popup
 
-### Added
-- Settings: "Show dates in the note list" lets you hide the dates.
-- Drag tabs to change their order. On the phone: hold a tab, then drag (hold and let go still opens its menu).
+**Sync**
+- **Changed** the sync button: a plain cloud with a colored status dot; hover shows the last sync
+- **Changed** the message after a sync: shorter, under the button, fading after 3 seconds
+
+**App**
+- **Added** tab dragging to change their order (phone: hold, then drag)
 
 ## [0.6.7] - 2026-10-14
 
-### Changed
-- Sync recovers by itself when Dropbox ends a session early, instead of showing an error for up to a few hours.
-- Sync cleans up after itself: the small "this note was deleted" records in Dropbox are removed after 90 days.
+**Sync**
+- **Improved** sync, which recovers by itself when Dropbox ends a session early
+- **Improved** cleanup: deletion records in Dropbox are removed after 90 days
+- **Fixed** an issue where an edit made as a newer version arrived could be replaced; it's now a conflict copy
 
-### Added
-- "Check for updates" at the bottom of the note list (☰): looks for a new version right away, on the PC and on the phone.
-
-### Fixed
-- If installing an update fails, the bar now says why and offers "Try again".
-- Sync: if you edited a note at the very moment a newer version of it arrived from your other device, your edit could be replaced. Now it's kept, and the other version is saved as a conflict copy.
-- Right-click menus open exactly at the mouse again when the app scaling isn't 100 %.
-- Windows app: the window appears directly in its saved place, instead of first showing in the center and then jumping there.
+**App**
+- **Added** "Check for updates" at the bottom of the note list (PC and phone)
+- **Fixed** an issue where a failed update didn't say why; it now offers "Try again"
+- **Fixed** an issue where right-click menus opened away from the mouse when app scaling wasn't 100%
+- **Fixed** an issue on the PC where the window first showed in the center, then jumped to its place
 
 ## [0.6.6] - 2026-10-14
 
-### Fixed
-- Windows app: the window now really reopens with the size and position you left it in, also on a second monitor (this didn't work in 0.6.5).
+**App**
+- **Fixed** an issue on the PC where the window didn't reopen with its size and position
 
 ## [0.6.5] - 2026-10-14
 
-### Added
-- Windows app: the window opens with the same size and position as when you closed it, also on a second monitor, and maximized if it was. If that monitor isn't connected anymore, it opens on the main one.
-- Settings (bottom of the note list ☰): choose the font of your notes (System default, Sans-serif, Inter, Google Sans Flex, Literata or JetBrains Mono), the text size (12–24 px), and the app scaling (80–150 %) to make everything bigger or smaller. Each device keeps its own settings.
+**App**
+- **Added** the window's size and position remembered on the PC, also on a second monitor
+- **Added** Settings: note font, text size (12–24 px) and app scaling (80–150%), per device
 
-### Changed
-- No more red spelling lines under words in your notes.
+**Notes**
+- **Removed** the red spelling lines under words
 
 ## [0.6.0] - 2026-10-14
 
-### Added
-- Toolbar buttons: Undo, Redo, Bold, Italic, Underline and Strikethrough. A button lights up when the cursor is in that kind of text. On a narrow phone screen, swipe the toolbar sideways to see all buttons.
-- Checklists: use the checklist button, or type "[ ] " at the start of a line. Ticked items are dimmed but stay readable. Press Tab to indent an item under another.
-- Links: paste a web address to make it a link, or paste it over selected text to turn that text into a link. Typed addresses become links too. Click (tap) a link to open it in your web browser.
+**Notes**
+- **Added** toolbar buttons: Undo, Redo, Bold, Italic, Underline and Strikethrough
+- **Added** checklists: a toolbar button or "[ ] "; ticked items are dimmed; Tab indents
+- **Added** links: paste an address, or paste one over selected text; a click opens the browser
 
 ## [0.5.2] - 2026-10-14
 
-### Fixed
-- Phone version: an update installed shortly after another one could leave the app on a black screen. Updates now always download fresh files, and a broken update is rejected instead of installed.
+**App**
+- **Fixed** an issue on the phone where an update right after another could leave a black screen
 
 ## [0.5.1] - 2026-10-14
 
-### Added
-- Right-click an image (long press on the phone) → "Delete image".
+**Notes**
+- **Added** "Delete image": right-click an image (long press on the phone)
 
-### Changed
-- Sync starts 1 second after you stop typing instead of 1.5 seconds, so changes reach your other devices a bit faster.
+**Sync**
+- **Improved** sync timing: it starts 1 second after you stop typing (was 1.5 seconds)
 
 ## [0.5.0] - 2026-10-14
 
-### Added
-- Images in notes: paste a screenshot or picture (Ctrl+V), drag an image file into a note, or use the image button in the new slim toolbar above the note (on the phone it lets you pick from your gallery or take a photo). Works anywhere in a note, also inside sections.
-- Large images are made smaller to save space; screenshots stay sharp.
-- Click or tap an image to see it full screen; click it again for its real size.
-- Images sync to your other devices, encrypted like your notes. Until an image has arrived, the note shows "Image loading…".
-- Images you remove from your notes are deleted automatically after a week.
+**Notes**
+- **Added** images in notes: paste, drag a file, or use the toolbar's new image button
+- **Added** smaller large images to save space; screenshots stay sharp
+- **Added** full-screen images: click one; click again for its real size
+- **Added** image sync, encrypted like notes; "Image loading…" shows until an image arrives
+- **Added** automatic deletion of removed images after a week
 
-### Changed
-- Darker colors: the background and grays are a bit darker for a calmer, higher-contrast look.
+**App**
+- **Changed** colors: darker background and grays, for a calmer, higher-contrast look
 
 ## [0.4.0] - 2026-10-14
 
-### Added
-- Sync between your devices through your own Dropbox: connect it with the new cloud button in the title bar.
-- Passphrase to encrypt your notes before they go to Dropbox. You create it on the first device and enter it once on each other device. A lock on the cloud button means this device still needs it.
-- Automatic sync: your notes sync by themselves when the app opens, a few seconds after you stop typing, right away when you leave the note or the app (e.g. the phone's back button), when you come back to the window, and within seconds when your other device changes something. Your notes are encrypted before they go to Dropbox.
-- The cloud button shows the sync status: ✓ synced, ↑ changes waiting to be sent, a crossed-out cloud when offline, and ! for an error (hover for details). Click it to sync right away; right-click (long press on a phone) for "Sync now" and "Disconnect Dropbox".
-- If a note changed on both devices, the newest version keeps the note and the other one is saved as a separate "(conflict, …)" note, so nothing is lost. A note deleted on one device but edited on the other comes back.
-- Before the app closes or installs an update, it sends your last changes to Dropbox first (it waits at most 5 seconds; if you're offline, they're sent next time).
-- Phone version: open https://logiinx.github.io/SyncR/ and install it to your home screen (Samsung Internet: Menu → Add page to → Home screen). It works without internet, and shows "A new version of SyncR is available" with a Reload button after each release.
+**Sync**
+- **Added** sync between your devices through your own Dropbox, with a cloud button in the title bar
+- **Added** a passphrase that encrypts your notes before they go to Dropbox
+- **Added** automatic sync: on opening, after typing, when leaving a note, and when another device changes
+- **Added** the sync status on the cloud button; a click syncs, right-click for "Disconnect Dropbox"
+- **Added** conflict copies, so nothing is lost when a note changes on both devices
+- **Added** a last sync before closing or installing an update (5 seconds at most)
 
-### Fixed
-- No more white flash when the app starts: the window is dark from the first moment.
+**App**
+- **Added** the phone version: install it from the website; it works offline and offers new versions
+- **Fixed** the white flash when the app starts: the window is dark from the first moment
 
 ## [0.3.2] - 2026-10-13
 
-### Changed
-- Darker, near-black icon background for better contrast on the taskbar.
+**App**
+- **Changed** the icon's background: darker, for better contrast on the taskbar
 
 ## [0.3.1] - 2026-10-13
 
-### Fixed
-- Window buttons (minimize, maximize, close) now share the same slightly thicker line weight. The maximize square is no longer clipped and has softly rounded corners like Windows 11.
+**App**
+- **Fixed** the window buttons: same line weight, and the maximize square is no longer clipped
 
 ## [0.3.0] - 2026-10-13
 
-### Changed
-- New SyncR icon: a note page between two arrows, white on dark.
-- Custom title bar in the Windows app, merged with the tabs: drag empty space to move the window, double-click it to maximize. The minimize, maximize and close buttons match the app colors.
-- The update banner now appears below the bar.
+**App**
+- **Added** a custom title bar on the PC, merged with the tabs: drag to move, double-click to maximize
+- **Changed** the icon to a note page between two arrows, white on dark
+- **Changed** the update banner's place: below the bar
 
 ## [0.2.0] - 2026-10-13
 
-### Added
-- Notes, saved automatically on your device.
-- Hidden sidebar (☰) with the note list, newest edits first, and a "New note" button. It pushes the note aside, or slides over it on narrow screens.
-- Tabs at the top: open several notes, switch between them, close one with × or a middle-click, and create a note with "+".
-- Open tabs, the active tab and each note's scroll position are restored after a restart. A note left at the bottom reopens at the bottom.
-- Collapsible sections: select lines, then click "Section". Click the ▶ arrow or the title to open or close. Sections can be nested and are closed whenever a note opens. "Unwrap" removes a section and keeps its text.
-- Rename a note: right-click a tab or sidebar note, or double-click a tab. Leave the name empty to use the first line again.
-- Delete a note: right-click, then confirm.
-
-### Changed
-- Note text starts on the left and uses the full width.
-- Pressing Enter goes to the next line with no extra gap.
+**Notes**
+- **Added** notes, saved automatically on your device
+- **Added** a hidden sidebar (☰) with the note list, newest edits first, and a "New note" button
+- **Added** tabs: open several notes, switch, close with × or a middle-click, create with "+"
+- **Added** restored tabs and scroll positions after a restart
+- **Added** collapsible sections, which can be nested; "Unwrap" removes one and keeps its text
+- **Added** renaming a note (right-click, or double-click a tab) and deleting one (right-click, then confirm)
+- **Changed** note text: starts on the left, uses the full width, no extra gap after Enter
 
 ## [0.1.1] - 2026-10-13
 
-### Added
-- The version number is shown in the app.
+**App**
+- **Added** the version number in the app
 
 ## [0.1.0] - 2026-10-13
 
-### Added
-- First Windows release: installer and automatic updates from GitHub Releases.
+**App**
+- **Added** the first Windows release: installer and automatic updates from GitHub Releases
