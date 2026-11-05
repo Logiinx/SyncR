@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react'
 import { TaskItem } from '@tiptap/extension-list'
 import StarterKit from '@tiptap/starter-kit'
-import { ChevronDown, Ellipsis, FolderInput, Heading, Palette, Pencil, Sparkles, Trash2 } from 'lucide-react'
+import { Baseline, ChevronDown, Ellipsis, FolderInput, Heading, Palette, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import {
   saveCardContent,
   setCardDeleted,
@@ -59,7 +59,7 @@ interface Props {
 function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
-  // colors: the "Color…" list instead of the menu. editing: as it was when the menu opened, so
+  // colors: the "Card color…" list instead of the menu. editing: as it was when the menu opened, so
   // the items don't move when pressing one ends editing ("Edit" appeared above and the click
   // landed on the wrong item)
   // link: right-clicked on a link card (its items come first, linkPreviews.ts)
@@ -337,7 +337,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Delete', icon: Trash2, danger: true, onClick: onDelete },
           ]}
@@ -441,7 +441,7 @@ function CardColorButton({ editor }: { editor: Editor }) {
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => toggle(e.currentTarget)}
       >
-        <Palette size={13} />
+        <Baseline size={13} />
       </button>
       {colors && (
         <div className="color-popover card-colors" ref={panel} style={colors}>

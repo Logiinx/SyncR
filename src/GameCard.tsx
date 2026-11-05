@@ -86,7 +86,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: 'Card color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: true }) },
             { label: 'Move to group…', icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
             { label: 'Unpin from Board', icon: PinOff, danger: true, onClick: onDelete },
           ]}

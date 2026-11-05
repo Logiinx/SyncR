@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditorState, type Editor, type JSONContent } from '@tiptap/react'
 import {
+  Baseline,
   Bold,
   Check,
   Ellipsis,
@@ -11,7 +12,6 @@ import {
   Italic,
   Link,
   ListTodo,
-  Palette,
   Pin,
   Redo2,
   Rows3,
@@ -206,7 +206,7 @@ function Toolbar(props: { editor: Editor; noteId: string; title: string; conflic
           active={!!colors}
           onClick={(e) => toggleColors(e.currentTarget)}
         >
-          <Palette size={ICON_SIZE} />
+          <Baseline size={ICON_SIZE} />
         </ToolButton>
         {colors && (
           <div className="color-popover" ref={colorPanel} style={colors}>

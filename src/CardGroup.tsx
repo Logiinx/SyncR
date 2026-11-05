@@ -22,7 +22,7 @@ interface Props {
 // so it can't be mistaken for a folded card with a title.
 // Its menu (right-click on the header; "⋯" on the phone): new card, rename, priority, delete.
 function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, children }: Props) {
-  // colors: one of the "Color…" lists instead of the menu (the group only, or with its cards)
+  // colors: one of the color lists instead of the menu (the group only, or with its cards)
   const [menu, setMenu] = useState<{ x: number; y: number; colors?: 'group' | 'all' } | null>(null)
   const count = cards.length
   const name = group.title ?? ''
@@ -49,7 +49,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
     })
   }
 
-  // A "Color…" list: the group only, or the group and its cards (then checked only when they
+  // A color list: the group only, or the group and its cards (then checked only when they
   // all have that color too)
   function colorItems(withCards: boolean) {
     const current = withCards && cards.some((card) => card.color !== group.color) ? null : group.color
@@ -123,7 +123,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
               divider: true,
               onClick: () => setCardPriority(group.id, !group.priority),
             },
-            { label: 'Color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'group' }) },
+            { label: 'Group color…', icon: Palette, onClick: () => setMenu({ ...menu, colors: 'group' }) },
             { label: 'Color with its cards…', icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
             { label: 'Delete group', icon: Trash2, danger: true, onClick: askDelete },
           ]}

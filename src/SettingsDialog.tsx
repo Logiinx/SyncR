@@ -880,7 +880,7 @@ function GmailSettings() {
         <div key={account.email} className="setting setting-toggle gmail-account">
           <span className="gmail-account-name" title={account.email}>
             {/* The account's color (its pop-ups' strip, its dot in the Mail tab): a click
-                opens the color list, like Board cards' "Color…" */}
+                opens the color list, like Board cards' "Card color…" */}
             <button
               className="gmail-account-color"
               title="Color"

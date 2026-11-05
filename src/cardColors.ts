@@ -1,6 +1,6 @@
 import type { MenuItem } from './ContextMenu'
 
-// Background colors for Board cards and groups ("Color…" in their menu). A card stores the
+// Background colors for Board cards and groups ("Card color…" / "Group color…" in their menu). A card stores the
 // name; the tint comes from the same palette as text colors (--text-red…, index.css), so it
 // follows palette changes. Synced with the card.
 export const CARD_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray']
@@ -10,7 +10,7 @@ export function tintStyle(color: string | undefined): React.CSSProperties | unde
   return color ? ({ '--tint': `var(--text-${color})` } as React.CSSProperties) : undefined
 }
 
-// The "Color…" list: Default, then the colors by name, the current one checked (null: none checked).
+// The color list: Default, then the colors by name, the current one checked (null: none checked).
 // withDefault false: the colors only (something that always has one, e.g. a Gmail account).
 export function colorMenuItems(
   current: string | undefined | null,
