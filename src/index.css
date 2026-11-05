@@ -1179,6 +1179,7 @@ button {
 
 .card-corner .card-buttons {
   position: sticky;
+  top: 4px; /* stuck: 8px from the top like from the right (the list's 4px padding counts too) */
   right: auto;
   width: fit-content;
   margin: calc(8px + 0.75em - 8px) 8px 0 auto;
