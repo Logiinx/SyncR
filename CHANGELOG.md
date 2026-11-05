@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-11-05
+
 **Reminders**
 - **Improved:** Postpone and Done on one device now also count on your other device.
 - **Improved:** The Snooze button is now called Postpone, since it really moves the event.
