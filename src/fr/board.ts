@@ -1,6 +1,6 @@
 // French for the Board area ('English text': 'its French'). Plain spaces before : ; ! ? are fine (i18n.ts).
 export const board = {
-  'Hide the Board': 'Masquer le Panneau',
+  'Hide the Board': 'Masquer le Board',
   'New card': 'Nouvelle carte',
   Normal: 'Normale',
   Priority: 'Prioritaire',
@@ -31,7 +31,7 @@ export const board = {
   'Rename group': 'Renommer le groupe',
   'Delete group': 'Supprimer le groupe',
   'Delete group?': 'Supprimer le groupe ?',
-  'The group "{name}" will be removed. Its cards go back on the Board, unless you tick the box.': 'Le groupe « {name} » sera retiré. Ses cartes reviennent sur le Panneau, sauf si vous cochez la case.',
+  'The group "{name}" will be removed. Its cards go back on the Board, unless you tick the box.': 'Le groupe « {name} » sera retiré. Ses cartes reviennent sur le Board, sauf si vous cochez la case.',
   'The group "{name}" will be removed.': 'Le groupe « {name} » sera retiré.',
   'Delete its card too': 'Supprimer aussi sa carte',
   'Delete its {n} cards too': 'Supprimer aussi ses {n} cartes',

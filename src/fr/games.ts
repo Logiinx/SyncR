@@ -59,12 +59,12 @@ export const games = {
 
   // A game's window and menu
   'Remove game?': 'Retirer le jeu ?',
-  '"{name}" will be removed from your list, with its note and review. Its card stays on the Board.': '« {name} » sera retiré de votre liste, avec sa note et son avis. Sa carte reste sur le Panneau.',
+  '"{name}" will be removed from your list, with its note and review. Its card stays on the Board.': '« {name} » sera retiré de votre liste, avec sa note et son avis. Sa carte reste sur le Board.',
   '"{name}" will be removed from your list, with its note and review.': '« {name} » sera retiré de votre liste, avec sa note et son avis.',
   Favorite: 'Favori',
   'Remove favorite': 'Retirer des favoris',
   'Mark as favorite': 'Marquer comme favori',
-  'Unpin from Board': 'Détacher du Panneau',
+  'Unpin from Board': 'Détacher du Board',
   'Remove from list': 'Retirer de la liste',
   'Alert: {when}': 'Alerte : {when}',
   Status: 'Statut',
