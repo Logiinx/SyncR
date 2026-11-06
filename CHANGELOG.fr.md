@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** du replay du chat à côté du lecteur Twitch, synchronisé avec la vidéo, avec emotes et badges
+
 ## [0.52.0] - 2026-11-06
 
 **Vidéo**

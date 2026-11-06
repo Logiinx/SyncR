@@ -350,7 +350,7 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
     if kind == "text/html" {
       response = response.header(
         "Content-Security-Policy",
-        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv; media-src blob: data:; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv; media-src blob: data:; img-src https://static-cdn.jtvnw.net; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       );
     }
     response.body(body).unwrap_or_default()
@@ -359,6 +359,7 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
   match path {
     "/player.html" => return answer(200, "text/html", include_bytes!("../player/player.html").to_vec()),
     "/player.js" => return answer(200, "text/javascript", include_bytes!("../player/player.js").to_vec()),
+    "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     _ => {}
   }

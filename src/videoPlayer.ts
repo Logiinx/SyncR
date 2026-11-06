@@ -83,6 +83,13 @@ function twitchPlayerAddress(video: PlayableVideo) {
       exitFullscreen: t('Exit full screen'),
       stoppedLoading: t('The video stopped loading'),
       retry: t('Try again'),
+      chatShow: t('Show chat'),
+      chatHide: t('Hide chat'),
+      chatNoRoom: t("Chat can't show here"),
+      chatLoading: t('Loading chat…'),
+      chatEmpty: t('No chat messages here'),
+      chatFailed: t("Couldn't load the chat, trying again…"),
+      chatLatest: t('Back to latest'),
     },
   }
   const id = encodeURIComponent(video.id.slice('twitch-'.length))

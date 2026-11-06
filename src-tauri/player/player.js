@@ -113,7 +113,7 @@ function wake() {
 }
 player.addEventListener('pointermove', wake)
 player.addEventListener('pointerdown', wake)
-document.documentElement.addEventListener('pointerleave', () => {
+player.addEventListener('pointerleave', () => {
   if (!keepShowing()) player.classList.add('quiet')
 })
 
@@ -335,6 +335,7 @@ const KEYS = {
   ArrowDown: () => changeVolume(-0.05),
   m: () => $('mute').click(),
   f: toggleFull,
+  c: () => toggleChat(),
 }
 document.addEventListener('keydown', (event) => {
   if (event.ctrlKey || event.altKey || event.metaKey) return
@@ -348,7 +349,7 @@ document.addEventListener('keydown', (event) => {
   const action = KEYS[key]
   if (!action) return
   event.preventDefault()
-  if (event.repeat && (key === ' ' || key === 'k' || key === 'm' || key === 'f')) return
+  if (event.repeat && (key === ' ' || key === 'k' || key === 'm' || key === 'f' || key === 'c')) return
   action()
   wake()
 })
