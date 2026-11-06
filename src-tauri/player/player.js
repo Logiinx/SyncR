@@ -182,8 +182,9 @@ video.addEventListener('click', () => {
 video.addEventListener('dblclick', toggleFull)
 document.addEventListener('contextmenu', (event) => event.preventDefault())
 // The keyboard always stays with the page: Space on a clicked button would press it again
+const typing = () => document.activeElement?.matches('input[type=text]')
 document.addEventListener('click', () => {
-  if (document.activeElement !== document.body) document.activeElement.blur()
+  if (document.activeElement !== document.body && !typing()) document.activeElement.blur()
 })
 
 // Volume, remembered in the player's own storage
@@ -248,7 +249,8 @@ function drawSettings() {
   const speed = video.playbackRate === 1 ? '' : speedText(video.playbackRate)
   $('settings-text').textContent = [levels.length ? quality : '', speed].filter(Boolean).join(' · ')
   $('settings').title = labels.settings
-  if (!$('menu').hidden) drawMenu()
+  // Not while typing in it: drawing it again would take the text box away
+  if (!$('menu').hidden && !typing()) drawMenu()
 }
 video.addEventListener('ratechange', drawSettings)
 
@@ -303,6 +305,7 @@ function drawMenu() {
     speeds.append(button)
   }
   menu.append(speeds)
+  chatMenu(menu, title)
 }
 function openMenu() {
   $('menu').hidden = false
@@ -339,6 +342,10 @@ const KEYS = {
 }
 document.addEventListener('keydown', (event) => {
   if (event.ctrlKey || event.altKey || event.metaKey) return
+  if (typing()) {
+    if (event.key === 'Escape') document.activeElement.blur()
+    return
+  }
   // Not held back: the browser leaves full screen on it by itself
   if (event.key === 'Escape') return closeMenu()
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key

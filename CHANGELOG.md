@@ -5,7 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
-- **Added** chat replay beside the Twitch player, in time with the video, with emotes and badges
+- **Added** chat replay beside the Twitch player, with BTTV, FFZ and 7TV emotes, and over it in full screen
+- **Added** switches in the Twitch player to hide bots and !commands and to show message times
 
 ## [0.52.0] - 2026-11-06
 

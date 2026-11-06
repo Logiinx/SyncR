@@ -350,7 +350,7 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
     if kind == "text/html" {
       response = response.header(
         "Content-Security-Policy",
-        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv; media-src blob: data:; img-src https://static-cdn.jtvnw.net; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       );
     }
     response.body(body).unwrap_or_default()

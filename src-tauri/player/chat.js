@@ -3,7 +3,7 @@
 // with nothing missing in between. Asking past the last message gives "service error".
 // Chat comes from strangers: only ever text nodes and pictures from Twitch's address, never HTML.
 const CHAT_QUERY = 'query($id: ID!, $offset: Int) { video(id: $id) { comments(contentOffsetSeconds: $offset) { edges { node { id contentOffsetSeconds commenter { login displayName } message { userColor userBadges { setID version } fragments { text emote { emoteID } } } } } pageInfo { hasNextPage } } } }'
-const BADGES_QUERY = 'query($id: ID!) { badges { setID version title imageURL(size: NORMAL) } video(id: $id) { owner { broadcastBadges { setID version title imageURL(size: NORMAL) } } } }'
+const BADGES_QUERY = 'query($id: ID!) { badges { setID version title imageURL(size: NORMAL) } video(id: $id) { owner { id broadcastBadges { setID version title imageURL(size: NORMAL) } } } }'
 const IMAGES = 'https://static-cdn.jtvnw.net/'
 const CHAT_WIDTH = 340
 const CHAT_MIN = 240
@@ -18,6 +18,10 @@ const FILL = 50 // lines shown just before the moment jumped to
 const LINES = 200 // lines kept in the page
 const LINES_HELD = 1000 // the same while the user reads further up
 const KEEP = 3000 // messages kept in memory
+const EMOTES_WAIT = 2000 // ms the first messages wait for the emote services at most
+const SPOTS = ['right', 'left', 'corner-right', 'corner-left'] // where it sits in full screen
+// Names in lower case. More can be added in the menu.
+const KNOWN_BOTS = ['nightbot', 'streamelements', 'streamlabs', 'moobot', 'fossabot', 'wizebot', 'botisimo', 'coebot', 'phantombot', 'deepbot', 'ankhbot', 'sery_bot', 'soundalerts', 'pretzelrocks', 'blerp', 'kofistreambot', 'stay_hydrated_bot', 'streamstickers', 'tangiabot', 'lumiastream', 'creatisbot', 'songlistbot', 'own3d', 'playwithviewersbot', 'frostytoolsdotcom']
 // Twitch's colors for people who didn't pick one
 const NAME_COLORS = ['#FF0000', '#0000FF', '#008000', '#B22222', '#FF7F50', '#9ACD32', '#FF4500', '#2E8B57', '#DAA520', '#D2691E', '#5F9EA0', '#1E90FF', '#FF69B4', '#8A2BE2', '#00FF7F']
 
@@ -85,10 +89,12 @@ async function askChat(query, variables) {
 }
 
 // The channel's own badges win over Twitch's general ones. No badges isn't worth stopping the chat.
+let channelId = ''
 const badgesReady = (async () => {
   const badges = new Map()
   try {
     const { data } = await askChat(BADGES_QUERY, { id: videoId })
+    channelId = data?.video?.owner?.id || ''
     for (const badge of [...(data?.badges || []), ...(data?.video?.owner?.broadcastBadges || [])]) {
       if (badge?.imageURL?.startsWith(IMAGES)) badges.set(`${badge.setID}/${badge.version}`, badge)
     }
@@ -97,6 +103,85 @@ const badgesReady = (async () => {
   }
   return badges
 })()
+
+// BTTV, FFZ and 7TV: words in the text that are emotes. Looked up in this order, channels first.
+// A service that fails or doesn't know the channel only means its emotes stay words.
+const emoteLists = []
+function emoteList(address, read) {
+  const list = new Map()
+  emoteLists.push(list)
+  return fetch(address)
+    .then((response) => (response.ok ? response.json() : null))
+    .then((answer) => { if (answer) read(answer, list) })
+    .catch((error) => console.error(error))
+}
+function addSeven(emotes, list) {
+  for (const emote of emotes || []) {
+    if (!emote?.id || !emote.name) continue
+    const address = `https://cdn.7tv.app/emote/${encodeURIComponent(emote.id)}/`
+    list.set(emote.name, { small: `${address}1x.webp`, big: `${address}2x.webp` })
+  }
+}
+function addBttv(emotes, list) {
+  for (const emote of emotes || []) {
+    if (!emote?.id || !emote.code) continue
+    const address = `https://cdn.betterttv.net/emote/${encodeURIComponent(emote.id)}/`
+    list.set(emote.code, { small: `${address}1x`, big: `${address}2x` })
+  }
+}
+const FFZ_IMAGES = 'https://cdn.frankerfacez.com/'
+function addFfz(sets, list) {
+  for (const set of sets) {
+    for (const emote of set?.emoticons || []) {
+      const small = emote?.urls?.['1']
+      if (!emote?.name || !small?.startsWith(FFZ_IMAGES)) continue
+      const big = emote.urls['2']
+      list.set(emote.name, { small, big: big?.startsWith(FFZ_IMAGES) ? big : small })
+    }
+  }
+}
+const emotesReady = badgesReady.then(() => {
+  const asks = []
+  if (channelId) {
+    const id = encodeURIComponent(channelId)
+    asks.push(
+      emoteList(`https://7tv.io/v3/users/twitch/${id}`, (answer, list) => addSeven(answer.emote_set?.emotes, list)),
+      emoteList(`https://api.betterttv.net/3/cached/users/twitch/${id}`, (answer, list) => {
+        addBttv(answer.channelEmotes, list)
+        addBttv(answer.sharedEmotes, list)
+      }),
+      emoteList(`https://api.frankerfacez.com/v1/room/id/${id}`, (answer, list) => addFfz(Object.values(answer.sets || {}), list)),
+    )
+  }
+  asks.push(
+    emoteList('https://7tv.io/v3/emote-sets/global', (answer, list) => addSeven(answer.emotes, list)),
+    emoteList('https://api.betterttv.net/3/cached/emotes/global', (answer, list) => addBttv(answer, list)),
+    emoteList('https://api.frankerfacez.com/v1/set/global', (answer, list) => addFfz((answer.default_sets || []).map((id) => answer.sets?.[id]), list)),
+  )
+  return Promise.all(asks)
+})
+const emotesOrWait = Promise.race([emotesReady, new Promise((done) => setTimeout(done, EMOTES_WAIT))])
+function findEmote(word) {
+  for (const list of emoteLists) {
+    const emote = list.get(word)
+    if (emote) return emote
+  }
+  return null
+}
+
+// ---- What to show -------------------------------------------------------------------------------
+let hideBots = stored('player.hideBots', 1) === 1
+let showTimes = stored('player.chatTimes', 0) === 1
+let ownBots = localStorage.getItem('player.botNames') || ''
+let botNames = new Set()
+function readBotNames() {
+  botNames = new Set([...KNOWN_BOTS, ...ownBots.toLowerCase().split(/[\s,]+/).filter(Boolean)])
+}
+readBotNames()
+function chatVisible(message) {
+  if (!hideBots) return true
+  return !botNames.has(message.login) && !message.parts[0]?.text.trimStart().startsWith('!')
+}
 
 // ---- Drawing the messages -----------------------------------------------------------------------
 let badgeList = new Map()
@@ -113,9 +198,31 @@ function picture(className, source, double, text) {
   return image
 }
 
+// Text with the words that are emotes as pictures. Only ever text nodes for the rest.
+function addText(line, text) {
+  let plain = ''
+  for (const word of text.split(/(\s+)/)) {
+    const emote = word && findEmote(word)
+    if (!emote) {
+      plain += word
+      continue
+    }
+    if (plain) line.append(document.createTextNode(plain))
+    plain = ''
+    line.append(picture('chat-emote', emote.small, emote.big, word))
+  }
+  if (plain) line.append(document.createTextNode(plain))
+}
+
 function chatLine(message) {
   const line = document.createElement('div')
   line.className = 'chat-line'
+  if (showTimes) {
+    const time = document.createElement('span')
+    time.className = 'chat-time'
+    time.textContent = clock(message.at)
+    line.append(time)
+  }
   for (const seen of message.badges) {
     const badge = badgeList.get(`${seen.setID}/${seen.version}`)
     if (badge) line.append(picture('chat-badge', badge.imageURL, badge.imageURL.replace(/\/1$/, '/2'), badge.title || ''))
@@ -129,7 +236,7 @@ function chatLine(message) {
     if (part.emote) {
       const address = `${IMAGES}emoticons/v2/${encodeURIComponent(part.emote)}/default/dark/`
       line.append(picture('chat-emote', `${address}1.0`, `${address}2.0`, part.text))
-    } else line.append(document.createTextNode(part.text))
+    } else addText(line, part.text)
   }
   return line
 }
@@ -152,7 +259,8 @@ chatLatest.onclick = () => {
 chatList.addEventListener('load', () => { if (!chatHeld) toLatest() }, true)
 new ResizeObserver(() => { if (!chatHeld) toLatest() }).observe(chatList)
 
-function addLines(messages) {
+function addLines(all) {
+  const messages = all.filter(chatVisible)
   if (!messages.length) return
   chatList.append(...messages.map(chatLine))
   const limit = chatHeld ? LINES_HELD : LINES
@@ -185,6 +293,7 @@ function readMessage(edge) {
   return {
     id: node.id,
     at: node.contentOffsetSeconds,
+    login: login.toLowerCase(),
     name: node.commenter?.displayName || login || '—',
     color: nameColor(node.message?.userColor, login),
     badges: (node.message?.userBadges || []).filter((badge) => badge?.setID),
@@ -212,7 +321,7 @@ function drawFromKnown() {
   chatList.textContent = ''
   chatHeld = false
   chatLatest.hidden = true
-  addLines(known.slice(Math.max(0, shown - FILL), shown))
+  addLines(known.slice(0, shown).filter(chatVisible).slice(-FILL))
   if (!chatList.childElementCount) showNote(labels.chatEmpty)
 }
 
@@ -234,7 +343,7 @@ async function askAt(position, fresh) {
   asking = true
   let answer
   try {
-    const [reply, badges] = await Promise.all([askChat(CHAT_QUERY, { id: videoId, offset: position }), badgesReady])
+    const [reply, badges] = await Promise.all([askChat(CHAT_QUERY, { id: videoId, offset: position }), badgesReady, emotesOrWait])
     if (turn !== askTurn) return
     answer = reply
     badgeList = badges
@@ -311,15 +420,19 @@ video.addEventListener('loadedmetadata', chatJump)
 
 // ---- The panel: on or off, width -------------------------------------------------------------------
 let chatWanted = stored('player.chat', 1) === 1
+let chatWantedFull = stored('player.chatFull', 1) === 1
 let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
+let chatSpot = SPOTS.includes(localStorage.getItem('player.chatSpot')) ? localStorage.getItem('player.chatSpot') : SPOTS[0]
 
 function placeChat() {
   const room = $('stage').clientWidth
-  const fits = room >= CHAT_NEEDS && !document.fullscreenElement
-  const showing = chatWanted && fits
+  const full = !!document.fullscreenElement
+  const fits = full || room >= CHAT_NEEDS // in full screen it goes over the video
+  const showing = (full ? chatWantedFull : chatWanted) && fits
   const was = chatShowing()
   chatPanel.hidden = !showing
-  chatPanel.style.width = `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
+  chatPanel.className = full ? `over ${chatSpot}` : ''
+  chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
   button.classList.toggle('off', !fits)
@@ -331,8 +444,13 @@ function placeChat() {
 }
 function toggleChat() {
   if ($('chat-button').classList.contains('off')) return
-  chatWanted = !chatWanted
-  localStorage.setItem('player.chat', chatWanted ? 1 : 0)
+  if (document.fullscreenElement) {
+    chatWantedFull = !chatWantedFull
+    localStorage.setItem('player.chatFull', chatWantedFull ? 1 : 0)
+  } else {
+    chatWanted = !chatWanted
+    localStorage.setItem('player.chat', chatWanted ? 1 : 0)
+  }
   placeChat()
 }
 $('chat-button').innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>'
@@ -363,5 +481,58 @@ const endResize = () => {
 }
 edge.addEventListener('pointerup', endResize)
 edge.addEventListener('pointercancel', endResize)
+
+// ---- Its part of the player's menu (player.js, drawMenu) -----------------------------------------
+function redrawChat() {
+  if (chatShowing() && knownTo >= 0) drawFromKnown()
+}
+function chatMenu(menu, title) {
+  const row = (text, on, action) => {
+    const button = document.createElement('button')
+    button.className = `menu-item${on ? ' on' : ''}`
+    button.textContent = text
+    if (on) button.insertAdjacentHTML('beforeend', icon('check'))
+    button.onclick = () => {
+      action()
+      drawMenu()
+    }
+    menu.append(button)
+  }
+  title(labels.chatTitle)
+  row(labels.chatHideBots, hideBots, () => {
+    hideBots = !hideBots
+    localStorage.setItem('player.hideBots', hideBots ? 1 : 0)
+    redrawChat()
+  })
+  const names = document.createElement('input')
+  names.id = 'bot-names'
+  names.type = 'text'
+  names.spellcheck = false
+  names.placeholder = labels.chatBotNames
+  names.title = labels.chatBotNames
+  names.value = ownBots
+  names.addEventListener('change', () => {
+    ownBots = names.value.trim()
+    localStorage.setItem('player.botNames', ownBots)
+    readBotNames()
+    redrawChat()
+  })
+  names.addEventListener('keydown', (event) => { if (event.key === 'Enter') names.blur() })
+  menu.append(names)
+  row(labels.chatTimes, showTimes, () => {
+    showTimes = !showTimes
+    localStorage.setItem('player.chatTimes', showTimes ? 1 : 0)
+    redrawChat()
+  })
+  title(labels.chatFullTitle)
+  const spotNames = { right: labels.chatRight, left: labels.chatLeft, 'corner-right': labels.chatCornerRight, 'corner-left': labels.chatCornerLeft }
+  for (const spot of SPOTS) {
+    row(spotNames[spot], spot === chatSpot, () => {
+      chatSpot = spot
+      localStorage.setItem('player.chatSpot', spot)
+      placeChat()
+    })
+  }
+}
 
 placeChat()
