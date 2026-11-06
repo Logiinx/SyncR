@@ -527,6 +527,7 @@ async fn open_extension_page(app: AppHandle, id: String, page: String) -> Result
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).build())
     .manage(Lab::default())
     .invoke_handler(tauri::generate_handler![
       get_state,

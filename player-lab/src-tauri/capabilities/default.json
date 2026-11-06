@@ -2,5 +2,5 @@
   "identifier": "default",
   "description": "Only the manager window can talk to the app. Player windows get nothing.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "core:webview:allow-create-webview-window", "core:window:allow-close", "core:window:allow-destroy", "core:window:allow-set-focus", "core:window:allow-set-position", "core:window:allow-set-size"]
 }

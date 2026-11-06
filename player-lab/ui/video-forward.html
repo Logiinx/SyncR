@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<title></title>
+<style>html { background: #000 }</style>
+<script>
+  // Opens YouTube's player-only page. Going through this page gives it what it asks for, the
+  // address the visitor came from: opened directly it answers with error 153.
+  const id = new URLSearchParams(location.search).get('v') || ''
+  if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3`)
+</script>
