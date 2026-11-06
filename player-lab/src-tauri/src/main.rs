@@ -534,8 +534,9 @@ const VIDEO_WINDOW: &str = "video-player";
 const VIDEO_BAR: &str = "video-player-bar";
 const VIDEO_SITE: &str = "video-player-site";
 
-// Bar on top and the site below; while the site is in fullscreen, only the site.
-fn place_video_pages(window: &tauri::Window, bar_height: f64, fullscreen: bool) {
+// Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
+// only the site.
+fn place_video_pages(window: &tauri::Window, bar_height: f64) {
   use tauri::{PhysicalPosition, PhysicalSize, Rect};
   let (Some(bar), Some(site)) = (window.get_webview(VIDEO_BAR), window.get_webview(VIDEO_SITE)) else {
     return;
@@ -546,6 +547,7 @@ fn place_video_pages(window: &tauri::Window, bar_height: f64, fullscreen: bool) 
   if size.width == 0 || size.height == 0 {
     return; // minimized
   }
+  let fullscreen = window.is_fullscreen().unwrap_or(false);
   let top = if fullscreen { 0 } else { ((bar_height * scale).round() as u32).min(size.height) };
   let _ = if fullscreen { bar.hide() } else { bar.show() };
   let _ = bar.set_bounds(Rect {
@@ -555,30 +557,6 @@ fn place_video_pages(window: &tauri::Window, bar_height: f64, fullscreen: bool) 
   let _ = site.set_bounds(Rect {
     position: PhysicalPosition::new(0, top as i32).into(),
     size: PhysicalSize::new(size.width, size.height - top).into(),
-  });
-}
-
-// Tauri doesn't tell when a site goes fullscreen (the player's button), WebView2 does
-#[cfg(windows)]
-fn watch_video_fullscreen(site: &tauri::Webview, fullscreen: std::sync::Arc<std::sync::atomic::AtomicBool>, bar_height: f64) {
-  use std::sync::atomic::Ordering;
-  use webview2_com::ContainsFullScreenElementChangedEventHandler;
-  let window = site.window();
-  let _ = site.with_webview(move |webview| unsafe {
-    let Ok(core) = webview.controller().CoreWebView2() else {
-      return;
-    };
-    let handler = ContainsFullScreenElementChangedEventHandler::create(Box::new(move |sender, _| {
-      let mut on = windows::core::BOOL(0);
-      if let Some(sender) = sender {
-        sender.ContainsFullScreenElement(&mut on)?;
-      }
-      fullscreen.store(on.as_bool(), Ordering::SeqCst);
-      place_video_pages(&window, bar_height, on.as_bool());
-      Ok(())
-    }));
-    let mut token = 0;
-    let _ = core.add_ContainsFullScreenElementChanged(&handler, &mut token);
   });
 }
 
@@ -599,20 +577,6 @@ fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
   Ok(())
 }
 
-// Its place and size, but not the border the plugin may remember from an older version. On the
-// main thread: the plugin holds its saved state while it waits for that thread, and elsewhere
-// that thread can be waiting for the same state (the whole app froze).
-fn restore_video_window(window: &tauri::Window) {
-  use tauri_plugin_window_state::{StateFlags, WindowExt};
-  let (done, wait) = std::sync::mpsc::channel();
-  let on_main = window.clone();
-  let _ = window.run_on_main_thread(move || {
-    let _ = on_main.restore_state(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED);
-    let _ = done.send(());
-  });
-  let _ = wait.recv();
-}
-
 // bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
 #[tauri::command]
 async fn open_video_player(
@@ -623,7 +587,6 @@ async fn open_video_player(
   bar_height: f64,
   always_on_top: bool,
 ) -> Result<(), String> {
-  use std::sync::atomic::{AtomicBool, Ordering};
   use tauri::utils::config::Color;
   use tauri::webview::WebviewBuilder;
   use tauri::window::WindowBuilder;
@@ -639,6 +602,9 @@ async fn open_video_player(
   };
   close_video_window(&app)?;
   let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
+  // With its border for now: the window-state plugin removes it here before restoring the size.
+  // Without this change a new window still counts a title bar, and each opening gets that much
+  // taller.
   let window = WindowBuilder::new(&app, VIDEO_WINDOW)
     .title(title)
     .inner_size(1280.0, 760.0)
@@ -674,19 +640,18 @@ async fn open_video_player(
       size,
     )
     .map_err(|e| e.to_string())?;
-  // Border off only now: pages added to a window don't get the resize edges of a borderless
-  // window, this adds them. It also makes Windows measure the window again: a new window still
-  // counts a title bar, so restoring its size before this makes it a title bar taller each time.
-  window.set_decorations(false).map_err(|e| e.to_string())?;
-  restore_video_window(&window);
-  let fullscreen = std::sync::Arc::new(AtomicBool::new(false));
-  #[cfg(windows)]
-  watch_video_fullscreen(&site, fullscreen.clone(), bar_height);
-  place_video_pages(&window, bar_height, false);
+  // On its first opening, or after an older version, the plugin left the border on
+  let _ = window.set_decorations(false);
+  // The resize edges of a borderless window sit under pages added later: this makes new ones on top
+  let _ = window.set_resizable(false);
+  let _ = window.set_resizable(true);
+  // Closed while in full screen: the site isn't anymore, and there'd be no bar to get out with
+  let _ = window.set_fullscreen(false);
+  place_video_pages(&window, bar_height);
   let moved = window.clone();
   window.on_window_event(move |event| {
     if matches!(event, WindowEvent::Resized(_)) {
-      place_video_pages(&moved, bar_height, fullscreen.load(Ordering::SeqCst));
+      place_video_pages(&moved, bar_height);
       if let Some(bar) = moved.get_webview(VIDEO_BAR) {
         let maximized = moved.is_maximized().unwrap_or(false);
         let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
