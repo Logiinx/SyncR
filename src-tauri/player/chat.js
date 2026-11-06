@@ -172,6 +172,8 @@ function findEmote(word) {
 // ---- What to show -------------------------------------------------------------------------------
 let hideBots = stored('player.hideBots', 1) === 1
 let showTimes = stored('player.chatTimes', 0) === 1
+const CHAT_SIZES = [1, 1.1, 1.25, 1.5]
+let chatSize = CHAT_SIZES.includes(stored('player.chatSize', 1)) ? stored('player.chatSize', 1) : 1
 let ownBots = localStorage.getItem('player.botNames') || ''
 let botNames = new Set()
 function readBotNames() {
@@ -488,7 +490,27 @@ edge.addEventListener('pointercancel', endResize)
 function redrawChat() {
   if (chatShowing() && knownTo >= 0) drawFromKnown()
 }
+function drawChatSize() {
+  chatList.style.setProperty('--chat-size', chatSize)
+  if (!chatHeld) toLatest()
+}
 function chatMenu(menu, row, title) {
+  title(labels.chatSize)
+  const sizes = document.createElement('div')
+  sizes.className = 'menu-choices'
+  for (const size of CHAT_SIZES) {
+    const button = document.createElement('button')
+    button.textContent = `${Math.round(size * 100)}%`
+    if (size === chatSize) button.className = 'on'
+    button.onclick = () => {
+      chatSize = size
+      localStorage.setItem('player.chatSize', size)
+      drawChatSize()
+      drawMenu()
+    }
+    sizes.append(button)
+  }
+  menu.append(sizes)
   title(labels.chatTitle)
   row(labels.chatHideBots, hideBots, () => {
     hideBots = !hideBots
@@ -526,4 +548,5 @@ function chatMenu(menu, row, title) {
   }
 }
 
+drawChatSize()
 placeChat()

@@ -142,6 +142,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       chatEmpty: t('No chat messages here'),
       chatFailed: t("Couldn't load the chat, trying again…"),
       chatLatest: t('Back to latest'),
+      chatSize: t('Chat size'),
       chatTitle: t('Chat'),
       chatHideBots: t('Hide bots and !commands'),
       chatBotNames: t('More bot names, separated by spaces'),

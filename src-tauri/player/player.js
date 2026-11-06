@@ -313,7 +313,7 @@ function drawMenu() {
   }
   title(labels.speed)
   const speeds = document.createElement('div')
-  speeds.id = 'speeds'
+  speeds.className = 'menu-choices'
   for (const speed of SPEEDS) {
     const button = document.createElement('button')
     button.textContent = speedText(speed)
