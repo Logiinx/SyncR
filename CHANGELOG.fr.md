@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-11-06
+
 **Vidéo**
 - **Ajout** du replay du chat à côté du lecteur Twitch, avec emotes BTTV, FFZ et 7TV, et par-dessus en plein écran
 - **Ajout** d’options dans le lecteur Twitch pour masquer les bots et les !commandes et afficher l’heure des messages
