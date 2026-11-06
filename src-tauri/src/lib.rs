@@ -278,6 +278,50 @@ async fn save_attachment(
   Ok(true)
 }
 
+// The video player window (videoPlayer.ts): real sites, so it's in no capability file and has its
+// own storage folder, apart from the notes. The next video replaces the current one, closed first
+// so the window-state plugin remembers its place and size. Its address is either a site's page or
+// our page that forwards to YouTube's player (public/video-forward.html).
+#[tauri::command]
+async fn open_video_player(app: tauri::AppHandle, address: String, title: String) -> Result<(), String> {
+  use tauri::{WebviewUrl, WebviewWindowBuilder};
+  const LABEL: &str = "video-player";
+  let url = if address.starts_with("video-forward.html?v=") {
+    WebviewUrl::App(address.into())
+  } else {
+    let url = tauri::Url::parse(&address).map_err(|e| e.to_string())?;
+    if url.scheme() != "https" {
+      return Err("Not a web address".to_string());
+    }
+    WebviewUrl::External(url)
+  };
+  if let Some(current) = app.get_webview_window(LABEL) {
+    current.close().map_err(|e| e.to_string())?;
+    for tries in 0..40 {
+      if app.get_webview_window(LABEL).is_none() {
+        break;
+      }
+      if tries == 30 {
+        let _ = current.destroy(); // a site asking "leave this page?"
+      }
+      std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+  }
+  let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
+  WebviewWindowBuilder::new(&app, LABEL, url)
+    .title(title)
+    .inner_size(1280.0, 760.0)
+    .center()
+    .background_color(tauri::utils::config::Color(0, 0, 0, 255))
+    .use_https_scheme(true)
+    .data_directory(folder)
+    // A site can't send this window to SyncR's own pages
+    .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html")
+    .build()
+    .map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default();
@@ -306,7 +350,8 @@ pub fn run() {
       protect_secret,
       unprotect_secret,
       open_attachment,
-      save_attachment
+      save_attachment,
+      open_video_player
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

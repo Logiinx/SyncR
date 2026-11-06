@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** d’une fenêtre de lecture vidéo qui garde sa place, et d’un bouton pour ouvrir dans le navigateur
+
 ## [0.48.0] - 2026-11-06
 
 **Vidéo**

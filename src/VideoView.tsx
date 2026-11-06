@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Check, CheckCheck, ListVideo, Plus, RefreshCw, Undo2, X } from 'lucide-react'
+import { Check, CheckCheck, ExternalLink, ListVideo, Plus, RefreshCw, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import { nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
@@ -10,6 +10,7 @@ import { FillSwitch } from './tabLines'
 import { checkVideos, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
+import { playVideo } from './videoPlayer'
 
 type List = 'towatch' | 'watched'
 
@@ -21,10 +22,14 @@ function duration(seconds: number) {
   return hours ? `${hours}:${part(minutes)}:${part(seconds % 60)}` : `${minutes}:${part(seconds % 60)}`
 }
 
-// One video: a click opens it in the browser and marks it as opened; it stays in To watch until
-// it's ticked. A video that's gone can't be opened, only removed from the list.
+// One video: a click opens it in the player window and marks it as opened; it stays in To watch
+// until it's ticked. A video that's gone can't be opened, only removed from the list.
 function VideoRow({ video }: { video: FeedVideo }) {
   function open() {
+    playVideo(video)
+    void markOpened(video.id)
+  }
+  function openInBrowser() {
     openLink(video.url)
     void markOpened(video.id)
   }
@@ -54,6 +59,11 @@ function VideoRow({ video }: { video: FeedVideo }) {
           </span>
         </span>
       </button>
+      {!video.gone && (
+        <button className="video-row-action" title={t('Open in browser')} onClick={openInBrowser}>
+          <ExternalLink size={16} />
+        </button>
+      )}
       {video.watched ? (
         <button className="video-row-action" title={t('Back to To watch')} onClick={() => void setWatched(video.id, false)}>
           <Undo2 size={16} />
