@@ -19,6 +19,11 @@
 //   GITHUB_TOKEN          optional: github.com → Settings → Developer settings → Fine-grained
 //                         tokens, "Public repositories", no permissions. Link cards of GitHub
 //                         repos: 5,000 lookups per hour instead of 60 (see /preview)
+//   VIDEO_FEED            optional: the exact word "on" shows the Video tab in your SyncR
+//                         (not for the friend password; see video/ below)
+//   YOUTUBE_KEY           for the Video tab's YouTube channels: console.cloud.google.com → APIs
+//                         & Services → enable "YouTube Data API v3" → Credentials → API key
+//                         (restrict it to that API)
 //
 // The app sends: POST https://<worker>/<endpoint>, header "X-SyncR-Password", body = an IGDB
 // query (Apicalypse), e.g. 'search "Guild Wars"; fields name; limit 5;'.
@@ -492,6 +497,208 @@ async function linkPreview(env, request) {
   return preview
 }
 
+// Video tab: new videos of followed Twitch and YouTube channels. Only for the owner, and only
+// when VIDEO_FEED is "on" (see the top of this file); otherwise the app shows no Video tab.
+//   video/status   no body                  { enabled, youtube }: youtube = YOUTUBE_KEY is set
+//   video/channel  { link }                 { platform, id, name, icon }
+//   video/list     { platform, id, since }  { videos: [...] }, newest first; with "since" (a date)
+//                                           everything back to it, without it the latest page
+//   video/exists   { platform, ids }        { existing: [...] }: the ones still there
+const TWITCH_API = 'https://api.twitch.tv/helix'
+const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
+const VIDEO_PAGES = 10 // the most pages per list: Cloudflare allows 50 outside calls per request
+
+// An answer the app should show as it is, not "try again later" (502)
+const videoError = (message, status = 400) => Object.assign(new Error(message), { status })
+
+// 404 = the channel or video is gone: not an error, there's just nothing to list
+async function askTwitch(env, path) {
+  const ask = async (renew) =>
+    fetch(`${TWITCH_API}/${path}`, {
+      headers: { 'Client-ID': env.TWITCH_CLIENT_ID, Authorization: `Bearer ${await getToken(env, renew)}` },
+    })
+  let response = await ask(false)
+  if (response.status === 401) response = await ask(true)
+  if (response.status === 404) return { data: [] }
+  if (!response.ok) throw new Error(`Twitch: ${response.status}`)
+  return response.json()
+}
+
+// Errors name only Google's reason (e.g. quotaExceeded), never the address: it holds the key
+async function askYouTube(env, path, params) {
+  if (!env.YOUTUBE_KEY) throw videoError('YOUTUBE_KEY is not set', 500)
+  const response = await fetch(`${YOUTUBE_API}/${path}?${new URLSearchParams({ ...params, key: env.YOUTUBE_KEY })}`)
+  if (response.status === 404) return { items: [] }
+  if (!response.ok) {
+    const answer = await response.json().catch(() => null)
+    throw new Error(`YouTube: ${answer?.error?.errors?.[0]?.reason ?? response.status}`)
+  }
+  return response.json()
+}
+
+// What a pasted link points to. Pages of a site that aren't channels are refused here, so they
+// can't turn into a channel with that name.
+const TWITCH_PAGES = new Set(['videos', 'directory', 'downloads', 'jobs', 'p', 'settings', 'subscriptions', 'turbo', 'wallet'])
+const YOUTUBE_PAGES = new Set(['watch', 'playlist', 'shorts', 'live', 'embed', 'feed', 'results', 'hashtag', 'gaming', 'premium', 'account'])
+
+function channelLink(text) {
+  const typed = String(text ?? '').trim()
+  let url
+  try {
+    url = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed.startsWith('@') ? `youtube.com/${typed}` : typed}`)
+  } catch {
+    return null
+  }
+  const host = url.hostname.toLowerCase().replace(/^(www|m)\./, '')
+  const [first, second] = url.pathname.split('/').filter(Boolean).map((part) => {
+    try {
+      return decodeURIComponent(part)
+    } catch {
+      return part
+    }
+  })
+  if (!first) return null
+  if (host === 'twitch.tv') {
+    const login = first.toLowerCase()
+    return /^[a-z0-9_]{1,25}$/.test(login) && !TWITCH_PAGES.has(login) ? { platform: 'twitch', login } : null
+  }
+  if (host !== 'youtube.com') return null
+  if (first.startsWith('@')) return { platform: 'youtube', lookups: [{ forHandle: first }] }
+  if (first === 'channel') return second ? { platform: 'youtube', lookups: [{ id: second }] } : null
+  if (first === 'user') return second ? { platform: 'youtube', lookups: [{ forUsername: second }] } : null
+  // Old-style addresses: youtube.com/c/name and youtube.com/name
+  const name = first === 'c' ? second : first
+  if (!name || YOUTUBE_PAGES.has(first)) return null
+  return { platform: 'youtube', lookups: [{ forHandle: `@${name}` }, { forUsername: name }] }
+}
+
+async function findChannel(env, link) {
+  const found = channelLink(link)
+  if (!found) throw videoError('not-a-channel')
+  if (found.platform === 'twitch') {
+    const user = (await askTwitch(env, `users?login=${found.login}`)).data?.[0]
+    if (!user) throw videoError('channel-not-found', 404)
+    return { platform: 'twitch', id: user.id, name: user.display_name, icon: user.profile_image_url || null }
+  }
+  for (const lookup of found.lookups) {
+    const channel = (await askYouTube(env, 'channels', { part: 'snippet', ...lookup })).items?.[0]
+    if (channel) return { platform: 'youtube', id: channel.id, name: channel.snippet.title, icon: channel.snippet.thumbnails?.default?.url ?? null }
+  }
+  throw videoError('channel-not-found', 404)
+}
+
+// "1h2m3s" (Twitch) and "PT1H2M3S" (YouTube, can start with days: "P1DT2H") in seconds
+function seconds(text) {
+  const part = (unit) => Number(String(text).match(new RegExp(`(\\d+)${unit}`, 'i'))?.[1] ?? 0)
+  return part('d') * 86400 + part('h') * 3600 + part('m') * 60 + part('s')
+}
+
+// live = still being streamed (or, on YouTube, announced): the app waits until it's finished.
+// Twitch lists a stream in progress as a video too; only its stream's id tells them apart.
+async function twitchVideos(env, id, since) {
+  const liveStream = (await askTwitch(env, `streams?user_id=${id}&first=1`)).data?.[0]?.id
+  const videos = []
+  let cursor = ''
+  for (let page = 0; page < VIDEO_PAGES; page++) {
+    const answer = await askTwitch(env, `videos?user_id=${id}&first=100&type=all${cursor ? `&after=${encodeURIComponent(cursor)}` : ''}`)
+    const items = answer.data ?? []
+    videos.push(...items.map((video) => ({
+      id: video.id,
+      kind: video.type, // archive (past stream), highlight or upload
+      title: video.title,
+      url: video.url,
+      thumbnail: video.thumbnail_url ? video.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180') : null,
+      published: video.published_at,
+      duration: seconds(video.duration),
+      live: !!liveStream && video.stream_id === liveStream,
+    })))
+    cursor = answer.pagination?.cursor
+    if (!since || !cursor || !items.length || Date.parse(items[items.length - 1].published_at) < since) break
+  }
+  return videos
+}
+
+// The ids in one of a channel's automatic playlists, newest first. Private videos have no date.
+async function playlistIds(env, playlist, since) {
+  const ids = []
+  let pageToken
+  for (let page = 0; page < VIDEO_PAGES; page++) {
+    const answer = await askYouTube(env, 'playlistItems', { part: 'contentDetails', playlistId: playlist, maxResults: '50', ...(pageToken ? { pageToken } : {}) })
+    const items = answer.items ?? []
+    ids.push(...items.map((item) => item.contentDetails.videoId))
+    pageToken = answer.nextPageToken
+    const oldest = items[items.length - 1]?.contentDetails.videoPublishedAt
+    if (!since || !pageToken || !items.length || (oldest && Date.parse(oldest) < since)) break
+  }
+  return ids
+}
+
+// A channel's id starts with UC. UU + the rest = its uploads (official); UUSH + the rest = only
+// its Shorts (not official, but the API has no other way to tell them apart). Shorts are a part
+// of the uploads, so the same page or period of them covers all that the uploads list holds.
+async function youtubeVideos(env, id, since) {
+  const ids = await playlistIds(env, `UU${id.slice(2)}`, since)
+  if (!ids.length) return []
+  const shorts = new Set(await playlistIds(env, `UUSH${id.slice(2)}`, since))
+  const videos = []
+  for (let start = 0; start < ids.length; start += 50) {
+    const answer = await askYouTube(env, 'videos', { part: 'snippet,contentDetails', id: ids.slice(start, start + 50).join(','), maxResults: '50' })
+    // Deleted and private videos just aren't in this answer
+    videos.push(...(answer.items ?? []).map((video) => ({
+      id: video.id,
+      kind: shorts.has(video.id) ? 'short' : 'video',
+      title: video.snippet.title,
+      url: `https://www.youtube.com/watch?v=${video.id}`,
+      thumbnail: video.snippet.thumbnails?.medium?.url ?? null,
+      published: video.snippet.publishedAt,
+      duration: seconds(video.contentDetails.duration),
+      live: video.snippet.liveBroadcastContent !== 'none',
+    })))
+  }
+  return videos
+}
+
+async function listVideos(env, { platform, id, since }) {
+  const from = since ? Date.parse(since) : NaN
+  const limit = Number.isNaN(from) ? null : from
+  let videos
+  if (platform === 'twitch' && /^\d+$/.test(id)) videos = await twitchVideos(env, id, limit)
+  else if (platform === 'youtube' && /^UC[\w-]{22}$/.test(id)) videos = await youtubeVideos(env, id, limit)
+  else throw videoError('Unknown channel')
+  return {
+    videos: videos
+      .filter((video) => limit === null || Date.parse(video.published) >= limit)
+      .sort((a, b) => Date.parse(b.published) - Date.parse(a.published)),
+  }
+}
+
+// Which of these videos can still be watched. Twitch deletes old streams; YouTube videos can
+// be removed or made private.
+async function existingVideos(env, { platform, ids }) {
+  if (!Array.isArray(ids) || ids.length > 500) throw videoError('Up to 500 videos at a time')
+  const twitch = platform === 'twitch'
+  if (!twitch && platform !== 'youtube') throw videoError('Unknown channel')
+  const valid = ids.filter((id) => typeof id === 'string' && (twitch ? /^\d+$/ : /^[\w-]{6,20}$/).test(id))
+  const size = twitch ? 100 : 50
+  const existing = []
+  for (let start = 0; start < valid.length; start += size) {
+    const part = valid.slice(start, start + size)
+    const answer = twitch
+      ? (await askTwitch(env, `videos?${part.map((id) => `id=${id}`).join('&')}&first=${size}`)).data
+      : (await askYouTube(env, 'videos', { part: 'id', id: part.join(','), maxResults: String(size) })).items
+    existing.push(...(answer ?? []).map((video) => video.id))
+  }
+  return { existing }
+}
+
+async function videoFeed(env, endpoint, request) {
+  const body = await request.json().catch(() => ({}))
+  if (endpoint === 'video/channel') return findChannel(env, body.link)
+  if (endpoint === 'video/list') return listVideos(env, body)
+  if (endpoint === 'video/exists') return existingVideos(env, body)
+  throw videoError(`Unknown endpoint: ${endpoint}`, 404)
+}
+
 function askIgdb(env, endpoint, query, accessToken) {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
@@ -564,6 +771,16 @@ export default {
         return reply(await steam(env, endpoint, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    if (endpoint.startsWith('video/')) {
+      const on = owner && env.VIDEO_FEED === 'on'
+      if (endpoint === 'video/status') return reply({ enabled: on, youtube: on && !!env.YOUTUBE_KEY }, 200)
+      if (!on) return reply({ error: 'The video feed is off' }, 403)
+      try {
+        return reply(await videoFeed(env, endpoint, request), 200)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, error.status ?? 502)
       }
     }
     if (!ALLOWED_ENDPOINTS.has(endpoint)) return reply({ error: `Unknown endpoint: ${endpoint}` }, 404)
