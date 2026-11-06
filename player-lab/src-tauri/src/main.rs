@@ -635,6 +635,10 @@ async fn open_video_player(
     .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
+  // Not the border the plugin may remember from an older version: with it on, each opening would
+  // make the window a title bar taller. So the plugin skips this window when it opens.
+  use tauri_plugin_window_state::{StateFlags, WindowExt};
+  let _ = window.restore_state(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED);
   let size = window.inner_size().map_err(|e| e.to_string())?;
   window
     .add_child(
@@ -661,8 +665,7 @@ async fn open_video_player(
       size,
     )
     .map_err(|e| e.to_string())?;
-  // Twice useful: pages added to a window don't get the resize edges of a borderless window, this
-  // adds them; and the window-state plugin may have just brought back an older window's border.
+  // Pages added to a window don't get the resize edges of a borderless window, this adds them
   window.set_decorations(false).map_err(|e| e.to_string())?;
   let fullscreen = std::sync::Arc::new(AtomicBool::new(false));
   #[cfg(windows)]
@@ -735,7 +738,7 @@ async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
 
 // Lab only: LAB_VIDEO_PORT opens the player's two pages to inspection from outside
 fn video_args() -> String {
-  let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
+  let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required");
   if let Ok(port) = std::env::var("LAB_VIDEO_PORT") {
     args.push_str(&format!(" --remote-debugging-port={port}"));
   }
@@ -745,7 +748,7 @@ fn video_args() -> String {
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).build())
+    .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).skip_initial_state(VIDEO_WINDOW).build())
     .manage(Lab::default())
     .invoke_handler(tauri::generate_handler![
       get_state,

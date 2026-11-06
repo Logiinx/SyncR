@@ -6,7 +6,7 @@
   "app": {
     "withGlobalTauri": true,
     "windows": [
-      { "label": "main", "title": "SyncR Player Lab", "width": 820, "height": 760, "useHttpsScheme": true }
+      { "label": "main", "title": "SyncR Player Lab", "width": 820, "height": 760, "useHttpsScheme": true, "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port=9335" }
     ],
     "security": { "csp": null }
   },
