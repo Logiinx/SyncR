@@ -760,7 +760,7 @@ fn video_args() -> String {
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).skip_initial_state(VIDEO_WINDOW).build())
+    .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).build())
     .manage(Lab::default())
     .invoke_handler(tauri::generate_handler![
       get_state,
