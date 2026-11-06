@@ -2,11 +2,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { t } from './i18n'
 import { useEffect, useRef, useState } from 'react'
 import { useListItems, useSlideIn } from './animations'
-import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
+import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, Video, X } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
 import { useGmailAccounts } from './gmail'
 import { useMissed } from './mailAlerts'
 import { MAIL_TAB } from './mailbox'
+import { VIDEO_TAB } from './video'
 import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
 import { REMINDERS_TAB } from './reminders'
@@ -24,6 +25,7 @@ interface Props {
   onGames: () => void
   onReminders: () => void
   onMail: () => void
+  onVideo: (() => void) | null // null: no Video tab (video.ts)
   query: string // search across all notes; kept in App so it survives closing the sidebar
   onQuery: (query: string) => void
   focusSearch: boolean // Ctrl+Shift+F (App.tsx): the box should get the cursor
@@ -51,7 +53,7 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, query, onQuery, focusSearch, onSearchFocused }: Props) {
+function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, onVideo, query, onQuery, focusSearch, onSearchFocused }: Props) {
   const slideIn = useSlideIn()
   const accounts = useGmailAccounts()
   const missed = useMissed()
@@ -90,6 +92,11 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
             <Mail size={15} /> {t('Mail')}
             {missed.length > 0 && <span className="sidebar-count" title={t('Missed emails')}>{missed.length}</span>}
+          </button>
+        )}
+        {onVideo && (
+          <button className={activeId === VIDEO_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onVideo}>
+            <Video size={15} /> {t('Video')}
           </button>
         )}
         <div className="game-search-bar sidebar-search">

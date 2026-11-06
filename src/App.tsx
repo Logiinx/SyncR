@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { t, useLanguage } from './i18n'
-import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
+import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, Video, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -21,6 +21,8 @@ import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
 import { MAIL_TAB } from './mailbox'
+import { useVideoEnabled, VIDEO_TAB } from './video'
+import VideoView from './VideoView'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
 import { startCalendarChecks } from './calendarEvents'
@@ -34,10 +36,11 @@ import { usePage } from './animations'
 const isNarrowScreen = () => window.matchMedia('(max-width: 699px)').matches
 
 // Tabs that show a page instead of a note (their ids never look like a note id)
-const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id === MAIL_TAB
+const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id === MAIL_TAB || id === VIDEO_TAB
 
 function App() {
   useLanguage()
+  const videoOn = useVideoEnabled()
   // Remembered after a restart (per device)
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
@@ -108,11 +111,12 @@ function App() {
     async () => ({ ids: openTabs, notes: await db.notes.bulkGet(openTabs) }),
     [openTabs],
   )
-  // The tabs that exist: notes found in the database, and the Games, Reminders and Mail tabs
+  // The tabs that exist: notes found in the database, and the Games, Reminders, Mail and Video tabs
   const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
     if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <Gamepad2 size={14} className="tab-icon" /> }]
     if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <Bell size={14} className="tab-icon" /> }]
     if (id === MAIL_TAB) return [{ id, title: t('Mail'), icon: <MailTabIcon /> }]
+    if (id === VIDEO_TAB) return videoOn ? [{ id, title: t('Video'), icon: <Video size={14} className="tab-icon" /> }] : []
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
@@ -126,16 +130,17 @@ function App() {
     [activeId],
   )
 
-  // Close tabs whose note no longer exists (e.g. deleted on the other device)
+  // Close tabs whose note no longer exists (e.g. deleted on the other device), and the Video
+  // tab if the Worker turned it off
   useEffect(() => {
     if (!tabsResult || tabsResult.ids !== openTabs) return
-    const missing = openTabs.filter((id, i) => !isPageTab(id) && !tabsResult.notes[i])
+    const missing = openTabs.filter((id, i) => (id === VIDEO_TAB ? !videoOn : !isPageTab(id) && !tabsResult.notes[i]))
     if (missing.length === 0) return
     missing.forEach(forgetScroll)
     const remaining = openTabs.filter((id) => !missing.includes(id))
     setOpenTabs(remaining)
     if (activeId && missing.includes(activeId)) setActiveId(remaining.at(-1) ?? null)
-  }, [tabsResult, openTabs, activeId, setOpenTabs, setActiveId])
+  }, [tabsResult, openTabs, activeId, videoOn, setOpenTabs, setActiveId])
 
   // A pinned tab that was closed some other way (its note deleted…) is no longer pinned
   useEffect(() => {
@@ -260,6 +265,7 @@ function App() {
             onGames={() => openNote(GAMES_TAB)}
             onReminders={() => openNote(REMINDERS_TAB)}
             onMail={() => openNote(MAIL_TAB)}
+            onVideo={videoOn ? () => openNote(VIDEO_TAB) : null}
             query={searchQuery}
             onQuery={setSearchQuery}
             focusSearch={focusSearch}
@@ -272,6 +278,8 @@ function App() {
           <GamesView />
         ) : activeId === MAIL_TAB && openTabs.includes(MAIL_TAB) ? (
           <MailView />
+        ) : activeId === VIDEO_TAB && videoOn && openTabs.includes(VIDEO_TAB) ? (
+          <VideoView />
         ) : showNote ? (
           // key: a fresh view and editor for each note
           <NoteView key={activeNote.id} note={activeNote} autoFocus={activeNote.id === newNoteId} />

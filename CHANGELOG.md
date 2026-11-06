@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** a Video tab: a feed of new videos from the YouTube and Twitch channels you follow
+
 ## [0.47.0] - 2026-11-06
 
 **Reminders**

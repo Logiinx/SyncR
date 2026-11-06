@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const lines = (name) => readFileSync(ROOT + name, 'utf8').split(/\r?\n/)
-const AREAS = { Notes: 'Notes', Board: 'Board', Reminders: 'Rappels', Games: 'Jeux', Mail: 'Mail', Sync: 'Synchronisation', App: 'Application' }
+const AREAS = { Notes: 'Notes', Board: 'Board', Reminders: 'Rappels', Games: 'Jeux', Mail: 'Mail', Video: 'Vidéo', Sync: 'Synchronisation', App: 'Application' }
 const VERBS = { Added: 'Ajout', Improved: 'Amélioration', Changed: 'Changement', Removed: 'Suppression', Fixed: 'Correction' }
 
 const english = lines('CHANGELOG.md')

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** d’un onglet Vidéo : un fil des nouvelles vidéos des chaînes YouTube et Twitch suivies
+
 ## [0.47.0] - 2026-11-06
 
 **Rappels**
