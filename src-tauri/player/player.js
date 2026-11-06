@@ -54,7 +54,7 @@ function drawTime() {
   $('knob').style.left = `${part * 100}%`
   $('time-now').textContent = `${clock(shown)} / ${clock(length)}`
   const day = dayAt(shown)
-  $('time-day').textContent = day ? ` · ${day}` : ''
+  $('time-day').textContent = day ? `· ${day}` : ''
   let end = 0
   for (let i = 0; i < video.buffered.length; i++) {
     if (video.buffered.start(i) <= video.currentTime + 1) end = Math.max(end, video.buffered.end(i))
