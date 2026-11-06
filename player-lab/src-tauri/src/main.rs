@@ -599,6 +599,20 @@ fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
   Ok(())
 }
 
+// Its place and size, but not the border the plugin may remember from an older version. On the
+// main thread: the plugin holds its saved state while it waits for that thread, and elsewhere
+// that thread can be waiting for the same state (the whole app froze).
+fn restore_video_window(window: &tauri::Window) {
+  use tauri_plugin_window_state::{StateFlags, WindowExt};
+  let (done, wait) = std::sync::mpsc::channel();
+  let on_main = window.clone();
+  let _ = window.run_on_main_thread(move || {
+    let _ = on_main.restore_state(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED);
+    let _ = done.send(());
+  });
+  let _ = wait.recv();
+}
+
 // bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
 #[tauri::command]
 async fn open_video_player(
@@ -630,15 +644,10 @@ async fn open_video_player(
     .inner_size(1280.0, 760.0)
     .min_inner_size(480.0, 300.0)
     .center()
-    .decorations(false)
     .always_on_top(always_on_top)
     .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
-  // Not the border the plugin may remember from an older version: with it on, each opening would
-  // make the window a title bar taller. So the plugin skips this window when it opens.
-  use tauri_plugin_window_state::{StateFlags, WindowExt};
-  let _ = window.restore_state(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED);
   let size = window.inner_size().map_err(|e| e.to_string())?;
   window
     .add_child(
@@ -665,8 +674,11 @@ async fn open_video_player(
       size,
     )
     .map_err(|e| e.to_string())?;
-  // Pages added to a window don't get the resize edges of a borderless window, this adds them
+  // Border off only now: pages added to a window don't get the resize edges of a borderless
+  // window, this adds them. It also makes Windows measure the window again: a new window still
+  // counts a title bar, so restoring its size before this makes it a title bar taller each time.
   window.set_decorations(false).map_err(|e| e.to_string())?;
+  restore_video_window(&window);
   let fullscreen = std::sync::Arc::new(AtomicBool::new(false));
   #[cfg(windows)]
   watch_video_fullscreen(&site, fullscreen.clone(), bar_height);
