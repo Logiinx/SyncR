@@ -495,15 +495,24 @@ const POPUP_SCRIPT: &str = r#"(function (width, height) {
   }
 })"#;
 
-// Ready, how far right and how far down its content goes, the height it needs if it doesn't fit,
-// the height it has. Two levels of the page are enough: a popup's panels (uBlock's "More" opens
-// its second one beside the first, past the page's own width).
-const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height) { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId'), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
+// What a popup's page says about itself. Two levels of the page are enough to see its panels:
+// uBlock's "More" opens its second one beside the first, past the page's own width.
+const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height && part.tagName !== 'TEMPLATE') { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId'), Math.ceil(first.width), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
 
-// Hidden at this size at first: a page with a width of its own takes it (checked with uBlock,
-// SponsorBlock and BetterTTV), one that fills any width stays at this, and the low height gives the
-// height of its content. Wider, as 800 x 600 (a browser's limit for popups), SponsorBlock came out
-// narrow and very tall.
+#[derive(Clone, Copy)]
+struct PopupMeasure {
+  ready: bool,
+  body_width: f64,
+  right: f64,  // how far right its content goes
+  bottom: f64, // how far down
+  needs: f64,  // the height it needs if it doesn't fit
+  room: f64,   // the height it has
+}
+
+// Hidden at this size at first: a page with a width of its own shows it (the window then keeps that
+// width, as some pages get narrower with their window), one that fills any width stays at this, and
+// the low height gives the height of its content. Wider, as 800 x 600 (a browser's limit for
+// popups), SponsorBlock came out narrow and very tall.
 const POPUP_PROBE: (f64, f64) = (440.0, 100.0);
 // Sizes round up to whole pixels, so a page that fills its window would creep wider at each check
 const POPUP_ROUNDING: f64 = 2.0;
@@ -537,7 +546,7 @@ fn popup_is_in_front(popup: &tauri::WebviewWindow) -> bool {
   popup.hwnd().is_ok_and(|hwnd| hwnd.0 as isize == unsafe { GetForegroundWindow() } as isize)
 }
 
-fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64, f64)> {
+fn measure_popup(popup: &tauri::WebviewWindow) -> Option<PopupMeasure> {
   let (sender, receiver) = channel();
   popup
     .with_webview(move |webview| {
@@ -556,7 +565,14 @@ fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64, f
     .ok()?;
   let text = receiver.recv_timeout(Duration::from_secs(1)).ok()??;
   let value: Value = serde_json::from_str(&text).ok()?;
-  Some((value[0].as_bool()?, value[1].as_f64()?, value[2].as_f64()?, value[3].as_f64()?, value[4].as_f64()?))
+  Some(PopupMeasure {
+    ready: value[0].as_bool()?,
+    body_width: value[1].as_f64()?,
+    right: value[2].as_f64()?,
+    bottom: value[3].as_f64()?,
+    needs: value[4].as_f64()?,
+    room: value[5].as_f64()?,
+  })
 }
 
 // Under the button, kept on the screen. center: the button's middle on the screen, in pixels.
@@ -632,7 +648,10 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
   let turn = POPUP_TURN.fetch_add(1, Ordering::SeqCst) + 1;
   let started = Instant::now();
   let (mut width, mut height) = POPUP_PROBE;
+  let mut own_width = None;
+  let mut last_body_width = 0.0;
   let mut last_bottom = None;
+  let mut measured_once = false;
   let mut steady = 0;
   let mut shown = false;
   let mut in_front = false;
@@ -650,31 +669,40 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
     }
     let measured = measure_popup(&popup);
     let mut changed = false;
-    if let Some((_, right, bottom, needs, room)) = measured {
-      if right > 0.0 && (right - width).abs() > POPUP_ROUNDING {
-        width = right;
-        changed = true;
+    if let Some(now) = measured {
+      measured_once = true;
+      let settled = now.ready && now.body_width > 0.0 && now.body_width == last_body_width;
+      last_body_width = now.body_width;
+      if own_width.is_none() && (settled || started.elapsed() > POPUP_LOST) {
+        own_width = Some(now.body_width.max(1.0));
       }
-      if needs > room + 1.0 && needs != height {
-        height = needs;
-        changed = true;
-      } else if let Some(before) = last_bottom {
-        // Only a part that closed, never a page that fills the window: those don't start shrinking
-        if before - bottom > 4.0 {
-          height -= before - bottom;
+      if let Some(own) = own_width {
+        let wanted = if now.right > own + POPUP_ROUNDING { now.right } else { own };
+        if (wanted - width).abs() > POPUP_ROUNDING {
+          width = wanted;
           changed = true;
         }
       }
-      last_bottom = if changed { None } else { Some(bottom) };
+      if now.needs > now.room + 1.0 && now.needs != height {
+        height = now.needs;
+        changed = true;
+      } else if let Some(before) = last_bottom {
+        // Only a part that closed, never a page that fills the window: those don't start shrinking
+        if before - now.bottom > 4.0 {
+          height -= before - now.bottom;
+          changed = true;
+        }
+      }
+      last_bottom = if changed { None } else { Some(now.bottom) };
       if changed {
         place_popup(&app, &popup, center, width, height);
       }
     }
     if !shown {
-      let ready = measured.is_some_and(|(ready, ..)| ready);
+      let ready = own_width.is_some() && measured.is_some_and(|now| now.ready);
       steady = if ready && !changed { steady + 1 } else { 0 };
-      if steady >= 2 || started.elapsed() > POPUP_LOST {
-        if measured.is_none() {
+      if steady >= 3 || started.elapsed() > POPUP_LOST {
+        if !measured_once {
           height = 520.0;
           place_popup(&app, &popup, center, width, height);
         }
