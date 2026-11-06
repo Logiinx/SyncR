@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<title></title>
+<style>
+  /* The same font as the app (index.css, 'SyncR UI'): keep the numbers the same */
+  @font-face {
+    font-family: 'SyncR UI';
+    font-weight: 400;
+    src: local('Segoe UI'), local('SegoeUI');
+    ascent-override: 101%;
+    descent-override: 32.5%;
+    line-gap-override: 0%;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 0 24px;
+    box-sizing: border-box;
+    background: var(--bg, #161616);
+    color: var(--text);
+    font: 14px 'SyncR UI', sans-serif;
+    text-align: center;
+    user-select: none;
+    cursor: default;
+  }
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.2); }
+  svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+<div id="message"></div>
+<button id="browser"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg><span></span></button>
+<script>
+  // What the video player window shows when no way of opening the video worked (videoPlayer.ts).
+  // Text and colors come in the address, as for the bar (video-bar.html).
+  const data = JSON.parse(new URLSearchParams(location.search).get('data') || '{}')
+  for (const [name, color] of Object.entries(data.colors || {})) document.documentElement.style.setProperty(name, color)
+  if (data.zoom) document.documentElement.style.zoom = data.zoom
+  document.getElementById('message').textContent = data.message || ''
+  document.querySelector('#browser span').textContent = data.browser || ''
+  document.getElementById('browser').onclick = () => window.__TAURI_INTERNALS__?.invoke('video_bar', { action: 'browser' })
+</script>
