@@ -59,9 +59,83 @@
   }
 }
 
+/* The app's interface text on Windows: the same Segoe UI as system-ui, but it leaves less room above
+   its letters, because they sit 1-2 px under the middle of their line (next to icons, in boxes).
+   Line heights stay almost all the same at 100% scale (other scales: 1 screen pixel at most). Anywhere
+   else (phone) these fonts don't exist, so system-ui is used. Note text doesn't use this (see
+   --note-font; its arrows are set by hand). Weight 500 shows as Semibold because that's what
+   system-ui does here. The emoji font gets the same numbers, or a line with an emoji is 1 px taller
+   than the others (its characters: the ones shown in color by default). */
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 400;
+  font-style: normal;
+  src: local('Segoe UI'), local('SegoeUI');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 500 600;
+  font-style: normal;
+  src: local('Segoe UI Semibold'), local('SegoeUI-Semibold');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 700;
+  font-style: normal;
+  src: local('Segoe UI Bold'), local('SegoeUI-Bold');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 400;
+  font-style: italic;
+  src: local('Segoe UI Italic'), local('SegoeUI-Italic');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 500 600;
+  font-style: italic;
+  src: local('Segoe UI Semibold Italic'), local('SegoeUI-SemiboldItalic');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR UI';
+  font-weight: 700;
+  font-style: italic;
+  src: local('Segoe UI Bold Italic'), local('SegoeUI-BoldItalic');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SyncR Emoji';
+  font-weight: 100 900;
+  src: local('Segoe UI Emoji'), local('SegoeUIEmoji');
+  ascent-override: 101%;
+  descent-override: 32.5%;
+  line-gap-override: 0%;
+  unicode-range: U+231A-231B, U+23E9-23F3, U+25FD-25FE, U+2614-2615, U+2648-2653, U+267F, U+2693, U+26A1, U+26AA-26AB,
+    U+26BD-26BE, U+26C4-26C5, U+26CE, U+26D4, U+26EA, U+26F2-26F3, U+26F5, U+26FA, U+26FD, U+2705, U+270A-270B, U+2728,
+    U+274C, U+274E, U+2753-2755, U+2757, U+2795-2797, U+27B0, U+27BF, U+2B1B-2B1C, U+2B50, U+2B55, U+1F000-1FAFF,
+    U+200D, U+FE0F, U+20E3, U+E0020-E007F;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: 'SyncR UI', 'SyncR Emoji', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
@@ -4644,10 +4718,10 @@ button {
 }
 
 /* Stretches over the field's height, centered on the letters: the font leaves more room above
-   them than below, so they sit ~2px under the box's middle (top: 4px moves the eye down 2px) */
+   them than below, so they sit ~1px under the box's middle (top: 2px moves the eye down 1px) */
 .secret-field .eye {
   position: absolute;
-  top: 4px;
+  top: 2px;
   bottom: 0;
   right: 0;
   width: 34px;
