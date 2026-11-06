@@ -25,9 +25,9 @@ import { takeAlertEvent } from './dueReminders'
 import { priceEventGame } from './priceWatch'
 import { useListItems, usePage } from './animations'
 
-// The Reminders tab (opened from "Reminders" in the sidebar). PC: a month grid with your Google
+// The Reminders tab (opened from "Reminders" in the sidebar). A month grid with your Google
 // Calendar's events (calendarEvents.ts) and your Waiting games (exact release dates), or the
-// list, with a switch. Phone: always the list (soonest first).
+// list (soonest first), with a switch. Opens on the grid on the PC, on the list on a phone.
 // Click an event = preview (a game: its details), right-click / long press an event = menu.
 // Uses the Games tab's page layout (.games) and group titles.
 
@@ -52,9 +52,14 @@ function RemindersView() {
   const events = (calendar.events ?? []).filter(
     (event) => !gameEventIds.has(event.id) && !(hideRepeating && event.seriesId),
   )
-  const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.remindersLayout', 'grid') // PC only
   const narrow = useNarrow()
-  const grid = layout === 'grid' && !narrow
+  // A phone has its own key: 'syncr.remindersLayout' already holds 'grid' there, saved back when
+  // the phone had no switch, and a phone should open on the list until it's switched
+  const [layout, setLayout] = useLocalState<CalendarLayout>(
+    narrow ? 'syncr.remindersLayoutPhone' : 'syncr.remindersLayout',
+    narrow ? 'list' : 'grid',
+  )
+  const grid = layout === 'grid'
   // Events and games added or removed grow in and shrink out (the list, not the month grid);
   // not when "Hide repeating" or the layout changes the whole list
   const listRef = useRef<HTMLDivElement>(null)
@@ -211,8 +216,7 @@ function RemindersView() {
   return (
     <main className="page games-page" ref={pageRef}>
       <div className={grid ? 'games wide' : 'games'} ref={listRef}>
-        {/* One row: New event on the left; refresh and grid / list on the right (the phone has
-            no grid: only refresh there) */}
+        {/* One row: New event on the left; refresh and grid / list on the right */}
         <div className="games-views reminders-toolbar">
           <button className="reminders-new" onClick={() => newEvent()}>
             <Plus size={15} /> {t('New event')}

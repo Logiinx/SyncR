@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Rappels**
+- **Ajout** de la grille du mois sur le téléphone : un bouton à côté de la liste, qui reste la vue d’ouverture
+
 ## [0.46.1] - 2026-11-05
 
 **Application**

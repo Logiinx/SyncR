@@ -5159,7 +5159,8 @@ h3.games-group-title {
     margin-left: 0; /* on its own line under the view buttons */
   }
 
-  .calendar-layouts:not(.games-layouts) {
+  /* Games calendar: always the list on a phone (Reminders keeps its switch) */
+  .calendar-controls .calendar-layouts {
     display: none;
   }
 }
@@ -5515,8 +5516,10 @@ h3.games-group-title {
   cursor: pointer;
 }
 
-.calendar-day.addable:hover:not(:has(button:hover)) {
-  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+@media (hover: hover) {
+  .calendar-day.addable:hover:not(:has(button:hover)) {
+    background: color-mix(in srgb, var(--text) 5%, var(--bg));
+  }
 }
 
 .calendar-day.past .calendar-date {
@@ -5568,8 +5571,10 @@ h3.games-group-title {
   color: var(--text);
 }
 
-.calendar-game:hover {
-  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+@media (hover: hover) {
+  .calendar-game:hover {
+    background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  }
 }
 
 .calendar-game .game-cover {
@@ -5703,12 +5708,66 @@ h3.games-group-title {
   overflow-wrap: anywhere;
 }
 
-.calendar-reminder:hover {
-  background: color-mix(in srgb, var(--event, var(--link)) 18%, var(--bg));
+@media (hover: hover) {
+  .calendar-reminder:hover {
+    background: color-mix(in srgb, var(--event, var(--link)) 18%, var(--bg));
+  }
 }
 
 .calendar-reminder-time {
   color: var(--text-dim);
+}
+
+/* Phone (Reminders grid): a day is ~50 px wide, so events are chips with their title only and
+   games just their cover; a tap shows the rest */
+@media (max-width: 699px) {
+  /* When it doesn't fit on one row, the tools go on a second row (labels stay on one line) */
+  .reminders-toolbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .reminders-new,
+  .reminders-hide-repeating {
+    white-space: nowrap;
+  }
+
+  .calendar-weekday {
+    padding: 4px;
+  }
+
+  .calendar-day {
+    gap: 2px;
+    min-height: 64px;
+    padding: 2px;
+  }
+
+  .calendar-day.today .calendar-date {
+    margin-left: -2px;
+    padding: 1px 2px;
+  }
+
+  .calendar-reminder {
+    -webkit-line-clamp: 2;
+    padding: 1px 2px;
+    line-height: 1.25;
+  }
+
+  .calendar-reminder-time,
+  .calendar-repeat,
+  .calendar-game span:last-child {
+    display: none;
+  }
+
+  .calendar-game {
+    padding: 0;
+  }
+
+  .calendar-game .game-cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+  }
 }
 
 .calendar-month-only p {

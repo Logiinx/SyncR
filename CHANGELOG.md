@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Added** the month grid on the phone: a switch beside the list, which stays the view it opens on
+
 ## [0.46.1] - 2026-11-05
 
 **App**
