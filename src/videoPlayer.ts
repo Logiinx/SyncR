@@ -6,6 +6,7 @@ import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
 import { setWatched, watchWatched } from './video'
+import { resumePosition, savePosition, videoClock } from './videoPositions'
 
 // The video player window (desktop only; lib.rs, open_video_player). In a browser, videos just
 // open in a new tab.
@@ -15,6 +16,7 @@ interface PlayableVideo {
   title: string
   url: string
   watched: boolean
+  duration: number // 0 when unknown
 }
 
 // Per device, like the rest of the Video tab
@@ -110,18 +112,26 @@ function twitchPlayerAddress(video: PlayableVideo) {
     },
   }
   const id = encodeURIComponent(video.id.slice('twitch-'.length))
-  return `https://syncr-video.localhost/player.html?video=${id}&data=${encodeURIComponent(JSON.stringify(data))}`
+  const start = startAt(video)
+  return `https://syncr-video.localhost/player.html?video=${id}${start ? `&t=${start}` : ''}&data=${encodeURIComponent(JSON.stringify(data))}`
 }
 
 // YouTube: its player-only page, where the wait it puts before a video when ads are blocked
 // doesn't happen. video-forward.html opens it: that page refuses to play without knowing the
 // address it was opened from.
 function playerAddress(video: PlayableVideo, way: Way) {
-  if (video.platform === 'twitch') return way === 'own' ? twitchPlayerAddress(video) : video.url
+  const start = startAt(video)
+  if (video.platform === 'twitch') {
+    if (way === 'own') return twitchPlayerAddress(video)
+    if (!start) return video.url
+    const url = new URL(video.url)
+    url.searchParams.set('t', `${Math.floor(start / 3600)}h${Math.floor((start % 3600) / 60)}m${start % 60}s`)
+    return url.href
+  }
   const id = encodeURIComponent(video.id.slice('youtube-'.length))
-  if (way === 'yout-ube.com') return `https://www.yout-ube.com/watch?v=${id}`
-  if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}`
-  if (way === 'own') return `video-forward.html?v=${id}`
+  if (way === 'yout-ube.com') return `https://www.yout-ube.com/watch?v=${id}${start ? `&t=${start}` : ''}`
+  if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
+  if (way === 'own') return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}`
   const data = {
     message: t("This video can't play in the player window"),
     browser: t('Open in browser'),
@@ -133,6 +143,19 @@ function playerAddress(video: PlayableVideo, way: Way) {
 
 const viaText = (way: Way) => (OTHER_SITES.includes(way) ? t('via {site}', { site: way }) : '')
 
+// A video marked as Watched starts from the beginning. Seconds, or 0.
+function startAt(video: PlayableVideo) {
+  return video.watched ? 0 : Math.floor(resumePosition(video.id)?.t ?? 0)
+}
+
+// Where it continues, on the bar. muitube.com is the one way that can't be told where to start.
+function noteFor(video: PlayableVideo, way: Way) {
+  const start = startAt(video)
+  if (!start || way === 'stopped') return { note: '', noteStays: false } // i18n-ok
+  if (way === 'muitube.com') return { note: t('You can resume by jumping to {time}', { time: videoClock(start) }), noteStays: true } // i18n-ok
+  return { note: t('Resumed at {time}', { time: videoClock(start) }), noteStays: false }
+}
+
 // What the bar shows (public/video-bar.html): it has its own storage and no access to the app's
 // translations or colors, so it gets them in its address.
 function barData(video: PlayableVideo, way: Way) {
@@ -140,6 +163,7 @@ function barData(video: PlayableVideo, way: Way) {
   const data = {
     title: video.title,
     via: viaText(way),
+    ...noteFor(video, way),
     watched: video.watched,
     onTop: loadPlayerSettings().alwaysOnTop,
     zoom: currentZoom(),
@@ -164,6 +188,9 @@ let currentWay: Way = 'own'
 // Clicks one after the other, so two quick ones can't both create the window
 let queue = Promise.resolve()
 let stopWatching = () => {}
+// Not from the page of a video that was just replaced
+let reportsFrom = 0
+const REPORTS_AFTER = 3000 // ms
 
 function changeWay(video: PlayableVideo, way: Way) {
   queue = queue
@@ -171,7 +198,7 @@ function changeWay(video: PlayableVideo, way: Way) {
       if (current !== video) return // another video was opened in the meantime
       currentWay = way
       rememberWay(video, way)
-      await invoke<void>('video_player_way', { address: playerAddress(video, way), via: viaText(way) })
+      await invoke<void>('video_player_way', { address: playerAddress(video, way), via: viaText(way), ...noteFor(video, way) })
     })
     .catch((error) => console.error('Video player failed', error))
 }
@@ -199,6 +226,12 @@ function listenToBar() {
       void invoke('close_video_player') // so you don't hear it twice
     }
     if (action === 'another-way') changeWay(current, nextWay(current, currentWay))
+  })
+  // How far the page's video is (video-watch.js). A report much shorter than the video is an ad.
+  void listen<{ t: number; length: number }>('video-position', ({ payload: { t: seconds, length } }) => {
+    if (!current || Date.now() < reportsFrom || seconds > length) return
+    if (current.duration > 0 && length < current.duration * 0.9) return
+    savePosition(current.id, { t: seconds, length })
   })
   void listen<{ request?: string; code?: string; video?: string }>('video-site', ({ payload: { request, code, video } }) => {
     // The button on our message (video-stopped.html). A site could fake this signal, so it only
@@ -230,6 +263,7 @@ export function playVideo(video: PlayableVideo) {
   queue = queue
     .then(async () => {
       current = video
+      reportsFrom = Date.now() + REPORTS_AFTER
       currentWay = rememberedWay(video)
       stopWatching()
       await invoke<void>('open_video_player', {

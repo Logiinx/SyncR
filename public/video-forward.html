@@ -6,6 +6,8 @@
   // Opens YouTube's player-only page for the video player window (videoPlayer.ts). Going through
   // this page gives it what it asks for, the address the visitor came from: opened directly, it
   // answers with error 153.
-  const id = new URLSearchParams(location.search).get('v') || ''
-  if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3`)
+  const query = new URLSearchParams(location.search)
+  const id = query.get('v') || ''
+  const start = /^\d+$/.test(query.get('start') || '') ? `&start=${query.get('start')}` : ''
+  if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3${start}`)
 </script>

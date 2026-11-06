@@ -3,7 +3,18 @@
 // (videoPlayer.ts). A site can't call the app, so the request is a visit to an address that
 // doesn't exist: lib.rs catches it and cancels the visit. Faking it only changes the way a video
 // opens. Slow loading isn't an error, and once a video has played nothing is checked anymore.
+// It also tells the app how far the video is, for resuming later (videoPositions.ts): a plain
+// request, as those visits make the page think it's being left.
 (() => {
+  let sent = -1
+  setInterval(() => {
+    // The longest, as an ad can come first
+    const video = [...document.querySelectorAll('video')].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]
+    if (!video || !(video.duration > 0) || video.currentTime < 1 || video.currentTime === sent) return
+    sent = video.currentTime
+    fetch(`https://syncr-video.localhost/position?t=${Math.floor(video.currentTime)}&length=${Math.floor(video.duration)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+  }, 5000)
+
   const ask = ({ code, video }) => {
     location.href = `https://syncr-video.invalid/refused?code=${encodeURIComponent(code)}&video=${encodeURIComponent(video)}`
   }

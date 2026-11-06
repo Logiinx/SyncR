@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** resuming where you left off, in every player, with a progress line on started videos
+- **Improved** the Twitch player so the quality you choose is remembered for all videos
+
 ## [0.54.0] - 2026-11-06
 
 **Video**

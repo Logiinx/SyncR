@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** de la reprise là où vous vous êtes arrêté, dans chaque lecteur, avec une ligne de progression sur les vidéos commencées
+- **Amélioration** du lecteur Twitch : la qualité choisie est retenue pour toutes les vidéos
+
 ## [0.54.0] - 2026-11-06
 
 **Vidéo**

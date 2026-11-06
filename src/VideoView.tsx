@@ -11,20 +11,14 @@ import { checkVideos, markAllWatched, markOpened, setWatched, useChecking, useVi
 import { FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
+import { useResumePosition, videoClock } from './videoPositions'
 
 type List = 'towatch' | 'watched'
-
-// 1:02:03, or 48:32 under an hour
-function duration(seconds: number) {
-  const part = (value: number) => String(value).padStart(2, '0')
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  return hours ? `${hours}:${part(minutes)}:${part(seconds % 60)}` : `${minutes}:${part(seconds % 60)}`
-}
 
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
 function VideoRow({ video }: { video: FeedVideo }) {
+  const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
     void markOpened(video.id)
@@ -46,7 +40,10 @@ function VideoRow({ video }: { video: FeedVideo }) {
               onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
             />
           )}
-          {!video.gone && video.duration > 0 && <span className="video-duration">{duration(video.duration)}</span>}
+          {!video.gone && video.duration > 0 && <span className="video-duration">{videoClock(video.duration)}</span>}
+          {position && !video.watched && !video.gone && (
+            <span className="video-progress"><span style={{ width: `${(position.t / position.length) * 100}%` }} /></span>
+          )}
         </span>
         <span className="video-text">
           <span className="video-title" title={video.title}>{video.title}</span>

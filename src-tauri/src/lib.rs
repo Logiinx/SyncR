@@ -343,8 +343,9 @@ fn player_client() -> &'static reqwest::Client {
   })
 }
 
-async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
+async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
+  use tauri::Emitter;
   let answer = |status: u16, kind: &str, body: Vec<u8>| {
     let mut response = Response::builder().status(status).header("Content-Type", kind);
     if kind == "text/html" {
@@ -362,6 +363,17 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
     "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
     "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
+    // How far the video is (video-watch.js), from any page in the player window, so a site could
+    // fake it: only numbers pass, and all it can change is the current video's position
+    "/position" => {
+      let number = |name: &str| {
+        uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name))?.1.parse::<f64>().ok().filter(|value| value.is_finite())
+      };
+      if let (Some(t), Some(length)) = (number("t"), number("length")) {
+        let _ = app.emit_to("main", "video-position", serde_json::json!({ "t": t, "length": length }));
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     _ => {}
   }
   let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
@@ -597,7 +609,7 @@ fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on:
 
 // Opens the same video another way (videoPlayer.ts), and the bar says which
 #[tauri::command]
-fn video_player_way(app: tauri::AppHandle, address: String, via: String) -> Result<(), String> {
+fn video_player_way(app: tauri::AppHandle, address: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
   let (Some(site), Some(bar)) = (app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
     return Ok(()); // closed in the meantime
   };
@@ -612,7 +624,8 @@ fn video_player_way(app: tauri::AppHandle, address: String, via: String) -> Resu
   };
   site.navigate(url).map_err(|e| e.to_string())?;
   let via = serde_json::to_string(&via).map_err(|e| e.to_string())?;
-  bar.eval(format!("window.setVia?.({via})")).map_err(|e| e.to_string())
+  let note = serde_json::to_string(&note).map_err(|e| e.to_string())?;
+  bar.eval(format!("window.setVia?.({via}, {note}, {note_stays})")).map_err(|e| e.to_string())
 }
 
 // The main window tells the bar when a video's Watched mark changes (also from the list)
@@ -646,9 +659,10 @@ pub fn run() {
 
   let builder = builder
     // The own Twitch player's page and video
-    .register_asynchronous_uri_scheme_protocol("syncr-video", |_context, request, responder| {
+    .register_asynchronous_uri_scheme_protocol("syncr-video", |context, request, responder| {
+      let app = context.app_handle().clone();
       let uri = request.uri().clone();
-      tauri::async_runtime::spawn(async move { responder.respond(player_answer(uri).await) });
+      tauri::async_runtime::spawn(async move { responder.respond(player_answer(app, uri).await) });
     })
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser

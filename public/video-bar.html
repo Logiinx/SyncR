@@ -89,11 +89,17 @@
   $('close').title = labels.close
 
   // Called by the main window and lib.rs as things change
-  window.setVia = (text) => {
-    $('via').textContent = text
-    $('via').style.display = text ? 'block' : 'none'
+  // The note: where the video continues. Gone after a moment, unless it's still of use.
+  const NOTE_FOR = 6000
+  let noteTimer
+  window.setVia = (text, note, noteStays) => {
+    clearTimeout(noteTimer)
+    const shown = [note, text].filter(Boolean).join(' · ')
+    $('via').textContent = shown
+    $('via').style.display = shown ? 'block' : 'none'
+    if (note && !noteStays) noteTimer = setTimeout(() => window.setVia(text), NOTE_FOR)
   }
-  window.setVia(data.via || '')
+  window.setVia(data.via || '', data.note || '', data.noteStays)
   let watched = false
   window.setWatched = (on) => {
     watched = on

@@ -161,7 +161,7 @@ video.addEventListener('playing', () => loading(false))
 video.addEventListener('canplay', () => loading(false))
 video.addEventListener('seeked', () => { if (video.readyState >= 3) loading(false) })
 // Where it was, as a reload after an error empties the video
-let position = 0
+let position = Math.max(Number(params.get('t')) || 0, 0)
 const notePosition = () => { if (video.duration) position = video.currentTime }
 video.addEventListener('seeking', notePosition)
 video.addEventListener('timeupdate', () => {
@@ -234,7 +234,8 @@ $('full').onclick = toggleFull
 
 // ---- Quality and speed ------------------------------------------------------------------------
 let hls = null
-let chosen = 'top' // 'top' (the highest, at start), 'auto', or a quality's name
+// 'top' (the highest, until one is chosen), 'auto', or a quality's name. Remembered for all videos.
+let chosen = localStorage.getItem('player.quality') || 'top'
 const levelName = (level) => `${level.height}p${level.frameRate >= 50 ? Math.round(level.frameRate) : ''}`
 const speedText = (speed) => `${numbers.format(speed)}×`
 
@@ -259,14 +260,23 @@ function drawSettings() {
 }
 video.addEventListener('ratechange', drawSettings)
 
+// The chosen quality, or the closest below it on a stream that doesn't have it
+function wantedLevel() {
+  const levels = pictureLevels()
+  const exact = levels.find((one) => one.name === chosen)
+  if (exact) return exact
+  const [, height, smooth] = chosen.match(/^(\d+)p(\d+)?$/) || []
+  if (!height) return levels[0]
+  return levels.find((one) => one.height < Number(height) || (one.height === Number(height) && (smooth || one.frameRate < 50))) || levels[levels.length - 1]
+}
+
 function applyQuality() {
   if (!hls) return
-  const levels = pictureLevels()
   if (chosen === 'auto') {
     hls.currentLevel = -1
     return
   }
-  const level = levels.find((one) => one.name === chosen) || levels[0]
+  const level = wantedLevel()
   if (level) hls.currentLevel = level.index
 }
 
@@ -282,16 +292,17 @@ function drawMenu() {
   const levels = pictureLevels()
   if (levels.length) {
     title(labels.quality)
-    const playing = hls.levels[hls.currentLevel]
+    const wanted = wantedLevel()
     const items = [...levels.map((level) => ({ value: level.name, text: level.name })), { value: 'auto', text: labels.auto }]
     for (const item of items) {
-      const on = item.value === chosen || (chosen === 'top' && playing && levelName(playing) === item.value)
+      const on = chosen === 'auto' ? item.value === 'auto' : item.value === wanted?.name
       const row = document.createElement('button')
       row.className = `menu-item${on ? ' on' : ''}`
       row.textContent = item.text
       if (on) row.insertAdjacentHTML('beforeend', icon('check'))
       row.onclick = () => {
         chosen = item.value
+        localStorage.setItem('player.quality', chosen)
         applyQuality()
         closeMenu()
         drawSettings()
@@ -443,8 +454,8 @@ async function load() {
     startPosition: position,
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
-    const top = pictureLevels()[0]
-    if (top && chosen !== 'auto') hls.startLevel = top.index
+    const wanted = wantedLevel()
+    if (wanted && chosen !== 'auto') hls.startLevel = wanted.index
     applyQuality()
     drawSettings()
     if (!userPaused) video.play().catch(() => loading(false)) // refused: the big play button shows

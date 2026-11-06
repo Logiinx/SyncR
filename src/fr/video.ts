@@ -71,6 +71,8 @@ export const video = {
   "Couldn't load the chat, trying again…": 'Impossible de charger le chat, nouvel essai…',
   'Back to latest': 'Revenir aux derniers messages',
   'Skip muted part': 'Passer la partie sans son',
+  'Resumed at {time}': 'Reprise à {time}',
+  'You can resume by jumping to {time}': 'Vous pouvez reprendre en allant à {time}',
   'Progress bar': 'Barre de progression',
   'Game changes': 'Changements de jeu',
   'Time of day': 'Heure réelle',
