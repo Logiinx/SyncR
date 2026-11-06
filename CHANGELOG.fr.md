@@ -10,6 +10,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Ajout** d’un choix de taille du chat dans les réglages du lecteur Twitch, avec plus d’espace entre les messages
 - **Ajout** de la valeur du volume à côté de son curseur dans le lecteur Twitch
 - **Amélioration** de l’ajout d’un suivi : écrivez nom pour Twitch ou @nom pour YouTube, les liens collés sont raccourcis
+- **Amélioration** des commandes de YouTube dans le lecteur : elles disparaissent aussi vite que dans le lecteur Twitch
 - **Correction** de petits problèmes : le ⓘ de la fenêtre de suivi ne s’ouvre plus qu’au-dessus de l’icône
 
 **Mail**

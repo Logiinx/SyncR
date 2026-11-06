@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 - **Added** a chat size choice in the Twitch player's settings, with more space between messages
 - **Added** the volume's value next to its slider in the Twitch player
 - **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened
+- **Improved** YouTube's controls in the player: they fade as quickly as in the Twitch player
 - **Fixed** small issues: the ⓘ in the follow window only opens over the icon
 
 **Mail**

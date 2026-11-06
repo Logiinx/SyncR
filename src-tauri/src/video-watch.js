@@ -39,6 +39,30 @@
     else parent.postMessage({ syncrRefused: refused }, '*')
   }, 500)
 
+  // Controls that fade like in our own Twitch player (player.js): 2.8 s without moving the mouse,
+  // at once when it leaves. Not while paused, in a menu, over the controls, or during an ad.
+  // YouTube's own class does the fading, and hides the cursor too.
+  const QUIET_AFTER = 2800
+  const keepShowing = (player) => player.getPlayerState?.() !== 1 || player.classList.contains('ad-showing') ||
+    document.querySelector('.ytp-chrome-bottom:hover') || [...document.querySelectorAll('.ytp-settings-menu')].some((menu) => menu.style.display !== 'none')
+  let quietTimer
+  const quiet = () => {
+    const player = document.querySelector('#movie_player')
+    if (!player || keepShowing(player)) wake()
+    else player.classList.add('ytp-autohide')
+  }
+  const wake = () => {
+    clearTimeout(quietTimer)
+    document.querySelector('#movie_player')?.classList.remove('ytp-autohide')
+    quietTimer = setTimeout(quiet, QUIET_AFTER)
+  }
+  for (const kind of ['pointermove', 'pointerdown', 'keydown']) addEventListener(kind, wake, true)
+  document.addEventListener('mouseleave', () => {
+    clearTimeout(quietTimer)
+    quiet()
+  })
+  wake()
+
   // Start quality and subtitles. The app's wishes come in the address's # part, from
   // video-forward.html: a fallback site doesn't pass them, so its player is left alone.
   const wanted = new URLSearchParams(location.hash.slice(1))
