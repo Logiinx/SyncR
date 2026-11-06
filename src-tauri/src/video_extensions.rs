@@ -500,11 +500,13 @@ const POPUP_SCRIPT: &str = r#"(function (width, height) {
 // its second one beside the first, past the page's own width).
 const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height) { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId'), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
 
-// Popups are made for up to 800 x 600. Hidden at this width, each takes its own, and uBlock keeps
-// its side-by-side layout; the low height gives the height of the content. A page that fills any
-// width gets the other number.
-const POPUP_PROBE: (f64, f64) = (800.0, 100.0);
-const POPUP_FILLS: f64 = 420.0;
+// Hidden at this size at first: a page with a width of its own takes it (checked with uBlock,
+// SponsorBlock and BetterTTV), one that fills any width stays at this, and the low height gives the
+// height of its content. Wider, as 800 x 600 (a browser's limit for popups), SponsorBlock came out
+// narrow and very tall.
+const POPUP_PROBE: (f64, f64) = (440.0, 100.0);
+// Sizes round up to whole pixels, so a page that fills its window would creep wider at each check
+const POPUP_ROUNDING: f64 = 2.0;
 const POPUP_LOST: Duration = Duration::from_millis(1500);
 
 struct PopupState {
@@ -649,9 +651,8 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
     let measured = measure_popup(&popup);
     let mut changed = false;
     if let Some((_, right, bottom, needs, room)) = measured {
-      let wanted = if !shown && right >= POPUP_PROBE.0 - 1.0 { POPUP_FILLS } else { right };
-      if wanted > 0.0 && (wanted - width).abs() >= 1.0 {
-        width = wanted;
+      if right > 0.0 && (right - width).abs() > POPUP_ROUNDING {
+        width = right;
         changed = true;
       }
       if needs > room + 1.0 && needs != height {
@@ -674,7 +675,7 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
       steady = if ready && !changed { steady + 1 } else { 0 };
       if steady >= 2 || started.elapsed() > POPUP_LOST {
         if measured.is_none() {
-          (width, height) = (POPUP_FILLS, 520.0);
+          height = 520.0;
           place_popup(&app, &popup, center, width, height);
         }
         let _ = popup.show();
