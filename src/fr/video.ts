@@ -104,6 +104,8 @@ export const video = {
   'That didn’t work: {why}': 'Cela n’a pas marché : {why}',
   'This folder has no manifest.json at its top. For a Chrome or Brave extension, choose the version folder inside it.':
     'Ce dossier n’a pas de manifest.json à sa racine. Pour une extension de Chrome ou Brave, choisissez le dossier de version à l’intérieur.',
+  'This extension couldn’t be loaded. It may be damaged, or made for another browser.':
+    'Cette extension n’a pas pu être chargée. Elle est peut-être abîmée, ou faite pour un autre navigateur.',
   'This folder holds a different extension.': 'Ce dossier contient une autre extension.',
   'The extension is busy. Close the video window and try again.': 'L’extension est occupée. Fermez la fenêtre vidéo et réessayez.',
   'Remove {name}?': 'Retirer {name} ?',

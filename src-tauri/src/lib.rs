@@ -573,13 +573,24 @@ async fn open_video_player(
   window.show().map_err(|e| e.to_string())?;
   let _ = window.set_focus();
   let _ = site.set_focus();
+  // The site holds the extensions' storage now (video_extensions.rs)
+  if let Some(host) = app.get_webview_window(video_extensions::HOST) {
+    let _ = host.destroy();
+  }
   Ok(())
 }
 
 // The clicks on the video bar. What needs the notes' database goes on to the main window
 // (videoPlayer.ts).
 #[tauri::command]
-fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on: Option<bool>) -> Result<(), String> {
+fn video_bar(
+  app: tauri::AppHandle,
+  webview: tauri::Webview,
+  action: String,
+  on: Option<bool>,
+  extension: Option<String>,
+  at: Option<f64>,
+) -> Result<(), String> {
   use tauri::Emitter;
   if webview.label() != VIDEO_BAR {
     return Err("Only for the video bar".to_string());
@@ -588,7 +599,20 @@ fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on:
   let result = match action.as_str() {
     "ready" => {
       let maximized = window.is_maximized().unwrap_or(false);
+      video_extensions::bar_ready(app);
       return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
+    }
+    // at: the middle of the button, in pixels from the window's left edge
+    "extension" => {
+      let (Some(folder), Some(at)) = (extension, at) else {
+        return Err("Which extension?".to_string());
+      };
+      std::thread::spawn(move || {
+        if let Err(error) = video_extensions::open_popup(app, folder, at) {
+          log::warn!("Extension popup: {error}");
+        }
+      });
+      return Ok(());
     }
     "drag" => window.start_dragging(),
     "minimize" => window.minimize(),
@@ -707,7 +731,7 @@ pub fn run() {
     builder.plugin(
       tauri_plugin_window_state::Builder::default()
         .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
-        .with_denylist(&["reminder-popup", video_extensions::HOST])
+        .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP])
         .build(),
     )
   };

@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
-- **Added** a Settings window to add your own extensions to the video window, like uBlock Origin
+- **Added** your own extensions in the video window, like uBlock Origin: set up in Settings, popups on its bar
 
 ## [0.55.0] - 2026-11-06
 

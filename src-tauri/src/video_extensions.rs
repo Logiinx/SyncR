@@ -13,8 +13,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Sender, channel};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::utils::config::Color;
 use tauri::webview::PlatformWebview;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -23,15 +25,16 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
   ICoreWebView2_13, ICoreWebView2BrowserExtension, ICoreWebView2BrowserExtensionList, ICoreWebView2Profile7,
 };
 use webview2_com::{
-  BrowserExtensionEnableCompletedHandler, BrowserExtensionRemoveCompletedHandler,
+  BrowserExtensionEnableCompletedHandler, BrowserExtensionRemoveCompletedHandler, ExecuteScriptCompletedHandler,
   ProfileAddBrowserExtensionCompletedHandler, ProfileGetBrowserExtensionsCompletedHandler, take_pwstr,
 };
 use windows::core::{BOOL, HSTRING, Interface, PWSTR};
 
-use super::{VIDEO_ARGS, VIDEO_SITE};
+use super::{VIDEO_ARGS, VIDEO_BAR, VIDEO_REQUEST, VIDEO_SITE, VIDEO_WINDOW};
 
 pub const HOST: &str = "video-extensions-host";
 const SETTINGS: &str = "video-extension-settings";
+pub const POPUP: &str = "video-extension-popup";
 // An icon is sent as text, so a big one isn't worth it
 const ICON_LIMIT: u64 = 200_000;
 
@@ -339,6 +342,15 @@ fn delete_folder(path: &Path) -> std::io::Result<()> {
   result
 }
 
+// An extension's own pages close when it reloads or goes off, and WebView2 leaves its empty start
+// page in their place
+fn close_settings(app: &AppHandle) {
+  if let Some(open) = app.get_webview_window(SETTINGS) {
+    let _ = open.destroy();
+  }
+  close_popup(app, false);
+}
+
 // Adds a picked folder, or updates the same extension (same name = same folder = same id, so its
 // settings stay). The working copy stays until the new one has loaded.
 fn install(app: &AppHandle, from: &Path, only: Option<&str>) -> Result<(), String> {
@@ -354,6 +366,7 @@ fn install(app: &AppHandle, from: &Path, only: Option<&str>) -> Result<(), Strin
   let _ = fs::remove_dir_all(&previous);
   copy_folder(from, &staged, true).map_err(|e| e.to_string())?;
   let had_one = target.exists();
+  close_settings(app);
   if had_one && fs::rename(&target, &previous).is_err() {
     let _ = fs::remove_dir_all(&staged);
     return Err("in-use".to_string());
@@ -369,13 +382,13 @@ fn install(app: &AppHandle, from: &Path, only: Option<&str>) -> Result<(), Strin
       save_ids(app, &ids)
     }
     Err(error) => {
+      log::warn!("Extension {folder} didn't load: {error}");
       let _ = delete_folder(&target);
-      if had_one {
-        if fs::rename(&previous, &target).is_ok() {
-          let _ = load_folder(app, &folder);
-        }
+      if had_one && fs::rename(&previous, &target).is_ok() {
+        let _ = load_folder(app, &folder);
       }
-      Err(error)
+      // WebView2's own message says nothing useful ("Class not registered")
+      Err("not-loaded".to_string())
     }
   }
 }
@@ -383,6 +396,284 @@ fn install(app: &AppHandle, from: &Path, only: Option<&str>) -> Result<(), Strin
 fn pick_folder(app: &AppHandle, window: &tauri::WebviewWindow, title: String) -> Result<Option<PathBuf>, String> {
   let picked = app.dialog().file().set_title(title).set_parent(window).blocking_pick_folder();
   picked.map(|path| path.into_path().map_err(|e| e.to_string())).transpose()
+}
+
+// ---------- Popups, from the video bar ----------
+
+#[derive(Serialize)]
+struct BarButton {
+  folder: String,
+  name: String,
+  icon: Option<String>,
+}
+
+fn popup_page(manifest: &Value) -> Option<String> {
+  page_of(manifest, &[&["action", "default_popup"], &["browser_action", "default_popup"]])
+}
+
+// What the bar shows: the extensions that are on and have a popup. Never starts a hidden window.
+fn bar_buttons(app: &AppHandle) -> Result<Vec<BarButton>, String> {
+  let dir = extensions_dir(app)?;
+  let mut with_popup = Vec::new();
+  for folder in extension_folders(app)? {
+    let path = dir.join(&folder);
+    let manifest = read_json(&path.join("manifest.json")).unwrap_or(Value::Null);
+    if popup_page(&manifest).is_some() {
+      let button = BarButton {
+        name: localized(&path, &manifest, manifest["name"].as_str().unwrap_or(&folder)),
+        icon: icon_of(&path, &manifest),
+        folder,
+      };
+      with_popup.push(button);
+    }
+  }
+  if with_popup.is_empty() || app.get_webview(VIDEO_SITE).is_none() {
+    return Ok(Vec::new());
+  }
+  let present = profile_list(app)?;
+  let ids = load_ids(app);
+  with_popup.retain(|button| ids.get(&button.folder).and_then(|id| present.get(id)).copied().unwrap_or(false));
+  Ok(with_popup)
+}
+
+// Only from a thread other than the main one
+pub fn show_on_bar(app: &AppHandle) {
+  let Some(bar) = app.get_webview(VIDEO_BAR) else {
+    return;
+  };
+  match bar_buttons(app).and_then(|list| serde_json::to_string(&list).map_err(|e| e.to_string())) {
+    Ok(list) => {
+      let _ = bar.eval(format!("window.setExtensions?.({list})"));
+    }
+    Err(error) => log::warn!("Extensions for the video bar: {error}"),
+  }
+}
+
+// The bar's page has just started: the site below it may not exist yet
+pub fn bar_ready(app: AppHandle) {
+  std::thread::spawn(move || {
+    for _ in 0..50 {
+      if app.get_webview(VIDEO_SITE).is_some() {
+        show_on_bar(&app);
+        return;
+      }
+      std::thread::sleep(Duration::from_millis(100));
+    }
+  });
+}
+
+// A popup expects to be part of the video's browser window, and here it's a window of its own, so
+// it would think it's about itself. Its first opening finds the video's tab (the size tells it
+// from the bar, an extension's settings and the popup itself: tabs can hide their address) and
+// reloads with it in the address, where uBlock reads it; for the others, asking for the current
+// tab gives that one. window.close() and Escape go through the same signal as the video's window.
+const POPUP_SCRIPT: &str = r#"(function (width, height) {
+  if (location.protocol !== 'chrome-extension:') return
+  const close = () => location.assign('https://syncr-video.invalid/close')
+  window.close = close
+  addEventListener('keydown', (event) => { if (event.key === 'Escape') close() }, true)
+  const tabs = window.chrome && chrome.tabs
+  if (!tabs) return
+  const params = new URLSearchParams(location.search)
+  if (!params.has('tabId')) {
+    tabs.getCurrent((self) => tabs.query({}, (all) => {
+      const off = (tab) => Math.abs(tab.width - width) + Math.abs(tab.height - height)
+      const others = all.filter((tab) => tab.id !== (self && self.id) && tab.height > 80).sort((a, b) => off(a) - off(b))
+      params.set('tabId', others.length ? others[0].id : 0)
+      location.replace(location.pathname + '?' + params)
+    }))
+    return
+  }
+  const id = Number(params.get('tabId'))
+  if (!id) return
+  const query = tabs.query.bind(tabs)
+  tabs.query = (info, done) => {
+    const current = info && info.active && (info.currentWindow || info.lastFocusedWindow)
+    const ask = (answer) => (current ? tabs.get(id, (tab) => answer([tab])) : query(info, answer))
+    if (done) ask(done)
+    else return new Promise(ask)
+  }
+})"#;
+
+// Ready, width the page wants, height it wants, height it has
+const POPUP_MEASURE: &str = "[document.readyState === 'complete' && location.search.includes('tabId'), document.body ? Math.ceil(document.body.getBoundingClientRect().width) : 0, document.documentElement.scrollHeight, innerHeight]";
+
+// The sizes popups are made for go up to 800 x 600. This width lets each take its own; the low
+// height gives the height of its content.
+const POPUP_PROBE: (f64, f64) = (440.0, 100.0);
+const POPUP_LOST: Duration = Duration::from_millis(1500);
+
+struct PopupState {
+  open: String,
+  closed: Option<(String, Instant)>,
+}
+static POPUP_STATE: Mutex<PopupState> = Mutex::new(PopupState { open: String::new(), closed: None });
+static POPUP_TURN: AtomicU32 = AtomicU32::new(0);
+
+fn close_popup(app: &AppHandle, back_to_video: bool) {
+  let Some(popup) = app.get_webview_window(POPUP) else {
+    return;
+  };
+  let _ = popup.destroy();
+  if let Ok(mut state) = POPUP_STATE.lock() {
+    let folder = std::mem::take(&mut state.open);
+    state.closed = Some((folder, Instant::now()));
+  }
+  if back_to_video {
+    if let Some(site) = app.get_webview(VIDEO_SITE) {
+      let _ = site.set_focus();
+    }
+  }
+}
+
+fn popup_is_in_front(popup: &tauri::WebviewWindow) -> bool {
+  use windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+  popup.hwnd().is_ok_and(|hwnd| hwnd.0 as isize == unsafe { GetForegroundWindow() } as isize)
+}
+
+fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64)> {
+  let (sender, receiver) = channel();
+  popup
+    .with_webview(move |webview| {
+      let failed = sender.clone();
+      let run = || -> windows::core::Result<()> {
+        let handler = ExecuteScriptCompletedHandler::create(Box::new(move |result, value| {
+          let _ = sender.send(result.ok().map(|()| value));
+          Ok(())
+        }));
+        unsafe { webview.controller().CoreWebView2()?.ExecuteScript(&HSTRING::from(POPUP_MEASURE), &handler) }
+      };
+      if run().is_err() {
+        let _ = failed.send(None);
+      }
+    })
+    .ok()?;
+  let text = receiver.recv_timeout(Duration::from_secs(1)).ok()??;
+  let value: Value = serde_json::from_str(&text).ok()?;
+  Some((value[0].as_bool()?, value[1].as_f64()?, value[2].as_f64()?, value[3].as_f64()?))
+}
+
+// Under the button, kept on the screen. center: the button's middle on the screen, in pixels.
+fn place_popup(app: &AppHandle, popup: &tauri::WebviewWindow, center: i32, width: f64, height: f64) {
+  use tauri::{PhysicalPosition, PhysicalSize};
+  let Some(player) = app.get_window(VIDEO_WINDOW) else {
+    return;
+  };
+  let (Ok(scale), Ok(at), Some(bar)) = (player.scale_factor(), player.inner_position(), app.get_webview(VIDEO_BAR)) else {
+    return;
+  };
+  let top = at.y + bar.size().map(|size| size.height as i32).unwrap_or(0);
+  let (mut w, mut h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
+  let mut left = center - w / 2;
+  if let Ok(Some(screen)) = player.current_monitor() {
+    let area = screen.work_area();
+    w = w.min(area.size.width as i32);
+    h = h.min(area.position.y + area.size.height as i32 - top).max(1);
+    left = left.min(area.position.x + area.size.width as i32 - w).max(area.position.x);
+  }
+  let _ = popup.set_size(PhysicalSize::new(w as u32, h as u32));
+  let _ = popup.set_position(PhysicalPosition::new(left, top));
+}
+
+// Opens the popup, or closes it on a second click: clicking the button has already taken it out of
+// the front, so it may have just closed by itself.
+pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String> {
+  known(&app, &folder)?;
+  let was_open = POPUP_STATE.lock().map(|state| state.open == folder).unwrap_or(false) && app.get_webview_window(POPUP).is_some();
+  close_popup(&app, false);
+  let just_closed = POPUP_STATE
+    .lock()
+    .map(|state| state.closed.as_ref().is_some_and(|(name, time)| *name == folder && time.elapsed() < Duration::from_millis(400)))
+    .unwrap_or(false);
+  if was_open || just_closed {
+    if let Some(site) = app.get_webview(VIDEO_SITE) {
+      let _ = site.set_focus();
+    }
+    return Ok(());
+  }
+  let manifest = read_json(&extensions_dir(&app)?.join(&folder).join("manifest.json")).ok_or("no-manifest")?;
+  let page = popup_page(&manifest).ok_or("No popup")?;
+  let id = load_ids(&app).get(&folder).cloned().ok_or("Not loaded")?;
+  let url = tauri::Url::parse(&format!("chrome-extension://{id}/{page}")).map_err(|e| e.to_string())?;
+  let player = app.get_window(VIDEO_WINDOW).ok_or("No video window")?;
+  let scale = player.scale_factor().map_err(|e| e.to_string())?;
+  let site_size = app.get_webview(VIDEO_SITE).ok_or("No video window")?.size().map_err(|e| e.to_string())?;
+  let script = format!("{POPUP_SCRIPT}({}, {})", f64::from(site_size.width) / scale, f64::from(site_size.height) / scale);
+  let center = player.inner_position().map_err(|e| e.to_string())?.x + at.round() as i32;
+  let signals = app.clone();
+  let popup = in_profile(&app, POPUP, WebviewUrl::External(url))?
+    .initialization_script(script)
+    .on_navigation(move |url| {
+      if url.host_str() == Some(VIDEO_REQUEST) {
+        let app = signals.clone();
+        std::thread::spawn(move || close_popup(&app, true));
+        return false;
+      }
+      url.host_str() != Some("tauri.localhost")
+    })
+    .decorations(false)
+    .resizable(false)
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .inner_size(POPUP_PROBE.0, POPUP_PROBE.1)
+    .visible(false)
+    .build()
+    .map_err(|e| e.to_string())?;
+  place_popup(&app, &popup, center, POPUP_PROBE.0, POPUP_PROBE.1);
+  if let Ok(mut state) = POPUP_STATE.lock() {
+    state.open = folder;
+  }
+  let turn = POPUP_TURN.fetch_add(1, Ordering::SeqCst) + 1;
+  let started = Instant::now();
+  let (mut width, mut height) = (POPUP_PROBE.0, 0.0);
+  let mut last_height = -1.0;
+  let mut shown = false;
+  let mut in_front = false;
+  // Follows the popup for as long as it's open: it grows with its content (uBlock's "More") and
+  // closes when something else comes to the front or the video window goes
+  while POPUP_TURN.load(Ordering::SeqCst) == turn {
+    std::thread::sleep(Duration::from_millis(100));
+    let Some(popup) = app.get_webview_window(POPUP) else {
+      return Ok(());
+    };
+    if app.get_window(VIDEO_WINDOW).is_none() {
+      close_popup(&app, false);
+      return Ok(());
+    }
+    let measured = measure_popup(&popup);
+    if !shown {
+      let settled = measured.is_some_and(|(ready, wanted, content, _)| ready && wanted > 0.0 && content == last_height);
+      if let Some((_, _, content, _)) = measured {
+        last_height = content;
+      }
+      if settled || started.elapsed() > POPUP_LOST {
+        if let Some((_, wanted, content, _)) = measured.filter(|(_, wanted, _, _)| *wanted > 0.0) {
+          width = wanted;
+          height = content;
+        } else {
+          height = 520.0;
+        }
+        place_popup(&app, &popup, center, width, height);
+        let _ = popup.show();
+        let _ = popup.set_focus();
+        shown = true;
+      }
+      continue;
+    }
+    if let Some((_, _, content, room)) = measured {
+      if content > room + 1.0 && content != height {
+        height = content;
+        place_popup(&app, &popup, center, width, height);
+      }
+    }
+    if popup_is_in_front(&popup) {
+      in_front = true;
+    } else if in_front {
+      close_popup(&app, false);
+      return Ok(());
+    }
+  }
+  Ok(())
 }
 
 // ---------- Commands of the manager ----------
@@ -438,8 +729,9 @@ pub async fn video_extension_add(
   let Some(from) = pick_folder(&app, &window, title)? else {
     return Ok(false);
   };
-  install(&app, &from, folder.as_deref())?;
-  Ok(true)
+  let result = install(&app, &from, folder.as_deref());
+  show_on_bar(&app);
+  result.map(|()| true)
 }
 
 // Only a folder from the list, never a path
@@ -450,6 +742,7 @@ fn known(app: &AppHandle, folder: &str) -> Result<(), String> {
 #[tauri::command]
 pub async fn video_extension_remove(app: AppHandle, folder: String) -> Result<(), String> {
   known(&app, &folder)?;
+  close_settings(&app);
   let mut ids = load_ids(&app);
   if let Some(id) = ids.get(&folder).cloned() {
     with_extension(&app, id, |extension, sender| {
@@ -462,12 +755,17 @@ pub async fn video_extension_remove(app: AppHandle, folder: String) -> Result<()
   }
   ids.remove(&folder);
   save_ids(&app, &ids)?;
-  delete_folder(&extensions_dir(&app)?.join(&folder)).map_err(|e| e.to_string())
+  let deleted = delete_folder(&extensions_dir(&app)?.join(&folder)).map_err(|e| e.to_string());
+  show_on_bar(&app);
+  deleted
 }
 
 #[tauri::command]
 pub async fn video_extension_enable(app: AppHandle, folder: String, on: bool) -> Result<(), String> {
   known(&app, &folder)?;
+  if !on {
+    close_settings(&app);
+  }
   let id = load_ids(&app).get(&folder).cloned().ok_or("Not loaded")?;
   with_extension(&app, id, move |extension, sender| {
     let handler = BrowserExtensionEnableCompletedHandler::create(Box::new(move |result| {
@@ -475,7 +773,9 @@ pub async fn video_extension_enable(app: AppHandle, folder: String, on: bool) ->
       Ok(())
     }));
     unsafe { extension.Enable(on, &handler) }
-  })
+  })?;
+  show_on_bar(&app);
+  Ok(())
 }
 
 // An extension's settings page, in a window of its own: WebView2 has no toolbar to reach it
@@ -487,9 +787,7 @@ pub async fn video_extension_settings(app: AppHandle, folder: String) -> Result<
   let page = settings_page(&manifest).ok_or("No settings page")?;
   let id = load_ids(&app).get(&folder).cloned().ok_or("Not loaded")?;
   let url = tauri::Url::parse(&format!("chrome-extension://{id}/{page}")).map_err(|e| e.to_string())?;
-  if let Some(open) = app.get_webview_window(SETTINGS) {
-    let _ = open.destroy();
-  }
+  close_settings(&app);
   let title = localized(&path, &manifest, manifest["name"].as_str().unwrap_or(&folder));
   in_profile(&app, SETTINGS, WebviewUrl::External(url))?
     .title(title)

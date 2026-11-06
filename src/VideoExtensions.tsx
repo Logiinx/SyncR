@@ -21,6 +21,7 @@ function problemText(problem: unknown): string {
   const text = String(problem)
   if (text === 'no-manifest') return t('This folder has no manifest.json at its top. For a Chrome or Brave extension, choose the version folder inside it.')
   if (text === 'other-extension') return t('This folder holds a different extension.')
+  if (text === 'not-loaded') return t('This extension couldn’t be loaded. It may be damaged, or made for another browser.')
   if (text === 'in-use') return t('The extension is busy. Close the video window and try again.')
   return t('That didn’t work: {why}', { why: text })
 }
