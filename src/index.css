@@ -7367,3 +7367,94 @@ button.history-row.selected {
 .game-trailer-link:hover {
   color: var(--link);
 }
+
+/* ---------- Video tab: follows (VideoFollows.tsx) ---------- */
+/* Small label above its box, like the event window's Alert and Repeat */
+.video-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.video-field input,
+.video-field select {
+  color: var(--text);
+  font-size: calc(1em / 0.85);
+}
+
+.video-field select {
+  margin-bottom: 16px;
+}
+
+.video-field-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog .video-follow-channel {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-follows {
+  width: min(480px, 100%);
+}
+
+.video-follow-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.video-follow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+.video-follow-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.video-follow-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.video-follow-name,
+.video-follow-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-follow-summary {
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
+.video-follow-row button {
+  display: flex;
+  flex-shrink: 0;
+  padding: 5px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.video-follow-row button:hover {
+  background: var(--hover);
+  color: var(--text);
+}

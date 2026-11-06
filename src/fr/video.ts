@@ -2,4 +2,38 @@
 export const video = {
   Video: 'Vidéo',
   'No videos yet': 'Pas encore de vidéos',
+  'No follows yet': 'Aucune chaîne suivie',
+  'Add a follow': 'Suivre une chaîne',
+  'Edit follow': 'Modifier le suivi',
+  Follows: 'Chaînes suivies',
+  'Channel link': 'Lien de la chaîne',
+  'twitch.tv/name or youtube.com/@name': 'twitch.tv/nom ou youtube.com/@nom',
+  'Only titles with': 'Seulement les titres avec',
+  'Keeps a video if its title has one of these words. Separate them with commas. Capitals and accents don’t matter. Empty: all titles.':
+    'Garde une vidéo si son titre contient l’un de ces mots. Séparez-les par des virgules. Les majuscules et les accents ne comptent pas. Vide : tous les titres.',
+  'hotline, talk show': 'hotline, talk-show',
+  'Except titles with': 'Sauf les titres avec',
+  'Leaves out a video if its title has one of these words, even when it has a word from the list above.':
+    'Écarte une vidéo si son titre contient l’un de ces mots, même s’il contient un mot de la liste du dessus.',
+  'trailer, best of': 'bande-annonce, best of',
+  'Hide videos shorter than (minutes)': 'Masquer les vidéos de moins de (minutes)',
+  'Useful when a stream breaks: each piece becomes a video with the same title. Empty: show them all.':
+    'Utile quand un stream coupe : chaque morceau devient une vidéo au même titre. Vide : tout afficher.',
+  'Hide Shorts': 'Masquer les Shorts',
+  'Include past videos': 'Inclure les vidéos passées',
+  'No, start from today': 'Non, à partir d’aujourd’hui',
+  'Last 30 days': '30 derniers jours',
+  'Last 60 days': '60 derniers jours',
+  'All that are still available': 'Toutes celles encore disponibles',
+  'Only: {words}': 'Seulement : {words}',
+  'Except: {words}': 'Sauf : {words}',
+  'Under {minutes} min hidden': 'Moins de {minutes} min masqué',
+  'Shorts shown': 'Shorts affichés',
+  'All videos': 'Toutes les vidéos',
+  'Stop following {name}?': 'Ne plus suivre {name} ?',
+  'This isn’t a channel’s link. Paste one like twitch.tv/name or youtube.com/@name.':
+    'Ce n’est pas le lien d’une chaîne. Collez-en un comme twitch.tv/nom ou youtube.com/@nom.',
+  'No channel found at this link': 'Aucune chaîne trouvée à ce lien',
+  'Could not look up this channel: {error}': 'Impossible de trouver cette chaîne : {error}',
+  'You already follow {name}': 'Vous suivez déjà {name}',
 }

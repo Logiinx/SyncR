@@ -247,6 +247,23 @@ export interface LinkPreviewRow {
 
 // An older version of a note (noteHistory.ts). Saved here first, then uploaded to Dropbox's
 // history/ folder by sync. Encrypted here only on the PC, like the notes (sealing.ts).
+// A channel followed in the Video tab (video.ts), and which of its videos count. A removed one
+// stays as a row with deleted = true, so the removal can sync too.
+export interface VideoFollow {
+  id: string
+  platform: 'twitch' | 'youtube'
+  channelId: string
+  name: string
+  icon: string | null // its picture, loaded from the site, never stored
+  onlyWords: string[] // a title needs one of these; empty = all titles
+  exceptWords: string[] // a title with one of these is left out
+  minMinutes: number // shorter videos are hidden; 0 = off
+  hideShorts: boolean // YouTube only
+  startAt: number // ms: older videos aren't shown; 0 = all that are still available
+  deleted: boolean
+  updatedAt: number
+}
+
 export interface Snapshot {
   id: string // "<note id>-<savedAt>"
   noteId: string
@@ -282,6 +299,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   alertMarks: EntityTable<AlertMark, 'id'>
   linkPreviews: EntityTable<LinkPreviewRow, 'url'>
   snapshots: EntityTable<Snapshot, 'id'>
+  videoFollows: EntityTable<VideoFollow, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -353,6 +371,10 @@ export function defineSchema(d: Dexie) {
 
   d.version(15).stores({
     alertStates: null,
+  })
+
+  d.version(16).stores({
+    videoFollows: 'id',
   })
 }
 
