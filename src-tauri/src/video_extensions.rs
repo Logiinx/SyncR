@@ -496,8 +496,9 @@ const POPUP_SCRIPT: &str = r#"(function (width, height) {
 })"#;
 
 // What a popup's page says about itself. Two levels of the page are enough to see its panels:
-// uBlock's "More" opens its second one beside the first, past the page's own width.
-const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height && part.tagName !== 'TEMPLATE') { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId'), Math.ceil(first.width), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
+// uBlock's "More" opens its second one beside the first, past the page's own width. uBlock gets
+// its real width once its data has come, when "loading" goes.
+const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height && part.tagName !== 'TEMPLATE') { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId') && !body.classList.contains('loading'), Math.ceil(first.width), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
 
 #[derive(Clone, Copy)]
 struct PopupMeasure {
