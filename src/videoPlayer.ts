@@ -14,20 +14,62 @@ interface PlayableVideo {
   id: string
   platform: 'youtube' | 'twitch'
   title: string
+  channelId: string
   url: string
   watched: boolean
   duration: number // 0 when unknown
 }
 
+// YouTube's names for its qualities, as its player wants them (video-watch.js)
+export const YOUTUBE_QUALITIES = [
+  ['auto', ''], // i18n-ok
+  ['hd2160', '2160p'], // i18n-ok
+  ['hd1440', '1440p'], // i18n-ok
+  ['hd1080', '1080p'], // i18n-ok
+  ['hd720', '720p'], // i18n-ok
+  ['large', '480p'], // i18n-ok
+] as const
+// Each in its own language, so it can be found from any other one
+export const SUBTITLE_LANGUAGES = [
+  ['en', 'English'], // i18n-ok
+  ['fr', 'Français'], // i18n-ok
+  ['es', 'Español'], // i18n-ok
+  ['de', 'Deutsch'], // i18n-ok
+  ['it', 'Italiano'], // i18n-ok
+  ['pt', 'Português'], // i18n-ok
+  ['nl', 'Nederlands'], // i18n-ok
+  ['ru', 'Русский'], // i18n-ok
+  ['ja', '日本語'], // i18n-ok
+  ['ko', '한국어'], // i18n-ok
+  ['zh', '中文'], // i18n-ok
+] as const
+
 // Per device, like the rest of the Video tab
 interface PlayerSettings {
   alwaysOnTop: boolean
   watchedCloses: boolean // Watched on the bar also closes the window
+  quality: (typeof YOUTUBE_QUALITIES)[number][0]
+  subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
 }
 const KEY = 'syncr.videoPlayer'
-export const loadPlayerSettings = () => ({ alwaysOnTop: false, watchedCloses: false, ...read<Partial<PlayerSettings>>(KEY, {}) })
+export const loadPlayerSettings = (): PlayerSettings => ({
+  alwaysOnTop: false,
+  watchedCloses: false,
+  quality: 'hd1440',
+  subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
+  ...read<Partial<PlayerSettings>>(KEY, {}),
+})
 export function savePlayerSettings(change: Partial<PlayerSettings>) {
   write(KEY, { ...loadPlayerSettings(), ...change })
+}
+
+// The YouTube channels with subtitles on, on this PC; the others have them off. Changed by the
+// button in the player (video-watch.js).
+const SUBTITLES_KEY = 'syncr.videoSubtitles'
+const subtitlesOn = (video: PlayableVideo) => read<string[]>(SUBTITLES_KEY, []).includes(video.channelId)
+function saveSubtitles(video: PlayableVideo, on: boolean) {
+  const others = read<string[]>(SUBTITLES_KEY, []).filter((channel) => channel !== video.channelId)
+  write(SUBTITLES_KEY, on ? [...others, video.channelId] : others)
 }
 
 const BAR_HEIGHT = 36
@@ -131,7 +173,10 @@ function playerAddress(video: PlayableVideo, way: Way) {
   const id = encodeURIComponent(video.id.slice('youtube-'.length))
   if (way === 'yout-ube.com') return `https://www.yout-ube.com/watch?v=${id}${start ? `&t=${start}` : ''}`
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
-  if (way === 'own') return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}`
+  if (way === 'own') {
+    const { quality, subtitleLanguage } = loadPlayerSettings()
+    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}`
+  }
   const data = {
     message: t("This video can't play in the player window"),
     browser: t('Open in browser'),
@@ -232,6 +277,10 @@ function listenToBar() {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length })
+  })
+  // Subtitles turned on or off by hand. The video's own id, as a site could send this too.
+  void listen<{ on: boolean; video: string }>('video-subtitles', ({ payload: { on, video } }) => {
+    if (current?.id === `youtube-${video}`) saveSubtitles(current, on)
   })
   void listen<{ request?: string; code?: string; video?: string }>('video-site', ({ payload: { request, code, video } }) => {
     // The button on our message (video-stopped.html). A site could fake this signal, so it only

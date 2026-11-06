@@ -91,6 +91,12 @@ export const video = {
   'Corner, left': 'Dans le coin, à gauche',
   "This video can't play in the player window": 'Cette vidéo ne peut pas être lue dans le lecteur',
   'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
+  'YouTube start quality': 'Qualité de départ YouTube',
+  'Or the highest under it. The player can still change it for one video.':
+    'Ou la plus haute en dessous. Le lecteur peut toujours la changer pour une vidéo.',
+  'YouTube subtitles': 'Sous-titres YouTube',
+  'Their language. On or off is remembered for each channel, with the button in the player.':
+    'Leur langue. Activés ou non : mémorisé pour chaque chaîne, avec le bouton du lecteur.',
   'Video extensions': 'Extensions vidéo',
   'Manage…': 'Gérer…',
   'They only run in the video window and can’t reach your notes. Nothing updates by itself.':

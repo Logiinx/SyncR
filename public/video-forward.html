@@ -9,5 +9,10 @@
   const query = new URLSearchParams(location.search)
   const id = query.get('v') || ''
   const start = /^\d+$/.test(query.get('start') || '') ? `&start=${query.get('start')}` : ''
-  if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3${start}`)
+  // For video-watch.js. After the #, so it never goes to YouTube's servers.
+  const wishes = new URLSearchParams()
+  for (const name of ['quality', 'subtitles', 'language']) {
+    if (/^[\w-]+$/.test(query.get(name) || '')) wishes.set(`syncr-${name}`, query.get(name))
+  }
+  if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3${start}#${wishes}`)
 </script>

@@ -38,4 +38,58 @@
     if (window === top) ask(refused)
     else parent.postMessage({ syncrRefused: refused }, '*')
   }, 500)
+
+  // Start quality and subtitles. The app's wishes come in the address's # part, from
+  // video-forward.html: a fallback site doesn't pass them, so its player is left alone.
+  const wanted = new URLSearchParams(location.hash.slice(1))
+  if (!wanted.has('syncr-subtitles')) return
+  const QUALITIES = ['hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny']
+  // The chosen one or the highest under it, once. After that, the player's menu decides.
+  let qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))
+  const setQuality = (player) => {
+    const levels = player.getAvailableQualityLevels?.() || []
+    const level = QUALITIES.slice(qualityFrom).find((name) => levels.includes(name))
+    if (!level) return
+    player.setPlaybackQualityRange(level, level)
+    qualityFrom = -1
+  }
+  // The chosen language, human-written first. Without it the language the video is spoken in (that
+  // of its auto-generated track), as on means on.
+  const bestTrack = (tracks) => {
+    const inLanguage = (language) => {
+      const found = tracks.filter((track) => track.languageCode.split('-')[0] === language)
+      return found.find((track) => track.kind !== 'asr') || found[0]
+    }
+    const spoken = tracks.find((track) => track.kind === 'asr')?.languageCode.split('-')[0]
+    return inLanguage(wanted.get('syncr-language')) || inLanguage(spoken) || tracks[0]
+  }
+  // A change right after a click or key is the viewer's choice for this channel. Any other is
+  // YouTube's own memory (of the last video, or from before an ad) and gets put back. The state is
+  // read from the player, not its button, which differs between YouTube's layouts.
+  let wish = wanted.get('syncr-subtitles') === '1'
+  let needsLanguage = true
+  let touched = 0
+  let settledAt = 0
+  for (const kind of ['pointerdown', 'keydown']) addEventListener(kind, () => { touched = Date.now() }, true)
+  setInterval(() => {
+    const player = document.querySelector('#movie_player')
+    if (!player?.getOption || player.classList.contains('ad-showing') || Date.now() < settledAt) return
+    if (qualityFrom >= 0) setQuality(player)
+    const tracks = player.getOption('captions', 'tracklist', { includeAsr: true }) || []
+    if (!tracks.length) return
+    const current = player.getOption('captions', 'track')
+    const on = !!current?.languageCode
+    if (on !== wish && Date.now() - touched < 1500) {
+      wish = on
+      needsLanguage = on
+      fetch(`https://syncr-video.localhost/subtitles?on=${on ? 1 : 0}&video=${encodeURIComponent(player.getVideoData().video_id)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+    }
+    if (on !== wish) player.setOption('captions', 'track', wish ? bestTrack(tracks) : {})
+    else if (on && needsLanguage) {
+      needsLanguage = false
+      const best = bestTrack(tracks)
+      if (best.vss_id !== current.vss_id) player.setOption('captions', 'track', best)
+    } else return
+    settledAt = Date.now() + 1000
+  }, 500)
 })()

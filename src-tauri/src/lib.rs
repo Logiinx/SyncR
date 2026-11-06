@@ -376,6 +376,17 @@ async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::h
       }
       return answer(204, "text/plain", Vec::new());
     }
+    // Subtitles turned on or off by hand (video-watch.js). Also open to any site in the window: the
+    // app only takes it for the video that's open, and it only changes that channel's subtitles.
+    "/subtitles" => {
+      let value = |name: &str| {
+        uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value.to_string())
+      };
+      if let (Some(on), Some(video)) = (value("on"), value("video")) {
+        let _ = app.emit_to("main", "video-subtitles", serde_json::json!({ "on": on == "1", "video": video }));
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     _ => {}
   }
   let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
