@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-11-06
+
 **Video**
 - **Added** a start quality for YouTube videos: 1440p, or the highest under it, changeable in Settings
 - **Added** subtitles remembered for each YouTube channel, in one language you choose in Settings
