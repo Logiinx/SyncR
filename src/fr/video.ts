@@ -47,6 +47,8 @@ export const video = {
   'Back to To watch': 'Remettre dans À regarder',
   'Mark as watched': 'Marquer comme vue',
   'Open in browser': 'Ouvrir dans le navigateur',
+  'Always on top': 'Toujours au premier plan',
+  'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
   'Mark all as watched': 'Tout marquer comme vu',
   'Mark all as watched?': 'Tout marquer comme vu ?',
   '{n} video moves to Watched.': '{n} vidéo passe dans Vues.',

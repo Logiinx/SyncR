@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
 import { alertMarkId, changed, db, type VideoFollow, type VideoMark, type VideoRow } from './db'
@@ -331,6 +332,15 @@ async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
   const marks = await db.videoMarks.bulkGet(ids)
   await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, updatedAt: Date.now() })))
   changed()
+}
+
+// Watch one video's Watched mark; gives back how to stop
+export function watchWatched(videoId: string, onChange: (watched: boolean) => void) {
+  const subscription = liveQuery(() => db.videoMarks.get(videoMarkId(videoId))).subscribe({
+    next: (mark) => onChange(!!mark?.watched),
+    error: (error) => console.error('Video mark failed', error),
+  })
+  return () => subscription.unsubscribe()
 }
 
 export const markOpened = (videoId: string) => saveMarks([videoId], { opened: true })

@@ -278,14 +278,74 @@ async fn save_attachment(
   Ok(true)
 }
 
-// The video player window (videoPlayer.ts): real sites, so it's in no capability file and has its
-// own storage folder, apart from the notes. The next video replaces the current one, closed first
-// so the window-state plugin remembers its place and size. Its address is either a site's page or
-// our page that forwards to YouTube's player (public/video-forward.html).
+// The video player window (videoPlayer.ts): two separate pages in one window, our bar
+// (public/video-bar.html) above the real site, so the site can't touch or fake the bar. Neither
+// is in a capability file, and they have their own storage folder, apart from the notes. The next
+// video replaces the current one, closed first so the window-state plugin remembers its place and
+// size. The site's address is either a site's page or our page that forwards to YouTube's player
+// (public/video-forward.html).
+const VIDEO_WINDOW: &str = "video-player";
+const VIDEO_BAR: &str = "video-player-bar";
+const VIDEO_SITE: &str = "video-player-site";
+
+// Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
+// only the site.
+fn place_video_pages(window: &tauri::Window, bar_height: f64) {
+  use tauri::{PhysicalPosition, PhysicalSize, Rect};
+  let (Some(bar), Some(site)) = (window.get_webview(VIDEO_BAR), window.get_webview(VIDEO_SITE)) else {
+    return;
+  };
+  let (Ok(size), Ok(scale)) = (window.inner_size(), window.scale_factor()) else {
+    return;
+  };
+  if size.width == 0 || size.height == 0 {
+    return; // minimized
+  }
+  let fullscreen = window.is_fullscreen().unwrap_or(false);
+  let top = if fullscreen { 0 } else { ((bar_height * scale).round() as u32).min(size.height) };
+  let _ = if fullscreen { bar.hide() } else { bar.show() };
+  let _ = bar.set_bounds(Rect {
+    position: PhysicalPosition::new(0, 0).into(),
+    size: PhysicalSize::new(size.width, top).into(),
+  });
+  let _ = site.set_bounds(Rect {
+    position: PhysicalPosition::new(0, top as i32).into(),
+    size: PhysicalSize::new(size.width, size.height - top).into(),
+  });
+}
+
+fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
+  let Some(current) = app.get_window(VIDEO_WINDOW) else {
+    return Ok(());
+  };
+  current.close().map_err(|e| e.to_string())?;
+  for tries in 0..40 {
+    if app.get_window(VIDEO_WINDOW).is_none() {
+      break;
+    }
+    if tries == 30 {
+      let _ = current.destroy(); // a site asking "leave this page?"
+    }
+    std::thread::sleep(std::time::Duration::from_millis(50));
+  }
+  Ok(())
+}
+
+// bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
 #[tauri::command]
-async fn open_video_player(app: tauri::AppHandle, address: String, title: String) -> Result<(), String> {
-  use tauri::{WebviewUrl, WebviewWindowBuilder};
-  const LABEL: &str = "video-player";
+async fn open_video_player(
+  app: tauri::AppHandle,
+  address: String,
+  title: String,
+  bar: String,
+  bar_height: f64,
+  always_on_top: bool,
+) -> Result<(), String> {
+  use std::sync::atomic::{AtomicBool, Ordering};
+  use tauri::utils::config::Color;
+  use tauri::webview::WebviewBuilder;
+  use tauri::window::WindowBuilder;
+  use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WindowEvent};
   let url = if address.starts_with("video-forward.html?v=") {
     WebviewUrl::App(address.into())
   } else {
@@ -295,31 +355,137 @@ async fn open_video_player(app: tauri::AppHandle, address: String, title: String
     }
     WebviewUrl::External(url)
   };
-  if let Some(current) = app.get_webview_window(LABEL) {
-    current.close().map_err(|e| e.to_string())?;
-    for tries in 0..40 {
-      if app.get_webview_window(LABEL).is_none() {
-        break;
-      }
-      if tries == 30 {
-        let _ = current.destroy(); // a site asking "leave this page?"
-      }
-      std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-  }
+  close_video_window(&app)?;
   let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
-  WebviewWindowBuilder::new(&app, LABEL, url)
+  // With its border for now: the window-state plugin removes it here before restoring the size.
+  // Without this change a new window still counts a title bar, and each opening gets that much
+  // taller.
+  let window = WindowBuilder::new(&app, VIDEO_WINDOW)
     .title(title)
     .inner_size(1280.0, 760.0)
+    .min_inner_size(480.0, 300.0)
     .center()
-    .background_color(tauri::utils::config::Color(0, 0, 0, 255))
-    .use_https_scheme(true)
-    .data_directory(folder)
-    // A site can't send this window to SyncR's own pages
-    .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html")
+    .always_on_top(always_on_top)
+    .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
+  let size = window.inner_size().map_err(|e| e.to_string())?;
+  window
+    .add_child(
+      WebviewBuilder::new(VIDEO_BAR, WebviewUrl::App(format!("video-bar.html?data={bar}").into()))
+        .background_color(Color(0x16, 0x16, 0x16, 255))
+        .use_https_scheme(true)
+        .data_directory(folder.clone())
+        .on_navigation(|url| url.path() == "/video-bar.html"),
+      PhysicalPosition::new(0, 0),
+      PhysicalSize::new(size.width, 1),
+    )
+    .map_err(|e| e.to_string())?;
+  let site = window
+    .add_child(
+      WebviewBuilder::new(VIDEO_SITE, url)
+        .background_color(Color(0, 0, 0, 255))
+        .use_https_scheme(true)
+        .data_directory(folder)
+        // A site can't send this window to SyncR's own pages
+        .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html"),
+      PhysicalPosition::new(0, 1),
+      size,
+    )
+    .map_err(|e| e.to_string())?;
+  // On its first opening, or after an older version, the plugin left the border on
+  let _ = window.set_decorations(false);
+  // The resize edges of a borderless window sit under pages added later: this makes new ones on top
+  let _ = window.set_resizable(false);
+  let _ = window.set_resizable(true);
+  // The app was quit while in full screen: the site isn't anymore, and there'd be no bar to get out
+  let _ = window.set_fullscreen(false);
+  place_video_pages(&window, bar_height);
+  let moved = window.clone();
+  let was_maximized = AtomicBool::new(false);
+  window.on_window_event(move |event| {
+    let fullscreen = moved.is_fullscreen().unwrap_or(false);
+    match event {
+      // Full screen from a maximized window: it stays the size of the screen without the taskbar,
+      // and no resize comes to hide the bar (only this move). So full screen from a normal window.
+      WindowEvent::Moved(_) if fullscreen && moved.is_maximized().unwrap_or(false) => {
+        let _ = moved.set_fullscreen(false);
+        let _ = moved.unmaximize();
+        let _ = moved.set_fullscreen(true);
+        was_maximized.store(true, Ordering::SeqCst);
+      }
+      WindowEvent::Resized(_) => {
+        if !fullscreen && was_maximized.swap(false, Ordering::SeqCst) {
+          let _ = moved.maximize();
+        }
+        place_video_pages(&moved, bar_height);
+        if let Some(bar) = moved.get_webview(VIDEO_BAR) {
+          let maximized = moved.is_maximized().unwrap_or(false);
+          let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
+        }
+      }
+      // Out of full screen first, or the plugin remembers the size of the screen
+      WindowEvent::CloseRequested { api, .. } if fullscreen => {
+        api.prevent_close();
+        let _ = moved.set_fullscreen(false);
+        let _ = moved.close();
+      }
+      _ => {}
+    }
+  });
+  window.show().map_err(|e| e.to_string())?;
+  let _ = window.set_focus();
+  let _ = site.set_focus();
   Ok(())
+}
+
+// The clicks on the video bar. What needs the notes' database goes on to the main window
+// (videoPlayer.ts).
+#[tauri::command]
+fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on: Option<bool>) -> Result<(), String> {
+  use tauri::Emitter;
+  if webview.label() != VIDEO_BAR {
+    return Err("Only for the video bar".to_string());
+  }
+  let window = webview.window();
+  let result = match action.as_str() {
+    "ready" => {
+      let maximized = window.is_maximized().unwrap_or(false);
+      return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
+    }
+    "drag" => window.start_dragging(),
+    "minimize" => window.minimize(),
+    "maximize" => {
+      if window.is_maximized().unwrap_or(false) { window.unmaximize() } else { window.maximize() }
+    }
+    "close" => return window.close().map_err(|e| e.to_string()),
+    "always-on-top" | "watched" | "browser" => {
+      if action == "always-on-top" {
+        window.set_always_on_top(on.unwrap_or(false)).map_err(|e| e.to_string())?;
+      }
+      app.emit_to("main", "video-bar", serde_json::json!({ "action": action, "on": on }))
+    }
+    _ => return Err("Unknown action".to_string()),
+  };
+  // The keyboard goes back to the video (space, arrows)
+  if let Some(site) = window.get_webview(VIDEO_SITE) {
+    let _ = site.set_focus();
+  }
+  result.map_err(|e| e.to_string())
+}
+
+// The main window tells the bar when a video's Watched mark changes (also from the list)
+#[tauri::command]
+fn video_player_watched(app: tauri::AppHandle, watched: bool) -> Result<(), String> {
+  match app.get_webview(VIDEO_BAR) {
+    Some(bar) => bar.eval(format!("window.setWatched?.({watched})")).map_err(|e| e.to_string()),
+    None => Ok(()),
+  }
+}
+
+#[tauri::command]
+async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
+  close_video_window(&app)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -351,7 +517,10 @@ pub fn run() {
       unprotect_secret,
       open_attachment,
       save_attachment,
-      open_video_player
+      open_video_player,
+      video_bar,
+      video_player_watched,
+      close_video_player
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

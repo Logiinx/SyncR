@@ -28,6 +28,8 @@ import {
   isConnected as isGoogleConnected,
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
+import { useVideoEnabled } from './video'
+import { loadPlayerSettings, savePlayerSettings } from './videoPlayer'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -94,6 +96,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   }
 
   const [links, setLinks] = useState(loadLinkPreviewSettings)
+  const videoOn = useVideoEnabled()
+  const [player, setPlayer] = useState(loadPlayerSettings)
   function updateLinks(change: Partial<LinkPreviewSettings>) {
     saveLinkPreviewSettings(change)
     setLinks(loadLinkPreviewSettings())
@@ -424,6 +428,18 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow label={t('Animations')}>
           <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
         </SettingRow>
+        {isTauri() && videoOn && (
+          <SettingRow label={t('Mark as watched closes the video player')}>
+            <input
+              type="checkbox"
+              checked={player.watchedCloses}
+              onChange={(e) => {
+                savePlayerSettings({ watchedCloses: e.target.checked })
+                setPlayer(loadPlayerSettings())
+              }}
+            />
+          </SettingRow>
+        )}
         {isTauri() && (
           <>
             <SettingRow
