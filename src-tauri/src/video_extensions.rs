@@ -498,13 +498,13 @@ const POPUP_SCRIPT: &str = r#"(function (width, height) {
 // What a popup's page says about itself. Two levels of the page are enough to see its panels:
 // uBlock's "More" opens its second one beside the first, past the page's own width. uBlock gets
 // its real width once its data has come, when "loading" goes.
-const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height && part.tagName !== 'TEMPLATE') { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId') && !body.classList.contains('loading'), Math.ceil(first.width), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
+const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let left = first.left, right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height && part.tagName !== 'TEMPLATE') { left = Math.min(left, box.left); right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId') && !body.classList.contains('loading'), Math.ceil(first.width), Math.ceil(right - left), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
 
 #[derive(Clone, Copy)]
 struct PopupMeasure {
   ready: bool,
   body_width: f64,
-  right: f64,  // how far right its content goes
+  across: f64, // how wide its content is, with all its panels
   bottom: f64, // how far down
   needs: f64,  // the height it needs if it doesn't fit
   room: f64,   // the height it has
@@ -569,7 +569,7 @@ fn measure_popup(popup: &tauri::WebviewWindow) -> Option<PopupMeasure> {
   Some(PopupMeasure {
     ready: value[0].as_bool()?,
     body_width: value[1].as_f64()?,
-    right: value[2].as_f64()?,
+    across: value[2].as_f64()?,
     bottom: value[3].as_f64()?,
     needs: value[4].as_f64()?,
     room: value[5].as_f64()?,
@@ -678,13 +678,14 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
         own_width = Some(now.body_width.max(1.0));
       }
       if let Some(own) = own_width {
-        let wanted = if now.right > own + POPUP_ROUNDING { now.right } else { own };
+        let wanted = if now.across > own + POPUP_ROUNDING { now.across } else { own };
         if (wanted - width).abs() > POPUP_ROUNDING {
           width = wanted;
           changed = true;
         }
       }
-      if now.needs > now.room + 1.0 && now.needs != height {
+      // Not before it's ready: uBlock is much taller until its data has come
+      if (shown || now.ready) && now.needs > now.room + 1.0 && now.needs != height {
         height = now.needs;
         changed = true;
       } else if let Some(before) = last_bottom {
