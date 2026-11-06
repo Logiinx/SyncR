@@ -385,6 +385,7 @@ export function watchWatched(videoId: string, onChange: (watched: boolean) => vo
 export const markOpened = (videoId: string) => saveMarks([videoId], { opened: true })
 export const setWatched = (videoId: string, watched: boolean) => saveMarks([videoId], { watched })
 export const markAllWatched = (videoIds: string[]) => saveMarks(videoIds, { watched: true })
+export const clearWatched = (videoIds: string[]) => saveMarks(videoIds, { cleared: true })
 
 export interface FeedVideo extends VideoRow {
   followId: string
@@ -405,6 +406,7 @@ export function useVideoFeed() {
         const follow = byChannel.get(`${video.platform} ${video.channelId}`)
         if (!follow || !videoKept(follow, video)) return []
         const mark = markOf.get(videoMarkId(video.id))
+        if (mark?.cleared) return []
         return [{ ...video, followId: follow.id, channel: follow.name, opened: !!mark?.opened, watched: !!mark?.watched }]
       })
       .sort((a, b) => b.published - a.published || a.id.localeCompare(b.id))

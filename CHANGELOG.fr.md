@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Ajout** d’une étiquette verte Nouvelle sur les vidéos trouvées depuis la dernière ouverture de l’onglet Vidéo
+- **Ajout** d’un moyen de retirer des vidéos des vues, une par une ou toutes celles de la liste
 - **Ajout** de la valeur du volume à côté de son curseur dans le lecteur Twitch
 - **Amélioration** de l’ajout d’un suivi : écrivez nom pour Twitch ou @nom pour YouTube, les liens collés sont raccourcis
 - **Correction** de petits problèmes : le ⓘ de la fenêtre de suivi ne s’ouvre plus qu’au-dessus de l’icône

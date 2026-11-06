@@ -288,6 +288,7 @@ export interface VideoMark {
   id: string // videoMarkId(the video's id): also its file name in Dropbox
   opened: boolean
   watched: boolean
+  cleared?: boolean // removed from Watched: never shows again, even if a check lists it again
   updatedAt: number
   syncedRev?: string // Dropbox revision last synced
   syncedUpdatedAt?: number
