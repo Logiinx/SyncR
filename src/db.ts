@@ -264,6 +264,29 @@ export interface VideoFollow {
   updatedAt: number
 }
 
+// A video of a followed channel. Only on this device: it can always be downloaded again.
+export interface VideoRow {
+  id: string // "<platform>-<the site's video id>"
+  platform: VideoFollow['platform']
+  channelId: string
+  kind: string // Twitch: archive; YouTube: video or short
+  title: string
+  url: string
+  thumbnail: string | null
+  published: number
+  duration: number // seconds
+  gone: boolean // the site no longer has it
+}
+
+// What's been done with a video (same id). Apart from the video, as these marks are what's
+// worth keeping: they stay when a follow is removed, so adding it again remembers them.
+export interface VideoMark {
+  id: string
+  opened: boolean
+  watched: boolean
+  updatedAt: number
+}
+
 export interface Snapshot {
   id: string // "<note id>-<savedAt>"
   noteId: string
@@ -300,6 +323,8 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   linkPreviews: EntityTable<LinkPreviewRow, 'url'>
   snapshots: EntityTable<Snapshot, 'id'>
   videoFollows: EntityTable<VideoFollow, 'id'>
+  videos: EntityTable<VideoRow, 'id'>
+  videoMarks: EntityTable<VideoMark, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -375,6 +400,11 @@ export function defineSchema(d: Dexie) {
 
   d.version(16).stores({
     videoFollows: 'id',
+  })
+
+  d.version(17).stores({
+    videos: 'id',
+    videoMarks: 'id',
   })
 }
 

@@ -12,7 +12,7 @@ import type { DBCore, DBCoreGetManyRequest, DBCoreGetRequest, DBCoreMutateReques
 // (and "filter" reads hand rows over one by one, at once). So it uses @noble/ciphers (AES-GCM,
 // instant) instead of the browser's own encryption, which always takes a moment.
 
-export const SEALED_TABLES = ['notes', 'attachments', 'settings', 'reminders', 'cards', 'games', 'events', 'linkPreviews', 'snapshots', 'videoFollows']
+export const SEALED_TABLES = ['notes', 'attachments', 'settings', 'reminders', 'cards', 'games', 'events', 'linkPreviews', 'snapshots', 'videoFollows', 'videos', 'videoMarks']
 
 // i18n-ok
 const SEALED = '_sealed' // the encrypted block: 12 bytes nonce + the encrypted JSON of the other fields

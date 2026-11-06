@@ -4,6 +4,7 @@ import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
 import Spinner from './Spinner'
+import VideoLogo from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
@@ -119,7 +120,7 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
   )
 }
 
-// What a follow keeps, in words, e.g. "Twitch · Only: hotline · Under 15 min hidden"
+// What a follow keeps, in words, e.g. "Only: hotline · Under 15 min hidden"
 function followSummary(follow: VideoFollow) {
   const rules = [
     follow.onlyWords.length ? t('Only: {words}', { words: follow.onlyWords.join(', ') }) : '',
@@ -127,9 +128,7 @@ function followSummary(follow: VideoFollow) {
     follow.minMinutes ? t('Under {minutes} min hidden', { minutes: follow.minMinutes }) : '',
     follow.platform === 'youtube' && !follow.hideShorts ? t('Shorts shown') : '',
   ].filter(Boolean)
-  // i18n-ok: names of the sites
-  const site = follow.platform === 'twitch' ? 'Twitch' : 'YouTube'
-  return [site, ...(rules.length ? rules : [t('All videos')])].join(' · ')
+  return (rules.length ? rules : [t('All videos')]).join(' · ')
 }
 
 // The channels you follow: change or remove them
@@ -163,7 +162,10 @@ export function FollowsWindow({ onClose }: { onClose: () => void }) {
                 )}
                 <span className="video-follow-text">
                   <span className="video-follow-name" title={follow.name}>{follow.name}</span>
-                  <span className="video-follow-summary" title={summary}>{summary}</span>
+                  <span className="video-follow-line">
+                    <VideoLogo platform={follow.platform} />
+                    <span className="video-follow-summary" title={summary}>{summary}</span>
+                  </span>
                 </span>
                 <button onClick={() => setEditing(follow)} title={t('Edit')}>
                   <Pencil size={15} />

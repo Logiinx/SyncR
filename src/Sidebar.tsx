@@ -7,7 +7,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { useGmailAccounts } from './gmail'
 import { useMissed } from './mailAlerts'
 import { MAIL_TAB } from './mailbox'
-import { VIDEO_TAB } from './video'
+import { useVideoFeed, VIDEO_TAB } from './video'
 import Spinner from './Spinner'
 import { db, noteTitle, type Note } from './db'
 import { REMINDERS_TAB } from './reminders'
@@ -57,6 +57,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   const slideIn = useSlideIn()
   const accounts = useGmailAccounts()
   const missed = useMissed()
+  const newVideos = useVideoFeed()?.newCount ?? 0
   const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
@@ -97,6 +98,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         {onVideo && (
           <button className={activeId === VIDEO_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onVideo}>
             <Video size={15} /> {t('Video')}
+            {newVideos > 0 && <span className="sidebar-count" title={t('New videos')}>{newVideos}</span>}
           </button>
         )}
         <div className="game-search-bar sidebar-search">

@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { changed, db, type VideoFollow } from './db'
+import { changed, db, type VideoFollow, type VideoMark, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
-import { useLocalState } from './localState'
+import { read, useLocalState, write } from './localState'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
 // own use for now: it only exists when their Worker says so (their password + YOUTUBE_KEY, see
@@ -133,6 +133,7 @@ export async function addFollow(channel: VideoChannel, settings: FollowSettings,
     updatedAt: Date.now(),
   })
   changed()
+  void checkVideos() // its videos, right away
 }
 
 export async function updateFollow(id: string, settings: FollowSettings) {
@@ -141,7 +142,12 @@ export async function updateFollow(id: string, settings: FollowSettings) {
 }
 
 export async function removeFollow(id: string) {
+  const follow = await db.videoFollows.get(id)
   await db.videoFollows.update(id, { deleted: true, updatedAt: Date.now() })
+  if (follow) await db.videos.filter((video) => video.platform === follow.platform && video.channelId === follow.channelId).delete()
+  const checked = read<Record<string, number>>(CHECKED_KEY, {})
+  delete checked[id]
+  write(CHECKED_KEY, checked)
   changed()
 }
 
@@ -150,5 +156,206 @@ export function useFollows() {
   return useLiveQuery(async () => {
     const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
     return follows.sort((a, b) => a.name.localeCompare(b.name))
+  }, [])
+}
+
+// ---------- Videos ----------
+
+const CHECK_EVERY = 60 * 60 * 1000
+const GONE_CHECK_EVERY = 24 * 60 * 60 * 1000
+const CHECKED_KEY = 'syncr.videoChecked' // follow id → when its videos were last read
+const GONE_KEY = 'syncr.videoGoneCheck'
+// i18n-ok: "all that are still available" means from long before any video site
+const LONG_AGO = '2000-01-01T00:00:00Z'
+
+interface ListedVideo {
+  id: string
+  kind: string
+  title: string
+  url: string
+  thumbnail: string | null
+  published: string
+  duration: number
+  live: boolean
+}
+
+let checking = false
+let checkAgain = false
+let errors: string[] = []
+let checkState = { checking, errors }
+const listeners = new Set<() => void>()
+
+function checkChanged() {
+  checkState = { checking, errors }
+  listeners.forEach((listener) => listener())
+}
+
+// For the page: a check is running, and what went wrong in the last one
+export function useChecking() {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => checkState,
+  )
+}
+
+// Saves what can be shown: only finished videos, no older than the follow's start, and on Twitch
+// only past streams (no highlights or clips). All of them, also those the word lists leave out:
+// changing the lists then shows them at once, without asking the site again.
+async function saveVideos(follow: VideoFollow, listed: ListedVideo[]) {
+  const rows: VideoRow[] = listed
+    // i18n-ok
+    .filter((video) => !video.live && (follow.platform === 'youtube' || video.kind === 'archive'))
+    .filter((video) => Date.parse(video.published) >= follow.startAt)
+    .map((video) => ({
+      id: `${follow.platform}-${video.id}`,
+      platform: follow.platform,
+      channelId: follow.channelId,
+      kind: video.kind,
+      title: video.title,
+      url: video.url,
+      thumbnail: video.thumbnail,
+      published: Date.parse(video.published),
+      duration: video.duration,
+      gone: false,
+    }))
+  const saved = await db.videos.bulkGet(rows.map((row) => row.id))
+  // Only what's new or different: every save redraws the list
+  const changes = rows.filter((row, i) => {
+    const old = saved[i]
+    return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
+  })
+  if (changes.length) await db.videos.bulkPut(changes)
+}
+
+// One follow. The first time everything back to its start, then the latest page is enough.
+async function checkFollow(follow: VideoFollow) {
+  const checked = read<Record<string, number>>(CHECKED_KEY, {})
+  const since = checked[follow.id] ? undefined : follow.startAt ? new Date(follow.startAt).toISOString() : LONG_AGO
+  const response = await igdbProxyFetch('video/list', JSON.stringify({ platform: follow.platform, id: follow.channelId, since }), 60_000)
+  const answer = await response.json().catch(() => null)
+  if (!response.ok || !Array.isArray(answer?.videos)) throw new Error(String(answer?.error ?? response.status))
+  await saveVideos(follow, answer.videos)
+  write(CHECKED_KEY, { ...read<Record<string, number>>(CHECKED_KEY, {}), [follow.id]: Date.now() })
+}
+
+// Once a day: which videos waiting to be watched are gone from their site. Twitch deletes old
+// streams. Only with a clear answer: a problem now changes nothing.
+async function checkGone() {
+  if (Date.now() - read<number>(GONE_KEY, 0) < GONE_CHECK_EVERY) return
+  const marks = new Map((await db.videoMarks.toArray()).map((mark) => [mark.id, mark]))
+  const waiting = (await db.videos.toArray()).filter((video) => !marks.get(video.id)?.watched)
+  for (const platform of ['twitch', 'youtube'] as const) {
+    const rows = waiting.filter((video) => video.platform === platform)
+    for (let start = 0; start < rows.length; start += 500) {
+      const part = rows.slice(start, start + 500)
+      const siteId = (row: VideoRow) => row.id.slice(platform.length + 1)
+      const response = await igdbProxyFetch('video/exists', JSON.stringify({ platform, ids: part.map(siteId) }), 30_000)
+      if (!response.ok) return
+      const existing = new Set<string>((await response.json()).existing)
+      const changes = part.filter((row) => row.gone === existing.has(siteId(row)))
+      if (changes.length) await db.videos.bulkPut(changes.map((row) => ({ ...row, gone: !row.gone })))
+    }
+  }
+  write(GONE_KEY, Date.now())
+}
+
+// Reads all followed channels, one after the other. Asked again while running (a new follow):
+// one more round after this one.
+export async function checkVideos() {
+  if (checking) {
+    checkAgain = true
+    return
+  }
+  checking = true
+  checkChanged()
+  do {
+    checkAgain = false
+    const found: string[] = []
+    const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
+    for (const follow of follows) {
+      try {
+        await checkFollow(follow)
+      } catch (e) {
+        // Offline: one message, no need to try the others
+        if ((e as { offline?: boolean }).offline) {
+          found.push((e as Error).message)
+          break
+        }
+        found.push(t('{name}: {error}', { name: follow.name, error: e instanceof Error ? e.message : String(e) }))
+      }
+    }
+    if (!found.length) await checkGone().catch((e) => console.warn('Video check failed', e))
+    errors = found
+  } while (checkAgain)
+  checking = false
+  checkChanged()
+}
+
+// Soon after the start, then about once an hour. Checked often, so a PC waking up from sleep
+// doesn't wait for the rest of the hour.
+export function startVideoChecks() {
+  let last = 0
+  const tick = () => {
+    if (Date.now() - last < CHECK_EVERY) return
+    last = Date.now()
+    void checkVideos()
+  }
+  const first = setTimeout(tick, 3000)
+  const timer = setInterval(tick, 5 * 60 * 1000)
+  return () => {
+    clearTimeout(first)
+    clearInterval(timer)
+  }
+}
+
+// Whether a follow's rules keep this video
+export function videoKept(follow: VideoFollow, video: VideoRow) {
+  // i18n-ok
+  if (follow.hideShorts && video.kind === 'short') return false
+  if (follow.minMinutes && video.duration < follow.minMinutes * 60) return false
+  return titleKept(follow, video.title)
+}
+
+async function saveMark(id: string, change: Partial<VideoMark>) {
+  const mark = await db.videoMarks.get(id)
+  await db.videoMarks.put({ id, opened: false, watched: false, ...mark, ...change, updatedAt: Date.now() })
+  changed()
+}
+
+export const markOpened = (id: string) => saveMark(id, { opened: true })
+export const setWatched = (id: string, watched: boolean) => saveMark(id, { watched })
+
+export interface FeedVideo extends VideoRow {
+  followId: string
+  channel: string
+  opened: boolean
+  watched: boolean
+}
+
+// What the Video tab shows, newest first. undefined while loading.
+export function useVideoFeed() {
+  return useLiveQuery(async () => {
+    const [allFollows, rows, marks] = await Promise.all([db.videoFollows.toArray(), db.videos.toArray(), db.videoMarks.toArray()])
+    const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
+    const byChannel = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
+    const markOf = new Map(marks.map((mark) => [mark.id, mark]))
+    const videos = rows
+      .flatMap((video): FeedVideo[] => {
+        const follow = byChannel.get(`${video.platform} ${video.channelId}`)
+        if (!follow || !videoKept(follow, video)) return []
+        const mark = markOf.get(video.id)
+        return [{ ...video, followId: follow.id, channel: follow.name, opened: !!mark?.opened, watched: !!mark?.watched }]
+      })
+      .sort((a, b) => b.published - a.published || a.id.localeCompare(b.id))
+    const toWatch = videos.filter((video) => !video.watched)
+    return {
+      follows,
+      toWatch,
+      watched: videos.filter((video) => video.watched),
+      newCount: toWatch.filter((video) => !video.opened && !video.gone).length,
+    }
   }, [])
 }

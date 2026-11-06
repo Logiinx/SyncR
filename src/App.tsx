@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, useLanguage } from './i18n'
 import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, Video, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -21,7 +21,7 @@ import RemindersView from './RemindersView'
 import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB, startGameChecks } from './games'
 import { MAIL_TAB } from './mailbox'
-import { useVideoEnabled, VIDEO_TAB } from './video'
+import { startVideoChecks, useVideoEnabled, useVideoFeed, VIDEO_TAB } from './video'
 import VideoView from './VideoView'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
@@ -41,6 +41,7 @@ const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id
 function App() {
   useLanguage()
   const videoOn = useVideoEnabled()
+  useEffect(() => (videoOn ? startVideoChecks() : undefined), [videoOn])
   // Remembered after a restart (per device)
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
@@ -116,7 +117,7 @@ function App() {
     if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <Gamepad2 size={14} className="tab-icon" /> }]
     if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <Bell size={14} className="tab-icon" /> }]
     if (id === MAIL_TAB) return [{ id, title: t('Mail'), icon: <MailTabIcon /> }]
-    if (id === VIDEO_TAB) return videoOn ? [{ id, title: t('Video'), icon: <Video size={14} className="tab-icon" /> }] : []
+    if (id === VIDEO_TAB) return videoOn ? [{ id, title: t('Video'), icon: <VideoTabIcon /> }] : []
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
   })
@@ -346,18 +347,26 @@ function App() {
 }
 
 // The Mail tab's icon, with the missed emails' count (like the sidebar's) on its top right corner
-function MailTabIcon() {
-  const missed = useMissed().length
+// A tab's icon with a count on its corner: the Mail and Video tabs
+function CountIcon({ icon, count, title }: { icon: ReactNode; count: number; title: string }) {
   return (
     <span className="tab-icon mail-tab-icon">
-      <Mail size={14} className="tab-icon" />
-      {missed > 0 && (
-        <span className="mail-tab-count" title={t('Missed emails')}>
-          {missed > 9 ? '9+' : missed}
+      {icon}
+      {count > 0 && (
+        <span className="mail-tab-count" title={title}>
+          {count > 9 ? '9+' : count}
         </span>
       )}
     </span>
   )
+}
+
+function MailTabIcon() {
+  return <CountIcon icon={<Mail size={14} className="tab-icon" />} count={useMissed().length} title={t('Missed emails')} />
+}
+
+function VideoTabIcon() {
+  return <CountIcon icon={<Video size={14} className="tab-icon" />} count={useVideoFeed()?.newCount ?? 0} title={t('New videos')} />
 }
 
 // The page when no tab is open; crossfades like the others (animations.ts)
