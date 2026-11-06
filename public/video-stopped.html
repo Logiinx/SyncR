@@ -52,5 +52,5 @@
   if (data.zoom) document.documentElement.style.zoom = data.zoom
   document.getElementById('message').textContent = data.message || ''
   document.querySelector('#browser span').textContent = data.browser || ''
-  document.getElementById('browser').onclick = () => window.__TAURI_INTERNALS__?.invoke('video_bar', { action: 'browser' })
+  document.getElementById('browser').onclick = () => { location.href = 'https://syncr-video.invalid/browser' }
 </script>

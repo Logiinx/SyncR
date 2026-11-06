@@ -23,6 +23,17 @@
     "core:webview:allow-create-webview-window",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled"
+    "autostart:allow-is-enabled",
+    "allow-started-hidden",
+    "allow-set-tray-texts",
+    "allow-google-sign-in",
+    "allow-protect-secret",
+    "allow-unprotect-secret",
+    "allow-open-attachment",
+    "allow-save-attachment",
+    "allow-open-video-player",
+    "allow-video-player-way",
+    "allow-video-player-watched",
+    "allow-close-video-player"
   ]
 }

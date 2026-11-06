@@ -140,9 +140,17 @@ function listenToBar() {
     }
     if (action === 'another-way' && current.platform === 'youtube') changeWay(current, nextWay(currentWay))
   })
-  // YouTube showed an error (video-watch.js). "auth": the owner doesn't allow playing outside
-  // YouTube, or the video is gone or private: the two sites would get the same answer.
-  void listen<{ code?: string; video?: string }>('video-site', ({ payload: { code, video } }) => {
+  void listen<{ request?: string; code?: string; video?: string }>('video-site', ({ payload: { request, code, video } }) => {
+    // The button on our message (video-stopped.html). A site could fake this signal, so it only
+    // counts while that message shows.
+    if (request === '/browser') {
+      if (!current || currentWay !== 'stopped') return
+      openLink(current.url)
+      void invoke('close_video_player')
+      return
+    }
+    // YouTube showed an error (video-watch.js). "auth": the owner doesn't allow playing outside
+    // YouTube, or the video is gone or private: the two sites would get the same answer.
     if (!current || current.id !== `youtube-${video}` || currentWay === 'stopped') return
     changeWay(current, code === 'auth' ? 'stopped' : nextWay(currentWay))
   })

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Amélioration** de la sécurité : chaque fenêtre de SyncR n’accède plus qu’aux fonctions dont elle a besoin
+
 ## [0.51.0] - 2026-11-06
 
 **Vidéo**

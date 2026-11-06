@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "video-bar",
+  "description": "the video player's bar (public/video-bar.html): its own command, nothing else. The page below it gets no capability at all.",
+  "webviews": [
+    "video-player-bar"
+  ],
+  "permissions": [
+    "allow-video-bar"
+  ]
+}
