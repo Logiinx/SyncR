@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-11-06
+
 **Vidéo**
 - **Ajout** de vos extensions dans la fenêtre vidéo, comme uBlock Origin : réglées dans Paramètres, popups sur sa barre
 
