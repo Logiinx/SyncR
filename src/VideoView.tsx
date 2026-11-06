@@ -9,7 +9,7 @@ import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
 import { byChannel, checkVideos, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
-import { FollowDialog, FollowsWindow } from './VideoFollows'
+import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { useResumePosition, videoClock } from './videoPositions'
@@ -136,6 +136,7 @@ function VideoView() {
   const [list, setList] = useState<List>('towatch')
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState(false)
+  const [addingVideo, setAddingVideo] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
@@ -151,7 +152,14 @@ function VideoView() {
   useListItems(listRef, `${list} ${shownChannel} ${grouping}`)
   const tagNew = (video: FeedVideo) => newIds.has(video.id) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
-  const empty = !follows?.length ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
+  const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
+  // Shows where it went: To watch, all follows, its group open
+  function showAdded(followId: string) {
+    setList('towatch')
+    setChannel('all')
+    setOpenGroups((now) => (now.includes(followId) ? now : [...now, followId]))
+  }
+  const empty = !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
 
   return (
     <main className="page games-page" ref={pageRef}>
@@ -175,7 +183,7 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
-            {!!follows?.length && (
+            {(!!follows?.length || anyVideos) && (
               <label className="reminders-hide-repeating" title={t('Fold each channel’s videos into one row')}>
                 <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
                 {t('By channel')}
@@ -196,6 +204,9 @@ function VideoView() {
             </button>
             <button className="reminders-new" onClick={() => setAdding(true)}>
               <Plus size={15} /> {t('Add a follow')}
+            </button>
+            <button className="reminders-new" onClick={() => setAddingVideo(true)}>
+              <Plus size={15} /> {t('Add a video')}
             </button>
           </div>
         </div>
@@ -231,6 +242,7 @@ function VideoView() {
         </ul>
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}
+      {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
       {markingAll && videos && (
         <Dialog

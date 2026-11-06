@@ -503,6 +503,7 @@ async function linkPreview(env, request) {
 //   video/list     { platform, id, since }  { videos: [...] }, newest first; with "since" (a date)
 //                                           everything back to it, without it the latest page
 //   video/exists   { platform, ids }        { existing: [...] }: the ones still there
+//   video/one      { link }                 { platform, channel: { id, name, icon }, video }
 const TWITCH_API = 'https://api.twitch.tv/helix'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
 const VIDEO_PAGES = 10 // the most pages per list: Cloudflare allows 50 outside calls per request
@@ -591,8 +592,31 @@ function seconds(text) {
   return part('d') * 86400 + part('h') * 3600 + part('m') * 60 + part('s')
 }
 
-// live = still being streamed (or, on YouTube, announced): the app waits until it's finished.
-// Twitch lists a stream in progress as a video too; only its stream's id tells them apart.
+// One video as the app gets it. live = still being streamed (or, on YouTube, announced): the app
+// waits until it's finished. Twitch lists a stream in progress as a video too; only its stream's
+// id tells them apart.
+const twitchVideo = (video, liveStream) => ({
+  id: video.id,
+  kind: video.type, // archive (past stream), highlight or upload
+  title: video.title,
+  url: video.url,
+  thumbnail: video.thumbnail_url ? video.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180') : null,
+  published: video.published_at,
+  duration: seconds(video.duration),
+  live: !!liveStream && video.stream_id === liveStream,
+})
+
+const youtubeVideo = (video, kind) => ({
+  id: video.id,
+  kind,
+  title: video.snippet.title,
+  url: `https://www.youtube.com/watch?v=${video.id}`,
+  thumbnail: video.snippet.thumbnails?.medium?.url ?? null,
+  published: video.snippet.publishedAt,
+  duration: seconds(video.contentDetails.duration),
+  live: video.snippet.liveBroadcastContent !== 'none',
+})
+
 async function twitchVideos(env, id, since) {
   const liveStream = (await askTwitch(env, `streams?user_id=${id}&first=1`)).data?.[0]?.id
   const videos = []
@@ -600,16 +624,7 @@ async function twitchVideos(env, id, since) {
   for (let page = 0; page < VIDEO_PAGES; page++) {
     const answer = await askTwitch(env, `videos?user_id=${id}&first=100&type=all${cursor ? `&after=${encodeURIComponent(cursor)}` : ''}`)
     const items = answer.data ?? []
-    videos.push(...items.map((video) => ({
-      id: video.id,
-      kind: video.type, // archive (past stream), highlight or upload
-      title: video.title,
-      url: video.url,
-      thumbnail: video.thumbnail_url ? video.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180') : null,
-      published: video.published_at,
-      duration: seconds(video.duration),
-      live: !!liveStream && video.stream_id === liveStream,
-    })))
+    videos.push(...items.map((video) => twitchVideo(video, liveStream)))
     cursor = answer.pagination?.cursor
     if (!since || !cursor || !items.length || Date.parse(items[items.length - 1].published_at) < since) break
   }
@@ -642,16 +657,7 @@ async function youtubeVideos(env, id, since) {
   for (let start = 0; start < ids.length; start += 50) {
     const answer = await askYouTube(env, 'videos', { part: 'snippet,contentDetails', id: ids.slice(start, start + 50).join(','), maxResults: '50' })
     // Deleted and private videos just aren't in this answer
-    videos.push(...(answer.items ?? []).map((video) => ({
-      id: video.id,
-      kind: shorts.has(video.id) ? 'short' : 'video',
-      title: video.snippet.title,
-      url: `https://www.youtube.com/watch?v=${video.id}`,
-      thumbnail: video.snippet.thumbnails?.medium?.url ?? null,
-      published: video.snippet.publishedAt,
-      duration: seconds(video.contentDetails.duration),
-      live: video.snippet.liveBroadcastContent !== 'none',
-    })))
+    videos.push(...(answer.items ?? []).map((video) => youtubeVideo(video, shorts.has(video.id) ? 'short' : 'video')))
   }
   return videos
 }
@@ -689,11 +695,68 @@ async function existingVideos(env, { platform, ids }) {
   return { existing }
 }
 
+// The video a pasted link points to, or null
+function videoLink(text) {
+  const typed = String(text ?? '').trim()
+  let url
+  try {
+    url = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`)
+  } catch {
+    return null
+  }
+  const host = url.hostname.toLowerCase().replace(/^(www|m|music)\./, '')
+  const parts = url.pathname.split('/').filter(Boolean)
+  if (host === 'twitch.tv') {
+    // twitch.tv/videos/123, and the older twitch.tv/name/video/123 and twitch.tv/name/v/123
+    const id = parts[0] === 'videos' ? parts[1] : ['video', 'v'].includes(parts[1]) ? parts[2] : null
+    return /^\d+$/.test(id ?? '') ? { platform: 'twitch', id } : null
+  }
+  let id = null
+  if (host === 'youtu.be') id = parts[0]
+  else if (host === 'youtube.com') id = parts[0] === 'watch' ? url.searchParams.get('v') : ['shorts', 'live', 'embed', 'v'].includes(parts[0]) ? parts[1] : null
+  return /^[\w-]{6,20}$/.test(id ?? '') ? { platform: 'youtube', id } : null
+}
+
+async function oneTwitchVideo(env, id) {
+  const video = (await askTwitch(env, `videos?id=${id}`)).data?.[0]
+  if (!video) throw videoError('video-not-found', 404)
+  const liveStream = (await askTwitch(env, `streams?user_id=${video.user_id}&first=1`)).data?.[0]?.id
+  const user = (await askTwitch(env, `users?id=${video.user_id}`)).data?.[0]
+  return {
+    platform: 'twitch',
+    channel: { id: video.user_id, name: user?.display_name ?? video.user_name, icon: user?.profile_image_url || null },
+    video: twitchVideo(video, liveStream),
+  }
+}
+
+async function oneYouTubeVideo(env, id) {
+  // Deleted and private videos just aren't in this answer
+  const video = (await askYouTube(env, 'videos', { part: 'snippet,contentDetails', id })).items?.[0]
+  if (!video) throw videoError('video-not-found', 404)
+  const channel = (await askYouTube(env, 'channels', { part: 'snippet', id: video.snippet.channelId })).items?.[0]
+  return {
+    platform: 'youtube',
+    channel: { id: video.snippet.channelId, name: channel?.snippet.title ?? video.snippet.channelTitle, icon: channel?.snippet.thumbnails?.default?.url ?? null },
+    video: youtubeVideo(video, 'video'),
+  }
+}
+
+// One video, by its link. A channel's link gets its own answer, so the app can say what to do with
+// it; a clip's link starts like one (twitch.tv/name/clip/…).
+async function oneVideo(env, link) {
+  const found = videoLink(link)
+  if (!found) throw videoError(channelLink(link) && !/\/clip\//i.test(String(link)) ? 'channel-link' : 'not-a-video')
+  const answer = await (found.platform === 'twitch' ? oneTwitchVideo(env, found.id) : oneYouTubeVideo(env, found.id))
+  if (answer.video.live) throw videoError('video-live')
+  return answer
+}
+
 async function videoFeed(env, endpoint, request) {
   const body = await request.json().catch(() => ({}))
   if (endpoint === 'video/channel') return findChannel(env, body.link)
   if (endpoint === 'video/list') return listVideos(env, body)
   if (endpoint === 'video/exists') return existingVideos(env, body)
+  if (endpoint === 'video/one') return oneVideo(env, body.link)
   throw videoError(`Unknown endpoint: ${endpoint}`, 404)
 }
 

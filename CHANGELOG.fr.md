@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** d’un moyen d’ajouter une seule vidéo par son lien, qui arrive dans À regarder
 - **Ajout** d’une étiquette verte Nouvelle sur les vidéos trouvées depuis la dernière ouverture de l’onglet Vidéo
 - **Ajout** d’une option Par chaîne dans l’onglet Vidéo, qui replie les vidéos de chaque chaîne sur une seule ligne
 - **Ajout** d’un moyen de retirer des vidéos des vues, une par une ou toutes celles de la liste

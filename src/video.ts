@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { alertMarkId, changed, db, type VideoFollow, type VideoMark, type VideoRow } from './db'
+import { alertMarkId, changed, db, type AddedVideo, type VideoFollow, type VideoMark, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
@@ -287,16 +287,23 @@ async function checkGone() {
   if (Date.now() - read<number>(GONE_KEY, 0) < GONE_CHECK_EVERY) return
   const marks = new Map((await db.videoMarks.toArray()).map((mark) => [mark.id, mark]))
   const waiting = (await db.videos.toArray()).filter((video) => !marks.get(videoMarkId(video.id))?.watched)
+  const waitingAdded = (await db.addedVideos.toArray()).filter((video) => !marks.get(video.id)?.watched)
   for (const platform of ['twitch', 'youtube'] as const) {
+    const siteId = (videoId: string) => videoId.slice(platform.length + 1)
     const rows = waiting.filter((video) => video.platform === platform)
-    for (let start = 0; start < rows.length; start += 500) {
-      const part = rows.slice(start, start + 500)
-      const siteId = (row: VideoRow) => row.id.slice(platform.length + 1)
-      const response = await igdbProxyFetch('video/exists', JSON.stringify({ platform, ids: part.map(siteId) }), 30_000)
+    const added = waitingAdded.filter((video) => video.platform === platform)
+    const ids = [...new Set([...rows.map((row) => siteId(row.id)), ...added.map((row) => siteId(row.videoId))])]
+    const existing = new Set<string>()
+    for (let start = 0; start < ids.length; start += 500) {
+      const response = await igdbProxyFetch('video/exists', JSON.stringify({ platform, ids: ids.slice(start, start + 500) }), 30_000)
       if (!response.ok) return
-      const existing = new Set<string>((await response.json()).existing)
-      const changes = part.filter((row) => row.gone === existing.has(siteId(row)))
-      if (changes.length) await db.videos.bulkPut(changes.map((row) => ({ ...row, gone: !row.gone })))
+      for (const id of (await response.json()).existing) existing.add(id)
+    }
+    const changes = rows.filter((row) => row.gone === existing.has(siteId(row.id)))
+    if (changes.length) await db.videos.bulkPut(changes.map((row) => ({ ...row, gone: !row.gone })))
+    // updatedAt stays: every device finds this out by itself
+    for (const row of added) {
+      if (row.gone === existing.has(siteId(row.videoId))) await db.addedVideos.update(row.id, { gone: !row.gone })
     }
   }
   write(GONE_KEY, Date.now())
@@ -388,11 +395,65 @@ export const markAllWatched = (videoIds: string[]) => saveMarks(videoIds, { watc
 export const clearWatched = (videoIds: string[]) => saveMarks(videoIds, { cleared: true })
 
 export interface FeedVideo extends VideoRow {
-  followId: string
+  followId: string // its channel's follow; added videos of a channel not followed share their own
   channel: string
   channelIcon: string | null
   opened: boolean
   watched: boolean
+}
+
+// ---------- Added by link ----------
+
+// The Worker's answers (not shown themselves) and what to say
+const ADD_VIDEO_ERRORS: Record<string, () => string> = {
+  'not-a-video': () => t('This isn’t a video’s link. Paste the address of a YouTube or Twitch video.'),
+  'channel-link': () => t('This is a channel’s link. To get its videos, use Add a follow.'),
+  'video-live': () => t('This video is still live. You can add it once it’s finished.'),
+  'video-not-found': () => t('No video found at this link. It may be private or deleted.'),
+}
+
+const addedFollowId = (follow: VideoFollow | undefined, platform: string, channelId: string) =>
+  follow?.id ?? `added-${platform}-${channelId}` // i18n-ok
+
+// Puts one video in To watch, whatever its channel's rules say: you asked for this one. Gives back
+// the followId it's listed under. Throws what to tell the user if it can't, or if it's there already.
+export async function addVideo(link: string) {
+  const response = await igdbProxyFetch('video/one', JSON.stringify({ link: link.trim() }), 15_000)
+  const answer = await response.json().catch(() => null)
+  if (!response.ok || !answer?.video) {
+    const problem = ADD_VIDEO_ERRORS[answer?.error]
+    throw new Error(problem ? problem() : t('Could not add this video: {error}', { error: answer?.error ?? response.status }))
+  }
+  const { platform, channel, video } = answer
+  const videoId = `${platform}-${video.id}`
+  const id = videoMarkId(videoId)
+  const [mark, added, row, follows] = await Promise.all([db.videoMarks.get(id), db.addedVideos.get(id), db.videos.get(videoId), db.videoFollows.toArray()])
+  const follow = follows.find((other) => !other.deleted && other.platform === platform && other.channelId === channel.id)
+  if (!mark?.cleared && (added || (row && follow && videoKept(follow, row)))) {
+    throw new Error(mark?.watched ? t('This video is already in Watched') : t('This video is already in To watch'))
+  }
+  const fields: AddedVideo = {
+    ...added,
+    id,
+    videoId,
+    platform,
+    channelId: channel.id,
+    channel: channel.name,
+    channelIcon: channel.icon,
+    kind: video.kind,
+    title: video.title,
+    url: video.url,
+    thumbnail: video.thumbnail,
+    published: Date.parse(video.published),
+    duration: video.duration,
+    gone: false,
+    updatedAt: Date.now(),
+  }
+  await db.addedVideos.put(fields)
+  // Seen before: it goes back to To watch, also if it was cleared
+  if (mark) await saveMarks([videoId], { cleared: false, watched: false })
+  changed()
+  return addedFollowId(follow, platform, channel.id)
 }
 
 // Each channel's videos together, the channel with the newest video first. The list comes newest
@@ -406,19 +467,36 @@ export function byChannel(videos: FeedVideo[]) {
 // What the Video tab shows, newest first. undefined while loading.
 export function useVideoFeed() {
   return useLiveQuery(async () => {
-    const [allFollows, rows, marks] = await Promise.all([db.videoFollows.toArray(), db.videos.toArray(), db.videoMarks.toArray()])
+    const [allFollows, rows, added, marks] = await Promise.all([db.videoFollows.toArray(), db.videos.toArray(), db.addedVideos.toArray(), db.videoMarks.toArray()])
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
     const followOf = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
     const markOf = new Map(marks.map((mark) => [mark.id, mark]))
-    const videos = rows
-      .flatMap((video): FeedVideo[] => {
+    const addedIds = new Set(added.map((video) => video.videoId))
+    const listed: (Omit<FeedVideo, 'opened' | 'watched'> & { sortAt: number })[] = [
+      ...rows.flatMap((video) => {
         const follow = followOf.get(`${video.platform} ${video.channelId}`)
-        if (!follow || !videoKept(follow, video)) return []
+        if (!follow || addedIds.has(video.id) || !videoKept(follow, video)) return []
+        return [{ ...video, followId: follow.id, channel: follow.name, channelIcon: follow.icon, sortAt: video.published }]
+      }),
+      // By the day it was added, or an old video would sink to the bottom unseen
+      ...added.map(({ videoId, updatedAt, syncedRev: _r, syncedUpdatedAt: _u, ...video }) => {
+        const follow = followOf.get(`${video.platform} ${video.channelId}`)
+        return {
+          ...video,
+          id: videoId,
+          followId: addedFollowId(follow, video.platform, video.channelId),
+          channel: follow?.name ?? video.channel,
+          channelIcon: follow ? follow.icon : video.channelIcon,
+          sortAt: updatedAt,
+        }
+      }),
+    ]
+    const videos = listed
+      .flatMap((video) => {
         const mark = markOf.get(videoMarkId(video.id))
-        if (mark?.cleared) return []
-        return [{ ...video, followId: follow.id, channel: follow.name, channelIcon: follow.icon, opened: !!mark?.opened, watched: !!mark?.watched }]
+        return mark?.cleared ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched }]
       })
-      .sort((a, b) => b.published - a.published || a.id.localeCompare(b.id))
+      .sort((a, b) => b.sortAt - a.sortAt || a.id.localeCompare(b.id))
     const toWatch = videos.filter((video) => !video.watched)
     return {
       follows,

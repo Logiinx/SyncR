@@ -282,6 +282,17 @@ export interface VideoRow {
   fresh?: boolean // found by a check and not shown yet: tagged "New" when the Video tab shows it
 }
 
+// A video added by its link (video.ts). Synced, unlike VideoRow: no follow can download it again.
+export interface AddedVideo extends Omit<VideoRow, 'id' | 'fresh'> {
+  id: string // videoMarkId(videoId), same as its mark: also its file name in Dropbox
+  videoId: string // VideoRow's id
+  channel: string
+  channelIcon: string | null
+  updatedAt: number // when it was added: its place in the list. Not changed by "gone"
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
+}
+
 // What's been done with a video. Apart from the video, as these marks are what's
 // worth keeping: they stay when a follow is removed, so adding it again remembers them.
 export interface VideoMark {
@@ -332,6 +343,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   videoFollows: EntityTable<VideoFollow, 'id'>
   videos: EntityTable<VideoRow, 'id'>
   videoMarks: EntityTable<VideoMark, 'id'>
+  addedVideos: EntityTable<AddedVideo, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -412,6 +424,10 @@ export function defineSchema(d: Dexie) {
   d.version(17).stores({
     videos: 'id',
     videoMarks: 'id',
+  })
+
+  d.version(18).stores({
+    addedVideos: 'id',
   })
 }
 
