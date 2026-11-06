@@ -7,7 +7,7 @@ import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { useLocalState } from './localState'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
-// own use for now: it only exists when their Worker says it's on (VIDEO_FEED, see
+// own use for now: it only exists when their Worker says so (their password + YOUTUBE_KEY, see
 // proxy/igdb-worker.js). Everyone else sees nothing. PC only for now.
 
 export const VIDEO_TAB = 'video' // its id among the open tabs (like GAMES_TAB)

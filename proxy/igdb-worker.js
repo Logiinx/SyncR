@@ -19,10 +19,9 @@
 //   GITHUB_TOKEN          optional: github.com → Settings → Developer settings → Fine-grained
 //                         tokens, "Public repositories", no permissions. Link cards of GitHub
 //                         repos: 5,000 lookups per hour instead of 60 (see /preview)
-//   VIDEO_FEED            optional: the exact word "on" shows the Video tab in your SyncR
-//                         (not for the friend password; see video/ below)
-//   YOUTUBE_KEY           for the Video tab's YouTube channels: console.cloud.google.com → APIs
-//                         & Services → enable "YouTube Data API v3" → Credentials → API key
+//   YOUTUBE_KEY           optional: shows the Video tab in your SyncR (not for the friend
+//                         password; see video/ below). console.cloud.google.com → APIs &
+//                         Services → enable "YouTube Data API v3" → Credentials → API key
 //                         (restrict it to that API)
 //
 // The app sends: POST https://<worker>/<endpoint>, header "X-SyncR-Password", body = an IGDB
@@ -498,8 +497,8 @@ async function linkPreview(env, request) {
 }
 
 // Video tab: new videos of followed Twitch and YouTube channels. Only for the owner, and only
-// when VIDEO_FEED is "on" (see the top of this file); otherwise the app shows no Video tab.
-//   video/status   no body                  { enabled, youtube }: youtube = YOUTUBE_KEY is set
+// when YOUTUBE_KEY is set (see the top of this file); otherwise the app shows no Video tab.
+//   video/status   no body                  { enabled }
 //   video/channel  { link }                 { platform, id, name, icon }
 //   video/list     { platform, id, since }  { videos: [...] }, newest first; with "since" (a date)
 //                                           everything back to it, without it the latest page
@@ -526,7 +525,6 @@ async function askTwitch(env, path) {
 
 // Errors name only Google's reason (e.g. quotaExceeded), never the address: it holds the key
 async function askYouTube(env, path, params) {
-  if (!env.YOUTUBE_KEY) throw videoError('YOUTUBE_KEY is not set', 500)
   const response = await fetch(`${YOUTUBE_API}/${path}?${new URLSearchParams({ ...params, key: env.YOUTUBE_KEY })}`)
   if (response.status === 404) return { items: [] }
   if (!response.ok) {
@@ -774,8 +772,8 @@ export default {
       }
     }
     if (endpoint.startsWith('video/')) {
-      const on = owner && env.VIDEO_FEED === 'on'
-      if (endpoint === 'video/status') return reply({ enabled: on, youtube: on && !!env.YOUTUBE_KEY }, 200)
+      const on = owner && !!env.YOUTUBE_KEY
+      if (endpoint === 'video/status') return reply({ enabled: on }, 200)
       if (!on) return reply({ error: 'The video feed is off' }, 403)
       try {
         return reply(await videoFeed(env, endpoint, request), 200)
