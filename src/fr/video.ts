@@ -7,7 +7,7 @@ export const video = {
   'Edit follow': 'Modifier le suivi',
   Follows: 'Chaînes suivies',
   'Channel link': 'Lien de la chaîne',
-  'twitch.tv/name or youtube.com/@name': 'twitch.tv/nom ou youtube.com/@nom',
+  'name for Twitch, @name for YouTube, or a link': 'nom pour Twitch, @nom pour YouTube, ou un lien',
   'Only titles with': 'Seulement les titres avec',
   'Keeps a video if its title has one of these words. Separate them with commas. Capitals and accents don’t matter. Empty: all titles.':
     'Garde une vidéo si son titre contient l’un de ces mots. Séparez-les par des virgules. Les majuscules et les accents ne comptent pas. Vide : tous les titres.',
@@ -31,8 +31,8 @@ export const video = {
   'Shorts shown': 'Shorts affichés',
   'All videos': 'Toutes les vidéos',
   'Stop following {name}?': 'Ne plus suivre {name} ?',
-  'This isn’t a channel’s link. Paste one like twitch.tv/name or youtube.com/@name.':
-    'Ce n’est pas le lien d’une chaîne. Collez-en un comme twitch.tv/nom ou youtube.com/@nom.',
+  'This isn’t a channel. Write name for Twitch or @name for YouTube, or paste the channel’s link.':
+    'Ce n’est pas une chaîne. Écrivez nom pour Twitch ou @nom pour YouTube, ou collez le lien de la chaîne.',
   'No channel found at this link': 'Aucune chaîne trouvée à ce lien',
   'Could not look up this channel: {error}': 'Impossible de trouver cette chaîne : {error}',
   'You already follow {name}': 'Vous suivez déjà {name}',
@@ -120,6 +120,6 @@ export const video = {
   'Mark all as watched?': 'Tout marquer comme vu ?',
   '{n} video moves to Watched.': '{n} vidéo passe dans Vues.',
   '{n} videos move to Watched.': '{n} vidéos passent dans Vues.',
-  'New videos': 'Nouvelles vidéos',
+  'Videos to watch': 'Vidéos à regarder',
   '{name}: {error}': '{name} : {error}',
 }

@@ -4,6 +4,16 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** du compteur de l’onglet Vidéo : les vidéos ouvertes comptent jusqu’à être marquées comme vues
+- **Amélioration** de l’ajout d’un suivi : écrivez nom pour Twitch ou @nom pour YouTube, les liens collés sont raccourcis
+- **Ajout** de la valeur du volume à côté de son curseur dans le lecteur Twitch
+- **Correction** de petits problèmes : le ⓘ de la fenêtre de suivi ne s’ouvre plus qu’au-dessus de l’icône
+
+**Mail**
+- **Changement** de Garder non lu sur un pop-up : le mail compte comme manqué dans l’onglet Mail jusqu’à sa lecture
+- **Correction** de petits problèmes : le dernier compte coché dans l’onglet Mail ne paraît plus décoché
+
 ## [0.57.0] - 2026-11-06
 
 **Vidéo**

@@ -174,7 +174,8 @@ function MailView() {
                     className="reminders-hide-repeating mail-account-filter"
                     title={last ? t('At least one account stays shown') : t('Show this account’s mail')}
                   >
-                    <input type="checkbox" checked={on} disabled={last} onChange={(e) => toggleAccount(email, e.target.checked)} />
+                    {/* Not "disabled" for the last one: a disabled box looks unticked in the dark theme */}
+                    <input type="checkbox" checked={on} aria-disabled={last} onChange={(e) => !last && toggleAccount(email, e.target.checked)} />
                     <span className="menu-swatch" style={{ background: accountColor(email) ?? 'var(--link)' }} />
                     {email}
                   </label>

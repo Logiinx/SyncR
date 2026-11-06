@@ -57,7 +57,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   const slideIn = useSlideIn()
   const accounts = useGmailAccounts()
   const missed = useMissed()
-  const newVideos = useVideoFeed()?.newCount ?? 0
+  const videosToWatch = useVideoFeed()?.toWatchCount ?? 0
   const [checking, setChecking] = useState(false)
   // Re-runs automatically whenever the notes change.
   const notes = useLiveQuery(() => db.notes.orderBy('updatedAt').reverse().toArray(), [])
@@ -88,7 +88,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
           <Bell size={15} /> {t('Reminders')}
         </button>
         {/* PC only (the phone has the Gmail app), once a Gmail account is added. The count:
-            emails whose pop-up faded by itself, still unread ("missed") */}
+            emails whose pop-up left them unread ("missed") */}
         {(isTauri() || import.meta.env.DEV) && accounts.length > 0 && (
           <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
             <Mail size={15} /> {t('Mail')}
@@ -98,7 +98,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
         {onVideo && (
           <button className={activeId === VIDEO_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onVideo}>
             <Video size={15} /> {t('Video')}
-            {newVideos > 0 && <span className="sidebar-count" title={t('New videos')}>{newVideos}</span>}
+            {videosToWatch > 0 && <span className="sidebar-count" title={t('Videos to watch')}>{videosToWatch}</span>}
           </button>
         )}
         <div className="game-search-bar sidebar-search">

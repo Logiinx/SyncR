@@ -5708,7 +5708,7 @@ h3.games-group-title {
   white-space: nowrap;
 }
 
-.mail-account-filter input:disabled {
+.mail-account-filter input[aria-disabled='true'] {
   cursor: default;
 }
 

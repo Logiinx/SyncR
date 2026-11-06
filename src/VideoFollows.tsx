@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
@@ -8,11 +8,14 @@ import VideoLogo from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
-import { addFollow, findChannel, looksLikeYouTube, minuteCount, removeFollow, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addFollow, findChannel, looksLikeYouTube, minuteCount, removeFollow, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
 
 // Add a follow, or change one: which channel (only when adding), which of its videos count, and
 // (only when adding) how far back to start.
 export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClose: () => void }) {
+  // Each label names its input: without that it takes the first thing it can inside it, the ⓘ
+  // button, which then lights up when the mouse is anywhere on the field and opens on its click
+  const fieldId = useId()
   const [link, setLink] = useState('')
   const [only, setOnly] = useState(follow?.onlyWords.join(', ') ?? '')
   const [except, setExcept] = useState(follow?.exceptWords.join(', ') ?? '')
@@ -51,30 +54,36 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
           <input
             autoFocus
             value={link}
-            placeholder={t('twitch.tv/name or youtube.com/@name')}
+            placeholder={t('name for Twitch, @name for YouTube, or a link')}
             onChange={(e) => setLink(e.target.value)}
+            onBlur={() => setLink(tidyChannelLink)}
+            onPaste={(e) => {
+              if (link) return // Pasted in the middle of what's there: tidied when leaving the field
+              e.preventDefault()
+              setLink(tidyChannelLink(e.clipboardData.getData('text')))
+            }}
           />
         </label>
       )}
-      <label className="video-field">
+      <label className="video-field" htmlFor={`${fieldId}-only`}>
         <span className="video-field-name">
           {t('Only titles with')}
           <InfoTip label={t('Only titles with')}>
             {t('Keeps a video if its title has one of these words. Separate them with commas. Capitals and accents don’t matter. Empty: all titles.')}
           </InfoTip>
         </span>
-        <input autoFocus={!!follow} value={only} placeholder={t('hotline, talk show')} onChange={(e) => setOnly(e.target.value)} />
+        <input id={`${fieldId}-only`} autoFocus={!!follow} value={only} placeholder={t('hotline, talk show')} onChange={(e) => setOnly(e.target.value)} />
       </label>
-      <label className="video-field">
+      <label className="video-field" htmlFor={`${fieldId}-except`}>
         <span className="video-field-name">
           {t('Except titles with')}
           <InfoTip label={t('Except titles with')}>
             {t('Leaves out a video if its title has one of these words, even when it has a word from the list above.')}
           </InfoTip>
         </span>
-        <input value={except} placeholder={t('trailer, best of')} onChange={(e) => setExcept(e.target.value)} />
+        <input id={`${fieldId}-except`} value={except} placeholder={t('trailer, best of')} onChange={(e) => setExcept(e.target.value)} />
       </label>
-      <label className="video-field">
+      <label className="video-field" htmlFor={`${fieldId}-minutes`}>
         <span className="video-field-name">
           {t('Hide videos shorter than (minutes)')}
           <InfoTip label={t('Hide videos shorter than (minutes)')}>
@@ -82,7 +91,7 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
           </InfoTip>
         </span>
         {/* No min, max or step: the browser would refuse the form with its own bubble; minuteCount cleans up */}
-        <input type="number" value={minutes} placeholder={t('Off')} onChange={(e) => setMinutes(e.target.value)} />
+        <input id={`${fieldId}-minutes`} type="number" value={minutes} placeholder={t('Off')} onChange={(e) => setMinutes(e.target.value)} />
       </label>
       {youtube && (
         <label className="dialog-check">

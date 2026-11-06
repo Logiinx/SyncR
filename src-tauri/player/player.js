@@ -205,6 +205,7 @@ function drawVolume() {
   $('mute').title = silent ? labels.unmute : labels.mute
   $('level').value = silent ? 0 : video.volume
   $('level').title = labels.volume
+  $('level-text').textContent = `${Math.round((silent ? 0 : video.volume) * 100)}%`
   localStorage.setItem('player.volume', video.volume)
   localStorage.setItem('player.muted', video.muted ? 1 : 0)
 }

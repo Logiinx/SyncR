@@ -11,9 +11,9 @@ import { senderAddress } from './safeSenders'
 // reads too (same origin) and follows through "storage" events.
 // Only mail that's new since the account was first checked shows: unread mail already there
 // then doesn't pop up. A card goes when its mail is read (here, in Gmail or on the phone), or
-// with "Keep unread" (the mail stays unread). A card opened to read the mail (MailReader.tsx)
-// marks it read and stays until closed (Done, Mark as unread). A card that faded by itself
-// (Settings → Alerts → Emails) leaves its mail unread and "missed", for the Mail tab.
+// with "Keep unread". A card opened to read the mail (MailReader.tsx) marks it read and stays
+// until closed (Done, Mark as unread). A card that leaves its mail unread (Keep unread, Mark as
+// unread, or faded by itself: Settings → Alerts → Emails) makes it "missed", for the Mail tab.
 
 export interface MailAlert {
   key: string // "mail:<account>:<message id>"
@@ -27,14 +27,15 @@ export interface MailAlert {
   opened?: boolean // opened to read (marked read): stays until closed
 }
 
-// mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Keep unread,
-// Done after reading) · mail-delete: to Gmail's Trash · mail-opened: opened to read (marks it read) ·
-// mail-unread: Mark as unread (the card goes) · mail-fade: faded by itself (missed)
-export type MailAction = 'mail-read' | 'mail-close' | 'mail-delete' | 'mail-opened' | 'mail-unread' | 'mail-fade'
+// mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Done after
+// reading) · mail-delete: to Gmail's Trash · mail-opened: opened to read (marks it read) ·
+// mail-unread: Mark as unread (the card goes, missed) · mail-keep: Keep unread (the card goes,
+// missed) · mail-fade: faded by itself (missed)
+export type MailAction = 'mail-read' | 'mail-close' | 'mail-delete' | 'mail-opened' | 'mail-unread' | 'mail-keep' | 'mail-fade'
 
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
-const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that faded unread (until read anywhere)
+const MISSED_KEY = 'syncr.gmail.missed' // keys of alerts that left their mail unread (until read anywhere)
 const HISTORY_KEY = 'syncr.gmail.history' // per account: Gmail's history id at the last full check
 const CHECKED_KEY = 'syncr.gmail.checked' // per account: when the unread list was last read (ms)
 // A card only for mail that arrived since the last check (minus this): an older mail marked
@@ -294,9 +295,13 @@ export async function runMailAction(key: string, action: MailAction) {
     return setUnread(alert, false)
   }
   removeAlert(key) // right away; if Gmail can't be reached, the mail just stays as it was
-  if (action === 'mail-fade') saveMissed([...new Set([key, ...loadMissed()])])
+  const markMissed = () => saveMissed([...new Set([key, ...loadMissed()])])
+  if (action === 'mail-fade' || action === 'mail-keep') markMissed()
   if (action === 'mail-read') await setUnread(alert, false)
-  if (action === 'mail-unread') await setUnread(alert, true)
+  if (action === 'mail-unread') {
+    await setUnread(alert, true)
+    markMissed()
+  }
   if (action === 'mail-delete') await changeMail(key, 'trash')
 }
 

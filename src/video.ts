@@ -68,13 +68,43 @@ export interface VideoChannel {
 export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'minMinutes' | 'hideShorts'>
 export type PastChoice = 'today' | '30' | '60' | 'all'
 
-// The channel a pasted link points to (the Worker knows how to read each site's links)
-export async function findChannel(link: string): Promise<VideoChannel> {
+const TWITCH_TABS = new Set(['about', 'clips', 'home', 'schedule', 'videos'])
+
+// A pasted address in its shortest form: "name" for Twitch, "@name" for YouTube. What can't be
+// shortened (youtube.com/channel/…, or another site) only loses what doesn't matter, or stays.
+export function tidyChannelLink(text: string) {
+  const typed = text.trim().replace(/\/+$/, '')
+  let url: URL
+  try {
+    url = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`)
+  } catch {
+    return typed
+  }
+  const host = url.hostname.toLowerCase().replace(/^(www|m)\./, '')
+  const parts = url.pathname.split('/').filter(Boolean)
+  if (!parts.length || url.searchParams.has('v')) return typed // Just a name, or a video's link
+  let path = parts.join('/')
+  try {
+    path = decodeURI(path)
+  } catch {
+    // Kept as it is
+  }
+  const [first, second] = path.split('/')
+  if (host === 'twitch.tv') return parts.length === 1 || (parts.length === 2 && TWITCH_TABS.has(second)) ? first : `${host}/${path}`
+  if (host === 'youtube.com') return first.startsWith('@') ? first : `${host}/${path}`
+  return typed
+}
+
+// A bare name is a Twitch channel's: a YouTube handle starts with @ (the Worker knows how to
+// read those and each site's links)
+export async function findChannel(typed: string): Promise<VideoChannel> {
+  const tidy = tidyChannelLink(typed)
+  const link = /^[a-z0-9_]+$/i.test(tidy) ? `twitch.tv/${tidy}` : tidy // i18n-ok: an address
   const response = await igdbProxyFetch('video/channel', JSON.stringify({ link }), 15_000)
   const answer = await response.json().catch(() => null)
   if (response.ok && answer?.id) return answer
   // i18n-ok: the Worker's answer, not shown
-  if (answer?.error === 'not-a-channel') throw new Error(t('This isn’t a channel’s link. Paste one like twitch.tv/name or youtube.com/@name.'))
+  if (answer?.error === 'not-a-channel') throw new Error(t('This isn’t a channel. Write name for Twitch or @name for YouTube, or paste the channel’s link.'))
   // i18n-ok: the Worker's answer, not shown
   if (answer?.error === 'channel-not-found') throw new Error(t('No channel found at this link'))
   throw new Error(t('Could not look up this channel: {error}', { error: answer?.error ?? response.status }))
@@ -374,7 +404,7 @@ export function useVideoFeed() {
       follows,
       toWatch,
       watched: videos.filter((video) => video.watched),
-      newCount: toWatch.filter((video) => !video.opened && !video.gone).length,
+      toWatchCount: toWatch.filter((video) => !video.gone).length,
     }
   }, [])
 }

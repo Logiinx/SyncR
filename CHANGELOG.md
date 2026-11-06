@@ -4,6 +4,16 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** the Video tab's count to include opened videos, until they're marked as watched
+- **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened
+- **Added** the volume's value next to its slider in the Twitch player
+- **Fixed** small issues: the ⓘ in the follow window only opens over the icon
+
+**Mail**
+- **Changed** Keep unread on a pop-up: the mail now counts as missed on the Mail tab until it's read
+- **Fixed** small issues: the last ticked account in the Mail tab no longer looks unticked
+
 ## [0.57.0] - 2026-11-06
 
 **Video**

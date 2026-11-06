@@ -84,7 +84,9 @@
     width: 0; margin: 0; opacity: 0; accent-color: #fff; cursor: pointer;
     transition: width 0.2s, opacity 0.2s, margin 0.2s;
   }
-  #volume:hover #level { width: 84px; margin-right: 8px; opacity: 1; }
+  #volume:hover #level { width: 84px; margin-right: 6px; opacity: 1; }
+  #level-text { width: 0; overflow: hidden; opacity: 0; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: width 0.2s, opacity 0.2s, margin 0.2s; }
+  #volume:hover #level-text { width: 32px; margin-right: 6px; opacity: 1; }
   #time { width: auto; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #time-day:empty { display: none; }
   #spacer { flex: 1; min-width: 0; }
@@ -179,6 +181,7 @@
         <div id="volume">
           <button class="button" id="mute"></button>
           <input id="level" type="range" min="0" max="1" step="0.05">
+          <span id="level-text"></span>
         </div>
         <button class="button" id="time"><span id="time-now"></span><span id="time-day"></span></button>
         <div id="spacer"></div>

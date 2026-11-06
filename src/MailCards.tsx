@@ -57,7 +57,7 @@ export function MailButtons({ opened, onAction }: { opened?: boolean; onAction: 
       <button className="primary" onClick={() => onAction(opened ? 'mail-close' : 'mail-read')}>
         {opened ? t('Done') : t('Mark as read')}
       </button>
-      <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-close')}>
+      <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-keep')}>
         {opened ? t('Mark as unread') : t('Keep unread')}
       </button>
       <button className="mail-delete" onClick={() => onAction('mail-delete')} title={t('Delete')} aria-label={t('Delete')}>
