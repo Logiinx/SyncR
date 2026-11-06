@@ -66,7 +66,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
-    colors: pageColors(['--bg', '--hover', '--text', '--text-dim', '--text-blue', '--accent']),
+    colors: pageColors(['--bg', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--accent']),
     labels: {
       play: t('Play video'),
       pause: t('Pause'),
@@ -83,6 +83,9 @@ function twitchPlayerAddress(video: PlayableVideo) {
       exitFullscreen: t('Exit full screen'),
       stoppedLoading: t('The video stopped loading'),
       retry: t('Try again'),
+      skipMuted: t('Skip muted part'),
+      barTitle: t('Progress bar'),
+      gameChanges: t('Game changes'),
       chatShow: t('Show chat'),
       chatHide: t('Hide chat'),
       chatNoRoom: t("Chat can't show here"),

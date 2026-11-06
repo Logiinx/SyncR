@@ -350,7 +350,7 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
     if kind == "text/html" {
       response = response.header(
         "Content-Security-Policy",
-        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app 'self'; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       );
     }
     response.body(body).unwrap_or_default()
@@ -360,6 +360,7 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
     "/player.html" => return answer(200, "text/html", include_bytes!("../player/player.html").to_vec()),
     "/player.js" => return answer(200, "text/javascript", include_bytes!("../player/player.js").to_vec()),
     "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
+    "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     _ => {}
   }
@@ -380,7 +381,9 @@ async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> 
   if rest.ends_with(".m3u8") {
     return answer(status, "application/vnd.apple.mpegurl", local_playlist(&String::from_utf8_lossy(&body)).into_bytes());
   }
-  answer(status, "video/mp2t", body.to_vec())
+  // Preview pictures and their list; the rest is video
+  let kind = if rest.ends_with(".jpg") { "image/jpeg" } else if rest.ends_with(".json") { "application/json" } else { "video/mp2t" };
+  answer(status, kind, body.to_vec())
 }
 
 // Both pages of the player window share a storage folder, so they must start the same way. A

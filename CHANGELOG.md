@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** preview pictures, muted parts with Skip and game changes on the Twitch player's progress bar
+
 ## [0.53.0] - 2026-11-06
 
 **Video**

@@ -49,6 +49,7 @@ function drawTime() {
   const shown = dragging !== null ? dragging * length : video.currentTime
   const part = length ? shown / length : 0
   $('played').style.width = `${part * 100}%`
+  $('track').style.setProperty('--played', `${part * 100}%`)
   $('knob').style.left = `${part * 100}%`
   $('time').textContent = `${clock(shown)} / ${clock(length)}`
   let end = 0
@@ -71,7 +72,7 @@ const partAt = (event) => {
 $('progress').addEventListener('pointermove', (event) => {
   const part = partAt(event)
   $('tip').hidden = !video.duration
-  $('tip').textContent = clock(part * video.duration)
+  fillTip(part * video.duration)
   // Stays inside the window near both ends
   const width = $('progress').clientWidth
   const half = $('tip').offsetWidth / 2
@@ -305,7 +306,19 @@ function drawMenu() {
     speeds.append(button)
   }
   menu.append(speeds)
-  chatMenu(menu, title)
+  const row = (text, on, action) => {
+    const button = document.createElement('button')
+    button.className = `menu-item${on ? ' on' : ''}`
+    button.textContent = text
+    if (on) button.insertAdjacentHTML('beforeend', icon('check'))
+    button.onclick = () => {
+      action()
+      drawMenu()
+    }
+    menu.append(button)
+  }
+  timelineMenu(row, title)
+  chatMenu(menu, row, title)
 }
 function openMenu() {
   $('menu').hidden = false
@@ -432,6 +445,7 @@ async function load() {
     if (!userPaused) video.play().catch(() => loading(false)) // refused: the big play button shows
   })
   hls.on(Hls.Events.LEVEL_SWITCHED, drawSettings)
+  hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => noteMutedParts(loaded.details.fragments))
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)

@@ -488,18 +488,7 @@ edge.addEventListener('pointercancel', endResize)
 function redrawChat() {
   if (chatShowing() && knownTo >= 0) drawFromKnown()
 }
-function chatMenu(menu, title) {
-  const row = (text, on, action) => {
-    const button = document.createElement('button')
-    button.className = `menu-item${on ? ' on' : ''}`
-    button.textContent = text
-    if (on) button.insertAdjacentHTML('beforeend', icon('check'))
-    button.onclick = () => {
-      action()
-      drawMenu()
-    }
-    menu.append(button)
-  }
+function chatMenu(menu, row, title) {
   title(labels.chatTitle)
   row(labels.chatHideBots, hideBots, () => {
     hideBots = !hideBots
