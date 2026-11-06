@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-11-06
+
 **App**
 - **Improved** security: each SyncR window can now only use the app functions it needs
 
