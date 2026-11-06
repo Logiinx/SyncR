@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-06
+
 **Video**
 - **Added** a bar to the player window with the title, Always on top, Watched and Open in browser
 - **Added** a setting to close the player window when you mark a video as watched

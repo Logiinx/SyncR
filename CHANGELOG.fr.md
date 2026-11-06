@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-06
+
 **Vidéo**
 - **Ajout** d’une barre sur le lecteur : titre, Toujours au premier plan, Vue et Ouvrir dans le navigateur
 - **Ajout** d’un réglage pour fermer le lecteur quand vous marquez une vidéo comme vue
