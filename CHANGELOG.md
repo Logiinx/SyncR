@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
-- **Added** a soft flash on newly found videos when you open the Video tab
+- **Added** a green New tag on videos found since you last opened the Video tab
 - **Added** the volume's value next to its slider in the Twitch player
 - **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened
 - **Fixed** small issues: the ⓘ in the follow window only opens over the icon

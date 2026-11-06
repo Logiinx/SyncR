@@ -44,6 +44,7 @@ export const video = {
   'No watched videos yet': 'Aucune vidéo vue pour le moment',
   'No longer available': 'Plus disponible',
   Opened: 'Ouverte',
+  New: 'Nouvelle',
   'Back to To watch': 'Remettre dans À regarder',
   'Mark as watched': 'Marquer comme vue',
   'Open in browser': 'Ouvrir dans le navigateur',

@@ -264,7 +264,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
   if (changes.length) await db.videos.bulkPut(changes)
 }
 
-// These videos have been shown: they won't flash again
+// These videos have been shown: not new anymore the next time the tab opens
 export async function clearFresh(videoIds: string[]) {
   const rows = (await db.videos.bulkGet(videoIds)).filter((row) => row?.fresh) as VideoRow[]
   if (rows.length) await db.videos.bulkPut(rows.map((row) => ({ ...row, fresh: false })))

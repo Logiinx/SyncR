@@ -15,35 +15,22 @@ import { useResumePosition, videoClock } from './videoPositions'
 
 type List = 'towatch' | 'watched'
 
-const FLASH_MS = 3600 // .video-row.fresh in index.css: 3 × 1.2 s
-
-// Videos found since the tab was last showing flash softly once, when it opens or as they arrive
-// while it's open. Not while the window is hidden: they wait until it's back.
-function useFlashing(feed: ReturnType<typeof useVideoFeed>) {
-  const [flashing, setFlashing] = useState<ReadonlySet<string>>(new Set())
-  const [visible, setVisible] = useState(!document.hidden)
+// Videos found since the tab last showed get a "New" tag for as long as it stays open, also those
+// that arrive meanwhile. Marked as shown right away: the next time the tab opens, they aren't new.
+function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
+  const [newIds, setNewIds] = useState<ReadonlySet<string>>(new Set())
   useEffect(() => {
-    const onChange = () => setVisible(!document.hidden)
-    document.addEventListener('visibilitychange', onChange)
-    return () => document.removeEventListener('visibilitychange', onChange)
-  }, [])
-  useEffect(() => {
-    if (!feed || !visible) return
-    const fresh = [...feed.toWatch, ...feed.watched].filter((video) => video.fresh)
+    const fresh = [...(feed?.toWatch ?? []), ...(feed?.watched ?? [])].filter((video) => video.fresh).map((video) => video.id)
     if (!fresh.length) return
-    void clearFresh(fresh.map((video) => video.id))
-    const shown = fresh.filter((video) => !video.watched && !video.opened && !video.gone).map((video) => video.id)
-    if (!shown.length) return
-    setFlashing((now) => new Set([...now, ...shown]))
-    // Not stopped when leaving the tab: there's nothing left to do by then
-    setTimeout(() => setFlashing((now) => new Set([...now].filter((id) => !shown.includes(id)))), FLASH_MS)
-  }, [feed, visible])
-  return flashing
+    void clearFresh(fresh)
+    setNewIds((now) => new Set([...now, ...fresh]))
+  }, [feed])
+  return newIds
 }
 
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video, flash }: { video: FeedVideo; flash: boolean }) {
+function VideoRow({ video, isNew }: { video: FeedVideo; isNew: boolean }) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -54,7 +41,7 @@ function VideoRow({ video, flash }: { video: FeedVideo; flash: boolean }) {
     void markOpened(video.id)
   }
   return (
-    <li className={`video-row${video.gone ? ' gone' : ''}${flash ? ' fresh' : ''}`} data-item={video.id}>
+    <li className={video.gone ? 'video-row gone' : 'video-row'} data-item={video.id}>
       <button className="video-row-open" disabled={video.gone} onClick={open}>
         <span className="video-thumb">
           {video.thumbnail && !video.gone && (
@@ -79,6 +66,7 @@ function VideoRow({ video, flash }: { video: FeedVideo; flash: boolean }) {
             <span>· {nearDay(video.published) ?? shortDate(video.published)}</span>
             {video.gone && <span>· {t('No longer available')}</span>}
             {video.opened && !video.gone && !video.watched && <span className="video-opened">{t('Opened')}</span>}
+            {isNew && !video.opened && !video.gone && !video.watched && <span className="video-new">{t('New')}</span>}
           </span>
         </span>
       </button>
@@ -109,7 +97,7 @@ function VideoView() {
   const pageRef = useRef<HTMLElement>(null)
   usePage(pageRef)
   const feed = useVideoFeed()
-  const flashing = useFlashing(feed)
+  const newIds = useNewVideos(feed)
   const { checking, errors } = useChecking()
   const [list, setList] = useState<List>('towatch')
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
@@ -180,7 +168,7 @@ function VideoView() {
           feed && videos?.length === 0 && <p className="games-empty">{empty}</p>
         )}
         <ul className="video-list" ref={listRef}>
-          {videos?.map((video) => <VideoRow key={video.id} video={video} flash={flashing.has(video.id)} />)}
+          {videos?.map((video) => <VideoRow key={video.id} video={video} isNew={newIds.has(video.id)} />)}
         </ul>
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}
