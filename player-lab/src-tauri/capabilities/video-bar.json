@@ -1,0 +1,6 @@
+{
+  "identifier": "video-bar",
+  "description": "The video player's bar: its own command, nothing else. The site's page below it gets no capability at all.",
+  "webviews": ["video-player-bar"],
+  "permissions": ["allow-video-bar"]
+}

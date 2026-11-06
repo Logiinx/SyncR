@@ -2,5 +2,5 @@
   "identifier": "default",
   "description": "Only the manager window can talk to the app. Player windows get nothing.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:webview:allow-create-webview-window", "core:window:allow-close", "core:window:allow-destroy", "core:window:allow-set-focus", "core:window:allow-set-position", "core:window:allow-set-size"]
+  "permissions": ["core:default", "core:webview:allow-create-webview-window", "core:window:allow-close", "core:window:allow-destroy", "core:window:allow-set-focus", "core:window:allow-set-position", "core:window:allow-set-size", "allow-get-state", "allow-add-extension", "allow-remove-extension", "allow-add-userscript", "allow-remove-userscript", "allow-open-player", "allow-open-extension-page", "allow-open-video-player", "allow-video-player-way", "allow-video-player-watched", "allow-close-video-player"]
 }

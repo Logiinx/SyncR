@@ -648,7 +648,8 @@ async fn open_video_player(
           if url.host_str() == Some(VIDEO_REQUEST) {
             use tauri::Emitter;
             let value = |name: &str| url.query_pairs().find(|(key, _)| key == name).map(|(_, value)| value.into_owned());
-            let _ = requests.emit_to("main", "video-site", serde_json::json!({ "code": value("code"), "video": value("video") }));
+            // /refused (video-watch.js) or /browser (video-stopped.html's button, only obeyed there)
+            let _ = requests.emit_to("main", "video-site", serde_json::json!({ "request": url.path(), "code": value("code"), "video": value("video") }));
             return false;
           }
           // A site can't send this window to SyncR's own pages
@@ -709,8 +710,7 @@ async fn open_video_player(
 #[tauri::command]
 fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on: Option<bool>) -> Result<(), String> {
   use tauri::Emitter;
-  // video-stopped.html has an Open in browser button too. Sites can't call the app at all.
-  if webview.label() != VIDEO_BAR && !(webview.label() == VIDEO_SITE && action == "browser") {
+  if webview.label() != VIDEO_BAR {
     return Err("Only for the video bar".to_string());
   }
   let window = webview.window();
