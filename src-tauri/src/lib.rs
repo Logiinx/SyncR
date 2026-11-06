@@ -290,6 +290,102 @@ const VIDEO_SITE: &str = "video-player-site";
 // See video-watch.js
 const VIDEO_REQUEST: &str = "syncr-video.invalid";
 
+// The own Twitch player (player/player.js). Its page lives at its own address,
+// https://syncr-video.localhost, which has no permissions at all (capabilities/). The same address
+// fetches the video, because Twitch's video servers don't let a page read their answers, while
+// Rust isn't held to that. /v/<host>/<path> fetches https://<host>/<path>, only from Twitch's
+// video addresses.
+fn twitch_host(host: &str) -> bool {
+  host.ends_with(".ttvnw.net") || host.ends_with(".twitch.tv") || host.ends_with(".cloudfront.net")
+}
+
+// Playlists name their pieces by full address: those must come through /v/ too. A piece with its
+// sound cut is listed as "-unmuted", but only its "-muted" file can be fetched.
+fn local_playlist(text: &str) -> String {
+  let mut out = String::with_capacity(text.len());
+  for line in text.lines() {
+    match line.strip_prefix("https://") {
+      Some(rest) if rest.split('/').next().is_some_and(twitch_host) => {
+        out.push_str("/v/");
+        out.push_str(rest);
+      }
+      _ => match line.strip_suffix("-unmuted.ts") {
+        Some(start) => {
+          out.push_str(start);
+          out.push_str("-muted.ts");
+        }
+        None => out.push_str(line),
+      },
+    }
+    out.push('\n');
+  }
+  out
+}
+
+fn player_client() -> &'static reqwest::Client {
+  use std::sync::OnceLock;
+  use std::time::Duration;
+  static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+  CLIENT.get_or_init(|| {
+    // Same as the updater, which may or may not have done this first
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+      let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+    reqwest::Client::builder()
+      .connect_timeout(Duration::from_secs(10))
+      .read_timeout(Duration::from_secs(30))
+      .redirect(reqwest::redirect::Policy::custom(|attempt| {
+        let allowed = attempt.url().scheme() == "https" && attempt.url().host_str().is_some_and(twitch_host);
+        if allowed && attempt.previous().len() < 5 { attempt.follow() } else { attempt.stop() }
+      }))
+      .build()
+      .unwrap_or_default()
+  })
+}
+
+async fn player_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
+  use tauri::http::Response;
+  let answer = |status: u16, kind: &str, body: Vec<u8>| {
+    let mut response = Response::builder().status(status).header("Content-Type", kind);
+    if kind == "text/html" {
+      response = response.header(
+        "Content-Security-Policy",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv; media-src blob: data:; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+      );
+    }
+    response.body(body).unwrap_or_default()
+  };
+  let path = uri.path();
+  match path {
+    "/player.html" => return answer(200, "text/html", include_bytes!("../player/player.html").to_vec()),
+    "/player.js" => return answer(200, "text/javascript", include_bytes!("../player/player.js").to_vec()),
+    "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
+    _ => {}
+  }
+  let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
+    return answer(404, "text/plain", Vec::new());
+  };
+  if !twitch_host(host) {
+    return answer(403, "text/plain", Vec::new());
+  }
+  let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
+  let Ok(response) = player_client().get(format!("https://{host}/{rest}{query}")).send().await else {
+    return answer(502, "text/plain", Vec::new());
+  };
+  let status = response.status().as_u16();
+  let Ok(body) = response.bytes().await else {
+    return answer(502, "text/plain", Vec::new());
+  };
+  if rest.ends_with(".m3u8") {
+    return answer(status, "application/vnd.apple.mpegurl", local_playlist(&String::from_utf8_lossy(&body)).into_bytes());
+  }
+  answer(status, "video/mp2t", body.to_vec())
+}
+
+// Both pages of the player window share a storage folder, so they must start the same way. A
+// video opened by a click should play: without this switch the browser refuses to start it.
+const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.
 fn place_video_pages(window: &tauri::Window, bar_height: f64) {
@@ -383,6 +479,7 @@ async fn open_video_player(
       WebviewBuilder::new(VIDEO_BAR, WebviewUrl::App(format!("video-bar.html?data={bar}").into()))
         .background_color(Color(0x16, 0x16, 0x16, 255))
         .use_https_scheme(true)
+        .additional_browser_args(VIDEO_ARGS)
         .data_directory(folder.clone())
         .on_navigation(|url| url.path() == "/video-bar.html"),
       PhysicalPosition::new(0, 0),
@@ -394,13 +491,15 @@ async fn open_video_player(
       WebviewBuilder::new(VIDEO_SITE, url)
         .background_color(Color(0, 0, 0, 255))
         .use_https_scheme(true)
+        .additional_browser_args(VIDEO_ARGS)
         .data_directory(folder)
         .initialization_script_for_all_frames(include_str!("video-watch.js"))
         .on_navigation(move |url| {
           if url.host_str() == Some(VIDEO_REQUEST) {
             use tauri::Emitter;
             let value = |name: &str| url.query_pairs().find(|(key, _)| key == name).map(|(_, value)| value.into_owned());
-            // /refused (video-watch.js) or /browser (video-stopped.html's button, only obeyed there)
+            // /refused (video-watch.js), /failed (player.js) or /browser (video-stopped.html's button,
+            // only obeyed there)
             let _ = requests.emit_to("main", "video-site", serde_json::json!({ "request": url.path(), "code": value("code"), "video": value("video") }));
             return false;
           }
@@ -542,6 +641,11 @@ pub fn run() {
     ));
 
   let builder = builder
+    // The own Twitch player's page and video
+    .register_asynchronous_uri_scheme_protocol("syncr-video", |_context, request, responder| {
+      let uri = request.uri().clone();
+      tauri::async_runtime::spawn(async move { responder.respond(player_answer(uri).await) });
+    })
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser
     .plugin(tauri_plugin_opener::init())

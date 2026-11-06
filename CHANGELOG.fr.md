@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** de notre propre lecteur Twitch dans la fenêtre du lecteur, avec Twitch en secours
+- **Correction** des vidéos qui ne démarraient pas seules dans la fenêtre du lecteur
+
 ## [0.51.1] - 2026-11-06
 
 **Application**

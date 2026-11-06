@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** our own Twitch player in the player window, with its own controls and Twitch as a backup
+- **Fixed** videos that didn't start by themselves in the player window
+
 ## [0.51.1] - 2026-11-06
 
 **App**

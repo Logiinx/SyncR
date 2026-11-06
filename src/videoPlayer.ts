@@ -1,7 +1,8 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { animationsOn } from './animations'
 import { currentZoom } from './appearance'
-import { t } from './i18n'
+import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
 import { setWatched, watchWatched } from './video'
@@ -29,24 +30,27 @@ export function savePlayerSettings(change: Partial<PlayerSettings>) {
 
 const BAR_HEIGHT = 36
 
-// The ways to open a YouTube video, tried in this order. The last one is our message with an
+// The ways to open a video, tried in this order. YouTube: the last one is our message with an
 // Open in browser button (the full YouTube page isn't one: it has ads and a long wait as long as
 // the window has no extensions). The two sites use YouTube's same player page, so they only help
-// when YouTube turns down how we open it, and they see what's watched.
-const WAYS = ['own', 'yout-ube.com', 'muitube.com', 'stopped'] as const // i18n-ok
-type Way = (typeof WAYS)[number]
+// when YouTube turns down how we open it, and they see what's watched. Twitch: our own player
+// (src-tauri/player), then Twitch's page.
+const YOUTUBE_WAYS = ['own', 'yout-ube.com', 'muitube.com', 'stopped'] as const // i18n-ok
+const TWITCH_WAYS = ['own', 'twitch.tv'] as const // i18n-ok
+type Way = (typeof YOUTUBE_WAYS)[number] | (typeof TWITCH_WAYS)[number]
+const OTHER_SITES: Way[] = ['yout-ube.com', 'muitube.com', 'twitch.tv'] // i18n-ok
 
-// Which way worked for a video, on this PC. Only the two sites: our own way is the default, and
+// Which way worked for a video, on this PC. Only the other sites: our own way is the default, and
 // after a stop it's tried again, as the video may be back by then.
 const WAYS_KEY = 'syncr.videoWays'
 const KEPT_WAYS = 200
 function rememberedWay(video: PlayableVideo): Way {
-  return (video.platform === 'youtube' && read<Record<string, Way>>(WAYS_KEY, {})[video.id]) || 'own'
+  return read<Record<string, Way>>(WAYS_KEY, {})[video.id] || 'own'
 }
 function rememberWay(video: PlayableVideo, way: Way) {
   const ways = read<Record<string, Way>>(WAYS_KEY, {})
   delete ways[video.id] // also puts it back as the newest
-  if (way === 'yout-ube.com' || way === 'muitube.com') ways[video.id] = way
+  if (OTHER_SITES.includes(way)) ways[video.id] = way
   write(WAYS_KEY, Object.fromEntries(Object.entries(ways).slice(-KEPT_WAYS)))
 }
 
@@ -55,11 +59,41 @@ function pageColors(names: string[]) {
   return Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
 }
 
+// What the own Twitch player shows. Like the bar, it has its own storage and no access to the
+// app's translations or colors.
+function twitchPlayerAddress(video: PlayableVideo) {
+  const data = {
+    locale: locale(),
+    zoom: currentZoom(),
+    animations: animationsOn(),
+    colors: pageColors(['--bg', '--hover', '--text', '--text-dim', '--text-blue', '--accent']),
+    labels: {
+      play: t('Play video'),
+      pause: t('Pause'),
+      back: t('Back {seconds} s', { seconds: 10 }),
+      forward: t('Forward {seconds} s', { seconds: 10 }),
+      mute: t('Mute'),
+      unmute: t('Unmute'),
+      volume: t('Volume'),
+      settings: t('Quality and speed'),
+      quality: t('Quality'),
+      speed: t('Speed'),
+      auto: t('Auto'),
+      fullscreen: t('Full screen'),
+      exitFullscreen: t('Exit full screen'),
+      stoppedLoading: t('The video stopped loading'),
+      retry: t('Try again'),
+    },
+  }
+  const id = encodeURIComponent(video.id.slice('twitch-'.length))
+  return `https://syncr-video.localhost/player.html?video=${id}&data=${encodeURIComponent(JSON.stringify(data))}`
+}
+
 // YouTube: its player-only page, where the wait it puts before a video when ads are blocked
 // doesn't happen. video-forward.html opens it: that page refuses to play without knowing the
-// address it was opened from. Twitch: its normal page.
+// address it was opened from.
 function playerAddress(video: PlayableVideo, way: Way) {
-  if (video.platform !== 'youtube') return video.url
+  if (video.platform === 'twitch') return way === 'own' ? twitchPlayerAddress(video) : video.url
   const id = encodeURIComponent(video.id.slice('youtube-'.length))
   if (way === 'yout-ube.com') return `https://www.yout-ube.com/watch?v=${id}`
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}`
@@ -73,7 +107,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
   return `video-stopped.html?data=${encodeURIComponent(JSON.stringify(data))}`
 }
 
-const viaText = (way: Way) => (way === 'yout-ube.com' || way === 'muitube.com' ? t('via {site}', { site: way }) : '')
+const viaText = (way: Way) => (OTHER_SITES.includes(way) ? t('via {site}', { site: way }) : '')
 
 // What the bar shows (public/video-bar.html): it has its own storage and no access to the app's
 // translations or colors, so it gets them in its address.
@@ -81,7 +115,6 @@ function barData(video: PlayableVideo, way: Way) {
   const colors = pageColors(['--bg', '--hover', '--text', '--text-dim', '--text-green', '--text-blue'])
   const data = {
     title: video.title,
-    otherWays: video.platform === 'youtube',
     via: viaText(way),
     watched: video.watched,
     onTop: loadPlayerSettings().alwaysOnTop,
@@ -119,8 +152,11 @@ function changeWay(video: PlayableVideo, way: Way) {
     .catch((error) => console.error('Video player failed', error))
 }
 
-// The next way, and from the message back to the first
-const nextWay = (way: Way) => WAYS[(WAYS.indexOf(way) + 1) % WAYS.length]
+// The next way, and from the last one back to the first
+function nextWay(video: PlayableVideo, way: Way): Way {
+  const ways: readonly Way[] = video.platform === 'twitch' ? TWITCH_WAYS : YOUTUBE_WAYS
+  return ways[(ways.indexOf(way) + 1) % ways.length]
+}
 
 // The bar's clicks that need the app. Listens from the first video on.
 let listening = false
@@ -138,7 +174,7 @@ function listenToBar() {
       openLink(current.url)
       void invoke('close_video_player') // so you don't hear it twice
     }
-    if (action === 'another-way' && current.platform === 'youtube') changeWay(current, nextWay(currentWay))
+    if (action === 'another-way') changeWay(current, nextWay(current, currentWay))
   })
   void listen<{ request?: string; code?: string; video?: string }>('video-site', ({ payload: { request, code, video } }) => {
     // The button on our message (video-stopped.html). A site could fake this signal, so it only
@@ -149,10 +185,15 @@ function listenToBar() {
       void invoke('close_video_player')
       return
     }
+    // Our own Twitch player can't play it (player.js)
+    if (request === '/failed') {
+      if (current?.id === `twitch-${video}` && currentWay === 'own') changeWay(current, nextWay(current, currentWay))
+      return
+    }
     // YouTube showed an error (video-watch.js). "auth": the owner doesn't allow playing outside
     // YouTube, or the video is gone or private: the two sites would get the same answer.
     if (!current || current.id !== `youtube-${video}` || currentWay === 'stopped') return
-    changeWay(current, code === 'auth' ? 'stopped' : nextWay(currentWay))
+    changeWay(current, code === 'auth' ? 'stopped' : nextWay(current, currentWay))
   })
 }
 
