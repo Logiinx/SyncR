@@ -335,10 +335,11 @@ const KEYS = {
   ArrowDown: () => changeVolume(-0.05),
   m: () => $('mute').click(),
   f: toggleFull,
-  Escape: closeMenu,
 }
 document.addEventListener('keydown', (event) => {
   if (event.ctrlKey || event.altKey || event.metaKey) return
+  // Not held back: the browser leaves full screen on it by itself
+  if (event.key === 'Escape') return closeMenu()
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
   if (/^[0-9]$/.test(key)) {
     jumpTo((video.duration || 0) * (Number(key) / 10))
