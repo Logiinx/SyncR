@@ -1,0 +1,55 @@
+# The real SyncR as a separate app, to check it before a release: other name, other data folder
+# (so never the user's notes), no updates, no installer. Only from the "Run workflow" button.
+# The file to run comes as an artifact. To inspect its pages, start it with
+# WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=0 (the port is in the file
+# DevToolsActivePort in each data folder): nothing about that is built in.
+name: Build test app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Same as build-desktop.yml
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Make it a separate app
+        shell: node {0}
+        run: |
+          const fs = require('fs')
+          const path = 'src-tauri/tauri.conf.json'
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'))
+          config.productName = 'SyncR Test'
+          config.mainBinaryName = 'SyncR-Test'
+          config.identifier = 'com.logiinx.syncr.test'
+          config.bundle.createUpdaterArtifacts = false
+          config.plugins.updater.endpoints = ['https://syncr-test.invalid/latest.json']
+          fs.writeFileSync(path, JSON.stringify(config, null, 2))
+
+      - run: npx tauri build --no-bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SyncR-test
+          path: src-tauri/target/release/SyncR-Test.exe
+          retention-days: 7
