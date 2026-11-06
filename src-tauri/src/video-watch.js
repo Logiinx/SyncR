@@ -40,20 +40,25 @@
   }, 500)
 
   // Controls that fade like in our own Twitch player (player.js): 2.8 s without moving the mouse,
-  // at once when it leaves. Not while paused, in a menu, over the controls, or during an ad.
-  // YouTube's own class does the fading, and hides the cursor too.
+  // at once when it leaves. YouTube waits 4 s. Not while paused, in a menu, over the controls, or
+  // during an ad. Its own classes do the hiding: "fadein" on the layout it uses now (controls
+  // outside the player), "ytp-autohide" on the older one, which it still gives some videos.
   const QUIET_AFTER = 2800
-  const keepShowing = (player) => player.getPlayerState?.() !== 1 || player.classList.contains('ad-showing') ||
-    document.querySelector('.ytp-chrome-bottom:hover') || [...document.querySelectorAll('.ytp-settings-menu')].some((menu) => menu.style.display !== 'none')
+  const OVER_CONTROLS = '#player-controls button:hover, #player-controls yt-progress-bar:hover, .ytp-chrome-bottom:hover'
+  const IN_MENU = '#bottom-sheet-wrapper bottom-sheet-layout, .ytp-settings-menu:not([style*="display: none"])'
+  const keepShowing = (player) => player.getPlayerState?.() !== 1 || player.classList.contains('ad-showing') || document.querySelector(`${OVER_CONTROLS}, ${IN_MENU}`)
   let quietTimer
   const quiet = () => {
     const player = document.querySelector('#movie_player')
-    if (!player || keepShowing(player)) wake()
-    else player.classList.add('ytp-autohide')
+    // Only the viewer's own moves bring the controls back, not this
+    if (!player || keepShowing(player)) return void (quietTimer = setTimeout(quiet, QUIET_AFTER))
+    player.classList.add('ytp-autohide')
+    document.querySelector('#player-control-overlay')?.classList.remove('fadein')
   }
   const wake = () => {
     clearTimeout(quietTimer)
     document.querySelector('#movie_player')?.classList.remove('ytp-autohide')
+    document.querySelector('#player-control-overlay')?.classList.add('fadein')
     quietTimer = setTimeout(quiet, QUIET_AFTER)
   }
   for (const kind of ['pointermove', 'pointerdown', 'keydown']) addEventListener(kind, wake, true)
