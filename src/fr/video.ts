@@ -120,6 +120,6 @@ export const video = {
   'Mark all as watched?': 'Tout marquer comme vu ?',
   '{n} video moves to Watched.': '{n} vidéo passe dans Vues.',
   '{n} videos move to Watched.': '{n} vidéos passent dans Vues.',
-  'Videos to watch': 'Vidéos à regarder',
+  'New videos': 'Nouvelles vidéos',
   '{name}: {error}': '{name} : {error}',
 }

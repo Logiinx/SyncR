@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, CheckCheck, ExternalLink, ListVideo, Plus, RefreshCw, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import { nearDay, shortDate } from './dates'
@@ -7,7 +7,7 @@ import { plural, t } from './i18n'
 import { openLink } from './links'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { checkVideos, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { checkVideos, clearFresh, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -15,9 +15,35 @@ import { useResumePosition, videoClock } from './videoPositions'
 
 type List = 'towatch' | 'watched'
 
+const FLASH_MS = 3600 // .video-row.fresh in index.css: 3 × 1.2 s
+
+// Videos found since the tab was last showing flash softly once, when it opens or as they arrive
+// while it's open. Not while the window is hidden: they wait until it's back.
+function useFlashing(feed: ReturnType<typeof useVideoFeed>) {
+  const [flashing, setFlashing] = useState<ReadonlySet<string>>(new Set())
+  const [visible, setVisible] = useState(!document.hidden)
+  useEffect(() => {
+    const onChange = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', onChange)
+    return () => document.removeEventListener('visibilitychange', onChange)
+  }, [])
+  useEffect(() => {
+    if (!feed || !visible) return
+    const fresh = [...feed.toWatch, ...feed.watched].filter((video) => video.fresh)
+    if (!fresh.length) return
+    void clearFresh(fresh.map((video) => video.id))
+    const shown = fresh.filter((video) => !video.watched && !video.opened && !video.gone).map((video) => video.id)
+    if (!shown.length) return
+    setFlashing((now) => new Set([...now, ...shown]))
+    // Not stopped when leaving the tab: there's nothing left to do by then
+    setTimeout(() => setFlashing((now) => new Set([...now].filter((id) => !shown.includes(id)))), FLASH_MS)
+  }, [feed, visible])
+  return flashing
+}
+
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video }: { video: FeedVideo }) {
+function VideoRow({ video, flash }: { video: FeedVideo; flash: boolean }) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -28,7 +54,7 @@ function VideoRow({ video }: { video: FeedVideo }) {
     void markOpened(video.id)
   }
   return (
-    <li className={video.gone ? 'video-row gone' : 'video-row'} data-item={video.id}>
+    <li className={`video-row${video.gone ? ' gone' : ''}${flash ? ' fresh' : ''}`} data-item={video.id}>
       <button className="video-row-open" disabled={video.gone} onClick={open}>
         <span className="video-thumb">
           {video.thumbnail && !video.gone && (
@@ -83,6 +109,7 @@ function VideoView() {
   const pageRef = useRef<HTMLElement>(null)
   usePage(pageRef)
   const feed = useVideoFeed()
+  const flashing = useFlashing(feed)
   const { checking, errors } = useChecking()
   const [list, setList] = useState<List>('towatch')
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
@@ -153,7 +180,7 @@ function VideoView() {
           feed && videos?.length === 0 && <p className="games-empty">{empty}</p>
         )}
         <ul className="video-list" ref={listRef}>
-          {videos?.map((video) => <VideoRow key={video.id} video={video} />)}
+          {videos?.map((video) => <VideoRow key={video.id} video={video} flash={flashing.has(video.id)} />)}
         </ul>
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}

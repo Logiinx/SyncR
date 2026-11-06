@@ -7535,6 +7535,22 @@ button.history-row.selected {
   border-bottom: 1px solid var(--border);
 }
 
+/* A video found since the tab last showed: the app's blue, soft, pulsing 3 times (fade in, fade
+   out). FLASH_MS in VideoView.tsx is the total. */
+.video-row.fresh {
+  animation: video-fresh 1.2s ease-in-out 3;
+}
+
+@keyframes video-fresh {
+  0%,
+  100% {
+    background: transparent;
+  }
+  50% {
+    background: rgb(111 169 242 / 16%);
+  }
+}
+
 .video-row-open {
   display: flex;
   flex: 1;

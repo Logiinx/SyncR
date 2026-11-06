@@ -366,7 +366,7 @@ function MailTabIcon() {
 }
 
 function VideoTabIcon() {
-  return <CountIcon icon={<Video size={14} className="tab-icon" />} count={useVideoFeed()?.toWatchCount ?? 0} title={t('Videos to watch')} />
+  return <CountIcon icon={<Video size={14} className="tab-icon" />} count={useVideoFeed()?.newCount ?? 0} title={t('New videos')} />
 }
 
 // The page when no tab is open; crossfades like the others (animations.ts)

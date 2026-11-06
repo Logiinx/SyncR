@@ -279,6 +279,7 @@ export interface VideoRow {
   published: number
   duration: number // seconds
   gone: boolean // the site no longer has it
+  fresh?: boolean // found by a check and not shown yet: flashes when the Video tab shows it
 }
 
 // What's been done with a video. Apart from the video, as these marks are what's

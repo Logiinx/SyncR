@@ -5,9 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
-- **Changed** the Video tab's count to include opened videos, until they're marked as watched
-- **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened
+- **Added** a soft flash on newly found videos when you open the Video tab
 - **Added** the volume's value next to its slider in the Twitch player
+- **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened
 - **Fixed** small issues: the ⓘ in the follow window only opens over the icon
 
 **Mail**

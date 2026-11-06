@@ -235,7 +235,7 @@ export function useChecking() {
 // Saves what can be shown: only finished videos, no older than the follow's start, and on Twitch
 // only past streams (no highlights or clips). All of them, also those the word lists leave out:
 // changing the lists then shows them at once, without asking the site again.
-async function saveVideos(follow: VideoFollow, listed: ListedVideo[]) {
+async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck: boolean) {
   const rows: VideoRow[] = listed
     // i18n-ok
     .filter((video) => !video.live && (follow.platform === 'youtube' || video.kind === 'archive'))
@@ -254,11 +254,20 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[]) {
     }))
   const saved = await db.videos.bulkGet(rows.map((row) => row.id))
   // Only what's new or different: every save redraws the list
-  const changes = rows.filter((row, i) => {
-    const old = saved[i]
-    return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
-  })
+  const changes = rows
+    // A new follow's first videos are what you asked for, not news
+    .map((row, i) => ({ ...row, fresh: saved[i] ? saved[i].fresh : !firstCheck }))
+    .filter((row, i) => {
+      const old = saved[i]
+      return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
+    })
   if (changes.length) await db.videos.bulkPut(changes)
+}
+
+// These videos have been shown: they won't flash again
+export async function clearFresh(videoIds: string[]) {
+  const rows = (await db.videos.bulkGet(videoIds)).filter((row) => row?.fresh) as VideoRow[]
+  if (rows.length) await db.videos.bulkPut(rows.map((row) => ({ ...row, fresh: false })))
 }
 
 // One follow. The first time everything back to its start, then the latest page is enough.
@@ -268,7 +277,7 @@ async function checkFollow(follow: VideoFollow) {
   const response = await igdbProxyFetch('video/list', JSON.stringify({ platform: follow.platform, id: follow.channelId, since }), 60_000)
   const answer = await response.json().catch(() => null)
   if (!response.ok || !Array.isArray(answer?.videos)) throw new Error(String(answer?.error ?? response.status))
-  await saveVideos(follow, answer.videos)
+  await saveVideos(follow, answer.videos, !checked[follow.id])
   write(CHECKED_KEY, { ...read<Record<string, number>>(CHECKED_KEY, {}), [follow.id]: Date.now() })
 }
 
@@ -404,7 +413,7 @@ export function useVideoFeed() {
       follows,
       toWatch,
       watched: videos.filter((video) => video.watched),
-      toWatchCount: toWatch.filter((video) => !video.gone).length,
+      newCount: toWatch.filter((video) => !video.opened && !video.gone).length,
     }
   }, [])
 }
