@@ -457,6 +457,8 @@ $('chat-button').innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1
 $('chat-button').onclick = toggleChat
 chatLatest.textContent = labels.chatLatest
 chatPanel.addEventListener('pointerdown', closeMenu)
+// Over the video in full screen it covers the controls' place: moving on it brings them back
+chatPanel.addEventListener('pointermove', () => { if (chatPanel.classList.contains('over')) wake() })
 document.addEventListener('fullscreenchange', placeChat)
 new ResizeObserver(placeChat).observe($('stage'))
 

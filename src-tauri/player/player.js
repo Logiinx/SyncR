@@ -113,7 +113,7 @@ function wake() {
 }
 player.addEventListener('pointermove', wake)
 player.addEventListener('pointerdown', wake)
-player.addEventListener('pointerleave', () => {
+document.documentElement.addEventListener('pointerleave', () => {
   if (!keepShowing()) player.classList.add('quiet')
 })
 
