@@ -378,6 +378,23 @@ async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::h
     }
     // Subtitles turned on or off by hand (video-watch.js). Also open to any site in the window: the
     // app only takes it for the video that's open, and it only changes that channel's subtitles.
+    // The video's shape (player.js, video-watch.js). Also open to any site in the window: only
+    // sensible numbers pass, and all it can do is change this window's size within the screen.
+    "/fit" => {
+      let number = |name: &str| {
+        uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name))?.1.parse::<f64>().ok().filter(|value| value.is_finite())
+      };
+      if let (Some(ratio), Some(beside)) = (number("ratio"), number("beside")) {
+        if (0.2..=5.0).contains(&ratio) && (0.0..=20000.0).contains(&beside) {
+          *VIDEO_SHAPE.lock().unwrap() = Some((ratio, beside));
+          // While the mouse holds an edge, letting go does it (settle_video_window)
+          if let (Some(window), false) = (app.get_window(VIDEO_WINDOW), left_button_down()) {
+            fit_video_window(&window, false);
+          }
+        }
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     "/subtitles" => {
       let value = |name: &str| {
         uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value.to_string())
@@ -438,6 +455,103 @@ fn place_video_pages(window: &tauri::Window, bar_height: f64) {
   let _ = site.set_bounds(Rect {
     position: PhysicalPosition::new(0, top as i32).into(),
     size: PhysicalSize::new(size.width, size.height - top).into(),
+  });
+}
+
+// The player window takes the video's shape, so there are no black bars: on opening, when the chat
+// changes and after letting go of an edge. Its width stays and its height follows; after dragging
+// only the height, the other way round, or that edge couldn't be moved. Never maximized or in full
+// screen, where it has to fill the screen.
+// The video's width / height, and the pixels the chat takes beside it
+static VIDEO_SHAPE: std::sync::Mutex<Option<(f64, f64)>> = std::sync::Mutex::new(None);
+static VIDEO_SIZE: std::sync::Mutex<(u32, u32)> = std::sync::Mutex::new((0, 0)); // as it last fitted
+static VIDEO_BAR_HEIGHT: std::sync::Mutex<f64> = std::sync::Mutex::new(0.0);
+static VIDEO_RESIZES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+#[cfg(windows)]
+fn left_button_down() -> bool {
+  use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+  unsafe { GetAsyncKeyState(VK_LBUTTON as i32) < 0 }
+}
+
+#[cfg(not(windows))]
+fn left_button_down() -> bool {
+  false
+}
+
+fn fit_video_window(window: &tauri::Window, change_width: bool) {
+  use tauri::{PhysicalPosition, PhysicalSize};
+  let Some((ratio, beside)) = *VIDEO_SHAPE.lock().unwrap() else {
+    return;
+  };
+  if window.is_fullscreen().unwrap_or(true) || window.is_maximized().unwrap_or(true) || window.is_minimized().unwrap_or(true) {
+    return;
+  }
+  let (Ok(size), Ok(scale), Ok(place), Ok(Some(monitor))) = (window.inner_size(), window.scale_factor(), window.outer_position(), window.current_monitor()) else {
+    return;
+  };
+  let bar = (*VIDEO_BAR_HEIGHT.lock().unwrap() * scale).round();
+  let height_for = |width: f64| (width - beside).max(1.0) / ratio + bar;
+  let width_for = |height: f64| (height - bar).max(1.0) * ratio + beside;
+  let screen = monitor.work_area();
+  let (mut width, mut height) = (size.width as f64, size.height as f64);
+  if change_width {
+    width = width_for(height);
+  } else {
+    height = height_for(width);
+  }
+  // Not bigger than the screen, not smaller than the window can be
+  if height > screen.size.height as f64 {
+    height = screen.size.height as f64;
+    width = width_for(height);
+  }
+  if width > screen.size.width as f64 {
+    width = screen.size.width as f64;
+    height = height_for(width);
+  }
+  if width < 480.0 * scale {
+    width = 480.0 * scale;
+    height = height_for(width);
+  }
+  let height = height.max(300.0 * scale).round() as u32;
+  let width = width.round() as u32;
+  if width.abs_diff(size.width) <= 1 && height.abs_diff(size.height) <= 1 {
+    *VIDEO_SIZE.lock().unwrap() = (size.width, size.height);
+    return;
+  }
+  *VIDEO_SIZE.lock().unwrap() = (width, height);
+  let _ = window.set_size(PhysicalSize::new(width, height));
+  // Grown past the screen's edge: back on it
+  let right = screen.position.x + screen.size.width as i32;
+  let bottom = screen.position.y + screen.size.height as i32;
+  let x = place.x.min(right - width as i32).max(screen.position.x);
+  let y = place.y.min(bottom - height as i32).max(screen.position.y);
+  if x != place.x || y != place.y {
+    let _ = window.set_position(PhysicalPosition::new(x, y));
+  }
+}
+
+// A size that isn't the one fitted: someone is dragging an edge. Fits once it's been let go.
+fn settle_video_window(window: &tauri::Window, now: tauri::PhysicalSize<u32>) {
+  use std::sync::atomic::Ordering;
+  if now.width == 0 || now.height == 0 || (now.width, now.height) == *VIDEO_SIZE.lock().unwrap() {
+    return;
+  }
+  let this = VIDEO_RESIZES.fetch_add(1, Ordering::SeqCst) + 1;
+  let window = window.clone();
+  std::thread::spawn(move || {
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    while left_button_down() && VIDEO_RESIZES.load(Ordering::SeqCst) == this {
+      std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    if VIDEO_RESIZES.load(Ordering::SeqCst) != this {
+      return;
+    }
+    let Ok(size) = window.inner_size() else {
+      return;
+    };
+    let (width, height) = *VIDEO_SIZE.lock().unwrap();
+    fit_video_window(&window, size.width == width && size.height != height);
   });
 }
 
@@ -549,6 +663,11 @@ async fn open_video_player(
   // The app was quit while in full screen: the site isn't anymore, and there'd be no bar to get out
   let _ = window.set_fullscreen(false);
   place_video_pages(&window, bar_height);
+  *VIDEO_SHAPE.lock().unwrap() = None;
+  *VIDEO_BAR_HEIGHT.lock().unwrap() = bar_height;
+  if let Ok(size) = window.inner_size() {
+    *VIDEO_SIZE.lock().unwrap() = (size.width, size.height);
+  }
   let moved = window.clone();
   let was_maximized = AtomicBool::new(false);
   window.on_window_event(move |event| {
@@ -562,11 +681,12 @@ async fn open_video_player(
         let _ = moved.set_fullscreen(true);
         was_maximized.store(true, Ordering::SeqCst);
       }
-      WindowEvent::Resized(_) => {
+      WindowEvent::Resized(new) => {
         if !fullscreen && was_maximized.swap(false, Ordering::SeqCst) {
           let _ = moved.maximize();
         }
         place_video_pages(&moved, bar_height);
+        settle_video_window(&moved, *new);
         if let Some(bar) = moved.get_webview(VIDEO_BAR) {
           let maximized = moved.is_maximized().unwrap_or(false);
           let _ = bar.eval(format!("window.setMaximized?.({maximized})"));

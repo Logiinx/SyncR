@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **Added** a green New tag on videos found since you last opened the Video tab
 - **Added** a By channel option in the Video tab that folds each channel's videos into one row
 - **Added** a way to remove videos from Watched, one at a time or all that the list shows
+- **Added** a video window that takes the video's shape, so the black bars are gone
 - **Added** a chat size choice in the Twitch player's settings, with more space between messages
 - **Added** the volume's value next to its slider in the Twitch player
 - **Improved** adding a follow: just write name for Twitch or @name for YouTube, pasted links get shortened

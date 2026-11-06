@@ -104,6 +104,24 @@ const endDrag = (event, apply) => {
 $('progress').addEventListener('pointerup', (event) => endDrag(event, true))
 $('progress').addEventListener('pointercancel', (event) => endDrag(event, false))
 
+// ---- The window takes the video's shape (lib.rs) ------------------------------------------------
+let shapeSent = ''
+let shapeTimer
+function tellShape() {
+  clearTimeout(shapeTimer)
+  shapeTimer = setTimeout(() => {
+    // Dragging the chat's edge: chat.js calls this again after
+    if (!video.videoWidth || document.fullscreenElement || document.documentElement.classList.contains('resizing')) return
+    const beside = (1 - player.getBoundingClientRect().width / $('stage').getBoundingClientRect().width) * innerWidth * devicePixelRatio
+    const shape = `ratio=${(video.videoWidth / video.videoHeight).toFixed(4)}&beside=${Math.round(beside)}`
+    if (shape === shapeSent) return
+    shapeSent = shape
+    fetch(`/fit?${shape}`, { cache: 'no-store' }).catch(() => {})
+  }, 200)
+}
+video.addEventListener('resize', tellShape)
+new ResizeObserver(tellShape).observe(player)
+
 // ---- Controls that fade -----------------------------------------------------------------------
 let quietTimer
 const keepShowing = () => player.classList.contains('paused') || dragging !== null || !$('menu').hidden || !$('goto').hidden || $('bottom').matches(':hover')

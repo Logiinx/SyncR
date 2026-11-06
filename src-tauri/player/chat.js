@@ -481,6 +481,7 @@ edge.addEventListener('pointermove', (event) => {
 })
 const endResize = () => {
   document.documentElement.classList.remove('resizing')
+  tellShape()
   localStorage.setItem('player.chatWidth', Math.round(chatWidth))
 }
 edge.addEventListener('pointerup', endResize)

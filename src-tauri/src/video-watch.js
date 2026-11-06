@@ -72,6 +72,18 @@
   // video-forward.html: a fallback site doesn't pass them, so its player is left alone.
   const wanted = new URLSearchParams(location.hash.slice(1))
   if (!wanted.has('syncr-subtitles')) return
+  // The window takes the video's shape (lib.rs). Not during an ad, which can have another shape.
+  if (window === top) {
+    let shapeSent = ''
+    setInterval(() => {
+      const video = document.querySelector('#movie_player video')
+      if (!video?.videoWidth || document.fullscreenElement || document.querySelector('#movie_player.ad-showing')) return
+      const shape = (video.videoWidth / video.videoHeight).toFixed(4)
+      if (shape === shapeSent) return
+      shapeSent = shape
+      fetch(`https://syncr-video.localhost/fit?ratio=${shape}&beside=0`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+    }, 1000)
+  }
   const QUALITIES = ['hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny']
   // The chosen one or the highest under it, once. After that, the player's menu decides.
   let qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))

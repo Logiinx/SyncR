@@ -47,7 +47,7 @@ tauri-plugin-single-instance = "2"
 
 # Windows DPAPI for secrets (lib.rs, dpapi). Same version Tauri already uses.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 # The video window's extensions (video_extensions.rs): Tauri can only load a fixed folder and hides
 # whether it worked. The same versions as Tauri's own, so nothing new gets built.
 webview2-com = "0.39"
