@@ -775,16 +775,90 @@ async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 // Lab only: LAB_VIDEO_PORT opens the player's two pages to inspection from outside
+// The own Twitch player (step 0). Its page lives at its own address, https://syncr-video.localhost,
+// which isn't SyncR's: sites and this page are refused when calling the app. The same address
+// fetches the video, because Twitch's video servers don't let a page read their answers, while
+// Rust isn't held to that. /v/<host>/<path> fetches https://<host>/<path>, only from Twitch's
+// video addresses.
+fn twitch_host(host: &str) -> bool {
+  host.ends_with(".ttvnw.net") || host.ends_with(".twitch.tv") || host.ends_with(".cloudfront.net")
+}
+// Playlists name their pieces by full address: those must come through /v/ too
+fn local_playlist(text: &str) -> String {
+  let mut out = String::with_capacity(text.len());
+  for line in text.lines() {
+    match line.strip_prefix("https://") {
+      Some(rest) if rest.split('/').next().is_some_and(twitch_host) => {
+        out.push_str("/v/");
+        out.push_str(rest);
+      }
+      _ => out.push_str(line),
+    }
+    out.push('\n');
+  }
+  out
+}
+async fn video_answer(uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
+  use std::sync::OnceLock;
+  use tauri::http::Response;
+  static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+  let answer = |status: u16, kind: &str, body: Vec<u8>| {
+    let mut response = Response::builder().status(status).header("Content-Type", kind);
+    if kind == "text/html" {
+      response = response.header(
+        "Content-Security-Policy",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv; media-src blob:; worker-src blob:; style-src 'unsafe-inline'; img-src https:",
+      );
+    }
+    response.body(body).unwrap()
+  };
+  let path = uri.path();
+  match path {
+    "/player.html" => return answer(200, "text/html", include_bytes!("../../ui/twitch-player.html").to_vec()),
+    "/twitch-player.js" => return answer(200, "text/javascript", include_bytes!("../../ui/twitch-player.js").to_vec()),
+    "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../../ui/hls.min.js").to_vec()),
+    _ => {}
+  }
+  let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
+    return answer(404, "text/plain", Vec::new());
+  };
+  if !twitch_host(host) {
+    return answer(403, "text/plain", Vec::new());
+  }
+  let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
+  let client = CLIENT.get_or_init(reqwest::Client::new);
+  let result = client.get(format!("https://{host}/{rest}{query}")).send().await;
+  let Ok(response) = result else {
+    return answer(502, "text/plain", Vec::new());
+  };
+  let status = response.status().as_u16();
+  let Ok(body) = response.bytes().await else {
+    return answer(502, "text/plain", Vec::new());
+  };
+  if rest.ends_with(".m3u8") {
+    return answer(status, "application/vnd.apple.mpegurl", local_playlist(&String::from_utf8_lossy(&body)).into_bytes());
+  }
+  answer(status, "video/mp2t", body.to_vec())
+}
+
 fn video_args() -> String {
-  let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required");
+  let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
+  // SyncR doesn't have this switch: LAB_REAL_AUTOPLAY tests without it
+  if std::env::var("LAB_REAL_AUTOPLAY").is_err() {
+    args.push_str(" --autoplay-policy=no-user-gesture-required");
+  }
   if let Ok(port) = std::env::var("LAB_VIDEO_PORT") {
-    args.push_str(&format!(" --remote-debugging-port={port} --mute-audio"));
+    args.push_str(&format!(" --remote-debugging-port={port}"));
   }
   args
 }
 
 fn main() {
   tauri::Builder::default()
+    .register_asynchronous_uri_scheme_protocol("syncr-video", |_context, request, responder| {
+      let uri = request.uri().clone();
+      tauri::async_runtime::spawn(async move { responder.respond(video_answer(uri).await) });
+    })
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&["host"]).build())
     .manage(Lab::default())
