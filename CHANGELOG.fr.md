@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-11-06
+
 **Vidéo**
 - **Ajout** d'aperçus, des parties sans son avec Passer et des changements de jeu sur la barre du lecteur Twitch
 - **Ajout** de l'heure réelle dans le lecteur Twitch, et d'une case pour aller à un moment en cliquant sur le temps

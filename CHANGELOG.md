@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-11-06
+
 **Video**
 - **Added** preview pictures, muted parts with Skip and game changes on the Twitch player's progress bar
 - **Added** the real time of day in the Twitch player, and a box to jump to any time by clicking the time
