@@ -34,6 +34,12 @@
     "allow-open-video-player",
     "allow-video-player-way",
     "allow-video-player-watched",
-    "allow-close-video-player"
+    "allow-close-video-player",
+    "allow-video-extensions-list",
+    "allow-video-extension-add",
+    "allow-video-extension-remove",
+    "allow-video-extension-enable",
+    "allow-video-extension-settings",
+    "allow-video-extensions-done"
   ]
 }

@@ -29,6 +29,7 @@ import {
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { useVideoEnabled } from './video'
+import VideoExtensions from './VideoExtensions'
 import { loadPlayerSettings, savePlayerSettings } from './videoPlayer'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
@@ -139,6 +140,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
+  const [showExtensions, setShowExtensions] = useState(false)
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
   useEffect(() => {
@@ -180,6 +182,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   }, [])
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
+  if (showExtensions) return <VideoExtensions onClose={() => setShowExtensions(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
@@ -438,6 +441,13 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                 setPlayer(loadPlayerSettings())
               }}
             />
+          </SettingRow>
+        )}
+        {isTauri() && videoOn && (
+          <SettingRow label={t('Video extensions')}>
+            <button className="setting-button" onClick={() => setShowExtensions(true)}>
+              {t('Manage…')}
+            </button>
           </SettingRow>
         )}
         {isTauri() && (

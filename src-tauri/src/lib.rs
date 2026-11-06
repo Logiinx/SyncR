@@ -1,5 +1,7 @@
 use tauri::Manager;
 
+mod video_extensions;
+
 // Brings the main window back (from the tray, minimized, or behind other windows)
 #[cfg(desktop)]
 fn show_main(app: &tauri::AppHandle) {
@@ -398,7 +400,7 @@ async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::h
   answer(status, kind, body.to_vec())
 }
 
-// Both pages of the player window share a storage folder, so they must start the same way. A
+// All pages of the player's storage folder must start the same way (also video_extensions.rs). A
 // video opened by a click should play: without this switch the browser refuses to start it.
 const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
@@ -475,7 +477,7 @@ async fn open_video_player(
     WebviewUrl::External(url)
   };
   close_video_window(&app)?;
-  let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
+  let folder = video_extensions::player_folder(&app)?;
   let requests = app.clone();
   // With its border for now: the window-state plugin removes it here before restoring the size.
   // Without this change a new window still counts a title bar, and each opening gets that much
@@ -496,6 +498,7 @@ async fn open_video_player(
         .background_color(Color(0x16, 0x16, 0x16, 255))
         .use_https_scheme(true)
         .additional_browser_args(VIDEO_ARGS)
+        .browser_extensions_enabled(true)
         .data_directory(folder.clone())
         .on_navigation(|url| url.path() == "/video-bar.html"),
       PhysicalPosition::new(0, 0),
@@ -508,6 +511,7 @@ async fn open_video_player(
         .background_color(Color(0, 0, 0, 255))
         .use_https_scheme(true)
         .additional_browser_args(VIDEO_ARGS)
+        .browser_extensions_enabled(true)
         .data_directory(folder)
         .initialization_script_for_all_frames(include_str!("video-watch.js"))
         .on_navigation(move |url| {
@@ -681,7 +685,13 @@ pub fn run() {
       video_bar,
       video_player_way,
       video_player_watched,
-      close_video_player
+      close_video_player,
+      video_extensions::video_extensions_list,
+      video_extensions::video_extension_add,
+      video_extensions::video_extension_remove,
+      video_extensions::video_extension_enable,
+      video_extensions::video_extension_settings,
+      video_extensions::video_extensions_done
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
@@ -697,7 +707,7 @@ pub fn run() {
     builder.plugin(
       tauri_plugin_window_state::Builder::default()
         .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
-        .with_denylist(&["reminder-popup"])
+        .with_denylist(&["reminder-popup", video_extensions::HOST])
         .build(),
     )
   };

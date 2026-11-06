@@ -15,6 +15,12 @@ fn main() {
     "video_player_way",
     "video_player_watched",
     "close_video_player",
+    "video_extensions_list",
+    "video_extension_add",
+    "video_extension_remove",
+    "video_extension_enable",
+    "video_extension_settings",
+    "video_extensions_done",
   ])))
   .expect("failed to build");
 }

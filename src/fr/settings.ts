@@ -11,6 +11,7 @@ export const settings = {
   'A website link whose text is its address shows as a card with its title, description and picture. A click opens it; put the cursor on it to edit the address. Links with their own text stay as they are.':
     'Un lien vers un site dont le texte est son adresse s’affiche comme une carte avec son titre, sa description et son image. Un clic l’ouvre ; placez le curseur dessus pour modifier l’adresse. Les liens avec leur propre texte restent tels quels.',
   Off: 'Désactivé',
+  On: 'Activé',
   'One line': 'Une ligne',
   Card: 'Carte',
   'Large card': 'Grande carte',

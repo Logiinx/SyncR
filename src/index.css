@@ -7466,6 +7466,38 @@ button.history-row.selected {
   min-width: 0;
 }
 
+.video-extensions-about {
+  color: var(--text-dim);
+}
+
+.video-extension-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.video-follow-row input[type='checkbox'] {
+  flex-shrink: 0;
+  width: auto;
+  margin: 0;
+}
+
+.video-extension-failed {
+  color: var(--error);
+}
+
+.video-follow-row button:disabled {
+  opacity: 0.4;
+  background: none;
+  color: var(--text-dim);
+}
+
+.video-extensions-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 /* ---------- Video tab: the list (VideoView.tsx) ---------- */
 .video-logo {
   flex-shrink: 0;
