@@ -778,7 +778,7 @@ async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
 fn video_args() -> String {
   let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required");
   if let Ok(port) = std::env::var("LAB_VIDEO_PORT") {
-    args.push_str(&format!(" --remote-debugging-port={port}"));
+    args.push_str(&format!(" --remote-debugging-port={port} --mute-audio"));
   }
   args
 }
