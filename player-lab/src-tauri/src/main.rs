@@ -587,6 +587,7 @@ async fn open_video_player(
   bar_height: f64,
   always_on_top: bool,
 ) -> Result<(), String> {
+  use std::sync::atomic::{AtomicBool, Ordering};
   use tauri::utils::config::Color;
   use tauri::webview::WebviewBuilder;
   use tauri::window::WindowBuilder;
@@ -645,17 +646,39 @@ async fn open_video_player(
   // The resize edges of a borderless window sit under pages added later: this makes new ones on top
   let _ = window.set_resizable(false);
   let _ = window.set_resizable(true);
-  // Closed while in full screen: the site isn't anymore, and there'd be no bar to get out with
+  // The app was quit while in full screen: the site isn't anymore, and there'd be no bar to get out
   let _ = window.set_fullscreen(false);
   place_video_pages(&window, bar_height);
   let moved = window.clone();
+  let was_maximized = AtomicBool::new(false);
   window.on_window_event(move |event| {
-    if matches!(event, WindowEvent::Resized(_)) {
-      place_video_pages(&moved, bar_height);
-      if let Some(bar) = moved.get_webview(VIDEO_BAR) {
-        let maximized = moved.is_maximized().unwrap_or(false);
-        let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
+    let fullscreen = moved.is_fullscreen().unwrap_or(false);
+    match event {
+      // Full screen from a maximized window: it stays the size of the screen without the taskbar,
+      // and no resize comes to hide the bar (only this move). So full screen from a normal window.
+      WindowEvent::Moved(_) if fullscreen && moved.is_maximized().unwrap_or(false) => {
+        let _ = moved.set_fullscreen(false);
+        let _ = moved.unmaximize();
+        let _ = moved.set_fullscreen(true);
+        was_maximized.store(true, Ordering::SeqCst);
       }
+      WindowEvent::Resized(_) => {
+        if !fullscreen && was_maximized.swap(false, Ordering::SeqCst) {
+          let _ = moved.maximize();
+        }
+        place_video_pages(&moved, bar_height);
+        if let Some(bar) = moved.get_webview(VIDEO_BAR) {
+          let maximized = moved.is_maximized().unwrap_or(false);
+          let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
+        }
+      }
+      // Out of full screen first, or the plugin remembers the size of the screen
+      WindowEvent::CloseRequested { api, .. } if fullscreen => {
+        api.prevent_close();
+        let _ = moved.set_fullscreen(false);
+        let _ = moved.close();
+      }
+      _ => {}
     }
   });
   window.show().map_err(|e| e.to_string())?;
