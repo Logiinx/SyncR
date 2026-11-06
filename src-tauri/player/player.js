@@ -44,6 +44,7 @@ function clock(seconds) {
 }
 
 let dragging = null // the moment being dragged to, 0 to 1
+let dayAt = () => '' // the time of day at a moment; timeline.js fills it in
 function drawTime() {
   const length = video.duration || 0
   const shown = dragging !== null ? dragging * length : video.currentTime
@@ -51,7 +52,9 @@ function drawTime() {
   $('played').style.width = `${part * 100}%`
   $('track').style.setProperty('--played', `${part * 100}%`)
   $('knob').style.left = `${part * 100}%`
-  $('time').textContent = `${clock(shown)} / ${clock(length)}`
+  $('time-now').textContent = `${clock(shown)} / ${clock(length)}`
+  const day = dayAt(shown)
+  $('time-day').textContent = day ? ` · ${day}` : ''
   let end = 0
   for (let i = 0; i < video.buffered.length; i++) {
     if (video.buffered.start(i) <= video.currentTime + 1) end = Math.max(end, video.buffered.end(i))
@@ -103,7 +106,7 @@ $('progress').addEventListener('pointercancel', (event) => endDrag(event, false)
 
 // ---- Controls that fade -----------------------------------------------------------------------
 let quietTimer
-const keepShowing = () => player.classList.contains('paused') || dragging !== null || !$('menu').hidden || $('bottom').matches(':hover')
+const keepShowing = () => player.classList.contains('paused') || dragging !== null || !$('menu').hidden || !$('goto').hidden || $('bottom').matches(':hover')
 function wake() {
   player.classList.remove('quiet')
   clearTimeout(quietTimer)
@@ -178,6 +181,7 @@ $('forward').title = labels.forward
 // A click on the picture: closes the menu if it's open, otherwise play or pause
 video.addEventListener('click', () => {
   if (!$('menu').hidden) closeMenu()
+  else if (!$('goto').hidden) closeGoTo()
   else togglePlay()
 })
 video.addEventListener('dblclick', toggleFull)
@@ -321,6 +325,7 @@ function drawMenu() {
   chatMenu(menu, row, title)
 }
 function openMenu() {
+  closeGoTo()
   $('menu').hidden = false
   $('settings').classList.add('open')
   drawMenu()
