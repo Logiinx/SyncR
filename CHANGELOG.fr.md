@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** d'autres moyens d'ouvrir une vidéo YouTube quand le lecteur ne peut pas la lire
+- **Ajout** d'un bouton Essayer un autre moyen à la barre du lecteur pour les vidéos YouTube
+
 ## [0.50.0] - 2026-11-06
 
 **Vidéo**

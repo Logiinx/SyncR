@@ -287,6 +287,8 @@ async fn save_attachment(
 const VIDEO_WINDOW: &str = "video-player";
 const VIDEO_BAR: &str = "video-player-bar";
 const VIDEO_SITE: &str = "video-player-site";
+// See video-watch.js
+const VIDEO_REQUEST: &str = "syncr-video.invalid";
 
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.
@@ -332,6 +334,11 @@ fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
 }
 
 // bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
+// SyncR's own pages shown in the site's place
+fn is_video_page(address: &str) -> bool {
+  address.starts_with("video-forward.html?v=") || address.starts_with("video-stopped.html?data=")
+}
+
 #[tauri::command]
 async fn open_video_player(
   app: tauri::AppHandle,
@@ -346,7 +353,7 @@ async fn open_video_player(
   use tauri::webview::WebviewBuilder;
   use tauri::window::WindowBuilder;
   use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WindowEvent};
-  let url = if address.starts_with("video-forward.html?v=") {
+  let url = if is_video_page(&address) {
     WebviewUrl::App(address.into())
   } else {
     let url = tauri::Url::parse(&address).map_err(|e| e.to_string())?;
@@ -357,6 +364,7 @@ async fn open_video_player(
   };
   close_video_window(&app)?;
   let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
+  let requests = app.clone();
   // With its border for now: the window-state plugin removes it here before restoring the size.
   // Without this change a new window still counts a title bar, and each opening gets that much
   // taller.
@@ -387,8 +395,17 @@ async fn open_video_player(
         .background_color(Color(0, 0, 0, 255))
         .use_https_scheme(true)
         .data_directory(folder)
-        // A site can't send this window to SyncR's own pages
-        .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html"),
+        .initialization_script_for_all_frames(include_str!("video-watch.js"))
+        .on_navigation(move |url| {
+          if url.host_str() == Some(VIDEO_REQUEST) {
+            use tauri::Emitter;
+            let value = |name: &str| url.query_pairs().find(|(key, _)| key == name).map(|(_, value)| value.into_owned());
+            let _ = requests.emit_to("main", "video-site", serde_json::json!({ "code": value("code"), "video": value("video") }));
+            return false;
+          }
+          // A site can't send this window to SyncR's own pages
+          url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html" || url.path() == "/video-stopped.html"
+        }),
       PhysicalPosition::new(0, 1),
       size,
     )
@@ -444,7 +461,8 @@ async fn open_video_player(
 #[tauri::command]
 fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on: Option<bool>) -> Result<(), String> {
   use tauri::Emitter;
-  if webview.label() != VIDEO_BAR {
+  // video-stopped.html has an Open in browser button too. Sites can't call the app at all.
+  if webview.label() != VIDEO_BAR && !(webview.label() == VIDEO_SITE && action == "browser") {
     return Err("Only for the video bar".to_string());
   }
   let window = webview.window();
@@ -459,7 +477,7 @@ fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on:
       if window.is_maximized().unwrap_or(false) { window.unmaximize() } else { window.maximize() }
     }
     "close" => return window.close().map_err(|e| e.to_string()),
-    "always-on-top" | "watched" | "browser" => {
+    "always-on-top" | "watched" | "browser" | "another-way" => {
       if action == "always-on-top" {
         window.set_always_on_top(on.unwrap_or(false)).map_err(|e| e.to_string())?;
       }
@@ -472,6 +490,26 @@ fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on:
     let _ = site.set_focus();
   }
   result.map_err(|e| e.to_string())
+}
+
+// Opens the same video another way (videoPlayer.ts), and the bar says which
+#[tauri::command]
+fn video_player_way(app: tauri::AppHandle, address: String, via: String) -> Result<(), String> {
+  let (Some(site), Some(bar)) = (app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
+    return Ok(()); // closed in the meantime
+  };
+  let url = if is_video_page(&address) {
+    bar.url().map_err(|e| e.to_string())?.join(&address).map_err(|e| e.to_string())?
+  } else {
+    let url = tauri::Url::parse(&address).map_err(|e| e.to_string())?;
+    if url.scheme() != "https" {
+      return Err("Not a web address".to_string());
+    }
+    url
+  };
+  site.navigate(url).map_err(|e| e.to_string())?;
+  let via = serde_json::to_string(&via).map_err(|e| e.to_string())?;
+  bar.eval(format!("window.setVia?.({via})")).map_err(|e| e.to_string())
 }
 
 // The main window tells the bar when a video's Watched mark changes (also from the list)
@@ -519,6 +557,7 @@ pub fn run() {
       save_attachment,
       open_video_player,
       video_bar,
+      video_player_way,
       video_player_watched,
       close_video_player
     ]);

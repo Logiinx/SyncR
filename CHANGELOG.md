@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** other ways to open a YouTube video when the player window can't play it
+- **Added** a Try another way button to the player window's bar for YouTube videos
+
 ## [0.50.0] - 2026-11-06
 
 **Video**

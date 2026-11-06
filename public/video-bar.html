@@ -46,6 +46,7 @@
   }
   button:hover { background: var(--hover); color: var(--text); }
   svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #via { display: none; flex-shrink: 0; margin-left: auto; padding-left: 12px; color: var(--text-dim); }
   #watched.on, #watched.on:hover { color: var(--text-green); }
   #on-top.on, #on-top.on:hover { color: var(--text-blue); }
   /* Minimize, maximize, close: the same as the main window (WindowControls.tsx) */
@@ -54,7 +55,8 @@
   #controls svg { width: 10px; height: 10px; stroke-width: 1.25; stroke-linecap: butt; stroke-linejoin: miter; overflow: visible; }
   #close:hover { background: #c94141; color: #fff; }
 </style>
-<div id="title"><span></span></div>
+<div id="title"><span></span><div id="via"></div></div>
+<button id="another-way"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
 <button id="watched"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>
 <button id="on-top"><svg viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button>
 <button id="browser"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
@@ -79,12 +81,20 @@
   const title = $('title').firstElementChild
   title.textContent = data.title || ''
   title.title = data.title || ''
+  $('another-way').title = labels.anotherWay
+  // Only YouTube has other ways
+  $('another-way').style.display = data.otherWays ? '' : 'none'
   $('on-top').title = labels.onTop
   $('browser').title = labels.browser
   $('minimize').title = labels.minimize
   $('close').title = labels.close
 
   // Called by the main window and lib.rs as things change
+  window.setVia = (text) => {
+    $('via').textContent = text
+    $('via').style.display = text ? 'block' : 'none'
+  }
+  window.setVia(data.via || '')
   let watched = false
   window.setWatched = (on) => {
     watched = on
@@ -111,6 +121,7 @@
     showOnTop(!onTop)
     send('always-on-top', onTop)
   }
+  $('another-way').onclick = () => send('another-way')
   $('browser').onclick = () => send('browser')
   $('minimize').onclick = () => send('minimize')
   $('maximize').onclick = () => send('maximize')
