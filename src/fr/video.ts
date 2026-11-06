@@ -46,6 +46,10 @@ export const video = {
   Opened: 'Ouverte',
   'Back to To watch': 'Remettre dans À regarder',
   'Mark as watched': 'Marquer comme vue',
+  'Mark all as watched': 'Tout marquer comme vu',
+  'Mark all as watched?': 'Tout marquer comme vu ?',
+  '{n} video moves to Watched.': '{n} vidéo passe dans Vues.',
+  '{n} videos move to Watched.': '{n} vidéos passent dans Vues.',
   'New videos': 'Nouvelles vidéos',
   '{name}: {error}': '{name} : {error}',
 }

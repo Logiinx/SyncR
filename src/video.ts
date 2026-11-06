@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { changed, db, type VideoFollow, type VideoMark, type VideoRow } from './db'
+import { alertMarkId, changed, db, type VideoFollow, type VideoMark, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
@@ -246,7 +246,7 @@ async function checkFollow(follow: VideoFollow) {
 async function checkGone() {
   if (Date.now() - read<number>(GONE_KEY, 0) < GONE_CHECK_EVERY) return
   const marks = new Map((await db.videoMarks.toArray()).map((mark) => [mark.id, mark]))
-  const waiting = (await db.videos.toArray()).filter((video) => !marks.get(video.id)?.watched)
+  const waiting = (await db.videos.toArray()).filter((video) => !marks.get(videoMarkId(video.id))?.watched)
   for (const platform of ['twitch', 'youtube'] as const) {
     const rows = waiting.filter((video) => video.platform === platform)
     for (let start = 0; start < rows.length; start += 500) {
@@ -295,11 +295,14 @@ export async function checkVideos() {
 }
 
 // Soon after the start, then about once an hour. Checked often, so a PC waking up from sleep
-// doesn't wait for the rest of the hour.
+// doesn't wait for the rest of the hour, and a follow that just arrived by sync (a reinstalled
+// PC) gets its videos within minutes.
 export function startVideoChecks() {
   let last = 0
-  const tick = () => {
-    if (Date.now() - last < CHECK_EVERY) return
+  const tick = async () => {
+    const checked = read<Record<string, number>>(CHECKED_KEY, {})
+    const unread = await db.videoFollows.filter((follow) => !follow.deleted && !checked[follow.id]).count()
+    if (!unread && Date.now() - last < CHECK_EVERY) return
     last = Date.now()
     void checkVideos()
   }
@@ -319,14 +322,20 @@ export function videoKept(follow: VideoFollow, video: VideoRow) {
   return titleKept(follow, video.title)
 }
 
-async function saveMark(id: string, change: Partial<VideoMark>) {
-  const mark = await db.videoMarks.get(id)
-  await db.videoMarks.put({ id, opened: false, watched: false, ...mark, ...change, updatedAt: Date.now() })
+// A mark's id, and so its file name in Dropbox, which lists names in lower case: YouTube's ids
+// have capitals. A hash also keeps which videos out of the file names.
+const videoMarkId = (videoId: string) => alertMarkId(videoId)
+
+async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
+  const ids = videoIds.map(videoMarkId)
+  const marks = await db.videoMarks.bulkGet(ids)
+  await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, updatedAt: Date.now() })))
   changed()
 }
 
-export const markOpened = (id: string) => saveMark(id, { opened: true })
-export const setWatched = (id: string, watched: boolean) => saveMark(id, { watched })
+export const markOpened = (videoId: string) => saveMarks([videoId], { opened: true })
+export const setWatched = (videoId: string, watched: boolean) => saveMarks([videoId], { watched })
+export const markAllWatched = (videoIds: string[]) => saveMarks(videoIds, { watched: true })
 
 export interface FeedVideo extends VideoRow {
   followId: string
@@ -346,7 +355,7 @@ export function useVideoFeed() {
       .flatMap((video): FeedVideo[] => {
         const follow = byChannel.get(`${video.platform} ${video.channelId}`)
         if (!follow || !videoKept(follow, video)) return []
-        const mark = markOf.get(video.id)
+        const mark = markOf.get(videoMarkId(video.id))
         return [{ ...video, followId: follow.id, channel: follow.name, opened: !!mark?.opened, watched: !!mark?.watched }]
       })
       .sort((a, b) => b.published - a.published || a.id.localeCompare(b.id))

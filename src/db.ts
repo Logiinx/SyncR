@@ -225,6 +225,7 @@ export interface AlertMark {
 // An alert's key can't be a file name: Google's event ids can have capitals, and Dropbox lists
 // names in lower case. So a short hash (it needn't be secure, only different per alert). Not
 // crypto.subtle: that isn't possible inside a database upgrade (it loses the transaction).
+// YouTube's video ids have capitals too: the same goes for video marks (videoMarkId, video.ts).
 export function alertMarkId(key: string) {
   let a = 0xdeadbeef
   let b = 0x41c6ce57
@@ -262,6 +263,8 @@ export interface VideoFollow {
   startAt: number // ms: older videos aren't shown; 0 = all that are still available
   deleted: boolean
   updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
 }
 
 // A video of a followed channel. Only on this device: it can always be downloaded again.
@@ -278,13 +281,15 @@ export interface VideoRow {
   gone: boolean // the site no longer has it
 }
 
-// What's been done with a video (same id). Apart from the video, as these marks are what's
+// What's been done with a video. Apart from the video, as these marks are what's
 // worth keeping: they stay when a follow is removed, so adding it again remembers them.
 export interface VideoMark {
-  id: string
+  id: string // videoMarkId(the video's id): also its file name in Dropbox
   opened: boolean
   watched: boolean
   updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
 }
 
 export interface Snapshot {
@@ -696,6 +701,14 @@ export async function removeOldDeletedGames(): Promise<string[]> {
   )
   await db.games.bulkDelete(old.map((game) => game.id))
   return old.map((game) => game.id)
+}
+
+export async function removeOldDeletedFollows(): Promise<string[]> {
+  const old = (await db.videoFollows.toArray()).filter(
+    (follow) => follow.deleted && Date.now() - follow.updatedAt > OLD_DELETED_CARD_MS,
+  )
+  await db.videoFollows.bulkDelete(old.map((follow) => follow.id))
+  return old.map((follow) => follow.id)
 }
 
 export async function updateGame(id: string, change: Partial<Game>) {

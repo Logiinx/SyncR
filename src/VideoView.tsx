@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
-import { Check, ListVideo, Plus, RefreshCw, Undo2, X } from 'lucide-react'
+import { Check, CheckCheck, ListVideo, Plus, RefreshCw, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import { nearDay, shortDate } from './dates'
-import { t } from './i18n'
+import Dialog from './Dialog'
+import { plural, t } from './i18n'
 import { openLink } from './links'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { checkVideos, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { checkVideos, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 
@@ -80,6 +81,7 @@ function VideoView() {
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [markingAll, setMarkingAll] = useState(false)
   const follows = feed?.follows
   // A follow that was just removed: back to all of them
   const shownChannel = follows?.some((follow) => follow.id === channel) ? channel : 'all'
@@ -110,6 +112,10 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
+            {/* What the list shows now: all follows, or the chosen one */}
+            <button className="reminders-refresh" disabled={list !== 'towatch' || !videos?.length} title={t('Mark all as watched')} onClick={() => setMarkingAll(true)}>
+              <CheckCheck size={15} />
+            </button>
             <button className="reminders-refresh" disabled={checking || !follows?.length} title={t('Check for new videos')} onClick={() => void checkVideos()}>
               {checking ? <Spinner label={t('Checking…')} /> : <RefreshCw size={15} />}
             </button>
@@ -145,6 +151,17 @@ function VideoView() {
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
+      {markingAll && videos && (
+        <Dialog
+          request={{
+            title: t('Mark all as watched?'),
+            message: plural(videos.length, '{n} video moves to Watched.', '{n} videos move to Watched.'),
+            confirmLabel: t('Mark as watched'),
+            onConfirm: () => void markAllWatched(videos.map((video) => video.id)),
+          }}
+          onClose={() => setMarkingAll(false)}
+        />
+      )}
     </main>
   )
 }
