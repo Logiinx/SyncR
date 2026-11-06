@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-11-06
+
 **Video**
 - **Added** a video player window that remembers its place, plus a button to open videos in the browser
 
