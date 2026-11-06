@@ -524,14 +524,96 @@ async fn open_extension_page(app: AppHandle, id: String, page: String) -> Result
   Ok(())
 }
 
-// The video player window (videoPlayer.ts): real sites, so it's in no capability file and has its
-// own storage folder, apart from the notes. The next video replaces the current one, closed first
-// so the window-state plugin remembers its place and size. Its address is either a site's page or
-// our page that forwards to YouTube's player (public/video-forward.html).
+// The video player window (videoPlayer.ts): two separate pages in one window, our bar
+// (public/video-bar.html) above the real site, so the site can't touch or fake the bar. Neither
+// is in a capability file, and they have their own storage folder, apart from the notes. The next
+// video replaces the current one, closed first so the window-state plugin remembers its place and
+// size. The site's address is either a site's page or our page that forwards to YouTube's player
+// (public/video-forward.html).
+const VIDEO_WINDOW: &str = "video-player";
+const VIDEO_BAR: &str = "video-player-bar";
+const VIDEO_SITE: &str = "video-player-site";
+
+// Bar on top and the site below; while the site is in fullscreen, only the site.
+fn place_video_pages(window: &tauri::Window, bar_height: f64, fullscreen: bool) {
+  use tauri::{PhysicalPosition, PhysicalSize, Rect};
+  let (Some(bar), Some(site)) = (window.get_webview(VIDEO_BAR), window.get_webview(VIDEO_SITE)) else {
+    return;
+  };
+  let (Ok(size), Ok(scale)) = (window.inner_size(), window.scale_factor()) else {
+    return;
+  };
+  if size.width == 0 || size.height == 0 {
+    return; // minimized
+  }
+  let top = if fullscreen { 0 } else { ((bar_height * scale).round() as u32).min(size.height) };
+  let _ = if fullscreen { bar.hide() } else { bar.show() };
+  let _ = bar.set_bounds(Rect {
+    position: PhysicalPosition::new(0, 0).into(),
+    size: PhysicalSize::new(size.width, top).into(),
+  });
+  let _ = site.set_bounds(Rect {
+    position: PhysicalPosition::new(0, top as i32).into(),
+    size: PhysicalSize::new(size.width, size.height - top).into(),
+  });
+}
+
+// Tauri doesn't tell when a site goes fullscreen (the player's button), WebView2 does
+#[cfg(windows)]
+fn watch_video_fullscreen(site: &tauri::Webview, fullscreen: std::sync::Arc<std::sync::atomic::AtomicBool>, bar_height: f64) {
+  use std::sync::atomic::Ordering;
+  use webview2_com::ContainsFullScreenElementChangedEventHandler;
+  let window = site.window();
+  let _ = site.with_webview(move |webview| unsafe {
+    let Ok(core) = webview.controller().CoreWebView2() else {
+      return;
+    };
+    let handler = ContainsFullScreenElementChangedEventHandler::create(Box::new(move |sender, _| {
+      let mut on = windows::core::BOOL(0);
+      if let Some(sender) = sender {
+        sender.ContainsFullScreenElement(&mut on)?;
+      }
+      fullscreen.store(on.as_bool(), Ordering::SeqCst);
+      place_video_pages(&window, bar_height, on.as_bool());
+      Ok(())
+    }));
+    let mut token = 0;
+    let _ = core.add_ContainsFullScreenElementChanged(&handler, &mut token);
+  });
+}
+
+fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
+  let Some(current) = app.get_window(VIDEO_WINDOW) else {
+    return Ok(());
+  };
+  current.close().map_err(|e| e.to_string())?;
+  for tries in 0..40 {
+    if app.get_window(VIDEO_WINDOW).is_none() {
+      break;
+    }
+    if tries == 30 {
+      let _ = current.destroy(); // a site asking "leave this page?"
+    }
+    std::thread::sleep(std::time::Duration::from_millis(50));
+  }
+  Ok(())
+}
+
+// bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
 #[tauri::command]
-async fn open_video_player(app: tauri::AppHandle, address: String, title: String) -> Result<(), String> {
-  use tauri::{WebviewUrl, WebviewWindowBuilder};
-  const LABEL: &str = "video-player";
+async fn open_video_player(
+  app: tauri::AppHandle,
+  address: String,
+  title: String,
+  bar: String,
+  bar_height: f64,
+  always_on_top: bool,
+) -> Result<(), String> {
+  use std::sync::atomic::{AtomicBool, Ordering};
+  use tauri::utils::config::Color;
+  use tauri::webview::WebviewBuilder;
+  use tauri::window::WindowBuilder;
+  use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WindowEvent};
   let url = if address.starts_with("video-forward.html?v=") {
     WebviewUrl::App(address.into())
   } else {
@@ -541,31 +623,123 @@ async fn open_video_player(app: tauri::AppHandle, address: String, title: String
     }
     WebviewUrl::External(url)
   };
-  if let Some(current) = app.get_webview_window(LABEL) {
-    current.close().map_err(|e| e.to_string())?;
-    for tries in 0..40 {
-      if app.get_webview_window(LABEL).is_none() {
-        break;
-      }
-      if tries == 30 {
-        let _ = current.destroy(); // a site asking "leave this page?"
-      }
-      std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-  }
+  close_video_window(&app)?;
   let folder = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("video-player");
-  WebviewWindowBuilder::new(&app, LABEL, url)
+  let window = WindowBuilder::new(&app, VIDEO_WINDOW)
     .title(title)
     .inner_size(1280.0, 760.0)
+    .min_inner_size(480.0, 300.0)
     .center()
-    .background_color(tauri::utils::config::Color(0, 0, 0, 255))
-    .use_https_scheme(true)
-    .data_directory(folder)
-    // A site can't send this window to SyncR's own pages
-    .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html")
+    .decorations(false)
+    .always_on_top(always_on_top)
+    .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
+  let size = window.inner_size().map_err(|e| e.to_string())?;
+  window
+    .add_child(
+      WebviewBuilder::new(VIDEO_BAR, WebviewUrl::App(format!("video-bar.html?data={bar}").into()))
+        .background_color(Color(0x16, 0x16, 0x16, 255))
+        .use_https_scheme(true)
+        .data_directory(folder.clone())
+        .additional_browser_args(&video_args())
+        .on_navigation(|url| url.path() == "/video-bar.html"),
+      PhysicalPosition::new(0, 0),
+      PhysicalSize::new(size.width, 1),
+    )
+    .map_err(|e| e.to_string())?;
+  let site = window
+    .add_child(
+      WebviewBuilder::new(VIDEO_SITE, url)
+        .background_color(Color(0, 0, 0, 255))
+        .use_https_scheme(true)
+        .data_directory(folder)
+        .additional_browser_args(&video_args())
+        // A site can't send this window to SyncR's own pages
+        .on_navigation(|url| url.host_str() != Some("tauri.localhost") || url.path() == "/video-forward.html"),
+      PhysicalPosition::new(0, 1),
+      size,
+    )
+    .map_err(|e| e.to_string())?;
+  // Twice useful: pages added to a window don't get the resize edges of a borderless window, this
+  // adds them; and the window-state plugin may have just brought back an older window's border.
+  window.set_decorations(false).map_err(|e| e.to_string())?;
+  let fullscreen = std::sync::Arc::new(AtomicBool::new(false));
+  #[cfg(windows)]
+  watch_video_fullscreen(&site, fullscreen.clone(), bar_height);
+  place_video_pages(&window, bar_height, false);
+  let moved = window.clone();
+  window.on_window_event(move |event| {
+    if matches!(event, WindowEvent::Resized(_)) {
+      place_video_pages(&moved, bar_height, fullscreen.load(Ordering::SeqCst));
+      if let Some(bar) = moved.get_webview(VIDEO_BAR) {
+        let maximized = moved.is_maximized().unwrap_or(false);
+        let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
+      }
+    }
+  });
+  window.show().map_err(|e| e.to_string())?;
+  let _ = window.set_focus();
+  let _ = site.set_focus();
   Ok(())
+}
+
+// The clicks on the video bar. What needs the notes' database goes on to the main window
+// (videoPlayer.ts).
+#[tauri::command]
+fn video_bar(app: tauri::AppHandle, webview: tauri::Webview, action: String, on: Option<bool>) -> Result<(), String> {
+  use tauri::Emitter;
+  if webview.label() != VIDEO_BAR {
+    return Err("Only for the video bar".to_string());
+  }
+  let window = webview.window();
+  let result = match action.as_str() {
+    "ready" => {
+      let maximized = window.is_maximized().unwrap_or(false);
+      return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
+    }
+    "drag" => window.start_dragging(),
+    "minimize" => window.minimize(),
+    "maximize" => {
+      if window.is_maximized().unwrap_or(false) { window.unmaximize() } else { window.maximize() }
+    }
+    "close" => return window.close().map_err(|e| e.to_string()),
+    "always-on-top" | "watched" | "browser" => {
+      if action == "always-on-top" {
+        window.set_always_on_top(on.unwrap_or(false)).map_err(|e| e.to_string())?;
+      }
+      app.emit_to("main", "video-bar", serde_json::json!({ "action": action, "on": on }))
+    }
+    _ => return Err("Unknown action".to_string()),
+  };
+  // The keyboard goes back to the video (space, arrows)
+  if let Some(site) = window.get_webview(VIDEO_SITE) {
+    let _ = site.set_focus();
+  }
+  result.map_err(|e| e.to_string())
+}
+
+// The main window tells the bar when a video's Watched mark changes (also from the list)
+#[tauri::command]
+fn video_player_watched(app: tauri::AppHandle, watched: bool) -> Result<(), String> {
+  match app.get_webview(VIDEO_BAR) {
+    Some(bar) => bar.eval(format!("window.setWatched?.({watched})")).map_err(|e| e.to_string()),
+    None => Ok(()),
+  }
+}
+
+#[tauri::command]
+async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
+  close_video_window(&app)
+}
+
+// Lab only: LAB_VIDEO_PORT opens the player's two pages to inspection from outside
+fn video_args() -> String {
+  let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
+  if let Ok(port) = std::env::var("LAB_VIDEO_PORT") {
+    args.push_str(&format!(" --remote-debugging-port={port}"));
+  }
+  args
 }
 
 fn main() {
@@ -581,7 +755,10 @@ fn main() {
       remove_userscript,
       open_player,
       open_extension_page,
-      open_video_player
+      open_video_player,
+      video_bar,
+      video_player_watched,
+      close_video_player
     ])
     .on_window_event(|window, event| {
       // The hidden host window would otherwise keep the app running

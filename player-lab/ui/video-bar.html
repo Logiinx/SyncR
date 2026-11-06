@@ -1,0 +1,123 @@
+<!doctype html>
+<meta charset="utf-8">
+<title></title>
+<style>
+  /* The same font as the app (index.css, 'SyncR UI'): keep the numbers the same */
+  @font-face {
+    font-family: 'SyncR UI';
+    font-weight: 400;
+    src: local('Segoe UI'), local('SegoeUI');
+    ascent-override: 101%;
+    descent-override: 32.5%;
+    line-gap-override: 0%;
+  }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex;
+    align-items: stretch;
+    background: var(--bg, #161616);
+    color: var(--text);
+    font: 13px 'SyncR UI', sans-serif;
+    user-select: none;
+    cursor: default;
+  }
+  #title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+  #title span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  button {
+    width: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-dim);
+  }
+  button:hover { background: var(--hover); color: var(--text); }
+  svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #watched.on, #watched.on:hover { color: var(--text-green); }
+  #on-top.on, #on-top.on:hover { color: var(--text-blue); }
+  /* Minimize, maximize, close: the same as the main window (WindowControls.tsx) */
+  #controls { display: flex; }
+  #controls button { width: 46px; }
+  #controls svg { width: 10px; height: 10px; stroke-width: 1.25; stroke-linecap: butt; stroke-linejoin: miter; overflow: visible; }
+  #close:hover { background: #c94141; color: #fff; }
+</style>
+<div id="title"><span></span></div>
+<button id="watched"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>
+<button id="on-top"><svg viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button>
+<button id="browser"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
+<div id="controls">
+  <button id="minimize"><svg viewBox="0 0 10 10"><path d="M0 5h10"/></svg></button>
+  <button id="maximize"><svg viewBox="0 0 10 10"></svg></button>
+  <button id="close"><svg viewBox="0 0 10 10"><path d="M0.75 0.75l8.5 8.5M9.25 0.75l-8.5 8.5"/></svg></button>
+</div>
+<script>
+  // The bar of the video player window: this page only draws it and passes clicks on. The main
+  // window sends all it needs in the address and does the work (videoPlayer.ts), the window
+  // buttons go through lib.rs (video_bar). Kept this small so it shows at once.
+  const data = JSON.parse(new URLSearchParams(location.search).get('data') || '{}')
+  const labels = data.labels || {}
+  const $ = (id) => document.getElementById(id)
+  const send = (action, on) => window.__TAURI_INTERNALS__?.invoke('video_bar', { action, on })
+
+  for (const [name, color] of Object.entries(data.colors || {})) document.documentElement.style.setProperty(name, color)
+  // The app's scale, as in the main window (the height of the bar is set in lib.rs)
+  if (data.zoom) document.documentElement.style.zoom = data.zoom
+
+  const title = $('title').firstElementChild
+  title.textContent = data.title || ''
+  title.title = data.title || ''
+  $('on-top').title = labels.onTop
+  $('browser').title = labels.browser
+  $('minimize').title = labels.minimize
+  $('close').title = labels.close
+
+  // Called by the main window and lib.rs as things change
+  let watched = false
+  window.setWatched = (on) => {
+    watched = on
+    $('watched').classList.toggle('on', on)
+    $('watched').title = on ? labels.unwatch : labels.watch
+  }
+  let onTop = false
+  function showOnTop(on) {
+    onTop = on
+    $('on-top').classList.toggle('on', on)
+  }
+  window.setMaximized = (on) => {
+    $('maximize').title = on ? labels.restore : labels.maximize
+    $('maximize').firstElementChild.innerHTML = on
+      ? '<rect x="0.625" y="2.625" width="6.75" height="6.75" rx="1"/><path d="M2.625 2.625V1.625a1 1 0 0 1 1-1h4.75a1 1 0 0 1 1 1v4.75a1 1 0 0 1-1 1H7.375"/>'
+      : '<rect x="0.625" y="0.625" width="8.75" height="8.75" rx="1"/>'
+  }
+  window.setWatched(!!data.watched)
+  showOnTop(!!data.onTop)
+  window.setMaximized(false)
+
+  $('watched').onclick = () => send('watched', !watched)
+  $('on-top').onclick = () => {
+    showOnTop(!onTop)
+    send('always-on-top', onTop)
+  }
+  $('browser').onclick = () => send('browser')
+  $('minimize').onclick = () => send('minimize')
+  $('maximize').onclick = () => send('maximize')
+  $('close').onclick = () => send('close')
+  // The empty part of the bar moves the window; a double-click maximizes it
+  $('title').onmousedown = (event) => {
+    if (event.button === 0) send(event.detail === 2 ? 'maximize' : 'drag')
+  }
+  send('ready')
+</script>
