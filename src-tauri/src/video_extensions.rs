@@ -495,12 +495,16 @@ const POPUP_SCRIPT: &str = r#"(function (width, height) {
   }
 })"#;
 
-// Ready, width the page wants, height it wants, height it has
-const POPUP_MEASURE: &str = "[document.readyState === 'complete' && location.search.includes('tabId'), document.body ? Math.ceil(document.body.getBoundingClientRect().width) : 0, document.documentElement.scrollHeight, innerHeight]";
+// Ready, how far right and how far down its content goes, the height it needs if it doesn't fit,
+// the height it has. Two levels of the page are enough: a popup's panels (uBlock's "More" opens
+// its second one beside the first, past the page's own width).
+const POPUP_MEASURE: &str = "(() => { const body = document.body; if (!body) return [false, 0, 0, 0, 0]; const first = body.getBoundingClientRect(); let right = first.right, bottom = first.bottom; for (const top of body.children) for (const part of [top, ...top.children]) { const box = part.getBoundingClientRect(); if (box.width && box.height) { right = Math.max(right, box.right); bottom = Math.max(bottom, box.bottom) } } return [document.readyState === 'complete' && location.search.includes('tabId'), Math.ceil(right), Math.ceil(bottom), document.documentElement.scrollHeight, innerHeight] })()";
 
-// The sizes popups are made for go up to 800 x 600. This width lets each take its own; the low
-// height gives the height of its content.
-const POPUP_PROBE: (f64, f64) = (440.0, 100.0);
+// Popups are made for up to 800 x 600. Hidden at this width, each takes its own, and uBlock keeps
+// its side-by-side layout; the low height gives the height of the content. A page that fills any
+// width gets the other number.
+const POPUP_PROBE: (f64, f64) = (800.0, 100.0);
+const POPUP_FILLS: f64 = 420.0;
 const POPUP_LOST: Duration = Duration::from_millis(1500);
 
 struct PopupState {
@@ -531,7 +535,7 @@ fn popup_is_in_front(popup: &tauri::WebviewWindow) -> bool {
   popup.hwnd().is_ok_and(|hwnd| hwnd.0 as isize == unsafe { GetForegroundWindow() } as isize)
 }
 
-fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64)> {
+fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64, f64)> {
   let (sender, receiver) = channel();
   popup
     .with_webview(move |webview| {
@@ -550,7 +554,7 @@ fn measure_popup(popup: &tauri::WebviewWindow) -> Option<(bool, f64, f64, f64)> 
     .ok()?;
   let text = receiver.recv_timeout(Duration::from_secs(1)).ok()??;
   let value: Value = serde_json::from_str(&text).ok()?;
-  Some((value[0].as_bool()?, value[1].as_f64()?, value[2].as_f64()?, value[3].as_f64()?))
+  Some((value[0].as_bool()?, value[1].as_f64()?, value[2].as_f64()?, value[3].as_f64()?, value[4].as_f64()?))
 }
 
 // Under the button, kept on the screen. center: the button's middle on the screen, in pixels.
@@ -625,14 +629,16 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
   }
   let turn = POPUP_TURN.fetch_add(1, Ordering::SeqCst) + 1;
   let started = Instant::now();
-  let (mut width, mut height) = (POPUP_PROBE.0, 0.0);
-  let mut last_height = -1.0;
+  let (mut width, mut height) = POPUP_PROBE;
+  let mut last_bottom = None;
+  let mut steady = 0;
   let mut shown = false;
   let mut in_front = false;
-  // Follows the popup for as long as it's open: it grows with its content (uBlock's "More") and
-  // closes when something else comes to the front or the video window goes
+  // Follows the popup for as long as it's open: its size follows its content (uBlock's "More") and
+  // it closes when something else comes to the front or the video window goes. Shows once its size
+  // has stopped changing.
   while POPUP_TURN.load(Ordering::SeqCst) == turn {
-    std::thread::sleep(Duration::from_millis(100));
+    std::thread::sleep(Duration::from_millis(if shown { 100 } else { 40 }));
     let Some(popup) = app.get_webview_window(POPUP) else {
       return Ok(());
     };
@@ -641,30 +647,41 @@ pub fn open_popup(app: AppHandle, folder: String, at: f64) -> Result<(), String>
       return Ok(());
     }
     let measured = measure_popup(&popup);
-    if !shown {
-      let settled = measured.is_some_and(|(ready, wanted, content, _)| ready && wanted > 0.0 && content == last_height);
-      if let Some((_, _, content, _)) = measured {
-        last_height = content;
+    let mut changed = false;
+    if let Some((_, right, bottom, needs, room)) = measured {
+      let wanted = if !shown && right >= POPUP_PROBE.0 - 1.0 { POPUP_FILLS } else { right };
+      if wanted > 0.0 && (wanted - width).abs() >= 1.0 {
+        width = wanted;
+        changed = true;
       }
-      if settled || started.elapsed() > POPUP_LOST {
-        if let Some((_, wanted, content, _)) = measured.filter(|(_, wanted, _, _)| *wanted > 0.0) {
-          width = wanted;
-          height = content;
-        } else {
-          height = 520.0;
+      if needs > room + 1.0 && needs != height {
+        height = needs;
+        changed = true;
+      } else if let Some(before) = last_bottom {
+        // Only a part that closed, never a page that fills the window: those don't start shrinking
+        if before - bottom > 4.0 {
+          height -= before - bottom;
+          changed = true;
         }
+      }
+      last_bottom = if changed { None } else { Some(bottom) };
+      if changed {
         place_popup(&app, &popup, center, width, height);
+      }
+    }
+    if !shown {
+      let ready = measured.is_some_and(|(ready, ..)| ready);
+      steady = if ready && !changed { steady + 1 } else { 0 };
+      if steady >= 2 || started.elapsed() > POPUP_LOST {
+        if measured.is_none() {
+          (width, height) = (POPUP_FILLS, 520.0);
+          place_popup(&app, &popup, center, width, height);
+        }
         let _ = popup.show();
         let _ = popup.set_focus();
         shown = true;
       }
       continue;
-    }
-    if let Some((_, _, content, room)) = measured {
-      if content > room + 1.0 && content != height {
-        height = content;
-        place_popup(&app, &popup, center, width, height);
-      }
     }
     if popup_is_in_front(&popup) {
       in_front = true;
