@@ -7570,8 +7570,11 @@ button.history-row.selected {
   transform: rotate(-90deg);
 }
 
-.video-row.in-group {
-  margin-left: 24px;
+.video-folder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
 }
 
 .video-thumb {

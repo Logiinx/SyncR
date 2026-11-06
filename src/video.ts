@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { alertMarkId, changed, db, type AddedVideo, type VideoFollow, type VideoMark, type VideoRow } from './db'
+import { alertMarkId, changed, db, type AddedVideo, type VideoFolder, type VideoFollow, type VideoMark, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
@@ -400,6 +400,51 @@ export interface FeedVideo extends VideoRow {
   channelIcon: string | null
   opened: boolean
   watched: boolean
+  folderId: string | null // the folder it shows in; null = the main list
+}
+
+// ---------- Folders ----------
+
+export async function createFolder(name: string, parentId: string | null) {
+  // i18n-ok
+  await db.videoFolders.put({ id: crypto.randomUUID(), name, parentId, channel: null, deleted: false, updatedAt: Date.now() })
+  changed()
+}
+
+export async function renameFolder(id: string, name: string) {
+  await db.videoFolders.update(id, { name, updatedAt: Date.now() })
+  changed()
+}
+
+// With its sub-folders. Their videos show in the main list from then on: see liveFolders.
+export async function deleteFolder(id: string) {
+  const folders = await db.videoFolders.toArray()
+  const gone = new Set([id])
+  // Parents can only be chosen when a folder is made, so there are no loops
+  for (let more = true; more; ) {
+    more = false
+    for (const folder of folders) {
+      if (folder.parentId && gone.has(folder.parentId) && !gone.has(folder.id)) {
+        gone.add(folder.id)
+        more = true
+      }
+    }
+  }
+  await db.videoFolders.bulkPut(folders.filter((folder) => gone.has(folder.id)).map((folder) => ({ ...folder, deleted: true, updatedAt: Date.now() })))
+  changed()
+}
+
+// The folders that show, by name. One whose parent was deleted (a sub-folder made on another device
+// at the same time) doesn't: it would be out of reach, with its videos in it.
+function liveFolders(folders: VideoFolder[]) {
+  const byId = new Map(folders.map((folder) => [folder.id, folder]))
+  const alive = (folder: VideoFolder): boolean => {
+    if (folder.deleted) return false
+    if (!folder.parentId) return true
+    const parent = byId.get(folder.parentId)
+    return !!parent && alive(parent)
+  }
+  return folders.filter(alive).sort((a, b) => a.name.localeCompare(b.name))
 }
 
 // ---------- Added by link ----------
@@ -467,12 +512,22 @@ export function byChannel(videos: FeedVideo[]) {
 // What the Video tab shows, newest first. undefined while loading.
 export function useVideoFeed() {
   return useLiveQuery(async () => {
-    const [allFollows, rows, added, marks] = await Promise.all([db.videoFollows.toArray(), db.videos.toArray(), db.addedVideos.toArray(), db.videoMarks.toArray()])
+    const [allFollows, rows, added, marks, allFolders, places] = await Promise.all([
+      db.videoFollows.toArray(),
+      db.videos.toArray(),
+      db.addedVideos.toArray(),
+      db.videoMarks.toArray(),
+      db.videoFolders.toArray(),
+      db.videoPlaces.toArray(),
+    ])
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
     const followOf = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
     const markOf = new Map(marks.map((mark) => [mark.id, mark]))
+    const folders = liveFolders(allFolders)
+    const folderIds = new Set(folders.map((folder) => folder.id))
+    const placeOf = new Map(places.map((place) => [place.id, place.folderId]))
     const addedIds = new Set(added.map((video) => video.videoId))
-    const listed: (Omit<FeedVideo, 'opened' | 'watched'> & { sortAt: number })[] = [
+    const listed: (Omit<FeedVideo, 'opened' | 'watched' | 'folderId'> & { sortAt: number })[] = [
       ...rows.flatMap((video) => {
         const follow = followOf.get(`${video.platform} ${video.channelId}`)
         if (!follow || addedIds.has(video.id) || !videoKept(follow, video)) return []
@@ -493,13 +548,16 @@ export function useVideoFeed() {
     ]
     const videos = listed
       .flatMap((video) => {
-        const mark = markOf.get(videoMarkId(video.id))
-        return mark?.cleared ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched }]
+        const id = videoMarkId(video.id)
+        const mark = markOf.get(id)
+        const place = placeOf.get(id)
+        return mark?.cleared ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched, folderId: place && folderIds.has(place) ? place : null }]
       })
       .sort((a, b) => b.sortAt - a.sortAt || a.id.localeCompare(b.id))
     const toWatch = videos.filter((video) => !video.watched)
     return {
       follows,
+      folders,
       toWatch,
       watched: videos.filter((video) => video.watched),
       newCount: toWatch.filter((video) => !video.opened && !video.gone).length,

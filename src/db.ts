@@ -293,6 +293,29 @@ export interface AddedVideo extends Omit<VideoRow, 'id' | 'fresh'> {
   syncedUpdatedAt?: number
 }
 
+// A folder in the Video tab (video.ts). A deleted one stays as a row with deleted = true, so the
+// deletion can sync too.
+export interface VideoFolder {
+  id: string
+  name: string
+  parentId: string | null // the folder it's in; null = at the top
+  channel: string | null // at the top of this channel ("<platform> <its id>"); null = your own
+  deleted: boolean
+  updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
+}
+
+// Which folder a video is in. Apart from its mark, so a move here and "opened" on another device
+// can't overwrite each other.
+export interface VideoPlace {
+  id: string // videoMarkId(the video's id): also its file name in Dropbox
+  folderId: string | null // null, or a folder that's been deleted: the main list
+  updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
+}
+
 // What's been done with a video. Apart from the video, as these marks are what's
 // worth keeping: they stay when a follow is removed, so adding it again remembers them.
 export interface VideoMark {
@@ -344,6 +367,8 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   videos: EntityTable<VideoRow, 'id'>
   videoMarks: EntityTable<VideoMark, 'id'>
   addedVideos: EntityTable<AddedVideo, 'id'>
+  videoFolders: EntityTable<VideoFolder, 'id'>
+  videoPlaces: EntityTable<VideoPlace, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -428,6 +453,11 @@ export function defineSchema(d: Dexie) {
 
   d.version(18).stores({
     addedVideos: 'id',
+  })
+
+  d.version(19).stores({
+    videoFolders: 'id',
+    videoPlaces: 'id',
   })
 }
 
@@ -727,6 +757,14 @@ export async function removeOldDeletedFollows(): Promise<string[]> {
   )
   await db.videoFollows.bulkDelete(old.map((follow) => follow.id))
   return old.map((follow) => follow.id)
+}
+
+export async function removeOldDeletedFolders(): Promise<string[]> {
+  const old = (await db.videoFolders.toArray()).filter(
+    (folder) => folder.deleted && Date.now() - folder.updatedAt > OLD_DELETED_CARD_MS,
+  )
+  await db.videoFolders.bulkDelete(old.map((folder) => folder.id))
+  return old.map((folder) => folder.id)
 }
 
 export async function updateGame(id: string, change: Partial<Game>) {

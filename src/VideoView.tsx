@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCheck, ChevronDown, ExternalLink, ListVideo, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Check, CheckCheck, ChevronDown, ExternalLink, Folder, FolderPlus, ListVideo, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
+import ContextMenu from './ContextMenu'
+import { type VideoFolder } from './db'
 import { nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
@@ -8,7 +10,7 @@ import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { byChannel, checkVideos, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -31,24 +33,45 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
 
-// A channel's 2 or more videos folded into one row
-function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[]; open: boolean; newCount: number; onToggle: () => void }) {
-  const newest = videos[0]
+const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : undefined)
+
+// A row that folds what's under it: a channel's videos, or a folder
+function FoldRow(props: {
+  id: string
+  icon: ReactNode
+  title: string
+  logo?: ReactNode
+  count: number
+  newest?: FeedVideo
+  newCount: number
+  open: boolean
+  depth?: number
+  onToggle: () => void
+  onMenu?: (x: number, y: number) => void
+}) {
+  const { icon, title, logo, count, newest, newCount, open, depth = 0, onToggle, onMenu } = props
   return (
-    <li className={open ? 'video-row video-group' : 'video-row video-group folded'} data-item={`group-${newest.followId}`}>
+    <li
+      className={open ? 'video-row video-group' : 'video-row video-group folded'}
+      style={depthStyle(depth)}
+      data-item={props.id}
+      onContextMenu={
+        onMenu &&
+        ((e) => {
+          e.preventDefault()
+          onMenu(e.clientX, e.clientY)
+        })
+      }
+    >
       <button className="video-row-open" aria-expanded={open} onClick={onToggle}>
         <ChevronDown size={14} className="video-group-chevron" />
-        {newest.channelIcon ? (
-          <img className="video-follow-icon" src={newest.channelIcon} alt="" loading="lazy" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="video-follow-icon" />
-        )}
+        {icon}
         <span className="video-text">
-          <span className="video-title" title={newest.channel}>{newest.channel}</span>
+          <span className="video-title" title={title}>{title}</span>
           <span className="video-meta">
-            <VideoLogo platform={newest.platform} />
-            <span>{plural(videos.length, '{n} video', '{n} videos')}</span>
-            <span>· {videoDay(newest)}</span>
+            {logo}
+            <span>{plural(count, '{n} video', '{n} videos')}</span>
+            {newest && <span>· {videoDay(newest)}</span>}
             {newCount > 0 && <span className="video-new">{plural(newCount, '{n} new video', '{n} new videos')}</span>}
           </span>
         </span>
@@ -57,9 +80,33 @@ function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[];
   )
 }
 
+// A channel's 2 or more videos folded into one row
+function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[]; open: boolean; newCount: number; onToggle: () => void }) {
+  const newest = videos[0]
+  return (
+    <FoldRow
+      id={`group-${newest.followId}`}
+      icon={
+        newest.channelIcon ? (
+          <img className="video-follow-icon" src={newest.channelIcon} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="video-follow-icon" />
+        )
+      }
+      title={newest.channel}
+      logo={<VideoLogo platform={newest.platform} />}
+      count={videos.length}
+      newest={newest}
+      newCount={newCount}
+      open={open}
+      onToggle={onToggle}
+    />
+  )
+}
+
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video, isNew, inGroup }: { video: FeedVideo; isNew: boolean; inGroup?: boolean }) {
+function VideoRow({ video, isNew, depth = 0 }: { video: FeedVideo; isNew: boolean; depth?: number }) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -70,7 +117,7 @@ function VideoRow({ video, isNew, inGroup }: { video: FeedVideo; isNew: boolean;
     void markOpened(video.id)
   }
   return (
-    <li className={`video-row${video.gone ? ' gone' : ''}${inGroup ? ' in-group' : ''}`} data-item={video.id}>
+    <li className={`video-row${video.gone ? ' gone' : ''}`} style={depthStyle(depth)} data-item={video.id}>
       <button className="video-row-open" disabled={video.gone} onClick={open}>
         <span className="video-thumb">
           {video.thumbnail && !video.gone && (
@@ -137,6 +184,9 @@ function VideoView() {
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState(false)
   const [addingVideo, setAddingVideo] = useState(false)
+  const [naming, setNaming] = useState<{ parentId: string | null } | { folder: VideoFolder } | null>(null)
+  const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
+  const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
@@ -159,6 +209,53 @@ function VideoView() {
     setChannel('all')
     setOpenGroups((now) => (now.includes(followId) ? now : [...now, followId]))
   }
+  const folders = shownChannel === 'all' ? feed?.folders ?? [] : []
+  const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
+  const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
+  const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
+  // A folder, then what's in it when it's open: its sub-folders, then its videos. To watch shows
+  // the empty ones too, or a new folder couldn't be reached.
+  function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
+    const inside = allIn(folder)
+    if (list === 'watched' && !inside.length) return []
+    const open = openGroups.includes(folder.id)
+    return [
+      <FoldRow
+        key={folder.id}
+        id={folder.id}
+        icon={<span className="video-follow-icon video-folder-icon"><Folder size={15} /></span>}
+        title={folder.name}
+        count={inside.length}
+        newest={[...inside].sort((a, b) => b.published - a.published)[0]}
+        newCount={inside.filter(tagNew).length}
+        open={open}
+        depth={depth}
+        onToggle={() => toggleGroup(folder.id)}
+        onMenu={(x, y) => setFolderMenu({ folder, x, y })}
+      />,
+      ...(open
+        ? [
+            ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
+            ...videosIn(folder.id).map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth + 1} />),
+          ]
+        : []),
+    ]
+  }
+  // A chosen channel shows all its videos, wherever they are
+  const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || !video.folderId)
+  const rows = [
+    ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
+    // A flat list, so a video stays the same item whether it's in a group or not
+    ...(grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
+      if (group.length === 1) return [<VideoRow key={group[0].id} video={group[0]} isNew={tagNew(group[0])} />]
+      const id = group[0].followId
+      const open = openGroups.includes(id)
+      return [
+        <VideoGroup key={`group-${id}`} videos={group} open={open} newCount={group.filter(tagNew).length} onToggle={() => toggleGroup(id)} />,
+        ...(open ? group.map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={1} />) : []),
+      ]
+    }),
+  ]
   const empty = !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
 
   return (
@@ -199,6 +296,9 @@ function VideoView() {
             <button className="reminders-refresh" disabled={checking || !follows?.length} title={t('Check for new videos')} onClick={() => void checkVideos()}>
               {checking ? <Spinner label={t('Checking…')} /> : <RefreshCw size={15} />}
             </button>
+            <button className="reminders-refresh" title={t('New folder')} onClick={() => setNaming({ parentId: null })}>
+              <FolderPlus size={15} />
+            </button>
             <button className="reminders-new" disabled={!follows?.length} onClick={() => setListOpen(true)}>
               <ListVideo size={15} /> {t('Follows')}
             </button>
@@ -213,7 +313,7 @@ function VideoView() {
         {errors.map((error) => (
           <p key={error} className="games-empty error">{error}</p>
         ))}
-        {feed && videos?.length === 0 && checking && list === 'towatch' && follows?.length ? (
+        {feed && !rows.length && checking && list === 'towatch' && follows?.length ? (
           <ul className="video-list">
             {[0, 1, 2].map((row) => (
               <li key={row} className="video-row">
@@ -226,24 +326,58 @@ function VideoView() {
             ))}
           </ul>
         ) : (
-          feed && videos?.length === 0 && <p className="games-empty">{empty}</p>
+          feed && !rows.length && <p className="games-empty">{empty}</p>
         )}
-        <ul className="video-list" ref={listRef}>
-          {/* A flat list, so a video stays the same item whether it's in a group or not */}
-          {(grouping ? byChannel(videos ?? []) : (videos ?? []).map((video) => [video])).flatMap((group) => {
-            if (group.length === 1) return [<VideoRow key={group[0].id} video={group[0]} isNew={tagNew(group[0])} />]
-            const id = group[0].followId
-            const open = openGroups.includes(id)
-            return [
-              <VideoGroup key={`group-${id}`} videos={group} open={open} newCount={group.filter(tagNew).length} onToggle={() => toggleGroup(id)} />,
-              ...(open ? group.map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} inGroup />) : []),
-            ]
-          })}
-        </ul>
+        <ul className="video-list" ref={listRef}>{rows}</ul>
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
+      {folderMenu && (
+        <ContextMenu
+          x={folderMenu.x}
+          y={folderMenu.y}
+          onClose={() => setFolderMenu(null)}
+          items={[
+            { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id }) },
+            { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
+            { label: t('Delete'), icon: Trash2, danger: true, onClick: () => setDeleting(folderMenu.folder) },
+          ]}
+        />
+      )}
+      {naming && (
+        <Dialog
+          request={{
+            title: 'folder' in naming ? t('Rename') : naming.parentId ? t('New sub-folder') : t('New folder'),
+            input: { initial: 'folder' in naming ? naming.folder.name : '', placeholder: t('Folder name') },
+            confirmLabel: 'folder' in naming ? t('Rename') : t('Create'),
+            onConfirm: (typed) => {
+              const name = typed.trim()
+              if (!name) return
+              if ('folder' in naming) void renameFolder(naming.folder.id, name)
+              else {
+                void createFolder(name, naming.parentId)
+                // Unfolded to show it
+                const { parentId } = naming
+                if (parentId) setOpenGroups((now) => (now.includes(parentId) ? now : [...now, parentId]))
+              }
+            },
+          }}
+          onClose={() => setNaming(null)}
+        />
+      )}
+      {deleting && (
+        <Dialog
+          request={{
+            title: t('Delete {name}?', { name: deleting.name }),
+            message: foldersIn(deleting.id).length ? t('Its sub-folders go too. All their videos go back to the main list.') : t('Its videos go back to the main list.'),
+            confirmLabel: t('Delete'),
+            danger: true,
+            onConfirm: () => void deleteFolder(deleting.id),
+          }}
+          onClose={() => setDeleting(null)}
+        />
+      )}
       {markingAll && videos && (
         <Dialog
           request={{

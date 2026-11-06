@@ -6,7 +6,7 @@ import {
   noteTitle,
   removeOldAlertMarks,
   removeOldDeletedCards,
-  removeOldDeletedGames, removeOldDeletedFollows,
+  removeOldDeletedGames, removeOldDeletedFollows, removeOldDeletedFolders,
   savePendingEdits,
   type Note,
 } from './db'
@@ -28,6 +28,8 @@ import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from
 //   /videofollows/<id> one file per channel followed in the Video tab (same as cards)
 //   /videomarks/<id>   one file per video opened or watched (never removed)
 //   /addedvideos/<id>  one file per video added by its link (never removed)
+//   /videofolders/<id> one file per folder in the Video tab (same as cards)
+//   /videoplaces/<id>  one file per video moved to a folder (never removed)
 //   /history/<note id>/<details>  older versions of notes (noteHistory.ts, historySync.ts)
 // (/reminders/ held SyncR's own reminders, replaced by Google Calendar events in v0.16; syncs up to
 // v0.38 removed it.)
@@ -63,7 +65,7 @@ export class RetrySoonError extends Error {}
 
 
 // The folders sync reads each time (not history/: see noteHistory.ts)
-const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games', '/alerts', '/videofollows', '/videomarks', '/addedvideos']
+const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games', '/alerts', '/videofollows', '/videomarks', '/addedvideos', '/videofolders', '/videoplaces']
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
@@ -194,6 +196,8 @@ async function runSync(): Promise<SyncResult> {
   const remoteFollows = new Map<string, string>() // id -> rev
   const remoteVideoMarks = new Map<string, string>() // id -> rev
   const remoteAddedVideos = new Map<string, string>() // id -> rev
+  const remoteFolders = new Map<string, string>() // id -> rev
+  const remotePlaces = new Map<string, string>() // id -> rev
   ownWrites.clear()
   const { files, cursor } = await listFiles(SYNC_FOLDERS)
   result.cursor = cursor
@@ -209,6 +213,8 @@ async function runSync(): Promise<SyncResult> {
     if (folder === 'videofollows') remoteFollows.set(id, file.rev)
     if (folder === 'videomarks') remoteVideoMarks.set(id, file.rev)
     if (folder === 'addedvideos') remoteAddedVideos.set(id, file.rev)
+    if (folder === 'videofolders') remoteFolders.set(id, file.rev)
+    if (folder === 'videoplaces') remotePlaces.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -395,6 +401,11 @@ async function runSync(): Promise<SyncResult> {
   await syncRecords(db.videoFollows, 'videofollows', remoteFollows, key, result, byId)
   await syncRecords(db.videoMarks, 'videomarks', remoteVideoMarks, key, result, byId)
   await syncRecords(db.addedVideos, 'addedvideos', remoteAddedVideos, key, result, byId)
+  for (const id of await removeOldDeletedFolders()) {
+    if (remoteFolders.delete(id)) await deleteFile(`/videofolders/${id}`)
+  }
+  await syncRecords(db.videoFolders, 'videofolders', remoteFolders, key, result, byId)
+  await syncRecords(db.videoPlaces, 'videoplaces', remotePlaces, key, result, byId)
 
   // ---------- 4d. Note history (historySync.ts) ----------
   // Never stops the sync: what isn't sent now is sent next time.
