@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCheck, ExternalLink, ListVideo, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { Check, CheckCheck, ChevronDown, ExternalLink, ListVideo, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import { nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
+import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { checkVideos, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, checkVideos, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -28,9 +29,37 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   return newIds
 }
 
+const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
+
+// A channel's 2 or more videos folded into one row
+function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[]; open: boolean; newCount: number; onToggle: () => void }) {
+  const newest = videos[0]
+  return (
+    <li className={open ? 'video-row video-group' : 'video-row video-group folded'} data-item={`group-${newest.followId}`}>
+      <button className="video-row-open" aria-expanded={open} onClick={onToggle}>
+        <ChevronDown size={14} className="video-group-chevron" />
+        {newest.channelIcon ? (
+          <img className="video-follow-icon" src={newest.channelIcon} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="video-follow-icon" />
+        )}
+        <span className="video-text">
+          <span className="video-title" title={newest.channel}>{newest.channel}</span>
+          <span className="video-meta">
+            <VideoLogo platform={newest.platform} />
+            <span>{plural(videos.length, '{n} video', '{n} videos')}</span>
+            <span>· {videoDay(newest)}</span>
+            {newCount > 0 && <span className="video-new">{plural(newCount, '{n} new video', '{n} new videos')}</span>}
+          </span>
+        </span>
+      </button>
+    </li>
+  )
+}
+
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video, isNew }: { video: FeedVideo; isNew: boolean }) {
+function VideoRow({ video, isNew, inGroup }: { video: FeedVideo; isNew: boolean; inGroup?: boolean }) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -41,7 +70,7 @@ function VideoRow({ video, isNew }: { video: FeedVideo; isNew: boolean }) {
     void markOpened(video.id)
   }
   return (
-    <li className={video.gone ? 'video-row gone' : 'video-row'} data-item={video.id}>
+    <li className={`video-row${video.gone ? ' gone' : ''}${inGroup ? ' in-group' : ''}`} data-item={video.id}>
       <button className="video-row-open" disabled={video.gone} onClick={open}>
         <span className="video-thumb">
           {video.thumbnail && !video.gone && (
@@ -63,10 +92,10 @@ function VideoRow({ video, isNew }: { video: FeedVideo; isNew: boolean }) {
           <span className="video-meta">
             <VideoLogo platform={video.platform} />
             <span className="video-channel" title={video.channel}>{video.channel}</span>
-            <span>· {nearDay(video.published) ?? shortDate(video.published)}</span>
+            <span>· {videoDay(video)}</span>
             {video.gone && <span>· {t('No longer available')}</span>}
             {video.opened && !video.gone && !video.watched && <span className="video-opened">{t('Opened')}</span>}
-            {isNew && !video.opened && !video.gone && !video.watched && <span className="video-new">{t('New')}</span>}
+            {isNew && <span className="video-new">{t('New')}</span>}
           </span>
         </span>
       </button>
@@ -110,12 +139,18 @@ function VideoView() {
   const [listOpen, setListOpen] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
+  const [grouped, setGrouped] = useLocalState('syncr.video.byChannel', false)
+  const [openGroups, setOpenGroups] = useLocalState<string[]>('syncr.video.openGroups', [])
   const follows = feed?.follows
   // A follow that was just removed: back to all of them
   const shownChannel = follows?.some((follow) => follow.id === channel) ? channel : 'all'
   const videos = (list === 'towatch' ? feed?.toWatch : feed?.watched)?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
   const listRef = useRef<HTMLUListElement>(null)
-  useListItems(listRef, `${list} ${shownChannel}`)
+  // One channel chosen: there's nothing to group
+  const grouping = grouped && shownChannel === 'all'
+  useListItems(listRef, `${list} ${shownChannel} ${grouping}`)
+  const tagNew = (video: FeedVideo) => newIds.has(video.id) && !video.opened && !video.gone && !video.watched
+  const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const empty = !follows?.length ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
 
   return (
@@ -140,6 +175,12 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
+            {!!follows?.length && (
+              <label className="reminders-hide-repeating" title={t('Fold each channel’s videos into one row')}>
+                <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
+                {t('By channel')}
+              </label>
+            )}
             {/* What the list shows now: all follows, or the chosen one */}
             <button className="reminders-refresh" disabled={list !== 'towatch' || !videos?.length} title={t('Mark all as watched')} onClick={() => setMarkingAll(true)}>
               <CheckCheck size={15} />
@@ -177,7 +218,16 @@ function VideoView() {
           feed && videos?.length === 0 && <p className="games-empty">{empty}</p>
         )}
         <ul className="video-list" ref={listRef}>
-          {videos?.map((video) => <VideoRow key={video.id} video={video} isNew={newIds.has(video.id)} />)}
+          {/* A flat list, so a video stays the same item whether it's in a group or not */}
+          {(grouping ? byChannel(videos ?? []) : (videos ?? []).map((video) => [video])).flatMap((group) => {
+            if (group.length === 1) return [<VideoRow key={group[0].id} video={group[0]} isNew={tagNew(group[0])} />]
+            const id = group[0].followId
+            const open = openGroups.includes(id)
+            return [
+              <VideoGroup key={`group-${id}`} videos={group} open={open} newCount={group.filter(tagNew).length} onToggle={() => toggleGroup(id)} />,
+              ...(open ? group.map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} inGroup />) : []),
+            ]
+          })}
         </ul>
       </div>
       {adding && <FollowDialog onClose={() => setAdding(false)} />}

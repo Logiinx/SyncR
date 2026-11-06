@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Ajout** d’une étiquette verte Nouvelle sur les vidéos trouvées depuis la dernière ouverture de l’onglet Vidéo
+- **Ajout** d’une option Par chaîne dans l’onglet Vidéo, qui replie les vidéos de chaque chaîne sur une seule ligne
 - **Ajout** d’un moyen de retirer des vidéos des vues, une par une ou toutes celles de la liste
 - **Ajout** d’un choix de taille du chat dans les réglages du lecteur Twitch, avec plus d’espace entre les messages
 - **Ajout** de la valeur du volume à côté de son curseur dans le lecteur Twitch

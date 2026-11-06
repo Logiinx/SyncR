@@ -390,8 +390,17 @@ export const clearWatched = (videoIds: string[]) => saveMarks(videoIds, { cleare
 export interface FeedVideo extends VideoRow {
   followId: string
   channel: string
+  channelIcon: string | null
   opened: boolean
   watched: boolean
+}
+
+// Each channel's videos together, the channel with the newest video first. The list comes newest
+// first, and so do the videos inside each group.
+export function byChannel(videos: FeedVideo[]) {
+  const groups = new Map<string, FeedVideo[]>()
+  for (const video of videos) groups.set(video.followId, [...(groups.get(video.followId) ?? []), video])
+  return [...groups.values()]
 }
 
 // What the Video tab shows, newest first. undefined while loading.
@@ -399,15 +408,15 @@ export function useVideoFeed() {
   return useLiveQuery(async () => {
     const [allFollows, rows, marks] = await Promise.all([db.videoFollows.toArray(), db.videos.toArray(), db.videoMarks.toArray()])
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
-    const byChannel = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
+    const followOf = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
     const markOf = new Map(marks.map((mark) => [mark.id, mark]))
     const videos = rows
       .flatMap((video): FeedVideo[] => {
-        const follow = byChannel.get(`${video.platform} ${video.channelId}`)
+        const follow = followOf.get(`${video.platform} ${video.channelId}`)
         if (!follow || !videoKept(follow, video)) return []
         const mark = markOf.get(videoMarkId(video.id))
         if (mark?.cleared) return []
-        return [{ ...video, followId: follow.id, channel: follow.name, opened: !!mark?.opened, watched: !!mark?.watched }]
+        return [{ ...video, followId: follow.id, channel: follow.name, channelIcon: follow.icon, opened: !!mark?.opened, watched: !!mark?.watched }]
       })
       .sort((a, b) => b.published - a.published || a.id.localeCompare(b.id))
     const toWatch = videos.filter((video) => !video.watched)

@@ -7507,6 +7507,11 @@ button.history-row.selected {
   flex-wrap: wrap;
 }
 
+.video-toolbar .reminders-tools {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .video-lists {
   display: flex;
   gap: 4px;
@@ -7548,6 +7553,25 @@ button.history-row.selected {
 
 .video-row-open:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
+}
+
+/* A channel's videos folded into one row (the toggle "By channel") */
+.video-group .video-title {
+  font-weight: 600;
+}
+
+.video-group-chevron {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.video-group.folded .video-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.video-row.in-group {
+  margin-left: 24px;
 }
 
 .video-thumb {
