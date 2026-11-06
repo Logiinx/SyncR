@@ -1,0 +1,30 @@
+# Builds the throwaway Player Lab test app (player-lab/) from its own branch. Not part of SyncR.
+name: Build Player Lab
+
+on:
+  push:
+    branches: [player-lab]
+    paths: ['player-lab/**', '.github/workflows/player-lab.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: player-lab/src-tauri
+      - run: cargo build --release
+        working-directory: player-lab/src-tauri
+      - uses: actions/upload-artifact@v4
+        with:
+          name: syncr-player-lab
+          path: player-lab/src-tauri/target/release/syncr-player-lab.exe
+          retention-days: 7

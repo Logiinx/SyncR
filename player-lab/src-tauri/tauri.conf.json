@@ -1,0 +1,14 @@
+{
+  "productName": "SyncR Player Lab",
+  "version": "0.0.1",
+  "identifier": "com.logiinx.syncr.playerlab",
+  "build": { "frontendDist": "../ui" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "label": "main", "title": "SyncR Player Lab", "width": 820, "height": 760, "useHttpsScheme": true }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.ico"] }
+}

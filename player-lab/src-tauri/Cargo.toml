@@ -1,0 +1,19 @@
+# A throwaway test app, separate from SyncR: can the window type SyncR uses (WebView2) run
+# browser extensions and userscripts well enough for a video player window?
+[package]
+name = "syncr-player-lab"
+version = "0.0.1"
+edition = "2024"
+
+[build-dependencies]
+tauri-build = "2.7.2"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.12.3", features = ["devtools", "custom-protocol"] }
+tauri-plugin-dialog = "2"
+# Same versions as Tauri's own, to talk to WebView2 directly: Tauri's extensions_path hides
+# whether an extension loaded and which id it got, and those are what this test is about.
+webview2-com = "0.39"
+windows = "0.62"

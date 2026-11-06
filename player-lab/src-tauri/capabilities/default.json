@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Only the manager window can talk to the app. Player windows get nothing.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

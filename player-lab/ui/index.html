@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SyncR Player Lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 20px 24px; background: #1e1e1e; color: #e6e6e6; font: 14px 'Segoe UI', sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+  h2 { font-size: 14px; margin: 24px 0 8px; display: flex; align-items: center; gap: 12px; }
+  h2 button { margin-left: auto; }
+  button { background: #333; color: inherit; border: 1px solid #4a4a4a; border-radius: 4px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button:hover { background: #3d3d3d; }
+  input { flex: 1; background: #2a2a2a; color: inherit; border: 1px solid #4a4a4a; border-radius: 4px; padding: 5px 8px; font: inherit; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #333; }
+  .grow { flex: 1; min-width: 0; }
+  .sub { color: #9a9a9a; font-size: 12px; overflow-wrap: anywhere; }
+  .error { color: #ff8080; font-size: 12px; overflow-wrap: anywhere; }
+  .ok { color: #7fce8f; font-size: 12px; }
+  .empty { color: #9a9a9a; padding: 8px 0; border-top: 1px solid #333; }
+</style>
+</head>
+<body>
+<h1>SyncR Player Lab</h1>
+
+<h2>Open a page</h2>
+<div class="row" style="border:0">
+  <input id="url" placeholder="https://www.youtube.com/watch?v=… or https://www.twitch.tv/videos/…">
+  <button id="open">Open player</button>
+</div>
+
+<h2>Extensions <button id="add-extension">Add from folder…</button></h2>
+<div id="extensions"></div>
+
+<h2>Userscripts <button id="add-userscript">Add .js file…</button></h2>
+<div id="userscripts"></div>
+
+<div id="problems"></div>
+<p class="sub" id="data-dir"></p>
+
+<script>
+  const { invoke } = window.__TAURI__.core
+  const { listen } = window.__TAURI__.event
+  const $ = (id) => document.getElementById(id)
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag)
+    if (className) node.className = className
+    if (text !== undefined) node.textContent = text
+    return node
+  }
+  function button(text, action) {
+    const node = el('button', '', text)
+    node.onclick = () => run(action)
+    return node
+  }
+  let lastError = ''
+  async function run(action) {
+    lastError = ''
+    try { await action() } catch (error) { lastError = String(error) }
+    await draw()
+  }
+
+  async function draw() {
+    const state = await invoke('get_state')
+
+    const list = $('extensions')
+    list.replaceChildren()
+    if (!state.extensions.length) list.append(el('div', 'empty', 'None yet'))
+    for (const item of state.extensions) {
+      const row = el('div', 'row')
+      const info = el('div', 'grow')
+      info.append(el('div', '', `${item.name} ${item.version}`))
+      info.append(el('div', 'sub', `Manifest V${item.manifest_version} · ${item.folder}`))
+      if (item.error) info.append(el('div', 'error', `Didn't load: ${item.error}`))
+      else if (item.id) info.append(el('div', 'ok', `Loaded · ${item.id}`))
+      else info.append(el('div', 'sub', 'Loading…'))
+      row.append(info)
+      if (item.id && item.popup) row.append(button('Popup', () => invoke('open_extension_page', { id: item.id, page: item.popup })))
+      if (item.id && item.settings) row.append(button('Settings', () => invoke('open_extension_page', { id: item.id, page: item.settings })))
+      row.append(button('Remove', () => invoke('remove_extension', { folder: item.folder })))
+      list.append(row)
+    }
+
+    const scripts = $('userscripts')
+    scripts.replaceChildren()
+    if (!state.userscripts.length) scripts.append(el('div', 'empty', 'None yet'))
+    for (const name of state.userscripts) {
+      const row = el('div', 'row')
+      row.append(el('div', 'grow', name))
+      row.append(button('Remove', () => invoke('remove_userscript', { name })))
+      scripts.append(row)
+    }
+
+    const problems = $('problems')
+    problems.replaceChildren()
+    for (const text of [lastError, ...state.notes].filter(Boolean)) problems.append(el('p', 'error', text))
+    $('data-dir').textContent = `Stored in ${state.dataDir}`
+  }
+
+  $('open').onclick = () => run(() => invoke('open_player', { url: $('url').value }))
+  $('url').onkeydown = (event) => { if (event.key === 'Enter') $('open').click() }
+  $('add-extension').onclick = () => run(() => invoke('add_extension'))
+  $('add-userscript').onclick = () => run(() => invoke('add_userscript'))
+  listen('lab-changed', draw)
+  draw()
+</script>
+</body>
+</html>
