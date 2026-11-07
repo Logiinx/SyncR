@@ -500,8 +500,14 @@ async function linkPreview(env, request) {
 // when YOUTUBE_KEY is set (see the top of this file); otherwise the app shows no Video tab.
 //   video/status   no body                  { enabled }
 //   video/channel  { link }                 { platform, id, name, icon }
-//   video/list     { platform, id, since }  { videos: [...] }, newest first; with "since" (a date)
-//                                           everything back to it, without it the latest page
+//   video/list     { platform, id, since, back, known }
+//                                           { videos: [...], mark? }, newest first. "since" (a date):
+//                                           everything back to it, and nothing older. "back" (a date):
+//                                           reads back to it, gives all it read. Neither: the latest
+//                                           page. YouTube's "mark" says what its uploads list holds, when
+//                                           no video in it is still live: sending it back as "known"
+//                                           gives { unchanged: true } if the list is the same, for 1
+//                                           quota unit instead of 3.
 //   video/exists   { platform, ids }        { existing: [...] }: the ones still there
 //   video/one      { link }                 { platform, channel: { id, name, icon }, video }
 const TWITCH_API = 'https://api.twitch.tv/helix'
@@ -617,7 +623,7 @@ const youtubeVideo = (video, kind) => ({
   live: video.snippet.liveBroadcastContent !== 'none',
 })
 
-async function twitchVideos(env, id, since) {
+async function twitchVideos(env, id, reach) {
   const liveStream = (await askTwitch(env, `streams?user_id=${id}&first=1`)).data?.[0]?.id
   const videos = []
   let cursor = ''
@@ -626,51 +632,71 @@ async function twitchVideos(env, id, since) {
     const items = answer.data ?? []
     videos.push(...items.map((video) => twitchVideo(video, liveStream)))
     cursor = answer.pagination?.cursor
-    if (!since || !cursor || !items.length || Date.parse(items[items.length - 1].published_at) < since) break
+    if (!reach || !cursor || !items.length || Date.parse(items[items.length - 1].published_at) < reach) break
   }
   return videos
 }
 
+// Stands for the videos on a list's first page: any upload, removal or change of order changes it
+async function listMark(ids) {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ids.join(',')))
+  return [...new Uint8Array(hash)].slice(0, 12).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 // The ids in one of a channel's automatic playlists, newest first. Private videos have no date.
-async function playlistIds(env, playlist, since) {
+// A first page matching "known": nothing else to read.
+async function playlistIds(env, playlist, reach, known) {
   const ids = []
+  let mark
   let pageToken
   for (let page = 0; page < VIDEO_PAGES; page++) {
     const answer = await askYouTube(env, 'playlistItems', { part: 'contentDetails', playlistId: playlist, maxResults: '50', ...(pageToken ? { pageToken } : {}) })
     const items = answer.items ?? []
     ids.push(...items.map((item) => item.contentDetails.videoId))
+    if (page === 0) {
+      mark = await listMark(ids)
+      if (mark === known) return { ids: [], mark, unchanged: true }
+    }
     pageToken = answer.nextPageToken
     const oldest = items[items.length - 1]?.contentDetails.videoPublishedAt
-    if (!since || !pageToken || !items.length || (oldest && Date.parse(oldest) < since)) break
+    if (!reach || !pageToken || !items.length || (oldest && Date.parse(oldest) < reach)) break
   }
-  return ids
+  return { ids, mark }
 }
 
 // A channel's id starts with UC. UU + the rest = its uploads (official); UUSH + the rest = only
 // its Shorts (not official, but the API has no other way to tell them apart). Shorts are a part
 // of the uploads, so the same page or period of them covers all that the uploads list holds.
-async function youtubeVideos(env, id, since) {
-  const ids = await playlistIds(env, `UU${id.slice(2)}`, since)
-  if (!ids.length) return []
-  const shorts = new Set(await playlistIds(env, `UUSH${id.slice(2)}`, since))
+async function youtubeVideos(env, id, reach, known) {
+  const { ids, mark, unchanged } = await playlistIds(env, `UU${id.slice(2)}`, reach, known)
+  if (unchanged) return { unchanged, mark }
+  if (!ids.length) return { videos: [], mark }
+  const shorts = new Set((await playlistIds(env, `UUSH${id.slice(2)}`, reach)).ids)
   const videos = []
   for (let start = 0; start < ids.length; start += 50) {
     const answer = await askYouTube(env, 'videos', { part: 'snippet,contentDetails', id: ids.slice(start, start + 50).join(','), maxResults: '50' })
     // Deleted and private videos just aren't in this answer
     videos.push(...(answer.items ?? []).map((video) => youtubeVideo(video, shorts.has(video.id) ? 'short' : 'video')))
   }
-  return videos
+  // A live video will finish without changing the list, so no mark until then
+  return videos.some((video) => video.live) ? { videos } : { videos, mark }
 }
 
-async function listVideos(env, { platform, id, since }) {
-  const from = since ? Date.parse(since) : NaN
-  const limit = Number.isNaN(from) ? null : from
-  let videos
-  if (platform === 'twitch' && /^\d+$/.test(id)) videos = await twitchVideos(env, id, limit)
-  else if (platform === 'youtube' && /^UC[\w-]{22}$/.test(id)) videos = await youtubeVideos(env, id, limit)
+async function listVideos(env, { platform, id, since, back, known }) {
+  const date = (text) => {
+    const time = text ? Date.parse(text) : NaN
+    return Number.isNaN(time) ? null : time
+  }
+  const limit = date(since)
+  const reach = limit ?? date(back)
+  let answer
+  if (platform === 'twitch' && /^\d+$/.test(id)) answer = { videos: await twitchVideos(env, id, reach) }
+  else if (platform === 'youtube' && /^UC[\w-]{22}$/.test(id)) answer = await youtubeVideos(env, id, reach, known)
   else throw videoError('Unknown channel')
+  if (answer.unchanged) return answer
   return {
-    videos: videos
+    ...answer,
+    videos: answer.videos
       .filter((video) => limit === null || Date.parse(video.published) >= limit)
       .sort((a, b) => Date.parse(b.published) - Date.parse(a.published)),
   }

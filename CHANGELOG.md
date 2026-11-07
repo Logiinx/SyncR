@@ -5,8 +5,10 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Improved** new videos show up sooner: checked every 15 minutes, less often with many YouTube channels
 - **Changed** the Video tab's top bar to one tidy row, with occasional actions in an Add and a More menu
 - **Changed** how to see watched videos: they now open from the More menu, instead of a To watch/Watched switch
+- **Fixed** an issue where videos could be missed after a long absence, or wait an hour after a failed check
 
 
 ## [0.58.0] - 2026-11-07

@@ -5,8 +5,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Amélioration** des nouvelles vidéos : vérifiées toutes les 15 minutes, moins souvent avec beaucoup de chaînes YouTube
 - **Changement** de la barre de l’onglet Vidéo : une seule ligne, les actions occasionnelles dans les menus Ajouter et Plus
 - **Changement** de l’accès aux vidéos vues : elles s’ouvrent depuis le menu Plus, sans le choix À regarder/Vues
+- **Correction** d’un problème où des vidéos pouvaient manquer après une longue absence, ou attendre une heure après un échec
 
 
 ## [0.58.0] - 2026-11-07

@@ -179,6 +179,10 @@ export async function removeFollow(id: string) {
   const checked = read<Record<string, number>>(CHECKED_KEY, {})
   delete checked[id]
   write(CHECKED_KEY, checked)
+  const marks = read<ListMarks>(LIST_MARKS_KEY, {})
+  delete marks[id]
+  write(LIST_MARKS_KEY, marks)
+  failures.delete(id)
   changed()
 }
 
@@ -192,10 +196,17 @@ export function useFollows() {
 
 // ---------- Videos ----------
 
-const CHECK_EVERY = 60 * 60 * 1000
+const SOONEST_CHECK = 15 * 60 * 1000 // ms between checks, with few channels
+const YOUTUBE_UNITS_A_DAY = 5000 // half of YouTube's daily 10,000: the test app and the pane use the same key
+const DAY = 24 * 60 * 60 * 1000
+const READ_BACK = 2 * DAY // a finished stream is dated from its start, so before the last check
+const FIRST_RETRY = 5 * 60 * 1000 // a follow that failed; doubles each time, up to LAST_RETRY
+const LAST_RETRY = 60 * 60 * 1000
 const GONE_CHECK_EVERY = 24 * 60 * 60 * 1000
 const CHECKED_KEY = 'syncr.videoChecked' // follow id → when its videos were last read
 const GONE_KEY = 'syncr.videoGoneCheck'
+// YouTube follow id → what its uploads list held when last read in full (Worker's "mark"), and when
+const LIST_MARKS_KEY = 'syncr.videoListMarks'
 // i18n-ok: "all that are still available" means from long before any video site
 const LONG_AGO = '2000-01-01T00:00:00Z'
 
@@ -214,6 +225,8 @@ let checking = false
 let checkAgain = false
 let errors: string[] = []
 let checkState = { checking, errors }
+let stoppedOffline = false // the last check couldn't reach the Worker: try again at the next tick
+const failures = new Map<string, { count: number; retryAt: number; message: string }>() // by follow id
 const listeners = new Set<() => void>()
 
 function checkChanged() {
@@ -270,14 +283,30 @@ export async function clearFresh(videoIds: string[]) {
   if (rows.length) await db.videos.bulkPut(rows.map((row) => ({ ...row, fresh: false })))
 }
 
-// One follow. The first time everything back to its start, then the latest page is enough.
+type ListMarks = Record<string, { mark: string; at: number }>
+
+// One follow. The first time everything back to its start, then back to the last check, however
+// long ago: nothing is skipped after a long time away. An unchanged YouTube list needs nothing
+// more, but it's read in full once a day, as that also finds edited titles and pictures.
 async function checkFollow(follow: VideoFollow) {
-  const checked = read<Record<string, number>>(CHECKED_KEY, {})
-  const since = checked[follow.id] ? undefined : follow.startAt ? new Date(follow.startAt).toISOString() : LONG_AGO
-  const response = await igdbProxyFetch('video/list', JSON.stringify({ platform: follow.platform, id: follow.channelId, since }), 60_000)
+  const lastChecked = read<Record<string, number>>(CHECKED_KEY, {})[follow.id]
+  const listMark = read<ListMarks>(LIST_MARKS_KEY, {})[follow.id]
+  const request = lastChecked
+    ? {
+        back: new Date(lastChecked - READ_BACK).toISOString(),
+        known: listMark && Date.now() - listMark.at < DAY ? listMark.mark : undefined,
+      }
+    : { since: follow.startAt ? new Date(follow.startAt).toISOString() : LONG_AGO }
+  const response = await igdbProxyFetch('video/list', JSON.stringify({ platform: follow.platform, id: follow.channelId, ...request }), 60_000)
   const answer = await response.json().catch(() => null)
-  if (!response.ok || !Array.isArray(answer?.videos)) throw new Error(String(answer?.error ?? response.status))
-  await saveVideos(follow, answer.videos, !checked[follow.id])
+  if (!response.ok || !(answer?.unchanged || Array.isArray(answer?.videos))) throw new Error(String(answer?.error ?? response.status))
+  if (!answer.unchanged) {
+    await saveVideos(follow, answer.videos, !lastChecked)
+    const marks = read<ListMarks>(LIST_MARKS_KEY, {})
+    if (answer.mark) marks[follow.id] = { mark: answer.mark, at: Date.now() }
+    else delete marks[follow.id]
+    write(LIST_MARKS_KEY, marks)
+  }
   write(CHECKED_KEY, { ...read<Record<string, number>>(CHECKED_KEY, {}), [follow.id]: Date.now() })
 }
 
@@ -311,7 +340,8 @@ async function checkGone() {
 
 // Reads all followed channels, one after the other. Asked again while running (a new follow):
 // one more round after this one.
-export async function checkVideos() {
+// only: just these follows (those due for a retry).
+export async function checkVideos(only?: string[]) {
   if (checking) {
     checkAgain = true
     return
@@ -320,38 +350,69 @@ export async function checkVideos() {
   checkChanged()
   do {
     checkAgain = false
-    const found: string[] = []
+    stoppedOffline = false
+    let offlineMessage: string | null = null
+    let failed = false
     const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
-    for (const follow of follows) {
+    for (const follow of follows.filter((follow) => !only || only.includes(follow.id))) {
       try {
         await checkFollow(follow)
+        failures.delete(follow.id)
       } catch (e) {
         // Offline: one message, no need to try the others
         if ((e as { offline?: boolean }).offline) {
-          found.push((e as Error).message)
+          stoppedOffline = true
+          offlineMessage = (e as Error).message
           break
         }
-        found.push(t('{name}: {error}', { name: follow.name, error: e instanceof Error ? e.message : String(e) }))
+        failed = true
+        const count = (failures.get(follow.id)?.count ?? 0) + 1
+        failures.set(follow.id, {
+          count,
+          retryAt: Date.now() + Math.min(FIRST_RETRY * 2 ** (count - 1), LAST_RETRY),
+          message: t('{name}: {error}', { name: follow.name, error: e instanceof Error ? e.message : String(e) }),
+        })
       }
     }
-    if (!found.length) await checkGone().catch((e) => console.warn('Video check failed', e))
-    errors = found
+    if (!failed && !stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
+    // Also what failed earlier and is waiting for its retry
+    const waiting = follows.flatMap((follow) => failures.get(follow.id)?.message ?? [])
+    errors = offlineMessage ? [offlineMessage, ...waiting] : waiting
+    only = undefined // asked again: a new follow, so everything
   } while (checkAgain)
   checking = false
   checkChanged()
 }
 
-// Soon after the start, then about once an hour. Checked often, so a PC waking up from sleep
-// doesn't wait for the rest of the hour, and a follow that just arrived by sync (a reinstalled
-// PC) gets its videos within minutes.
+// How long between checks: every 15 minutes, longer once YouTube's daily quota would run out. A
+// follow costs 1 unit when the Worker can say its list didn't change, 3 otherwise (a video still
+// live, or a Worker from before that existed). Twitch has no such limit.
+export function checkEvery(follows: VideoFollow[], marks: ListMarks) {
+  const units = follows.reduce((sum, follow) => sum + (follow.platform !== 'youtube' ? 0 : marks[follow.id] ? 1 : 3), 0)
+  return Math.max(SOONEST_CHECK, (units / YOUTUBE_UNITS_A_DAY) * DAY)
+}
+
+// Soon after the start, then see checkEvery. Looks every 5 minutes, so a PC waking up from sleep
+// doesn't wait for the rest of the wait, and a follow that just arrived by sync (a reinstalled PC)
+// gets its videos within minutes. A failed follow only retries itself: one channel that keeps
+// failing mustn't make all the others use up the quota.
 export function startVideoChecks() {
   let last = 0
   const tick = async () => {
+    if (checking) return
+    const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
+    const now = Date.now()
+    if (stoppedOffline || now - last >= checkEvery(follows, read<ListMarks>(LIST_MARKS_KEY, {}))) {
+      last = now
+      void checkVideos()
+      return
+    }
     const checked = read<Record<string, number>>(CHECKED_KEY, {})
-    const unread = await db.videoFollows.filter((follow) => !follow.deleted && !checked[follow.id]).count()
-    if (!unread && Date.now() - last < CHECK_EVERY) return
-    last = Date.now()
-    void checkVideos()
+    const due = follows.filter((follow) => {
+      const failure = failures.get(follow.id)
+      return failure ? failure.retryAt <= now : !checked[follow.id]
+    })
+    if (due.length) void checkVideos(due.map((follow) => follow.id))
   }
   const first = setTimeout(tick, 3000)
   const timer = setInterval(tick, 5 * 60 * 1000)
