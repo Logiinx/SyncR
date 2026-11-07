@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.59.0] - 2026-11-07
+
 **Video**
 - **Improved** new videos show up sooner: checked every 15 minutes, less often with many YouTube channels
 - **Changed** the Video tab's top bar to one tidy row, with occasional actions in an Add and a More menu
