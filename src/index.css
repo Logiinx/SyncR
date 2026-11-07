@@ -7512,9 +7512,19 @@ button.history-row.selected {
   justify-content: flex-end;
 }
 
-.video-lists {
+/* All the bar's controls the same height, whether they hold text or just an icon */
+.video-toolbar .reminders-refresh {
+  align-self: stretch;
+}
+
+/* Showing Watched instead of To watch: says so, and ✕ goes back */
+.games-views .video-watched-chip {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text);
 }
 
 .video-channel-filter {

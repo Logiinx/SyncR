@@ -20,13 +20,14 @@ interface Props {
   y: number
   items: MenuItem[]
   header?: { title: string; subtitle?: string } // what was right-clicked (e.g. a mail), above a line
+  alignRight?: boolean // x is where the menu ends, not where it starts (a menu under a button on the right)
   onClose: () => void
 }
 
 const EDGE = 8 // px kept free between the menu and the window's edge
 
 // Right-click menu (long press on a phone). Closes on any click elsewhere or Escape.
-function ContextMenu({ x, y, items, header, onClose }: Props) {
+function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -42,7 +43,8 @@ function ContextMenu({ x, y, items, header, onClose }: Props) {
     const zoom = currentZoom()
     el.style.left = el.style.top = '0'
     const { width, height } = el.getBoundingClientRect()
-    el.style.left = `${Math.max(EDGE, Math.min(x, window.innerWidth - width - EDGE)) / zoom}px`
+    const left = alignRight ? x - width : x
+    el.style.left = `${Math.max(EDGE, Math.min(left, window.innerWidth - width - EDGE)) / zoom}px`
     el.style.top = `${Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE)) / zoom}px`
   })
 

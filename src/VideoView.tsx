@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, CheckCheck, ChevronDown, ExternalLink, Folder, FolderOutput, FolderPlus, ListVideo, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListChecks, ListTree, ListVideo, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
 import { type VideoFolder } from './db'
@@ -9,7 +9,6 @@ import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
-import { FillSwitch } from './tabLines'
 import { byChannel, channelKey, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, moveToFolder, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import { dragVideo } from './videoDrag'
@@ -222,6 +221,7 @@ function VideoView() {
   // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
   // folder to rename
   const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string } | { folder: VideoFolder } | null>(null)
+  const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
@@ -242,6 +242,12 @@ function VideoView() {
   const tagNew = (video: FeedVideo) => newIds.has(video.id) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
+  const anyFollowsOrVideos = !!follows?.length || anyVideos
+  // Under its button, ending at its right edge
+  function openBarMenu(kind: 'add' | 'more', button: HTMLElement) {
+    const box = button.getBoundingClientRect()
+    setBarMenu({ kind, x: box.right, y: box.bottom + 4 })
+  }
   // Shows where it went: To watch, all follows, its group open
   const openRow = (id: string) => setOpenGroups((now) => (now.includes(id) ? now : [...now, id]))
   function showAdded(followId: string) {
@@ -356,15 +362,11 @@ function VideoView() {
     <main className="page games-page" ref={pageRef}>
       <div className="games">
         <div className="games-views reminders-toolbar video-toolbar">
-          <FillSwitch
-            className="video-lists"
-            options={[
-              { value: 'towatch' as List, label: t('To watch') },
-              { value: 'watched' as List, label: t('Watched') },
-            ]}
-            value={list}
-            onChange={setList}
-          />
+          {list === 'watched' && (
+            <button className="video-watched-chip" title={t('Back to the videos to watch')} onClick={() => setList('towatch')}>
+              {t('Watched videos')} <X size={14} />
+            </button>
+          )}
           {!!follows?.length && (
             <select className="video-channel-filter" value={shownChannel} onChange={(e) => setChannel(e.target.value)}>
               <option value="all">{t('All follows')}</option>
@@ -374,33 +376,14 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
-            {(!!follows?.length || anyVideos) && (
-              <label className="reminders-hide-repeating" title={t('Fold each channel’s videos into one row')}>
-                <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
-                {t('By channel')}
-              </label>
-            )}
-            {/* What the list shows now: all follows, or the chosen one */}
-            <button className="reminders-refresh" disabled={list !== 'towatch' || !videos?.length} title={t('Mark all as watched')} onClick={() => setMarkingAll(true)}>
-              <CheckCheck size={15} />
-            </button>
-            <button className="reminders-refresh" disabled={list !== 'watched' || !videos?.length} title={t('Clear watched videos')} onClick={() => setClearingAll(true)}>
-              <Trash2 size={15} />
-            </button>
             <button className="reminders-refresh" disabled={checking || !follows?.length} title={t('Check for new videos')} onClick={() => void checkVideos()}>
               {checking ? <Spinner label={t('Checking…')} /> : <RefreshCw size={15} />}
             </button>
-            <button className="reminders-refresh" title={t('New folder')} onClick={() => setNaming({ parentId: null })}>
-              <FolderPlus size={15} />
+            <button className="reminders-new" onClick={(e) => openBarMenu('add', e.currentTarget)}>
+              <Plus size={15} /> {t('Add')} <ChevronDown size={14} />
             </button>
-            <button className="reminders-new" disabled={!follows?.length} onClick={() => setListOpen(true)}>
-              <ListVideo size={15} /> {t('Follows')}
-            </button>
-            <button className="reminders-new" onClick={() => setAdding(true)}>
-              <Plus size={15} /> {t('Add a follow')}
-            </button>
-            <button className="reminders-new" onClick={() => setAddingVideo(true)}>
-              <Plus size={15} /> {t('Add a video')}
+            <button className="reminders-refresh" title={t('More')} onClick={(e) => openBarMenu('more', e.currentTarget)}>
+              <Ellipsis size={15} />
             </button>
           </div>
         </div>
@@ -427,6 +410,50 @@ function VideoView() {
       {adding && <FollowDialog onClose={() => setAdding(false)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
+      {barMenu && (
+        <ContextMenu
+          x={barMenu.x}
+          y={barMenu.y}
+          alignRight
+          onClose={() => setBarMenu(null)}
+          items={
+            barMenu.kind === 'add'
+              ? [
+                  { label: t('Add a video'), icon: Plus, onClick: () => setAddingVideo(true) },
+                  { label: t('Add a follow'), icon: Plus, onClick: () => setAdding(true) },
+                  { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null }) },
+                ]
+              : [
+                  { label: t('Watched videos'), icon: ListChecks, checked: list === 'watched', onClick: () => setList(list === 'watched' ? 'towatch' : 'watched') },
+                  {
+                    label: t('By channel'),
+                    icon: ListTree,
+                    checked: grouped,
+                    disabled: !anyFollowsOrVideos || shownChannel !== 'all',
+                    hint: !anyFollowsOrVideos ? t('No follows yet') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),
+                    onClick: () => setGrouped(!grouped),
+                  },
+                  { label: t('Follows'), icon: ListVideo, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },
+                  // What the list shows now: all follows, or the chosen one
+                  {
+                    label: t('Mark all as watched'),
+                    icon: CheckCheck,
+                    divider: true,
+                    disabled: list !== 'towatch' || !videos?.length,
+                    hint: list !== 'towatch' ? t('Only in To watch') : videos?.length ? undefined : t('Nothing to watch'),
+                    onClick: () => setMarkingAll(true),
+                  },
+                  {
+                    label: t('Clear watched videos'),
+                    icon: Trash2,
+                    disabled: list !== 'watched' || !videos?.length,
+                    hint: list !== 'watched' ? t('Only in Watched videos') : videos?.length ? undefined : t('No watched videos yet'),
+                    onClick: () => setClearingAll(true),
+                  },
+                ]
+          }
+        />
+      )}
       {folderMenu && (
         <ContextMenu
           x={folderMenu.x}

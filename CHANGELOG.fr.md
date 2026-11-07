@@ -4,6 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** de la barre de l’onglet Vidéo : une seule ligne, les actions occasionnelles dans les menus Ajouter et Plus
+- **Changement** de l’accès aux vidéos vues : elles s’ouvrent depuis le menu Plus, sans le choix À regarder/Vues
+
+
 ## [0.58.0] - 2026-11-07
 
 **Vidéo**

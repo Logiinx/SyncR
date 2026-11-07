@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** the Video tab's top bar to one tidy row, with occasional actions in an Add and a More menu
+- **Changed** how to see watched videos: they now open from the More menu, instead of a To watch/Watched switch
+
+
 ## [0.58.0] - 2026-11-07
 
 **Video**
