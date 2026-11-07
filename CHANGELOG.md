@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-11-07
+
 **Sync**
 - **Changed** the phone's sync vibration to a single buzz once syncing is fully done, not after every step
 

@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-11-07
+
 **Synchronisation**
 - **Changement** de la vibration du téléphone : une seule, une fois la synchronisation vraiment terminée
 
