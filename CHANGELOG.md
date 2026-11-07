@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-11-07
+
 **Video**
 - **Changed** the extension icons on the video window's top bar into a single Extensions menu
 

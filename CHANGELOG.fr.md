@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-11-07
+
 **Vidéo**
 - **Changement** des icônes d’extensions de la barre de la fenêtre vidéo en un seul menu Extensions
 
