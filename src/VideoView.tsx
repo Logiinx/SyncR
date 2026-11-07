@@ -10,7 +10,7 @@ import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { byChannel, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, moveToFolder, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, channelKey, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, moveToFolder, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -80,25 +80,35 @@ function FoldRow(props: {
   )
 }
 
-// A channel's 2 or more videos folded into one row
-function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[]; open: boolean; newCount: number; onToggle: () => void }) {
-  const newest = videos[0]
+// A channel as a folder: its 2 or more videos, or any with sub-folders of its own, in one row
+function VideoGroup({ id, name, icon, platform, videos, open, newCount, onToggle, onMenu }: {
+  id: string
+  name: string
+  icon: string | null
+  platform: FeedVideo['platform']
+  videos: FeedVideo[]
+  open: boolean
+  newCount: number
+  onToggle: () => void
+  onMenu: (x: number, y: number) => void
+}) {
   return (
     <FoldRow
-      id={`group-${newest.followId}`}
+      id={`group-${id}`}
       icon={
-        newest.channelIcon ? (
-          <img className="video-follow-icon" src={newest.channelIcon} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        icon ? (
+          <img className="video-follow-icon" src={icon} alt="" loading="lazy" referrerPolicy="no-referrer" />
         ) : (
           <span className="video-follow-icon" />
         )
       }
-      title={newest.channel}
-      logo={<VideoLogo platform={newest.platform} />}
+      title={name}
+      logo={<VideoLogo platform={platform} />}
       count={videos.length}
-      newest={newest}
+      newest={videos[0]}
       newCount={newCount}
       open={open}
+      onMenu={onMenu}
       onToggle={onToggle}
     />
   )
@@ -192,8 +202,10 @@ function VideoView() {
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState(false)
   const [addingVideo, setAddingVideo] = useState(false)
-  // A new folder (with the video to move into it, if any), or a folder to rename
-  const [naming, setNaming] = useState<{ parentId: string | null; videoId?: string } | { folder: VideoFolder } | null>(null)
+  // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
+  // folder to rename
+  const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string } | { folder: VideoFolder } | null>(null)
+  const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
@@ -219,20 +231,28 @@ function VideoView() {
     setChannel('all')
     setOpenGroups((now) => (now.includes(followId) ? now : [...now, followId]))
   }
-  const folders = shownChannel === 'all' ? feed?.folders ?? [] : []
+  const allFolders = feed?.folders ?? []
+  const folders = shownChannel === 'all' ? allFolders : []
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
   const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
   const videoRow = (video: FeedVideo, depth = 0) => (
     <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} onMenu={(x, y) => setMoving({ video, x, y })} />
   )
   // Every folder to choose from, each under its parent, with its whole path
-  function folderChoices(parentId: string | null, path: string): { folder: VideoFolder; path: string }[] {
-    return (feed?.folders ?? [])
-      .filter((folder) => folder.parentId === parentId && !folder.channel)
-      .flatMap((folder) => {
-        const own = path + folder.name
-        return [{ folder, path: own }, ...folderChoices(folder.id, `${own} / `)]
-      })
+  function folderChoices(level: VideoFolder[], path: string): { folder: VideoFolder; path: string }[] {
+    return level.flatMap((folder) => {
+      const own = path + folder.name
+      return [{ folder, path: own }, ...folderChoices(allFolders.filter((other) => other.parentId === folder.id), `${own} / `)]
+    })
+  }
+  // In one of your own folders, not one of a channel's (at any depth)
+  function inOwnFolder(video: FeedVideo) {
+    let folder = allFolders.find((other) => other.id === video.folderId)
+    while (folder?.parentId) {
+      const { parentId } = folder
+      folder = allFolders.find((other) => other.id === parentId)
+    }
+    return !!folder && !folder.channel
   }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
   // A folder, then what's in it when it's open: its sub-folders, then its videos. To watch shows
@@ -263,19 +283,48 @@ function VideoView() {
         : []),
     ]
   }
-  // A chosen channel shows all its videos, wherever they are
-  const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || !video.folderId)
+  // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
+  function channelRows(id: string, key: string, shown: { name: string; icon: string | null; platform: FeedVideo['platform'] }, group: FeedVideo[], subs: VideoFolder[]) {
+    const open = openGroups.includes(id)
+    return [
+      <VideoGroup
+        key={`group-${id}`}
+        id={id}
+        {...shown}
+        videos={group}
+        open={open}
+        newCount={group.filter(tagNew).length}
+        onToggle={() => toggleGroup(id)}
+        onMenu={(x, y) => setChannelMenu({ key, openId: id, x, y })}
+      />,
+      ...(open
+        ? [
+            ...subs.flatMap((sub) => folderRows(sub, 1)),
+            ...group.filter((video) => !video.folderId).map((video) => videoRow(video, 1)),
+          ]
+        : []),
+    ]
+  }
+  // A chosen channel shows all its videos, wherever they are. So does the plain list for those in a
+  // channel's sub-folders: these only exist in the channel's row.
+  const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || !inOwnFolder(video))
+  const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
   const rows = [
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     // A flat list, so a video stays the same item whether it's in a group or not
     ...(grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
-      if (group.length === 1) return [videoRow(group[0])]
-      const id = group[0].followId
-      const open = openGroups.includes(id)
-      return [
-        <VideoGroup key={`group-${id}`} videos={group} open={open} newCount={group.filter(tagNew).length} onToggle={() => toggleGroup(id)} />,
-        ...(open ? group.map((video) => videoRow(video, 1)) : []),
-      ]
+      const key = channelKey(group[0])
+      const subs = grouping ? channelFolders(key).filter((sub) => list === 'towatch' || allIn(sub).length) : []
+      if (group.length === 1 && !subs.length) return [videoRow(group[0])]
+      const { followId, channel: name, channelIcon: icon, platform } = group[0]
+      return channelRows(followId, key, { name, icon, platform }, group, subs)
+    }),
+    // Followed channels with sub-folders, and no videos to watch right now
+    ...(grouping && list === 'towatch' ? follows ?? [] : []).flatMap((follow) => {
+      const key = channelKey(follow)
+      const subs = channelFolders(key)
+      if (!subs.length || mainVideos.some((video) => channelKey(video) === key)) return []
+      return channelRows(follow.id, key, follow, [], subs)
     }),
   ]
   const empty = !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
@@ -367,6 +416,16 @@ function VideoView() {
           ]}
         />
       )}
+      {channelMenu && (
+        <ContextMenu
+          x={channelMenu.x}
+          y={channelMenu.y}
+          onClose={() => setChannelMenu(null)}
+          items={[
+            { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: null, channel: channelMenu.key, openId: channelMenu.openId }) },
+          ]}
+        />
+      )}
       {moving && (
         <ContextMenu
           x={moving.x}
@@ -374,13 +433,24 @@ function VideoView() {
           onClose={() => setMoving(null)}
           header={{ title: t('Move to folder') }}
           items={[
-            ...folderChoices(null, '').map(({ folder, path }) => ({
+            // Your own folders, then those of this video's channel: it can't go in another channel's
+            ...[
+              ...folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), ''),
+              ...folderChoices(allFolders.filter((folder) => folder.channel === channelKey(moving.video)), `${moving.video.channel} / `),
+            ].map(({ folder, path }) => ({
               label: path,
               icon: Folder,
               checked: folder.id === moving.video.folderId,
               onClick: () => void moveToFolder(moving.video.id, folder.id),
             })),
             { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, videoId: moving.video.id }) },
+            ...(grouping
+              ? [{
+                  label: t('New folder in {name}…', { name: moving.video.channel }),
+                  icon: FolderPlus,
+                  onClick: () => setNaming({ parentId: null, channel: channelKey(moving.video), openId: moving.video.followId, videoId: moving.video.id }),
+                }]
+              : []),
             ...(moving.video.folderId
               ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void moveToFolder(moving.video.id, null) }]
               : []),
@@ -390,7 +460,7 @@ function VideoView() {
       {naming && (
         <Dialog
           request={{
-            title: 'folder' in naming ? t('Rename') : naming.parentId ? t('New sub-folder') : t('New folder'),
+            title: 'folder' in naming ? t('Rename') : naming.parentId || naming.channel ? t('New sub-folder') : t('New folder'),
             input: { initial: 'folder' in naming ? naming.folder.name : '', placeholder: t('Folder name') },
             confirmLabel: 'folder' in naming ? t('Rename') : t('Create'),
             onConfirm: (typed) => {
@@ -398,10 +468,11 @@ function VideoView() {
               if (!name) return
               if ('folder' in naming) void renameFolder(naming.folder.id, name)
               else {
-                const { parentId, videoId } = naming
-                void createFolder(name, parentId).then((id) => (videoId ? moveToFolder(videoId, id) : undefined))
+                const { parentId, channel: inChannel, videoId } = naming
+                void createFolder(name, parentId, inChannel).then((id) => (videoId ? moveToFolder(videoId, id) : undefined))
                 // Unfolded to show it
-                if (parentId) setOpenGroups((now) => (now.includes(parentId) ? now : [...now, parentId]))
+                const openId = naming.openId ?? parentId
+                if (openId) setOpenGroups((now) => (now.includes(openId) ? now : [...now, openId]))
               }
             },
           }}

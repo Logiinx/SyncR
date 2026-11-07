@@ -405,9 +405,13 @@ export interface FeedVideo extends VideoRow {
 
 // ---------- Folders ----------
 
-export async function createFolder(name: string, parentId: string | null) {
+// Which channel a video or follow is of, whether it's followed or not
+export const channelKey = (of: { platform: string; channelId: string }) => `${of.platform} ${of.channelId}` // i18n-ok
+
+// channel: at the top of that channel (channelKey) instead of among your own
+export async function createFolder(name: string, parentId: string | null, channel: string | null = null) {
   const id = crypto.randomUUID()
-  await db.videoFolders.put({ id, name, parentId, channel: null, deleted: false, updatedAt: Date.now() })
+  await db.videoFolders.put({ id, name, parentId, channel, deleted: false, updatedAt: Date.now() })
   changed()
   return id
 }
