@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** YouTube playlists: the next video starts by itself, and the order can be reversed
 - **Added** an automatic move to Watched near a video's end, with an on/off switch in Settings
 
 **Sync**

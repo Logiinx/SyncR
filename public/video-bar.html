@@ -84,8 +84,11 @@
   if (data.zoom) document.documentElement.style.zoom = data.zoom
 
   const title = $('title').firstElementChild
-  title.textContent = data.title || ''
-  title.title = data.title || ''
+  window.setTitle = (text) => {
+    title.textContent = text
+    title.title = text
+  }
+  window.setTitle(data.title || '')
   $('another-way').title = labels.anotherWay
   // Only YouTube has other ways
   $('on-top').title = labels.onTop

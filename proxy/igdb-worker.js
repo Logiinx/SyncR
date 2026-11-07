@@ -510,6 +510,8 @@ async function linkPreview(env, request) {
 //                                           quota unit instead of 3.
 //   video/exists   { platform, ids }        { existing: [...] }: the ones still there
 //   video/one      { link }                 { platform, channel: { id, name, icon }, video }
+//   video/playlist { link, pageToken }      One page of a YouTube playlist, in its order: { videos, nextPageToken },
+//                                           and on the first page { id, name }. Costs 2 quota units a page + 1.
 const TWITCH_API = 'https://api.twitch.tv/helix'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
 const VIDEO_PAGES = 10 // the most pages per list: Cloudflare allows 50 outside calls per request
@@ -777,12 +779,44 @@ async function oneVideo(env, link) {
   return answer
 }
 
+// The playlist a pasted link points to, or null: its own page, or a video playing in it
+function playlistLink(text) {
+  const typed = String(text ?? '').trim()
+  let url
+  try {
+    url = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`)
+  } catch {
+    return null
+  }
+  const host = url.hostname.toLowerCase().replace(/^(www|m|music)\./, '')
+  const id = host === 'youtube.com' || host === 'youtu.be' ? url.searchParams.get('list') : null
+  return /^[\w-]{10,}$/.test(id ?? '') ? id : null
+}
+
+async function onePlaylist(env, { link, pageToken }) {
+  const id = playlistLink(link)
+  if (!id) throw videoError('not-a-playlist')
+  const list = pageToken ? null : (await askYouTube(env, 'playlists', { part: 'snippet', id })).items?.[0]
+  if (!pageToken && !list) throw videoError('playlist-not-found', 404)
+  const page = await askYouTube(env, 'playlistItems', { part: 'contentDetails', playlistId: id, maxResults: '50', ...(pageToken ? { pageToken } : {}) })
+  const ids = (page.items ?? []).map((item) => item.contentDetails.videoId)
+  // Deleted and private videos just aren't in this answer
+  const found = ids.length ? (await askYouTube(env, 'videos', { part: 'snippet,contentDetails', id: ids.join(','), maxResults: '50' })).items ?? [] : []
+  const byId = new Map(found.map((video) => [video.id, { ...youtubeVideo(video, 'video'), channel: video.snippet.channelTitle, channelId: video.snippet.channelId }]))
+  return {
+    ...(list ? { id, name: list.snippet.title } : {}),
+    videos: ids.flatMap((videoId) => byId.get(videoId) ?? []).filter((video) => !video.live),
+    nextPageToken: page.nextPageToken ?? null,
+  }
+}
+
 async function videoFeed(env, endpoint, request) {
   const body = await request.json().catch(() => ({}))
   if (endpoint === 'video/channel') return findChannel(env, body.link)
   if (endpoint === 'video/list') return listVideos(env, body)
   if (endpoint === 'video/exists') return existingVideos(env, body)
   if (endpoint === 'video/one') return oneVideo(env, body.link)
+  if (endpoint === 'video/playlist') return onePlaylist(env, body)
   throw videoError(`Unknown endpoint: ${endpoint}`, 404)
 }
 

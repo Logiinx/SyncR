@@ -306,6 +306,33 @@ export interface VideoFolder {
   syncedUpdatedAt?: number
 }
 
+// A YouTube playlist in the Video tab (video.ts). A removed one stays as a row with deleted = true,
+// so the removal can sync too.
+export interface VideoPlaylist {
+  id: string // a hash of its YouTube id, which has capitals: also its file name in Dropbox
+  listId: string // its YouTube id
+  name: string
+  keepChecking: boolean // looks for new videos once a day; off for an old, finished one
+  reversed: boolean // plays from the end of YouTube's order to its start
+  deleted: boolean
+  restoredAt?: number // added again after being removed (see localWins, sync.ts)
+  updatedAt: number
+  syncedRev?: string // Dropbox revision last synced
+  syncedUpdatedAt?: number
+}
+
+// One video of a playlist
+export interface PlaylistEpisode extends Omit<VideoRow, 'gone'> {
+  channel: string
+  later?: boolean // came after the playlist was added: counts as a new video until it's opened
+}
+
+// A playlist's videos, in YouTube's order. Only on this device: they can be downloaded again.
+export interface PlaylistVideos {
+  id: string // the playlist's id
+  videos: PlaylistEpisode[]
+}
+
 // Which folder a video is in. Apart from its mark, so a move here and "opened" on another device
 // can't overwrite each other.
 export interface VideoPlace {
@@ -368,6 +395,8 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   videoMarks: EntityTable<VideoMark, 'id'>
   addedVideos: EntityTable<AddedVideo, 'id'>
   videoFolders: EntityTable<VideoFolder, 'id'>
+  videoPlaylists: EntityTable<VideoPlaylist, 'id'>
+  playlistVideos: EntityTable<PlaylistVideos, 'id'>
   videoPlaces: EntityTable<VideoPlace, 'id'>
 }
 
@@ -458,6 +487,11 @@ export function defineSchema(d: Dexie) {
   d.version(19).stores({
     videoFolders: 'id',
     videoPlaces: 'id',
+  })
+
+  d.version(20).stores({
+    videoPlaylists: 'id',
+    playlistVideos: 'id',
   })
 }
 
@@ -765,6 +799,14 @@ export async function removeOldDeletedFolders(): Promise<string[]> {
   )
   await db.videoFolders.bulkDelete(old.map((folder) => folder.id))
   return old.map((folder) => folder.id)
+}
+
+export async function removeOldDeletedPlaylists(): Promise<string[]> {
+  const old = (await db.videoPlaylists.toArray()).filter(
+    (playlist) => playlist.deleted && Date.now() - playlist.updatedAt > OLD_DELETED_CARD_MS,
+  )
+  await db.videoPlaylists.bulkDelete(old.map((playlist) => playlist.id))
+  return old.map((playlist) => playlist.id)
 }
 
 export async function updateGame(id: string, change: Partial<Game>) {

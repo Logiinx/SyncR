@@ -8,7 +8,7 @@ import VideoLogo from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
-import { addFollow, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addFollow, addPlaylist, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
 
 // Add a follow, or change one: which channel (only when adding), which of its videos count, and
 // (only when adding) how far back to start.
@@ -167,6 +167,54 @@ export function AddVideoDialog({ onAdded, onClose }: { onAdded: (followId: strin
       <label className="video-field">
         {t('Video link')}
         <input autoFocus value={link} placeholder={t('Paste a YouTube or Twitch video’s link')} onChange={(e) => setLink(e.target.value)} />
+      </label>
+      {error && <p className="event-error">{error}</p>}
+      <div className="dialog-buttons">
+        <button type="button" onClick={onClose}>{t('Cancel')}</button>
+        <button type="submit" className="primary" disabled={busy || !link.trim()}>
+          {busy ? (
+            <span className="loading-line">
+              <Spinner size={13} /> {t('Saving…')}
+            </span>
+          ) : (
+            t('Add')
+          )}
+        </button>
+      </div>
+    </Window>
+  )
+}
+
+export function AddPlaylistDialog({ onAdded, onClose }: { onAdded: (playlistId: string) => void; onClose: () => void }) {
+  const [link, setLink] = useState('')
+  const [keepChecking, setKeepChecking] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    if (busy || !link.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      onAdded(await addPlaylist(link, keepChecking))
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Window className="dialog video-follow-dialog" label={t('Add a playlist')} onClose={onClose} onSubmit={save}>
+      <h2>{t('Add a playlist')}</h2>
+      <label className="video-field">
+        {t('Playlist link')}
+        <input autoFocus value={link} placeholder={t('Paste a YouTube playlist’s link')} onChange={(e) => setLink(e.target.value)} />
+      </label>
+      <label className="dialog-check">
+        <input type="checkbox" checked={keepChecking} onChange={(e) => setKeepChecking(e.target.checked)} />
+        {t('Check for new videos once a day')}
       </label>
       {error && <p className="event-error">{error}</p>}
       <div className="dialog-buttons">

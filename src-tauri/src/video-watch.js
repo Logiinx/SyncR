@@ -6,13 +6,21 @@
 // It also tells the app how far the video is, for resuming later (videoPositions.ts): a plain
 // request, as those visits make the page think it's being left.
 (() => {
+  const report = (t, length) => {
+    fetch(`https://syncr-video.localhost/position?t=${Math.floor(t)}&length=${Math.floor(length)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+  }
+  // Its end at once, as the next video of a playlist follows. Caught on the way down: this event
+  // doesn't bubble up.
+  addEventListener('ended', ({ target }) => {
+    if (target.duration > 0) report(target.duration, target.duration)
+  }, true)
   let sent = -1
   setInterval(() => {
     // The longest, as an ad can come first
     const video = [...document.querySelectorAll('video')].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]
     if (!video || !(video.duration > 0) || video.currentTime < 1 || video.currentTime === sent) return
     sent = video.currentTime
-    fetch(`https://syncr-video.localhost/position?t=${Math.floor(video.currentTime)}&length=${Math.floor(video.duration)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+    report(video.currentTime, video.duration)
   }, 5000)
 
   const ask = ({ code, video }) => {

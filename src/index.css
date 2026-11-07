@@ -7727,6 +7727,31 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
+/* A watched video in a playlist: it stays, grayed */
+.video-row.seen .video-title {
+  color: var(--text-dim);
+}
+
+.video-row.seen .video-thumb {
+  opacity: 0.5;
+}
+
+.video-seen {
+  flex-shrink: 0;
+  color: var(--text-green);
+}
+
+.video-row-action.on,
+.video-row-action.on:hover {
+  color: var(--text-blue);
+}
+
+.video-row-action:disabled {
+  background: none;
+  color: var(--text-dim);
+  opacity: 0.4;
+}
+
 .video-row.gone .video-logo {
   opacity: 0.5;
 }

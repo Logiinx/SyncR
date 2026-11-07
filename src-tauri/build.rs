@@ -13,6 +13,7 @@ fn main() {
     "open_video_player",
     "video_bar",
     "video_player_way",
+    "video_player_next",
     "video_player_watched",
     "close_video_player",
     "video_extensions_list",

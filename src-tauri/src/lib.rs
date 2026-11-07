@@ -787,6 +787,19 @@ fn video_player_way(app: tauri::AppHandle, address: String, via: String, note: S
   bar.eval(format!("window.setVia?.({via}, {note}, {note_stays})")).map_err(|e| e.to_string())
 }
 
+// The next video of a playlist (videoPlayer.ts): in the same window, which stays where it is
+#[tauri::command]
+fn video_player_next(app: tauri::AppHandle, address: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
+  let (Some(window), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_BAR)) else {
+    return Ok(()); // closed in the meantime
+  };
+  let _ = window.set_title(&title);
+  *VIDEO_SHAPE.lock().unwrap() = None;
+  let title = serde_json::to_string(&title).map_err(|e| e.to_string())?;
+  bar.eval(format!("window.setTitle?.({title})")).map_err(|e| e.to_string())?;
+  video_player_way(app, address, via, note, note_stays)
+}
+
 // The main window tells the bar when a video's Watched mark changes (also from the list)
 #[tauri::command]
 fn video_player_watched(app: tauri::AppHandle, watched: bool) -> Result<(), String> {
@@ -839,6 +852,7 @@ pub fn run() {
       open_video_player,
       video_bar,
       video_player_way,
+      video_player_next,
       video_player_watched,
       close_video_player,
       video_extensions::video_extensions_list,

@@ -5,7 +5,7 @@ import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
-import { setWatched, watchWatched } from './video'
+import { markOpened, nextInPlaylist, setWatched, watchWatched } from './video'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
 
 // The video player window (desktop only; lib.rs, open_video_player). In a browser, videos just
@@ -238,6 +238,7 @@ let queue = Promise.resolve()
 let stopWatching = () => {}
 let watchedNow = false // the open video's Watched mark
 let undone = false // taken out of Watched during this viewing: it stays out
+let playlist: string | null = null // the playlist it plays in: the next one follows at its end
 // Not from the page of a video that was just replaced
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
@@ -284,6 +285,7 @@ function listenToBar() {
     savePosition(current.id, { t: seconds, length })
     // Not with an unknown length: the report could be an ad's
     if (current.duration > 0 && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
+    if (current.duration > 0 && seconds >= length) playNext()
   })
   // Subtitles turned on or off by hand. The video's own id, as a site could send this too.
   void listen<{ on: boolean; video: string }>('video-subtitles', ({ payload: { on, video } }) => {
@@ -310,7 +312,47 @@ function listenToBar() {
   })
 }
 
-export function playVideo(video: PlayableVideo) {
+// What goes with a video starting in the window
+function startWatching(video: PlayableVideo, playlistId: string | null) {
+  current = video
+  playlist = playlistId
+  watchedNow = video.watched
+  undone = false
+  reportsFrom = Date.now() + REPORTS_AFTER
+  currentWay = rememberedWay(video)
+  stopWatching()
+}
+
+// Also when it's ticked in the list while the window is open
+function followWatched(video: PlayableVideo) {
+  stopWatching = watchWatched(video.id, (watched) => {
+    if (watchedNow && !watched) undone = true
+    watchedNow = watched
+    void invoke('video_player_watched', { watched })
+  })
+}
+
+// The open video reached its end: the next one of its playlist, in the same window. Once, as more
+// reports of its end can come. After the last one, it just stays there.
+function playNext() {
+  const ended = current
+  const playlistId = playlist
+  if (!ended || !playlistId) return
+  playlist = null
+  queue = queue
+    .then(async () => {
+      const next = await nextInPlaylist(playlistId, ended.id)
+      if (!next || current !== ended) return // another video was opened in the meantime
+      startWatching(next, playlistId)
+      await invoke<void>('video_player_next', { address: playerAddress(next, currentWay), title: next.title, via: viaText(currentWay), ...noteFor(next, currentWay) })
+      followWatched(next)
+      void markOpened(next.id)
+    })
+    .catch((error) => console.error('Video player failed', error))
+}
+
+// playlistId: it plays in that playlist
+export function playVideo(video: PlayableVideo, playlistId?: string) {
   if (!isTauri()) {
     openLink(video.url)
     return
@@ -318,12 +360,7 @@ export function playVideo(video: PlayableVideo) {
   listenToBar()
   queue = queue
     .then(async () => {
-      current = video
-      watchedNow = video.watched
-      undone = false
-      reportsFrom = Date.now() + REPORTS_AFTER
-      currentWay = rememberedWay(video)
-      stopWatching()
+      startWatching(video, playlistId ?? null)
       await invoke<void>('open_video_player', {
         address: playerAddress(video, currentWay),
         title: video.title,
@@ -331,12 +368,7 @@ export function playVideo(video: PlayableVideo) {
         barHeight: BAR_HEIGHT * currentZoom(),
         alwaysOnTop: loadPlayerSettings().alwaysOnTop,
       })
-      // Also when it's ticked in the list while the window is open
-      stopWatching = watchWatched(video.id, (watched) => {
-        if (watchedNow && !watched) undone = true
-        watchedNow = watched
-        void invoke('video_player_watched', { watched })
-      })
+      followWatched(video)
     })
     .catch((error) => {
       console.error('Video player failed', error)
