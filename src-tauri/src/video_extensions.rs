@@ -30,7 +30,7 @@ use webview2_com::{
 };
 use windows::core::{BOOL, HSTRING, Interface, PWSTR};
 
-use super::{VIDEO_ARGS, VIDEO_BAR, VIDEO_REQUEST, VIDEO_SITE, VIDEO_WINDOW};
+use super::{VIDEO_ARGS, VIDEO_BAR, VIDEO_MENU, VIDEO_REQUEST, VIDEO_SITE, VIDEO_WINDOW};
 
 pub const HOST: &str = "video-extensions-host";
 const SETTINGS: &str = "video-extension-settings";
@@ -411,7 +411,7 @@ fn popup_page(manifest: &Value) -> Option<String> {
   page_of(manifest, &[&["action", "default_popup"], &["browser_action", "default_popup"]])
 }
 
-// What the bar shows: the extensions that are on and have a popup. Never starts a hidden window.
+// What the bar's menu shows: the extensions that are on and have a popup. Never starts a hidden window.
 fn bar_buttons(app: &AppHandle) -> Result<Vec<BarButton>, String> {
   let dir = extensions_dir(app)?;
   let mut with_popup = Vec::new();
@@ -438,12 +438,13 @@ fn bar_buttons(app: &AppHandle) -> Result<Vec<BarButton>, String> {
 
 // Only from a thread other than the main one
 pub fn show_on_bar(app: &AppHandle) {
-  let Some(bar) = app.get_webview(VIDEO_BAR) else {
-    return;
-  };
   match bar_buttons(app).and_then(|list| serde_json::to_string(&list).map_err(|e| e.to_string())) {
     Ok(list) => {
-      let _ = bar.eval(format!("window.setExtensions?.({list})"));
+      for label in [VIDEO_BAR, VIDEO_MENU] {
+        if let Some(page) = app.get_webview(label) {
+          let _ = page.eval(format!("window.setExtensions?.({list})"));
+        }
+      }
     }
     Err(error) => log::warn!("Extensions for the video bar: {error}"),
   }
@@ -461,6 +462,143 @@ pub fn bar_ready(app: AppHandle) {
     }
   });
 }
+
+// ---------- The bar's menu ----------
+
+struct MenuState {
+  open: bool,
+  closed: Option<Instant>,
+  size: (f64, f64), // as its page measured it, without the screen's scale
+  at: f64,          // the middle of the bar's button: where the popups open
+}
+static MENU_STATE: Mutex<MenuState> = Mutex::new(MenuState { open: false, closed: None, size: (0.0, 0.0), at: 0.0 });
+// A click on the button first takes the keyboard away from what it should close, which closes it
+const JUST_CLOSED: Duration = Duration::from_millis(400);
+
+// A new video window starts with a new, hidden menu
+pub fn menu_is_new() {
+  if let Ok(mut state) = MENU_STATE.lock() {
+    state.open = false;
+    state.closed = None;
+  }
+}
+
+fn focus_site(app: &AppHandle) {
+  if let Some(site) = app.get_webview(VIDEO_SITE) {
+    let _ = site.set_focus();
+  }
+}
+
+fn close_menu(app: &AppHandle) {
+  let was_open = MENU_STATE
+    .lock()
+    .map(|mut state| {
+      let was_open = state.open;
+      if was_open {
+        state.open = false;
+        state.closed = Some(Instant::now());
+      }
+      was_open
+    })
+    .unwrap_or(false);
+  if was_open {
+    if let Some(menu) = app.get_webview(VIDEO_MENU) {
+      let _ = menu.hide();
+    }
+  }
+}
+
+// Under the bar's button, inside the window. Taller than the window: it scrolls. A popup that's
+// open closes instead, as it did on a second click when each extension had its own button.
+pub fn toggle_menu(app: &AppHandle, left: f64, at: f64) {
+  use tauri::{PhysicalPosition, PhysicalSize, Rect};
+  let popup_just_closed = POPUP_STATE
+    .lock()
+    .map(|state| state.closed.as_ref().is_some_and(|(_, time)| time.elapsed() < JUST_CLOSED))
+    .unwrap_or(false);
+  if popup_just_closed || app.get_webview_window(POPUP).is_some() {
+    close_popup(app, true);
+    return;
+  }
+  let was_open = MENU_STATE.lock().map(|state| state.open || state.closed.is_some_and(|time| time.elapsed() < JUST_CLOSED)).unwrap_or(false);
+  if was_open {
+    close_menu(app);
+    focus_site(app);
+    return;
+  }
+  let (Some(player), Some(bar), Some(menu)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_BAR), app.get_webview(VIDEO_MENU)) else {
+    return;
+  };
+  let (Ok(scale), Ok(room), Ok(top)) = (player.scale_factor(), player.inner_size(), bar.size().map(|size| size.height as i32)) else {
+    return;
+  };
+  let size = {
+    let Ok(mut state) = MENU_STATE.lock() else {
+      return;
+    };
+    if state.size.0 <= 0.0 {
+      return; // Its page hasn't started yet
+    }
+    state.open = true;
+    state.at = at;
+    state.size
+  };
+  let (room_width, room_height) = (room.width as i32, room.height as i32);
+  let width = ((size.0 * scale).ceil() as i32).min(room_width);
+  let height = ((size.1 * scale).ceil() as i32).min(room_height - top).max(1);
+  let _ = menu.set_bounds(Rect {
+    position: PhysicalPosition::new((left.round() as i32).min(room_width - width).max(0), top).into(),
+    size: PhysicalSize::new(width as u32, height as u32).into(),
+  });
+  let _ = menu.show();
+  let _ = menu.set_focus();
+}
+
+// Everything the menu's page says
+#[tauri::command]
+pub fn video_menu(
+  app: AppHandle,
+  webview: tauri::Webview,
+  action: String,
+  extension: Option<String>,
+  width: Option<f64>,
+  height: Option<f64>,
+) -> Result<(), String> {
+  if webview.label() != VIDEO_MENU {
+    return Err("Only for the video menu".to_string());
+  }
+  match action.as_str() {
+    "ready" => bar_ready(app),
+    "size" => {
+      let (Some(width), Some(height)) = (width, height) else {
+        return Err("Which size?".to_string());
+      };
+      if let Ok(mut state) = MENU_STATE.lock() {
+        state.size = (width, height);
+      }
+    }
+    "close" => close_menu(&app),
+    "escape" => {
+      close_menu(&app);
+      focus_site(&app);
+    }
+    "open" => {
+      let folder = extension.ok_or("Which extension?")?;
+      let at = MENU_STATE.lock().map(|state| state.at).unwrap_or(0.0);
+      close_menu(&app);
+      focus_site(&app);
+      std::thread::spawn(move || {
+        if let Err(error) = open_popup(app, folder, at) {
+          log::warn!("Extension popup: {error}");
+        }
+      });
+    }
+    _ => return Err("Unknown action".to_string()),
+  }
+  Ok(())
+}
+
+// ---------- The popups ----------
 
 // A popup expects to be part of the video's browser window, and here it's a window of its own, so
 // it would think it's about itself. Its first opening finds the video's tab (the size tells it

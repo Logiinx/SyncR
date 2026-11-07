@@ -12,6 +12,7 @@ fn main() {
     "save_attachment",
     "open_video_player",
     "video_bar",
+    "video_menu",
     "video_player_way",
     "video_player_next",
     "video_player_watched",

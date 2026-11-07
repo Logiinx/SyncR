@@ -207,7 +207,7 @@ function noteFor(video: PlayableVideo, way: Way) {
 // What the bar shows (public/video-bar.html): it has its own storage and no access to the app's
 // translations or colors, so it gets them in its address.
 function barData(video: PlayableVideo, way: Way) {
-  const colors = pageColors(['--bg', '--hover', '--text', '--text-dim', '--text-green', '--text-blue'])
+  const colors = pageColors(['--bg', '--bg-raised', '--border', '--hover', '--text', '--text-dim', '--text-green', '--text-blue'])
   const data = {
     title: video.title,
     via: viaText(way),
@@ -222,6 +222,7 @@ function barData(video: PlayableVideo, way: Way) {
       onTop: t('Always on top'),
       browser: t('Open in browser'),
       anotherWay: t('Try another way'),
+      extensions: t('Extensions'),
       minimize: t('Minimize'),
       maximize: t('Maximize'),
       restore: t('Restore'),

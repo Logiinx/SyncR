@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<title></title>
+<style>
+  /* The same font as the app (index.css, 'SyncR UI'): keep the numbers the same */
+  @font-face {
+    font-family: 'SyncR UI';
+    font-weight: 400;
+    src: local('Segoe UI'), local('SegoeUI');
+    ascent-override: 101%;
+    descent-override: 32.5%;
+    line-gap-override: 0%;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    overflow-y: auto;
+    background: var(--bg-raised, #202020);
+    color: var(--text);
+    font: 16px 'SyncR UI', sans-serif;
+    user-select: none;
+    cursor: default;
+  }
+  /* As the app's menus (.context-menu), but square: this page is a rectangle over the video */
+  #list {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+    min-width: 150px;
+    max-width: 280px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 5px;
+    outline: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+  }
+  button:hover, button:focus-visible { background: var(--border); }
+  button span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  img, svg { width: 16px; height: 16px; flex-shrink: 0; }
+  svg { fill: none; stroke: var(--text-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+<div id="list"></div>
+<template id="no-icon"><svg viewBox="0 0 24 24"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg></template>
+<script>
+  // The video bar's extensions menu: a page of its own lying over the video, as the bar's page is
+  // too low to hold it. It stays loaded and hidden, so it opens at once. It only draws the list and
+  // passes clicks on (video_menu in video_extensions.rs, which places and shows it). The names come
+  // from the extensions themselves, so there's no text to translate here.
+  const data = JSON.parse(new URLSearchParams(location.search).get('data') || '{}')
+  const list = document.getElementById('list')
+  const send = (action, details) => window.__TAURI_INTERNALS__?.invoke('video_menu', { action, ...details })
+
+  for (const [name, color] of Object.entries(data.colors || {})) document.documentElement.style.setProperty(name, color)
+  // The app's scale, as in the main window
+  if (data.zoom) document.documentElement.style.zoom = data.zoom
+
+  // The extensions with a popup, once the app has checked which are on
+  window.setExtensions = (items) => {
+    list.replaceChildren(...items.map((item) => {
+      const row = document.createElement('button')
+      row.title = item.name
+      if (item.icon) {
+        const picture = document.createElement('img')
+        picture.src = item.icon
+        row.append(picture)
+      } else {
+        row.append(document.getElementById('no-icon').content.cloneNode(true))
+      }
+      const name = document.createElement('span')
+      name.textContent = item.name
+      row.append(name)
+      row.onclick = () => send('open', { extension: item.folder })
+      return row
+    }))
+    // Its width and height don't depend on the page's, so this works while it's hidden
+    const box = list.getBoundingClientRect()
+    send('size', { width: box.width, height: box.height })
+  }
+
+  // Clicking anywhere else, or another window: closes
+  addEventListener('blur', () => send('close'))
+  addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') send('escape')
+  })
+  send('ready')
+</script>

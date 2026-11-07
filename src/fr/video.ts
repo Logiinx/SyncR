@@ -73,6 +73,7 @@ export const video = {
   'Open in browser': 'Ouvrir dans le navigateur',
   'Always on top': 'Toujours au premier plan',
   'Try another way': 'Essayer un autre moyen',
+  Extensions: 'Extensions',
   'via {site}': 'via {site}',
   'Play video': 'Lecture',
   Pause: 'Pause',

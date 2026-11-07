@@ -281,14 +281,16 @@ async fn save_attachment(
 }
 
 // The video player window (videoPlayer.ts): two separate pages in one window, our bar
-// (public/video-bar.html) above the real site, so the site can't touch or fake the bar. Neither
-// is in a capability file, and they have their own storage folder, apart from the notes. The next
+// (public/video-bar.html) above the real site, so the site can't touch or fake the bar. A third
+// one, hidden, is the bar's menu (public/video-menu.html). The site is in no capability file, and
+// they have their own storage folder, apart from the notes. The next
 // video replaces the current one, closed first so the window-state plugin remembers its place and
 // size. The site's address is either a site's page or our page that forwards to YouTube's player
 // (public/video-forward.html).
 const VIDEO_WINDOW: &str = "video-player";
 const VIDEO_BAR: &str = "video-player-bar";
 const VIDEO_SITE: &str = "video-player-site";
+const VIDEO_MENU: &str = "video-player-menu";
 // See video-watch.js
 const VIDEO_REQUEST: &str = "syncr-video.invalid";
 
@@ -655,6 +657,23 @@ async fn open_video_player(
       size,
     )
     .map_err(|e| e.to_string())?;
+  // After the site, so it lies on top of it
+  let menu = window
+    .add_child(
+      WebviewBuilder::new(VIDEO_MENU, WebviewUrl::App(format!("video-menu.html?data={bar}").into()))
+        .background_color(Color(0x20, 0x20, 0x20, 255))
+        .use_https_scheme(true)
+        .additional_browser_args(VIDEO_ARGS)
+        .browser_extensions_enabled(true)
+        .data_directory(video_extensions::player_folder(&app)?)
+        .focused(false)
+        .on_navigation(|url| url.path() == "/video-menu.html"),
+      PhysicalPosition::new(0, 0),
+      PhysicalSize::new(1, 1),
+    )
+    .map_err(|e| e.to_string())?;
+  let _ = menu.hide();
+  video_extensions::menu_is_new();
   // On its first opening, or after an older version, the plugin left the border on
   let _ = window.set_decorations(false);
   // The resize edges of a borderless window sit under pages added later: this makes new ones on top
@@ -719,7 +738,7 @@ fn video_bar(
   webview: tauri::Webview,
   action: String,
   on: Option<bool>,
-  extension: Option<String>,
+  left: Option<f64>,
   at: Option<f64>,
 ) -> Result<(), String> {
   use tauri::Emitter;
@@ -733,16 +752,12 @@ fn video_bar(
       video_extensions::bar_ready(app);
       return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
     }
-    // at: the middle of the button, in pixels from the window's left edge
-    "extension" => {
-      let (Some(folder), Some(at)) = (extension, at) else {
-        return Err("Which extension?".to_string());
+    // left, at: the button's left edge and middle, in pixels from the window's left edge
+    "extensions-menu" => {
+      let (Some(left), Some(at)) = (left, at) else {
+        return Err("Where's the button?".to_string());
       };
-      std::thread::spawn(move || {
-        if let Err(error) = video_extensions::open_popup(app, folder, at) {
-          log::warn!("Extension popup: {error}");
-        }
-      });
+      std::thread::spawn(move || video_extensions::toggle_menu(&app, left, at));
       return Ok(());
     }
     "drag" => window.start_dragging(),
@@ -873,6 +888,7 @@ pub fn run() {
       video_player_next,
       video_player_watched,
       close_video_player,
+      video_extensions::video_menu,
       video_extensions::video_extensions_list,
       video_extensions::video_extension_add,
       video_extensions::video_extension_remove,
