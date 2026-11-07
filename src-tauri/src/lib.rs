@@ -366,7 +366,7 @@ async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::h
     "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     // How far the video is (video-watch.js), from any page in the player window, so a site could
-    // fake it: only numbers pass, and all it can change is the current video's position
+    // fake it: only numbers pass, and all it can change is the current video's position and Watched mark
     "/position" => {
       let number = |name: &str| {
         uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name))?.1.parse::<f64>().ok().filter(|value| value.is_finite())

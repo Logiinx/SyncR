@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** an automatic move to Watched near a video's end, with an on/off switch in Settings
+
 **Sync**
 - **Added** a small vibration on the phone after each successful sync
 

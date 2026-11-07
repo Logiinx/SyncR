@@ -6,7 +6,7 @@ import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
 import { setWatched, watchWatched } from './video'
-import { resumePosition, savePosition, videoClock } from './videoPositions'
+import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
 
 // The video player window (desktop only; lib.rs, open_video_player). In a browser, videos just
 // open in a new tab.
@@ -48,6 +48,7 @@ export const SUBTITLE_LANGUAGES = [
 interface PlayerSettings {
   alwaysOnTop: boolean
   watchedCloses: boolean // Watched on the bar also closes the window
+  watchedNearEnd: boolean // near its end, a video moves to Watched by itself
   quality: (typeof YOUTUBE_QUALITIES)[number][0]
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
 }
@@ -55,6 +56,7 @@ const KEY = 'syncr.videoPlayer'
 export const loadPlayerSettings = (): PlayerSettings => ({
   alwaysOnTop: false,
   watchedCloses: false,
+  watchedNearEnd: true,
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
   ...read<Partial<PlayerSettings>>(KEY, {}),
@@ -234,6 +236,8 @@ let currentWay: Way = 'own'
 // Clicks one after the other, so two quick ones can't both create the window
 let queue = Promise.resolve()
 let stopWatching = () => {}
+let watchedNow = false // the open video's Watched mark
+let undone = false // taken out of Watched during this viewing: it stays out
 // Not from the page of a video that was just replaced
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
@@ -278,6 +282,8 @@ function listenToBar() {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length })
+    // Not with an unknown length: the report could be an ad's
+    if (current.duration > 0 && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
   })
   // Subtitles turned on or off by hand. The video's own id, as a site could send this too.
   void listen<{ on: boolean; video: string }>('video-subtitles', ({ payload: { on, video } }) => {
@@ -313,6 +319,8 @@ export function playVideo(video: PlayableVideo) {
   queue = queue
     .then(async () => {
       current = video
+      watchedNow = video.watched
+      undone = false
       reportsFrom = Date.now() + REPORTS_AFTER
       currentWay = rememberedWay(video)
       stopWatching()
@@ -324,7 +332,11 @@ export function playVideo(video: PlayableVideo) {
         alwaysOnTop: loadPlayerSettings().alwaysOnTop,
       })
       // Also when it's ticked in the list while the window is open
-      stopWatching = watchWatched(video.id, (watched) => void invoke('video_player_watched', { watched }))
+      stopWatching = watchWatched(video.id, (watched) => {
+        if (watchedNow && !watched) undone = true
+        watchedNow = watched
+        void invoke('video_player_watched', { watched })
+      })
     })
     .catch((error) => {
       console.error('Video player failed', error)

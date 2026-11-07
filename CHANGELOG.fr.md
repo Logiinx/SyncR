@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** du passage automatique d’une vidéo dans les vues près de sa fin, avec un réglage pour le désactiver
+
 **Synchronisation**
 - **Ajout** d’une petite vibration sur le téléphone après chaque synchronisation réussie
 

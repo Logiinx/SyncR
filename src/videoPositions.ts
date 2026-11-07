@@ -10,7 +10,8 @@ export interface VideoPosition {
 const KEY = 'syncr.videoPositions'
 const KEPT = 200
 const JUST_STARTED = 30 // seconds: under this, it starts from the beginning again
-const NEARLY_DONE = 120 // seconds from the end: the same, and it counts as finished
+const NEARLY_DONE = 120 // seconds from the end, or NEARLY_DONE_SHARE of it when that's shorter
+const NEARLY_DONE_SHARE = 0.05
 
 let positions = read<Record<string, VideoPosition>>(KEY, {})
 const listeners = new Set<() => void>()
@@ -24,8 +25,11 @@ export function savePosition(videoId: string, position: VideoPosition) {
   for (const listener of listeners) listener()
 }
 
+// It counts as finished: it starts from the beginning again, and may move to Watched (videoPlayer.ts)
+export const nearlyDone = ({ t, length }: VideoPosition) => length - t <= Math.min(NEARLY_DONE, length * NEARLY_DONE_SHARE)
+
 const unfinished = (position: VideoPosition | undefined) =>
-  position && position.t >= JUST_STARTED && position.length - position.t >= NEARLY_DONE ? position : null
+  position && position.t >= JUST_STARTED && !nearlyDone(position) ? position : null
 
 // Where it would continue, or null when it starts from the beginning
 export const resumePosition = (videoId: string) => unfinished(positions[videoId])

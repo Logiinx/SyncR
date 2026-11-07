@@ -116,6 +116,9 @@ export const video = {
   'Corner, left': 'Dans le coin, à gauche',
   "This video can't play in the player window": 'Cette vidéo ne peut pas être lue dans le lecteur',
   'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
+  'Mark a video as watched near its end': 'Marquer une vidéo comme vue près de la fin',
+  'About marking near the end': 'À propos du marquage près de la fin',
+  'With 2 minutes or 5% left, whichever is shorter. You can undo it on the player bar.': 'Quand il reste 2 minutes ou 5 %, le plus court des deux. La barre du lecteur permet d’annuler.',
   'YouTube start quality': 'Qualité de départ YouTube',
   'Or the highest under it. The player can still change it for one video.':
     'Ou la plus haute en dessous. Le lecteur peut toujours la changer pour une vidéo.',

@@ -444,6 +444,25 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           </SettingRow>
         )}
         {isTauri() && videoOn && (
+          <SettingRow
+            label={
+              <>
+                {t('Mark a video as watched near its end')}{' '}
+                <InfoTip label={t('About marking near the end')}>{t('With 2 minutes or 5% left, whichever is shorter. You can undo it on the player bar.')}</InfoTip>
+              </>
+            }
+          >
+            <input
+              type="checkbox"
+              checked={player.watchedNearEnd}
+              onChange={(e) => {
+                savePlayerSettings({ watchedNearEnd: e.target.checked })
+                setPlayer(loadPlayerSettings())
+              }}
+            />
+          </SettingRow>
+        )}
+        {isTauri() && videoOn && (
           <SettingRow label={t('YouTube start quality')} title={t('Or the highest under it. The player can still change it for one video.')}>
             <select
               value={player.quality}
