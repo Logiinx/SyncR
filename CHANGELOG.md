@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.58.0] - 2026-11-07
+
 **Video**
 - **Added** folders and sub-folders in the Video tab's lists, also inside each channel with By channel
 - **Added** a way to add a single video by its link, which lands in To watch

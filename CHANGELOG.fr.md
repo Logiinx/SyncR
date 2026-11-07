@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.58.0] - 2026-11-07
+
 **Vidéo**
 - **Ajout** de dossiers et sous-dossiers dans les listes de l’onglet Vidéo, aussi dans chaque chaîne avec Par chaîne
 - **Ajout** d’un moyen d’ajouter une seule vidéo par son lien, qui arrive dans À regarder
