@@ -1,3 +1,4 @@
+import { deviceName } from './device'
 import { cancelStuckRequests, isConnected, waitForChanges } from './dropbox'
 import { plural, t } from './i18n'
 import { read, write } from './localState'
@@ -19,6 +20,7 @@ const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this r
 const MAX_QUICK_RETRIES = 3
 const HEARTBEAT_MS = 5000
 const WAKE_GAP_MS = 20_000 // the heartbeat came this late: the computer was asleep
+const VIBRATION_MS = 20 // after a successful sync, on a phone
 
 let status: SyncStatus = 'off'
 // Same object until the status changes (React's useSyncExternalStore needs that)
@@ -97,6 +99,8 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     quickRetries = 0
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
+    // Android ignores this until the page was touched once since it opened
+    if (deviceName() === 'phone' && document.visibilityState === 'visible') navigator.vibrate?.(VIBRATION_MS)
     if (!manual && result.conflicts) {
       notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
     }
