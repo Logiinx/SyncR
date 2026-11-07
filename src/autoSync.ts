@@ -20,7 +20,8 @@ const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this r
 const MAX_QUICK_RETRIES = 3
 const HEARTBEAT_MS = 5000
 const WAKE_GAP_MS = 20_000 // the heartbeat came this late: the computer was asleep
-const VIBRATION_MS = 20 // after a successful sync, on a phone
+const VIBRATION_MS = 20 // once syncing is fully done, on a phone
+const VIBRATION_SETTLE_MS = 1500 // the cloud must stay green this long: syncs in a row buzz once
 
 let status: SyncStatus = 'off'
 // Same object until the status changes (React's useSyncExternalStore needs that)
@@ -46,6 +47,7 @@ let cursor: string | null = null
 let pollAbort: AbortController | null = null
 let heartbeat: number | undefined
 let lastBeat = 0
+let vibrationTimer: number | undefined
 
 // ---------- Status for the UI ----------
 
@@ -99,8 +101,7 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     quickRetries = 0
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
-    // Android ignores this until the page was touched once since it opened
-    if (deviceName() === 'phone' && document.visibilityState === 'visible') navigator.vibrate?.(VIBRATION_MS)
+    if (!changedDuringSync) vibrateWhenSettled()
     if (!manual && result.conflicts) {
       notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
     }
@@ -143,6 +144,17 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     if (changedDuringSync && enabled) syncAfter(urgentAfterSync ? 0 : EDIT_DELAY_MS)
     urgentAfterSync = false
   }
+}
+
+// A short buzz on a phone once the cloud is green and stays green: another sync starting within
+// the wait (changes from the other device, an edit) puts it off to that one's end.
+function vibrateWhenSettled() {
+  if (deviceName() !== 'phone') return
+  window.clearTimeout(vibrationTimer)
+  vibrationTimer = window.setTimeout(() => {
+    // Android ignores this until the page was touched once since it opened
+    if (status === 'synced' && !running && document.visibilityState === 'visible') navigator.vibrate?.(VIBRATION_MS)
+  }, VIBRATION_SETTLE_MS)
 }
 
 // Like schedule(), but when the app is in the background, starts right away: Android
