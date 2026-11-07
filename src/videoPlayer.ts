@@ -344,7 +344,15 @@ function playNext() {
       const next = await nextInPlaylist(playlistId, ended.id)
       if (!next || current !== ended) return // another video was opened in the meantime
       startWatching(next, playlistId)
-      await invoke<void>('video_player_next', { address: playerAddress(next, currentWay), title: next.title, via: viaText(currentWay), ...noteFor(next, currentWay) })
+      await invoke<void>('video_player_next', {
+        address: playerAddress(next, currentWay),
+        video: next.id.slice('youtube-'.length), // playlists are YouTube's
+        start: startAt(next),
+        subtitles: subtitlesOn(next),
+        title: next.title,
+        via: viaText(currentWay),
+        ...noteFor(next, currentWay),
+      })
       followWatched(next)
       void markOpened(next.id)
     })

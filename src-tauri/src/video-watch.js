@@ -33,19 +33,22 @@
     })
   }
   if (!/^www\.youtube(-nocookie)?\.com$/.test(location.hostname) || !location.pathname.startsWith('/embed/')) return
-  const started = Date.now()
-  let seen = 0
-  const timer = setInterval(() => {
-    const player = document.querySelector('#movie_player')
-    if (player?.getPlayerState?.() === 1 || Date.now() - started > 120000) return clearInterval(timer)
-    const data = player?.getVideoData?.()
-    // Seen twice, as the player sometimes gets over a problem by itself
-    if (!data?.errorCode || !document.querySelector('.ytp-error') || ++seen < 2) return
-    clearInterval(timer)
-    const refused = { code: data.errorCode, video: data.video_id }
-    if (window === top) ask(refused)
-    else parent.postMessage({ syncrRefused: refused }, '*')
-  }, 500)
+  const watchForRefusal = () => {
+    const started = Date.now()
+    let seen = 0
+    const timer = setInterval(() => {
+      const player = document.querySelector('#movie_player')
+      if (player?.getPlayerState?.() === 1 || Date.now() - started > 120000) return clearInterval(timer)
+      const data = player?.getVideoData?.()
+      // Seen twice, as the player sometimes gets over a problem by itself
+      if (!data?.errorCode || !document.querySelector('.ytp-error') || ++seen < 2) return
+      clearInterval(timer)
+      const refused = { code: data.errorCode, video: data.video_id }
+      if (window === top) ask(refused)
+      else parent.postMessage({ syncrRefused: refused }, '*')
+    }, 500)
+  }
+  watchForRefusal()
 
   // Controls that fade like in our own Twitch player (player.js): 2.8 s without moving the mouse,
   // at once when it leaves. YouTube waits 4 s. Not while paused, in a menu, over the controls, or
@@ -141,4 +144,19 @@
     } else return
     settledAt = Date.now() + 1000
   }, 500)
+
+  // The next video of a playlist while in full screen (lib.rs, video_player_next): this same page
+  // plays it, as a new page would leave full screen. The address changes too, as extensions read
+  // the video from it. Says whether it could.
+  window.syncrNextVideo = (id, start, subtitles) => {
+    const player = document.querySelector('#movie_player')
+    if (!document.fullscreenElement || !player?.loadVideoById || !/^[\w-]{6,20}$/.test(id)) return false
+    history.replaceState(history.state, '', `/embed/${id}${location.search}${location.hash}`)
+    player.loadVideoById({ videoId: id, startSeconds: start })
+    qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))
+    wish = subtitles
+    needsLanguage = true
+    watchForRefusal()
+    return true
+  }
 })()
