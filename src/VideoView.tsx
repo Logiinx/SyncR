@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, CheckCheck, ChevronDown, ExternalLink, Folder, FolderPlus, ListVideo, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { Check, CheckCheck, ChevronDown, ExternalLink, Folder, FolderOutput, FolderPlus, ListVideo, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
 import { type VideoFolder } from './db'
@@ -10,7 +10,7 @@ import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
-import { byChannel, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, moveToFolder, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -106,7 +106,7 @@ function VideoGroup({ videos, open, newCount, onToggle }: { videos: FeedVideo[];
 
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video, isNew, depth = 0 }: { video: FeedVideo; isNew: boolean; depth?: number }) {
+function VideoRow({ video, isNew, depth = 0, onMenu }: { video: FeedVideo; isNew: boolean; depth?: number; onMenu: (x: number, y: number) => void }) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -117,7 +117,15 @@ function VideoRow({ video, isNew, depth = 0 }: { video: FeedVideo; isNew: boolea
     void markOpened(video.id)
   }
   return (
-    <li className={`video-row${video.gone ? ' gone' : ''}`} style={depthStyle(depth)} data-item={video.id}>
+    <li
+      className={`video-row${video.gone ? ' gone' : ''}`}
+      style={depthStyle(depth)}
+      data-item={video.id}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onMenu(e.clientX, e.clientY)
+      }}
+    >
       <button className="video-row-open" disabled={video.gone} onClick={open}>
         <span className="video-thumb">
           {video.thumbnail && !video.gone && (
@@ -184,7 +192,9 @@ function VideoView() {
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState(false)
   const [addingVideo, setAddingVideo] = useState(false)
-  const [naming, setNaming] = useState<{ parentId: string | null } | { folder: VideoFolder } | null>(null)
+  // A new folder (with the video to move into it, if any), or a folder to rename
+  const [naming, setNaming] = useState<{ parentId: string | null; videoId?: string } | { folder: VideoFolder } | null>(null)
+  const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
@@ -212,6 +222,18 @@ function VideoView() {
   const folders = shownChannel === 'all' ? feed?.folders ?? [] : []
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
   const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
+  const videoRow = (video: FeedVideo, depth = 0) => (
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} onMenu={(x, y) => setMoving({ video, x, y })} />
+  )
+  // Every folder to choose from, each under its parent, with its whole path
+  function folderChoices(parentId: string | null, path: string): { folder: VideoFolder; path: string }[] {
+    return (feed?.folders ?? [])
+      .filter((folder) => folder.parentId === parentId && !folder.channel)
+      .flatMap((folder) => {
+        const own = path + folder.name
+        return [{ folder, path: own }, ...folderChoices(folder.id, `${own} / `)]
+      })
+  }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
   // A folder, then what's in it when it's open: its sub-folders, then its videos. To watch shows
   // the empty ones too, or a new folder couldn't be reached.
@@ -236,7 +258,7 @@ function VideoView() {
       ...(open
         ? [
             ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
-            ...videosIn(folder.id).map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth + 1} />),
+            ...videosIn(folder.id).map((video) => videoRow(video, depth + 1)),
           ]
         : []),
     ]
@@ -247,12 +269,12 @@ function VideoView() {
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     // A flat list, so a video stays the same item whether it's in a group or not
     ...(grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
-      if (group.length === 1) return [<VideoRow key={group[0].id} video={group[0]} isNew={tagNew(group[0])} />]
+      if (group.length === 1) return [videoRow(group[0])]
       const id = group[0].followId
       const open = openGroups.includes(id)
       return [
         <VideoGroup key={`group-${id}`} videos={group} open={open} newCount={group.filter(tagNew).length} onToggle={() => toggleGroup(id)} />,
-        ...(open ? group.map((video) => <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={1} />) : []),
+        ...(open ? group.map((video) => videoRow(video, 1)) : []),
       ]
     }),
   ]
@@ -345,6 +367,26 @@ function VideoView() {
           ]}
         />
       )}
+      {moving && (
+        <ContextMenu
+          x={moving.x}
+          y={moving.y}
+          onClose={() => setMoving(null)}
+          header={{ title: t('Move to folder') }}
+          items={[
+            ...folderChoices(null, '').map(({ folder, path }) => ({
+              label: path,
+              icon: Folder,
+              checked: folder.id === moving.video.folderId,
+              onClick: () => void moveToFolder(moving.video.id, folder.id),
+            })),
+            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, videoId: moving.video.id }) },
+            ...(moving.video.folderId
+              ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void moveToFolder(moving.video.id, null) }]
+              : []),
+          ]}
+        />
+      )}
       {naming && (
         <Dialog
           request={{
@@ -356,9 +398,9 @@ function VideoView() {
               if (!name) return
               if ('folder' in naming) void renameFolder(naming.folder.id, name)
               else {
-                void createFolder(name, naming.parentId)
+                const { parentId, videoId } = naming
+                void createFolder(name, parentId).then((id) => (videoId ? moveToFolder(videoId, id) : undefined))
                 // Unfolded to show it
-                const { parentId } = naming
                 if (parentId) setOpenGroups((now) => (now.includes(parentId) ? now : [...now, parentId]))
               }
             },

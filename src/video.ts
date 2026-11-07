@@ -406,8 +406,17 @@ export interface FeedVideo extends VideoRow {
 // ---------- Folders ----------
 
 export async function createFolder(name: string, parentId: string | null) {
-  // i18n-ok
-  await db.videoFolders.put({ id: crypto.randomUUID(), name, parentId, channel: null, deleted: false, updatedAt: Date.now() })
+  const id = crypto.randomUUID()
+  await db.videoFolders.put({ id, name, parentId, channel: null, deleted: false, updatedAt: Date.now() })
+  changed()
+  return id
+}
+
+// null = back to the main list
+export async function moveToFolder(videoId: string, folderId: string | null) {
+  const id = videoMarkId(videoId)
+  const place = await db.videoPlaces.get(id)
+  await db.videoPlaces.put({ ...place, id, folderId, updatedAt: Date.now() })
   changed()
 }
 
