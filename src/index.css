@@ -7570,6 +7570,33 @@ button.history-row.selected {
   transform: rotate(-90deg);
 }
 
+/* A video dragged onto a folder (videoDrag.ts): same as the Board's cards and groups */
+.video-list.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.video-list.dragging .video-row-open {
+  cursor: inherit;
+}
+
+.video-list.dragging .video-row-open:hover:not(:disabled) {
+  background: none;
+}
+
+.video-row.lifted {
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
+  pointer-events: none;
+}
+
+.video-row.drop-into,
+.video-list.dragging .video-row.drop-into .video-row-open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));
+}
+
 .video-folder-icon {
   display: flex;
   align-items: center;

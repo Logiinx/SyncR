@@ -47,7 +47,7 @@ export function useSlideIn() {
 const FOLD = [{ clipPath: 'inset(-24px)' }, { clipPath: 'inset(0 -24px 100% -24px)' }]
 
 // A closing animation (big things by default)
-function play(el: Element | null, keyframes: Keyframe[], duration = TIMING.closeBig) {
+export function play(el: Element | null, keyframes: Keyframe[], duration = TIMING.closeBig) {
   return el?.animate(keyframes, { duration, easing: EASE_CLOSE, fill: 'forwards' })
 }
 

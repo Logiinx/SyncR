@@ -12,6 +12,7 @@ import Spinner from './Spinner'
 import { FillSwitch } from './tabLines'
 import { byChannel, channelKey, checkVideos, clearFresh, clearWatched, createFolder, deleteFolder, markAllWatched, markOpened, moveToFolder, renameFolder, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
+import { dragVideo } from './videoDrag'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { useResumePosition, videoClock } from './videoPositions'
@@ -35,9 +36,12 @@ const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(vid
 
 const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : undefined)
 
-// A row that folds what's under it: a channel's videos, or a folder
+// A row that folds what's under it: a channel's videos, or a folder. Videos can be dragged onto it
+// (videoDrag.ts): folder = where they go (none: out of their folder), channel = whose videos it
+// takes (none: anyone's), open = what to open when they stay over it.
 function FoldRow(props: {
   id: string
+  drop: { folder?: string; channel?: string; open: string }
   icon: ReactNode
   title: string
   logo?: ReactNode
@@ -49,12 +53,15 @@ function FoldRow(props: {
   onToggle: () => void
   onMenu?: (x: number, y: number) => void
 }) {
-  const { icon, title, logo, count, newest, newCount, open, depth = 0, onToggle, onMenu } = props
+  const { drop, icon, title, logo, count, newest, newCount, open, depth = 0, onToggle, onMenu } = props
   return (
     <li
       className={open ? 'video-row video-group' : 'video-row video-group folded'}
       style={depthStyle(depth)}
       data-item={props.id}
+      data-drop-folder={drop.folder ?? ''}
+      data-drop-channel={drop.channel ?? ''}
+      data-open={drop.open}
       onContextMenu={
         onMenu &&
         ((e) => {
@@ -81,8 +88,9 @@ function FoldRow(props: {
 }
 
 // A channel as a folder: its 2 or more videos, or any with sub-folders of its own, in one row
-function VideoGroup({ id, name, icon, platform, videos, open, newCount, onToggle, onMenu }: {
+function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, newCount, onToggle, onMenu }: {
   id: string
+  channelKey: string
   name: string
   icon: string | null
   platform: FeedVideo['platform']
@@ -95,6 +103,7 @@ function VideoGroup({ id, name, icon, platform, videos, open, newCount, onToggle
   return (
     <FoldRow
       id={`group-${id}`}
+      drop={{ channel: key, open: id }}
       icon={
         icon ? (
           <img className="video-follow-icon" src={icon} alt="" loading="lazy" referrerPolicy="no-referrer" />
@@ -116,7 +125,13 @@ function VideoGroup({ id, name, icon, platform, videos, open, newCount, onToggle
 
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list.
-function VideoRow({ video, isNew, depth = 0, onMenu }: { video: FeedVideo; isNew: boolean; depth?: number; onMenu: (x: number, y: number) => void }) {
+function VideoRow({ video, isNew, depth = 0, onMenu, onOpenRow }: {
+  video: FeedVideo
+  isNew: boolean
+  depth?: number
+  onMenu: (x: number, y: number) => void
+  onOpenRow: (id: string) => void
+}) {
   const position = useResumePosition(video.id)
   function open() {
     playVideo(video)
@@ -131,6 +146,8 @@ function VideoRow({ video, isNew, depth = 0, onMenu }: { video: FeedVideo; isNew
       className={`video-row${video.gone ? ' gone' : ''}`}
       style={depthStyle(depth)}
       data-item={video.id}
+      onPointerDown={(e) => dragVideo(e, video, onOpenRow)}
+      onDragStart={(e) => e.preventDefault()} // the thumbnail's own dragging
       onContextMenu={(e) => {
         e.preventDefault()
         onMenu(e.clientX, e.clientY)
@@ -226,17 +243,18 @@ function VideoView() {
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
   // Shows where it went: To watch, all follows, its group open
+  const openRow = (id: string) => setOpenGroups((now) => (now.includes(id) ? now : [...now, id]))
   function showAdded(followId: string) {
     setList('towatch')
     setChannel('all')
-    setOpenGroups((now) => (now.includes(followId) ? now : [...now, followId]))
+    openRow(followId)
   }
   const allFolders = feed?.folders ?? []
   const folders = shownChannel === 'all' ? allFolders : []
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
   const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
   const videoRow = (video: FeedVideo, depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} onMenu={(x, y) => setMoving({ video, x, y })} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   // Every folder to choose from, each under its parent, with its whole path
   function folderChoices(level: VideoFolder[], path: string): { folder: VideoFolder; path: string }[] {
@@ -245,14 +263,17 @@ function VideoView() {
       return [{ folder, path: own }, ...folderChoices(allFolders.filter((other) => other.parentId === folder.id), `${own} / `)]
     })
   }
-  // In one of your own folders, not one of a channel's (at any depth)
-  function inOwnFolder(video: FeedVideo) {
-    let folder = allFolders.find((other) => other.id === video.folderId)
+  // The folder at the top of this one: its channel says whose it is (none: your own)
+  function topFolder(folder: VideoFolder | undefined) {
     while (folder?.parentId) {
       const { parentId } = folder
       folder = allFolders.find((other) => other.id === parentId)
     }
-    return !!folder && !folder.channel
+    return folder
+  }
+  function inOwnFolder(video: FeedVideo) {
+    const top = topFolder(allFolders.find((other) => other.id === video.folderId))
+    return !!top && !top.channel
   }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
   // A folder, then what's in it when it's open: its sub-folders, then its videos. To watch shows
@@ -265,6 +286,7 @@ function VideoView() {
       <FoldRow
         key={folder.id}
         id={folder.id}
+        drop={{ folder: folder.id, channel: topFolder(folder)?.channel ?? undefined, open: folder.id }}
         icon={<span className="video-follow-icon video-folder-icon"><Folder size={15} /></span>}
         title={folder.name}
         count={inside.length}
@@ -290,6 +312,7 @@ function VideoView() {
       <VideoGroup
         key={`group-${id}`}
         id={id}
+        channelKey={key}
         {...shown}
         videos={group}
         open={open}
@@ -472,7 +495,7 @@ function VideoView() {
                 void createFolder(name, parentId, inChannel).then((id) => (videoId ? moveToFolder(videoId, id) : undefined))
                 // Unfolded to show it
                 const openId = naming.openId ?? parentId
-                if (openId) setOpenGroups((now) => (now.includes(openId) ? now : [...now, openId]))
+                if (openId) openRow(openId)
               }
             },
           }}
