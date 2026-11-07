@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-11-07
+
 **Vidéo**
 - **Ajout** des playlists YouTube : la vidéo suivante démarre seule, et l’ordre peut être inversé
 - **Ajout** du passage automatique d’une vidéo dans les vues près de sa fin, avec un réglage pour le désactiver
