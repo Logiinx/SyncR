@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-11-08
+
 **Jeux**
 - **Changement** des jeux à 100 % dans Bibliothèque : la coche verte Terminé s’affiche dans leur anneau doré
 
