@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Changed** 100% achievement games in Library to show the green Completed check inside their gold ring
+
 ## [0.62.0] - 2026-11-07
 
 **Sync**
