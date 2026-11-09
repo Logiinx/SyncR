@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Sync**
 - **Improved** sync speed: each sync asks Dropbox only for what changed, and many changes go up in one go
+- **Improved** safety: a synced file copied over another one in Dropbox is now refused instead of used
 
 **Video**
 - **Fixed** small issues: on clock change nights, going to a time of day in the Twitch player could miss it

@@ -303,7 +303,7 @@ async function runSync(): Promise<SyncResult> {
 
   // An unreadable note counts as missing: nothing here is changed or replaced because of it
   async function downloadNote(id: string): Promise<RemoteNote | null> {
-    const remote = await readFile<RemoteNote>(notePath(id), key!, result)
+    const remote = await readFile<RemoteNote>(notePath(id), key!, result, id, (note) => note.id)
     return remote === UNREADABLE ? null : remote
   }
 
@@ -644,11 +644,17 @@ async function moveUnusedDates() {
 // hand, …). Skipped and left as it is, so everything else still syncs; the user is told how many.
 const UNREADABLE = Symbol('unreadable')
 
-async function readFile<T>(path: string, key: CryptoKey, result: SyncResult): Promise<T | null | typeof UNREADABLE> {
+// `id`: the id its contents must have, the one in its name. Someone with access to the Dropbox
+// can't read or make files without the passphrase, but could copy one over another (e.g. a
+// note's file over another note's): such a file counts as unreadable too.
+async function readFile<T>(path: string, key: CryptoKey, result: SyncResult, id: string, idOf: (data: T) => unknown) {
   const raw = await download(path)
   if (!raw) return null
   try {
-    return JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+    const data: T = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+    // Dropbox lists names in lower case
+    if (String(idOf(data)).toLowerCase() !== id.toLowerCase()) throw new Error('Not the file of this id') // i18n-ok: only caught below
+    return data
   } catch {
     result.unreadable++
     return UNREADABLE
@@ -711,7 +717,7 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
     }
     if (!changedHere && !changedThere) return
 
-    const remote = changedThere ? await readFile<T>(path(id), key, result) : null
+    const remote = changedThere ? await readFile<T>(path(id), key, result, id, idOf) : null
     if (remote === UNREADABLE) return // left alone, not overwritten
 
     if (local && changedHere && (!remote || localWins(local, remote))) {

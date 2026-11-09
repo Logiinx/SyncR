@@ -92,7 +92,12 @@ export async function loadVersion(version: VersionInfo): Promise<VersionText> {
   if (!key) throw new NeedsPassphraseError()
   const raw = await download(version.path)
   if (!raw) throw new Error('This version is gone from Dropbox') // i18n-ok
-  return JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+  const text: Snapshot = JSON.parse(new TextDecoder().decode(await decrypt(key, raw)))
+  // Its contents must be the version its name says (a file copied over another one isn't)
+  if (text.noteId?.toLowerCase() !== version.noteId.toLowerCase() || text.savedAt !== version.savedAt) {
+    throw new Error('This version in Dropbox belongs to another note or time') // i18n-ok: like the one above
+  }
+  return text
 }
 
 const CLEANED_KEY = 'syncr.history.cleanedAt'
