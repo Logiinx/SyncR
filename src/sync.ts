@@ -65,8 +65,57 @@ export interface SyncResult {
 export class RetrySoonError extends Error {}
 
 
+// The tables synced as one file per record (syncRecords below), in the order they sync.
+// A new synced table only needs a line here (and its folder in the list at the top).
+interface RecordFolder {
+  folder: string
+  sync: (remoteRevs: Map<string, string>, key: CryptoKey, result: SyncResult) => Promise<void>
+}
+
+function records<T extends SyncedRecord, TInsert>(
+  folder: string,
+  table: Table<T, string, TInsert>,
+  options: {
+    idOf?: (record: T) => string // its file name (default: its id)
+    removeWhenGone?: boolean // see syncRecords
+    removeOld?: () => Promise<string[]> // removes old deleted ones here, returns their ids
+  } = {},
+): RecordFolder {
+  return {
+    folder,
+    async sync(remoteRevs, key, result) {
+      // Old deleted ones disappear here (removeOld) and from Dropbox
+      for (const id of (await options.removeOld?.()) ?? []) {
+        if (remoteRevs.delete(id)) await deleteFile(`/${folder}/${id}`)
+      }
+      const idOf = options.idOf ?? (byId as unknown as (record: T) => string) // records without idOf have an id
+      await syncRecords(table, folder, remoteRevs, key, result, idOf, options.removeWhenGone)
+    },
+  }
+}
+
+// A function, so the tables are read when sync runs (db is fully set up by then)
+const recordFolders = (): RecordFolder[] => [
+  // Settings (color rules, …): a setting missing in Dropbox is never removed here (settings aren't
+  // deleted): it's kept, and sent again once it changes.
+  records('settings', db.settings, { idOf: (setting) => setting.name, removeWhenGone: false }),
+  // Board cards and games: changed on both sides means the newest wins. See syncRecords().
+  records('cards', db.cards, { removeOld: removeOldDeletedCards }),
+  records('games', db.games, { removeOld: removeOldDeletedGames }),
+  // Calendar alerts marked Done or snoozed: no deleted rows, an old mark goes here and from
+  // Dropbox, and other devices remove theirs when they see its file is gone.
+  records('alerts', db.alertMarks, { removeOld: removeOldAlertMarks }),
+  // Video tab: followed channels, marks, videos added by link (a follow's videos stay local)
+  records('videofollows', db.videoFollows, { removeOld: removeOldDeletedFollows }),
+  records('videomarks', db.videoMarks),
+  records('addedvideos', db.addedVideos),
+  records('videofolders', db.videoFolders, { removeOld: removeOldDeletedFolders }),
+  records('videoplaces', db.videoPlaces),
+  records('videoplaylists', db.videoPlaylists, { removeOld: removeOldDeletedPlaylists }),
+]
+
 // The folders sync reads each time (not history/: see noteHistory.ts)
-const SYNC_FOLDERS = ['/notes', '/deleted', '/attachments', '/settings', '/cards', '/games', '/alerts', '/videofollows', '/videomarks', '/addedvideos', '/videofolders', '/videoplaylists', '/videoplaces']
+const NOTE_FOLDERS = ['/notes', '/deleted', '/attachments']
 
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
@@ -191,34 +240,17 @@ async function runSync(): Promise<SyncResult> {
   const remoteNotes = new Map<string, string>() // id -> rev
   const remoteDeleted = new Map<string, number>() // id -> when the marker was written
   const remoteAttachments = new Set<string>()
-  const remoteSettings = new Map<string, string>() // name -> rev
-  const remoteCards = new Map<string, string>() // id -> rev
-  const remoteGames = new Map<string, string>() // id -> rev
-  const remoteAlerts = new Map<string, string>() // id -> rev
-  const remoteFollows = new Map<string, string>() // id -> rev
-  const remoteVideoMarks = new Map<string, string>() // id -> rev
-  const remoteAddedVideos = new Map<string, string>() // id -> rev
-  const remoteFolders = new Map<string, string>() // id -> rev
-  const remotePlaylists = new Map<string, string>() // id -> rev
-  const remotePlaces = new Map<string, string>() // id -> rev
+  const folders = recordFolders()
+  const remoteRecords = new Map(folders.map(({ folder }) => [folder, new Map<string, string>()])) // folder -> id -> rev
   ownWrites.clear()
-  const { files, cursor } = await listFiles(SYNC_FOLDERS)
+  const { files, cursor } = await listFiles([...NOTE_FOLDERS, ...folders.map(({ folder }) => `/${folder}`)])
   result.cursor = cursor
   for (const file of files) {
     const [, folder, id] = file.path.split('/')
     if (folder === 'notes') remoteNotes.set(id, file.rev)
-    if (folder === 'deleted') remoteDeleted.set(id, file.modified)
-    if (folder === 'attachments') remoteAttachments.add(id)
-    if (folder === 'settings') remoteSettings.set(id, file.rev)
-    if (folder === 'cards') remoteCards.set(id, file.rev)
-    if (folder === 'games') remoteGames.set(id, file.rev)
-    if (folder === 'alerts') remoteAlerts.set(id, file.rev)
-    if (folder === 'videofollows') remoteFollows.set(id, file.rev)
-    if (folder === 'videomarks') remoteVideoMarks.set(id, file.rev)
-    if (folder === 'addedvideos') remoteAddedVideos.set(id, file.rev)
-    if (folder === 'videofolders') remoteFolders.set(id, file.rev)
-    if (folder === 'videoplaylists') remotePlaylists.set(id, file.rev)
-    if (folder === 'videoplaces') remotePlaces.set(id, file.rev)
+    else if (folder === 'deleted') remoteDeleted.set(id, file.modified)
+    else if (folder === 'attachments') remoteAttachments.add(id)
+    else remoteRecords.get(folder)?.set(id, file.rev)
   }
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
@@ -369,51 +401,9 @@ async function runSync(): Promise<SyncResult> {
     if (!done.has(note.id)) await uploadNote(note, 'add')
   }
 
-  // ---------- 4b. Settings (color rules, …) ----------
-  // Like cards and games (syncRecords below), except that a setting missing in Dropbox is
-  // never removed here (settings aren't deleted): it's kept, and sent again once it changes.
+  // ---------- 4b. Settings, cards, games, alerts, Video tab (recordFolders above) ----------
 
-  await syncRecords(db.settings, 'settings', remoteSettings, key, result, (setting) => setting.name, false)
-
-  // ---------- 4c. Board cards and games ----------
-  // Like settings: changed on both sides means the newest wins. See syncRecords().
-
-  // Deleted ones older than 90 days disappear here and from Dropbox
-  for (const id of await removeOldDeletedCards()) {
-    if (remoteCards.delete(id)) await deleteFile(`/cards/${id}`)
-  }
-  for (const id of await removeOldDeletedGames()) {
-    if (remoteGames.delete(id)) await deleteFile(`/games/${id}`)
-  }
-  await syncRecords(db.cards, 'cards', remoteCards, key, result, byId)
-  await syncRecords(db.games, 'games', remoteGames, key, result, byId)
-
-  // ---------- 4c2. Calendar alerts marked Done or snoozed ----------
-  // The same, without deleted rows: an old mark goes here and from Dropbox, and other devices
-  // remove theirs when they see its file is gone.
-
-  for (const id of await removeOldAlertMarks()) {
-    if (remoteAlerts.delete(id)) await deleteFile(`/alerts/${id}`)
-  }
-  await syncRecords(db.alertMarks, 'alerts', remoteAlerts, key, result, byId)
-
-  // ---------- 4c3. Video tab: followed channels, marks, videos added by link (a follow's videos stay local) ----------
-
-  for (const id of await removeOldDeletedFollows()) {
-    if (remoteFollows.delete(id)) await deleteFile(`/videofollows/${id}`)
-  }
-  await syncRecords(db.videoFollows, 'videofollows', remoteFollows, key, result, byId)
-  await syncRecords(db.videoMarks, 'videomarks', remoteVideoMarks, key, result, byId)
-  await syncRecords(db.addedVideos, 'addedvideos', remoteAddedVideos, key, result, byId)
-  for (const id of await removeOldDeletedFolders()) {
-    if (remoteFolders.delete(id)) await deleteFile(`/videofolders/${id}`)
-  }
-  await syncRecords(db.videoFolders, 'videofolders', remoteFolders, key, result, byId)
-  await syncRecords(db.videoPlaces, 'videoplaces', remotePlaces, key, result, byId)
-  for (const id of await removeOldDeletedPlaylists()) {
-    if (remotePlaylists.delete(id)) await deleteFile(`/videoplaylists/${id}`)
-  }
-  await syncRecords(db.videoPlaylists, 'videoplaylists', remotePlaylists, key, result, byId)
+  for (const { folder, sync } of folders) await sync(remoteRecords.get(folder)!, key, result)
 
   // ---------- 4d. Note history (historySync.ts) ----------
   // Never stops the sync: what isn't sent now is sent next time.
@@ -499,7 +489,7 @@ async function readFile<T>(path: string, key: CryptoKey, result: SyncResult): Pr
   }
 }
 
-// ---------- Settings, cards and games (steps 4b and 4c) ----------
+// ---------- One file per record: settings, cards, games, … (step 4b) ----------
 
 // What they have in common: syncedRev / syncedUpdatedAt remember what was synced last, and (not
 // for settings) a deletion is a change like any other (deleted = true).
