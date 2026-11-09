@@ -88,6 +88,7 @@
   #level-text { width: 0; overflow: hidden; opacity: 0; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: width 0.2s, opacity 0.2s, margin 0.2s; }
   #volume:hover #level-text { width: 32px; margin-right: 6px; opacity: 1; }
   #time { width: auto; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #time-day:empty { display: none; }
   #spacer { flex: 1; min-width: 0; }
   #settings { flex: 0 1 auto; width: auto; min-width: 40px; gap: 6px; padding: 0 8px; box-sizing: border-box; }
   #settings span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -97,6 +98,7 @@
   @container (max-width: 490px) { #settings span { display: none; } }
   @container (max-width: 410px) { #back, #forward { display: none; } }
   @container (max-width: 330px) { #time { display: none; } }
+  @container (max-width: 540px) { #time-day { display: none; } }
 
   #menu {
     position: absolute; right: 12px; bottom: 62px; z-index: 5;
@@ -181,7 +183,7 @@
           <input id="level" type="range" min="0" max="1" step="0.05">
           <span id="level-text"></span>
         </div>
-        <button class="button" id="time"><span id="time-now"></span></button>
+        <button class="button" id="time"><span id="time-now"></span><span id="time-day"></span></button>
         <div id="spacer"></div>
         <button class="button" id="settings"><svg viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
         <button class="button" id="chat-button"></button>
