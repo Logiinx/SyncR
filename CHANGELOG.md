@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.63.2] - 2026-11-09
+
+**Games**
+- **Fixed** the calendar missing games that leave early access, like Path of Exile 2 (now marked as such)
+
 ## [0.63.1] - 2026-11-09
 
 **Sync**

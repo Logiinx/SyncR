@@ -4,6 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.63.2] - 2026-11-09
+
+**Jeux**
+- **Correction** du calendrier qui oubliait les jeux sortant de l’accès anticipé, comme Path of Exile 2
+
 ## [0.63.1] - 2026-11-09
 
 **Synchronisation**
