@@ -52,6 +52,7 @@ export const games = {
   Top: 'Top',
   'No upcoming games found': 'Aucun jeu à venir trouvé',
   'No exact date yet': 'Pas encore de date exacte',
+  'Leaves early access': 'Sort de l’accès anticipé',
   'Loading upcoming games': 'Chargement des jeux à venir',
   'Add to…': 'Ajouter à…',
   'Add to Upcoming': 'Ajouter à « À venir »',

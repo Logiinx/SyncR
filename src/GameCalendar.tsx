@@ -189,9 +189,11 @@ function CalendarRows({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
 }
 
 // The release line like everywhere else (games.ts), from the calendar's PC date: "29 Oct 2026 · in 7 days",
-// or IGDB's text for a vague date ("Q1 2027")
-const releaseLine = (game: UpcomingGame) =>
-  releaseText({ releaseDate: game.exact ? game.pcDate : undefined, releaseLabel: game.vagueLabel }, 'full')
+// or IGDB's text for a vague date ("Q1 2027"). A game already in early access says so after it.
+const releaseLine = (game: UpcomingGame) => {
+  const date = releaseText({ releaseDate: game.exact ? game.pcDate : undefined, releaseLabel: game.vagueLabel }, 'full')
+  return game.earlyAccess ? `${date} · ${t('Leaves early access')}` : date
+}
 
 // Grid: every month from this one to the end of the range, stacked (MonthGrid.tsx). A day shows
 // its games' covers and names; a month's month-only games are listed under its grid.
@@ -218,7 +220,11 @@ function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
               className="calendar-game"
               onClick={() => onShow(game)}
               onContextMenu={(e) => onMenu(game, e)}
-              title={status ? `${game.name}\n${t('In {place}', { place: statusLabel(status)! })}` : game.name}
+              title={[
+                game.name,
+                game.earlyAccess && t('Leaves early access'),
+                status && t('In {place}', { place: statusLabel(status)! }),
+              ].filter(Boolean).join('\n')}
             >
               <Cover coverId={game.coverId} />
               <span>

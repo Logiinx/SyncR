@@ -278,10 +278,14 @@ export interface UpcomingGame extends FoundGame {
   exact: boolean // false: only a month, quarter or year is known ("Q1 2027")
   monthOnly: boolean // only the month is known ("Nov 2026")
   vagueLabel: string // IGDB's text for a vague date, e.g. "Nov 2026", "Q1 2027", "2026"
-  rank: number // place in Steam's most wishlisted upcoming games (1 = most wishlisted)
+  rank: number // place in Steam's most wishlisted upcoming games (1 = most wishlisted), or for an early access game, in its most played
+  earlyAccess: boolean // already playable in early access: this is its full release
 }
 
-const MOST_WISHLISTED = 10 // IGDB popularity type: Steam's "Most Wishlisted Upcoming"
+const MOST_WISHLISTED = 10 // IGDB popularity types: Steam's "Most Wishlisted Upcoming"
+const MOST_PLAYED = 5 // Steam's "24hr Peak Players"
+const EARLY_ACCESS = 3 // IGDB release statuses
+const FULL_RELEASE = 6
 export const POPULAR_MAX = 1000 // the calendar can show up to Steam's top 1000 wishlisted
 export const CALENDAR_MONTHS = 6
 
@@ -292,7 +296,7 @@ export function calendarRange() {
   return { start, end }
 }
 
-function toUpcoming(game: IgdbGame, pc: IgdbReleaseDate, rank: number): UpcomingGame {
+function toUpcoming(game: IgdbGame, pc: IgdbReleaseDate, rank: number, earlyAccess: boolean): UpcomingGame {
   return {
     ...toFoundGame(game),
     pcDate: pc.date! * 1000,
@@ -300,6 +304,7 @@ function toUpcoming(game: IgdbGame, pc: IgdbReleaseDate, rank: number): Upcoming
     monthOnly: pc.date_format === 1,
     vagueLabel: pc.human ?? '',
     rank,
+    earlyAccess,
   }
 }
 
@@ -310,34 +315,59 @@ const byDate = (a: UpcomingGame, b: UpcomingGame) => a.pcDate - b.pcDate || a.na
 // top 100 / 300 / 500 / 1000 without asking again. Requests of 500 (IGDB's limit): the ranking,
 // then the games themselves. A vague date counts at its end: "2026" is 31 Dec 2026, "Q1 2027"
 // is 31 Mar 2027.
-
+// Games in early access are on sale already, so Steam's wishlist ranking leaves them out: those
+// whose full PC release falls in the range are added, ranked by Steam's top 1000 most played.
 export async function popularUpcoming(): Promise<UpcomingGame[]> {
-  const ranking: { game_id: number }[] = []
+  const { start, end } = calendarRange()
+  const [wishlisted, played, leaving] = await Promise.all([
+    ranking(MOST_WISHLISTED),
+    ranking(MOST_PLAYED),
+    igdb<{ game: number }>(
+      'release_dates',
+      `fields game; where platform = ${PC} & status = ${FULL_RELEASE} & date >= ${Math.floor(start / 1000)} & date < ${Math.floor(end / 1000)} & game.release_dates.status = ${EARLY_ACCESS}; limit ${PAGE};`,
+    ),
+  ])
+  const upcoming = await upcomingAmong(wishlisted)
+  const listed = new Set(upcoming.map((g) => g.igdbId))
+  const leavingIds = new Set(leaving.map((r) => r.game))
+  const earlyAccess = [...played].filter(([id]) => leavingIds.has(id) && !listed.has(id))
+  upcoming.push(...(await upcomingAmong(new Map(earlyAccess))))
+  return upcoming.sort(byDate)
+}
+
+// Steam's top 1000 for one IGDB popularity type: game id → place (1 = first)
+async function ranking(type: number) {
+  const rows: { game_id: number }[] = []
   for (let offset = 0; offset < POPULAR_MAX; offset += PAGE) {
-    ranking.push(
+    rows.push(
       ...(await igdb<{ game_id: number }>(
         'popularity_primitives',
-        `fields game_id; where popularity_type = ${MOST_WISHLISTED}; sort value desc; limit ${PAGE}; offset ${offset};`,
+        `fields game_id; where popularity_type = ${type}; sort value desc; limit ${PAGE}; offset ${offset};`,
       )),
     )
   }
-  const rank = new Map(ranking.map((r, i) => [r.game_id, i + 1]))
+  return new Map(rows.map((r, i) => [r.game_id, i + 1]))
+}
+
+// The ranked games that have their first PC full release in the calendar's range
+async function upcomingAmong(rank: Map<number, number>) {
   const { start, end } = calendarRange()
+  const ids = [...rank.keys()]
   const upcoming: UpcomingGame[] = []
-  for (let offset = 0; offset < ranking.length; offset += PAGE) {
-    const ids = ranking.slice(offset, offset + PAGE).map((r) => r.game_id)
+  for (let offset = 0; offset < ids.length; offset += PAGE) {
     const games = await igdb<IgdbGame>(
       'games',
-      `fields ${GAME_FIELDS}; where id = (${ids.join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit ${PAGE};`,
+      `fields ${GAME_FIELDS}; where id = (${ids.slice(offset, offset + PAGE).join(',')}) & game_type = ${MAIN_GAME_TYPES} & version_parent = null; limit ${PAGE};`,
     )
     for (const game of games) {
       const pc = (game.release_dates ?? [])
         .filter((r) => r.platform === PC && isFullRelease(r) && r.date && r.date * 1000 >= start && r.date * 1000 < end)
         .sort((a, b) => a.date! - b.date!)[0]
-      if (pc) upcoming.push(toUpcoming(game, pc, rank.get(game.id)!))
+      const earlyAccess = (game.release_dates ?? []).some((r) => r.platform === PC && r.status?.name === 'Early Access')
+      if (pc) upcoming.push(toUpcoming(game, pc, rank.get(game.id)!, earlyAccess))
     }
   }
-  return upcoming.sort(byDate)
+  return upcoming
 }
 
 // Cover image from IGDB's image server. cover_small is 90 × 128 (the _2x version for sharp screens).
