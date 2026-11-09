@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-11-09
+
 **Video**
 - **Added** following a Twitch channel by the games played in its streams, not only by title words
 - **Changed** Twitch's own page (when a video can't play in SyncR's player) to start in theater mode
