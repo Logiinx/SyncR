@@ -44,6 +44,13 @@ export interface RemoteFile {
   modified: number
 }
 
+// An image no note on this device uses, since when (sync.ts, step 6). Apart from the image, so
+// sync never has to open (on the PC: decrypt) the images themselves. Ids and dates only.
+export interface UnusedImage {
+  id: string // the image's id
+  since: number
+}
+
 export interface SyncListing {
   name: 'listing'
   cursor: string // Dropbox's bookmark the file list belongs to
@@ -57,7 +64,7 @@ export interface Attachment {
   id: string
   blob: Blob // the image file (PNG, JPEG, …)
   createdAt: number
-  unusedSince?: number // set when sync first finds no note using it (see sync.ts, step 6)
+  unusedSince?: number // up to v0.65: moved to db.unusedImages by the first sync after it (sync.ts, step 6)
 }
 
 // App-wide data that syncs like a note (e.g. the color rules, see colorRules.ts).
@@ -425,6 +432,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   videoPlaces: EntityTable<VideoPlace, 'id'>
   remoteFiles: EntityTable<RemoteFile, 'path'>
   syncListing: EntityTable<SyncListing, 'name'>
+  unusedImages: EntityTable<UnusedImage, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -524,6 +532,10 @@ export function defineSchema(d: Dexie) {
   d.version(21).stores({
     remoteFiles: 'path',
     syncListing: 'name',
+  })
+
+  d.version(22).stores({
+    unusedImages: 'id',
   })
 }
 

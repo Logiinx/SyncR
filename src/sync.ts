@@ -320,7 +320,10 @@ async function runSync(): Promise<SyncResult> {
       await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
       return true
     })
-    if (stored) result.downloaded++
+    if (stored) {
+      result.downloaded++
+      for (const image of imageIds(note.content)) used.add(image) // see step 0
+    }
     return stored
   }
 
@@ -346,6 +349,7 @@ async function runSync(): Promise<SyncResult> {
       return true
     })
     if (added === null) return null
+    for (const image of imageIds(note.content)) used.add(image) // see step 0
     // An existing one was made by the attempt that failed: still reported ("conflict copy created")
     result.conflicts++
     return added ? 'new' : 'existing'
@@ -380,9 +384,11 @@ async function runSync(): Promise<SyncResult> {
   // Before the notes, so a note in Dropbox never points to a missing image.
   // Images no note uses (e.g. pasted, then undone) aren't uploaded.
 
-  const missingImages = [...imagesUsedIn(await db.notes.toArray())].filter(
-    (id) => !remoteAttachments.has(id) && localAttachments.has(id),
-  )
+  // The images the notes use: the only time this sync reads every note. Notes stored by this
+  // sync add theirs (storeNote, saveConflictCopy, step 4). An edit made during the sync is seen
+  // by the next one: until then an image may count as used a bit longer, never less.
+  const used = imagesUsedIn(await db.notes.toArray())
+  const missingImages = [...used].filter((id) => !remoteAttachments.has(id) && localAttachments.has(id))
   // 20 at a time, so a first sync with many big images doesn't hold them all in memory
   for (let i = 0; i < missingImages.length; i += 20) {
     const images = (await db.attachments.bulkGet(missingImages.slice(i, i + 20))).filter((image) => image !== undefined)
@@ -467,9 +473,19 @@ async function runSync(): Promise<SyncResult> {
 
   // ---------- 3. Notes in Dropbox ----------
   // A few notes at a time (each note is handled on its own)
+  // Only notes changed on one side or the other, found by their dates alone (on the PC nothing
+  // is decrypted for that). A note left out is unchanged on both sides: nothing to do. One
+  // edited after this check is sent by the next sync (never overwritten: nothing is stored).
 
-  const toCheck = [...remoteNotes].filter(([id]) => !done.has(id))
-  for (const [id] of toCheck) done.add(id)
+  await savePendingEdits() // an edit waiting for its autosave counts as an edit
+  const localDates = new Map<string, number>()
+  await db.notes.orderBy('updatedAt').eachKey((updatedAt, cursor) => localDates.set(cursor.primaryKey, updatedAt as number))
+  const toCheck = [...remoteNotes].filter(([id, rev]) => {
+    if (done.has(id)) return false
+    const last = synced.get(id)
+    return localDates.get(id) === undefined || localDates.get(id) !== last?.updatedAt || rev !== last?.rev
+  })
+  for (const id of remoteNotes.keys()) done.add(id)
   await forEachAtOnce(toCheck, async ([id, remoteRev]) => {
     // An edit still waiting for its autosave must count as a local change, or the downloaded
     // version would be stored, then overwritten by that save without a conflict copy
@@ -516,11 +532,12 @@ async function runSync(): Promise<SyncResult> {
   })
 
   // ---------- 4. New notes from this device (incl. conflict copies) ----------
-  // The notes as they are now, read once for steps 4 to 6
-
-  const notesNow = await db.notes.toArray()
   // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
-  const newNotes = notesNow.filter((note) => !done.has(note.id))
+  // Found by their ids; only those notes are read.
+
+  const newIds = (await db.notes.toCollection().primaryKeys()).filter((id) => !done.has(id))
+  const newNotes = (await db.notes.bulkGet(newIds)).filter((note) => note !== undefined)
+  for (const image of imagesUsedIn(newNotes)) used.add(image) // see step 0
   await uploadAll(newNotes, (note) => noteFile(note, 'add'), noteSaved, noteChangedMessage)
 
   // ---------- 4b. Settings, cards, games, alerts, Video tab (recordFolders above) ----------
@@ -537,11 +554,9 @@ async function runSync(): Promise<SyncResult> {
   }
 
   // ---------- 5. Images used in notes that this device doesn't have yet ----------
-  // Checks all notes, so an image that wasn't in Dropbox yet last time arrives now.
-  // `used` is shared with step 6 (neither step changes notes). An edit made since step 4 only
-  // affects the unused mark, and the next sync corrects it.
+  // Checks all notes (`used`, step 0), so an image that wasn't in Dropbox yet last time arrives now.
+  // `used` is shared with step 6 (neither step changes notes).
 
-  const used = imagesUsedIn(notesNow)
   const missing = [...used].filter((id) => !localAttachments.has(id) && remoteAttachments.has(id))
   await forEachAtOnce(missing, async (id) => {
     const raw = await download(attachmentPath(id))
@@ -565,18 +580,26 @@ async function runSync(): Promise<SyncResult> {
   // older versions in note history (kept 30 days too). If another device
   // still uses the image, it uploads it again (step 0).
 
+  // The dates are kept apart from the images (db.unusedImages), so the images are never opened here.
+  await moveUnusedDates()
   const now = Date.now()
-  for (const attachment of await db.attachments.toArray()) {
-    const { id, unusedSince } = attachment
+  const unused = new Map((await db.unusedImages.toArray()).map((mark) => [mark.id, mark.since]))
+  for (const id of localAttachments) {
+    const since = unused.get(id)
     if (used.has(id)) {
-      if (unusedSince) await db.attachments.update(id, { unusedSince: undefined })
-    } else if (!unusedSince) {
-      await db.attachments.update(id, { unusedSince: now })
-    } else if (now - unusedSince > UNUSED_IMAGE_MS) {
+      if (since) await db.unusedImages.delete(id)
+    } else if (!since) {
+      await db.unusedImages.put({ id, since: now })
+    } else if (now - since > UNUSED_IMAGE_MS) {
       if (remoteAttachments.has(id)) await deleteFile(attachmentPath(id))
-      await db.attachments.delete(id)
+      await db.transaction('rw', db.attachments, db.unusedImages, async () => {
+        await db.attachments.delete(id)
+        await db.unusedImages.delete(id)
+      })
     }
   }
+  // Dates of images that are gone
+  await db.unusedImages.bulkDelete([...unused.keys()].filter((id) => !localAttachments.has(id)))
 
   // ---------- 7. Skip our own changes when waiting for the next ones ----------
   // The cursor is from the listing, before this sync wrote anything, so Dropbox would report
@@ -599,6 +622,22 @@ async function runSync(): Promise<SyncResult> {
   await saveListing(listing)
 
   return result
+}
+
+// Up to v0.65 each image kept its "unused since" date itself. Moved once to db.unusedImages (the
+// image loses it, so moving again finds nothing): this is the last sync that opens every image.
+const DATES_MOVED = 'syncr.unusedImagesMoved' // i18n-ok
+
+async function moveUnusedDates() {
+  if (localStorage.getItem(DATES_MOVED)) return
+  for (const { id, unusedSince } of await db.attachments.toArray()) {
+    if (!unusedSince) continue
+    await db.transaction('rw', db.attachments, db.unusedImages, async () => {
+      await db.unusedImages.put({ id, since: unusedSince })
+      await db.attachments.update(id, { unusedSince: undefined })
+    })
+  }
+  localStorage.setItem(DATES_MOVED, '1')
 }
 
 // A file in Dropbox that can't be decrypted or read (saved with another passphrase, put there by
