@@ -44,7 +44,6 @@ function clock(seconds) {
 }
 
 let dragging = null // the moment being dragged to, 0 to 1
-let dayAt = () => '' // the time of day at a moment; timeline.js fills it in
 function drawTime() {
   const length = video.duration || 0
   const shown = dragging !== null ? dragging * length : video.currentTime
@@ -53,8 +52,6 @@ function drawTime() {
   $('track').style.setProperty('--played', `${part * 100}%`)
   $('knob').style.left = `${part * 100}%`
   $('time-now').textContent = `${clock(shown)} / ${clock(length)}`
-  const day = dayAt(shown)
-  $('time-day').textContent = day ? `· ${day}` : ''
   let end = 0
   for (let i = 0; i < video.buffered.length; i++) {
     if (video.buffered.start(i) <= video.currentTime + 1) end = Math.max(end, video.buffered.end(i))

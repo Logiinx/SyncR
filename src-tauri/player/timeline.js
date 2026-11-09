@@ -1,7 +1,7 @@
 // What the progress bar shows besides the time (uses player.js's video, labels, stored, jumpTo).
 // Muted parts come from the playlist, previews, game changes and the start time from Twitch's
 // answer about the video. If one of them can't be had, only that extra is missing: the video isn't affected.
-const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName } } } } } } } }'
+const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { seekPreviewsURL moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName } } } } } } } }'
 const DETAILS_TRIES = 3
 const DETAILS_AGAIN = 20000 // ms after a failed answer
 const PICTURE_NEEDS = { width: 260, height: 220 } // a smaller player: only the time in the tip
@@ -151,56 +151,20 @@ async function askPreviews(url) {
   box.style.height = `${best.height}px`
 }
 
-// ---- Time of day -------------------------------------------------------------------------------
-// The stream's start plus the position, in the PC's time zone. 24 hours, same as dates.ts.
-let streamStart = null // ms
-let showDay = stored('player.timeOfDay', 0) === 1
-const dayKnown = () => showDay && streamStart !== null
-dayAt = (seconds) => (dayKnown() ? new Date(streamStart + seconds * 1000).toLocaleTimeString(data.locale || undefined, { hour: '2-digit', minute: '2-digit' }) : '')
-
-function noteStart(recordedAt) {
-  const start = Date.parse(recordedAt)
-  streamStart = Number.isNaN(start) ? null : start
-  drawTime()
-}
-
 // ---- Go to a time -------------------------------------------------------------------------------
-// A place in the video: 23:45 or 1:23:45. With the time of day on, 21:30 means the time of day, so
-// only 1:23:45 is a place. Answers in seconds, or null.
-function placeIn(text, needsHours) {
+// A place in the video: 23:45 or 1:23:45. Answers in seconds, or null.
+function findMoment(text) {
   const match = text.match(/^(?:(\d+):)?(\d+):(\d{1,2})$/)
   if (!match || Number(match[3]) > 59) return null
-  if (match[1] === undefined && needsHours) return null
   if (match[1] !== undefined && Number(match[2]) > 59) return null
-  return Number(match[1] || 0) * 3600 + Number(match[2]) * 60 + Number(match[3])
-}
-
-// A time of day: 21:30, 21h30, 21h or 21:30:15. The first time it comes up during the stream, so
-// past midnight it's the next day. Answers in seconds from the start, or null.
-function dayMoment(text) {
-  const match = text.match(/^(\d{1,2})(?:[:h](\d{2})?)?(?::(\d{2}))?$/)
-  if (!match || (match[2] === undefined && !text.includes('h'))) return null
-  const [hour, minute, second] = [Number(match[1]), Number(match[2] || 0), Number(match[3] || 0)]
-  if (hour > 23 || minute > 59 || second > 59) return null
-  const start = new Date(streamStart)
-  for (let day = 0; ; day++) {
-    const at = (new Date(start.getFullYear(), start.getMonth(), start.getDate() + day, hour, minute, second).getTime() - streamStart) / 1000
-    if (at >= video.duration) return null
-    if (at >= 0) return at
-    if (match[3] === undefined && at > -60) return 0 // the minute it started in
-  }
-}
-
-function findMoment(text) {
-  const place = placeIn(text, dayKnown())
-  if (place !== null && place < video.duration) return place
-  return dayKnown() ? dayMoment(text) : null
+  const place = Number(match[1] || 0) * 3600 + Number(match[2]) * 60 + Number(match[3])
+  return place < video.duration ? place : null
 }
 
 function drawGoToNote(wrong) {
   const note = $('goto-note')
   note.classList.toggle('wrong', wrong)
-  note.textContent = wrong ? labels.goToWrong : dayKnown() ? labels.goToHintDay : labels.goToHint
+  note.textContent = wrong ? labels.goToWrong : labels.goToHint
 }
 function closeGoTo() {
   $('goto').hidden = true
@@ -239,8 +203,7 @@ $('goto-text').addEventListener('keydown', (event) => {
 // ---- The tip above the bar (player.js places it) --------------------------------------------------
 function fillTip(seconds) {
   if (!video.duration) return
-  const day = dayAt(seconds)
-  $('tip-time').textContent = day ? `${clock(seconds)} · ${day}` : clock(seconds)
+  $('tip-time').textContent = clock(seconds)
   pictureAt = seconds
   showTipPicture()
   const game = gameAt(seconds)
@@ -256,11 +219,6 @@ function timelineMenu(row, title) {
     localStorage.setItem('player.gameChanges', showGames ? 1 : 0)
     drawMarks()
   })
-  row(labels.timeOfDay, showDay, () => {
-    showDay = !showDay
-    localStorage.setItem('player.timeOfDay', showDay ? 1 : 0)
-    drawTime()
-  })
 }
 
 // ---- Asking Twitch -------------------------------------------------------------------------------
@@ -274,7 +232,6 @@ async function askDetails(tries) {
     if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
     const details = (await response.json()).data?.video
     if (!details) return
-    noteStart(details.recordedAt)
     noteGames(details.moments?.edges || [])
     if (details.seekPreviewsURL) await askPreviews(details.seekPreviewsURL)
   } catch (error) {

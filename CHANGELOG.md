@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Removed** the time of day from the Twitch player (its setting, the bar and the go-to box)
+
 ## [0.63.2] - 2026-11-09
 
 **Games**
