@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** following a Twitch channel by the games played in its streams, not only by title words
 - **Changed** Twitch's own page (when a video can't play in SyncR's player) to start in theater mode
 - **Removed** the time of day from the Twitch player (its setting, the bar and the go-to box)
 

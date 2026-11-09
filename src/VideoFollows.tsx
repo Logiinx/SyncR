@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
@@ -8,7 +8,7 @@ import VideoLogo from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
-import { addFollow, addPlaylist, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addFollow, addPlaylist, addVideo, channelGames, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, searchTwitchGames, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
 
 // Add a follow, or change one: which channel (only when adding), which of its videos count, and
 // (only when adding) how far back to start.
@@ -19,6 +19,7 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
   const [link, setLink] = useState('')
   const [only, setOnly] = useState(follow?.onlyWords.join(', ') ?? '')
   const [except, setExcept] = useState(follow?.exceptWords.join(', ') ?? '')
+  const [games, setGames] = useState(follow?.onlyGames ?? [])
   const [minutes, setMinutes] = useState(follow?.minMinutes ? String(follow.minMinutes) : '')
   const [hideShorts, setHideShorts] = useState(follow?.hideShorts ?? true)
   const [past, setPast] = useState<PastChoice>('today')
@@ -32,7 +33,7 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
     if (busy || (!follow && !link.trim())) return
     setBusy(true)
     setError('')
-    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), minMinutes: minuteCount(minutes), hideShorts }
+    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : games, minMinutes: minuteCount(minutes), hideShorts }
     try {
       if (follow) await updateFollow(follow.id, settings)
       else await addFollow(await findChannel(link), settings, past)
@@ -83,6 +84,7 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
         </span>
         <input id={`${fieldId}-except`} value={except} placeholder={t('trailer, best of')} onChange={(e) => setExcept(e.target.value)} />
       </label>
+      {!youtube && <GamePicker id={`${fieldId}-games`} channelId={follow?.channelId} games={games} onChange={setGames} />}
       <label className="video-field" htmlFor={`${fieldId}-minutes`}>
         <span className="video-field-name">
           {t('Hide videos shorter than (minutes)')}
@@ -129,10 +131,151 @@ export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClos
   )
 }
 
+const MAX_SUGGESTIONS = 8
+const SEARCH_DELAY = 250 // ms after the last key before asking Twitch
+
+// Twitch follows: the games that keep a stream, as removable tags, and a box to add one. While
+// typing, suggestions: the games this channel played (newest first), then Twitch's matches.
+// ↑ ↓ choose, Enter adds (the text as typed when nothing is chosen), Esc closes the list.
+function GamePicker(props: { id: string; channelId?: string; games: string[]; onChange: (games: string[]) => void }) {
+  const { id, channelId, games, onChange } = props
+  const [text, setText] = useState('')
+  const [open, setOpen] = useState(false)
+  const [played, setPlayed] = useState<string[]>([])
+  const [found, setFound] = useState<string[]>([])
+  const [selected, setSelected] = useState(-1)
+  const pointerDown = useRef(false)
+
+  useEffect(() => {
+    if (channelId) channelGames(channelId).then(setPlayed, () => {})
+  }, [channelId])
+
+  // Whether the mouse button is held: see onBlur
+  useEffect(() => {
+    const down = () => (pointerDown.current = true)
+    const up = () => (pointerDown.current = false)
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+    }
+  }, [])
+
+  useEffect(() => {
+    const typed = text.trim()
+    setFound([])
+    if (!typed) return
+    let current = true
+    const timer = window.setTimeout(() => {
+      searchTwitchGames(typed).then((names) => current && setFound(names), () => {})
+    }, SEARCH_DELAY)
+    return () => {
+      current = false
+      window.clearTimeout(timer)
+    }
+  }, [text])
+
+  const typed = text.trim().toLowerCase()
+  const suggestions = [...played.filter((name) => name.toLowerCase().includes(typed)), ...found]
+    .filter((name, i, all) => !games.some((game) => sameGame(game, name)) && all.findIndex((other) => sameGame(other, name)) === i)
+    .slice(0, MAX_SUGGESTIONS)
+  const shown = open && suggestions.length > 0
+
+  function add(name: string) {
+    const clean = name.trim()
+    if (clean && !games.some((game) => sameGame(game, clean))) onChange([...games, clean])
+    setText('')
+    setSelected(-1)
+  }
+
+  return (
+    <div className="video-field">
+      <label className="video-field-name" htmlFor={id}>
+        {t('Only streams with these games')}
+        <InfoTip label={t('Only streams with these games')}>
+          {t('Keeps a stream if one of these games is played in it at any point. With title words too, either one keeps it.')}
+        </InfoTip>
+      </label>
+      {games.length > 0 && (
+        <div className="video-games">
+          {games.map((game) => (
+            <span key={game} className="video-game" title={game}>
+              <span>{game}</span>
+              <button type="button" aria-label={t('Remove {name}', { name: game })} onClick={() => onChange(games.filter((other) => other !== game))}>
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="video-game-box">
+        <input
+          id={id}
+          value={text}
+          placeholder={t('Type a game')}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={shown}
+          onChange={(e) => {
+            setText(e.target.value)
+            setOpen(true)
+            setSelected(-1)
+          }}
+          onFocus={() => setOpen(true)}
+          // A click elsewhere: the list closes once the button is released. Closing it at once would
+          // make the window shorter and center it again, moving the button away from the pointer.
+          onBlur={() => {
+            if (!pointerDown.current) return setOpen(false)
+            window.addEventListener('pointerup', () => window.setTimeout(() => setOpen(false)), { once: true })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              if (!shown) return
+              e.preventDefault()
+              const last = suggestions.length - 1
+              if (e.key === 'ArrowDown') setSelected(selected >= last ? 0 : selected + 1)
+              else setSelected(selected <= 0 ? last : selected - 1)
+            } else if (e.key === 'Enter') {
+              if (!text.trim() && selected < 0) return // an empty box: Enter saves the window
+              e.preventDefault()
+              add((shown && suggestions[selected]) || text)
+            } else if (e.key === 'Escape' && shown) {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen(false)
+            }
+          }}
+        />
+        {shown && (
+          <div className="slash-menu video-game-list" role="listbox">
+            {suggestions.map((name, i) => (
+              <button
+                key={name}
+                type="button"
+                role="option"
+                aria-selected={i === selected}
+                className={i === selected ? 'selected' : undefined}
+                title={name}
+                // Before the box loses focus, which closes the list
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => add(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // What a follow keeps, in words, e.g. "Only: hotline · Under 15 min hidden"
 function followSummary(follow: VideoFollow) {
   const rules = [
     follow.onlyWords.length ? t('Only: {words}', { words: follow.onlyWords.join(', ') }) : '',
+    follow.onlyGames?.length ? t('Games: {games}', { games: follow.onlyGames.join(', ') }) : '',
     follow.exceptWords.length ? t('Except: {words}', { words: follow.exceptWords.join(', ') }) : '',
     follow.minMinutes ? t('Under {minutes} min hidden', { minutes: follow.minMinutes }) : '',
     follow.platform === 'youtube' && !follow.hideShorts ? t('Shorts shown') : '',

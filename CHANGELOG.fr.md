@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** du suivi d’une chaîne Twitch selon les jeux joués dans ses streams, pas seulement les mots du titre
 - **Changement** de la page de Twitch (quand une vidéo ne passe pas dans le lecteur de SyncR) : elle s’ouvre en mode cinéma
 - **Suppression** de l’heure réelle dans le lecteur Twitch (son réglage, la barre et la case « Aller à un moment »)
 

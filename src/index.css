@@ -7394,6 +7394,66 @@ button.history-row.selected {
   gap: 6px;
 }
 
+/* Twitch follow's games (GamePicker): tags with ✕, a box, its suggestions in the "/" menu's look
+   (under the box, pushing the rest down) */
+.video-games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.video-game {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px 2px 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+}
+
+.video-game > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.video-game button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--text-dim);
+}
+
+.video-game button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.video-game-box {
+  display: flex;
+  flex-direction: column;
+}
+
+/* In the window's flow, not over it: a window cuts off what passes its edge */
+.video-game-list {
+  margin-top: 4px;
+  box-shadow: none;
+  font-size: calc(1em / 0.85);
+}
+
+.video-game-list button {
+  overflow: hidden;
+  color: var(--text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .dialog .video-follow-channel {
   overflow: hidden;
   color: var(--text);

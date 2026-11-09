@@ -258,6 +258,7 @@ export interface VideoFollow {
   icon: string | null // its picture, loaded from the site, never stored
   onlyWords: string[] // a title needs one of these; empty = all titles
   exceptWords: string[] // a title with one of these is left out
+  onlyGames?: string[] // Twitch: a stream with one of these games played; with onlyWords, either one keeps it
   minMinutes: number // shorter videos are hidden; 0 = off
   hideShorts: boolean // YouTube only
   startAt: number // ms: older videos aren't shown; 0 = all that are still available
@@ -279,7 +280,15 @@ export interface VideoRow {
   published: number
   duration: number // seconds
   gone: boolean // the site no longer has it
+  games?: VideoGame[] // Twitch: every game played in it (video.ts); not asked yet = undefined
   fresh?: boolean // found by a check and not shown yet: tagged "New" when the Video tab shows it
+}
+
+// A game played in a Twitch stream: Twitch's own name and the one it shows (translated, e.g.
+// "Just Chatting" shows as "Discussions" in French)
+export interface VideoGame {
+  name: string
+  shown: string
 }
 
 // A video added by its link (video.ts). Synced, unlike VideoRow: no follow can download it again.

@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { alertMarkId, changed, db, type AddedVideo, type PlaylistEpisode, type VideoFolder, type VideoFollow, type VideoMark, type VideoPlaylist, type VideoRow } from './db'
+import { alertMarkId, changed, db, type AddedVideo, type VideoGame, type PlaylistEpisode, type VideoFolder, type VideoFollow, type VideoMark, type VideoPlaylist, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
@@ -65,7 +65,7 @@ export interface VideoChannel {
   icon: string | null
 }
 
-export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'minMinutes' | 'hideShorts'>
+export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts'>
 export type PastChoice = 'today' | '30' | '60' | 'all'
 
 const TWITCH_TABS = new Set(['about', 'clips', 'home', 'schedule', 'videos'])
@@ -269,7 +269,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
   // Only what's new or different: every save redraws the list
   const changes = rows
     // A new follow's first videos are what you asked for, not news
-    .map((row, i) => ({ ...row, fresh: saved[i] ? saved[i].fresh : !firstCheck }))
+    .map((row, i) => ({ ...row, games: saved[i]?.games, fresh: saved[i] ? saved[i].fresh : !firstCheck }))
     .filter((row, i) => {
       const old = saved[i]
       return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
@@ -305,6 +305,7 @@ async function checkFollow(follow: VideoFollow) {
   if (!response.ok || !(answer?.unchanged || Array.isArray(answer?.videos))) throw new Error(String(answer?.error ?? response.status))
   if (!answer.unchanged) {
     await saveVideos(follow, answer.videos, !lastChecked)
+    if (follow.platform === 'twitch') await addTwitchGames(follow)
     const marks = read<ListMarks>(LIST_MARKS_KEY, {})
     if (answer.mark) marks[follow.id] = { mark: answer.mark, at: Date.now() }
     else delete marks[follow.id]
@@ -428,13 +429,99 @@ export function startVideoChecks() {
   }
 }
 
-// Whether a follow's rules keep this video
+// Whether a follow's rules keep this video. Title words or games: either one keeps it.
 export function videoKept(follow: VideoFollow, video: VideoRow) {
   // i18n-ok
   if (follow.hideShorts && video.kind === 'short') return false
   if (follow.minMinutes && video.duration < follow.minMinutes * 60) return false
-  return titleKept(follow, video.title)
+  const games = follow.onlyGames ?? []
+  if (!games.length) return titleKept(follow, video.title)
+  if (follow.exceptWords.length && !titleKept({ onlyWords: [], exceptWords: follow.exceptWords }, video.title)) return false
+  return gamePlayed(games, video) || (follow.onlyWords.length > 0 && titleKept(follow, video.title))
 }
+
+// ---------- Twitch games ----------
+// Twitch's official list of a channel's videos has no games. Its website's data has them, with
+// every game change, so the app asks for it directly (like the own Twitch player), with the
+// public id of Twitch's website.
+
+const TWITCH_SITE_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko' // i18n-ok
+const GAME_PAGES = 3 // 100 videos a page: Twitch keeps past streams 7 to 60 days
+
+async function askTwitchSite<T>(query: string): Promise<T> {
+  const response = await fetch('https://gql.twitch.tv/gql', {
+    method: 'POST',
+    headers: { 'Client-ID': TWITCH_SITE_ID, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+    signal: AbortSignal.timeout(20_000),
+  })
+  const answer = await response.json().catch(() => null)
+  if (!response.ok || !answer?.data) throw new Error(t('Twitch answered {status}', { status: response.status }))
+  return answer.data
+}
+
+interface SiteGame {
+  name: string
+  displayName: string
+}
+interface SiteVideos {
+  user: { videos: { pageInfo: { hasNextPage: boolean }; edges: { cursor: string; node: { id: string; game: SiteGame | null; moments: { edges: { node: { details: { game?: SiteGame } | null } }[] } | null } }[] } } | null
+}
+
+// Fills in the games of this follow's videos that don't have them yet: a page of 100 at a time,
+// newest first, until none is missing. A problem leaves them for the next check.
+async function addTwitchGames(follow: VideoFollow) {
+  const missing = new Map(
+    (await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && !video.games).toArray()).map((row) => [row.id, row]),
+  )
+  let cursor = ''
+  for (let page = 0; page < GAME_PAGES && missing.size; page++) {
+    const game = 'name displayName' // i18n-ok
+    const data = await askTwitchSite<SiteVideos>(
+      // i18n-ok
+      `{ user(id: ${JSON.stringify(follow.channelId)}) { videos(first: 100, type: ARCHIVE${cursor ? `, after: ${JSON.stringify(cursor)}` : ''}) { pageInfo { hasNextPage } edges { cursor node { id game { ${game} } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { details { ... on GameChangeMomentDetails { game { ${game} } } } } } } } } } } }`,
+    )
+    const videos = data.user?.videos
+    if (!videos) return
+    const found: VideoRow[] = []
+    for (const { node } of videos.edges) {
+      const row = missing.get(`twitch-${node.id}`)
+      if (!row) continue
+      const games = new Map<string, VideoGame>()
+      for (const game of [node.game, ...(node.moments?.edges ?? []).map((edge) => edge.node.details?.game)]) {
+        if (game?.name && !games.has(game.name)) games.set(game.name, { name: game.name, shown: game.displayName || game.name })
+      }
+      found.push({ ...row, games: [...games.values()] })
+      missing.delete(row.id)
+    }
+    if (found.length) await db.videos.bulkPut(found)
+    if (!videos.pageInfo.hasNextPage || !videos.edges.length) return
+    cursor = videos.edges[videos.edges.length - 1].cursor
+  }
+}
+
+// Whether one of these games is played in the video. Capitals and accents don't matter.
+function gamePlayed(games: string[], video: VideoRow) {
+  const wanted = new Set(games.map(titleKey))
+  return (video.games ?? []).some((game) => wanted.has(titleKey(game.name)) || wanted.has(titleKey(game.shown)))
+}
+
+// Suggestions while typing a game for a follow: the games this channel played, newest first,
+// then Twitch's matches for the text
+export async function channelGames(channelId: string) {
+  const rows = await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === channelId).toArray()
+  rows.sort((a, b) => b.published - a.published)
+  return [...new Set(rows.flatMap((row) => (row.games ?? []).map((game) => game.shown)))]
+}
+
+export async function searchTwitchGames(text: string): Promise<string[]> {
+  const data = await askTwitchSite<{ searchCategories: { edges: { node: { displayName: string } }[] } | null }>(
+    `{ searchCategories(query: ${JSON.stringify(text)}, first: 8) { edges { node { displayName } } } }`,
+  )
+  return (data.searchCategories?.edges ?? []).map((edge) => edge.node.displayName)
+}
+
+export const sameGame = (a: string, b: string) => titleKey(a) === titleKey(b)
 
 // A mark's id, and so its file name in Dropbox, which lists names in lower case: YouTube's ids
 // have capitals. A hash also keeps which videos out of the file names.
