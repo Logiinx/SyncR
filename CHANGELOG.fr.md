@@ -4,8 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.66.0] - 2026-11-10
+
 **Synchronisation**
-- **Amélioration** de la vitesse de synchro : seuls les changements sont demandés à Dropbox, et envoyés d’un coup
+- **Amélioration** de la vitesse de synchro : environ 2× plus rapide au quotidien, 3 à 4× après de gros changements
 - **Amélioration** de la sécurité : un fichier copié sur un autre dans Dropbox est maintenant refusé
 
 **Vidéo**

@@ -4,8 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.66.0] - 2026-11-10
+
 **Sync**
-- **Improved** sync speed: each sync asks Dropbox only for what changed, and many changes go up in one go
+- **Improved** sync speed: about twice as quick day to day, 3–4× after big changes like marking many videos
 - **Improved** safety: a synced file copied over another one in Dropbox is now refused instead of used
 
 **Video**
