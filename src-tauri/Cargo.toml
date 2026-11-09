@@ -54,12 +54,10 @@ webview2-com = "0.39"
 # Also gives the video window its own taskbar button (lib.rs, own_taskbar_button)
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Storage_EnhancedStorage", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell_PropertiesSystem"] }
 
-# A smaller app (installer and updates): one optimization pass over the whole program (LTO),
-# optimized for size, no debug symbols, stop at once on a crash. Costs ~1-2 min per GitHub build
-# (the LTO pass can't be cached); lighter: drop lto and codegen-units.
+# A smaller app (installer and updates): optimized for size, no debug symbols, stop at once on a
+# crash. No LTO (one optimization pass over the whole program): it saved only ~60 KB of the
+# 3.3 MB installer but cost ~1.5 min per GitHub build, as it can't be cached.
 [profile.release]
-lto = true
-codegen-units = 1
 opt-level = "s"
 strip = true
 panic = "abort"
