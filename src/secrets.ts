@@ -1,6 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { fromBase64, toBase64 } from './crypto'
-import { openBytes, sealBytes } from './sealing'
+import { currentSealKey, openBytes, sealBytes } from './sealing'
 
 // Secrets kept per device in localStorage: the sign-ins (with their keys) of Dropbox, Google
 // Calendar and Gmail, and on the PC the sync key (crypto.ts) and the local database's key
@@ -82,11 +82,11 @@ export async function loadSecrets() {
 function openWaiting(key: string): string | null {
   const text = waiting.get(key)
   if (text === undefined) return memory.get(key) ?? null
+  if (!currentSealKey()) return null // locked: stays waiting
   let value: string | null = null
   try {
     value = new TextDecoder().decode(openBytes(fromBase64(text.slice(PIN_MARK.length))))
   } catch (error) {
-    if (error instanceof Error && error.message === 'The local key is missing') return null // locked: stays waiting
     console.error('Secret could not be opened', error) // as if signed out
   }
   waiting.delete(key)

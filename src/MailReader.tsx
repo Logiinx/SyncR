@@ -104,7 +104,8 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
       const link = linkOf(target)
       if (link) {
         e.preventDefault()
-        openLink(link)
+        const url = linkUrl(link)
+        if (url) openLink(url)
       } else if (target instanceof frameDoc.defaultView!.HTMLImageElement && viewable(target)) {
         openImageViewer(target.currentSrc || target.src)
       }
@@ -186,11 +187,30 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   )
 }
 
-// The address of the link around an element, '' if none: HTML links, image-map areas and SVG
-// links (their address can be in xlink:href)
+// HTML links, image-map areas and SVG links (their address can be in xlink:href)
+const XLINK = 'http://www.w3.org/1999/xlink'
+const rawHref = (link: Element) => link.getAttribute('href') ?? link.getAttributeNS(XLINK, 'href')
+
+// The link around an element, or null: an <a> without an address (a named anchor) doesn't count
 function linkOf(el: Element) {
-  const link = el.closest?.('a, area')
-  return link?.getAttribute('href') ?? link?.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ?? ''
+  for (let link = el.closest?.('a, area'); link; link = link.parentElement?.closest('a, area') ?? null) {
+    if (rawHref(link) !== null) return link
+  }
+  return null
+}
+
+// Its full address, '' if it has none (empty, a spot in the mail itself, or a relative address,
+// which would point into SyncR). Read the way the browser reads it, so "//site.com/…" gets the
+// https: of the page around the frame.
+function linkUrl(link: Element) {
+  const href = rawHref(link)!.trim()
+  if (!href || href.startsWith('#')) return ''
+  try {
+    const url = new URL(href, link.baseURI)
+    return url.origin === location.origin ? '' : url.href
+  } catch {
+    return ''
+  }
 }
 
 // A picture worth opening full size: not inside a link, at least 50 px both ways (real size)

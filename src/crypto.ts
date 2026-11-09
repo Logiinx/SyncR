@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
 import { t } from './i18n'
+import { fromBase64, toBase64 } from './base64'
 import { db } from './db'
 import { download, upload } from './dropbox'
 import { getSecret, setSecret, SYNC_KEY_SECRET } from './secrets'
@@ -27,13 +28,7 @@ export const MIN_PASSPHRASE_LENGTH = 8
 
 // ---------- Helpers ----------
 
-export function toBase64(bytes: Uint8Array) {
-  return btoa(String.fromCharCode(...bytes))
-}
-
-export function fromBase64(text: string) {
-  return Uint8Array.from(atob(text), (c) => c.charCodeAt(0))
-}
+export { fromBase64, toBase64 } // used by many files through here
 
 const isPc = isTauri
 

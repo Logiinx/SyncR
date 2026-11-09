@@ -166,7 +166,7 @@ async function writeBackup(rows: Record<string, Record<string, unknown>[]>, loca
       list.map(async (row) => {
         const out: Record<string, unknown> = { ...row }
         for (const [field, value] of Object.entries(row)) {
-          if (value instanceof Blob) out[field] = { $image: value.type, base64: bigBase64(new Uint8Array(await value.arrayBuffer())) }
+          if (value instanceof Blob) out[field] = { $image: value.type, base64: toBase64(new Uint8Array(await value.arrayBuffer())) }
         }
         return out
       }),
@@ -180,13 +180,6 @@ async function writeBackup(rows: Record<string, Record<string, unknown>[]>, loca
   const backup = backupDb()
   await backup.backups.put({ id: 'move', createdAt, lockedWith: syncKey ? 'sync' : 'local', data })
   backup.close()
-}
-
-// toBase64 (crypto.ts) is for small things: big images would overflow it
-function bigBase64(bytes: Uint8Array) {
-  let text = ''
-  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  return btoa(text)
 }
 
 // The old database left by a move cut short after it was sealed, and the backup once it's old

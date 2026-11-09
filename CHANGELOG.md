@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Fixed** an issue where, in French with the PIN lock on, all sign-ins looked signed out after unlocking
+
+**Mail**
+- **Fixed** an issue where links starting with // in an email did nothing when clicked
+
 ## [0.65.1] - 2026-11-09
 
 **Video**

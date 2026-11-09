@@ -1,5 +1,6 @@
 import { gcm } from '@noble/ciphers/aes.js'
 import { t } from './i18n'
+import { fromBase64, toBase64 } from './base64'
 import type { DBCore, DBCoreGetManyRequest, DBCoreGetRequest, DBCoreMutateRequest, DBCoreOpenCursorRequest, DBCoreQueryRequest, DBCoreTable, Middleware } from 'dexie'
 
 // On the PC, everything with the user's own words is stored encrypted ("sealed") in the
@@ -52,14 +53,11 @@ export function openBytes(data: Uint8Array) {
 // Text sealed into base64 and back: the mail cards, kept in localStorage (mailAlerts.ts).
 // Opening throws without the key (locked) or if the text was changed.
 export function sealString(text: string) {
-  const bytes = sealBytes(new TextEncoder().encode(text))
-  let binary = ''
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  return btoa(binary)
+  return toBase64(sealBytes(new TextEncoder().encode(text)))
 }
 
 export function openString(base64: string) {
-  return new TextDecoder().decode(openBytes(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))))
+  return new TextDecoder().decode(openBytes(fromBase64(base64)))
 }
 
 // ---------- Images ----------
