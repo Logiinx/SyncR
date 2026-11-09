@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Changed** Twitch's own page (when a video can't play in SyncR's player) to start in theater mode
 - **Removed** the time of day from the Twitch player (its setting, the bar and the go-to box)
 
 ## [0.63.2] - 2026-11-09

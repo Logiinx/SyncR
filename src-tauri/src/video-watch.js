@@ -32,6 +32,21 @@
       if (data?.syncrRefused) ask(data.syncrRefused)
     })
   }
+  // Twitch's own page (the fallback when our player can't play a video) starts in theater mode:
+  // its button pressed once, unless it's on already. Found by its alt+T shortcut, the same in
+  // every language. Only at the start: switching it off afterwards is the viewer's choice.
+  if (window === top && location.hostname === 'www.twitch.tv' && location.pathname.startsWith('/videos/')) {
+    const started = Date.now()
+    const timer = setInterval(() => {
+      if (document.querySelector('.persistent-player--theatre') || Date.now() - started > 30000) return clearInterval(timer)
+      const button = [...document.querySelectorAll('button[aria-label]')]
+        .find((button) => /\(alt\+t\)/i.test(button.getAttribute('aria-label')) && button.getBoundingClientRect().width)
+      if (!button) return
+      button.click()
+      clearInterval(timer)
+    }, 500)
+    return
+  }
   if (!/^www\.youtube(-nocookie)?\.com$/.test(location.hostname) || !location.pathname.startsWith('/embed/')) return
   const watchForRefusal = () => {
     const started = Date.now()

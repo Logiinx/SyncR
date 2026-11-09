@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Changement** de la page de Twitch (quand une vidéo ne passe pas dans le lecteur de SyncR) : elle s’ouvre en mode cinéma
 - **Suppression** de l’heure réelle dans le lecteur Twitch (son réglage, la barre et la case « Aller à un moment »)
 
 ## [0.63.2] - 2026-11-09
