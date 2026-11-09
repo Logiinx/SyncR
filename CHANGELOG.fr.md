@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Synchronisation**
+- **Amélioration** de la vitesse de synchronisation : chaque synchro ne demande à Dropbox que ce qui a changé
+
 **Vidéo**
 - **Correction** de petits problèmes : les nuits de changement d’heure, aller à une heure dans le lecteur Twitch pouvait la manquer
 

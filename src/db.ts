@@ -35,6 +35,22 @@ export interface SyncedNote {
   updatedAt: number
 }
 
+// This device's copy of the file list in Dropbox's synced folders (only names, versions and
+// dates: no text), as it was at `cursor` (SyncListing). Each sync asks Dropbox only what changed
+// since then (sync.ts, remoteListing). Never synced; forgotten when Dropbox is disconnected.
+export interface RemoteFile {
+  path: string // lower case, e.g. "/notes/1234-…"
+  rev: string
+  modified: number
+}
+
+export interface SyncListing {
+  name: 'listing'
+  cursor: string // Dropbox's bookmark the file list belongs to
+  listedAt: number // when the whole list was last fetched (done again once a day)
+  folders: string // the folders it covers, comma-separated: another set = a full listing
+}
+
 // An image in a note. The note only stores the id; the image data lives here.
 // Never changes once added (a new image gets a new id).
 export interface Attachment {
@@ -407,6 +423,8 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   videoPlaylists: EntityTable<VideoPlaylist, 'id'>
   playlistVideos: EntityTable<PlaylistVideos, 'id'>
   videoPlaces: EntityTable<VideoPlace, 'id'>
+  remoteFiles: EntityTable<RemoteFile, 'path'>
+  syncListing: EntityTable<SyncListing, 'name'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -501,6 +519,19 @@ export function defineSchema(d: Dexie) {
   d.version(20).stores({
     videoPlaylists: 'id',
     playlistVideos: 'id',
+  })
+
+  d.version(21).stores({
+    remoteFiles: 'path',
+    syncListing: 'name',
+  })
+}
+
+// Forgets the saved Dropbox file list (another account, or none): the next sync lists everything
+export function forgetRemoteListing() {
+  return db.transaction('rw', db.remoteFiles, db.syncListing, async () => {
+    await db.remoteFiles.clear()
+    await db.syncListing.clear()
   })
 }
 

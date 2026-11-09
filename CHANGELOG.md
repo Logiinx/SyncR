@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Sync**
+- **Improved** sync speed: each sync now asks Dropbox only for what changed instead of listing every file
+
 **Video**
 - **Fixed** small issues: on clock change nights, going to a time of day in the Twitch player could miss it
 

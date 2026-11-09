@@ -3,6 +3,7 @@
 // on the PC).
 
 import { DROPBOX_SECRET, getSecret, setSecret } from './secrets'
+import { forgetRemoteListing } from './db'
 import { t } from './i18n'
 import { base64Url, challengeFor, isOwnSignInState, newSignInState, returnKind } from './signIn'
 
@@ -85,6 +86,10 @@ function loadAuth(): Auth | null {
 }
 
 function saveAuth(auth: Auth | null) {
+  // Another account, or none: the saved file list of the old one no longer applies (sync.ts)
+  if (auth?.refreshToken !== loadAuth()?.refreshToken) {
+    forgetRemoteListing().catch((e) => console.warn('Could not forget the Dropbox file list', e))
+  }
   void setSecret(DROPBOX_SECRET, auth ? JSON.stringify(auth) : null)
   window.dispatchEvent(new Event('dropbox-change'))
 }
@@ -364,20 +369,30 @@ export async function deleteFiles(paths: string[]) {
   }
 }
 
+// A change after a cursor. rev = null: the file was deleted (then modified = 0).
+export interface Change {
+  path: string
+  rev: string | null
+  modified: number
+}
+
 // What changed in the app folder after the cursor, and a new cursor for this moment.
-// rev = null: the file was deleted. Folders are left out.
+// Folders are left out. A cursor Dropbox no longer knows throws an error (isCursorReset).
 export async function changesSince(cursor: string) {
-  const changes: { path: string; rev: string | null }[] = []
+  const changes: Change[] = []
   for (;;) {
     const page = await api('files/list_folder/continue', { cursor })
     for (const entry of page.entries) {
-      if (entry['.tag'] === 'file') changes.push({ path: entry.path_lower, rev: entry.rev })
-      if (entry['.tag'] === 'deleted') changes.push({ path: entry.path_lower, rev: null })
+      if (entry['.tag'] === 'file') changes.push({ path: entry.path_lower, rev: entry.rev, modified: Date.parse(entry.server_modified) })
+      if (entry['.tag'] === 'deleted') changes.push({ path: entry.path_lower, rev: null, modified: 0 })
     }
     cursor = page.cursor
     if (!page.has_more) return { changes, cursor }
   }
 }
+
+// Dropbox forgot the cursor (it does now and then): the whole listing is needed again
+export const isCursorReset = (error: unknown) => /"reset"|reset\//.test(String(error))
 
 // Waits (up to 8 minutes) until something changes in the app folder after the cursor.
 // Returns true if something changed. "backoff": seconds to wait before calling again.

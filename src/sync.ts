@@ -15,7 +15,7 @@ import { clockTime, shortDate } from './dates'
 import { deviceName } from './device'
 import { syncHistory } from './historySync'
 import { blobFromBytes } from './sealing'
-import { changesSince, deleteFile, download, listFiles, ownWrites, upload } from './dropbox'
+import { changesSince, deleteFile, download, isCursorReset, listFiles, ownWrites, upload, type Change, type FileInfo } from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
 //   /notes/<id>        one file per note
@@ -117,6 +117,84 @@ const recordFolders = (): RecordFolder[] => [
 // The folders sync reads each time (not history/: see noteHistory.ts)
 const NOTE_FOLDERS = ['/notes', '/deleted', '/attachments']
 
+// ---------- What's in Dropbox ----------
+// This device keeps the file list of the synced folders, with Dropbox's bookmark (cursor) for
+// that moment (db.remoteFiles, db.syncListing). A sync then only asks what changed since,
+// usually one request instead of one listing per folder. The whole list is fetched again the
+// first time, once a day (in case the saved one ever drifted), when Dropbox forgot the
+// bookmark, or when the synced folders change (another app version).
+// The list and its bookmark are saved together, only when a sync succeeds: a sync that fails
+// or is cut short leaves the old pair, and the next one asks again from there.
+
+const FULL_LISTING_MS = 24 * 60 * 60 * 1000
+
+interface Listing {
+  files: Map<string, FileInfo> // path -> file, synced folders only
+  cursor: string
+  listedAt: number
+  folders: string
+  full: boolean // fetched whole (saved by replacing), else changes since the saved one
+  changes: Change[] // not full: what to apply to the saved list
+}
+
+// Only files right inside one of the synced folders count (not history/, crypto.json, …)
+function inFolders(path: string, folders: string[]) {
+  const slash = path.lastIndexOf('/')
+  return slash > 0 && folders.includes(path.slice(0, slash))
+}
+
+function applyChanges(listing: Listing, changes: Change[], folders: string[]) {
+  for (const change of changes) {
+    if (change.rev === null && folders.includes(change.path)) {
+      // A whole folder deleted: Dropbox reports only the folder
+      for (const path of listing.files.keys()) {
+        if (!path.startsWith(change.path + '/')) continue
+        listing.files.delete(path)
+        listing.changes.push({ path, rev: null, modified: 0 })
+      }
+      continue
+    }
+    if (!inFolders(change.path, folders)) continue
+    if (change.rev === null) listing.files.delete(change.path)
+    else listing.files.set(change.path, { path: change.path, rev: change.rev, modified: change.modified })
+    listing.changes.push(change)
+  }
+}
+
+async function remoteListing(folders: string[]): Promise<Listing> {
+  const saved = await db.syncListing.get('listing')
+  const folderList = folders.join(',')
+  if (saved && saved.folders === folderList && Date.now() - saved.listedAt < FULL_LISTING_MS) {
+    try {
+      const { changes, cursor } = await changesSince(saved.cursor)
+      const files = new Map((await db.remoteFiles.toArray()).map((file) => [file.path, file]))
+      const listing: Listing = { files, cursor, listedAt: saved.listedAt, folders: folderList, full: false, changes: [] }
+      applyChanges(listing, changes, folders)
+      return listing
+    } catch (e) {
+      if (!isCursorReset(e)) throw e
+    }
+  }
+  const { files, cursor } = await listFiles(folders)
+  const map = new Map(files.map((file) => [file.path, file]))
+  return { files: map, cursor, listedAt: Date.now(), folders: folderList, full: true, changes: [] }
+}
+
+function saveListing(listing: Listing) {
+  return db.transaction('rw', db.remoteFiles, db.syncListing, async () => {
+    if (listing.full) {
+      await db.remoteFiles.clear()
+      await db.remoteFiles.bulkPut([...listing.files.values()])
+    } else {
+      // Each changed file as it is now in the list: still there, or gone
+      const paths = [...new Set(listing.changes.map((change) => change.path))]
+      await db.remoteFiles.bulkDelete(paths.filter((path) => !listing.files.has(path)))
+      await db.remoteFiles.bulkPut(paths.filter((path) => listing.files.has(path)).map((path) => listing.files.get(path)!))
+    }
+    await db.syncListing.put({ name: 'listing', cursor: listing.cursor, listedAt: listing.listedAt, folders: listing.folders })
+  })
+}
+
 const notePath = (id: string) => `/notes/${id}`
 const deletedPath = (id: string) => `/deleted/${id}`
 const attachmentPath = (id: string) => `/attachments/${id}`
@@ -164,6 +242,10 @@ export async function syncNow(): Promise<SyncResult> {
   running = true
   try {
     return await runSync()
+  } catch (e) {
+    // Dropbox wasn't as expected: the next sync fetches the whole file list, in case the saved one is wrong
+    if (e instanceof RetrySoonError) await db.syncListing.update('listing', { listedAt: 0 }).catch(() => {})
+    throw e
   } finally {
     running = false
   }
@@ -243,9 +325,11 @@ async function runSync(): Promise<SyncResult> {
   const folders = recordFolders()
   const remoteRecords = new Map(folders.map(({ folder }) => [folder, new Map<string, string>()])) // folder -> id -> rev
   ownWrites.clear()
-  const { files, cursor } = await listFiles([...NOTE_FOLDERS, ...folders.map(({ folder }) => `/${folder}`)])
+  const syncedFolders = [...NOTE_FOLDERS, ...folders.map(({ folder }) => `/${folder}`)]
+  const listing = await remoteListing(syncedFolders)
+  const cursor = listing.cursor
   result.cursor = cursor
-  for (const file of files) {
+  for (const file of listing.files.values()) {
     const [, folder, id] = file.path.split('/')
     if (folder === 'notes') remoteNotes.set(id, file.rev)
     else if (folder === 'deleted') remoteDeleted.set(id, file.modified)
@@ -462,14 +546,19 @@ async function runSync(): Promise<SyncResult> {
   // then was written by us, the cursor moves on; anything else (the other device saved during
   // this sync) keeps the old one, so that change is still reported.
 
+  // The saved file list moves on with the cursor (our writes added), so it always matches it.
   if (ownWrites.size) {
     try {
       const since = await changesSince(cursor)
-      if (since.changes.every((change) => ownWrites.get(change.path) === change.rev)) result.cursor = since.cursor
+      if (since.changes.every((change) => ownWrites.get(change.path) === change.rev)) {
+        result.cursor = listing.cursor = since.cursor
+        applyChanges(listing, since.changes, syncedFolders)
+      }
     } catch {
       // Keep the old cursor: at worst one extra sync
     }
   }
+  await saveListing(listing)
 
   return result
 }
