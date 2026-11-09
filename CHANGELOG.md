@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.63.1] - 2026-11-09
+
+**Sync**
+- **Fixed** the phone's sync vibration coming about 2 seconds after the cloud turned green
+
 ## [0.63.0] - 2026-11-08
 
 **Games**

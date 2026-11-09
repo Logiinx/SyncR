@@ -4,6 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.63.1] - 2026-11-09
+
+**Synchronisation**
+- **Correction** de la vibration du téléphone qui arrivait environ 2 secondes après le nuage vert
+
 ## [0.63.0] - 2026-11-08
 
 **Jeux**
