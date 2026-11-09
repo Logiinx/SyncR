@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** des commandes du lecteur (YouTube et Twitch) : elles s’effacent 1,5 s après l’arrêt de la souris, au lieu de 2,8 s
+
 ## [0.66.0] - 2026-11-10
 
 **Synchronisation**

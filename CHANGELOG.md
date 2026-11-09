@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** the player controls (YouTube and Twitch) to fade 1.5 s after the mouse stops, instead of 2.8 s
+
 ## [0.66.0] - 2026-11-10
 
 **Sync**

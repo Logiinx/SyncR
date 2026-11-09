@@ -65,11 +65,11 @@
   }
   watchForRefusal()
 
-  // Controls that fade like in our own Twitch player (player.js): 2.8 s without moving the mouse,
+  // Controls that fade like in our own Twitch player (player.js): 1.5 s without moving the mouse,
   // at once when it leaves. YouTube waits 4 s. Not while paused, in a menu, over the controls, or
   // during an ad. Its own classes do the hiding: "fadein" on the layout it uses now (controls
   // outside the player), "ytp-autohide" on the older one, which it still gives some videos.
-  const QUIET_AFTER = 2800
+  const QUIET_AFTER = 1500
   const OVER_CONTROLS = '#player-controls button:hover, #player-controls yt-progress-bar:hover, .ytp-chrome-bottom:hover'
   const IN_MENU = '#bottom-sheet-wrapper bottom-sheet-layout, .ytp-settings-menu:not([style*="display: none"])'
   const keepShowing = (player) => player.getPlayerState?.() !== 1 || player.classList.contains('ad-showing') || document.querySelector(`${OVER_CONTROLS}, ${IN_MENU}`)

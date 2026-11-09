@@ -5,7 +5,7 @@
 const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko' // the one Twitch's own website uses
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const JUMP = 10 // seconds
-const QUIET_AFTER = 2800 // ms without moving the mouse before the controls fade
+const QUIET_AFTER = 1500 // ms without moving the mouse before the controls fade
 const RETRY_AFTER = [1000, 3000, 8000] // ms
 
 const ICONS = {
