@@ -82,7 +82,7 @@ export const extensions = [
     persist: false,
     renderToggleButton: ({ element, isOpen }) => {
       element.innerHTML = CHEVRON
-      element.setAttribute('aria-label', isOpen ? 'Close section' : 'Open section')
+      element.setAttribute('aria-label', isOpen ? t('Close section') : t('Open section'))
     },
   }),
   DetailsSummary,

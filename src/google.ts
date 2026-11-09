@@ -71,7 +71,7 @@ export async function connect(): Promise<Result | null> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
-    scope: `${SCOPE} openid profile`, // profile: the name shown in Settings ("Connected as …")
+    scope: `${SCOPE} openid profile`, // profile: the name shown in Settings ("Connected as …") (i18n-ok)
     state: newSignInState('google'),
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
@@ -210,7 +210,7 @@ export async function calendarApi(path: string, init: RequestInit = {}) {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        Authorization: `Bearer ${await accessToken()}`,
+        Authorization: `Bearer ${await accessToken()}`, // i18n-ok
       },
     })
   let res = await send()

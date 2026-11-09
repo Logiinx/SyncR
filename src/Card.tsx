@@ -284,7 +284,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
                 if (!toText) leaveNewCard(titled)
               }}
               onKeyDown={(event) => {
-                if (newTitle.current && ['Enter', 'Tab', 'ArrowDown'].includes(event.key)) {
+                if (newTitle.current && ['Enter', 'Tab', 'ArrowDown'].includes(event.key)) { // i18n-ok
                   event.preventDefault()
                   editor?.commands.focus('end') // blurs the title: saved above
                   return

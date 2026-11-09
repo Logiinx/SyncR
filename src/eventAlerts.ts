@@ -145,7 +145,7 @@ export async function snoozeAlert(key: string, minutes: number | 'tomorrow') {
     if (!event) return
     if (!event.alerts.some((before) => event!.start - before * MINUTE_MS === at)) {
       const when = `${nearDay(event.start) ?? shortDate(event.start)}, ${clockTime(event.start)}`
-      window.dispatchEvent(new CustomEvent('sync-notice', { detail: `Already postponed on another device. Now: ${when}.` }))
+      window.dispatchEvent(new CustomEvent('sync-notice', { detail: t('Already postponed on another device. Now: {when}.', { when }) }))
       return
     }
     // Google keeps whole minutes

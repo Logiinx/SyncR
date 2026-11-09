@@ -204,7 +204,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 function seriesRepeat(recurrence: string[] = []): SeriesRepeat {
   const rules = recurrence.filter((line) => line.startsWith('RRULE:'))
   if (rules.length !== 1) return 'custom'
-  const parts = rules[0].slice('RRULE:'.length).split(';').map((part) => part.split('='))
+  const parts = rules[0].slice('RRULE:'.length).split(';').map((part) => part.split('=')) // i18n-ok
   const freq = parts.find(([key]) => key === 'FREQ')?.[1]
   if (freq !== 'DAILY' && freq !== 'WEEKLY' && freq !== 'MONTHLY' && freq !== 'YEARLY') return 'custom'
   const plain = parts.every(

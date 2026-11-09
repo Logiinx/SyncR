@@ -330,7 +330,7 @@ function openSectionsAround(editor: Editor, pos: number, focus = true) {
     // The toggle's click also focuses the editor (keyboard on the phone). Without it: what the
     // click does in @tiptap/extension-details 3.31 (toggleDetailsContent), minus the focus.
     section.classList.add('is-open')
-    toggle?.setAttribute('aria-label', 'Close section')
+    toggle?.setAttribute('aria-label', t('Close section'))
     section.querySelector(':scope > div > [data-type="detailsContent"]')?.dispatchEvent(new Event('toggleDetailsContent'))
   }
 }

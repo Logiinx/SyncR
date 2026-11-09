@@ -64,6 +64,7 @@ export const reminders = {
   'Done all': 'Tout terminer',
   'Done on another device': 'Terminé sur un autre appareil',
   'Postponed on another device until {when}, {time}': 'Reporté sur un autre appareil : {when}, {time}',
+  'Already postponed on another device. Now: {when}.': 'Déjà reporté sur un autre appareil. Maintenant : {when}.',
 
   // Google Calendar connection
   'Google Calendar: sign-in cancelled.': 'Google Agenda : connexion annulée.',

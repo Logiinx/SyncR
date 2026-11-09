@@ -24,6 +24,8 @@ export const notes = {
 
   // Inside a note
   'Section title': 'Titre de la section',
+  'Open section': 'Ouvrir la section',
+  'Close section': 'Fermer la section',
   'Copy image': 'Copier l’image',
   'Still downloading': 'Téléchargement en cours',
   'Delete image': 'Supprimer l’image',

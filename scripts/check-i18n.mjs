@@ -65,7 +65,12 @@ function hitsIn(path) {
       if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) {
         const called = parent.expression
         const name = ts.isPropertyAccessExpression(called) ? called.name.text : called.getText()
-        if (called.getText().startsWith('console.') || NOT_TEXT_CALLS.has(name)) return true
+        const args = parent.arguments ?? []
+        // setAttribute('aria-label', '…'): the value of a label attribute is text
+        const label = name === 'setAttribute' && args[1] === at && /^['"](aria-label|title|placeholder|alt)['"]$/.test(args[0]?.getText() ?? '')
+        // Only the text itself as an argument is code: a text inside an object passed to the call
+        // (new CustomEvent(…, { detail: '…' })) or picked by a condition is still checked
+        if (called.getText().startsWith('console.') || (NOT_TEXT_CALLS.has(name) && args.includes(node) && !label)) return true
       }
       if (ts.isJsxAttribute(parent) && NOT_TEXT_ATTRIBUTES.has(parent.name.getText())) {
         const tag = parent.parent.parent.tagName.getText()

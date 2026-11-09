@@ -17,7 +17,7 @@ export const fullDate = (time: number) => capitalize(dayText(time, 'long', 'long
 
 // "14:32" (24 h): the time in every date that has one
 export function clockTime(time: number) {
-  return new Date(time).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+  return new Date(time).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) // i18n-ok
 }
 
 // "Today", "Tomorrow" or "Yesterday", else null. Counts calendar days (setDate, not "minus 24

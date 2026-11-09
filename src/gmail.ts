@@ -88,13 +88,13 @@ export async function connectGmail(pubsub = false): Promise<Result | null> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
-    scope: `${SCOPE} openid email${pubsub ? ` ${PUBSUB_SCOPE}` : ''}`, // email: which account it is
+    scope: `${SCOPE} openid email${pubsub ? ` ${PUBSUB_SCOPE}` : ''}`, // email: which account it is (i18n-ok)
     state: newSignInState('gmail'),
     code_challenge: await challengeFor(verifier),
     code_challenge_method: 'S256',
     redirect_uri: redirectUri(),
     access_type: 'offline', // gives a refresh token, so no re-login
-    prompt: 'select_account consent', // always asks which account; consent: see google.ts
+    prompt: 'select_account consent', // always asks which account; consent: see google.ts (i18n-ok)
   })
   const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
   if (!isTauri()) {
@@ -242,7 +242,7 @@ export async function googleApi(
         ...init,
         cache: 'no-store', // emails never kept in the browser's cache files (Google doesn't forbid it)
         signal: AbortSignal.timeout(timeoutMs),
-        headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` },
+        headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` }, // i18n-ok
       })
     } catch (error) {
       // No answer at all (no network, timed out)

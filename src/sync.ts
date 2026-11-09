@@ -174,6 +174,7 @@ async function runSync(): Promise<SyncResult> {
       await db.notes.add({
         ...note,
         id,
+        // i18n-ok: English in every language (user, 2026-11-09), so both devices name it the same
         title: `${noteTitle(note)} (conflict, ${device}, ${when})`,
         conflictOf: note.id, // for the comparison (ConflictCompare.tsx); syncs with the note
       })

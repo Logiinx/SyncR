@@ -168,7 +168,7 @@ export async function searchGames(text: string, includeDlc: boolean): Promise<Fo
   if (typed.length === 0) return []
   const filter = includeDlc ? [] : [`game_type = ${MAIN_GAME_TYPES}`, 'version_parent = null']
   const searchWhere = filter.length ? ` where ${filter.join(' & ')};` : ''
-  const nameWhere = [...typed.map((word) => `name ~ *"${word}"*`), ...filter].join(' & ')
+  const nameWhere = [...typed.map((word) => `name ~ *"${word}"*`), ...filter].join(' & ') // i18n-ok
   const [bySearch, byName] = await Promise.all([
     igdb<IgdbGame>('games', `search "${typed.join(' ')}"; fields ${GAME_FIELDS};${searchWhere} limit ${SEARCH_LIMIT};`),
     igdb<IgdbGame>('games', `fields ${GAME_FIELDS}; where ${nameWhere}; sort hypes desc; limit ${SEARCH_LIMIT};`),
