@@ -15,7 +15,10 @@ import { clockTime, shortDate } from './dates'
 import { deviceName } from './device'
 import { syncHistory } from './historySync'
 import { blobFromBytes } from './sealing'
-import { changesSince, deleteFile, download, isCursorReset, listFiles, ownWrites, upload, type Change, type FileInfo } from './dropbox'
+import {
+  changesSince, deleteFile, download, isCursorReset, listFiles, ownWrites, upload, uploadMany,
+  type Change, type FileInfo, type Upload,
+} from './dropbox'
 
 // Two-way sync between this device and Dropbox. Everything in Dropbox is encrypted.
 //   /notes/<id>        one file per note
@@ -235,6 +238,27 @@ async function forEachAtOnce<T>(items: Iterable<T>, handle: (item: T) => Promise
   if (errors.length) throw errors[0]
 }
 
+// Uploads in as few Dropbox writes as possible (uploadMany), then runs `saved` for each file
+// Dropbox kept. Only then throws: the first error, or a RetrySoonError with `refused()` if Dropbox
+// refused a file because it changed meanwhile (without `refused`, a refusal is fine).
+async function uploadAll<T>(
+  items: T[],
+  fileOf: (item: T) => Promise<Upload>,
+  saved: (item: T, rev: string) => Promise<void>,
+  refused?: () => string,
+) {
+  const files: Upload[] = []
+  for (const item of items) files.push(await fileOf(item))
+  const { revs, error } = await uploadMany(files)
+  let wasRefused = false
+  for (const [i, rev] of revs.entries()) {
+    if (rev) await saved(items[i], rev)
+    else if (rev === null) wasRefused = true
+  }
+  if (error) throw error
+  if (wasRefused && refused) throw new RetrySoonError(refused())
+}
+
 let running = false
 
 export async function syncNow(): Promise<SyncResult> {
@@ -258,13 +282,23 @@ async function runSync(): Promise<SyncResult> {
 
   // ---------- Encrypted read / write ----------
 
-  async function uploadNote(note: Note, mode: 'add' | { update: string }) {
+  async function noteFile(note: Note, mode: 'add' | { update: string }): Promise<Upload> {
     const data: RemoteNote = { ...note, device: deviceName() }
-    const encrypted = await encrypt(key!, new TextEncoder().encode(JSON.stringify(data)))
-    const rev = await upload(notePath(note.id), encrypted, mode)
-    if (!rev) throw new RetrySoonError(t('A note changed in Dropbox during sync'))
+    return { path: notePath(note.id), data: await encrypt(key!, new TextEncoder().encode(JSON.stringify(data))), mode }
+  }
+
+  async function noteSaved(note: Note, rev: string) {
     await db.synced.put({ id: note.id, rev, updatedAt: note.updatedAt })
     result.uploaded++
+  }
+
+  const noteChangedMessage = () => t('A note changed in Dropbox during sync')
+
+  async function uploadNote(note: Note, mode: 'add' | { update: string }) {
+    const file = await noteFile(note, mode)
+    const rev = await upload(file.path, file.data, mode)
+    if (!rev) throw new RetrySoonError(noteChangedMessage())
+    await noteSaved(note, rev)
   }
 
   // An unreadable note counts as missing: nothing here is changed or replaced because of it
@@ -346,13 +380,18 @@ async function runSync(): Promise<SyncResult> {
   // Before the notes, so a note in Dropbox never points to a missing image.
   // Images no note uses (e.g. pasted, then undone) aren't uploaded.
 
-  for (const id of imagesUsedIn(await db.notes.toArray())) {
-    if (remoteAttachments.has(id) || !localAttachments.has(id)) continue
-    const attachment = await db.attachments.get(id)
-    if (!attachment) continue
-    const encrypted = await encrypt(key, new Uint8Array(await attachment.blob.arrayBuffer()))
-    await upload(attachmentPath(id), encrypted, 'add') // already there (null) is fine too
-    remoteAttachments.add(id)
+  const missingImages = [...imagesUsedIn(await db.notes.toArray())].filter(
+    (id) => !remoteAttachments.has(id) && localAttachments.has(id),
+  )
+  // 20 at a time, so a first sync with many big images doesn't hold them all in memory
+  for (let i = 0; i < missingImages.length; i += 20) {
+    const images = (await db.attachments.bulkGet(missingImages.slice(i, i + 20))).filter((image) => image !== undefined)
+    await uploadAll(
+      images,
+      async (image) => ({ path: attachmentPath(image.id), data: await encrypt(key, new Uint8Array(await image.blob.arrayBuffer())), mode: 'add' }),
+      async () => {},
+    )
+    for (const image of images) remoteAttachments.add(image.id) // saved, or already there (refused)
   }
 
   // ---------- 1. Notes deleted on this device ----------
@@ -480,10 +519,9 @@ async function runSync(): Promise<SyncResult> {
   // The notes as they are now, read once for steps 4 to 6
 
   const notesNow = await db.notes.toArray()
-  for (const note of notesNow) {
-    // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
-    if (!done.has(note.id)) await uploadNote(note, 'add')
-  }
+  // Not in Dropbox yet. (Or it was, but its file is gone without a marker: upload it again.)
+  const newNotes = notesNow.filter((note) => !done.has(note.id))
+  await uploadAll(newNotes, (note) => noteFile(note, 'add'), noteSaved, noteChangedMessage)
 
   // ---------- 4b. Settings, cards, games, alerts, Video tab (recordFolders above) ----------
 
@@ -616,6 +654,7 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
   const path = (id: string) => `/${folder}/${id}`
   const locals = new Map((await table.toArray()).map((record) => [idOf(record), record]))
   const ids = new Set([...remoteRevs.keys(), ...locals.keys()])
+  const outgoing: { id: string; local: T; remoteRev: string | undefined }[] = [] // sent together below
   // A few records at a time (each record is handled on its own)
   await forEachAtOnce(ids, async (id) => {
     const local = locals.get(id)
@@ -637,13 +676,7 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
     if (remote === UNREADABLE) return // left alone, not overwritten
 
     if (local && changedHere && (!remote || localWins(local, remote))) {
-      // Send this device's version
-      const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
-      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
-      const rev = await upload(path(id), encrypted, remoteRev ? { update: remoteRev } : 'add')
-      if (!rev) throw new RetrySoonError(t('Something in /{folder} changed in Dropbox during sync', { folder }))
-      await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<TInsert>)
-      result.uploaded++
+      outgoing.push({ id, local, remoteRev }) // this device's version is sent
     } else if (remote && remoteRev) {
       // Take the other device's version, unless it was changed here while this sync ran
       const stored = await db.transaction('rw', table, async () => {
@@ -654,4 +687,19 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
       if (stored) result.downloaded++
     }
   })
+
+  // This device's versions, in as few Dropbox writes as possible
+  await uploadAll(
+    outgoing,
+    async ({ id, local, remoteRev }) => {
+      const { syncedRev: _r, syncedUpdatedAt: _u, ...data } = local
+      const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(data)))
+      return { path: path(id), data: encrypted, mode: remoteRev ? { update: remoteRev } : 'add' }
+    },
+    async ({ id, local }, rev) => {
+      await table.update(id, { syncedRev: rev, syncedUpdatedAt: local.updatedAt } as unknown as UpdateSpec<TInsert>)
+      result.uploaded++
+    },
+    () => t('Something in /{folder} changed in Dropbox during sync', { folder }),
+  )
 }

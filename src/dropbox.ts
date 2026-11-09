@@ -315,6 +315,79 @@ export async function upload(
   return rev
 }
 
+export interface Upload {
+  path: string
+  data: Uint8Array<ArrayBuffer>
+  mode: 'add' | 'overwrite' | { update: string }
+}
+
+const BATCH_FROM = 3 // fewer files go one by one (a batch costs two round trips)
+const BATCH_MAX = 1000 // Dropbox's limit per batch
+const SENDS_AT_ONCE = 4
+
+// Uploads many files. revs: each one's new rev, or null (refused because of its mode), like
+// upload(); undefined if it failed otherwise: then error is the first such failure (the callers
+// keep the ones saved, then throw it). Dropbox saves only one write at a time per account, so instead of one write per file:
+// each file's data is sent on its own, a few side by side (that isn't a write yet), then one
+// write saves them all. A file refused doesn't stop the others.
+export async function uploadMany(files: Upload[]): Promise<{ revs: (string | null | undefined)[]; error?: unknown }> {
+  const results: (string | null | Error)[] = []
+  let error: unknown
+  try {
+    if (files.length < BATCH_FROM) {
+      for (const file of files) results.push(await upload(file.path, file.data, file.mode))
+    } else {
+      for (let i = 0; i < files.length; i += BATCH_MAX) results.push(...(await uploadBatch(files.slice(i, i + BATCH_MAX))))
+    }
+  } catch (e) {
+    error = e // the files after it weren't sent (undefined)
+  }
+  error ??= results.find((result) => result instanceof Error)
+  return { revs: results.map((result) => (result instanceof Error ? undefined : result)), error }
+}
+
+async function uploadBatch(files: Upload[]): Promise<(string | null | Error)[]> {
+  // 1. The data, a few files at a time
+  const sessions: string[] = []
+  let next = 0
+  const send = async () => {
+    while (next < files.length) {
+      const i = next++
+      const res = await authorizedPost(
+        'https://content.dropboxapi.com/2/files/upload_session/start',
+        { 'Content-Type': 'application/octet-stream', 'Dropbox-API-Arg': JSON.stringify({ close: true }) },
+        files[i].data,
+      )
+      if (!res.ok) throw new Error(t('Dropbox upload failed ({status})', { status: res.status }))
+      sessions[i] = (await res.json()).session_id
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(SENDS_AT_ONCE, files.length) }, send))
+
+  // 2. One write saves them all
+  const entries = files.map((file, i) => ({
+    cursor: { session_id: sessions[i], offset: file.data.byteLength },
+    commit: {
+      path: file.path,
+      mode: typeof file.mode === 'string' ? file.mode : { '.tag': 'update', update: file.mode.update },
+      autorename: false,
+      mute: true,
+    },
+  }))
+  const answer = await oneWriteAtATime(() => api('files/upload_session/finish_batch_v2', { entries }))
+  return answer.entries.map((entry: { '.tag': string; rev?: string }, i: number) => {
+    const file = files[i]
+    if (entry['.tag'] === 'success' && entry.rev) {
+      ownWrites.set(file.path.toLowerCase(), entry.rev)
+      return entry.rev
+    }
+    if (file.mode !== 'overwrite' && JSON.stringify(entry).includes('conflict')) return null
+    // Dropbox's short reason, e.g. "insufficient_space"
+    const failure = (entry as { failure?: { '.tag'?: string; path?: { '.tag'?: string } } }).failure
+    return new Error(t('Dropbox upload failed ({status})', { status: failure?.path?.['.tag'] ?? failure?.['.tag'] ?? entry['.tag'] }))
+  })
+}
+
 export interface FileInfo {
   path: string // lower case, e.g. "/notes/1234-…"
   rev: string

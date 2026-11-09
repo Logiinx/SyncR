@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { decrypt, encrypt, getKey } from './crypto'
 import { db, type Snapshot } from './db'
-import { deleteFile, deleteFiles, download, isConnected, listFolder, upload } from './dropbox'
+import { deleteFile, deleteFiles, download, isConnected, listFolder, uploadMany, type Upload } from './dropbox'
 import { cleanUpSnapshots, versionsToKeep } from './noteHistory'
 
 // Note history in Dropbox (see noteHistory.ts): /history/<note id>/<details>, one encrypted file
@@ -101,10 +101,17 @@ const CLEAN_EVERY_MS = 24 * 60 * 60 * 1000
 // A step of each sync (sync.ts): sends the versions saved on this device, and once a day removes
 // the ones the keep rule doesn't keep anymore from Dropbox.
 export async function syncHistory(key: CryptoKey) {
-  for (const row of await db.snapshots.where('uploaded').equals(0).toArray()) {
+  // Sent together, in as few Dropbox writes as possible
+  const rows = await db.snapshots.where('uploaded').equals(0).toArray()
+  const files: Upload[] = []
+  for (const row of rows) {
     const { uploaded: _, ...version } = row
-    const encrypted = await encrypt(key, new TextEncoder().encode(JSON.stringify(version)))
-    await upload(versionPath(row), encrypted, 'overwrite')
+    files.push({ path: versionPath(row), data: await encrypt(key, new TextEncoder().encode(JSON.stringify(version))), mode: 'overwrite' })
+  }
+  const { revs, error } = await uploadMany(files)
+  for (const [i, rev] of revs.entries()) {
+    if (!rev) continue // not sent: next time
+    const row = rows[i]
     // It became protected after it was sent: the file under its old name goes
     if (row.protected) await deleteFile(versionPath({ ...row, protected: false }))
     // Unless it became protected meanwhile (then it's sent again next time)
@@ -113,6 +120,7 @@ export async function syncHistory(key: CryptoKey) {
       if (current && current.protected === row.protected) await db.snapshots.update(row.id, { uploaded: 1 })
     })
   }
+  if (error) throw error
   await cleanUpSnapshots()
 
   if (Date.now() - Number(localStorage.getItem(CLEANED_KEY) ?? 0) < CLEAN_EVERY_MS) return
