@@ -347,6 +347,23 @@ export async function listFolder(path: string, recursive = false): Promise<FileI
   }
 }
 
+// Deletes many files in one go (Dropbox's batch: one write instead of one per file). Files
+// already gone are fine. Dropbox may take a moment: then it's asked every second until it's done.
+export async function deleteFiles(paths: string[]) {
+  for (let i = 0; i < paths.length; i += 1000) {
+    const entries = paths.slice(i, i + 1000).map((path) => ({ path }))
+    let answer = await oneWriteAtATime(() => api('files/delete_batch', { entries }))
+    const job = answer.async_job_id
+    for (let tries = 0; answer['.tag'] === 'async_job_id' || answer['.tag'] === 'in_progress'; tries++) {
+      if (tries >= 120) throw new Error('Dropbox delete_batch took too long') // i18n-ok: only logged
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      answer = await api('files/delete_batch/check', { async_job_id: job })
+    }
+    if (answer['.tag'] !== 'complete') throw new Error(`Dropbox delete_batch failed: ${JSON.stringify(answer)}`) // i18n-ok: only logged
+    for (const { path } of entries) ownWrites.set(path.toLowerCase(), null)
+  }
+}
+
 // What changed in the app folder after the cursor, and a new cursor for this moment.
 // rev = null: the file was deleted. Folders are left out.
 export async function changesSince(cursor: string) {

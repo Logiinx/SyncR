@@ -198,6 +198,7 @@ export function endSession(noteId: string): Promise<void> {
 // hidden or closed (autoSync.ts finalSync), so the last version is there for the next sync.
 export async function endAllSessions() {
   await savePendingEdits()
+  await inOrder(async () => {}) // those edits' history work first: it may open a session
   await Promise.all(Object.keys(sessions).map(endSession))
 }
 
@@ -243,23 +244,37 @@ export function versionsToKeep<T extends { savedAt: number; protected: boolean }
 // Removes the snapshots this device doesn't need anymore. Uploaded ones are in Dropbox, so only
 // the newest of each note stays (the next one is compared with it), and those an open session
 // started from. Ones not uploaded (Dropbox not set up) follow the keep rule.
+// Runs after every sync: it reads only the ids (they hold the note and the time, see snapshot()),
+// and the full rows of the ones not sent yet, so the PC doesn't decrypt every version each time.
 export function cleanUpSnapshots() {
   return inOrder(async () => {
     const now = Date.now()
     const bases = new Set(Object.values(sessions).map((session) => session.baseId))
-    const byNote = new Map<string, Snapshot[]>()
-    for (const row of await db.snapshots.toArray()) byNote.set(row.noteId, [...(byNote.get(row.noteId) ?? []), row])
+    const waiting = await db.snapshots.where('uploaded').equals(0).toArray()
+    const kept = new Set<string>()
+    for (const rows of groupByNote(waiting, (row) => row.noteId).values()) {
+      for (const row of versionsToKeep(rows, now)) kept.add(row.id)
+    }
+    const all = (await db.snapshots.toCollection().primaryKeys()).map((id) => {
+      const cut = id.lastIndexOf('-')
+      return { id, noteId: id.slice(0, cut), savedAt: Number(id.slice(cut + 1)) }
+    })
     const remove: string[] = []
-    for (const rows of byNote.values()) {
+    for (const rows of groupByNote(all, (row) => row.noteId).values()) {
       const latest = rows.reduce((a, b) => (b.savedAt > a.savedAt ? b : a))
-      const kept = versionsToKeep(rows.filter((row) => !row.uploaded), now)
       for (const row of rows) {
-        const needed = bases.has(row.id) || (now - row.savedAt <= KEEP_MS && (row === latest || kept.has(row)))
+        const needed = bases.has(row.id) || (now - row.savedAt <= KEEP_MS && (row === latest || kept.has(row.id)))
         if (!needed) remove.push(row.id)
       }
     }
     await db.snapshots.bulkDelete(remove)
   })
+}
+
+function groupByNote<T>(rows: T[], noteOf: (row: T) => string) {
+  const byNote = new Map<string, T[]>()
+  for (const row of rows) byNote.set(noteOf(row), [...(byNote.get(noteOf(row)) ?? []), row])
+  return byNote
 }
 
 // Started once by the app

@@ -413,7 +413,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
 // database (localDb.ts).
 export function defineSchema(d: Dexie) {
   d.version(1).stores({
-    notes: 'id, updatedAt', // fields we can look up / sort by
+    notes: 'id, updatedAt', // fields we can look up / sort by (i18n-ok)
   })
 
   d.version(2).stores({
@@ -461,7 +461,7 @@ export function defineSchema(d: Dexie) {
   })
 
   d.version(13).stores({
-    snapshots: 'id, noteId, uploaded',
+    snapshots: 'id, noteId, uploaded', // i18n-ok
   })
 
   // Done and snoozed alerts start to sync: they need a file name (alertMarkId) as their id, so
@@ -552,7 +552,8 @@ export async function saveNoteContent(id: string, content: JSONContent, text: st
   const before = await db.notes.get(id)
   await db.notes.update(id, { content, text, updatedAt: Date.now() })
   changed()
-  if (before) await editWatcher?.(before, { ...before, content, text }).catch(() => {})
+  // Not waited for: saving never waits for note history (its work runs in order on its own)
+  if (before) void editWatcher?.(before, { ...before, content, text }).catch(() => {})
 }
 
 // Empty title = go back to the automatic title (first line).

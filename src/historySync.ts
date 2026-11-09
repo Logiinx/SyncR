@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { decrypt, encrypt, getKey } from './crypto'
 import { db, type Snapshot } from './db'
-import { deleteFile, download, isConnected, listFolder, upload } from './dropbox'
+import { deleteFile, deleteFiles, download, isConnected, listFolder, upload } from './dropbox'
 import { cleanUpSnapshots, versionsToKeep } from './noteHistory'
 
 // Note history in Dropbox (see noteHistory.ts): /history/<note id>/<details>, one encrypted file
@@ -121,11 +121,13 @@ export async function syncHistory(key: CryptoKey) {
     const version = parseVersionPath(file.path)
     if (version) byNote.set(version.noteId, [...(byNote.get(version.noteId) ?? []), version])
   }
-  // File by file, never a note's whole folder: the other device may be adding a version to it
-  // right now. A folder left empty stays (sync never reads history/).
+  // File by file (in one batch), never a note's whole folder: the other device may be adding a
+  // version to it right now. A folder left empty stays (sync never reads history/).
+  const old: string[] = []
   for (const versions of byNote.values()) {
     const keep = versionsToKeep(versions)
-    for (const version of versions) if (!keep.has(version)) await deleteFile(version.path)
+    for (const version of versions) if (!keep.has(version)) old.push(version.path)
   }
+  await deleteFiles(old)
   localStorage.setItem(CLEANED_KEY, String(Date.now()))
 }

@@ -6,6 +6,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Correction** d’un problème où, en français avec le verrouillage par PIN, tous les comptes semblaient déconnectés après le déverrouillage
+- **Correction** de petits problèmes : l’avis « déjà reporté » et les libellés des sections restaient en anglais en français
+
+**Synchronisation**
+- **Amélioration** de la synchronisation, qui ne ralentit plus une fois par jour pendant le nettoyage des anciennes versions des notes
 
 **Mail**
 - **Correction** d’un problème où les liens commençant par // dans un e-mail ne faisaient rien au clic

@@ -6,6 +6,10 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **Fixed** an issue where, in French with the PIN lock on, all sign-ins looked signed out after unlocking
+- **Fixed** small issues: the "already postponed" notice and section labels stayed in English in French
+
+**Sync**
+- **Improved** syncing, which no longer slows down once a day while old note versions are cleaned up
 
 **Mail**
 - **Fixed** an issue where links starting with // in an email did nothing when clicked
