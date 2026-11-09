@@ -371,7 +371,15 @@ fn install(app: &AppHandle, from: &Path, only: Option<&str>) -> Result<(), Strin
     let _ = fs::remove_dir_all(&staged);
     return Err("in-use".to_string());
   }
-  fs::rename(&staged, &target).map_err(|e| e.to_string())?;
+  if let Err(error) = fs::rename(&staged, &target) {
+    // The working copy goes back, or the extension would be gone
+    log::warn!("Extension {folder} couldn't be swapped: {error}");
+    let _ = fs::remove_dir_all(&staged);
+    if had_one {
+      let _ = fs::rename(&previous, &target);
+    }
+    return Err("in-use".to_string());
+  }
   match load_folder(app, &folder) {
     Ok(id) => {
       if had_one {

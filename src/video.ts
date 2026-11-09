@@ -333,7 +333,8 @@ async function checkGone() {
       for (const id of (await response.json()).existing) existing.add(id)
     }
     const changes = rows.filter((row) => row.gone === existing.has(siteId(row.id)))
-    if (changes.length) await db.videos.bulkPut(changes.map((row) => ({ ...row, gone: !row.gone })))
+    // Only the mark: the rows were read before the wait
+    if (changes.length) await db.videos.bulkUpdate(changes.map((row) => ({ key: row.id, changes: { gone: !row.gone } })))
     // updatedAt stays: every device finds this out by itself
     for (const row of added) {
       if (row.gone === existing.has(siteId(row.videoId))) await db.addedVideos.update(row.id, { gone: !row.gone })
@@ -469,11 +470,15 @@ interface SiteVideos {
 }
 
 // Fills in the games of this follow's videos that don't have them yet: a page of 100 at a time,
-// newest first, until none is missing. A problem leaves them for the next check.
+// newest first, until none is missing. A problem leaves them for the next check. Those Twitch
+// doesn't list anymore (deleted, or older than the pages read) get none, so they aren't looked for
+// at every check. Only the games are written: the rows may have changed during the wait (New
+// taken off by the tab).
 async function addTwitchGames(follow: VideoFollow) {
-  const missing = new Map(
-    (await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && !video.games).toArray()).map((row) => [row.id, row]),
+  const missing = new Set(
+    (await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && !video.games).primaryKeys()) as string[],
   )
+  const saveGames = (found: { key: string; changes: Partial<VideoRow> }[]) => (found.length ? db.videos.bulkUpdate(found) : 0)
   let cursor = ''
   for (let page = 0; page < GAME_PAGES && missing.size; page++) {
     const game = 'name displayName' // i18n-ok
@@ -483,21 +488,22 @@ async function addTwitchGames(follow: VideoFollow) {
     )
     const videos = data.user?.videos
     if (!videos) return
-    const found: VideoRow[] = []
+    const found: { key: string; changes: Partial<VideoRow> }[] = []
     for (const { node } of videos.edges) {
-      const row = missing.get(`twitch-${node.id}`)
-      if (!row) continue
+      const id = `twitch-${node.id}`
+      if (!missing.has(id)) continue
       const games = new Map<string, VideoGame>()
       for (const game of [node.game, ...(node.moments?.edges ?? []).map((edge) => edge.node.details?.game)]) {
         if (game?.name && !games.has(game.name)) games.set(game.name, { name: game.name, shown: game.displayName || game.name })
       }
-      found.push({ ...row, games: [...games.values()] })
-      missing.delete(row.id)
+      found.push({ key: id, changes: { games: [...games.values()] } })
+      missing.delete(id)
     }
-    if (found.length) await db.videos.bulkPut(found)
-    if (!videos.pageInfo.hasNextPage || !videos.edges.length) return
+    await saveGames(found)
+    if (!videos.pageInfo.hasNextPage || !videos.edges.length) break
     cursor = videos.edges[videos.edges.length - 1].cursor
   }
+  await saveGames([...missing].map((key) => ({ key, changes: { games: [] } })))
 }
 
 // Whether one of these games is played in the video. Capitals and accents don't matter.

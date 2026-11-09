@@ -8,6 +8,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Correction** d’un problème où, en français avec le verrouillage par PIN, tous les comptes semblaient déconnectés après le déverrouillage
 - **Correction** de petits problèmes : l’avis « déjà reporté » et les libellés des sections restaient en anglais en français
 
+**Vidéo**
+- **Correction** d’un problème où des vidéos déjà vues pouvaient réapparaître comme Nouvelles à la prochaine ouverture de l’onglet
+- **Correction** d’un problème où une extension pouvait disparaître quand sa mise à jour échouait
+- **Correction** de petits problèmes : la vidéo suivante d’une playlist en plein écran pouvait afficher le mauvais site sur la barre
+
 **Synchronisation**
 - **Amélioration** de la synchronisation, qui ne ralentit plus une fois par jour pendant le nettoyage des anciennes versions des notes
 

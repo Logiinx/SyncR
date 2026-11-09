@@ -344,16 +344,21 @@ function playNext() {
     .then(async () => {
       const next = await nextInPlaylist(playlistId, ended.id)
       if (!next || current !== ended) return // another video was opened in the meantime
-      startWatching(next, playlistId)
+      const way = rememberedWay(next)
+      // Not the new page's reports for the old video. It becomes the current one once the window
+      // has it: if this fails, the window still shows the old one.
+      reportsFrom = Date.now() + REPORTS_AFTER
       await invoke<void>('video_player_next', {
-        address: playerAddress(next, currentWay),
+        address: playerAddress(next, way),
         video: next.id.slice('youtube-'.length), // playlists are YouTube's
         start: startAt(next),
         subtitles: subtitlesOn(next),
+        inPlace: way === 'own' && currentWay === 'own',
         title: next.title,
-        via: viaText(currentWay),
-        ...noteFor(next, currentWay),
+        via: viaText(way),
+        ...noteFor(next, way),
       })
+      startWatching(next, playlistId)
       followWatched(next)
       void markOpened(next.id)
     })

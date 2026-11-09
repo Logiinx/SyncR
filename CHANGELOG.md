@@ -8,6 +8,11 @@ All notable changes to SyncR. Newest version first.
 - **Fixed** an issue where, in French with the PIN lock on, all sign-ins looked signed out after unlocking
 - **Fixed** small issues: the "already postponed" notice and section labels stayed in English in French
 
+**Video**
+- **Fixed** an issue where videos already seen could show as New again the next time the tab opened
+- **Fixed** an issue where an extension could disappear when its update failed
+- **Fixed** small issues: the next playlist video in full screen could show the wrong site on the bar
+
 **Sync**
 - **Improved** syncing, which no longer slows down once a day while old note versions are cleaned up
 

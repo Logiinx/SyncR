@@ -862,10 +862,11 @@ fn video_player_way(app: tauri::AppHandle, address: String, via: String, note: S
 
 // The next video of a playlist (videoPlayer.ts): in the same window, which stays where it is. A new
 // page would leave full screen, so while in it YouTube's page plays the video itself (video-watch.js);
-// where it can't, as on another site, a new page it is.
+// where it can't, as on another site, a new page it is. in_place: the next video opens the same way
+// as this one (our own YouTube page), so the bar's "via" stays true.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
+fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
   let (Some(window), Some(site), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
     return Ok(()); // closed in the meantime
   };
@@ -874,7 +875,7 @@ fn video_player_next(app: tauri::AppHandle, address: String, video: String, star
   *VIDEO_SHAPE.lock().unwrap() = None;
   let title = serde_json::to_string(&title).map_err(|e| e.to_string())?;
   bar.eval(format!("window.setTitle?.({title})")).map_err(|e| e.to_string())?;
-  if window.is_fullscreen().unwrap_or(false) {
+  if in_place && window.is_fullscreen().unwrap_or(false) {
     let video = serde_json::to_string(&video).map_err(|e| e.to_string())?;
     let url = serde_json::to_string(url.as_str()).map_err(|e| e.to_string())?;
     site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles})) location.href = {url}")).map_err(|e| e.to_string())?;
