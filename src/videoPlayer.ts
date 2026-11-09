@@ -5,10 +5,11 @@ import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
-import { markOpened, nextInPlaylist, setWatched, watchWatched } from './video'
+import { markOpened, setWatched, watchWatched } from './video'
+import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
 
-// The video player window (desktop only; lib.rs, open_video_player). In a browser, videos just
+// The video player window (desktop only; video_window.rs, open_video_player). In a browser, videos just
 // open in a new tab.
 interface PlayableVideo {
   id: string

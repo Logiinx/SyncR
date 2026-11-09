@@ -9,7 +9,7 @@ const MUTED_GAP = 1 // seconds: parts closer than this count as one
 
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
-// lib.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
+// video_window.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
 function noteMutedParts(pieces) {
   const parts = []
   for (const piece of pieces) {

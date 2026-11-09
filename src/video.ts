@@ -2,10 +2,13 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
-import { alertMarkId, changed, db, type AddedVideo, type VideoGame, type PlaylistEpisode, type VideoFolder, type VideoFollow, type VideoMark, type VideoPlaylist, type VideoRow } from './db'
+import { alertMarkId, changed, db, type AddedVideo, type VideoFollow, type VideoMark, type VideoRow } from './db'
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
+import { liveFolders } from './videoFolders'
+import { checkPlaylists, playlistFailures, playOrder } from './videoPlaylists'
+import { addTwitchGames } from './videoTwitch'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
 // own use for now: it only exists when their Worker says so (their password + YOUTUBE_KEY, see
@@ -210,7 +213,7 @@ const LIST_MARKS_KEY = 'syncr.videoListMarks'
 // i18n-ok: "all that are still available" means from long before any video site
 const LONG_AGO = '2000-01-01T00:00:00Z'
 
-interface ListedVideo {
+export interface ListedVideo {
   id: string
   kind: string
   title: string
@@ -379,12 +382,16 @@ export async function checkVideos(only?: string[]) {
         })
       }
     }
-    if (!stoppedOffline && !only) offlineMessage = await checkPlaylists()
+    if (!stoppedOffline && !only) {
+      const force = forcePlaylists
+      forcePlaylists = false
+      offlineMessage = await checkPlaylists(force)
+    }
     if (offlineMessage) stoppedOffline = true
     if (!failed && !stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
     // Also what failed earlier and is waiting for its retry
     const playlists = await db.videoPlaylists.filter((playlist) => !playlist.deleted).toArray()
-    const waiting = [...follows, ...playlists].flatMap((item) => failures.get(item.id)?.message ?? [])
+    const waiting = [...follows.flatMap((item) => failures.get(item.id)?.message ?? []), ...playlists.flatMap((item) => playlistFailures.get(item.id)?.message ?? [])]
     errors = offlineMessage ? [offlineMessage, ...waiting] : waiting
     only = undefined // asked again: a new follow, so everything
   } while (checkAgain)
@@ -441,70 +448,6 @@ export function videoKept(follow: VideoFollow, video: VideoRow) {
   return gamePlayed(games, video) || (follow.onlyWords.length > 0 && titleKept(follow, video.title))
 }
 
-// ---------- Twitch games ----------
-// Twitch's official list of a channel's videos has no games. Its website's data has them, with
-// every game change, so the app asks for it directly (like the own Twitch player), with the
-// public id of Twitch's website.
-
-const TWITCH_SITE_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko' // i18n-ok
-const GAME_PAGES = 3 // 100 videos a page: Twitch keeps past streams 7 to 60 days
-
-async function askTwitchSite<T>(query: string): Promise<T> {
-  const response = await fetch('https://gql.twitch.tv/gql', {
-    method: 'POST',
-    headers: { 'Client-ID': TWITCH_SITE_ID, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
-    signal: AbortSignal.timeout(20_000),
-  })
-  const answer = await response.json().catch(() => null)
-  if (!response.ok || !answer?.data) throw new Error(t('Twitch answered {status}', { status: response.status }))
-  return answer.data
-}
-
-interface SiteGame {
-  name: string
-  displayName: string
-}
-interface SiteVideos {
-  user: { videos: { pageInfo: { hasNextPage: boolean }; edges: { cursor: string; node: { id: string; game: SiteGame | null; moments: { edges: { node: { details: { game?: SiteGame } | null } }[] } | null } }[] } } | null
-}
-
-// Fills in the games of this follow's videos that don't have them yet: a page of 100 at a time,
-// newest first, until none is missing. A problem leaves them for the next check. Those Twitch
-// doesn't list anymore (deleted, or older than the pages read) get none, so they aren't looked for
-// at every check. Only the games are written: the rows may have changed during the wait (New
-// taken off by the tab).
-async function addTwitchGames(follow: VideoFollow) {
-  const missing = new Set(
-    (await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && !video.games).primaryKeys()) as string[],
-  )
-  const saveGames = (found: { key: string; changes: Partial<VideoRow> }[]) => (found.length ? db.videos.bulkUpdate(found) : 0)
-  let cursor = ''
-  for (let page = 0; page < GAME_PAGES && missing.size; page++) {
-    const game = 'name displayName' // i18n-ok
-    const data = await askTwitchSite<SiteVideos>(
-      // i18n-ok
-      `{ user(id: ${JSON.stringify(follow.channelId)}) { videos(first: 100, type: ARCHIVE${cursor ? `, after: ${JSON.stringify(cursor)}` : ''}) { pageInfo { hasNextPage } edges { cursor node { id game { ${game} } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { details { ... on GameChangeMomentDetails { game { ${game} } } } } } } } } } } }`,
-    )
-    const videos = data.user?.videos
-    if (!videos) return
-    const found: { key: string; changes: Partial<VideoRow> }[] = []
-    for (const { node } of videos.edges) {
-      const id = `twitch-${node.id}`
-      if (!missing.has(id)) continue
-      const games = new Map<string, VideoGame>()
-      for (const game of [node.game, ...(node.moments?.edges ?? []).map((edge) => edge.node.details?.game)]) {
-        if (game?.name && !games.has(game.name)) games.set(game.name, { name: game.name, shown: game.displayName || game.name })
-      }
-      found.push({ key: id, changes: { games: [...games.values()] } })
-      missing.delete(id)
-    }
-    await saveGames(found)
-    if (!videos.pageInfo.hasNextPage || !videos.edges.length) break
-    cursor = videos.edges[videos.edges.length - 1].cursor
-  }
-  await saveGames([...missing].map((key) => ({ key, changes: { games: [] } })))
-}
 
 // Whether one of these games is played in the video. Capitals and accents don't matter.
 function gamePlayed(games: string[], video: VideoRow) {
@@ -512,20 +455,6 @@ function gamePlayed(games: string[], video: VideoRow) {
   return (video.games ?? []).some((game) => wanted.has(titleKey(game.name)) || wanted.has(titleKey(game.shown)))
 }
 
-// Suggestions while typing a game for a follow: the games this channel played, newest first,
-// then Twitch's matches for the text
-export async function channelGames(channelId: string) {
-  const rows = await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === channelId).toArray()
-  rows.sort((a, b) => b.published - a.published)
-  return [...new Set(rows.flatMap((row) => (row.games ?? []).map((game) => game.shown)))]
-}
-
-export async function searchTwitchGames(text: string): Promise<string[]> {
-  const data = await askTwitchSite<{ searchCategories: { edges: { node: { displayName: string } }[] } | null }>(
-    `{ searchCategories(query: ${JSON.stringify(text)}, first: 8) { edges { node { displayName } } } }`,
-  )
-  return (data.searchCategories?.edges ?? []).map((edge) => edge.node.displayName)
-}
 
 export const sameGame = (a: string, b: string) => titleKey(a) === titleKey(b)
 
@@ -563,224 +492,17 @@ export interface FeedVideo extends VideoRow {
   folderId: string | null // the folder it shows in; null = the main list
 }
 
-// ---------- Folders ----------
-
-// Which channel a video or follow is of, whether it's followed or not
+// Which channel a video or follow is of, whether it's followed or not (folders: videoFolders.ts)
 export const channelKey = (of: { platform: string; channelId: string }) => `${of.platform} ${of.channelId}` // i18n-ok
 
-// channel: at the top of that channel (channelKey) instead of among your own
-export async function createFolder(name: string, parentId: string | null, channel: string | null = null) {
-  const id = crypto.randomUUID()
-  await db.videoFolders.put({ id, name, parentId, channel, deleted: false, updatedAt: Date.now() })
-  changed()
-  return id
-}
+// ---------- Playlists (videoPlaylists.ts) ----------
 
-// null = back to the main list
-export async function moveToFolder(videoId: string, folderId: string | null) {
-  const id = videoMarkId(videoId)
-  const place = await db.videoPlaces.get(id)
-  await db.videoPlaces.put({ ...place, id, folderId, updatedAt: Date.now() })
-  changed()
-}
-
-export async function renameFolder(id: string, name: string) {
-  await db.videoFolders.update(id, { name, updatedAt: Date.now() })
-  changed()
-}
-
-// With its sub-folders. Their videos show in the main list from then on: see liveFolders.
-export async function deleteFolder(id: string) {
-  const folders = await db.videoFolders.toArray()
-  const gone = new Set([id])
-  // Parents can only be chosen when a folder is made, so there are no loops
-  for (let more = true; more; ) {
-    more = false
-    for (const folder of folders) {
-      if (folder.parentId && gone.has(folder.parentId) && !gone.has(folder.id)) {
-        gone.add(folder.id)
-        more = true
-      }
-    }
-  }
-  await db.videoFolders.bulkPut(folders.filter((folder) => gone.has(folder.id)).map((folder) => ({ ...folder, deleted: true, updatedAt: Date.now() })))
-  changed()
-}
-
-// The folders that show, by name. One whose parent was deleted (a sub-folder made on another device
-// at the same time) doesn't: it would be out of reach, with its videos in it.
-function liveFolders(folders: VideoFolder[]) {
-  const byId = new Map(folders.map((folder) => [folder.id, folder]))
-  const alive = (folder: VideoFolder): boolean => {
-    if (folder.deleted) return false
-    if (!folder.parentId) return true
-    const parent = byId.get(folder.parentId)
-    return !!parent && alive(parent)
-  }
-  return folders.filter(alive).sort((a, b) => a.name.localeCompare(b.name))
-}
-
-// ---------- Playlists ----------
-
-const PLAYLISTS_CHECKED_KEY = 'syncr.videoPlaylistsChecked' // playlist id → when its videos were last read
 let forcePlaylists = false // Check for new videos was clicked: not only those due today
-
-export const playlistAddress = (playlist: VideoPlaylist) => `https://www.youtube.com/playlist?list=${playlist.listId}`
-
-// All of a playlist's pages, a request each. A problem has the Worker's answer as its code.
-async function readPlaylist(link: string) {
-  const videos: (ListedVideo & { channel: string; channelId: string })[] = []
-  let info: { id: string; name: string } | null = null
-  let pageToken: string | null = null
-  do {
-    const response: Response = await igdbProxyFetch('video/playlist', JSON.stringify({ link, pageToken }), 30_000)
-    const answer = await response.json().catch(() => null)
-    if (!response.ok || !Array.isArray(answer?.videos)) throw Object.assign(new Error(String(answer?.error ?? response.status)), { code: String(answer?.error ?? '') })
-    info ??= { id: answer.id, name: answer.name }
-    videos.push(...answer.videos)
-    pageToken = answer.nextPageToken
-  } while (pageToken)
-  return { ...info!, videos }
-}
-
-// Saves what YouTube lists, in its order. A video can be in a playlist twice: only its first place.
-// The first time they're what you asked for, not news.
-async function saveEpisodes(id: string, listed: Awaited<ReturnType<typeof readPlaylist>>['videos'], first: boolean) {
-  const saved = (await db.playlistVideos.get(id))?.videos ?? []
-  const old = new Map(saved.map((video) => [video.id, video]))
-  const seen = new Set<string>()
-  const videos: PlaylistEpisode[] = listed.flatMap((video) => {
-    const rowId = `youtube-${video.id}`
-    if (seen.has(rowId)) return []
-    seen.add(rowId)
-    const before = old.get(rowId)
-    return [{
-      id: rowId,
-      platform: 'youtube' as const,
-      channelId: video.channelId,
-      channel: video.channel,
-      kind: video.kind,
-      title: video.title,
-      url: video.url,
-      thumbnail: video.thumbnail,
-      published: Date.parse(video.published),
-      duration: video.duration,
-      fresh: before ? before.fresh : !first,
-      later: before ? before.later : !first,
-    }]
-  })
-  // Only when different: every save redraws the list
-  if (first || JSON.stringify(videos) !== JSON.stringify(saved)) await db.playlistVideos.put({ id, videos })
-}
-
-function playlistChecked(id: string) {
-  write(PLAYLISTS_CHECKED_KEY, { ...read<Record<string, number>>(PLAYLISTS_CHECKED_KEY, {}), [id]: Date.now() })
-}
-
-// Once a day those that keep checking. Any playlist whose videos aren't here yet (it arrived by
-// sync) gets them once. One removed from YouTube keeps the videos it had. Gives back what to say
-// when offline.
-async function checkPlaylists() {
-  const force = forcePlaylists
-  forcePlaylists = false
-  const [all, lists] = await Promise.all([db.videoPlaylists.toArray(), db.playlistVideos.toArray()])
-  const live = all.filter((playlist) => !playlist.deleted)
-  const liveIds = new Set(live.map((playlist) => playlist.id))
-  // Removed on another device
-  const leftOver = lists.filter((list) => !liveIds.has(list.id)).map((list) => list.id)
-  if (leftOver.length) await db.playlistVideos.bulkDelete(leftOver)
-  const have = new Set(lists.map((list) => list.id))
-  const checked = read<Record<string, number>>(PLAYLISTS_CHECKED_KEY, {})
-  for (const playlist of live) {
-    const first = !have.has(playlist.id)
-    if (!first && (!playlist.keepChecking || (!force && Date.now() - (checked[playlist.id] ?? 0) < DAY))) continue
-    try {
-      await saveEpisodes(playlist.id, (await readPlaylist(playlistAddress(playlist))).videos, first)
-      playlistChecked(playlist.id)
-      failures.delete(playlist.id)
-    } catch (e) {
-      if ((e as { offline?: boolean }).offline) return (e as Error).message
-      // i18n-ok: the Worker's answer, not shown
-      if ((e as { code?: string }).code === 'playlist-not-found') {
-        playlistChecked(playlist.id)
-        failures.delete(playlist.id)
-        continue
-      }
-      failures.set(playlist.id, { count: 1, retryAt: 0, message: t('{name}: {error}', { name: playlist.name, error: e instanceof Error ? e.message : String(e) }) })
-    }
-  }
-  return null
-}
 
 // Check for new videos, clicked: playlists too, even if they were read today
 export function checkVideosNow() {
   forcePlaylists = true
   return checkVideos()
-}
-
-// Throws what to tell the user if it can't, or if it's there already
-export async function addPlaylist(link: string, keepChecking: boolean) {
-  let found
-  try {
-    found = await readPlaylist(link.trim())
-  } catch (e) {
-    const code = (e as { code?: string }).code
-    if ((e as { offline?: boolean }).offline) throw e
-    // i18n-ok: the Worker's answer, not shown
-    if (code === 'not-a-playlist') throw new Error(t('This isn’t a playlist’s link. Paste the address of a YouTube playlist.'))
-    // i18n-ok: the Worker's answer, not shown
-    if (code === 'playlist-not-found') throw new Error(t('No playlist found at this link. It may be private.'))
-    // i18n-ok: the Worker's answer, not shown
-    if (code?.startsWith('Unknown endpoint')) throw new Error(t('Your Worker needs its latest version for playlists.'))
-    throw new Error(t('Could not add this playlist: {error}', { error: e instanceof Error ? e.message : String(e) }), { cause: e })
-  }
-  const id = videoMarkId(`playlist-${found.id}`) // i18n-ok
-  const before = await db.videoPlaylists.get(id)
-  if (before && !before.deleted) throw new Error(t('This playlist is already in the list'))
-  const now = Date.now()
-  await saveEpisodes(id, found.videos, true)
-  await db.videoPlaylists.put({
-    ...before,
-    id,
-    listId: found.id,
-    name: found.name,
-    keepChecking,
-    reversed: false,
-    deleted: false,
-    ...(before && { restoredAt: now }),
-    updatedAt: now,
-  })
-  playlistChecked(id)
-  changed()
-  return id
-}
-
-export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'reversed'>>) {
-  await db.videoPlaylists.update(id, { ...change, updatedAt: Date.now() })
-  changed()
-}
-
-// The marks stay, like when a follow is removed. Its videos show in the main list again if their
-// channel is followed.
-export async function removePlaylist(id: string) {
-  await db.videoPlaylists.update(id, { deleted: true, updatedAt: Date.now() })
-  await db.playlistVideos.delete(id)
-  changed()
-}
-
-const playOrder = <T,>(videos: T[], playlist: VideoPlaylist) => (playlist.reversed ? [...videos].reverse() : videos)
-
-// The video to play after this one: the next not watched yet, in the order chosen now
-export async function nextInPlaylist(playlistId: string, videoId: string) {
-  const [playlist, list] = await Promise.all([db.videoPlaylists.get(playlistId), db.playlistVideos.get(playlistId)])
-  if (!playlist || playlist.deleted || !list) return null
-  const videos = playOrder(list.videos, playlist)
-  const at = videos.findIndex((video) => video.id === videoId)
-  if (at < 0) return null
-  const after = videos.slice(at + 1)
-  const marks = await db.videoMarks.bulkGet(after.map((video) => videoMarkId(video.id)))
-  const next = after.find((_, i) => !marks[i]?.watched)
-  return next ? { ...next, watched: false } : null
 }
 
 // ---------- Added by link ----------
@@ -841,7 +563,11 @@ export async function addVideo(link: string) {
 // first, and so do the videos inside each group.
 export function byChannel(videos: FeedVideo[]) {
   const groups = new Map<string, FeedVideo[]>()
-  for (const video of videos) groups.set(video.followId, [...(groups.get(video.followId) ?? []), video])
+  for (const video of videos) {
+    const group = groups.get(video.followId)
+    if (group) group.push(video)
+    else groups.set(video.followId, [video])
+  }
   return [...groups.values()]
 }
 
@@ -859,7 +585,7 @@ export function useVideoFeed() {
       db.playlistVideos.toArray(),
     ])
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
-    const followOf = new Map(follows.map((follow) => [`${follow.platform} ${follow.channelId}`, follow]))
+    const followOf = new Map(follows.map((follow) => [channelKey(follow), follow]))
     const markOf = new Map(marks.map((mark) => [mark.id, mark]))
     const folders = liveFolders(allFolders)
     const folderIds = new Set(folders.map((folder) => folder.id))
@@ -872,13 +598,13 @@ export function useVideoFeed() {
     const inPlaylist = new Set(episodes.map((video) => video.id))
     const listed: (Omit<FeedVideo, 'opened' | 'watched' | 'folderId'> & { sortAt: number })[] = [
       ...rows.flatMap((video) => {
-        const follow = followOf.get(`${video.platform} ${video.channelId}`)
+        const follow = followOf.get(channelKey(video))
         if (!follow || addedIds.has(video.id) || !videoKept(follow, video)) return []
         return [{ ...video, followId: follow.id, channel: follow.name, channelIcon: follow.icon, sortAt: video.published }]
       }),
       // By the day it was added, or an old video would sink to the bottom unseen
       ...added.map(({ videoId, updatedAt, syncedRev: _r, syncedUpdatedAt: _u, ...video }) => {
-        const follow = followOf.get(`${video.platform} ${video.channelId}`)
+        const follow = followOf.get(channelKey(video))
         return {
           ...video,
           id: videoId,

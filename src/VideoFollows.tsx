@@ -8,7 +8,9 @@ import VideoLogo from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
-import { addFollow, addPlaylist, addVideo, channelGames, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, searchTwitchGames, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addFollow, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addPlaylist } from './videoPlaylists'
+import { channelGames, searchTwitchGames } from './videoTwitch'
 
 // Add a follow, or change one: which channel (only when adding), which of its videos count, and
 // (only when adding) how far back to start.

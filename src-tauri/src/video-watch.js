@@ -1,7 +1,7 @@
 // Runs in every page and frame of the video player window's site, before the page's own code.
 // When YouTube's player-only page shows an error, this asks for the next way to open the video
 // (videoPlayer.ts). A site can't call the app, so the request is a visit to an address that
-// doesn't exist: lib.rs catches it and cancels the visit. Faking it only changes the way a video
+// doesn't exist: video_window.rs catches it and cancels the visit. Faking it only changes the way a video
 // opens. Slow loading isn't an error, and once a video has played nothing is checked anymore.
 // It also tells the app how far the video is, for resuming later (videoPositions.ts): a plain
 // request, as those visits make the page think it's being left.
@@ -98,7 +98,7 @@
   // video-forward.html: a fallback site doesn't pass them, so its player is left alone.
   const wanted = new URLSearchParams(location.hash.slice(1))
   if (!wanted.has('syncr-subtitles')) return
-  // The window takes the video's shape (lib.rs). Not during an ad, which can have another shape.
+  // The window takes the video's shape (video_window.rs). Not during an ad, which can have another shape.
   if (window === top) {
     let shapeSent = ''
     setInterval(() => {
@@ -160,7 +160,7 @@
     settledAt = Date.now() + 1000
   }, 500)
 
-  // The next video of a playlist while in full screen (lib.rs, video_player_next): this same page
+  // The next video of a playlist while in full screen (video_window.rs, video_player_next): this same page
   // plays it, as a new page would leave full screen. The address changes too, as extensions read
   // the video from it. Says whether it could.
   window.syncrNextVideo = (id, start, subtitles) => {

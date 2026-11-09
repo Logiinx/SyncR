@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { read, write } from './localState'
 
 // How far each video got, on this PC. The player window's pages can't call the app, so they send
-// it through lib.rs (video-watch.js, every 5 s). Opening a video again puts this in its address.
+// it through video_window.rs (video-watch.js, every 5 s). Opening a video again puts this in its address.
 export interface VideoPosition {
   t: number // seconds
   length: number

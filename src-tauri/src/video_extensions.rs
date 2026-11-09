@@ -30,7 +30,7 @@ use webview2_com::{
 };
 use windows::core::{BOOL, HSTRING, Interface, PWSTR};
 
-use super::{VIDEO_ARGS, VIDEO_BAR, VIDEO_MENU, VIDEO_REQUEST, VIDEO_SITE, VIDEO_WINDOW};
+use super::video_window::{VIDEO_ARGS, VIDEO_BAR, VIDEO_MENU, VIDEO_REQUEST, VIDEO_SITE, VIDEO_WINDOW};
 
 pub const HOST: &str = "video-extensions-host";
 const SETTINGS: &str = "video-extension-settings";
@@ -75,7 +75,7 @@ fn save_ids(app: &AppHandle, ids: &HashMap<String, String>) -> Result<(), String
   fs::write(ids_file(app)?, text).map_err(|e| e.to_string())
 }
 
-// Every window using this storage: WebView2 needs the same options on each of them (lib.rs, the
+// Every window using this storage: WebView2 needs the same options on each of them (video_window.rs, the
 // video window's two pages)
 fn in_profile<'a>(
   app: &'a AppHandle,
@@ -159,20 +159,35 @@ fn listed(
   Ok(out)
 }
 
-// What the profile has: id -> switched on
-fn profile_list(app: &AppHandle) -> Result<HashMap<String, bool>, String> {
-  ask(app, |profile, sender| {
+type Listed = Vec<(String, bool, ICoreWebView2BrowserExtension)>;
+
+// The profile's extensions, given to then, which sends the answer
+fn with_list<T: Send + 'static>(
+  app: &AppHandle,
+  then: impl FnOnce(Listed, Sender<Result<T, String>>) + Send + 'static,
+) -> Result<T, String> {
+  ask(app, move |profile, sender| {
     let handler = ProfileGetBrowserExtensionsCompletedHandler::create(Box::new(move |result, list| {
       let answer = result.and_then(|()| match list {
         Some(list) => listed(&list),
         None => Ok(Vec::new()),
       });
-      let _ = sender.send(
-        answer.map(|all| all.into_iter().map(|(id, enabled, _)| (id, enabled)).collect()).map_err(|e| e.to_string()),
-      );
+      match answer {
+        Ok(all) => then(all, sender),
+        Err(error) => {
+          let _ = sender.send(Err(error.to_string()));
+        }
+      }
       Ok(())
     }));
     unsafe { profile.GetBrowserExtensions(&handler) }
+  })
+}
+
+// What the profile has: id -> switched on
+fn profile_list(app: &AppHandle) -> Result<HashMap<String, bool>, String> {
+  with_list(app, |all, sender| {
+    let _ = sender.send(Ok(all.into_iter().map(|(id, enabled, _)| (id, enabled)).collect()));
   })
 }
 
@@ -182,29 +197,16 @@ fn with_extension(
   id: String,
   act: impl FnOnce(ICoreWebView2BrowserExtension, Sender<Result<(), String>>) -> windows::core::Result<()> + Send + 'static,
 ) -> Result<(), String> {
-  ask(app, move |profile, sender| {
-    let handler = ProfileGetBrowserExtensionsCompletedHandler::create(Box::new(move |result, list| {
-      let answer = result.and_then(|()| match list {
-        Some(list) => listed(&list),
-        None => Ok(Vec::new()),
-      });
-      match answer.map(|all| all.into_iter().find(|(other, _, _)| *other == id)) {
-        Ok(Some((_, _, extension))) => {
-          let failed = sender.clone();
-          if let Err(error) = act(extension, sender) {
-            let _ = failed.send(Err(error.to_string()));
-          }
-        }
-        Ok(None) => {
-          let _ = sender.send(Ok(()));
-        }
-        Err(error) => {
-          let _ = sender.send(Err(error.to_string()));
-        }
+  with_list(app, move |all, sender| match all.into_iter().find(|(other, _, _)| *other == id) {
+    Some((_, _, extension)) => {
+      let failed = sender.clone();
+      if let Err(error) = act(extension, sender) {
+        let _ = failed.send(Err(error.to_string()));
       }
-      Ok(())
-    }));
-    unsafe { profile.GetBrowserExtensions(&handler) }
+    }
+    None => {
+      let _ = sender.send(Ok(()));
+    }
   })
 }
 

@@ -1,4 +1,4 @@
-// The own Twitch player: a past stream in our own page, its video fetched by Rust (lib.rs,
+// The own Twitch player: a past stream in our own page, its video fetched by Rust (video_window.rs,
 // player_answer; /v/<host>/<path>), because Twitch's video servers don't let a page read their
 // answers. This page can't call the app. Its text and colors come in its address, like the
 // bar's (videoPlayer.ts). What it remembers (volume) stays in the player window's own storage.
@@ -104,7 +104,7 @@ const endDrag = (event, apply) => {
 $('progress').addEventListener('pointerup', (event) => endDrag(event, true))
 $('progress').addEventListener('pointercancel', (event) => endDrag(event, false))
 
-// ---- The window takes the video's shape (lib.rs) ------------------------------------------------
+// ---- The window takes the video's shape (video_window.rs) ------------------------------------------------
 let shapeSent = ''
 let shapeTimer
 function tellShape() {
@@ -417,7 +417,7 @@ let calmTimer
 let recoveredAt = 0
 
 // Asks the main window for the next way to open this video, the same way as video-watch.js: a
-// visit to an address that doesn't exist, which lib.rs catches. Faking it only changes the way a
+// visit to an address that doesn't exist, which video_window.rs catches. Faking it only changes the way a
 // video opens.
 function giveUp() {
   location.href = `https://syncr-video.invalid/failed?video=${encodeURIComponent(videoId)}`

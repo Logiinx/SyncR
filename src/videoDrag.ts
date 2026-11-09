@@ -1,7 +1,8 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { animationsOn, play, TIMING } from './animations'
 import { currentZoom } from './appearance'
-import { channelKey, moveToFolder, type FeedVideo } from './video'
+import { channelKey, type FeedVideo } from './video'
+import { moveToFolder } from './videoFolders'
 
 const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach what's inside
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls

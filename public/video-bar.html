@@ -71,14 +71,14 @@
 <script>
   // The bar of the video player window: this page only draws it and passes clicks on. The main
   // window sends all it needs in the address and does the work (videoPlayer.ts), the window
-  // buttons go through lib.rs (video_bar). Kept this small so it shows at once.
+  // buttons go through video_window.rs (video_bar). Kept this small so it shows at once.
   const data = JSON.parse(new URLSearchParams(location.search).get('data') || '{}')
   const labels = data.labels || {}
   const $ = (id) => document.getElementById(id)
   const send = (action, on, details) => window.__TAURI_INTERNALS__?.invoke('video_bar', { action, on, ...details })
 
   for (const [name, color] of Object.entries(data.colors || {})) document.documentElement.style.setProperty(name, color)
-  // The app's scale, as in the main window (the height of the bar is set in lib.rs)
+  // The app's scale, as in the main window (the height of the bar is set in video_window.rs)
   if (data.zoom) document.documentElement.style.zoom = data.zoom
 
   const title = $('title').firstElementChild
@@ -95,7 +95,7 @@
   $('minimize').title = labels.minimize
   $('close').title = labels.close
 
-  // Called by the main window and lib.rs as things change
+  // Called by the main window and video_window.rs as things change
   // The note: where the video continues. Gone after a moment, unless it's still of use.
   const NOTE_FOR = 6000
   let noteTimer
