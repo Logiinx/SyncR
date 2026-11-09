@@ -177,17 +177,34 @@ function placeIn(text, needsHours) {
 
 // A time of day: 21:30, 21h30, 21h or 21:30:15. The first time it comes up during the stream, so
 // past midnight it's the next day. Answers in seconds from the start, or null.
+// On a clock change night, a time can come twice (winter time starts: both are tried) or not at
+// all (summer time starts: the moment the clock jumped).
+const HOUR = 3600 * 1000
+const wallClock = (time) => {
+  const date = new Date(time)
+  return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()
+}
 function dayMoment(text) {
   const match = text.match(/^(\d{1,2})(?:[:h](\d{2})?)?(?::(\d{2}))?$/)
   if (!match || (match[2] === undefined && !text.includes('h'))) return null
   const [hour, minute, second] = [Number(match[1]), Number(match[2] || 0), Number(match[3] || 0)]
   if (hour > 23 || minute > 59 || second > 59) return null
+  const wanted = hour * 3600 + minute * 60 + second
   const start = new Date(streamStart)
   for (let day = 0; ; day++) {
-    const at = (new Date(start.getFullYear(), start.getMonth(), start.getDate() + day, hour, minute, second).getTime() - streamStart) / 1000
-    if (at >= video.duration) return null
-    if (at >= 0) return at
-    if (match[3] === undefined && at > -60) return 0 // the minute it started in
+    const guess = new Date(start.getFullYear(), start.getMonth(), start.getDate() + day, hour, minute, second).getTime()
+    let moments = [guess - HOUR, guess, guess + HOUR].filter((time) => wallClock(time) === wanted)
+    if (!moments.length) {
+      let jump = guess
+      while (wallClock(jump - 60 * 1000) > wanted) jump -= 60 * 1000
+      moments = [jump]
+    }
+    for (const time of moments) {
+      const at = (time - streamStart) / 1000
+      if (at >= video.duration) return null
+      if (at >= 0) return at
+      if (match[3] === undefined && at > -60) return 0 // the minute it started in
+    }
   }
 }
 

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Correction** de petits problèmes : les nuits de changement d’heure, aller à une heure dans le lecteur Twitch pouvait la manquer
+
 ## [0.65.2] - 2026-11-09
 
 **Application**

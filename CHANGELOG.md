@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed** small issues: on clock change nights, going to a time of day in the Twitch player could miss it
+
 ## [0.65.2] - 2026-11-09
 
 **App**
