@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** du lecteur vidéo : il a son propre bouton dans la barre des tâches, avec l’icône de YouTube ou Twitch
+
 ## [0.64.0] - 2026-11-09
 
 **Vidéo**

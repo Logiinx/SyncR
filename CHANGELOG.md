@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** the video player to have its own taskbar button, with YouTube's or Twitch's icon
+
 ## [0.64.0] - 2026-11-09
 
 **Video**

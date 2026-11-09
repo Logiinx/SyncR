@@ -371,6 +371,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string) {
       await invoke<void>('open_video_player', {
         address: playerAddress(video, currentWay),
         title: video.title,
+        site: video.platform,
         bar: barData(video, currentWay),
         barHeight: BAR_HEIGHT * currentZoom(),
         alwaysOnTop: loadPlayerSettings().alwaysOnTop,

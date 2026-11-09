@@ -580,11 +580,58 @@ fn is_video_page(address: &str) -> bool {
   address.starts_with("video-forward.html?v=") || address.starts_with("video-stopped.html?data=")
 }
 
+// The player window gets its own taskbar button, apart from SyncR's: Windows groups windows by
+// their app id, so it gets one of its own. No shortcut has this id, so a pinned button would lead
+// nowhere (pinning isn't wanted). Its icon is the video's site's (icons/video-*.rgba: 64 x 64,
+// raw pixels, drawn from VideoLogo.tsx's logos).
+#[cfg(windows)]
+const VIDEO_APP_ID: &str = "com.logiinx.syncr.video";
+
+#[cfg(windows)]
+fn own_taskbar_button(window: &tauri::Window, site: &str) {
+  use windows::core::PWSTR;
+  use windows::Win32::Foundation::HWND;
+  use windows::Win32::Storage::EnhancedStorage::PKEY_AppUserModel_ID;
+  use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
+  use windows::Win32::System::Variant::VT_LPWSTR;
+  use windows::Win32::UI::Shell::PropertiesSystem::{IPropertyStore, SHGetPropertyStoreForWindow};
+  let icon: &'static [u8] = if site == "twitch" {
+    include_bytes!("../icons/video-twitch.rgba")
+  } else {
+    include_bytes!("../icons/video-youtube.rgba")
+  };
+  if let Err(e) = window.set_icon(tauri::image::Image::new(icon, 64, 64)) {
+    log::warn!("Video window icon: {e}");
+  }
+  let Ok(hwnd) = window.hwnd() else { return };
+  // As a number: a window handle can't be sent to another thread
+  let raw = hwnd.0 as isize;
+  // On the main thread, where COM is set up, and before the window shows (same queue)
+  let _ = window.app_handle().run_on_main_thread(move || unsafe {
+    let store = match SHGetPropertyStoreForWindow::<IPropertyStore>(HWND(raw as *mut _)) {
+      Ok(store) => store,
+      Err(e) => return log::warn!("Video window app id: {e}"),
+    };
+    // A plain wide string (VT_LPWSTR), as Windows wants for this property. The text is ours, so
+    // ManuallyDrop keeps the value from freeing it as if Windows had made it.
+    let id: Vec<u16> = VIDEO_APP_ID.encode_utf16().chain([0]).collect();
+    let mut value = std::mem::ManuallyDrop::new(PROPVARIANT::default());
+    let inner = &mut value.Anonymous.Anonymous;
+    inner.vt = VT_LPWSTR;
+    inner.Anonymous.pwszVal = PWSTR(id.as_ptr() as *mut u16);
+    if let Err(e) = store.SetValue(&PKEY_AppUserModel_ID, &*value).and_then(|()| store.Commit()) {
+      log::warn!("Video window app id: {e}");
+    }
+  });
+}
+
+// site: "youtube" or "twitch", for the taskbar button's icon
 #[tauri::command]
 async fn open_video_player(
   app: tauri::AppHandle,
   address: String,
   title: String,
+  site: String,
   bar: String,
   bar_height: f64,
   always_on_top: bool,
@@ -618,6 +665,10 @@ async fn open_video_player(
     .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
+  #[cfg(windows)]
+  own_taskbar_button(&window, &site);
+  #[cfg(not(windows))]
+  let _ = site;
   let size = window.inner_size().map_err(|e| e.to_string())?;
   window
     .add_child(
