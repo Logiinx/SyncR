@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.65.2] - 2026-11-09
+
 **Application**
 - **Correction** d’un problème où, en français avec le verrouillage par PIN, tous les comptes semblaient déconnectés après le déverrouillage
 - **Correction** de petits problèmes : l’avis « déjà reporté » et les libellés des sections restaient en anglais en français

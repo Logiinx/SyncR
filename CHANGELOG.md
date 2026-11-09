@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.65.2] - 2026-11-09
+
 **App**
 - **Fixed** an issue where, in French with the PIN lock on, all sign-ins looked signed out after unlocking
 - **Fixed** small issues: the "already postponed" notice and section labels stayed in English in French
