@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.65.1] - 2026-11-09
+
 **Vidéo**
 - **Ajout** du retour de l’heure réelle dans le lecteur Twitch (son réglage, la barre et la case « Aller à un moment »)
 
