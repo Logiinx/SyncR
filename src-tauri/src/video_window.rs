@@ -83,8 +83,9 @@ async fn fetch_playlist(address: &str) -> Option<(u16, Vec<u8>)> {
   Some((status, local_playlist(&String::from_utf8_lossy(&body)).into_bytes()))
 }
 
-// The last address caught from Twitch's own player (twitch_official.rs): (video, address). Memory only.
-static CAUGHT: std::sync::Mutex<Option<(String, String)>> = std::sync::Mutex::new(None);
+// The last master playlist caught from Twitch's own player (twitch_official.rs), already made local:
+// (video, body). Memory only, reused while the own player stays on that video.
+static CAUGHT: std::sync::Mutex<Option<(String, Vec<u8>)>> = std::sync::Mutex::new(None);
 
 pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
@@ -146,13 +147,10 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
       return answer(404, "text/plain", Vec::new());
     }
     let playlist = |status: u16, body: Vec<u8>| answer(status, "application/vnd.apple.mpegurl", body);
-    // Caught from Twitch's player before (below): straight there, while Twitch still takes it
+    // Caught from Twitch's player before (below): serve it straight, no new round to Twitch
     let known = CAUGHT.lock().unwrap().clone().filter(|(caught, _)| caught == video);
-    if let Some((_, address)) = known {
-      if let Some((200, body)) = fetch_playlist(&address).await {
-        return playlist(200, body);
-      }
-      *CAUGHT.lock().unwrap() = None;
+    if let Some((_, body)) = known {
+      return playlist(200, body);
     }
     let token = match crate::twitch::token(player_client(), video).await {
       Ok(Some(token)) => token,
@@ -162,19 +160,16 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     let Some((status, body)) = fetch_playlist(&crate::twitch::usher_url(video, &token)).await else {
       return answer(502, "text/plain", Vec::new());
     };
-    // Twitch says no (subscribers only): its own player may get in with the user's Twitch sign-in.
-    // Its address is replayed exactly, the way the player asked for it.
+    // Twitch says no (subscribers only): its own player gets in with the user's Twitch sign-in, and
+    // we read the master playlist it loads (twitch_official.rs). The quality lists and pieces on
+    // cloudfront need no token, so the own player fetches those itself through /v/.
     if status == 403 {
-      let caught = crate::twitch_official::catch(&app, video).await;
-      if let Some(address) = &caught {
-        let replay = fetch_playlist(address).await;
-        crate::twitch_official::debug(&app, video, Some(address), replay.as_ref().map(|(code, _)| *code)); // PROOF ONLY
-        if let Some((200, body)) = replay {
-          *CAUGHT.lock().unwrap() = Some((video.to_string(), address.clone()));
-          return playlist(200, body);
-        }
-      } else {
-        crate::twitch_official::debug(&app, video, None, None); // PROOF ONLY
+      let master = crate::twitch_official::catch(&app, video).await;
+      crate::twitch_official::debug(&app, video, master.as_deref()); // PROOF ONLY
+      if let Some(master) = master {
+        let local = local_playlist(&String::from_utf8_lossy(&master)).into_bytes();
+        *CAUGHT.lock().unwrap() = Some((video.to_string(), local.clone()));
+        return playlist(200, local);
       }
     }
     return playlist(status, body);

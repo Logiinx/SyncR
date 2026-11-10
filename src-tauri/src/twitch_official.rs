@@ -1,33 +1,35 @@
 // Twitch's official player, hidden, for videos Twitch refuses to the own player (subscribers only).
-// It plays with the user's own Twitch sign-in (made on twitch.tv in the video window), and Rust takes
-// the playlist address it asks for, token included, for the own player (/twitch/ in
-// video_window.rs). The address is kept in memory only: never saved, synced or logged.
+// It plays with the user's own Twitch sign-in (made on twitch.tv in the video window). Rust reads the
+// master playlist that player loads, token already applied, and hands it to the own player (/twitch/
+// in video_window.rs). The quality lists and pieces sit on cloudfront with no token, so the own
+// player fetches those itself through /v/. Nothing here is saved, synced or logged.
+use core::ffi::c_void;
 use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
 use tauri::webview::{PlatformWebview, WebviewBuilder};
 use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl};
-use webview2_com::Microsoft::Web::WebView2::Win32::{
-  COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL, COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL, ICoreWebView2_22,
-};
-use webview2_com::{WebResourceRequestedEventHandler, take_pwstr};
+use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_2;
+use webview2_com::{WebResourceResponseReceivedEventHandler, WebResourceResponseViewGetContentCompletedHandler, take_pwstr};
+use windows::Win32::Foundation::{S_FALSE, S_OK};
+use windows::Win32::System::Com::IStream;
 use windows::core::{HSTRING, Interface, PWSTR};
 
 use super::video_window::{VIDEO_ARGS, VIDEO_WINDOW};
 
 const OFFICIAL: &str = "video-player-official";
-// Without access (not signed in, not subscribed) it never gets a playlist that plays: the own
-// player then goes to Twitch's page, as before
+// Without access (not signed in, not subscribed) it never loads a playlist: the own player then goes
+// to Twitch's page, as before.
 const WAIT: Duration = Duration::from_secs(15);
 
-// The playlist address the official player asks for, or None
-pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<String> {
+// The master playlist Twitch's own player loads for this video, or None
+pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
   let window = app.get_window(VIDEO_WINDOW)?;
   if let Some(earlier) = app.get_webview(OFFICIAL) {
     let _ = earlier.close();
   }
   let folder = super::video_extensions::player_folder(app).ok()?;
-  // 1 pixel in a corner of the bar: a hidden page may not start its video at all. Same options as
-  // every page of this storage (VIDEO_ARGS), muted by its address.
+  // 1 pixel in a corner of the bar: the response is read from the network, so the player needn't be
+  // seen. Same storage and options as every page of the video window (sign-in, VIDEO_ARGS).
   let webview = window
     .add_child(
       WebviewBuilder::new(OFFICIAL, WebviewUrl::External(tauri::Url::parse("about:blank").ok()?))
@@ -57,48 +59,69 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<String> {
   found
 }
 
-// Watching starts before the page opens, so its first request can't slip by. Should Twitch's player ask
-// from a background helper (a worker) one day, "all sources" covers those too.
-fn listen(platform: PlatformWebview, video: String, sender: Sender<String>, address: &str) -> windows::core::Result<()> {
+// Watch every response the player gets; keep the one for this video's master playlist (status 200).
+fn listen(platform: PlatformWebview, video: String, sender: Sender<Vec<u8>>, address: &str) -> windows::core::Result<()> {
   let core = unsafe { platform.controller().CoreWebView2()? };
-  let pattern = HSTRING::from("https://usher.ttvnw.net/*");
-  match core.cast::<ICoreWebView2_22>() {
-    Ok(newer) => unsafe {
-      newer.AddWebResourceRequestedFilterWithRequestSourceKinds(&pattern, COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL, COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL)?
-    },
-    Err(_) => unsafe { core.AddWebResourceRequestedFilter(&pattern, COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL)? },
-  }
-  let handler = WebResourceRequestedEventHandler::create(Box::new(move |_, args| {
+  let watched = core.cast::<ICoreWebView2_2>()?;
+  let handler = WebResourceResponseReceivedEventHandler::create(Box::new(move |_, args| {
     let Some(args) = args else { return Ok(()) };
     let mut uri = PWSTR::null();
     unsafe { args.Request()?.Uri(&mut uri)? };
-    let address = take_pwstr(uri);
-    if super::twitch::caught_address(&address, &video) {
-      let _ = sender.send(address);
+    if !super::twitch::caught_address(&take_pwstr(uri), &video) {
+      return Ok(());
     }
+    let view = unsafe { args.Response()? };
+    let mut status = 0i32;
+    unsafe { view.StatusCode(&mut status)? };
+    if status != 200 {
+      return Ok(());
+    }
+    // The body arrives on its own handler, a moment later
+    let sender = sender.clone();
+    let content = WebResourceResponseViewGetContentCompletedHandler::create(Box::new(move |_, stream: Option<IStream>| {
+      if let Some(stream) = stream {
+        let _ = sender.send(unsafe { read_stream(&stream) });
+      }
+      Ok(())
+    }));
+    let _ = unsafe { view.GetContent(&content) };
     Ok(())
   }));
   let mut token = 0i64;
   unsafe {
-    core.add_WebResourceRequested(&handler, &mut token)?;
+    watched.add_WebResourceResponseReceived(&handler, &mut token)?;
     core.Navigate(&HSTRING::from(address))
   }
 }
 
-// PROOF ONLY (test branch): writes which params were caught and the replay status to
-// twitch-debug.txt in the app's local data. Token and signature VALUES are never written, only the
-// parameter names present.
-pub fn debug(app: &tauri::AppHandle, video: &str, caught: Option<&str>, replay: Option<u16>) {
+// A COM byte stream into a Vec. Master playlists are tiny; the guard only stops a runaway.
+unsafe fn read_stream(stream: &IStream) -> Vec<u8> {
+  let mut out = Vec::new();
+  let mut buffer = [0u8; 16384];
+  loop {
+    let mut read = 0u32;
+    let result = unsafe { stream.Read(buffer.as_mut_ptr() as *mut c_void, buffer.len() as u32, Some(&mut read)) };
+    if read > 0 {
+      out.extend_from_slice(&buffer[..read as usize]);
+    }
+    if read == 0 || (result != S_OK && result != S_FALSE) || out.len() > 4_000_000 {
+      break;
+    }
+  }
+  out
+}
+
+// PROOF ONLY (test branch): one line to twitch-debug.txt, no playlist content beyond its first line.
+pub fn debug(app: &tauri::AppHandle, video: &str, master: Option<&[u8]>) {
   use std::io::Write;
   let Ok(folder) = app.path().app_local_data_dir() else {
     return;
   };
-  let keys = caught
-    .and_then(|address| tauri::Url::parse(address).ok())
-    .map(|url| url.query_pairs().map(|(key, _)| key.into_owned()).collect::<Vec<_>>().join(","))
-    .unwrap_or_else(|| "none".into());
-  let host = caught.and_then(|a| tauri::Url::parse(a).ok()).and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
+  let note = match master {
+    Some(bytes) => format!("captured video {video}: {} bytes, starts \"{}\"", bytes.len(), String::from_utf8_lossy(bytes).lines().next().unwrap_or("").chars().take(30).collect::<String>()),
+    None => format!("captured video {video}: nothing"),
+  };
   if let Ok(mut out) = std::fs::OpenOptions::new().create(true).append(true).open(folder.join("twitch-debug.txt")) {
-    let _ = writeln!(out, "video {video}: caught={} host={host} params=[{keys}] replay={replay:?}", caught.is_some());
+    let _ = writeln!(out, "{note}");
   }
 }
