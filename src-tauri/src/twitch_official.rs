@@ -1,41 +1,40 @@
-// Twitch's official player, hidden, for videos Twitch refuses to the own player (subscribers only).
-// It plays with the user's own Twitch sign-in (made on twitch.tv in the video window). Twitch's player
-// fetches the master playlist from a background worker, so Rust can't read that response; instead it
-// catches the worker's request — its address and headers — and fetches the playlist itself the same
-// way, for the own player (/twitch/ in video_window.rs). Quality lists and pieces sit on cloudfront
-// with no token, so the own player fetches those itself through /v/. Nothing here is saved or synced.
-use std::sync::mpsc::{Sender, channel};
+// Twitch's own player, hidden, for videos Twitch refuses to the own player (subscribers only). It
+// plays with the user's Twitch sign-in (made on twitch.tv in the video window). Twitch fetches the
+// master playlist from a Web Worker, on the browser's own connection, which usher accepts; Rust
+// can't fetch it (403) or read that worker response, so a script injected into the page (twitch-
+// capture.js, the Adblock extension's way in) hooks the worker's fetch and hands the playlist to the
+// page, where Rust reads it. The quality lists and pieces sit on cloudfront with no token, so the
+// own player fetches those itself through /v/. Nothing here is saved or synced.
+use std::sync::mpsc::channel;
 use std::time::Duration;
 use tauri::utils::config::Color;
-use tauri::webview::PlatformWebview;
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
-use webview2_com::Microsoft::Web::WebView2::Win32::{
-  COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL, COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL, ICoreWebView2_22,
-};
-use webview2_com::{WebResourceRequestedEventHandler, take_pwstr};
-use windows::core::{BOOL, HSTRING, Interface, PWSTR};
+use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use webview2_com::ExecuteScriptCompletedHandler;
+use windows::core::HSTRING;
 
 use super::video_window::VIDEO_ARGS;
 
 const OFFICIAL: &str = "video-player-official";
-// Without access (not signed in, not subscribed) it never loads a playlist: the own player then goes
-// to Twitch's page, as before.
+// How long to wait for the player to load the playlist. Without access (not signed in, not
+// subscribed) it never comes, and the own player then goes to Twitch's page, as before.
 const WAIT: Duration = Duration::from_secs(15);
 
-// The master-playlist request Twitch's own player makes for this video: (address, headers), or None
-pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<(String, Vec<(String, String)>)> {
+// The master playlist Twitch's own player loads for this video, or None
+pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
   if let Some(earlier) = app.get_webview_window(OFFICIAL) {
     let _ = earlier.destroy();
   }
-  // A full-size window off the screen, not a tiny hidden one: Windows then keeps it awake so its
-  // player makes the request. The user never sees it. Same storage and options as the video window
-  // (the user's Twitch sign-in, VIDEO_ARGS).
-  let blank = tauri::Url::parse("about:blank").ok()?;
-  let window = WebviewWindowBuilder::new(app, OFFICIAL, WebviewUrl::External(blank))
+  let script = include_str!("twitch-capture.js").replace("__VIDEO__", video);
+  let address = tauri::Url::parse(&format!("https://player.twitch.tv/?video=v{video}&parent=twitch.tv&autoplay=true&muted=true")).ok()?;
+  // A full-size window off the screen, not a tiny hidden one, so Windows keeps it awake and its
+  // player loads. The user never sees it. Same storage and options as the video window (the user's
+  // Twitch sign-in, VIDEO_ARGS).
+  let window = WebviewWindowBuilder::new(app, OFFICIAL, WebviewUrl::External(address))
     .data_directory(super::video_extensions::player_folder(app).ok()?)
     .browser_extensions_enabled(true)
     .additional_browser_args(VIDEO_ARGS)
     .use_https_scheme(true)
+    .initialization_script(&script)
     .background_color(Color(0, 0, 0, 255))
     .position(-4000.0, 0.0)
     .inner_size(1280.0, 720.0)
@@ -47,72 +46,51 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<(String, Vec<(
     .on_navigation(|url| url.host_str() != Some("tauri.localhost"))
     .build()
     .ok()?;
-  let (sender, receiver) = channel();
-  let wanted = video.to_string();
-  let address = format!("https://player.twitch.tv/?video=v{video}&parent=twitch.tv&autoplay=true&muted=true");
-  let started = window.with_webview(move |platform| {
-    if let Err(e) = listen(platform, wanted, sender, &address) {
-      log::warn!("Twitch's player: {e}");
-    }
-  });
-  let found = match started {
-    Ok(()) => tauri::async_runtime::spawn_blocking(move || receiver.recv_timeout(WAIT).ok()).await.ok().flatten(),
-    Err(_) => None,
-  };
+  let polling = window.clone();
+  let master = tauri::async_runtime::spawn_blocking(move || poll(&polling)).await.ok().flatten();
   let _ = window.destroy();
-  found
+  master
 }
 
-// Watch every request (all sources, so the worker's too); keep the one for this video's master
-// playlist, with its headers.
-fn listen(platform: PlatformWebview, video: String, sender: Sender<(String, Vec<(String, String)>)>, address: &str) -> windows::core::Result<()> {
-  let core = unsafe { platform.controller().CoreWebView2()? };
-  let newer = core.cast::<ICoreWebView2_22>()?;
-  let pattern = HSTRING::from("https://usher.ttvnw.net/*");
-  unsafe { newer.AddWebResourceRequestedFilterWithRequestSourceKinds(&pattern, COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL, COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL)? };
-  let handler = WebResourceRequestedEventHandler::create(Box::new(move |_, args| {
-    let Some(args) = args else { return Ok(()) };
-    let request = unsafe { args.Request()? };
-    let mut uri = PWSTR::null();
-    unsafe { request.Uri(&mut uri)? };
-    let url = take_pwstr(uri);
-    if !super::twitch::caught_address(&url, &video) {
-      return Ok(());
+// Read window.__syncrMaster until the playlist is there or the time runs out
+fn poll(window: &WebviewWindow) -> Option<Vec<u8>> {
+  let steps = WAIT.as_millis() / 300;
+  for _ in 0..steps {
+    if let Some(value) = exec(window, "window.__syncrMaster || ''") {
+      if let Ok(text) = serde_json::from_str::<String>(&value) {
+        if text.contains("#EXTM3U") {
+          return Some(text.into_bytes());
+        }
+      }
     }
-    let headers = unsafe { read_headers(&request) }.unwrap_or_default();
-    let _ = sender.send((url, headers));
-    Ok(())
-  }));
-  let mut token = 0i64;
-  unsafe {
-    core.add_WebResourceRequested(&handler, &mut token)?;
-    core.Navigate(&HSTRING::from(address))
+    std::thread::sleep(Duration::from_millis(300));
   }
+  None
 }
 
-// Every header on the request, as (name, value)
-unsafe fn read_headers(request: &webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2WebResourceRequest) -> windows::core::Result<Vec<(String, String)>> {
-  let iterator = unsafe { request.Headers()?.GetIterator()? };
-  let mut out = Vec::new();
-  loop {
-    let mut has = BOOL::default();
-    unsafe { iterator.HasCurrentHeader(&mut has)? };
-    if !has.as_bool() {
-      break;
-    }
-    let (mut name, mut value) = (PWSTR::null(), PWSTR::null());
-    unsafe { iterator.GetCurrentHeader(&mut name, &mut value)? };
-    out.push((take_pwstr(name), take_pwstr(value)));
-    let mut next = BOOL::default();
-    unsafe { iterator.MoveNext(&mut next)? };
-    if !next.as_bool() {
-      break;
-    }
-  }
-  Ok(out)
+// Run one script in the window, give back its JSON result
+fn exec(window: &WebviewWindow, script: &str) -> Option<String> {
+  let (sender, receiver) = channel();
+  let script = HSTRING::from(script);
+  window
+    .with_webview(move |platform| {
+      let failed = sender.clone();
+      let run = || -> windows::core::Result<()> {
+        let handler = ExecuteScriptCompletedHandler::create(Box::new(move |result, value| {
+          let _ = sender.send(result.ok().map(|()| value));
+          Ok(())
+        }));
+        unsafe { platform.controller().CoreWebView2()?.ExecuteScript(&script, &handler) }
+      };
+      if run().is_err() {
+        let _ = failed.send(None);
+      }
+    })
+    .ok()?;
+  receiver.recv_timeout(Duration::from_secs(2)).ok()?
 }
 
-// PROOF ONLY (test branch): one line to twitch-debug.txt, no header values.
+// PROOF ONLY (test branch): one line to twitch-debug.txt
 pub fn debug(app: &tauri::AppHandle, line: &str) {
   use std::io::Write;
   if let Ok(folder) = app.path().app_local_data_dir() {

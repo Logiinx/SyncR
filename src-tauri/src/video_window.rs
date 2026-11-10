@@ -160,35 +160,16 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     let Some((status, body)) = fetch_playlist(&crate::twitch::usher_url(video, &token)).await else {
       return answer(502, "text/plain", Vec::new());
     };
-    // Twitch says no (subscribers only): its own player gets in with the user's Twitch sign-in. We
-    // catch the request it makes for the master playlist (address + headers) and fetch it the same
-    // way. The quality lists and pieces on cloudfront need no token, so the own player fetches those
-    // itself through /v/.
+    // Twitch says no (subscribers only): its own player gets in with the user's Twitch sign-in, and
+    // a script inside its page hands us the master playlist it loads (twitch_official.rs). The
+    // quality lists and pieces on cloudfront need no token, so the own player fetches those through /v/.
     if status == 403 {
-      if let Some((address, headers)) = crate::twitch_official::catch(&app, video).await {
-        let mut request = player_client().get(&address);
-        for (name, value) in &headers {
-          if !name.starts_with(':') && !name.eq_ignore_ascii_case("host") {
-            request = request.header(name, value);
-          }
-        }
-        let (got, snippet) = match request.send().await {
-          Ok(response) => {
-            let code = response.status().as_u16();
-            let text = response.text().await.unwrap_or_default();
-            (code, text)
-          }
-          Err(e) => (0, e.to_string()),
-        };
-        let names: Vec<&str> = headers.iter().map(|(name, _)| name.as_str()).collect(); // PROOF ONLY
-        crate::twitch_official::debug(&app, &format!("replay video {video}: status={got} headers=[{}] body=\"{}\"", names.join(","), snippet.chars().take(600).collect::<String>().replace('\n', " "))); // PROOF ONLY
-        if got == 200 {
-          let local = local_playlist(&snippet).into_bytes();
-          *CAUGHT.lock().unwrap() = Some((video.to_string(), local.clone()));
-          return playlist(200, local);
-        }
-      } else {
-        crate::twitch_official::debug(&app, &format!("replay video {video}: nothing caught")); // PROOF ONLY
+      let master = crate::twitch_official::catch(&app, video).await;
+      crate::twitch_official::debug(&app, &format!("video {video}: captured {:?} bytes", master.as_ref().map(|m| m.len()))); // PROOF ONLY
+      if let Some(master) = master {
+        let local = local_playlist(&String::from_utf8_lossy(&master)).into_bytes();
+        *CAUGHT.lock().unwrap() = Some((video.to_string(), local.clone()));
+        return playlist(200, local);
       }
     }
     return playlist(status, body);
