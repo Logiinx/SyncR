@@ -50,8 +50,9 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
   let (sender, receiver) = channel();
   let wanted = video.to_string();
   let address = format!("https://player.twitch.tv/?video=v{video}&parent=twitch.tv&autoplay=true&muted=true");
+  let trace = app.path().app_local_data_dir().ok().map(|f| f.join("twitch-debug.txt")); // PROOF ONLY
   let started = window.with_webview(move |platform| {
-    if let Err(e) = listen(platform, wanted, sender, &address) {
+    if let Err(e) = listen(platform, wanted, sender, &address, trace) {
       log::warn!("Twitch's player: {e}");
     }
   });
@@ -63,32 +64,47 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
   found
 }
 
+// PROOF ONLY: append one trace line
+fn trace(path: &Option<std::path::PathBuf>, line: &str) {
+  use std::io::Write;
+  if let Some(path) = path {
+    if let Ok(mut out) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+      let _ = writeln!(out, "  . {line}");
+    }
+  }
+}
+
 // Watch every response the player gets; keep the one for this video's master playlist (status 200).
-fn listen(platform: PlatformWebview, video: String, sender: Sender<Vec<u8>>, address: &str) -> windows::core::Result<()> {
+fn listen(platform: PlatformWebview, video: String, sender: Sender<Vec<u8>>, address: &str, log: Option<std::path::PathBuf>) -> windows::core::Result<()> {
   let core = unsafe { platform.controller().CoreWebView2()? };
   let watched = core.cast::<ICoreWebView2_2>()?;
   let handler = WebResourceResponseReceivedEventHandler::create(Box::new(move |_, args| {
     let Some(args) = args else { return Ok(()) };
     let mut uri = PWSTR::null();
     unsafe { args.Request()?.Uri(&mut uri)? };
-    if !super::twitch::caught_address(&take_pwstr(uri), &video) {
-      return Ok(());
-    }
+    let url = take_pwstr(uri);
     let view = unsafe { args.Response()? };
     let mut status = 0i32;
     unsafe { view.StatusCode(&mut status)? };
-    if status != 200 {
+    if url.contains("usher.ttvnw.net") {
+      trace(&log, &format!("usher response status={status} match={}", super::twitch::caught_address(&url, &video))); // PROOF ONLY
+    }
+    if !super::twitch::caught_address(&url, &video) || status != 200 {
       return Ok(());
     }
     // The body arrives on its own handler, a moment later
     let sender = sender.clone();
-    let content = WebResourceResponseViewGetContentCompletedHandler::create(Box::new(move |_, stream: Option<IStream>| {
-      if let Some(stream) = stream {
-        let _ = sender.send(unsafe { read_stream(&stream) });
+    let log = log.clone();
+    let content = WebResourceResponseViewGetContentCompletedHandler::create(Box::new(move |result: windows::core::Result<()>, stream: Option<IStream>| {
+      let bytes = stream.as_ref().map(|stream| unsafe { read_stream(stream) });
+      trace(&log, &format!("getcontent ok={} stream={} bytes={:?}", result.is_ok(), stream.is_some(), bytes.as_ref().map(|b| b.len()))); // PROOF ONLY
+      if let Some(bytes) = bytes {
+        let _ = sender.send(bytes);
       }
       Ok(())
     }));
-    let _ = unsafe { view.GetContent(&content) };
+    let got = unsafe { view.GetContent(&content) };
+    trace(&log, &format!("getcontent called ok={}", got.is_ok())); // PROOF ONLY
     Ok(())
   }));
   let mut token = 0i64;
