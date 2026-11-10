@@ -48,6 +48,9 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
     .ok()?;
   let polling = window.clone();
   let master = tauri::async_runtime::spawn_blocking(move || poll(&polling)).await.ok().flatten();
+  if let Some(trace) = exec(&window, "JSON.stringify({status: window.__syncrStatus ?? null, err: window.__syncrErr ?? null, master: (window.__syncrMaster||'').length})") {
+    debug(app, &format!("video {video}: trace {trace}")); // PROOF ONLY
+  }
   let _ = window.destroy();
   master
 }
