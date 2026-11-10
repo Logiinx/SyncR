@@ -94,10 +94,10 @@ fn listen(platform: PlatformWebview, video: String, sender: Sender<Vec<u8>>, add
     }
     // The body arrives on its own handler, a moment later
     let sender = sender.clone();
-    let log = log.clone();
+    let inner = log.clone();
     let content = WebResourceResponseViewGetContentCompletedHandler::create(Box::new(move |result: windows::core::Result<()>, stream: Option<IStream>| {
       let bytes = stream.as_ref().map(|stream| unsafe { read_stream(stream) });
-      trace(&log, &format!("getcontent ok={} stream={} bytes={:?}", result.is_ok(), stream.is_some(), bytes.as_ref().map(|b| b.len()))); // PROOF ONLY
+      trace(&inner, &format!("getcontent ok={} stream={} bytes={:?}", result.is_ok(), stream.is_some(), bytes.as_ref().map(|b| b.len()))); // PROOF ONLY
       if let Some(bytes) = bytes {
         let _ = sender.send(bytes);
       }
