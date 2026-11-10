@@ -128,6 +128,26 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     }
     _ => {}
   }
+  // A past stream's main playlist, token included (twitch.rs). 404: the video doesn't exist or
+  // Twitch says no (the player then tries Twitch's page); 502: try again.
+  if let Some(video) = path.strip_prefix("/twitch/").and_then(|rest| rest.strip_suffix(".m3u8")) {
+    if !crate::twitch::valid_video(video) {
+      return answer(404, "text/plain", Vec::new());
+    }
+    let token = match crate::twitch::token(player_client(), video).await {
+      Ok(Some(token)) => token,
+      Ok(None) => return answer(404, "text/plain", Vec::new()),
+      Err(()) => return answer(502, "text/plain", Vec::new()),
+    };
+    let Ok(response) = player_client().get(crate::twitch::usher_url(video, &token)).send().await else {
+      return answer(502, "text/plain", Vec::new());
+    };
+    let status = response.status().as_u16();
+    let Ok(body) = response.bytes().await else {
+      return answer(502, "text/plain", Vec::new());
+    };
+    return answer(status, "application/vnd.apple.mpegurl", local_playlist(&String::from_utf8_lossy(&body)).into_bytes());
+  }
   let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
     return answer(404, "text/plain", Vec::new());
   };

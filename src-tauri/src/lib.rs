@@ -1,6 +1,7 @@
 use tauri::Manager;
 
 mod video_extensions;
+mod twitch;
 mod video_window;
 
 // Brings the main window back (from the tray, minimized, or behind other windows)

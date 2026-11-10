@@ -423,17 +423,6 @@ function giveUp() {
   location.href = `https://syncr-video.invalid/failed?video=${encodeURIComponent(videoId)}`
 }
 
-async function askTwitch() {
-  const query = 'query($id: ID!) { videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
-  const response = await fetch('https://gql.twitch.tv/gql', {
-    method: 'POST',
-    headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { id: videoId } }),
-  })
-  if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
-  return (await response.json()).data?.videoPlaybackAccessToken ?? null
-}
-
 function failed() {
   clearTimeout(calmTimer)
   clearTimeout(retryTimer)
@@ -456,15 +445,7 @@ $('retry').onclick = () => {
 }
 $('retry').textContent = labels.retry
 
-async function load() {
-  let token
-  try {
-    token = await askTwitch()
-  } catch (error) {
-    console.error(error)
-    return failed()
-  }
-  if (!token) return giveUp() // deleted or private: retrying won't help
+function load() {
   hls?.destroy()
   hls = new Hls({
     maxBufferLength: 30,
@@ -484,7 +465,7 @@ async function load() {
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)
-    // Twitch says no (subscribers only, deleted): only the first time, later it's an old token
+    // Twitch says no (subscribers only, deleted): only before it has played, later it's probably the network
     const code = error.response?.code
     if (!everPlayed && code >= 400 && code < 500 && error.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) return giveUp()
     if (error.type === Hls.ErrorTypes.MEDIA_ERROR && Date.now() - recoveredAt > 10000) {
@@ -494,8 +475,8 @@ async function load() {
     }
     failed()
   })
-  const source = `/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`
-  hls.loadSource(source)
+  // Rust asks Twitch for the token and the playlist (twitch.rs), a fresh token each time
+  hls.loadSource(`/twitch/${encodeURIComponent(videoId)}.m3u8`)
   hls.attachMedia(video)
 }
 
