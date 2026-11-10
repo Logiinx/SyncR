@@ -84,3 +84,21 @@ fn listen(platform: PlatformWebview, video: String, sender: Sender<String>, addr
     core.Navigate(&HSTRING::from(address))
   }
 }
+
+// PROOF ONLY (test branch): writes which params were caught and the replay status to
+// twitch-debug.txt in the app's local data. Token and signature VALUES are never written, only the
+// parameter names present.
+pub fn debug(app: &tauri::AppHandle, video: &str, caught: Option<&str>, replay: Option<u16>) {
+  use std::io::Write;
+  let Ok(folder) = app.path().app_local_data_dir() else {
+    return;
+  };
+  let keys = caught
+    .and_then(|address| tauri::Url::parse(address).ok())
+    .map(|url| url.query_pairs().map(|(key, _)| key.into_owned()).collect::<Vec<_>>().join(","))
+    .unwrap_or_else(|| "none".into());
+  let host = caught.and_then(|a| tauri::Url::parse(a).ok()).and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
+  if let Ok(mut out) = std::fs::OpenOptions::new().create(true).append(true).open(folder.join("twitch-debug.txt")) {
+    let _ = writeln!(out, "video {video}: caught={} host={host} params=[{keys}] replay={replay:?}", caught.is_some());
+  }
+}

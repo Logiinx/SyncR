@@ -162,13 +162,19 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     let Some((status, body)) = fetch_playlist(&crate::twitch::usher_url(video, &token)).await else {
       return answer(502, "text/plain", Vec::new());
     };
-    // Twitch says no (subscribers only): its own player may get in with the user's Twitch sign-in
+    // Twitch says no (subscribers only): its own player may get in with the user's Twitch sign-in.
+    // Its address is replayed exactly, the way the player asked for it.
     if status == 403 {
-      if let Some(address) = crate::twitch_official::catch(&app, video).await.and_then(|caught| crate::twitch::own_address(&caught)) {
-        if let Some((200, body)) = fetch_playlist(&address).await {
-          *CAUGHT.lock().unwrap() = Some((video.to_string(), address));
+      let caught = crate::twitch_official::catch(&app, video).await;
+      if let Some(address) = &caught {
+        let replay = fetch_playlist(address).await;
+        crate::twitch_official::debug(&app, video, Some(address), replay.as_ref().map(|(code, _)| *code)); // PROOF ONLY
+        if let Some((200, body)) = replay {
+          *CAUGHT.lock().unwrap() = Some((video.to_string(), address.clone()));
           return playlist(200, body);
         }
+      } else {
+        crate::twitch_official::debug(&app, video, None, None); // PROOF ONLY
       }
     }
     return playlist(status, body);
