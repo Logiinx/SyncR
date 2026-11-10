@@ -423,6 +423,17 @@ function giveUp() {
   location.href = `https://syncr-video.invalid/failed?video=${encodeURIComponent(videoId)}`
 }
 
+async function askTwitch() {
+  const query = 'query($id: ID!) { videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
+  const response = await fetch('https://gql.twitch.tv/gql', {
+    method: 'POST',
+    headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables: { id: videoId } }),
+  })
+  if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
+  return (await response.json()).data?.videoPlaybackAccessToken ?? null
+}
+
 function failed() {
   clearTimeout(calmTimer)
   clearTimeout(retryTimer)
@@ -445,22 +456,21 @@ $('retry').onclick = () => {
 }
 $('retry').textContent = labels.retry
 
-function load() {
+async function load() {
+  let token
+  try {
+    token = await askTwitch()
+  } catch (error) {
+    console.error(error)
+    return failed()
+  }
+  if (!token) return giveUp() // deleted or private: retrying won't help
   hls?.destroy()
   hls = new Hls({
     maxBufferLength: 30,
     maxMaxBufferLength: 60,
     backBufferLength: 30,
     startPosition: position,
-    // Up to 15 s more when Rust asks Twitch's own player (twitch_official.rs). Otherwise as hls.js has it.
-    manifestLoadPolicy: {
-      default: {
-        maxTimeToFirstByteMs: Infinity,
-        maxLoadTimeMs: 40000,
-        timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 },
-        errorRetry: { maxNumRetry: 1, retryDelayMs: 1000, maxRetryDelayMs: 8000 },
-      },
-    },
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
     const wanted = wantedLevel()
@@ -474,7 +484,7 @@ function load() {
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)
-    // Twitch says no (subscribers only, deleted): only before it has played, later it's probably the network
+    // Twitch says no (subscribers only, deleted): only the first time, later it's an old token
     const code = error.response?.code
     if (!everPlayed && code >= 400 && code < 500 && error.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) return giveUp()
     if (error.type === Hls.ErrorTypes.MEDIA_ERROR && Date.now() - recoveredAt > 10000) {
@@ -484,8 +494,8 @@ function load() {
     }
     failed()
   })
-  // Rust asks Twitch for the token and the playlist (twitch.rs), a fresh token each time
-  hls.loadSource(`/twitch/${encodeURIComponent(videoId)}.m3u8`)
+  const source = `/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`
+  hls.loadSource(source)
   hls.attachMedia(video)
 }
 

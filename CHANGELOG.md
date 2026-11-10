@@ -4,9 +4,6 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Video**
-- **Improved** Twitch videos in the own player: when Twitch refuses the usual way to open one, a second way is tried
-
 ## [0.66.2] - 2026-11-10
 
 **Notes**

@@ -75,18 +75,6 @@ fn query_value<'a>(uri: &'a tauri::http::Uri, name: &str) -> Option<&'a str> {
   uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value)
 }
 
-// A main playlist from Twitch's video server, its addresses made local
-async fn fetch_playlist(address: &str) -> Option<(u16, Vec<u8>)> {
-  let response = player_client().get(address).send().await.ok()?;
-  let status = response.status().as_u16();
-  let body = response.bytes().await.ok()?;
-  Some((status, local_playlist(&String::from_utf8_lossy(&body)).into_bytes()))
-}
-
-// The last master playlist caught from Twitch's own player (twitch_official.rs), already made local:
-// (video, body). Memory only, reused while the own player stays on that video.
-static CAUGHT: std::sync::Mutex<Option<(String, Vec<u8>)>> = std::sync::Mutex::new(None);
-
 pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
   use tauri::Emitter;
@@ -140,40 +128,6 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     }
     _ => {}
   }
-  // A past stream's main playlist, token included (twitch.rs). 404: the video doesn't exist or
-  // Twitch says no (the player then tries Twitch's page); 502: try again.
-  if let Some(video) = path.strip_prefix("/twitch/").and_then(|rest| rest.strip_suffix(".m3u8")) {
-    if !crate::twitch::valid_video(video) {
-      return answer(404, "text/plain", Vec::new());
-    }
-    let playlist = |status: u16, body: Vec<u8>| answer(status, "application/vnd.apple.mpegurl", body);
-    // Caught from Twitch's player before (below): serve it straight, no new round to Twitch
-    let known = CAUGHT.lock().unwrap().clone().filter(|(caught, _)| caught == video);
-    if let Some((_, body)) = known {
-      return playlist(200, body);
-    }
-    let token = match crate::twitch::token(player_client(), video).await {
-      Ok(Some(token)) => token,
-      Ok(None) => return answer(404, "text/plain", Vec::new()),
-      Err(()) => return answer(502, "text/plain", Vec::new()),
-    };
-    let Some((status, body)) = fetch_playlist(&crate::twitch::usher_url(video, &token)).await else {
-      return answer(502, "text/plain", Vec::new());
-    };
-    // Twitch says no (subscribers only): its own player gets in with the user's Twitch sign-in, and
-    // a script inside its page hands us the master playlist it loads (twitch_official.rs). The
-    // quality lists and pieces on cloudfront need no token, so the own player fetches those through /v/.
-    if status == 403 {
-      let master = crate::twitch_official::catch(&app, video).await;
-      crate::twitch_official::debug(&app, &format!("video {video}: captured {:?} bytes", master.as_ref().map(|m| m.len()))); // PROOF ONLY
-      if let Some(master) = master {
-        let local = local_playlist(&String::from_utf8_lossy(&master)).into_bytes();
-        *CAUGHT.lock().unwrap() = Some((video.to_string(), local.clone()));
-        return playlist(200, local);
-      }
-    }
-    return playlist(status, body);
-  }
   let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
     return answer(404, "text/plain", Vec::new());
   };
@@ -197,10 +151,8 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
 }
 
 // All pages of the player's storage folder must start the same way (also video_extensions.rs). A
-// video opened by a click should play: without this switch the browser refuses to start it. The
-// occlusion and backgrounding switches keep Twitch's hidden player awake off screen so it finishes
-// loading the playlist (twitch_official.rs); they don't change a normal, visible page.
-pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --disable-backgrounding-occluded-windows --disable-background-timer-throttling --disable-renderer-backgrounding";
+// video opened by a click should play: without this switch the browser refuses to start it.
+pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.
