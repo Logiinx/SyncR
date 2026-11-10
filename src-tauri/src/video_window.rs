@@ -197,8 +197,10 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
 }
 
 // All pages of the player's storage folder must start the same way (also video_extensions.rs). A
-// video opened by a click should play: without this switch the browser refuses to start it.
-pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+// video opened by a click should play: without this switch the browser refuses to start it. The
+// occlusion and backgrounding switches keep Twitch's hidden player awake off screen so it finishes
+// loading the playlist (twitch_official.rs); they don't change a normal, visible page.
+pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --disable-backgrounding-occluded-windows --disable-background-timer-throttling --disable-renderer-backgrounding";
 
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.

@@ -6,15 +6,16 @@
 use core::ffi::c_void;
 use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
-use tauri::webview::{PlatformWebview, WebviewBuilder};
-use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl};
+use tauri::webview::PlatformWebview;
+use tauri::utils::config::Color;
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_2;
 use webview2_com::{WebResourceResponseReceivedEventHandler, WebResourceResponseViewGetContentCompletedHandler, take_pwstr};
 use windows::Win32::Foundation::{S_FALSE, S_OK};
 use windows::Win32::System::Com::IStream;
 use windows::core::{HSTRING, Interface, PWSTR};
 
-use super::video_window::{VIDEO_ARGS, VIDEO_WINDOW};
+use super::video_window::VIDEO_ARGS;
 
 const OFFICIAL: &str = "video-player-official";
 // Without access (not signed in, not subscribed) it never loads a playlist: the own player then goes
@@ -23,30 +24,33 @@ const WAIT: Duration = Duration::from_secs(15);
 
 // The master playlist Twitch's own player loads for this video, or None
 pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
-  let window = app.get_window(VIDEO_WINDOW)?;
-  if let Some(earlier) = app.get_webview(OFFICIAL) {
-    let _ = earlier.close();
+  if let Some(earlier) = app.get_webview_window(OFFICIAL) {
+    let _ = earlier.destroy();
   }
-  let folder = super::video_extensions::player_folder(app).ok()?;
-  // 1 pixel in a corner of the bar: the response is read from the network, so the player needn't be
-  // seen. Same storage and options as every page of the video window (sign-in, VIDEO_ARGS).
-  let webview = window
-    .add_child(
-      WebviewBuilder::new(OFFICIAL, WebviewUrl::External(tauri::Url::parse("about:blank").ok()?))
-        .use_https_scheme(true)
-        .additional_browser_args(VIDEO_ARGS)
-        .browser_extensions_enabled(true)
-        .data_directory(folder)
-        .focused(false)
-        .on_navigation(|url| url.as_str() == "about:blank" || url.host_str() == Some("player.twitch.tv")),
-      PhysicalPosition::new(0, 0),
-      PhysicalSize::new(1, 1),
-    )
+  // A full-size window off the screen, not a tiny hidden one: Windows then keeps it awake so its
+  // player finishes loading. The user never sees it. Same storage and options as the video window
+  // (the user's Twitch sign-in, VIDEO_ARGS).
+  let blank = tauri::Url::parse("about:blank").ok()?;
+  let window = WebviewWindowBuilder::new(app, OFFICIAL, WebviewUrl::External(blank))
+    .data_directory(super::video_extensions::player_folder(app).ok()?)
+    .browser_extensions_enabled(true)
+    .additional_browser_args(VIDEO_ARGS)
+    .use_https_scheme(true)
+    .background_color(Color(0, 0, 0, 255))
+    .position(-4000.0, 0.0)
+    .inner_size(1280.0, 720.0)
+    .visible(true)
+    .focused(false)
+    .skip_taskbar(true)
+    // Let Twitch's player load whatever it needs; only keep it off the app's own pages. The window
+    // has no capability anyway, so it can reach no app command.
+    .on_navigation(|url| url.host_str() != Some("tauri.localhost"))
+    .build()
     .ok()?;
   let (sender, receiver) = channel();
   let wanted = video.to_string();
   let address = format!("https://player.twitch.tv/?video=v{video}&parent=twitch.tv&autoplay=true&muted=true");
-  let started = webview.with_webview(move |platform| {
+  let started = window.with_webview(move |platform| {
     if let Err(e) = listen(platform, wanted, sender, &address) {
       log::warn!("Twitch's player: {e}");
     }
@@ -55,7 +59,7 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
     Ok(()) => tauri::async_runtime::spawn_blocking(move || receiver.recv_timeout(WAIT).ok()).await.ok().flatten(),
     Err(_) => None,
   };
-  let _ = webview.close();
+  let _ = window.destroy();
   found
 }
 
