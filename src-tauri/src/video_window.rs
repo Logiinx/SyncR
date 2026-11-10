@@ -181,7 +181,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
           Err(e) => (0, e.to_string()),
         };
         let names: Vec<&str> = headers.iter().map(|(name, _)| name.as_str()).collect(); // PROOF ONLY
-        crate::twitch_official::debug(&app, &format!("replay video {video}: status={got} headers=[{}] body=\"{}\"", names.join(","), snippet.lines().next().unwrap_or("").chars().take(120).collect::<String>())); // PROOF ONLY
+        crate::twitch_official::debug(&app, &format!("replay video {video}: status={got} headers=[{}] body=\"{}\"", names.join(","), snippet.chars().take(600).collect::<String>().replace('\n', " "))); // PROOF ONLY
         if got == 200 {
           let local = local_playlist(&snippet).into_bytes();
           *CAUGHT.lock().unwrap() = Some((video.to_string(), local.clone()));
