@@ -452,6 +452,15 @@ function load() {
     maxMaxBufferLength: 60,
     backBufferLength: 30,
     startPosition: position,
+    // Up to 15 s more when Rust asks Twitch's own player (twitch_official.rs). Otherwise as hls.js has it.
+    manifestLoadPolicy: {
+      default: {
+        maxTimeToFirstByteMs: Infinity,
+        maxLoadTimeMs: 40000,
+        timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 },
+        errorRetry: { maxNumRetry: 1, retryDelayMs: 1000, maxRetryDelayMs: 8000 },
+      },
+    },
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
     const wanted = wantedLevel()

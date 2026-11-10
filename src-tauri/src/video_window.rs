@@ -75,6 +75,17 @@ fn query_value<'a>(uri: &'a tauri::http::Uri, name: &str) -> Option<&'a str> {
   uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value)
 }
 
+// A main playlist from Twitch's video server, its addresses made local
+async fn fetch_playlist(address: &str) -> Option<(u16, Vec<u8>)> {
+  let response = player_client().get(address).send().await.ok()?;
+  let status = response.status().as_u16();
+  let body = response.bytes().await.ok()?;
+  Some((status, local_playlist(&String::from_utf8_lossy(&body)).into_bytes()))
+}
+
+// The last address caught from Twitch's own player (twitch_official.rs): (video, address). Memory only.
+static CAUGHT: std::sync::Mutex<Option<(String, String)>> = std::sync::Mutex::new(None);
+
 pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
   use tauri::Emitter;
@@ -134,19 +145,33 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     if !crate::twitch::valid_video(video) {
       return answer(404, "text/plain", Vec::new());
     }
+    let playlist = |status: u16, body: Vec<u8>| answer(status, "application/vnd.apple.mpegurl", body);
+    // Caught from Twitch's player before (below): straight there, while Twitch still takes it
+    let known = CAUGHT.lock().unwrap().clone().filter(|(caught, _)| caught == video);
+    if let Some((_, address)) = known {
+      if let Some((200, body)) = fetch_playlist(&address).await {
+        return playlist(200, body);
+      }
+      *CAUGHT.lock().unwrap() = None;
+    }
     let token = match crate::twitch::token(player_client(), video).await {
       Ok(Some(token)) => token,
       Ok(None) => return answer(404, "text/plain", Vec::new()),
       Err(()) => return answer(502, "text/plain", Vec::new()),
     };
-    let Ok(response) = player_client().get(crate::twitch::usher_url(video, &token)).send().await else {
+    let Some((status, body)) = fetch_playlist(&crate::twitch::usher_url(video, &token)).await else {
       return answer(502, "text/plain", Vec::new());
     };
-    let status = response.status().as_u16();
-    let Ok(body) = response.bytes().await else {
-      return answer(502, "text/plain", Vec::new());
-    };
-    return answer(status, "application/vnd.apple.mpegurl", local_playlist(&String::from_utf8_lossy(&body)).into_bytes());
+    // Twitch says no (subscribers only): its own player may get in with the user's Twitch sign-in
+    if status == 403 {
+      if let Some(address) = crate::twitch_official::catch(&app, video).await.and_then(|caught| crate::twitch::own_address(&caught)) {
+        if let Some((200, body)) = fetch_playlist(&address).await {
+          *CAUGHT.lock().unwrap() = Some((video.to_string(), address));
+          return playlist(200, body);
+        }
+      }
+    }
+    return playlist(status, body);
   }
   let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
     return answer(404, "text/plain", Vec::new());

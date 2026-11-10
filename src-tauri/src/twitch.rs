@@ -93,8 +93,51 @@ pub fn usher_url(video: &str, token: &Token) -> String {
     .unwrap_or_default()
 }
 
+// The official player's playlist request for this video (twitch_official.rs): Twitch's video
+// server, this video, with a token (Twitch's player names it "token", our own request "nauth")
+pub fn caught_address(address: &str, video: &str) -> bool {
+  let Ok(url) = reqwest::Url::parse(address) else {
+    return false;
+  };
+  url.scheme() == "https"
+    && url.host_str() == Some("usher.ttvnw.net")
+    && (url.path() == format!("/vod/{video}.m3u8") || url.path() == format!("/vod/v2/{video}.m3u8"))
+    && url.query_pairs().any(|(key, _)| key == "token" || key == "nauth")
+}
+
+// The caught address with our own choices, as usher_url: the video's own qualities, no audio-only
+pub fn own_address(address: &str) -> Option<String> {
+  let mut url = reqwest::Url::parse(address).ok()?;
+  let kept: Vec<(String, String)> = url
+    .query_pairs()
+    .filter(|(key, _)| key != "allow_audio_only" && key != "allow_source")
+    .map(|(key, value)| (key.into_owned(), value.into_owned()))
+    .collect();
+  url.query_pairs_mut().clear().extend_pairs(kept).append_pair("allow_source", "true").append_pair("allow_audio_only", "false");
+  Some(url.to_string())
+}
+
 #[cfg(test)]
 mod tests {
+  #[test]
+  fn catches_only_this_video() {
+    assert!(caught_address("https://usher.ttvnw.net/vod/42.m3u8?nauth=%7B%7D&nauthsig=s", "42"));
+    assert!(caught_address("https://usher.ttvnw.net/vod/v2/42.m3u8?nauth=x&nauthsig=s", "42"));
+    assert!(!caught_address("https://usher.ttvnw.net/vod/43.m3u8?nauth=x", "42"));
+    assert!(caught_address("https://usher.ttvnw.net/vod/42.m3u8?acmb=e30&sig=s&token=%7B%7D&p=1", "42"));
+    assert!(!caught_address("https://usher.ttvnw.net/vod/42.m3u8?sig=x", "42"));
+    assert!(!caught_address("http://usher.ttvnw.net/vod/42.m3u8?nauth=x", "42"));
+    assert!(!caught_address("https://usher.ttvnw.net.evil.com/vod/42.m3u8?nauth=x", "42"));
+  }
+
+  #[test]
+  fn own_address_has_our_choices() {
+    let address = own_address("https://usher.ttvnw.net/vod/42.m3u8?nauth=%7B%22a%22%7D&allow_audio_only=true&p=7&allow_source=false").unwrap();
+    assert!(address.starts_with("https://usher.ttvnw.net/vod/42.m3u8?nauth=%7B%22a%22%7D&p=7&"));
+    assert!(address.ends_with("&allow_source=true&allow_audio_only=false"));
+    assert!(!address.contains("allow_audio_only=true"));
+  }
+
   use super::*;
 
   #[test]
