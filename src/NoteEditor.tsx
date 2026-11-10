@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { t } from './i18n'
 import { Copy, Trash2 } from 'lucide-react'
-import { EditorContent, useEditor, wrappingInputRule } from '@tiptap/react'
+import { EditorContent, useEditor, wrappingInputRule, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Blockquote } from '@tiptap/extension-blockquote'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -12,6 +12,7 @@ import { Color, TextStyle } from '@tiptap/extension-text-style'
 import { Highlight } from '@tiptap/extension-highlight'
 import { syncSoon } from './autoSync'
 import { noteTitle, registerFlush, saveNoteContent, type Note } from './db'
+import { ownSaves } from './ownSaves'
 import { endSession } from './noteHistory'
 import Toolbar from './Toolbar'
 import ContextMenu from './ContextMenu'
@@ -107,6 +108,13 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   const saveTimer = useRef<number | undefined>(undefined)
   // The last save started: "save now" waits for it, so sync never compares an older version
   const saving = useRef<Promise<void> | undefined>(undefined)
+  const [own] = useState(ownSaves)
+  const save = (editor: Editor) => {
+    const content = editor.getJSON()
+    own.add(content)
+    saving.current = saveNoteContent(note.id, content, editor.getText({ blockSeparator: '\n' }))
+    return saving.current
+  }
   const [imageMenu, setImageMenu] = useState<{ pos: number; src: string; x: number; y: number } | null>(null)
   const [tableMenu, setTableMenu] = useState<{ x: number; y: number } | null>(null)
   const [cardMenu, setCardMenu] = useState<(NonNullable<ReturnType<typeof linkMenu>> & { x: number; y: number }) | null>(null)
@@ -121,15 +129,16 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = window.setTimeout(() => {
         saveTimer.current = undefined
-        saving.current = saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+        save(editor)
       }, SAVE_DELAY_MS)
     },
   })
 
   // The note was changed from outside (sync downloaded a newer version): show it.
-  // Skipped while a save is waiting, because then this device's edit is the newest.
+  // Skipped while a save is waiting, because then this device's edit is the newest, and for
+  // this editor's own saves coming back (ownSaves.ts).
   useEffect(() => {
-    if (!editor || !note.content || saveTimer.current !== undefined) return
+    if (!editor || !note.content || saveTimer.current !== undefined || own.isOwn(note.content)) return
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(note.content)) {
       editor.commands.setContent(note.content, { emitUpdate: false })
     }
@@ -144,8 +153,7 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
       if (saveTimer.current === undefined) return saving.current?.catch(() => {})
       window.clearTimeout(saveTimer.current)
       saveTimer.current = undefined
-      saving.current = saveNoteContent(note.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
-      await saving.current
+      await save(editor)
     }
 
     // Leaving the editor (tap elsewhere, phone keyboard closed) or the app (back button,

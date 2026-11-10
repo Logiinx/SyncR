@@ -13,6 +13,7 @@ import {
   type Card as CardData,
 } from './db'
 import { extensions } from './NoteEditor'
+import { ownSaves } from './ownSaves'
 import { colorMenuItems, tintStyle } from './cardColors'
 import ContextMenu from './ContextMenu'
 import ColorPicker, { currentTextColor, pickTextColor } from './ColorPicker'
@@ -80,8 +81,12 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
   useListItem(cardRef)
 
-  const save = (editor: Editor) =>
-    saveCardContent(card.id, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+  const [own] = useState(ownSaves)
+  const save = (editor: Editor) => {
+    const content = editor.getJSON()
+    own.add(content)
+    return saveCardContent(card.id, content, editor.getText({ blockSeparator: '\n' }))
+  }
 
   // The notes' extensions, except that checkboxes can be ticked while the card isn't being
   // edited (the editor allows it, and the "change" listener below saves it in the card).
@@ -178,10 +183,11 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, autoFocus])
 
-  // The card was changed from outside (sync): show it, unless an edit is waiting.
+  // The card was changed from outside (sync): show it, unless an edit is waiting or it's one of
+  // this card's own saves coming back (ownSaves.ts).
   // Both compared without that empty line, so the one just made by leaving a list stays.
   useEffect(() => {
-    if (!editor || !card.content || saveTimer.current !== undefined) return
+    if (!editor || !card.content || saveTimer.current !== undefined || own.isOwn(card.content)) return
     const content = withoutTrailingLine(card.content)
     if (JSON.stringify(withoutTrailingLine(editor.getJSON())) !== JSON.stringify(content)) {
       editor.commands.setContent(content, { emitUpdate: false })
