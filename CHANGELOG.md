@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.66.2] - 2026-11-10
+
 **Notes**
 - **Fixed** an issue where the cursor could jump to the end of a note or card while typing or deleting
 

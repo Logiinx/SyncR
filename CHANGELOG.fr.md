@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.66.2] - 2026-11-10
+
 **Notes**
 - **Correction** d’un problème où le curseur pouvait sauter à la fin d’une note ou d’une carte pendant la frappe
 
