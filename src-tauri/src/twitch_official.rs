@@ -31,7 +31,9 @@ pub async fn catch(app: &tauri::AppHandle, video: &str) -> Option<Vec<u8>> {
   // Twitch sign-in, VIDEO_ARGS).
   let window = WebviewWindowBuilder::new(app, OFFICIAL, WebviewUrl::External(address))
     .data_directory(super::video_extensions::player_folder(app).ok()?)
-    .browser_extensions_enabled(true)
+    // No extensions here: the Adblock patch rewrites usher requests (for ad blocking) and breaks the
+    // sub-only auth. We only want a clean playlist; the user's own viewing still has its extensions.
+    .browser_extensions_enabled(false)
     .additional_browser_args(VIDEO_ARGS)
     .use_https_scheme(true)
     .initialization_script(&script)
