@@ -140,6 +140,17 @@ function controlsData() {
       bigger: t('Bigger'),
       resetPosition: t('Reset position'),
       dragSubtitles: t('Drag the subtitles to move them'),
+      // SponsorBlock's categories, named in the tip over the bar
+      sponsorParts: {
+        sponsor: t('Sponsor'),
+        selfpromo: t('Self-promotion'),
+        interaction: t('Interaction reminder'),
+        intro: t('Intro'),
+        outro: t('End credits'),
+        preview: t('Preview or recap'),
+        music_offtopic: t('Non-music part'),
+        filler: t('Tangent'),
+      },
     },
   }
 }

@@ -6,7 +6,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Ajout** des sous-titres aux contrôles YouTube : un bouton, la langue ou une traduction, la taille, à déplacer
+- **Ajout** des chapitres, des aperçus et des parties SponsorBlock dans la barre de progression YouTube
 - **Changement** des vidéos YouTube : nos propres contrôles, les mêmes que ceux du lecteur Twitch
+- **Changement** des changements de jeu du lecteur Twitch : des coupures dans la barre, comme les chapitres YouTube
 
 ## [0.68.1] - 2026-11-11
 

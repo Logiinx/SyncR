@@ -116,7 +116,7 @@ const controls = playerControls({
   locale: data.locale,
   hooks: {
     fillTip: (seconds) => fillTip(seconds),
-    dayAt: (seconds) => dayAt(seconds),
+    besideTime: (seconds) => dayAt(seconds),
     menu: (row, title, menu) => {
       timelineMenu(row, title)
       chatMenu(menu, row, title)
@@ -132,7 +132,7 @@ const controls = playerControls({
   },
 }, media)
 // For timeline.js and chat.js
-const { $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing } = controls
+const { $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines } = controls
 
 // ---- The window takes the video's shape (video_window.rs) ------------------------------------------------
 let shapeSent = ''

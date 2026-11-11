@@ -6,7 +6,9 @@ All notable changes to SyncR. Newest version first.
 
 **Video**
 - **Added** subtitles to YouTube's controls: a button, language or translation, size, drag them anywhere
+- **Added** chapters, preview pictures and SponsorBlock's parts to the YouTube progress bar
 - **Changed** YouTube videos to our own controls, the same as the Twitch player's, instead of YouTube's
+- **Changed** the Twitch player's game changes into gaps in the progress bar, like YouTube's chapters
 
 ## [0.68.1] - 2026-11-11
 

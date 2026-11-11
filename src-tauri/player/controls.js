@@ -7,7 +7,8 @@
 //   root: document or a shadow root ($ looks there), box: the element they go in (#player),
 //   surface: what a click on the picture lands on, html: (text) => what innerHTML takes,
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
-//   hooks: { fillTip, dayAt, menu(row, title, menu), keys: { key: action }, keepShowing,
+//   hooks: { fillTip, besideTime: (seconds) => text after the time, menu(row, title, menu),
+//            keys: { key: action }, keepShowing,
 //            beforeMenu, pictureClick: () => true when it did something }
 // }
 // media: {
@@ -51,10 +52,9 @@ function playerControls(env, media) {
     <button id="big">${icon('play')}</button>
     <div id="bottom">
       <div id="progress">
-        <div id="track"><div id="buffer"></div><div id="played"></div><div id="muted"></div><div id="muted-played"></div></div>
-        <div id="ticks"></div>
+        <div id="track"><div id="buffer"></div><div id="played"></div><div id="marked"></div><div id="marked-played"></div></div>
         <div id="knob"></div>
-        <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div></div>
+        <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div></div>
       </div>
       <div id="goto" hidden><div class="menu-title" id="goto-title"></div><input id="goto-text" type="text" spellcheck="false" autocomplete="off"><div id="goto-note"></div></div>
       <div id="bar">
@@ -66,7 +66,7 @@ function playerControls(env, media) {
           <input id="level" type="range" min="0" max="1" step="0.05">
           <span id="level-text"></span>
         </div>
-        <button class="button" id="time"><span id="time-now"></span><span id="time-day"></span></button>
+        <button class="button" id="time"><span id="time-now"></span><span id="time-beside"></span></button>
         <div id="spacer"></div>
         <button class="button" id="subtitles" hidden></button>
         <button class="button" id="settings"><svg viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
@@ -99,8 +99,8 @@ function playerControls(env, media) {
     $('track').style.setProperty('--played', `${part * 100}%`)
     $('knob').style.left = `${part * 100}%`
     $('time-now').textContent = `${clock(shown)} / ${clock(length)}`
-    const day = hooks.dayAt?.(shown)
-    $('time-day').textContent = day ? `· ${day}` : ''
+    const beside = hooks.besideTime?.(shown)
+    $('time-beside').textContent = beside ? `· ${beside}` : ''
     $('buffer').style.width = `${length ? (media.bufferedEnd() / length) * 100 : 0}%`
   }
 
@@ -109,6 +109,80 @@ function playerControls(env, media) {
     if (!length) return
     media.seek(Math.min(Math.max(seconds, 0), length - 0.5))
     drawTime()
+  }
+
+  // ---- Drawn on the bar -------------------------------------------------------------------------
+  // Gaps cut the bar into parts (chapters, game changes); marked parts get a color, dimmer ahead
+  // and full once played (muted parts, SponsorBlock's). Seconds; each player gives its own.
+  let gaps = []
+  let marked = [] // { start, end, color }
+  const GAP = 2 // px
+  const at = (seconds) => `${(seconds / media.duration()) * 100}%`
+  function drawParts() {
+    const length = media.duration()
+    const cuts = []
+    for (const seconds of [...gaps].sort((a, b) => a - b)) {
+      if (!length || seconds <= 0 || seconds >= length) continue
+      const place = at(seconds)
+      cuts.push(`#000 calc(${place} - ${GAP / 2}px)`, `transparent calc(${place} - ${GAP / 2}px)`, `transparent calc(${place} + ${GAP / 2}px)`, `#000 calc(${place} + ${GAP / 2}px)`)
+    }
+    $('track').style.setProperty('--gaps', cuts.length ? `linear-gradient(to right, ${cuts.join(', ')})` : 'none')
+    const colors = []
+    for (const part of [...marked].sort((a, b) => a.start - b.start)) {
+      if (!length) break
+      const [from, to] = [at(part.start), at(Math.min(part.end, length))]
+      colors.push(`transparent ${from}`, `${part.color} ${from}`, `${part.color} ${to}`, `transparent ${to}`)
+    }
+    $('track').style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
+  }
+  const setGaps = (list) => { gaps = list; drawParts() }
+  const setMarked = (list) => { marked = list; drawParts() }
+  video.addEventListener('durationchange', drawParts)
+
+  // ---- Preview pictures in the tip --------------------------------------------------------------
+  // One small picture from a sheet of many. picture: { address, width, height, cols, column, row }
+  // (the sheet's size and where in it), or null. Shown 220 wide; none in a small player.
+  const PICTURE = { width: 220, needsWidth: 260, needsHeight: 220 }
+  const sheets = new Map() // address: 'loading', 'ready' or 'failed'
+  let wantedPicture = null
+  function showPicture(picture) {
+    const tipPicture = $('tip-picture')
+    const room = box.clientWidth >= PICTURE.needsWidth && box.clientHeight >= PICTURE.needsHeight
+    wantedPicture = room ? picture : null
+    if (!wantedPicture) return void (tipPicture.hidden = true)
+    const { address } = picture
+    if (!sheets.has(address)) {
+      sheets.set(address, 'loading')
+      const image = new Image()
+      image.onload = () => {
+        sheets.set(address, 'ready')
+        if (wantedPicture?.address === address && !$('tip').hidden) showPicture(wantedPicture)
+      }
+      image.onerror = () => {
+        sheets.set(address, 'failed')
+        if (wantedPicture?.address === address) tipPicture.hidden = true
+      }
+      image.src = address
+    }
+    const state = sheets.get(address)
+    tipPicture.hidden = state === 'failed'
+    const scale = PICTURE.width / picture.width
+    tipPicture.style.width = `${PICTURE.width}px`
+    tipPicture.style.height = `${Math.round(picture.height * scale)}px`
+    // A dark box until its sheet is here
+    if (state !== 'ready') return void (tipPicture.style.backgroundImage = 'none')
+    tipPicture.style.backgroundImage = `url("${address}")`
+    tipPicture.style.backgroundSize = `${Math.round(picture.cols * picture.width * scale)}px auto`
+    tipPicture.style.backgroundPosition = `-${Math.round(picture.column * picture.width * scale)}px -${Math.round(picture.row * picture.height * scale)}px`
+  }
+  // The tip's dim lines under the time: a name (game, chapter), then a marked part with its color
+  function tipLines(name, part) {
+    $('tip-game').textContent = name || ''
+    $('tip-game').hidden = !name
+    $('tip-part').hidden = !part
+    if (!part) return
+    $('tip-part').querySelector('i').style.background = part.color
+    $('tip-part').querySelector('span').textContent = part.text
   }
 
   function fillTip(seconds) {
@@ -475,7 +549,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -505,17 +579,15 @@ const CONTROLS_CSS = `
   /* Above the chat in full screen, for the tip's picture */
   #bottom { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; pointer-events: auto; }
   #progress { position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
-  #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; }
+  #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; mask-image: var(--gaps, none); }
   #progress:hover #track, #player.dragging #track { height: 6px; }
   #buffer, #played { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
   #buffer { background: rgba(255, 255, 255, 0.35); }
   #played { background: var(--text-blue, #6ea8fe); }
-  /* Muted parts: dimmer ahead, full color once played, so the position still shows inside one */
-  #muted, #muted-played { position: absolute; inset: 0; background: var(--muted-parts, none); }
-  #muted { opacity: 0.6; }
-  #muted-played { clip-path: inset(0 calc(100% - var(--played, 0%)) 0 0); }
-  #ticks { position: absolute; inset: 0; pointer-events: none; }
-  #ticks i { position: absolute; top: 5px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: #fff; }
+  /* Marked parts: dimmer ahead, full color once played, so the position still shows inside one */
+  #marked, #marked-played { position: absolute; inset: 0; background: var(--marked-parts, none); }
+  #marked { opacity: 0.6; }
+  #marked-played { clip-path: inset(0 calc(100% - var(--played, 0%)) 0 0); }
   #knob {
     position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px;
     border-radius: 50%; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.15s;
@@ -528,6 +600,8 @@ const CONTROLS_CSS = `
   }
   #tip-picture { margin: 2px -5px 4px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.08); background-repeat: no-repeat; }
   #tip-game { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #9a9a9a); }
+  #tip-part { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-dim, #9a9a9a); }
+  #tip-part i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
 
   #bar { display: flex; align-items: center; gap: 2px; height: 46px; }
@@ -551,8 +625,10 @@ const CONTROLS_CSS = `
   #volume:hover #level { width: 84px; margin-right: 6px; opacity: 1; }
   #level-text { width: 0; overflow: hidden; opacity: 0; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: width 0.2s, opacity 0.2s, margin 0.2s; }
   #volume:hover #level-text { width: 32px; margin-right: 6px; opacity: 1; }
-  #time { width: auto; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  #time-day:empty { display: none; }
+  #time { flex: 0 1 auto; width: auto; min-width: 0; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #time-now { flex: none; }
+  #time-beside { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #time-beside:empty { display: none; }
   #spacer { flex: 1; min-width: 0; }
   #settings { flex: 0 1 auto; width: auto; min-width: 40px; gap: 6px; padding: 0 8px; box-sizing: border-box; }
   #settings span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -562,7 +638,7 @@ const CONTROLS_CSS = `
   @container (max-width: 490px) { #settings span { display: none; } }
   @container (max-width: 410px) { #back, #forward { display: none; } }
   @container (max-width: 330px) { #time { display: none; } }
-  @container (max-width: 540px) { #time-day { display: none; } }
+  @container (max-width: 540px) { #time-beside { display: none; } }
 
   #menu {
     position: absolute; right: 12px; bottom: 62px; z-index: 5;

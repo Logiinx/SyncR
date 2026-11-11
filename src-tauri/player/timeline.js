@@ -4,7 +4,6 @@
 const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName } } } } } } } }'
 const DETAILS_TRIES = 3
 const DETAILS_AGAIN = 20000 // ms after a failed answer
-const PICTURE_NEEDS = { width: 260, height: 220 } // a smaller player: only the time in the tip
 const MUTED_GAP = 1 // seconds: parts closer than this count as one
 
 // ---- Muted parts --------------------------------------------------------------------------------
@@ -59,81 +58,25 @@ function gameAt(seconds) {
   return name
 }
 
-// ---- Drawn on the bar ---------------------------------------------------------------------------
+// ---- Drawn on the bar (controls.js): muted parts in color, game changes as gaps ---------------------
 function drawMarks() {
-  const length = video.duration
-  const percent = (seconds) => `${(seconds / length) * 100}%`
-  let stops = []
-  if (length) {
-    for (const part of mutedParts) {
-      const color = 'var(--text-orange, #f0a052)'
-      stops.push(`transparent ${percent(part.start)}`, `${color} ${percent(part.start)}`, `${color} ${percent(part.end)}`, `transparent ${percent(part.end)}`)
-    }
-  }
-  $('track').style.setProperty('--muted-parts', stops.length ? `linear-gradient(to right, ${stops.join(', ')})` : 'none')
-  const ticks = $('ticks')
-  ticks.textContent = ''
-  if (!length || !gamesShown()) return
-  for (const game of games) {
-    if (game.at <= 0 || game.at >= length) continue
-    const tick = document.createElement('i')
-    tick.style.left = percent(game.at)
-    ticks.append(tick)
-  }
+  setMarked(mutedParts.map((part) => ({ ...part, color: 'var(--text-orange, #f0a052)' })))
+  setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }
-video.addEventListener('durationchange', drawMarks)
 
 // ---- Preview pictures ---------------------------------------------------------------------------
 // Twitch's own list: about 200 small pictures per video, on sheets of a few rows and columns
 let previews = null
-const sheets = new Map() // address: 'loading', 'ready' or 'failed'
-let wantedSheet = null
-
-function loadSheet(address) {
-  sheets.set(address, 'loading')
-  const image = new Image()
-  image.onload = () => {
-    sheets.set(address, 'ready')
-    if (wantedSheet === address && !$('tip').hidden) showTipPicture()
-  }
-  image.onerror = () => {
-    sheets.set(address, 'failed')
-    if (wantedSheet === address) $('tip-picture').hidden = true
-  }
-  image.src = address
-}
-
-let pictureAt = 0
-function showTipPicture() {
-  const box = $('tip-picture')
-  const room = player.clientWidth >= PICTURE_NEEDS.width && player.clientHeight >= PICTURE_NEEDS.height
-  if (!previews || !room) {
-    box.hidden = true
-    wantedSheet = null
-    return
-  }
+// The picture at a moment, as controls.js shows it
+function pictureAt(seconds) {
+  if (!previews) return null
   const { interval, count, cols, rows, width, height, images, folder } = previews
-  const index = Math.min(Math.floor(pictureAt / interval), count - 1)
+  const index = Math.min(Math.floor(seconds / interval), count - 1)
   const perSheet = cols * rows
   const name = images[Math.floor(index / perSheet)]
-  if (!name) {
-    box.hidden = true
-    wantedSheet = null
-    return
-  }
-  const address = `${folder}/${encodeURIComponent(name)}`
-  wantedSheet = address
-  if (!sheets.has(address)) loadSheet(address)
-  const state = sheets.get(address)
-  box.hidden = state === 'failed'
-  // A dark box until its sheet is here
-  if (state !== 'ready') {
-    box.style.backgroundImage = 'none'
-    return
-  }
+  if (!name) return null
   const spot = index % perSheet
-  box.style.backgroundImage = `url("${address}")`
-  box.style.backgroundPosition = `-${(spot % cols) * width}px -${Math.floor(spot / cols) * height}px`
+  return { address: `${folder}/${encodeURIComponent(name)}`, width, height, cols, column: spot % cols, row: Math.floor(spot / cols) }
 }
 
 async function askPreviews(url) {
@@ -146,9 +89,6 @@ async function askPreviews(url) {
   const usable = best && best.interval > 0 && best.count > 0 && best.cols > 0 && best.rows > 0 && best.width > 0 && best.height > 0 && Array.isArray(best.images)
   if (!usable) return
   previews = { ...best, folder }
-  const box = $('tip-picture')
-  box.style.width = `${best.width}px`
-  box.style.height = `${best.height}px`
 }
 
 // ---- Time of day -------------------------------------------------------------------------------
@@ -258,11 +198,8 @@ function fillTip(seconds) {
   if (!video.duration) return
   const day = dayAt(seconds)
   $('tip-time').textContent = day ? `${clock(seconds)} · ${day}` : clock(seconds)
-  pictureAt = seconds
-  showTipPicture()
-  const game = gameAt(seconds)
-  $('tip-game').textContent = game
-  $('tip-game').hidden = !game
+  showPicture(pictureAt(seconds))
+  tipLines(gameAt(seconds), null)
 }
 
 // ---- Its part of the player's menu (player.js, drawMenu) -----------------------------------------

@@ -309,6 +309,106 @@
         resetPlace: () => { delete look.x; delete look.y; saveLook(); drawLook() },
       },
     }
+    // ---- The bar's extras: chapters, previews, SponsorBlock's parts --------------------------------
+    // Each read from what YouTube's page already has, SponsorBlock's asked once per video. Read
+    // again for the next video of a playlist (same page). One missing leaves only that one out.
+    // Set up before the controls, which draw the time (and so ask for the chapter) at once.
+    let shownFor = null // the video they belong to
+    let chapters = [] // { at: seconds, name }
+    let previews = null // YouTube's picture sheets, the sharpest kind
+    let sponsorParts = [] // { start, end, category }
+    let tries = 0
+    // The first array of chapters in an answer of YouTube's (they sit deep in the player bar's data)
+    const findChapters = (value, depth = 0) => {
+      if (!value || typeof value !== 'object' || depth > 30) return null
+      if (Array.isArray(value.chapters) && value.chapters[0]?.chapterRenderer) return value.chapters
+      for (const key in value) {
+        const found = findChapters(value[key], depth + 1)
+        if (found) return found
+      }
+      return null
+    }
+    const readChapters = (id) => {
+      const answer = player.getWatchNextResponse?.()
+      const answerFor = answer?.currentVideoEndpoint?.watchEndpoint?.videoId
+      if (!answer || (answerFor && answerFor !== id)) return false
+      chapters = (findChapters(answer) || [])
+        .map(({ chapterRenderer: one }) => ({ at: one.timeRangeStartMillis / 1000, name: one.title?.simpleText || one.title?.runs?.map((run) => run.text).join('') || '' }))
+        .sort((a, b) => a.at - b.at)
+      controls.setGaps(chapters.map((chapter) => chapter.at))
+      return true
+    }
+    // "base|w#h#count#cols#rows#interval#name#sigh|…", the last kind the sharpest
+    const readPreviews = (id) => {
+      const answer = player.getPlayerResponse?.()
+      if (!answer || answer.videoDetails?.videoId !== id) return false
+      const [base, ...kinds] = answer.storyboards?.playerStoryboardSpecRenderer?.spec?.split('|') || []
+      const level = kinds.length - 1
+      const [width, height, count, cols, rows, interval, name, sigh] = (kinds[level] || '').split('#')
+      const numbers = [width, height, count, cols, rows].map(Number)
+      if (!base || numbers.some((number) => !(number > 0))) return true
+      previews = { base, level, width: numbers[0], height: numbers[1], count: numbers[2], cols: numbers[3], rows: numbers[4], interval: Number(interval) / 1000, name, sigh }
+      return true
+    }
+    const pictureAt = (seconds) => {
+      if (!previews) return null
+      const { base, level, width, height, count, cols, rows, name, sigh } = previews
+      const interval = previews.interval || (player.getDuration() || 0) / count
+      if (!(interval > 0)) return null
+      const index = Math.min(Math.floor(seconds / interval), count - 1)
+      const spot = index % (cols * rows)
+      const address = `${base.replace('$L', level).replace('$N', name.replace('$M', Math.floor(index / (cols * rows))))}${sigh ? `&sigh=${sigh}` : ''}`
+      return { address, width, height, cols, column: spot % cols, row: Math.floor(spot / cols) }
+    }
+    const chapterAt = (seconds) => {
+      let name = ''
+      for (const chapter of chapters) {
+        if (chapter.at > seconds) break
+        name = chapter.name
+      }
+      return name
+    }
+    // SponsorBlock's own colors and categories (the extension's defaults)
+    const SPONSOR_COLORS = { sponsor: '#00d400', selfpromo: '#ffff00', interaction: '#cc00ff', intro: '#00ffff', outro: '#0202ed', preview: '#008fd6', music_offtopic: '#ff9900', filler: '#7300ff' }
+    const sponsorAt = (seconds) => sponsorParts.find((part) => seconds >= part.start && seconds < part.end)
+    // Asked by the first 4 characters of the video's scrambled id, so SponsorBlock never learns
+    // which video it is (its private way); the answer lists several, ours is picked out.
+    const askSponsorBlock = async (id) => {
+      try {
+        const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id)))].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+        const answer = await fetch(`https://sponsor.ajay.app/api/skipSegments/${hash.slice(0, 4)}?categories=${encodeURIComponent(JSON.stringify(Object.keys(SPONSOR_COLORS)))}`, { credentials: 'omit' })
+        if (!answer.ok) return // 404: no parts for any of them
+        const found = (await answer.json()).find((one) => one.videoID === id)
+        if (shownFor !== id || !found) return
+        sponsorParts = found.segments
+          .filter((one) => SPONSOR_COLORS[one.category] && one.segment[1] > one.segment[0])
+          .map((one) => ({ start: one.segment[0], end: one.segment[1], category: one.category }))
+        controls.setMarked(sponsorParts.map((part) => ({ ...part, color: SPONSOR_COLORS[part.category] })))
+      } catch {}
+    }
+    let chaptersRead = false
+    let previewsRead = false
+    setInterval(() => {
+      const id = player.getVideoData?.()?.video_id
+      if (!id) return
+      if (id !== shownFor) {
+        shownFor = id
+        chapters = []
+        previews = null
+        sponsorParts = []
+        chaptersRead = previewsRead = false
+        tries = 0
+        controls.setGaps([])
+        controls.setMarked([])
+        askSponsorBlock(id)
+      }
+      // YouTube's answers can come a little after the video
+      if ((chaptersRead && previewsRead) || ++tries > 30) return
+      if (!chaptersRead) chaptersRead = readChapters(id)
+      if (!previewsRead) previewsRead = readPreviews(id)
+      if (chaptersRead) controls.drawTime()
+    }, 1000)
+
     const controls = playerControls({
       root,
       box,
@@ -317,8 +417,17 @@
       labels: data.labels,
       locale: data.locale,
       stopKeys: true,
-      // Not after dragging the subtitles
-      hooks: { pictureClick: () => { const was = justMoved; justMoved = false; return was } },
+      hooks: {
+        // Not after dragging the subtitles
+        pictureClick: () => { const was = justMoved; justMoved = false; return was },
+        fillTip: (seconds) => {
+          root.getElementById('tip-time').textContent = controls.clock(seconds)
+          controls.showPicture(pictureAt(seconds))
+          const part = sponsorAt(seconds)
+          controls.tipLines(chapterAt(seconds), part && { color: SPONSOR_COLORS[part.category], text: labels.sponsorParts?.[part.category] || part.category })
+        },
+        besideTime: (seconds) => chapterAt(seconds),
+      },
     }, media)
     root.getElementById('chat-button').hidden = true
     // YouTube keeps its subtitles 2% above the bottom; our bar is 72 px high (controls.js) at the app's scale
@@ -405,7 +514,15 @@
     box.focus()
     return true
   }
-  const waitForPlayer = setInterval(() => { if (startControls()) clearInterval(waitForPlayer) }, 100)
+  // Tried until YouTube's player is there; a mistake of ours stops it (the video still plays)
+  const waitForPlayer = setInterval(() => {
+    try {
+      if (startControls()) clearInterval(waitForPlayer)
+    } catch (error) {
+      clearInterval(waitForPlayer)
+      console.error(error)
+    }
+  }, 100)
 
   // The next video of a playlist while in full screen (video_window.rs, video_player_next): this same page
   // plays it, as a new page would leave full screen. The address changes too, as extensions read
