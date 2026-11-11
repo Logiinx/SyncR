@@ -142,6 +142,8 @@ function controlsData() {
       bigger: t('Bigger'),
       resetPosition: t('Reset position'),
       dragSubtitles: t('Drag the subtitles to move them'),
+      stoppedLoading: t('The video stopped loading'),
+      retry: t('Try again'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {
         sponsor: t('Sponsor'),
@@ -163,8 +165,6 @@ function twitchPlayerAddress(video: PlayableVideo) {
     ...shared,
     labels: {
       ...shared.labels,
-      stoppedLoading: t('The video stopped loading'),
-      retry: t('Try again'),
       skipMuted: t('Skip muted part'),
       barTitle: t('Progress bar'),
       gameChanges: t('Game changes'),

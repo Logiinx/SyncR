@@ -50,14 +50,16 @@ function wantedLevel() {
   return levels.find((one) => one.height < Number(height) || (one.height === Number(height) && (smooth || one.frameRate < 50))) || levels[levels.length - 1]
 }
 
+// At the next piece: what's already downloaded keeps playing. (currentLevel would throw it all
+// away and download again, with the spinner in between.)
 function applyQuality() {
   if (!hls) return
   if (chosen === 'auto') {
-    hls.currentLevel = -1
+    hls.nextLevel = -1
     return
   }
   const level = wantedLevel()
-  if (level) hls.currentLevel = level.index
+  if (level) hls.nextLevel = level.index
 }
 
 // ---- What the shared controls act on --------------------------------------------------------
@@ -89,7 +91,8 @@ const media = {
   setVolume: (level) => { video.volume = level },
   setMuted: (on) => { video.muted = on },
   rate: () => video.playbackRate,
-  setRate: (speed) => { video.playbackRate = speed },
+  // The default too: reloading after an error resets the speed to it
+  setRate: (speed) => { video.playbackRate = video.defaultPlaybackRate = speed },
   qualities: () => {
     const levels = pictureLevels()
     return levels.length ? [...levels.map((level) => ({ value: level.name, text: level.name })), { value: 'auto', text: labels.auto }] : []
@@ -205,6 +208,18 @@ $('retry').onclick = () => {
 }
 $('retry').textContent = labels.retry
 
+// Rust sends a piece only once it has all of it (up to ~10 MB at the top quality), so its first
+// byte can come late: hls.js's usual 10 s limit would drop it and start the same piece again. A
+// stuck download is ended by Rust instead (video_window.rs, player_client). The rest is hls.js's own.
+const PATIENT = { maxTimeToFirstByteMs: 60000, maxLoadTimeMs: 120000 }
+const loadPolicy = (timeouts, errors) => ({
+  default: {
+    ...PATIENT,
+    timeoutRetry: { maxNumRetry: timeouts, retryDelayMs: 0, maxRetryDelayMs: 0 },
+    errorRetry: { maxNumRetry: errors, retryDelayMs: 1000, maxRetryDelayMs: 8000 },
+  },
+})
+
 async function load() {
   let token
   try {
@@ -220,6 +235,8 @@ async function load() {
     maxMaxBufferLength: 60,
     backBufferLength: 30,
     startPosition: position,
+    fragLoadPolicy: loadPolicy(4, 6),
+    playlistLoadPolicy: loadPolicy(2, 2),
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
     const wanted = wantedLevel()

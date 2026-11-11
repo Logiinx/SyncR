@@ -5,11 +5,16 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** a Try again button when a YouTube video stops on an error, after one try on its own
 - **Improved** the player's settings menu: a short list, each part's choices open beside it on hover
+- **Improved** quality changes on Twitch videos: no more pause, the new quality takes over within seconds
+- **Improved** quick jumps in a row (a held arrow key, the 10 s buttons): one jump at the end, loading faster
 - **Improved** the video and playlist right-click menus: grouped, and your folders apart from the channel’s
 - **Changed** the Watched list to one plain list, last watched on top, without channel rows or folders
 - **Changed** the order inside channel rows and folders to oldest on top, like playlists
 - **Fixed** YouTube subtitles vanishing while the controls showed or while you dragged them
+- **Fixed** Twitch videos getting stuck loading the same part again and again on a slow connection
+- **Fixed** small issues: Twitch videos going back to normal speed after recovering from an error
 
 **App**
 - **Changed** every sliding switch (My games | Calendar, To watch | Watched…) to one look, a sunken track

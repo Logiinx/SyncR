@@ -5,11 +5,16 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** d’un bouton Réessayer quand une vidéo YouTube s’arrête sur une erreur, après un essai automatique
 - **Amélioration** du menu des réglages du lecteur : une liste courte, les choix de chaque partie s’ouvrent à côté au survol
+- **Amélioration** des changements de qualité sur Twitch : plus de pause, la nouvelle qualité prend le relais en quelques secondes
+- **Amélioration** des sauts rapides à la suite (flèche maintenue, boutons 10 s) : un seul saut à la fin, chargement plus rapide
 - **Amélioration** des menus clic droit des vidéos et des playlists : regroupés, vos dossiers à part de ceux de la chaîne
 - **Changement** de la liste Vues : une seule liste, la dernière vue en haut, sans lignes par chaîne ni dossiers
 - **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
 - **Correction** des sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
+- **Correction** des vidéos Twitch bloquées à recharger le même passage en boucle sur une connexion lente
+- **Correction** de petits problèmes : les vidéos Twitch revenaient à la vitesse normale après une erreur
 
 **Application**
 - **Changement** des sélecteurs coulissants (Mes jeux | Calendrier, À regarder | Vues…) : un seul style, en creux

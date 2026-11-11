@@ -213,6 +213,7 @@
     // Each box moves, not their layer: a moved layer gets painted under the video. Not while being
     // dragged: they follow the mouse, down to the very bottom.
     pageStyle.textContent = `${HIDE_YOUTUBE.join(', ')} { display: none !important; }
+      html.syncr-stopped .ytp-error { display: none !important; }
       ${data.animations === false ? '' : 'html:not(.syncr-moving-subtitles) .caption-window { transition: translate 0.2s ease; }'}
       html.syncr-controls-shown:not(.syncr-moving-subtitles) .caption-window { translate: 0 calc(-1 * var(--syncr-lift, 0px)); }
       @font-face { font-family: 'SyncR UI'; font-weight: 400; src: local('Segoe UI'), local('SegoeUI'); ascent-override: 101%; descent-override: 32.5%; line-gap-override: 0%; }`
@@ -514,8 +515,51 @@
     }, 300)
     // Loading is what YouTube says (3): at the end it stops without the video's usual events
     player.addEventListener('onStateChange', (state) => controls.loading(state === 3))
-    // Its error screen shows through, as the app gets told and opens the video another way
-    setInterval(() => { host.hidden = !!player.getVideoData?.()?.errorCode }, 500)
+    // An error before the video has played: YouTube's error screen shows through, as the app gets
+    // told and opens it another way (watchForRefusal). After: probably the network or YouTube's
+    // streaming, so it loads again at the same spot once by itself, then offers Try again (like
+    // the Twitch player). Speed, quality and subtitles are put back.
+    const AGAIN_AFTER = 60000 // ms: an error again sooner gets the Try again button
+    const SETTLE = 5000 // ms after reloading before an error counts
+    let playedId = null // the video that has played in this page
+    let lastTime = 0
+    let reloadedAt = 0
+    let restoreRate = null
+    const stopped = (on) => {
+      root.getElementById('message').hidden = !on
+      document.documentElement.classList.toggle('syncr-stopped', on)
+      if (on) controls.loading(false)
+    }
+    const reload = () => {
+      stopped(false)
+      reloadedAt = Date.now()
+      restoreRate = player.getPlaybackRate()
+      qualityFrom = QUALITIES.indexOf(chosenQuality || wanted.get('syncr-quality'))
+      needsLanguage = true
+      controls.loading(true)
+      player.loadVideoById({ videoId: playedId, startSeconds: lastTime })
+    }
+    root.getElementById('message-text').textContent = labels.stoppedLoading || ''
+    root.getElementById('retry').textContent = labels.retry || ''
+    root.getElementById('retry').onclick = reload
+    setInterval(() => {
+      const videoData = player.getVideoData?.()
+      const id = videoData?.video_id
+      if (!videoData?.errorCode) {
+        host.hidden = false
+        if (player.getPlayerState() !== 1 || !id) return
+        if (id !== playedId) restoreRate = null
+        playedId = id
+        lastTime = player.getCurrentTime() || 0
+        if (restoreRate !== null && player.getPlaybackRate() !== restoreRate) player.setPlaybackRate(restoreRate)
+        restoreRate = null
+        return
+      }
+      if (id !== playedId) return void (host.hidden = true)
+      if (Date.now() - reloadedAt < SETTLE || !root.getElementById('message').hidden) return
+      if (Date.now() - reloadedAt > AGAIN_AFTER) reload()
+      else stopped(true)
+    }, 500)
     box.focus()
     return true
   }

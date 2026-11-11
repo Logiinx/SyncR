@@ -92,9 +92,16 @@ function playerControls(env, media) {
   }
 
   let dragging = null // the moment being dragged to, 0 to 1
+  // Quick jumps in a row (a held arrow key, the 10 s buttons, number keys) make one: the first at
+  // once, the rest when they stop. Each jump drops what the player was downloading (on Twitch the
+  // app still fetches it to the end), so many in a row would only slow it down.
+  const GATHER = 300 // ms
+  let pending = null // where the gathered jumps lead, or none
+  let gatherTimer = null
+  const target = () => pending ?? media.time()
   function drawTime() {
     const length = media.duration() || 0
-    const shown = dragging !== null ? dragging * length : media.time()
+    const shown = dragging !== null ? dragging * length : target()
     const part = length ? shown / length : 0
     $('played').style.width = `${part * 100}%`
     $('track').style.setProperty('--played', `${part * 100}%`)
@@ -105,10 +112,24 @@ function playerControls(env, media) {
     $('buffer').style.width = `${length ? (media.bufferedEnd() / length) * 100 : 0}%`
   }
 
-  function jumpTo(seconds) {
+  // gathered: one of quick jumps in a row (above); otherwise at once
+  function jumpTo(seconds, gathered) {
     const length = media.duration()
     if (!length) return
-    media.seek(Math.min(Math.max(seconds, 0), length - 0.5))
+    const place = Math.min(Math.max(seconds, 0), length - 0.5)
+    const soon = gathered && gatherTimer !== null
+    clearTimeout(gatherTimer)
+    gatherTimer = gathered ? setTimeout(endGathering, GATHER) : null
+    pending = soon ? place : null
+    if (!soon) media.seek(place)
+    drawTime()
+  }
+  function endGathering() {
+    gatherTimer = null
+    if (pending === null) return
+    const place = pending
+    pending = null
+    media.seek(place)
     drawTime()
   }
 
@@ -288,8 +309,8 @@ function playerControls(env, media) {
 
   $('play').onclick = togglePlay
   $('big').onclick = togglePlay
-  $('back').onclick = () => jumpTo(media.time() - JUMP)
-  $('forward').onclick = () => jumpTo(media.time() + JUMP)
+  $('back').onclick = () => jumpTo(target() - JUMP, true)
+  $('forward').onclick = () => jumpTo(target() + JUMP, true)
   $('back').title = labels.back
   $('forward').title = labels.forward
 
@@ -619,8 +640,8 @@ function playerControls(env, media) {
     media.setVolume(level)
     flash(`${Math.round(level * 100)}%`)
   }
-  const jumpBack = () => { jumpTo(media.time() - JUMP); flash(`−${JUMP} s`) }
-  const jumpForward = () => { jumpTo(media.time() + JUMP); flash(`+${JUMP} s`) }
+  const jumpBack = () => { jumpTo(target() - JUMP, true); flash(`−${JUMP} s`) }
+  const jumpForward = () => { jumpTo(target() + JUMP, true); flash(`+${JUMP} s`) }
   const KEYS = {
     ' ': togglePlay,
     k: togglePlay,
@@ -648,7 +669,7 @@ function playerControls(env, media) {
     if (env.stopKeys && event.key !== 'Tab') event.stopImmediatePropagation()
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
     if (/^[0-9]$/.test(key)) {
-      jumpTo((media.duration() || 0) * (Number(key) / 10))
+      jumpTo((media.duration() || 0) * (Number(key) / 10), true)
       return event.preventDefault()
     }
     const action = KEYS[key]
