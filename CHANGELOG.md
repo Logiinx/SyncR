@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Video**
 - **Changed** the Watched list to one plain list, last watched on top, without channel rows or folders
 - **Changed** the order inside channel rows and folders to oldest on top, like playlists
+- **Fixed** YouTube subtitles vanishing while the controls showed or while you dragged them
 
 ## [0.69.0] - 2026-11-11
 

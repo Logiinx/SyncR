@@ -209,10 +209,12 @@
     const policy = trustedTypes.createPolicy('syncr-controls', { createHTML: (text) => text })
     const pageStyle = document.createElement('style')
     // Our font (the same numbers as index.css): a shadow root can't declare one
-    // Subtitles move up out of the way while our controls show (lift, below), as YouTube does for its own
+    // Subtitles move up out of the way while our controls show (lift, below), as YouTube does for its own.
+    // Each box moves, not their layer: a moved layer gets painted under the video. Not while being
+    // dragged: they follow the mouse, down to the very bottom.
     pageStyle.textContent = `${HIDE_YOUTUBE.join(', ')} { display: none !important; }
-      ${data.animations === false ? '' : '.ytp-caption-window-container { transition: transform 0.2s ease; }'}
-      html.syncr-controls-shown .ytp-caption-window-container { transform: translateY(calc(-1 * var(--syncr-lift, 0px))); }
+      ${data.animations === false ? '' : 'html:not(.syncr-moving-subtitles) .caption-window { transition: translate 0.2s ease; }'}
+      html.syncr-controls-shown:not(.syncr-moving-subtitles) .caption-window { translate: 0 calc(-1 * var(--syncr-lift, 0px)); }
       @font-face { font-family: 'SyncR UI'; font-weight: 400; src: local('Segoe UI'), local('SegoeUI'); ascent-override: 101%; descent-override: 32.5%; line-gap-override: 0%; }`
     document.head.append(pageStyle)
 
@@ -435,7 +437,8 @@
     const lift = () => {
       document.documentElement.classList.toggle('syncr-controls-shown', !box.classList.contains('quiet'))
       const bottom = look.x === undefined ? 0.02 : look.y
-      document.documentElement.style.setProperty('--syncr-lift', `${Math.max(0, (BAR_HEIGHT + 4) * (data.zoom || 1) - bottom * innerHeight)}px`)
+      // In the box's own pixels: its size is a zoom
+      document.documentElement.style.setProperty('--syncr-lift', `${Math.max(0, (BAR_HEIGHT + 4) * (data.zoom || 1) - bottom * innerHeight) / (look.size || 1)}px`)
     }
     // Zoom keeps their middle and bottom where they were (a size, not an animation)
     const drawLook = () => {
@@ -478,6 +481,7 @@
       const dx = event.clientX - moving.fromX
       const dy = event.clientY - moving.fromY
       if (!moving.moved && Math.hypot(dx, dy) < PLAIN_CLICK) return
+      if (!moving.moved) document.documentElement.classList.add('syncr-moving-subtitles')
       moving.moved = true
       const within = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high))
       look.x = within(moving.x + dx / moving.frame.width, moving.half, 1 - moving.half)
@@ -492,6 +496,7 @@
       }
       moving = null
       box.classList.remove('moving-subtitles')
+      document.documentElement.classList.remove('syncr-moving-subtitles')
     }
     surface.addEventListener('pointerup', endMove)
     surface.addEventListener('pointercancel', endMove)
