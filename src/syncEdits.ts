@@ -7,7 +7,7 @@
 import { Extension, type Editor, type JSONContent } from '@tiptap/react'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { diffNotes, type Line, type Row, type Token } from './noteDiff'
 import { animationsOn } from './animations'
 
@@ -46,15 +46,47 @@ export function showSyncEdits(editor: Editor, before: JSONContent) {
   const changed = rows.filter((row) => row.op !== 'same').length
   if (changed === 0 || changed > MOST_LINES) return
   const { doc } = editor.state
-  const decorations = rows.flatMap((row, i) =>
-    row.op === 'same' ? [] : row.op === 'removed' ? goneLine(doc, row.line, rows.slice(0, i), rows.slice(i + 1)) : lineDecorations(doc, row),
+  const { view } = editor
+  const decorations = inClosedSections(
+    view,
+    rows.flatMap((row, i) =>
+      row.op === 'same' ? [] : row.op === 'removed' ? goneLine(doc, row.line, rows.slice(0, i), rows.slice(i + 1)) : lineDecorations(doc, row),
+    ),
   )
   if (decorations.length === 0) return
-  const { view } = editor
   view.dispatch(view.state.tr.setMeta(key, DecorationSet.create(doc, decorations)).setMeta('addToHistory', false))
   setTimeout(() => {
     if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, null).setMeta('addToHistory', false))
   }, SHOWN_MS)
+}
+
+// A change inside a closed section can't be seen: the section's title glows instead, once (the
+// outermost closed one: the title on screen). Open or closed isn't in the note: read on screen.
+function inClosedSections(view: EditorView, decorations: Decoration[]): Decoration[] {
+  const { doc } = view.state
+  const titles = new Map<number, Decoration>() // by section position
+  const shown = decorations.filter((decoration) => {
+    const $pos = doc.resolve(decoration.from)
+    for (let depth = 1; depth <= $pos.depth; depth++) {
+      if ($pos.node(depth).type.name !== 'details') continue
+      const section = $pos.before(depth)
+      if ((view.nodeDOM(section) as HTMLElement | null)?.classList.contains('is-open')) continue
+      // Its title (first child): the text, or the whole title when it has none
+      const title = $pos.node(depth).firstChild
+      if (!titles.has(section) && title) {
+        const from = section + 2
+        titles.set(
+          section,
+          title.content.size
+            ? Decoration.inline(from, from + title.content.size, { class: CLASS })
+            : Decoration.node(section + 1, section + 1 + title.nodeSize, { class: CLASS }),
+        )
+      }
+      return false
+    }
+    return true
+  })
+  return [...shown, ...titles.values()]
 }
 
 // Removed words: a red, struck-through copy where they were, for a moment (a widget: drawn by
