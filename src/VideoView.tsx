@@ -15,6 +15,7 @@ import { dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, moveToFolder, renameFolder } from './videoFolders'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
+import { linkIn, openPastedLink } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
 import { useResumePosition, videoClock } from './videoPositions'
 
@@ -233,7 +234,7 @@ function VideoView() {
   const { checking, errors } = useChecking()
   const [list, setList] = useState<List>('towatch')
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState<string | null>(null) // Add a follow open, with the link it starts with
   const [addingVideo, setAddingVideo] = useState(false)
   const [addingPlaylist, setAddingPlaylist] = useState(false)
   const [playlistMenu, setPlaylistMenu] = useState<{ playlist: VideoPlaylist; x: number; y: number } | null>(null)
@@ -275,6 +276,36 @@ function VideoView() {
     setChannel('all')
     openRow(followId)
   }
+  // A link pasted with Ctrl+V anywhere in the tab but a text field or a window: a line under the
+  // bar while it's read, or what went wrong (gone after a while)
+  const [pasted, setPasted] = useState<{ busy: boolean; message: string } | null>(null)
+  const pasteAt = useRef(0)
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"]') || document.querySelector('.dialog')) return
+      const url = linkIn(event.clipboardData?.getData('text/plain') ?? '')
+      if (!url) return
+      event.preventDefault()
+      const at = ++pasteAt.current
+      setPasted({ busy: true, message: t('Opening the link…') })
+      openPastedLink(url)
+        .then((result) => {
+          if (at !== pasteAt.current) return
+          setPasted(null)
+          if (result.kind === 'channel') setAdding(result.link)
+          else if (result.kind === 'playlist') showAdded(result.playlistId)
+          else if (result.added) showAdded(result.followId)
+        })
+        .catch((e) => {
+          if (at !== pasteAt.current) return
+          setPasted({ busy: false, message: e instanceof Error ? e.message : String(e) })
+          setTimeout(() => at === pasteAt.current && setPasted(null), 8000)
+        })
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [])
   const allFolders = feed?.folders ?? []
   const folders = shownChannel === 'all' ? allFolders : []
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
@@ -454,6 +485,17 @@ function VideoView() {
             </button>
           </div>
         </div>
+        {pasted && (
+          <p className={`games-empty${pasted.busy ? '' : ' error'}`}>
+            {pasted.busy ? (
+              <span className="loading-line">
+                <Spinner size={13} /> {pasted.message}
+              </span>
+            ) : (
+              pasted.message
+            )}
+          </p>
+        )}
         {errors.map((error) => (
           <p key={error} className="games-empty error">{error}</p>
         ))}
@@ -474,7 +516,7 @@ function VideoView() {
         )}
         <ul className="video-list" ref={listRef}>{rows}</ul>
       </div>
-      {adding && <FollowDialog onClose={() => setAdding(false)} />}
+      {adding !== null && <FollowDialog startLink={adding} onClose={() => setAdding(null)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {addingPlaylist && <AddPlaylistDialog onAdded={showAdded} onClose={() => setAddingPlaylist(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
@@ -489,7 +531,7 @@ function VideoView() {
               ? [
                   { label: t('Add a video'), icon: Plus, onClick: () => setAddingVideo(true) },
                   { label: t('Add a playlist'), icon: ListVideo, onClick: () => setAddingPlaylist(true) },
-                  { label: t('Add a follow'), icon: Plus, onClick: () => setAdding(true) },
+                  { label: t('Add a follow'), icon: Plus, onClick: () => setAdding('') },
                   { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null }) },
                 ]
               : [

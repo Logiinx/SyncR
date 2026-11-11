@@ -14,11 +14,12 @@ import { channelGames, searchTwitchGames } from './videoTwitch'
 
 // Add a follow, or change one: which channel (only when adding), which of its videos count, and
 // (only when adding) how far back to start.
-export function FollowDialog({ follow, onClose }: { follow?: VideoFollow; onClose: () => void }) {
+// startLink: a pasted channel link, already in the field
+export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFollow; startLink?: string; onClose: () => void }) {
   // Each label names its input: without that it takes the first thing it can inside it, the ⓘ
   // button, which then lights up when the mouse is anywhere on the field and opens on its click
   const fieldId = useId()
-  const [link, setLink] = useState('')
+  const [link, setLink] = useState(startLink ?? '')
   const [only, setOnly] = useState(follow?.onlyWords.join(', ') ?? '')
   const [except, setExcept] = useState(follow?.exceptWords.join(', ') ?? '')
   const [games, setGames] = useState(follow?.onlyGames ?? [])
