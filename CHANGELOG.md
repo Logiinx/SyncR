@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.71.0] - 2026-11-12
+
 **Games**
 - **Added** HowLongToBeat play times: all three in the game window, the main story on every game in the list
 
