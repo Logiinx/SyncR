@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod link_shortcut;
 mod video_extensions;
 mod video_window;
 
@@ -328,7 +329,8 @@ pub fn run() {
       video_extensions::video_extension_remove,
       video_extensions::video_extension_enable,
       video_extensions::video_extension_settings,
-      video_extensions::video_extensions_done
+      video_extensions::video_extensions_done,
+      link_shortcut::start_link_shortcut
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

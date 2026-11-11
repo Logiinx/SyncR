@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
-- **Added** pasting a YouTube or Twitch link in the Video tab with Ctrl+V: a video plays right away
+- **Added** Ctrl+V in the Video tab, or Ctrl+Alt+Shift+V anywhere, to open a copied YouTube or Twitch link
 - **Changed** playlists to play oldest first by release date, with YouTube's own order still in their right-click menu
 
 ## [0.67.0] - 2026-11-11

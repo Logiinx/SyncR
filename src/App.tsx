@@ -23,6 +23,9 @@ import { GAMES_TAB, startGameChecks } from './games'
 import { MAIL_TAB } from './mailbox'
 import { startVideoChecks, useVideoEnabled, useVideoFeed, VIDEO_TAB } from './video'
 import VideoView from './VideoView'
+import { startLinkShortcut } from './videoPaste'
+import { isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
 import { startCalendarChecks } from './calendarEvents'
@@ -42,6 +45,8 @@ function App() {
   useLanguage()
   const videoOn = useVideoEnabled()
   useEffect(() => (videoOn ? startVideoChecks() : undefined), [videoOn])
+  // Ctrl+Alt+Shift+V opens a copied video link (videoPaste.ts)
+  useEffect(() => (videoOn ? startLinkShortcut() : undefined), [videoOn])
   // Remembered after a restart (per device)
   const [openTabs, setOpenTabs] = useLocalState<string[]>('syncr.tabs', [])
   const [activeId, setActiveId] = useLocalState<string | null>('syncr.activeTab', null)
@@ -153,6 +158,19 @@ function App() {
     onFollowLink(openNote, (message) =>
       setDialog({ title: t('Link'), message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} }),
     )
+  })
+
+  // The link shortcut has something to show (videoPaste.ts): the window comes up on the Video tab
+  useEffect(() => {
+    const onShow = () => {
+      openNote(VIDEO_TAB)
+      if (isTauri()) {
+        const main = getCurrentWindow()
+        void main.unminimize().then(() => main.show()).then(() => main.setFocus())
+      }
+    }
+    window.addEventListener('show-video-tab', onShow)
+    return () => window.removeEventListener('show-video-tab', onShow)
   })
 
   function openNote(id: string) {

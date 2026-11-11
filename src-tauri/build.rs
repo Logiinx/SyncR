@@ -23,6 +23,7 @@ fn main() {
     "video_extension_enable",
     "video_extension_settings",
     "video_extensions_done",
+    "start_link_shortcut",
   ])))
   .expect("failed to build");
 }

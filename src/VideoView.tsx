@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListChecks, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
@@ -15,7 +15,7 @@ import { dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, moveToFolder, renameFolder } from './videoFolders'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
-import { linkIn, openPastedLink } from './videoPaste'
+import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
 import { useResumePosition, videoClock } from './videoPositions'
 
@@ -276,10 +276,16 @@ function VideoView() {
     setChannel('all')
     openRow(followId)
   }
-  // A link pasted with Ctrl+V anywhere in the tab but a text field or a window: a line under the
-  // bar while it's read, or what went wrong (gone after a while)
-  const [pasted, setPasted] = useState<{ busy: boolean; message: string } | null>(null)
-  const pasteAt = useRef(0)
+  // A link pasted with Ctrl+V anywhere in the tab but a text field or a window, or copied before
+  // the shortcut (videoPaste.ts): its line under the bar, then what to show once it's read
+  const pasted = useSyncExternalStore(subscribePaste, pasteLine)
+  const nextAction = useSyncExternalStore(subscribePaste, pasteAction)
+  useEffect(() => {
+    if (!nextAction) return
+    pasteActionDone()
+    if (nextAction.kind === 'follow') setAdding(nextAction.link)
+    else showAdded(nextAction.id)
+  })
   useEffect(() => {
     function onPaste(event: ClipboardEvent) {
       const target = event.target as HTMLElement | null
@@ -287,21 +293,7 @@ function VideoView() {
       const url = linkIn(event.clipboardData?.getData('text/plain') ?? '')
       if (!url) return
       event.preventDefault()
-      const at = ++pasteAt.current
-      setPasted({ busy: true, message: t('Opening the link…') })
-      openPastedLink(url)
-        .then((result) => {
-          if (at !== pasteAt.current) return
-          setPasted(null)
-          if (result.kind === 'channel') setAdding(result.link)
-          else if (result.kind === 'playlist') showAdded(result.playlistId)
-          else if (result.added) showAdded(result.followId)
-        })
-        .catch((e) => {
-          if (at !== pasteAt.current) return
-          setPasted({ busy: false, message: e instanceof Error ? e.message : String(e) })
-          setTimeout(() => at === pasteAt.current && setPasted(null), 8000)
-        })
+      void pasteLink(url, false)
     }
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)

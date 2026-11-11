@@ -41,6 +41,7 @@
     "allow-video-extension-remove",
     "allow-video-extension-enable",
     "allow-video-extension-settings",
-    "allow-video-extensions-done"
+    "allow-video-extensions-done",
+    "allow-start-link-shortcut"
   ]
 }

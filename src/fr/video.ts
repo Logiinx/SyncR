@@ -27,6 +27,7 @@ export const video = {
   'This video is already in a playlist': 'Cette vidéo est déjà dans une playlist',
   'Only YouTube and Twitch links can be opened here': 'Seuls les liens YouTube et Twitch s’ouvrent ici',
   'Opening the link…': 'Ouverture du lien…',
+  'The copied text isn’t a YouTube or Twitch link': 'Le texte copié n’est pas un lien YouTube ou Twitch',
   'Edit follow': 'Modifier le suivi',
   Follows: 'Chaînes suivies',
   'Channel link': 'Lien de la chaîne',
