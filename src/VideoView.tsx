@@ -358,10 +358,15 @@ function VideoView() {
   const allPlaylistsIn = (folder: VideoFolder): typeof playlists => [...playlistsIn(folder.id), ...foldersIn(folder.id).flatMap(allPlaylistsIn)]
   // A folder, then what's in it when it's open: its sub-folders, its playlists, then its videos,
   // oldest on top like a playlist. Only in To watch, empty ones too, or a new folder couldn't be
-  // reached. Its count is its own videos; its "new" also counts its playlists' new videos.
+  // reached. Its count is its own videos and playlists ("3 videos · 1 playlist", "1 playlist"); its
+  // "new" also counts its playlists' new videos.
   function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
     const inside = allIn(folder)
-    const newInPlaylists = allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes).filter(tagNew).length
+    const lists = allPlaylistsIn(folder)
+    const newInPlaylists = lists.flatMap(({ videos: episodes }) => episodes).filter(tagNew).length
+    const countText = lists.length
+      ? [inside.length ? plural(inside.length, '{n} video', '{n} videos') : '', plural(lists.length, '{n} playlist', '{n} playlists')].filter(Boolean).join(' · ')
+      : undefined
     const open = openGroups.includes(folder.id)
     return [
       <FoldRow
@@ -371,6 +376,7 @@ function VideoView() {
         icon={<span className="video-follow-icon video-folder-icon"><Folder size={15} /></span>}
         title={folder.name}
         count={inside.length}
+        countText={countText}
         newest={[...inside].sort((a, b) => b.published - a.published)[0]}
         newCount={inside.filter(tagNew).length + newInPlaylists}
         open={open}

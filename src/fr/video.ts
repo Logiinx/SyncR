@@ -205,6 +205,8 @@ export const video = {
   'Fold each channel’s videos into one row': 'Replier les vidéos de chaque chaîne sur une seule ligne',
   '{n} video': '{n} vidéo',
   '{n} videos': '{n} vidéos',
+  '{n} playlist': '{n} playlist',
+  '{n} playlists': '{n} playlists',
   '{n} new video': '{n} nouvelle vidéo',
   '{n} new videos': '{n} nouvelles vidéos',
   'Remove from Watched': 'Retirer des vues',
