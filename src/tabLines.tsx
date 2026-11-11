@@ -72,16 +72,15 @@ export function FillSwitch<T extends string | number>({
 }) {
   const row = useRef<HTMLDivElement>(null)
   const lines = useTabLines(row, String(value), true)
-  return (
+  const group = { title, role: label ? 'group' : undefined, 'aria-label': label }
+  // The track holds only the buttons: "before" sits outside it, in the outer row
+  const track = (
     <div
-      className={`${className} fill-switch`}
+      className={before ? 'fill-switch' : `${className} fill-switch`}
       ref={row}
       onPointerLeave={lines.onRowLeave}
-      title={title}
-      role={label ? 'group' : undefined}
-      aria-label={label}
+      {...(before ? {} : group)}
     >
-      {before}
       {options.map((option) => {
         let buttonClass = option.value === value ? 'active' : ''
         if (lines.hovered === String(option.value)) buttonClass += ' hovered'
@@ -99,6 +98,14 @@ export function FillSwitch<T extends string | number>({
         )
       })}
     </div>
+  )
+  return before ? (
+    <div className={className} {...group}>
+      {before}
+      {track}
+    </div>
+  ) : (
+    track
   )
 }
 
@@ -161,10 +168,13 @@ function useSlidingLine(
       left = Math.max(left, bounds.left)
       width = right - left
     }
+    // A fill is placed from inside the row's frame (a switch's track has one), not its outer edge
+    const frameLeft = fill ? row.current?.clientLeft ?? 0 : 0
+    const frameTop = fill ? row.current?.clientTop ?? 0 : 0
     const style = s.copy.style
     style.display = width > 0 ? '' : 'none'
-    style.left = `${left / zoom}px`
-    style.top = `${top / zoom}px`
+    style.left = `${left / zoom - frameLeft}px`
+    style.top = `${top / zoom - frameTop}px`
     style.width = `${width / zoom}px`
     style.height = `${s.now.height / zoom}px`
   }

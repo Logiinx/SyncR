@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 - **Changed** the order inside channel rows and folders to oldest on top, like playlists
 - **Fixed** YouTube subtitles vanishing while the controls showed or while you dragged them
 
+**App**
+- **Changed** every sliding switch (My games | Calendar, To watch | Watched…) to one look, a sunken track
+
 ## [0.69.0] - 2026-11-11
 
 **Video**

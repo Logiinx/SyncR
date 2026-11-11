@@ -2,6 +2,7 @@
   interpolate-size: allow-keywords; /* heights can grow from 0 to "auto" (animations.ts) */
   --bg: #161616;
   --bg-raised: #202020;
+  --bg-sunken: #101010; /* sliding switches' track on a page: darker than it (in a window: --bg) */
   --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
   --border: #2a2a2a;
   --border-strong: #3a3a3a; /* where --border barely shows (raised backgrounds), table cells, slider track */
@@ -569,14 +570,42 @@ button {
 
 /* Filled switches (FillSwitch in tabLines.tsx): the chosen button's blue fill and a faint one
    under the mouse, behind the text. They slide the same way; the moving copy sits in the row
-   (first, so the buttons and their text cover it). */
+   (first, so the buttons and their text cover it). One look everywhere (user's pick, from the
+   game window's status): a sunken track with a thin frame, the fill 2 px inside it. As tall as
+   the toolbar buttons next to it (frame 1 + 2 + 3 = their padding 5 + border 1). */
 .fill-switch {
   position: relative;
+  display: flex;
+  width: fit-content;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-sunken);
+}
+
+.dialog .fill-switch {
+  background: var(--bg);
 }
 
 .fill-switch > button {
   position: relative;
   z-index: 0; /* keeps its fill (z-index -1) behind its text but above the row */
+}
+
+/* After the toolbars' own button look (.games-views button), which they'd otherwise take */
+.fill-switch.fill-switch > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.fill-switch.fill-switch > button:hover,
+.fill-switch.fill-switch > button.active {
+  color: var(--text);
 }
 
 .tab-fill {
@@ -5251,9 +5280,7 @@ h3.games-group-title {
 }
 
 .games-views-switch {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
+  margin-inline: auto;
 }
 
 .calendar-controls {
@@ -5274,28 +5301,15 @@ h3.games-group-title {
   }
 }
 
-.games-views button,
-.history-switch button {
+.games-views button {
   padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-dim);
 }
 
-.games-views button:hover,
-.history-switch button:hover {
+.games-views button:hover {
   color: var(--text);
-}
-
-/* The blue fill: .tab-fill (FillSwitch), over the border */
-.games-views button.active,
-.history-switch button.active {
-  color: var(--text);
-}
-
-.games-views .tab-fill,
-.history-switch .tab-fill {
-  inset: -1px;
 }
 
 /* Calendar: "Top 100 300 500 1000" on the right of the view buttons */
@@ -5308,21 +5322,19 @@ h3.games-group-title {
   font-size: 0.85em;
 }
 
-.games-views .calendar-top button {
-  padding: 4px 8px;
+.calendar-top .fill-switch.fill-switch > button {
+  padding: 2px 8px;
 }
 
 /* Grid / list switch on the right (PC only: the phone always shows the list) */
 .calendar-layouts {
-  display: flex;
-  gap: 4px;
   margin-left: 8px;
 }
 
-.games-views .calendar-layouts button {
-  display: flex;
-  align-items: center;
-  padding: 5px 8px;
+/* As tall as Top's buttons next to it (text 0.85em) */
+.calendar-layouts.fill-switch > button {
+  height: 22px;
+  padding: 0 8px;
 }
 
 @media (max-width: 699px) {
@@ -5419,29 +5431,9 @@ h3.games-group-title {
   color: var(--link);
 }
 
-/* Covers / list: a small joined switch at the end of the row */
-.games-status-tabs .games-layouts {
-  gap: 2px;
-  padding: 2px;
-  border-radius: 6px;
-  background: var(--bg-raised);
-}
-
-.games-status-tabs .games-layouts button {
-  display: flex;
-  align-items: center;
-  padding: 4px 7px;
-  border-radius: 4px;
-  color: var(--text-dim);
-}
-
-.games-status-tabs .games-layouts button:hover {
-  color: var(--text);
-}
-
-/* The blue fill: .tab-fill (FillSwitch) */
-.games-status-tabs .games-layouts button.active {
-  color: var(--text);
+/* Covers / list: at the end of the row, a bit smaller than the calendar's */
+.games-status-tabs .games-layouts.fill-switch > button {
+  padding: 0 7px;
 }
 
 .games-shelf-empty {
@@ -6540,14 +6532,9 @@ img[data-fade] {
   text-align: center;
 }
 
-/* Differences | Full text */
-.history-switch {
-  display: flex;
-  gap: 4px;
-}
-
-.history-switch button {
-  padding: 3px 10px;
+/* Differences | Full text: smaller text, in the header bar */
+.history-switch.fill-switch > button {
+  padding: 2px 10px;
   font-size: 13px;
 }
 
@@ -6708,16 +6695,13 @@ button.history-row.selected {
 }
 
 /* Status: one joined bar */
+/* The whole width (the look: .fill-switch) */
 .gd-status {
-  display: flex;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
+  width: auto;
 }
 
 /* One line; on a narrow screen at a big app scale "Upcoming" wraps instead of overflowing */
-.gd-status button {
+.gd-status.fill-switch > button {
   flex: 1 1 auto;
   padding: 5px 2px;
   border-radius: 6px;
@@ -6725,15 +6709,6 @@ button.history-row.selected {
   font-size: 0.85em;
   line-height: 1.25;
   overflow-wrap: normal;
-}
-
-.gd-status button:hover {
-  color: var(--text);
-}
-
-/* The blue fill slides between them (FillSwitch, tabLines.tsx) */
-.gd-status button.active {
-  color: var(--text);
 }
 
 /* Review and note: a small quiet label above the text box */
@@ -7675,12 +7650,6 @@ button.history-row.selected {
 }
 
 /* Showing Watched instead of To watch: says so, and ✕ goes back */
-/* To watch | Watched: its buttons look like the Games views' (.games-views button) */
-.video-list-switch {
-  display: flex;
-  gap: 4px;
-}
-
 .video-channel-filter {
   max-width: 200px;
   padding: 4px 8px;

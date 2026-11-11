@@ -10,6 +10,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
 - **Correction** des sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
 
+**Application**
+- **Changement** des sélecteurs coulissants (Mes jeux | Calendrier, À regarder | Vues…) : un seul style, en creux
+
 ## [0.69.0] - 2026-11-11
 
 **Vidéo**
