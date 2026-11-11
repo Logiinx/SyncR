@@ -126,11 +126,15 @@ const controls = playerControls({
       timelineMenu(menu)
     },
     keys: { c: () => toggleChat() },
-    keepShowing: () => !$('goto').hidden,
-    beforeMenu: () => closeGoTo(),
-    pictureClick: () => {
-      if ($('goto').hidden) return false
+    keepShowing: () => !$('goto').hidden || gamesOpen(),
+    beforeMenu: () => {
       closeGoTo()
+      closeGames()
+    },
+    pictureClick: () => {
+      if ($('goto').hidden && !gamesOpen()) return false
+      closeGoTo()
+      closeGames()
       return true
     },
   },

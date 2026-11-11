@@ -168,6 +168,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       skipMuted: t('Skip muted part'),
       barTitle: t('Progress bar'),
       gameChanges: t('Game changes'),
+      games: t('Games'),
       goTo: t('Go to a time'),
       goToHint: t('A place in the video, like 1:23:45, then Enter'),
       goToHintDay: t('A time of day like 21:30, or a place in the video like 1:23:45, then Enter'),

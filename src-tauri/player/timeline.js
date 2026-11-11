@@ -1,7 +1,7 @@
 // What the progress bar shows besides the time (uses player.js's video, labels, stored, jumpTo).
 // Muted parts come from the playlist, previews, game changes and the start time from Twitch's
 // answer about the video. If one of them can't be had, only that extra is missing: the video isn't affected.
-const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName } } } } } } } }'
+const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL game { displayName boxArtURL(width: 54, height: 72) } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName boxArtURL(width: 54, height: 72) } } } } } } } }'
 const DETAILS_TRIES = 3
 const DETAILS_AGAIN = 20000 // ms after a failed answer
 const MUTED_GAP = 1 // seconds: parts closer than this count as one
@@ -36,15 +36,18 @@ $('skip').onclick = () => {
 }
 
 // ---- Game changes -------------------------------------------------------------------------------
-let games = [] // { at: seconds, name }, one per change: Twitch can list the same game twice in a row
+let games = [] // { at: seconds, name, picture }, one per change: Twitch can list the same game twice in a row
 let showGames = stored('player.gameChanges', 1) === 1
-function noteGames(moments) {
+function noteGames(moments, videoGame) {
   const list = moments
-    .map(({ node }) => ({ at: node.positionMilliseconds / 1000, name: node.details?.game?.displayName }))
+    .map(({ node }) => ({ at: node.positionMilliseconds / 1000, name: node.details?.game?.displayName, picture: node.details?.game?.boxArtURL }))
     .filter((game) => game.name && game.at >= 0)
     .sort((a, b) => a.at - b.at)
   games = list.filter((game, index) => index === 0 || game.name !== list[index - 1].name)
+  // A stream with one game has no changes: only the video's own game is known
+  if (!games.length && videoGame?.displayName) games = [{ at: 0, name: videoGame.displayName, picture: videoGame.boxArtURL }]
   drawMarks()
+  drawGamesButton()
 }
 // A stream with one game has nothing to tell
 const gamesShown = () => showGames && games.length > 1
@@ -63,6 +66,111 @@ function drawMarks() {
   setMarked(mutedParts.map((part) => ({ ...part, color: 'var(--text-orange, #f0a052)' })))
   setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }
+
+// ---- The games button (left end of the bar) and its list: jump to where a game starts ------------
+// Like Twitch's own player. Shown once Twitch has named a game, also when there's only one.
+const GAMEPAD = '<svg viewBox="0 0 24 24"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>'
+const gamesButton = document.createElement('button')
+gamesButton.className = 'button'
+gamesButton.id = 'games'
+gamesButton.title = labels.games
+gamesButton.hidden = true
+$('bar').prepend(gamesButton)
+// Bottoms in line with the ⚙️ menu's
+const gamesBox = document.createElement('div')
+gamesBox.id = 'games-box'
+gamesBox.hidden = true
+gamesBox.innerHTML = '<div id="games-list"></div>'
+player.append(gamesBox)
+
+let gameShown = -1 // the game the button shows (its index), so it's only drawn again when that changes
+const gameIndexAt = (seconds) => {
+  let found = 0
+  games.forEach((game, index) => { if (game.at <= seconds) found = index })
+  return found
+}
+// The box art, or the gamepad when Twitch has none (or it doesn't load)
+function gamePicture(game) {
+  const holder = document.createElement('span')
+  holder.className = 'game-art'
+  if (!game.picture) {
+    holder.innerHTML = GAMEPAD
+    return holder
+  }
+  const picture = document.createElement('img')
+  picture.src = game.picture
+  picture.alt = ''
+  picture.onerror = () => { holder.innerHTML = GAMEPAD }
+  holder.append(picture)
+  return holder
+}
+// "2 h 05 min", "45 min", "< 1 min" (the same in English and French)
+function playedFor(seconds) {
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 1) return '< 1 min'
+  const hours = Math.floor(minutes / 60)
+  return hours ? `${hours} h ${String(minutes % 60).padStart(2, '0')} min` : `${minutes} min`
+}
+
+function drawGamesButton() {
+  gamesButton.hidden = !games.length
+  if (!games.length) return closeGames()
+  const index = gameIndexAt(video.currentTime)
+  if (index === gameShown) return
+  gameShown = index
+  gamesButton.textContent = ''
+  gamesButton.append(gamePicture(games[index]))
+  if (!gamesBox.hidden) drawGamesList()
+}
+
+function drawGamesList() {
+  const list = $('games-list')
+  const scrolled = list.scrollTop
+  list.textContent = ''
+  const title = document.createElement('div')
+  title.className = 'menu-title'
+  title.textContent = labels.games
+  list.append(title)
+  const current = gameIndexAt(video.currentTime)
+  games.forEach((game, index) => {
+    const line = document.createElement('button')
+    line.className = `menu-item game-line${index === current ? ' on' : ''}`
+    const name = document.createElement('span')
+    name.className = 'game-name'
+    name.textContent = name.title = game.name
+    const end = games[index + 1]?.at ?? video.duration
+    const length = document.createElement('span')
+    length.className = 'game-length'
+    length.textContent = end > game.at ? playedFor(end - game.at) : ''
+    line.append(gamePicture(game), name, length)
+    line.onclick = () => {
+      closeGames()
+      jumpTo(game.at)
+    }
+    list.append(line)
+  })
+  list.scrollTop = scrolled
+}
+
+const gamesOpen = () => !gamesBox.hidden
+function openGames() {
+  closeMenu()
+  closeGoTo()
+  gamesBox.hidden = false
+  gamesButton.classList.add('open')
+  drawGamesList()
+  $('games-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' })
+  wake()
+}
+function closeGames() {
+  gamesBox.hidden = true
+  gamesButton.classList.remove('open')
+}
+gamesButton.onclick = () => (gamesOpen() ? closeGames() : openGames())
+video.addEventListener('timeupdate', drawGamesButton)
+video.addEventListener('seeking', drawGamesButton)
+video.addEventListener('durationchange', () => { if (gamesOpen()) drawGamesList() })
+addEventListener('keydown', (event) => { if (event.key === 'Escape') closeGames() })
 
 // ---- Preview pictures ---------------------------------------------------------------------------
 // Twitch's own list: about 200 small pictures per video, on sheets of a few rows and columns
@@ -165,6 +273,7 @@ function closeGoTo() {
 }
 function openGoTo() {
   closeMenu()
+  closeGames()
   const box = $('goto')
   box.hidden = false
   $('time').classList.add('open')
@@ -223,7 +332,7 @@ async function askDetails(tries) {
     const details = (await response.json()).data?.video
     if (!details) return
     noteStart(details.recordedAt)
-    noteGames(details.moments?.edges || [])
+    noteGames(details.moments?.edges || [], details.game)
     if (details.seekPreviewsURL) await askPreviews(details.seekPreviewsURL)
   } catch (error) {
     console.error(error)

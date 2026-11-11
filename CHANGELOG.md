@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Added** a games button at the left of the Twitch player's bar: pick a game in the list to jump to where it starts
+
 ## [0.71.0] - 2026-11-12
 
 **Games**

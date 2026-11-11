@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Ajout** d’un bouton des jeux à gauche de la barre du lecteur Twitch : choisissez un jeu dans la liste pour aller à son début
+
 ## [0.71.0] - 2026-11-12
 
 **Jeux**
