@@ -6,7 +6,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Blockquote } from '@tiptap/extension-blockquote'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Placeholder } from '@tiptap/extensions'
-import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { BulletList, TaskItem, TaskList } from '@tiptap/extension-list'
 import { Link } from '@tiptap/extension-link'
 import { Color, TextStyle } from '@tiptap/extension-text-style'
 import { Highlight } from '@tiptap/extension-highlight'
@@ -42,7 +42,13 @@ const CHEVRON = svgIcon('chevronRight', 14)
 
 // Also used by the Board's cards (Card.tsx), so they edit the same way as notes
 export const extensions = [
-  StarterKit.configure({ link: false, codeBlock: false, blockquote: false }),
+  StarterKit.configure({ link: false, codeBlock: false, blockquote: false, bulletList: false }),
+  // Typing "- " or "* " starts a bullet list; "+ " stays as typed (TipTap also takes "+")
+  BulletList.extend({
+    addInputRules() {
+      return [wrappingInputRule({ find: /^\s*([-*])\s$/, type: this.type })]
+    },
+  }),
   // Typing "> " makes a quote only at the very start of a line (not after spaces, and not on
   // a line aligned under ">", where it continues the path)
   Blockquote.extend({

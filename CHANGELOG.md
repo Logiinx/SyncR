@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Notes**
+- **Changed** typing "+ " at the start of a line so it stays as typed instead of starting a bullet list
+
 ## [0.66.2] - 2026-11-10
 
 **Notes**

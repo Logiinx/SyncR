@@ -98,7 +98,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
         extension.name === 'taskItem'
           ? TaskItem.configure({ nested: true, onReadOnlyChecked: () => true })
           : extension.name === 'starterKit'
-            ? StarterKit.configure({ link: false, codeBlock: false, blockquote: false, trailingNode: false })
+            ? StarterKit.configure({ link: false, codeBlock: false, blockquote: false, bulletList: false, trailingNode: false })
             : extension,
       ),
     [],
