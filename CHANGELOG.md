@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Sync**
-- **Added** a brief green or red tint on notes and Board cards that your other device added or deleted
+- **Added** a brief green, blue or red tint on what your other device added, edited or deleted, even inside notes
 
 **Notes**
 - **Changed** typing "+ " at the start of a line so it stays as typed instead of starting a bullet list

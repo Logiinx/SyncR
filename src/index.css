@@ -3058,6 +3058,24 @@ button {
   }
 }
 
+/* Words the other device added or changed, after sync updated the open note (syncEdits.ts):
+   green like sync's tint on notes and cards (animations.ts), 0.2 s in, 2 s, 0.8 s out */
+.tiptap .sync-edit {
+  animation: sync-edit 3s ease-out;
+  border-radius: 3px;
+}
+
+@keyframes sync-edit {
+  0%,
+  100% {
+    background: transparent;
+  }
+  7%,
+  73% {
+    background: var(--hl-green);
+  }
+}
+
 /* A search match after opening a result (noteSearch.ts): the app's blue, a bit stronger than
    the blue highlighter, pulsing 3 times (fade in, fade out). SEARCH_FLASH_MS in noteLinks.ts
    is the total (3 × 1.2 s). */

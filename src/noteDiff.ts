@@ -21,6 +21,9 @@ export interface Line {
   // doesn't make every later item look changed)
   tokens: Token[]
   key: string // kind + depth + words + formatting: equal keys = unchanged line
+  // Where it is in the note: the child numbers from the top down to the node it comes from
+  // (a code block's line: its line number after them). Used to find it on screen (syncEdits.ts).
+  path: number[]
 }
 
 // Part of a changed line: unchanged, removed (only before), added (only after), or the same
@@ -69,56 +72,58 @@ export function diffNotes(before: JSONContent | null, after: JSONContent | null)
 
 function toLines(doc: JSONContent | null): Line[] {
   const lines: Line[] = []
-  const add = (kind: string, depth: number, tokens: Token[], number?: string) =>
-    lines.push({ kind, depth, tokens, number, key: `${kind}|${depth}|${tokens.map((t) => t.text + '\u0001' + t.markKey).join('\u0002')}` })
+  const add = (kind: string, depth: number, tokens: Token[], path: number[], number?: string) =>
+    lines.push({ kind, depth, tokens, number, path, key: `${kind}|${depth}|${tokens.map((t) => t.text + '\u0001' + t.markKey).join('\u0002')}` })
 
   // kind: what the first text line inside this node is (a list item's first paragraph is
   // the bullet; the rest of the item are plain lines under it)
-  const walk = (node: JSONContent, depth: number, kind: string, number?: string) => {
+  const walk = (node: JSONContent, depth: number, kind: string, path: number[], number?: string) => {
+    // Its children, each with its own path
+    const children = (each: (child: JSONContent, i: number, at: number[]) => void) =>
+      node.content?.forEach((child, i) => each(child, i, [...path, i]))
     switch (node.type) {
       case 'paragraph':
-        return add(kind, depth, tokenize(node.content), number)
+        return add(kind, depth, tokenize(node.content), path, number)
       case 'heading':
-        return add(`heading-${node.attrs?.level ?? 1}`, depth, tokenize(node.content))
+        return add(`heading-${node.attrs?.level ?? 1}`, depth, tokenize(node.content), path)
       case 'detailsSummary':
-        return add('section', depth, tokenize(node.content))
+        return add('section', depth, tokenize(node.content), path)
       case 'codeBlock': {
         const text = (node.content ?? []).map((t) => t.text ?? '').join('')
-        for (const line of text.split('\n')) add('code', depth, tokenize([{ type: 'text', text: line }]))
+        text.split('\n').forEach((line, i) => add('code', depth, tokenize([{ type: 'text', text: line }]), [...path, i]))
         return
       }
       case 'image':
-        return add('image', depth, [{ text: '[image]', marks: undefined, markKey: '' }])
+        return add('image', depth, [{ text: '[image]', marks: undefined, markKey: '' }], path)
       case 'horizontalRule':
-        return add('rule', depth, [])
+        return add('rule', depth, [], path)
       case 'tableRow': {
         const cells = (node.content ?? []).map((cell) => tokenize(textNodes(cell)))
         const tokens = cells.flatMap((cell, i) => (i ? [{ text: ' | ', marks: undefined, markKey: '' }, ...cell] : cell))
-        return add('row', depth, tokens)
+        return add('row', depth, tokens, path)
       }
       case 'listItem':
       case 'taskItem': {
         const itemKind = node.type === 'taskItem' ? (node.attrs?.checked ? 'task-done' : 'task') : kind
-        ;(node.content ?? []).forEach((child, i) => walk(child, depth, i === 0 ? itemKind : 'paragraph', i === 0 ? number : undefined))
-        return
+        return children((child, i, at) => walk(child, depth, i === 0 ? itemKind : 'paragraph', at, i === 0 ? number : undefined))
       }
       case 'bulletList':
-        return node.content?.forEach((child) => walk(child, depth + 1, 'bullet'))
+        return children((child, _, at) => walk(child, depth + 1, 'bullet', at))
       case 'orderedList':
-        return node.content?.forEach((child, i) => walk(child, depth + 1, 'numbered', `${(node.attrs?.start ?? 1) + i}.`))
+        return children((child, i, at) => walk(child, depth + 1, 'numbered', at, `${(node.attrs?.start ?? 1) + i}.`))
       case 'taskList':
-        return node.content?.forEach((child) => walk(child, depth + 1, 'task'))
+        return children((child, _, at) => walk(child, depth + 1, 'task', at))
       case 'blockquote':
-        return node.content?.forEach((child) => walk(child, depth, 'quote'))
+        return children((child, _, at) => walk(child, depth, 'quote', at))
       case 'details':
         // Title at this depth, its content one step in
-        return node.content?.forEach((child) => walk(child, child.type === 'detailsContent' ? depth + 1 : depth, kind))
+        return children((child, _, at) => walk(child, child.type === 'detailsContent' ? depth + 1 : depth, kind, at))
       default:
         // doc, detailsContent, table…: just their children
-        return node.content?.forEach((child) => walk(child, depth, 'paragraph'))
+        return children((child, _, at) => walk(child, depth, 'paragraph', at))
     }
   }
-  if (doc) walk(doc, 0, 'paragraph')
+  if (doc) walk(doc, 0, 'paragraph', [])
   return lines
 }
 

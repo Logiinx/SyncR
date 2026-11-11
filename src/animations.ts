@@ -218,7 +218,7 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
       if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
         el.animate(itemFrames(el, parent), { duration: TIMING.openSmall, easing: EASE_OPEN })
         if (glows && takeGlow(key, 'added')) syncTint(el, 'added')
-      }
+      } else if (glows && prev.items.has(key) && takeGlow(key, 'edited')) syncTint(el, 'edited')
     }
     const order = [...prev.items.keys()]
     order.forEach((key, index) => {
@@ -295,25 +295,26 @@ function shrinkAway(copy: HTMLElement, list: Element) {
 }
 
 // Sync's tint (syncGlow.ts, DECISIONS.md "Sync changes tinted green / red"): the item's
-// background turns green (new) or red (deleted), under its text. Green stays 2 s then fades;
-// red stays 1 s and the item then shrinks away still red (the animation holds its end).
+// background turns green (new), blue (edited) or red (deleted), under its text, for 2 s. Green
+// and blue then fade; a red item then shrinks away still red (the animation holds its end).
 // An inset shadow covering the whole box, added to the item's own shadows (a folded group's pile).
-const TINT = { in: 200, added: 2000, removed: 1000, out: 800 }
+const TINT = { in: 200, hold: 2000, out: 800 }
+const TINT_COLORS = { added: '--hl-green', edited: '--hl-blue', removed: '--hl-red' } // i18n-ok
 const TINT_ID = 'sync-tint' // i18n-ok
 
 function syncTint(item: Element, glow: Glow) {
   // A note row: its button. A group: its header (its cards have their own background).
   const el = item.matches('li') ? item.firstElementChild : item.matches('.card-group') ? item.querySelector(':scope > .card-group-head') : item
   if (!el) return
-  const color = getComputedStyle(document.documentElement).getPropertyValue(glow === 'added' ? '--hl-green' : '--hl-red')
+  const color = getComputedStyle(document.documentElement).getPropertyValue(TINT_COLORS[glow])
   const own = getComputedStyle(el).boxShadow
   const shadow = (tint: string) => `inset 0 0 0 100vmax ${tint}${own === 'none' ? '' : `, ${own}`}` // i18n-ok
-  const out = glow === 'added' ? TINT.out : 0
-  const total = TINT.in + TINT[glow] + out
+  const out = glow === 'removed' ? 0 : TINT.out
+  const total = TINT.in + TINT.hold + out
   const frames: Keyframe[] = [
     { boxShadow: shadow('transparent') },
     { boxShadow: shadow(color), offset: TINT.in / total },
-    { boxShadow: shadow(color), offset: (TINT.in + TINT[glow]) / total },
+    { boxShadow: shadow(color), offset: (TINT.in + TINT.hold) / total },
   ]
   if (out) frames.push({ boxShadow: shadow('transparent') })
   return el.animate(frames, { id: TINT_ID, duration: total, easing: 'ease-out', fill: out ? 'none' : 'forwards' })

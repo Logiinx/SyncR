@@ -336,6 +336,14 @@ async function runSync(): Promise<SyncResult> {
     if (!(await storeNote(remote, rev, undefined))) unmarkGlow(remote.id)
   }
 
+  // A newer version of a note this device has: tinted blue in the sidebar, its new words green
+  async function storeEdit(remote: RemoteNote, rev: string, localUpdatedAt: number) {
+    markGlow(remote.id, 'edited')
+    const stored = await storeNote(remote, rev, localUpdatedAt)
+    if (!stored) unmarkGlow(remote.id)
+    return stored
+  }
+
   // Keeps a version that lost a conflict, as a new note. Its id comes from the note and the
   // version's time, so a retry of the same conflict (the step after it failed or was skipped)
   // finds the copy already there instead of making a second one.
@@ -386,7 +394,7 @@ async function runSync(): Promise<SyncResult> {
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
   const done = new Set<string>() // notes fully handled by an earlier step
-  await countGlows(remoteNotes, remoteDeleted, remoteRecords.get('cards')!)
+  await countGlows(remoteNotes, remoteDeleted, synced, remoteRecords.get('cards')!)
   const imagesUsedIn = (notes: Note[]) => new Set(notes.flatMap((n) => imageIds(n.content)))
   const localAttachments = new Set(await db.attachments.toCollection().primaryKeys())
 
@@ -523,7 +531,7 @@ async function runSync(): Promise<SyncResult> {
     const remote = await downloadNote(id)
     if (!remote) return
     if (!changedHere || remote.updatedAt === local.updatedAt) {
-      await storeNote(remote, remoteRev, local.updatedAt)
+      await storeEdit(remote, remoteRev, local.updatedAt)
       return
     }
 
@@ -536,7 +544,7 @@ async function runSync(): Promise<SyncResult> {
       const copy = await saveConflictCopy(local, deviceName())
       // Edited here while this sync ran: nothing replaced, so no copy needed (the next sync
       // compares again, with the newer edit)
-      if (!(await storeNote(remote, remoteRev, local.updatedAt)) && copy) {
+      if (!(await storeEdit(remote, remoteRev, local.updatedAt)) && copy) {
         if (copy === 'new') await db.notes.delete(conflictCopyId(local))
         result.conflicts--
       }
@@ -691,12 +699,19 @@ interface SyncedRecord {
 // (restoredAt, e.g. a removed game added again) beats it.
 // How many notes and Board items may change in this sync (new, deleted or edited): over 10,
 // none is tinted (syncGlow.ts). Counted before anything is stored. Not with Animations off.
-async function countGlows(remoteNotes: Map<string, string>, remoteDeleted: Map<string, number>, remoteCards: Map<string, string>) {
+async function countGlows(
+  remoteNotes: Map<string, string>,
+  remoteDeleted: Map<string, number>,
+  synced: Map<string, { rev: string }>,
+  remoteCards: Map<string, string>,
+) {
   if (!animationsOn()) return startGlows(Infinity)
   const notes = new Set(await db.notes.toCollection().primaryKeys())
   const cardRevs = new Map((await db.cards.toArray()).map((card) => [card.id, card.syncedRev]))
   let changes = 0
-  for (const id of remoteNotes.keys()) if (!notes.has(id) && !remoteDeleted.has(id)) changes++
+  for (const [id, rev] of remoteNotes) {
+    if (notes.has(id) ? synced.get(id)?.rev !== rev : !remoteDeleted.has(id)) changes++ // edited, or new
+  }
   for (const id of remoteDeleted.keys()) if (notes.has(id)) changes++
   for (const [id, rev] of remoteCards) if (cardRevs.get(id) !== rev) changes++
   startGlows(changes)

@@ -28,6 +28,8 @@ import { CodeBlock } from './codeBlock'
 import { DragSections } from './dragSections'
 import { SlashMenu } from './slashMenu'
 import { jumpToBlock, NoteLinks, PROTOCOL, takePendingJump } from './noteLinks'
+import { showSyncEdits, SyncEdits } from './syncEdits'
+import { takeGlow } from './syncGlow'
 import { NotePicker } from './notePicker'
 import { AlignPaths, TabStaysInNote } from './alignPaths'
 import { jumpToSearch, takePendingSearch } from './noteSearch'
@@ -69,6 +71,7 @@ export const extensions = [
     protocols: [{ scheme: PROTOCOL, optionalSlashes: true }],
   }),
   NoteLinks,
+  SyncEdits, // what sync changed in the open note, green for a moment
   NotePicker,
   OpenLinksOnClick,
   LinkPreviews,
@@ -145,8 +148,11 @@ function NoteEditor({ note, autoFocus }: { note: Note; autoFocus: boolean }) {
   // this editor's own saves coming back (ownSaves.ts).
   useEffect(() => {
     if (!editor || !note.content || saveTimer.current !== undefined || own.isOwn(note.content)) return
-    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(note.content)) {
+    const before = editor.getJSON()
+    if (JSON.stringify(before) !== JSON.stringify(note.content)) {
       editor.commands.setContent(note.content, { emitUpdate: false })
+      // An edit from the other device: its new words glow (syncEdits.ts)
+      if (takeGlow(note.id, 'edited', 'note')) showSyncEdits(editor, before)
     }
   }, [editor, note.content])
 
