@@ -258,8 +258,8 @@ function VideoView() {
   const shownChannel = follows?.some((follow) => follow.id === channel) ? channel : 'all'
   const videos = (list === 'towatch' ? feed?.toWatch : feed?.watched)?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
   const listRef = useRef<HTMLUListElement>(null)
-  // One channel chosen: there's nothing to group
-  const grouping = grouped && shownChannel === 'all'
+  // One channel chosen: there's nothing to group. Watched is one plain list, watched last on top.
+  const grouping = grouped && shownChannel === 'all' && list === 'towatch'
   useListItems(listRef, `${list} ${shownChannel} ${grouping}`)
   const tagNew = (video: FeedVideo) => newIds.has(video.id) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
@@ -300,7 +300,7 @@ function VideoView() {
     return () => document.removeEventListener('paste', onPaste)
   }, [])
   const allFolders = feed?.folders ?? []
-  const folders = shownChannel === 'all' ? allFolders : []
+  const folders = shownChannel === 'all' && list === 'towatch' ? allFolders : []
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
   const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
   const videoRow = (video: FeedVideo, depth = 0) => (
@@ -326,11 +326,10 @@ function VideoView() {
     return !!top && !top.channel
   }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
-  // A folder, then what's in it when it's open: its sub-folders, then its videos. To watch shows
-  // the empty ones too, or a new folder couldn't be reached.
+  // A folder, then what's in it when it's open: its sub-folders, then its videos, oldest on top
+  // like a playlist. Only in To watch, empty ones too, or a new folder couldn't be reached.
   function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
     const inside = allIn(folder)
-    if (list === 'watched' && !inside.length) return []
     const open = openGroups.includes(folder.id)
     return [
       <FoldRow
@@ -350,7 +349,7 @@ function VideoView() {
       ...(open
         ? [
             ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
-            ...videosIn(folder.id).map((video) => videoRow(video, depth + 1)),
+            ...videosIn(folder.id).reverse().map((video) => videoRow(video, depth + 1)),
           ]
         : []),
     ]
@@ -419,14 +418,14 @@ function VideoView() {
       ...(open
         ? [
             ...subs.flatMap((sub) => folderRows(sub, 1)),
-            ...group.filter((video) => !video.folderId).map((video) => videoRow(video, 1)),
+            ...group.filter((video) => !video.folderId).reverse().map((video) => videoRow(video, 1)),
           ]
         : []),
     ]
   }
   // A chosen channel shows all its videos, wherever they are. So does the plain list for those in a
   // channel's sub-folders: these only exist in the channel's row.
-  const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || !inOwnFolder(video))
+  const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
   const rows = [
     ...playlistRows,
@@ -434,13 +433,13 @@ function VideoView() {
     // A flat list, so a video stays the same item whether it's in a group or not
     ...(grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
       const key = channelKey(group[0])
-      const subs = grouping ? channelFolders(key).filter((sub) => list === 'towatch' || allIn(sub).length) : []
+      const subs = grouping ? channelFolders(key) : []
       if (group.length === 1 && !subs.length) return [videoRow(group[0])]
       const { followId, channel: name, channelIcon: icon, platform } = group[0]
       return channelRows(followId, key, { name, icon, platform }, group, subs)
     }),
     // Followed channels with sub-folders, and no videos to watch right now
-    ...(grouping && list === 'towatch' ? follows ?? [] : []).flatMap((follow) => {
+    ...(grouping ? follows ?? [] : []).flatMap((follow) => {
       const key = channelKey(follow)
       const subs = channelFolders(key)
       if (!subs.length || mainVideos.some((video) => channelKey(video) === key)) return []
@@ -537,8 +536,8 @@ function VideoView() {
                     label: t('By channel'),
                     icon: ListTree,
                     checked: grouped,
-                    disabled: !anyFollowsOrVideos || shownChannel !== 'all',
-                    hint: !anyFollowsOrVideos ? t('No follows yet') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),
+                    disabled: !anyFollowsOrVideos || shownChannel !== 'all' || list !== 'towatch',
+                    hint: !anyFollowsOrVideos ? t('No follows yet') : list !== 'towatch' ? t('Only in To watch') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),
                     onClick: () => setGrouped(!grouped),
                   },
                   { label: t('Follows'), icon: ListVideo, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },

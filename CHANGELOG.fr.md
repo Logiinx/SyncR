@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** de la liste Vues : une seule liste, la dernière vue en haut, sans lignes par chaîne ni dossiers
+- **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
+
 ## [0.69.0] - 2026-11-11
 
 **Vidéo**

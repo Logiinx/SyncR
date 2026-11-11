@@ -657,7 +657,12 @@ export function useVideoFeed() {
       follows,
       folders,
       toWatch,
-      watched: videos.filter((video) => video.watched),
+      // Watched last on top: its mark's last change is when it was marked (or opened again)
+      watched: videos
+        .filter((video) => video.watched)
+        .map((video) => ({ video, at: markOf.get(videoMarkId(video.id))?.updatedAt ?? 0 }))
+        .sort((a, b) => b.at - a.at)
+        .map(({ video }) => video),
       playlists: playlistRows.map((playlist) => ({
         playlist,
         videos: playOrder(listOf.get(playlist.id) ?? [], playlist).map(({ later: _later, ...video }): FeedVideo => {
