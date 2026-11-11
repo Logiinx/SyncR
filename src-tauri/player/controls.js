@@ -14,7 +14,9 @@
 //   element: the <video> (its events), paused(), time(), duration(), bufferedEnd(),
 //   play(), pause(), seek(seconds), volume() 0-1, muted(), setVolume(0-1), setMuted(on),
 //   rate(), setRate(speed), qualities(): [{ value, text }], quality(): the value ticked,
-//   qualityText(): shown on the ⚙️ button, setQuality(value)
+//   qualityText(): shown on the ⚙️ button, setQuality(value),
+//   subtitles (only a player that has them): { tracks(): [{ value, text }], track(): the value on
+//     or '' when off, setTrack(value or ''), toggle(), size(), setSize(n), moved(), resetPlace() }
 // }
 function playerControls(env, media) {
   const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -29,6 +31,9 @@ function playerControls(env, media) {
     maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
     minimize: '<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    subtitles: '<rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/>',
+    minus: '<path d="M5 12h14"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   }
   const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`
   const html = env.html || ((text) => text)
@@ -63,6 +68,7 @@ function playerControls(env, media) {
         </div>
         <button class="button" id="time"><span id="time-now"></span><span id="time-day"></span></button>
         <div id="spacer"></div>
+        <button class="button" id="subtitles" hidden></button>
         <button class="button" id="settings"><svg viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
         <button class="button" id="chat-button"></button>
         <button class="button" id="full"></button>
@@ -258,6 +264,28 @@ function playerControls(env, media) {
   document.addEventListener('fullscreenchange', drawFull)
   $('full').onclick = toggleFull
 
+  // ---- Subtitles (YouTube) ----------------------------------------------------------------------
+  // Grayed when the video has none. On or off is kept per channel by the player itself.
+  const subtitles = media.subtitles
+  const SIZES = { smallest: 0.5, biggest: 2, step: 0.1 }
+  const percent = new Intl.NumberFormat(env.locale || undefined, { style: 'percent' })
+  function drawSubtitles() {
+    if (!subtitles) return
+    const button = $('subtitles')
+    const has = subtitles.tracks().length > 0
+    const on = has && !!subtitles.track()
+    if (button.hidden) setIcon(button, 'subtitles')
+    button.hidden = false
+    button.classList.toggle('on', on)
+    button.classList.toggle('off', !has)
+    button.title = !has ? labels.noSubtitles : on ? labels.subtitlesHide : labels.subtitlesShow
+  }
+  function toggleSubtitles() {
+    if (!subtitles?.tracks().length) return
+    subtitles.toggle()
+  }
+  $('subtitles').onclick = toggleSubtitles
+
   // ---- Quality and speed ------------------------------------------------------------------------
   const speedText = (speed) => `${numbers.format(speed)}×`
   function drawSettings() {
@@ -309,6 +337,7 @@ function playerControls(env, media) {
       speeds.append(button)
     }
     menu.append(speeds)
+    drawSubtitlesMenu(menu, title, tick)
     const row = (text, on, action) => {
       const button = document.createElement('button')
       button.className = `menu-item${on ? ' on' : ''}`
@@ -321,6 +350,58 @@ function playerControls(env, media) {
       menu.append(button)
     }
     hooks.menu?.(row, title, menu)
+  }
+  // The video's tracks (a pick counts for this video only), then size and place, for every video
+  function drawSubtitlesMenu(menu, title, tick) {
+    const tracks = subtitles?.tracks() || []
+    if (!tracks.length) return
+    title(labels.subtitles)
+    const current = subtitles.track()
+    for (const item of [{ value: '', text: labels.subtitlesOff }, ...tracks]) {
+      const on = item.value === current
+      const row = document.createElement('button')
+      row.className = `menu-item${on ? ' on' : ''}`
+      row.textContent = item.text
+      if (on) tick(row)
+      row.onclick = () => {
+        subtitles.setTrack(item.value)
+        closeMenu()
+      }
+      menu.append(row)
+    }
+    const size = Math.round(subtitles.size() * 10) / 10
+    const line = document.createElement('div')
+    line.className = 'menu-size'
+    const name = document.createElement('span')
+    name.textContent = labels.subtitleSize
+    const shown = document.createElement('span')
+    shown.className = 'menu-size-value'
+    shown.textContent = percent.format(size)
+    const change = (iconName, text, by, allowed) => {
+      const button = document.createElement('button')
+      button.innerHTML = html(icon(iconName))
+      button.title = text
+      button.disabled = !allowed
+      button.onclick = () => {
+        subtitles.setSize(Math.round((size + by) * 10) / 10)
+        drawMenu()
+      }
+      return button
+    }
+    line.append(name, change('minus', labels.smaller, -SIZES.step, size > SIZES.smallest), shown, change('plus', labels.bigger, SIZES.step, size < SIZES.biggest))
+    menu.append(line)
+    const reset = document.createElement('button')
+    reset.className = 'menu-item'
+    reset.textContent = labels.resetPosition
+    reset.disabled = !subtitles.moved()
+    reset.onclick = () => {
+      subtitles.resetPlace()
+      drawMenu()
+    }
+    const hint = document.createElement('div')
+    hint.className = 'menu-note'
+    hint.textContent = labels.dragSubtitles
+    menu.append(reset, hint)
   }
   function openMenu() {
     hooks.beforeMenu?.()
@@ -355,9 +436,10 @@ function playerControls(env, media) {
     ArrowDown: () => changeVolume(-0.05),
     m: () => $('mute').click(),
     f: toggleFull,
+    ...(subtitles ? { c: toggleSubtitles } : {}),
     ...hooks.keys,
   }
-  const NO_REPEAT = [' ', 'k', 'm', 'f', ...Object.keys(hooks.keys || {})]
+  const NO_REPEAT = [' ', 'k', 'm', 'f', 'c', ...Object.keys(hooks.keys || {})]
   addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.altKey || event.metaKey) return
     if (typing()) {
@@ -386,6 +468,7 @@ function playerControls(env, media) {
     drawPlay()
     drawVolume()
     drawTime()
+    drawSubtitles()
     drawSettings()
   }
   refresh()
@@ -455,6 +538,8 @@ const CONTROLS_CSS = `
   }
   .button:hover, .button.open { background: rgba(255, 255, 255, 0.14); }
   .button svg { width: 20px; height: 20px; }
+  .button.on { color: var(--text-blue, #6ea8fe); }
+  .button.off { opacity: 0.4; background: none; }
   #play svg { width: 22px; height: 22px; fill: currentColor; }
   /* The number inside the round arrows */
   .button b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 400; }
@@ -482,6 +567,7 @@ const CONTROLS_CSS = `
   #menu {
     position: absolute; right: 12px; bottom: 62px; z-index: 5;
     min-width: 250px; max-height: calc(100% - 80px); overflow: auto; box-sizing: border-box;
+    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
     padding: 6px; border-radius: 8px;
     background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14);
     color: var(--text, #e4e4e4);
@@ -489,6 +575,15 @@ const CONTROLS_CSS = `
   .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 6px; text-align: left; }
   .menu-item:hover { background: var(--hover, #262626); }
+  .menu-item:disabled { opacity: 0.4; background: none; }
+  .menu-size { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px 0 12px; }
+  .menu-size > span:first-child { flex: 1; }
+  .menu-size button { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--hover, #262626); }
+  .menu-size button:hover { background: rgba(255, 255, 255, 0.14); }
+  .menu-size button:disabled { opacity: 0.4; background: var(--hover, #262626); }
+  .menu-size svg { width: 16px; height: 16px; }
+  .menu-size-value { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
+  .menu-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   #goto-text { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
   #goto { position: absolute; bottom: 76px; width: 250px; box-sizing: border-box; padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4); }
   #goto-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }

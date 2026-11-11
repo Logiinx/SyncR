@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** des sous-titres aux contrôles YouTube : un bouton, la langue ou une traduction, la taille, à déplacer
 - **Changement** des vidéos YouTube : nos propres contrôles, les mêmes que ceux du lecteur Twitch
 
 ## [0.68.1] - 2026-11-11
