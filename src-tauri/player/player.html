@@ -24,6 +24,10 @@
 
   #bot-names { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
   #bot-names::placeholder { color: var(--text-dim, #9a9a9a); }
+  /* The chat's background in full screen: name, slider, value (white like the volume) */
+  #chat-bg { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 12px; }
+  #chat-bg input { flex: 1; min-width: 0; margin: 0; accent-color: #fff; cursor: pointer; }
+  #chat-bg output { width: 34px; text-align: right; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
 
   #chat { position: relative; flex: none; box-sizing: border-box; display: flex; flex-direction: column; background: var(--bg, #161616); border-left: 1px solid rgba(255, 255, 255, 0.1); color: var(--text, #e4e4e4); }
   #chat-edge { position: absolute; top: 0; bottom: 0; left: -4px; width: 7px; z-index: 2; cursor: col-resize; touch-action: none; }
@@ -36,7 +40,7 @@
   .chat-badge { width: 18px; height: 18px; margin-right: 3px; vertical-align: -4px; }
   .chat-emote { height: 28px; margin: -4px 1px; vertical-align: middle; }
   /* In full screen, over the video. While the controls show it leaves them free. */
-  #chat.over { position: absolute; z-index: 4; width: 340px; top: 0; bottom: 0; border: 0; background: color-mix(in srgb, var(--bg, #161616) 55%, transparent); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
+  #chat.over { position: absolute; z-index: 4; width: 340px; top: 0; bottom: 0; border: 0; background: color-mix(in srgb, var(--bg, #161616) var(--chat-bg, 55%), transparent); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
   #player:not(.quiet) ~ #chat.over { bottom: 72px; }
   #chat.over.right, #chat.over.corner-right { right: 0; }
   #chat.over.left, #chat.over.corner-left { left: 0; }

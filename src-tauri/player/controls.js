@@ -390,8 +390,8 @@ function playerControls(env, media) {
     const speed = media.rate() === 1 ? '' : speedText(media.rate())
     $('settings-text').textContent = [levels.length ? media.qualityText() : '', speed].filter(Boolean).join(' · ')
     $('settings').title = labels.settings
-    // Not while typing in it: drawing it again would take the text box away
-    if (!$('menu').hidden && !typing()) drawMenu()
+    // Not while typing in it or dragging a slider: drawing it again would take them away
+    if (!$('menu').hidden && !focused()?.matches('input')) drawMenu()
   }
   video.addEventListener('ratechange', drawSettings)
 

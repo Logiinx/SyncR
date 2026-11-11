@@ -189,6 +189,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       chatLeft: t('Full height, left'),
       chatCornerRight: t('Corner, right'),
       chatCornerLeft: t('Corner, left'),
+      chatBackground: t('Background|chat'),
     },
   }
   const id = encodeURIComponent(video.id.slice('twitch-'.length))

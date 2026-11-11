@@ -434,6 +434,8 @@ video.addEventListener('loadedmetadata', chatJump)
 let chatWanted = stored('player.chat', 1) === 1
 let chatWantedFull = stored('player.chatFull', 1) === 1
 let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
+// How see-through the chat is over the video in full screen: 0 (clear) to 100 (solid), steps of 5
+let chatBg = Math.min(Math.max(Math.round(stored('player.chatBackground', 55) / 5) * 5, 0), 100)
 let chatSpot = SPOTS.includes(localStorage.getItem('player.chatSpot')) ? localStorage.getItem('player.chatSpot') : SPOTS[0]
 
 function placeChat() {
@@ -444,6 +446,7 @@ function placeChat() {
   const was = chatShowing()
   chatPanel.hidden = !showing
   chatPanel.className = full ? `over ${chatSpot}` : ''
+  chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
@@ -550,6 +553,20 @@ function drawChatPanel({ title, row, choices, element: menu }) {
       placeChat()
     })
   }
+  const background = document.createElement('label')
+  background.id = 'chat-bg'
+  background.innerHTML = '<span></span><input type="range" min="0" max="100" step="5"><output></output>'
+  const [name, slider, value] = background.children
+  name.textContent = labels.chatBackground
+  slider.value = chatBg
+  value.textContent = `${chatBg}%`
+  slider.addEventListener('input', () => {
+    chatBg = Number(slider.value)
+    value.textContent = `${chatBg}%`
+    chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
+  })
+  slider.addEventListener('change', () => localStorage.setItem('player.chatBackground', chatBg))
+  menu.append(background)
 }
 
 drawChatSize()
