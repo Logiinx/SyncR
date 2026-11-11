@@ -107,7 +107,7 @@ function GamesView() {
       {/* Wide only for the month grid (not for the "set up the game search" text, which then
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
-        <div className="games-views">
+        <div className={view === 'calendar' && connected ? 'games-views calendar-head' : 'games-views'}>
           <FillSwitch className="games-views-switch" options={views()} value={view} onChange={setView} />
           {/* Only with the game search set up: otherwise they do nothing, and the taller header
               put the "set up the game search" text lower than in My games */}

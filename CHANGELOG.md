@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Fixed** the grid / list switch moving when changing view, in Reminders and the Games calendar
+
 ## [0.70.0] - 2026-11-11
 
 **Video**

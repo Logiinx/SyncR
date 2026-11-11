@@ -217,7 +217,7 @@ function RemindersView() {
     <main className="page games-page" ref={pageRef}>
       <div className={grid ? 'games wide' : 'games'} ref={listRef}>
         {/* One row: New event on the left; refresh and grid / list on the right */}
-        <div className="games-views reminders-toolbar">
+        <div className="games-views reminders-toolbar calendar-head">
           <button className="reminders-new" onClick={() => newEvent()}>
             <Plus size={15} /> {t('New event')}
           </button>

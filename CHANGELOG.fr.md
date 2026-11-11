@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Rappels**
+- **Correction** du bouton grille / liste qui bougeait en changeant de vue, dans Rappels et le calendrier des jeux
+
 ## [0.70.0] - 2026-11-11
 
 **Vidéo**

@@ -5283,6 +5283,13 @@ h3.games-group-title {
   margin-inline: auto;
 }
 
+/* Calendars (Reminders, Games): the top row is as wide as the month grid in both layouts, so the
+   grid / list switch stays in place; only the list under it is narrower. 1200px = .games.wide,
+   64px = its padding. Nothing changes when the window is narrower (or on a phone). */
+.games-views.calendar-head {
+  margin-inline: min(0px, (100% - min(100cqw - 64px, 1200px)) / 2);
+}
+
 .calendar-controls {
   position: absolute;
   top: 0;
@@ -5570,6 +5577,9 @@ h3.games-group-title {
    100cqw = the page's width (.games-page is the container) */
 .games-page {
   container-type: inline-size;
+  /* Room for the scrollbar even when there's none: a list growing past the window (the month
+     grid, a longer status) doesn't shift the centered column by half the scrollbar */
+  scrollbar-gutter: stable;
   --shelf-width: min(100cqw - 64px, 2200px); /* also the status tabs' width (Covers layout) */
 }
 
