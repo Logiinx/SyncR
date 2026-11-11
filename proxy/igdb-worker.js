@@ -849,11 +849,13 @@ async function hltbFindPath() {
   throw new Error('HowLongToBeat: search not found in their page')
 }
 
-// One search with a fresh token (it's tied to who asks). null = refused: the address may have changed.
+// One search with a fresh token. Answers { results }, or { gone } when the address no longer
+// exists, or { refused } with what they answered.
 async function hltbSearchAt(path, words) {
   const init = await fetch(`${HLTB}${path}/init?t=${Date.now()}`, { headers: HLTB_HEADERS })
+  if (init.status === 404) return { gone: true }
   const auth = init.ok ? await init.json().catch(() => null) : null
-  if (!auth) return null
+  if (!auth) return { refused: `init ${init.status}` }
   let key, value
   for (const [field, content] of Object.entries(auth)) {
     if (/key/i.test(field)) key = content
@@ -887,17 +889,36 @@ async function hltbSearchAt(path, words) {
   const headers = { ...HLTB_HEADERS, 'Content-Type': 'application/json', Accept: '*/*', Origin: `${HLTB}/` }
   if (auth.token) Object.assign(headers, { 'x-auth-token': auth.token, 'x-hp-key': key ?? '', 'x-hp-val': value ?? '' })
   const response = await fetch(`${HLTB}${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (response.status === 404) return { gone: true }
   const answer = response.ok ? await response.json().catch(() => null) : null
-  return Array.isArray(answer?.data) ? answer.data : null
+  return Array.isArray(answer?.data) ? { results: answer.data } : { refused: `search ${response.status}` }
 }
 
+// The token is tied to the address that asked for it, and Cloudflare may send the token's request
+// and the search from two different ones (about 1 in 3 refused): a few tries. Their scripts are
+// read again when the address is gone, or after every try was refused.
+const HLTB_TRIES = 4
 async function hltbSearch(words) {
-  const results = await hltbSearchAt(hltbSearchPath, words)
-  if (results) return results
-  hltbSearchPath = await hltbFindPath()
-  const again = await hltbSearchAt(hltbSearchPath, words)
-  if (!again) throw new Error('HowLongToBeat: search refused')
-  return again
+  const refusals = []
+  let looked = false
+  for (let tries = 0; tries < HLTB_TRIES; tries++) {
+    const answer = await hltbSearchAt(hltbSearchPath, words)
+    if (answer.results) return answer.results
+    if (answer.gone && !looked) {
+      looked = true
+      hltbSearchPath = await hltbFindPath()
+      continue
+    }
+    refusals.push(answer.refused ?? 'gone')
+  }
+  // Still refused: maybe their address moved without the old one being gone. One last look.
+  if (!looked) {
+    hltbSearchPath = await hltbFindPath()
+    const answer = await hltbSearchAt(hltbSearchPath, words)
+    if (answer.results) return answer.results
+    refusals.push(answer.refused ?? 'gone')
+  }
+  throw new Error(`HowLongToBeat: search refused (${refusals.join(', ')})`)
 }
 
 // A game's page: its times and Steam number. null = no such page.
