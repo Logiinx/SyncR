@@ -3076,6 +3076,71 @@ button {
   }
 }
 
+/* Words and lines the other device removed (syncEdits.ts): a red, struck-through copy where they
+   were, never part of the note. Same timing as .sync-edit: shown 2 s, then it fades and its room
+   closes (width or height to 0), so the text around it doesn't jump. */
+.tiptap .sync-gone,
+.tiptap .sync-gone-line {
+  color: var(--text-red);
+  background: var(--hl-red);
+  text-decoration: line-through;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  user-select: none;
+  pointer-events: none;
+}
+
+.tiptap .sync-gone {
+  display: inline-block;
+  margin: 0 3px;
+  animation: sync-gone 3s ease-out forwards;
+}
+
+/* Red behind its text only, like a highlighted line */
+.tiptap .sync-gone-line {
+  width: fit-content;
+  overflow: hidden;
+  animation: sync-gone-line 3s ease-out forwards;
+}
+
+@keyframes sync-gone {
+  0% {
+    opacity: 0;
+  }
+  7%,
+  73% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0;
+    width: auto;
+    margin: 0 3px;
+  }
+  100% {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+  }
+}
+
+@keyframes sync-gone-line {
+  0% {
+    opacity: 0;
+  }
+  7%,
+  73% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0;
+    height: auto;
+  }
+  100% {
+    opacity: 0;
+    height: 0;
+  }
+}
+
 /* A search match after opening a result (noteSearch.ts): the app's blue, a bit stronger than
    the blue highlighter, pulsing 3 times (fade in, fade out). SEARCH_FLASH_MS in noteLinks.ts
    is the total (3 × 1.2 s). */

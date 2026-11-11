@@ -1,5 +1,6 @@
 // An open note that sync updated with an edit from the other device: the added and changed
-// words get a green background for a moment (DECISIONS.md "Sync changes tinted green / red").
+// words get a green background for a moment, removed ones show in red (DECISIONS.md "Sync
+// changes tinted green / red").
 // The two versions are compared like note history does (noteDiff.ts); each changed line is
 // found in the note by its path. A decoration, never saved in the note.
 
@@ -7,12 +8,14 @@ import { Extension, type Editor, type JSONContent } from '@tiptap/react'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { diffNotes, type Line, type Row } from './noteDiff'
+import { diffNotes, type Line, type Row, type Token } from './noteDiff'
 import { animationsOn } from './animations'
 
 const SHOWN_MS = 3000 // 0.2 s in, 2 s, 0.8 s out (index.css "sync-edit")
 const MOST_LINES = 10 // more changed lines than this: nothing glows in the note
 const CLASS = 'sync-edit' // i18n-ok
+const GONE = 'sync-gone' // i18n-ok: removed words
+const GONE_LINE = 'sync-gone-line' // i18n-ok: a removed line
 
 const key = new PluginKey<DecorationSet>('syncEdits')
 
@@ -39,16 +42,54 @@ export const SyncEdits = Extension.create({
 // Call right after the editor took the new version; before = what it showed until then
 export function showSyncEdits(editor: Editor, before: JSONContent) {
   if (!animationsOn() || editor.isDestroyed) return
-  const rows = diffNotes(before, editor.getJSON()).filter((row) => row.op === 'added' || row.op === 'changed')
-  if (rows.length === 0 || rows.length > MOST_LINES) return
+  const rows = diffNotes(before, editor.getJSON())
+  const changed = rows.filter((row) => row.op !== 'same').length
+  if (changed === 0 || changed > MOST_LINES) return
   const { doc } = editor.state
-  const decorations = rows.flatMap((row) => lineDecorations(doc, row))
+  const decorations = rows.flatMap((row, i) =>
+    row.op === 'same' ? [] : row.op === 'removed' ? goneLine(doc, row.line, rows.slice(0, i), rows.slice(i + 1)) : lineDecorations(doc, row),
+  )
   if (decorations.length === 0) return
   const { view } = editor
   view.dispatch(view.state.tr.setMeta(key, DecorationSet.create(doc, decorations)).setMeta('addToHistory', false))
   setTimeout(() => {
     if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, null).setMeta('addToHistory', false))
   }, SHOWN_MS)
+}
+
+// Removed words: a red, struck-through copy where they were, for a moment (a widget: drawn by
+// the editor, not part of the note, can't be selected or edited). A whole line: as its own line.
+function ghost(pos: number, text: string, line: boolean) {
+  return Decoration.widget(
+    pos,
+    () => {
+      const el = document.createElement(line ? 'div' : 'span')
+      el.className = line ? GONE_LINE : GONE
+      el.textContent = text.trim() // its spaces: the gap around it (CSS), not red
+      el.setAttribute('aria-hidden', 'true')
+      el.contentEditable = 'false'
+      return el
+    },
+    { side: -1, ignoreSelection: true },
+  )
+}
+
+const textOf = (tokens: Token[]) => tokens.map((token) => token.text).join('')
+
+// A removed line: shown where it was. Right after the line before it when that one is at the
+// same level (a removed list item stays in its list), else before the next line still in the
+// note (or at the end). Images, separator lines and table rows: nothing (no text to show).
+function goneLine(doc: PmNode, line: Line, before: Row[], after: Row[]): Decoration[] {
+  const text = textOf(line.tokens).trim()
+  if (!text || line.kind === 'image' || line.kind === 'rule' || line.kind === 'row') return []
+  const kept = (row: Row | undefined) => (row && row.op !== 'removed' ? (row.op === 'changed' ? row.after : row.line) : undefined)
+  const node = (other: Line) => find(doc, other.kind === 'code' ? other.path.slice(0, -1) : other.path)
+  const previous = kept(before.findLast((row) => row.op !== 'removed'))
+  const prev = previous && previous.depth === line.depth ? node(previous) : null
+  if (prev) return [ghost(prev.pos + prev.node.nodeSize, text, true)]
+  const next = kept(after.find((row) => row.op !== 'removed'))
+  const found = next && node(next)
+  return [ghost(found ? found.pos : doc.content.size, text, true)]
 }
 
 function lineDecorations(doc: PmNode, row: Row): Decoration[] {
@@ -72,12 +113,17 @@ function lineDecorations(doc: PmNode, row: Row): Decoration[] {
   const whole = () => (end > from ? [Decoration.inline(from, end, { class: CLASS })] : [])
   if (row.op !== 'changed') return whole()
 
-  // The added and re-formatted words (removed ones aren't in the note anymore). Two of them with
-  // only spaces between: one piece ("New idea", not "New" and "idea").
+  // The added and re-formatted words. Two of them with only spaces between: one piece ("New
+  // idea", not "New" and "idea"). Removed ones: a ghost where they were.
   const ranges: { from: number; to: number }[] = []
+  const ghosts: Decoration[] = []
   let at = from
   for (const segment of row.segments) {
-    if (segment.type === 'removed') continue
+    if (segment.type === 'removed') {
+      const text = textOf(segment.tokens)
+      if (text.trim()) ghosts.push(ghost(Math.min(at, end), text, false))
+      continue
+    }
     const length = segment.tokens.reduce((sum, token) => sum + token.text.length, 0)
     const to = Math.min(at + length, end)
     if (segment.type !== 'same' && to > at) {
@@ -88,14 +134,17 @@ function lineDecorations(doc: PmNode, row: Row): Decoration[] {
     at += length
   }
   // Only the kind of line changed (a ticked checkbox, a paragraph made a list item): all of it
-  if (ranges.length === 0) return whole()
-  return ranges.flatMap((range) => {
-    // Without the spaces at its ends ("really ", not its space)
-    const text = doc.textBetween(range.from, range.to, '\n', '\n') // i18n-ok: a line break counts as one sign, like in the note
-    const start = range.from + (text.length - text.trimStart().length)
-    const stop = range.to - (text.length - text.trimEnd().length)
-    return stop > start ? [Decoration.inline(start, stop, { class: CLASS })] : []
-  })
+  if (ranges.length === 0 && ghosts.length === 0) return whole()
+  return [
+    ...ghosts,
+    ...ranges.flatMap((range) => {
+      // Without the spaces at its ends ("really ", not its space)
+      const text = doc.textBetween(range.from, range.to, '\n', '\n') // i18n-ok: a line break counts as one sign, like in the note
+      const start = range.from + (text.length - text.trimStart().length)
+      const stop = range.to - (text.length - text.trimEnd().length)
+      return stop > start ? [Decoration.inline(start, stop, { class: CLASS })] : []
+    }),
+  ]
 }
 
 // The node at a path of child numbers, and its position
