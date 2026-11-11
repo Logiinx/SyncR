@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
-import ContextMenu from './ContextMenu'
+import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
 import { nearDay, shortDate } from './dates'
@@ -325,6 +325,24 @@ function VideoView() {
     const top = topFolder(allFolders.find((other) => other.id === video.folderId))
     return !!top && !top.channel
   }
+  // Your own folders, then those of this video's channel: it can't go in another channel's. With
+  // both, each list gets a small title instead of the channel's name on every line.
+  function videoFolderItems(video: FeedVideo): MenuItem[] {
+    const own = folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), '')
+    const theirs = allFolders.filter((folder) => !folder.parentId && folder.channel === channelKey(video))
+    const titled = own.length > 0 && theirs.length > 0
+    const items = (choices: { folder: VideoFolder; path: string }[], section?: string) => choices.map(({ folder, path }, index): MenuItem => ({
+      label: path,
+      icon: Folder,
+      section: index === 0 ? section : undefined,
+      checked: folder.id === video.folderId,
+      onClick: () => void moveToFolder(video.id, folder.id),
+    }))
+    return [
+      ...items(own, titled ? t('Your folders') : undefined),
+      ...items(folderChoices(theirs, titled ? '' : `${video.channel} / `), titled ? video.channel : undefined),
+    ]
+  }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
   // A folder, then what's in it when it's open: its sub-folders, then its videos, oldest on top
   // like a playlist. Only in To watch, empty ones too, or a new folder couldn't be reached.
@@ -567,10 +585,11 @@ function VideoView() {
           y={playlistMenu.y}
           onClose={() => setPlaylistMenu(null)}
           items={[
-            { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
+            // The order (the second line's name depends on the first), checking, then elsewhere
             { label: t('YouTube’s order'), icon: ListOrdered, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
-            { label: t('Check for new videos once a day'), icon: CalendarClock, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
-            { label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
+            { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
+            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
           ]}
         />
@@ -616,16 +635,7 @@ function VideoView() {
           onClose={() => setMoving(null)}
           header={{ title: t('Move to folder') }}
           items={[
-            // Your own folders, then those of this video's channel: it can't go in another channel's
-            ...[
-              ...folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), ''),
-              ...folderChoices(allFolders.filter((folder) => folder.channel === channelKey(moving.video)), `${moving.video.channel} / `),
-            ].map(({ folder, path }) => ({
-              label: path,
-              icon: Folder,
-              checked: folder.id === moving.video.folderId,
-              onClick: () => void moveToFolder(moving.video.id, folder.id),
-            })),
+            ...videoFolderItems(moving.video),
             { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, videoId: moving.video.id }) },
             ...(grouping
               ? [{

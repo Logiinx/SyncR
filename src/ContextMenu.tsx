@@ -7,6 +7,7 @@ export interface MenuItem {
   icon?: LucideIcon // before the label
   danger?: boolean // red; put it last: it always gets the line above it
   divider?: boolean // a thin line above it (starts a new group of actions)
+  section?: string // a small dim title above it, naming the group it starts (only when there are two to tell apart)
   swatch?: string // a small round color dot before the label (a CSS color)
   checked?: boolean // a ✓ after the label (the current choice)
   disabled?: boolean // grayed, can't be pressed
@@ -71,6 +72,7 @@ function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
           // Labels can repeat (two Board groups with the same name): the place makes it unique
           <Fragment key={`${index}:${item.label}`}>
             {(item.divider || item.danger) && index > 0 && <div className="context-menu-divider" />}
+            {item.section && <div className="context-menu-section" title={item.section}>{item.section}</div>}
             <button
               className={item.danger ? 'danger' : ''}
               disabled={item.disabled}

@@ -3724,6 +3724,20 @@ button {
   font-size: 0.9em;
 }
 
+.context-menu-section {
+  max-width: 260px;
+  padding: 6px 10px 2px;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.context-menu button + .context-menu-section {
+  margin-top: 4px;
+}
+
 .menu-swatch {
   flex-shrink: 0;
   width: 12px;

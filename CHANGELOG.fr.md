@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Amélioration** des menus clic droit des vidéos et des playlists : regroupés, vos dossiers à part de ceux de la chaîne
 - **Changement** de la liste Vues : une seule liste, la dernière vue en haut, sans lignes par chaîne ni dossiers
 - **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
 - **Correction** des sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
