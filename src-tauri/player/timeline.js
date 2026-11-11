@@ -203,7 +203,7 @@ function fillTip(seconds) {
 }
 
 // ---- Its part of the player's menu (player.js, drawMenu) -----------------------------------------
-function timelineMenu(row, title) {
+function timelineMenu({ row, title }) {
   title(labels.barTitle)
   row(labels.gameChanges, showGames, () => {
     showGames = !showGames

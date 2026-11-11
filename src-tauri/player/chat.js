@@ -495,24 +495,17 @@ function drawChatSize() {
   chatList.style.setProperty('--chat-size', chatSize)
   if (!chatHeld) toLatest()
 }
-function chatMenu(menu, row, title) {
+// Its panel in the player's menu (controls.js, drawMenu)
+function chatMenu({ panel }) {
+  panel('chat', labels.chatTitle, '', (side) => drawChatPanel(side))
+}
+function drawChatPanel({ title, row, choices, element: menu }) {
   title(labels.chatSize)
-  const sizes = document.createElement('div')
-  sizes.className = 'menu-choices'
-  for (const size of CHAT_SIZES) {
-    const button = document.createElement('button')
-    button.textContent = `${Math.round(size * 100)}%`
-    if (size === chatSize) button.className = 'on'
-    button.onclick = () => {
-      chatSize = size
-      localStorage.setItem('player.chatSize', size)
-      drawChatSize()
-      drawMenu()
-    }
-    sizes.append(button)
-  }
-  menu.append(sizes)
-  title(labels.chatTitle)
+  choices(CHAT_SIZES.map((size) => ({ value: size, text: `${Math.round(size * 100)}%` })), chatSize, (size) => {
+    chatSize = size
+    localStorage.setItem('player.chatSize', size)
+    drawChatSize()
+  })
   row(labels.chatHideBots, hideBots, () => {
     hideBots = !hideBots
     localStorage.setItem('player.hideBots', hideBots ? 1 : 0)

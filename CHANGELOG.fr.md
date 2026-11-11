@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Amélioration** du menu des réglages du lecteur : une liste courte, les choix de chaque partie s’ouvrent à côté au survol
 - **Amélioration** des menus clic droit des vidéos et des playlists : regroupés, vos dossiers à part de ceux de la chaîne
 - **Changement** de la liste Vues : une seule liste, la dernière vue en haut, sans lignes par chaîne ni dossiers
 - **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists

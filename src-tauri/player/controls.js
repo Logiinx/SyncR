@@ -7,7 +7,7 @@
 //   root: document or a shadow root ($ looks there), box: the element they go in (#player),
 //   surface: what a click on the picture lands on, html: (text) => what innerHTML takes,
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
-//   hooks: { fillTip, besideTime: (seconds) => text after the time, menu(row, title, menu),
+//   hooks: { fillTip, besideTime: (seconds) => text after the time, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
 //            keys: { key: action }, keepShowing,
 //            beforeMenu, pictureClick: () => true when it did something }
 // }
@@ -20,7 +20,7 @@
 //     or '' when off, setTrack(value or ''), toggle(), size(), setSize(n), moved(), resetPlace() }
 // }
 function playerControls(env, media) {
-  const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
   const JUMP = 10 // seconds
   const QUIET_AFTER = 1500 // ms without moving the mouse before the controls fade
   const ICONS = {
@@ -32,6 +32,7 @@ function playerControls(env, media) {
     maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
     minimize: '<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
     subtitles: '<rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/>',
     minus: '<path d="M5 12h14"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
@@ -76,7 +77,7 @@ function playerControls(env, media) {
     </div>
   </div>
   <button id="skip" hidden></button>
-  <div id="menu" hidden></div>
+  <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
   <div id="spinner"><span></span></div>
   <div id="flash"></div>
   <div id="message" hidden><div id="message-text"></div><button id="retry"></button></div>`))
@@ -372,77 +373,192 @@ function playerControls(env, media) {
   }
   video.addEventListener('ratechange', drawSettings)
 
-  function drawMenu() {
-    const menu = $('menu')
-    menu.textContent = ''
+  // ---- The ⚙️ menu ------------------------------------------------------------------------------
+  // A short list (#menu); a row with more choices opens them in a panel on its left (#menu-side),
+  // on hover or click. Once a panel is open, another row takes over after a short wait, so a
+  // slanted move towards the panel doesn't switch it. When there's no room beside the list, a
+  // click shows the panel in its place, with a Back line.
+  const SWITCH_WAIT = 50 // ms
+  let sideKey = null // the panel open, or none
+  let narrow = false // no room beside the list: the panel replaces it
+  let panels = {}
+  let hoverTimer
+  const speedName = (speed) => (speed === 1 ? labels.normal : speedText(speed))
+  const tick = (button) => button.insertAdjacentHTML('beforeend', html(icon('check')))
+
+  // What fills the list or a panel: titles, rows, a sliding switch
+  function builder(target) {
     const title = (text) => {
       const line = document.createElement('div')
       line.className = 'menu-title'
       line.textContent = text
-      menu.append(line)
+      target.append(line)
     }
-    const tick = (button) => button.insertAdjacentHTML('beforeend', html(icon('check')))
-    const levels = media.qualities()
-    if (levels.length) {
-      title(labels.quality)
-      const ticked = media.quality()
-      for (const item of levels) {
-        const on = item.value === ticked
-        const row = document.createElement('button')
-        row.className = `menu-item${on ? ' on' : ''}`
-        row.textContent = item.text
-        if (on) tick(row)
-        row.onclick = () => {
-          media.setQuality(item.value)
-          closeMenu()
-          drawSettings()
-        }
-        menu.append(row)
-      }
-    }
-    title(labels.speed)
-    const speeds = document.createElement('div')
-    speeds.className = 'menu-choices'
-    for (const speed of SPEEDS) {
-      const button = document.createElement('button')
-      button.textContent = speedText(speed)
-      if (speed === media.rate()) button.className = 'on'
-      button.onclick = () => media.setRate(speed)
-      speeds.append(button)
-    }
-    menu.append(speeds)
-    drawSubtitlesMenu(menu, title, tick)
-    const row = (text, on, action) => {
+    const item = (text, on, action) => {
       const button = document.createElement('button')
       button.className = `menu-item${on ? ' on' : ''}`
       button.textContent = text
       if (on) tick(button)
-      button.onclick = () => {
-        action()
-        drawMenu()
-      }
-      menu.append(button)
+      button.onclick = action
+      target.append(button)
+      return button
     }
-    hooks.menu?.(row, title, menu)
+    // A choice that stays (redraws the menu), and one that's done (closes it)
+    const row = (text, on, action) => item(text, on, () => { action(); drawMenu() })
+    const pick = (text, on, action) => item(text, on, () => { action(); closeMenu(); drawSettings() })
+    // The app's sliding switch: equal buttons, the blue fill and a faint one under the mouse slide
+    // between them. choose(value) mustn't redraw the menu, or nothing slides.
+    const choices = (items, current, choose) => {
+      const line = document.createElement('div')
+      line.className = 'menu-switch'
+      line.style.setProperty('--count', items.length)
+      const fill = document.createElement('i')
+      const ghost = document.createElement('i')
+      ghost.className = 'ghost'
+      line.append(ghost, fill)
+      const moveTo = (part, index) => {
+        part.hidden = index < 0
+        if (index >= 0) part.style.transform = `translateX(${index * 100}%)`
+      }
+      const buttons = items.map((choice, index) => {
+        const button = document.createElement('button')
+        button.textContent = choice.text
+        button.onpointerenter = () => moveTo(ghost, index)
+        button.onclick = () => {
+          buttons.forEach((other) => other.classList.toggle('on', other === button))
+          moveTo(fill, index)
+          choose(choice.value)
+        }
+        return button
+      })
+      line.onpointerleave = () => moveTo(ghost, -1)
+      const chosen = items.findIndex((choice) => choice.value === current)
+      buttons[chosen]?.classList.add('on')
+      // Placed at once, then sliding from there
+      fill.style.transition = ghost.style.transition = 'none'
+      moveTo(fill, chosen)
+      moveTo(ghost, -1)
+      requestAnimationFrame(() => { fill.style.transition = ghost.style.transition = '' })
+      line.append(...buttons)
+      target.append(line)
+    }
+    return { title, row, pick, choices, element: target }
   }
-  // The video's tracks (a pick counts for this video only), then size and place, for every video
-  function drawSubtitlesMenu(menu, title, tick) {
+
+  // A row of the list that opens a panel: its name, then what's chosen there, dim
+  function panelRow(menu, key, text, value, fill) {
+    panels[key] = fill
+    const button = document.createElement('button')
+    button.className = 'menu-item menu-panel'
+    button.dataset.panel = key
+    const name = document.createElement('span')
+    name.textContent = text
+    const shown = document.createElement('span')
+    shown.className = 'menu-value'
+    const valueText = document.createElement('span')
+    valueText.textContent = value || ''
+    shown.append(valueText)
+    shown.insertAdjacentHTML('beforeend', html(icon('chevronLeft')))
+    button.append(name, shown)
+    button.onpointerenter = () => {
+      clearTimeout(hoverTimer)
+      if (narrow) return
+      if (!sideKey) openSide(key, true)
+      else hoverTimer = setTimeout(() => openSide(key, true), SWITCH_WAIT)
+    }
+    button.onpointerleave = () => clearTimeout(hoverTimer)
+    button.onclick = () => {
+      clearTimeout(hoverTimer)
+      openSide(key, false)
+    }
+    menu.append(button)
+  }
+
+  function drawMenu() {
+    const menu = $('menu')
+    menu.textContent = ''
+    panels = {}
+    const main = builder(menu)
+    const panel = (key, text, value, fill) => panelRow(menu, key, text, value, fill)
+    const levels = media.qualities()
+    if (levels.length) {
+      panel('quality', labels.quality, media.qualityText(), (side) => {
+        const ticked = media.quality()
+        for (const item of levels) side.pick(item.text, item.value === ticked, () => media.setQuality(item.value))
+      })
+    }
+    panel('speed', labels.speed, speedName(media.rate()), (side) => {
+      for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
+    })
     const tracks = subtitles?.tracks() || []
-    if (!tracks.length) return
-    title(labels.subtitles)
+    if (tracks.length) {
+      const current = subtitles.track()
+      const on = tracks.find((item) => item.value === current)
+      panel('subtitles', labels.subtitles, on ? on.text : labels.subtitlesOff, (side) => drawSubtitlesMenu(side, tracks))
+    }
+    hooks.menu?.({ ...main, panel })
+    drawSide()
+  }
+
+  function drawSide() {
+    const side = $('menu-side')
+    const fill = sideKey && panels[sideKey]
+    $('menus').classList.toggle('narrow', !!fill && narrow)
+    for (const row of $('menu').querySelectorAll('.menu-panel')) row.classList.toggle('open', !!fill && row.dataset.panel === sideKey)
+    if (!fill) {
+      side.hidden = true
+      return
+    }
+    side.textContent = ''
+    side.hidden = false
+    if (narrow) {
+      const back = document.createElement('button')
+      back.className = 'menu-item menu-back'
+      back.innerHTML = html(icon('chevronLeft'))
+      back.append(labels.menuBack)
+      back.onclick = () => {
+        sideKey = null
+        drawSide()
+      }
+      side.append(back)
+    }
+    fill(builder(side))
+  }
+
+  // Room beside the list for the panel, inside the player
+  const sideFits = () => $('menu-side').getBoundingClientRect().left >= box.getBoundingClientRect().left + 8
+
+  function openSide(key, byHover) {
+    if (key === sideKey || (narrow && byHover)) return
+    const before = sideKey
+    sideKey = key
+    drawSide()
+    if (!narrow && !sideFits()) {
+      // A hover never takes the list away from under the mouse: that needs a click
+      if (byHover) {
+        sideKey = before
+        if (!before) narrow = true
+        drawSide()
+        return
+      }
+      narrow = true
+      drawSide()
+    }
+    if (!before && !narrow) {
+      const side = $('menu-side')
+      side.classList.remove('unfold')
+      void side.offsetWidth
+      side.classList.add('unfold')
+    }
+  }
+
+  // The video's tracks (a pick counts for this video only), then size and place, for every video
+  function drawSubtitlesMenu(side, tracks) {
     const current = subtitles.track()
     for (const item of [{ value: '', text: labels.subtitlesOff }, ...tracks]) {
-      const on = item.value === current
-      const row = document.createElement('button')
-      row.className = `menu-item${on ? ' on' : ''}`
-      row.textContent = item.text
-      if (on) tick(row)
-      row.onclick = () => {
-        subtitles.setTrack(item.value)
-        closeMenu()
-      }
-      menu.append(row)
+      side.pick(item.text, item.value === current, () => subtitles.setTrack(item.value))
     }
+    const menu = side.element
     const size = Math.round(subtitles.size() * 10) / 10
     const line = document.createElement('div')
     line.className = 'menu-size'
@@ -479,13 +595,19 @@ function playerControls(env, media) {
   }
   function openMenu() {
     hooks.beforeMenu?.()
+    sideKey = null
+    narrow = false
     $('menu').hidden = false
     $('settings').classList.add('open')
     drawMenu()
     wake()
   }
   function closeMenu() {
+    clearTimeout(hoverTimer)
+    sideKey = null
+    narrow = false
     $('menu').hidden = true
+    drawSide()
     $('settings').classList.remove('open')
   }
   $('settings').onclick = () => ($('menu').hidden ? openMenu() : closeMenu())
@@ -640,14 +762,26 @@ const CONTROLS_CSS = `
   @container (max-width: 330px) { #time { display: none; } }
   @container (max-width: 540px) { #time-beside { display: none; } }
 
-  #menu {
-    position: absolute; right: 12px; bottom: 62px; z-index: 5;
-    min-width: 250px; max-height: calc(100% - 80px); overflow: auto; box-sizing: border-box;
+  /* The list on the right, a row's panel on its left, bottoms in line */
+  #menus { position: absolute; top: 18px; right: 12px; bottom: 62px; z-index: 5; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; }
+  #menu, #menu-side {
+    flex-shrink: 0; max-height: 100%; overflow: auto; box-sizing: border-box; pointer-events: auto;
     scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
     padding: 6px; border-radius: 8px;
     background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14);
     color: var(--text, #e4e4e4);
   }
+  #menu { min-width: 220px; }
+  #menu-side { min-width: 250px; max-width: 340px; }
+  #menus.narrow #menu { display: none; }
+  #menu-side.unfold { animation: unfold 0.16s cubic-bezier(0.32, 0.72, 0, 1); /* the app's menus: 0.16 s, --ease-open */ }
+  @keyframes unfold { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0); } }
+  .no-animations #menu-side { animation: none; }
+  .menu-panel.open { background: var(--hover, #262626); }
+  .menu-value { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--text-dim, #9a9a9a); }
+  .menu-value span { min-width: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-value svg { flex-shrink: 0; }
+  .menu-item.menu-back { justify-content: flex-start; gap: 6px; padding-left: 8px; }
   .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 6px; text-align: left; }
   .menu-item:hover { background: var(--hover, #262626); }
@@ -666,10 +800,12 @@ const CONTROLS_CSS = `
   #goto-note.wrong { color: var(--text-orange, #f0a052); }
   .menu-item.on { color: var(--text-blue, #6ea8fe); }
   .menu-item svg { width: 16px; height: 16px; }
-  .menu-choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 4px 4px; }
-  .menu-choices button { height: 30px; border-radius: 6px; background: var(--hover, #262626); font-variant-numeric: tabular-nums; }
-  .menu-choices button:hover { background: rgba(255, 255, 255, 0.14); }
-  .menu-choices button.on { background: var(--accent, #2d4f7c); color: #fff; }
+  /* The app's sliding switch (FillSwitch): sunken track, thin frame, the fill 2 px inside */
+  .menu-switch { position: relative; display: grid; grid-template-columns: repeat(var(--count), 1fr); margin: 2px 4px 4px; padding: 2px; border: 1px solid var(--border, #2a2a2a); border-radius: 8px; background: var(--bg-sunken, #101010); }
+  .menu-switch button { position: relative; height: 26px; border-radius: 6px; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
+  .menu-switch button:hover, .menu-switch button.on { color: var(--text, #e4e4e4); }
+  .menu-switch i { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--count)); border-radius: 6px; background: var(--accent, #2d4f7c); transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none; } /* like FillSwitch */
+  .menu-switch i.ghost { background: color-mix(in srgb, var(--accent, #2d4f7c) 30%, transparent); }
 
   #spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   #spinner span { width: 44px; height: 44px; box-sizing: border-box; border: 4px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; border-radius: 50%; animation: turn 0.8s linear infinite; }

@@ -117,9 +117,9 @@ const controls = playerControls({
   hooks: {
     fillTip: (seconds) => fillTip(seconds),
     besideTime: (seconds) => dayAt(seconds),
-    menu: (row, title, menu) => {
-      timelineMenu(row, title)
-      chatMenu(menu, row, title)
+    menu: (menu) => {
+      chatMenu(menu)
+      timelineMenu(menu)
     },
     keys: { c: () => toggleChat() },
     keepShowing: () => !$('goto').hidden,
