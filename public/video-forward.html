@@ -14,5 +14,7 @@
   for (const name of ['quality', 'subtitles', 'language']) {
     if (/^[\w-]+$/.test(query.get(name) || '')) wishes.set(`syncr-${name}`, query.get(name))
   }
+  // Texts, colors and scale for our controls over YouTube's player (controls.js)
+  if (query.get('data')) wishes.set('syncr-data', query.get('data'))
   if (/^[\w-]{6,20}$/.test(id)) location.replace(`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&iv_load_policy=3${start}#${wishes}`)
 </script>

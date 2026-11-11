@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** des vidéos YouTube : nos propres contrôles, les mêmes que ceux du lecteur Twitch
+
 ## [0.68.1] - 2026-11-11
 
 **Vidéo**

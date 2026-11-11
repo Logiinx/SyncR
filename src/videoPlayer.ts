@@ -106,10 +106,10 @@ function pageColors(names: string[]) {
   return Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
 }
 
-// What the own Twitch player shows. Like the bar, it has its own storage and no access to the
-// app's translations or colors.
-function twitchPlayerAddress(video: PlayableVideo) {
-  const data = {
+// What our own players' controls show (src-tauri/player/controls.js), on Twitch and YouTube. Like
+// the bar, their pages have their own storage and no access to the app's translations or colors.
+function controlsData() {
+  return {
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
@@ -128,6 +128,16 @@ function twitchPlayerAddress(video: PlayableVideo) {
       auto: t('Auto'),
       fullscreen: t('Full screen'),
       exitFullscreen: t('Exit full screen'),
+    },
+  }
+}
+
+function twitchPlayerAddress(video: PlayableVideo) {
+  const shared = controlsData()
+  const data = {
+    ...shared,
+    labels: {
+      ...shared.labels,
       stoppedLoading: t('The video stopped loading'),
       retry: t('Try again'),
       skipMuted: t('Skip muted part'),
@@ -179,7 +189,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
   if (way === 'own') {
     const { quality, subtitleLanguage } = loadPlayerSettings()
-    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}`
+    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify(controlsData()))}`
   }
   const data = {
     message: t("This video can't play in the player window"),

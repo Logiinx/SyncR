@@ -19,123 +19,13 @@
   button { padding: 0; border: 0; background: none; color: inherit; font: inherit; }
 
   #stage { position: fixed; inset: 0; display: flex; }
-  #player { position: relative; flex: 1; min-width: 0; overflow: hidden; background: #000; outline: none; }
-  #player.quiet { cursor: none; }
+  #player { flex: 1; min-width: 0; background: #000; }
   video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
 
-  #ui { position: absolute; inset: 0; opacity: 1; pointer-events: none; transition: opacity 0.2s ease; }
-  #player.quiet #ui { opacity: 0; }
-  #player.quiet #ui * { pointer-events: none !important; }
-  #shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent 130px); }
-
-  #big {
-    position: absolute; top: 50%; left: 50%; width: 68px; height: 68px; margin: -34px 0 0 -34px;
-    display: none; align-items: center; justify-content: center;
-    border-radius: 50%; background: rgba(0, 0, 0, 0.55); pointer-events: auto;
-    transition: background 0.15s;
-  }
-  #big svg { width: 30px; height: 30px; fill: currentColor; }
-  #big:hover { background: var(--accent, #2d4f7c); }
-  #player.paused:not(.loading) #big { display: flex; }
-
-  /* Above the chat in full screen, for the tip's picture */
-  #bottom { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; pointer-events: auto; }
-  #progress { position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
-  #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; }
-  #progress:hover #track, #player.dragging #track { height: 6px; }
-  #buffer, #played { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
-  #buffer { background: rgba(255, 255, 255, 0.35); }
-  #played { background: var(--text-blue, #6ea8fe); }
-  /* Muted parts: dimmer ahead, full color once played, so the position still shows inside one */
-  #muted, #muted-played { position: absolute; inset: 0; background: var(--muted-parts, none); }
-  #muted { opacity: 0.6; }
-  #muted-played { clip-path: inset(0 calc(100% - var(--played, 0%)) 0 0); }
-  #ticks { position: absolute; inset: 0; pointer-events: none; }
-  #ticks i { position: absolute; top: 5px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: #fff; }
-  #knob {
-    position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px;
-    border-radius: 50%; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.15s;
-  }
-  #progress:hover #knob, #player.dragging #knob { opacity: 1; }
-  #tip {
-    position: absolute; bottom: 22px; transform: translateX(-50%); padding: 3px 8px; border-radius: 6px;
-    background: rgba(0, 0, 0, 0.85); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
-    text-align: center;
-  }
-  #tip-picture { margin: 2px -5px 4px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.08); background-repeat: no-repeat; }
-  #tip-game { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #9a9a9a); }
-  #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
-
-  #bar { display: flex; align-items: center; gap: 2px; height: 46px; }
-  .button {
-    position: relative; width: 40px; height: 40px; flex: none;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 6px; transition: background 0.15s;
-  }
-  .button:hover, .button.open { background: rgba(255, 255, 255, 0.14); }
-  .button svg { width: 20px; height: 20px; }
   #chat-button.on { color: var(--text-blue, #6ea8fe); }
   #chat-button.off { opacity: 0.4; background: none; }
-  #play svg { width: 22px; height: 22px; fill: currentColor; }
-  /* The number inside the round arrows */
-  .button b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 400; }
-  #volume { display: flex; align-items: center; }
-  #level {
-    width: 0; margin: 0; opacity: 0; accent-color: #fff; cursor: pointer;
-    transition: width 0.2s, opacity 0.2s, margin 0.2s;
-  }
-  #volume:hover #level { width: 84px; margin-right: 6px; opacity: 1; }
-  #level-text { width: 0; overflow: hidden; opacity: 0; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: width 0.2s, opacity 0.2s, margin 0.2s; }
-  #volume:hover #level-text { width: 32px; margin-right: 6px; opacity: 1; }
-  #time { width: auto; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  #time-day:empty { display: none; }
-  #spacer { flex: 1; min-width: 0; }
-  #settings { flex: 0 1 auto; width: auto; min-width: 40px; gap: 6px; padding: 0 8px; box-sizing: border-box; }
-  #settings span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  #settings span:empty { display: none; }
-  /* A small window at a large app scale: the least needed go first */
-  #bottom { container-type: inline-size; }
-  @container (max-width: 490px) { #settings span { display: none; } }
-  @container (max-width: 410px) { #back, #forward { display: none; } }
-  @container (max-width: 330px) { #time { display: none; } }
-  @container (max-width: 540px) { #time-day { display: none; } }
-
-  #menu {
-    position: absolute; right: 12px; bottom: 62px; z-index: 5;
-    min-width: 250px; max-height: calc(100% - 80px); overflow: auto; box-sizing: border-box;
-    padding: 6px; border-radius: 8px;
-    background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14);
-    color: var(--text, #e4e4e4);
-  }
-  .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
-  .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 6px; text-align: left; }
-  .menu-item:hover { background: var(--hover, #262626); }
-  #bot-names, #goto-text { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
+  #bot-names { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
   #bot-names::placeholder { color: var(--text-dim, #9a9a9a); }
-  #goto { position: absolute; bottom: 76px; width: 250px; box-sizing: border-box; padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4); }
-  #goto-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
-  #goto-note.wrong { color: var(--text-orange, #f0a052); }
-  .menu-item.on { color: var(--text-blue, #6ea8fe); }
-  .menu-item svg { width: 16px; height: 16px; }
-  .menu-choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 4px 4px; }
-  .menu-choices button { height: 30px; border-radius: 6px; background: var(--hover, #262626); font-variant-numeric: tabular-nums; }
-  .menu-choices button:hover { background: rgba(255, 255, 255, 0.14); }
-  .menu-choices button.on { background: var(--accent, #2d4f7c); color: #fff; }
-
-  #spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-  #spinner span { width: 44px; height: 44px; box-sizing: border-box; border: 4px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; border-radius: 50%; animation: turn 0.8s linear infinite; }
-  @keyframes turn { to { transform: rotate(360deg); } }
-  #flash {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 10px 18px; border-radius: 999px;
-    background: rgba(0, 0, 0, 0.6); font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
-  }
-  #flash.show { opacity: 1; transition: none; }
-  #message {
-    position: absolute; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center;
-    background: rgba(0, 0, 0, 0.6); text-align: center;
-  }
-  #message button { height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; }
 
   #chat { position: relative; flex: none; box-sizing: border-box; display: flex; flex-direction: column; background: var(--bg, #161616); border-left: 1px solid rgba(255, 255, 255, 0.1); color: var(--text, #e4e4e4); }
   #chat-edge { position: absolute; top: 0; bottom: 0; left: -4px; width: 7px; z-index: 2; cursor: col-resize; touch-action: none; }
@@ -158,44 +48,10 @@
   #chat-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 20px; text-align: center; color: var(--text-dim, #9a9a9a); pointer-events: none; }
   #chat-latest { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); height: 28px; padding: 0 12px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; font-size: 12px; white-space: nowrap; }
 
-  .no-animations * { transition: none !important; }
 </style>
 <div id="stage">
 <div id="player" class="paused loading" tabindex="-1">
   <video id="video" playsinline></video>
-  <div id="ui">
-    <div id="shade"></div>
-    <button id="big"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg></button>
-    <div id="bottom">
-      <div id="progress">
-        <div id="track"><div id="buffer"></div><div id="played"></div><div id="muted"></div><div id="muted-played"></div></div>
-        <div id="ticks"></div>
-        <div id="knob"></div>
-        <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div></div>
-      </div>
-      <div id="goto" hidden><div class="menu-title" id="goto-title"></div><input id="goto-text" type="text" spellcheck="false" autocomplete="off"><div id="goto-note"></div></div>
-      <div id="bar">
-        <button class="button" id="play"></button>
-        <button class="button" id="back"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><b>10</b></button>
-        <button class="button" id="forward"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><b>10</b></button>
-        <div id="volume">
-          <button class="button" id="mute"></button>
-          <input id="level" type="range" min="0" max="1" step="0.05">
-          <span id="level-text"></span>
-        </div>
-        <button class="button" id="time"><span id="time-now"></span><span id="time-day"></span></button>
-        <div id="spacer"></div>
-        <button class="button" id="settings"><svg viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
-        <button class="button" id="chat-button"></button>
-        <button class="button" id="full"></button>
-      </div>
-    </div>
-  </div>
-  <button id="skip" hidden></button>
-  <div id="menu" hidden></div>
-  <div id="spinner"><span></span></div>
-  <div id="flash"></div>
-  <div id="message" hidden><div id="message-text"></div><button id="retry"></button></div>
 </div>
 <div id="chat" hidden>
   <div id="chat-edge"></div>
@@ -205,6 +61,7 @@
 </div>
 </div>
 <script src="/hls.min.js"></script>
+<script src="/controls.js"></script>
 <script src="/player.js"></script>
 <script src="/timeline.js"></script>
 <script src="/chat.js"></script>

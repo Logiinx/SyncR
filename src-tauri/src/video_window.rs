@@ -92,6 +92,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
   let path = uri.path();
   match path {
     "/player.html" => return answer(200, "text/html", include_bytes!("../player/player.html").to_vec()),
+    "/controls.js" => return answer(200, "text/javascript", include_bytes!("../player/controls.js").to_vec()),
     "/player.js" => return answer(200, "text/javascript", include_bytes!("../player/player.js").to_vec()),
     "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
     "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
@@ -411,7 +412,9 @@ pub async fn open_video_player(
         .additional_browser_args(VIDEO_ARGS)
         .browser_extensions_enabled(true)
         .data_directory(folder)
-        .initialization_script_for_all_frames(include_str!("video-watch.js"))
+        // Our own controls (controls.js) come along, for YouTube's player page; wrapped so that
+        // other sites' pages don't see their names
+        .initialization_script_for_all_frames(concat!("(() => {\n", include_str!("../player/controls.js"), "\n;", include_str!("video-watch.js"), "\n})()"))
         .on_navigation(move |url| {
           if url.host_str() == Some(VIDEO_REQUEST) {
             use tauri::Emitter;

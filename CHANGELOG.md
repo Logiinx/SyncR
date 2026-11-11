@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** YouTube videos to our own controls, the same as the Twitch player's, instead of YouTube's
+
 ## [0.68.1] - 2026-11-11
 
 **Video**
