@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.70.0] - 2026-11-11
+
 **Video**
 - **Added** a Try again button when a YouTube video stops on an error, after one try on its own
 - **Improved** the player's settings menu: a short list, each part's choices open beside it on hover
