@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.68.0] - 2026-11-11
+
 **Vidéo**
 - **Ajout** de Ctrl+V dans l’onglet Vidéo, ou Ctrl+Alt+Maj+V partout, pour ouvrir un lien YouTube ou Twitch copié
 - **Changement** des playlists : lues de la plus ancienne à la plus récente, l’ordre de YouTube reste dans leur menu clic droit
