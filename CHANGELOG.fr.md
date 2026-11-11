@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Synchronisation**
+- **Ajout** d’une brève teinte verte ou rouge sur les notes et cartes du Board ajoutées ou supprimées par l’autre appareil
+
 **Notes**
 - **Changement** de « + » suivi d’une espace en début de ligne : il reste tel quel au lieu de lancer une liste à puces
 

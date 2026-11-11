@@ -1,5 +1,6 @@
 import type { Table, UpdateSpec } from 'dexie'
 import { t } from './i18n'
+import { animationsOn } from './animations'
 import {
   db,
   imageIds,
@@ -15,6 +16,7 @@ import { clockTime, shortDate } from './dates'
 import { deviceName } from './device'
 import { syncHistory } from './historySync'
 import { blobFromBytes } from './sealing'
+import { markGlow, startGlows, unmarkGlow } from './syncGlow'
 import {
   changesSince, deleteFile, download, isCursorReset, listFiles, ownWrites, upload, uploadMany,
   type Change, type FileInfo, type Upload,
@@ -82,6 +84,7 @@ function records<T extends SyncedRecord, TInsert>(
     idOf?: (record: T) => string // its file name (default: its id)
     removeWhenGone?: boolean // see syncRecords
     removeOld?: () => Promise<string[]> // removes old deleted ones here, returns their ids
+    glows?: boolean // new and deleted ones are tinted on screen (syncGlow.ts)
   } = {},
 ): RecordFolder {
   return {
@@ -92,7 +95,7 @@ function records<T extends SyncedRecord, TInsert>(
         if (remoteRevs.delete(id)) await deleteFile(`/${folder}/${id}`)
       }
       const idOf = options.idOf ?? (byId as unknown as (record: T) => string) // records without idOf have an id
-      await syncRecords(table, folder, remoteRevs, key, result, idOf, options.removeWhenGone)
+      await syncRecords(table, folder, remoteRevs, key, result, idOf, options.removeWhenGone, options.glows)
     },
   }
 }
@@ -103,7 +106,7 @@ const recordFolders = (): RecordFolder[] => [
   // deleted): it's kept, and sent again once it changes.
   records('settings', db.settings, { idOf: (setting) => setting.name, removeWhenGone: false }),
   // Board cards and games: changed on both sides means the newest wins. See syncRecords().
-  records('cards', db.cards, { removeOld: removeOldDeletedCards }),
+  records('cards', db.cards, { removeOld: removeOldDeletedCards, glows: true }),
   records('games', db.games, { removeOld: removeOldDeletedGames }),
   // Calendar alerts marked Done or snoozed: no deleted rows, an old mark goes here and from
   // Dropbox, and other devices remove theirs when they see its file is gone.
@@ -327,6 +330,12 @@ async function runSync(): Promise<SyncResult> {
     return stored
   }
 
+  // A note new here (from the other device, or back after being deleted here): tinted green
+  async function storeNew(remote: RemoteNote, rev: string) {
+    markGlow(remote.id, 'added')
+    if (!(await storeNote(remote, rev, undefined))) unmarkGlow(remote.id)
+  }
+
   // Keeps a version that lost a conflict, as a new note. Its id comes from the note and the
   // version's time, so a retry of the same conflict (the step after it failed or was skipped)
   // finds the copy already there instead of making a second one.
@@ -377,6 +386,7 @@ async function runSync(): Promise<SyncResult> {
   const synced = new Map((await db.synced.toArray()).map((s) => [s.id, s]))
   const isChangedLocally = (note: Note) => synced.get(note.id)?.updatedAt !== note.updatedAt
   const done = new Set<string>() // notes fully handled by an earlier step
+  await countGlows(remoteNotes, remoteDeleted, remoteRecords.get('cards')!)
   const imagesUsedIn = (notes: Note[]) => new Set(notes.flatMap((n) => imageIds(n.content)))
   const localAttachments = new Set(await db.attachments.toCollection().primaryKeys())
 
@@ -410,7 +420,7 @@ async function runSync(): Promise<SyncResult> {
       // Edited on the other device after our last sync: the edit wins, the note comes back
       await db.deletions.delete(id) // otherwise storeNote() would skip it
       const remote = await downloadNote(id)
-      if (remote) await storeNote(remote, remoteRev, undefined)
+      if (remote) await storeNew(remote, remoteRev)
     } else if (remoteRev || last) {
       // Was in Dropbox: leave a marker for other devices, then remove the note file, only if
       // it's still the version listed above
@@ -454,6 +464,7 @@ async function runSync(): Promise<SyncResult> {
       await uploadNote(note, remoteRev ? { update: remoteRev } : 'add')
     } else {
       // Unless it was edited here while this sync ran: then the next sync sends the edit
+      markGlow(id, 'removed')
       const deleted = await db.transaction('rw', db.notes, db.synced, async () => {
         if ((await db.notes.get(id))?.updatedAt !== note.updatedAt) return false
         await db.notes.delete(id)
@@ -461,6 +472,7 @@ async function runSync(): Promise<SyncResult> {
         return true
       })
       if (deleted) result.deleted++
+      else unmarkGlow(id)
     }
     done.add(id)
   }
@@ -496,7 +508,7 @@ async function runSync(): Promise<SyncResult> {
     if (!local) {
       // New from the other device
       const remote = await downloadNote(id)
-      if (remote) await storeNote(remote, remoteRev, undefined)
+      if (remote) await storeNew(remote, remoteRev)
       return
     }
 
@@ -677,6 +689,19 @@ interface SyncedRecord {
 // over an edit made on a device that hadn't received it yet (e.g. "Done" clicked on an old copy
 // of a reminder that was deleted elsewhere). Only a deliberate restore made after the deletion
 // (restoredAt, e.g. a removed game added again) beats it.
+// How many notes and Board items may change in this sync (new, deleted or edited): over 10,
+// none is tinted (syncGlow.ts). Counted before anything is stored. Not with Animations off.
+async function countGlows(remoteNotes: Map<string, string>, remoteDeleted: Map<string, number>, remoteCards: Map<string, string>) {
+  if (!animationsOn()) return startGlows(Infinity)
+  const notes = new Set(await db.notes.toCollection().primaryKeys())
+  const cardRevs = new Map((await db.cards.toArray()).map((card) => [card.id, card.syncedRev]))
+  let changes = 0
+  for (const id of remoteNotes.keys()) if (!notes.has(id) && !remoteDeleted.has(id)) changes++
+  for (const id of remoteDeleted.keys()) if (notes.has(id)) changes++
+  for (const [id, rev] of remoteCards) if (cardRevs.get(id) !== rev) changes++
+  startGlows(changes)
+}
+
 export function localWins(local: SyncedRecord, remote: SyncedRecord) {
   if (remote.deleted && !local.deleted) return (local.restoredAt ?? 0) > remote.updatedAt
   if (local.deleted && !remote.deleted) return (remote.restoredAt ?? 0) <= local.updatedAt
@@ -695,6 +720,7 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
   result: SyncResult,
   idOf: (record: T) => string,
   removeWhenGone = true,
+  glows = false,
 ) {
   const path = (id: string) => `/${folder}/${id}`
   const locals = new Map((await table.toArray()).map((record) => [idOf(record), record]))
@@ -724,12 +750,16 @@ async function syncRecords<T extends SyncedRecord, TInsert>(
       outgoing.push({ id, local, remoteRev }) // this device's version is sent
     } else if (remote && remoteRev) {
       // Take the other device's version, unless it was changed here while this sync ran
+      const shown = local !== undefined && !local.deleted
+      const glow = !glows || shown === !remote.deleted ? null : shown ? 'removed' : 'added'
+      if (glow) markGlow(id, glow)
       const stored = await db.transaction('rw', table, async () => {
         if ((await table.get(id))?.updatedAt !== local?.updatedAt) return false
         await table.put({ ...remote, syncedRev: remoteRev, syncedUpdatedAt: remote.updatedAt } as unknown as TInsert)
         return true
       })
       if (stored) result.downloaded++
+      else if (glow) unmarkGlow(id)
     }
   })
 

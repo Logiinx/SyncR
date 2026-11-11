@@ -67,7 +67,7 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   const searchInput = useRef<HTMLInputElement>(null)
   // New and deleted notes grow in and shrink out; not while the search changes the list
   const listRef = useRef<HTMLUListElement>(null)
-  useListItems(listRef, query.trim())
+  useListItems(listRef, query.trim(), true)
   useEffect(() => {
     if (!focusSearch) return
     searchInput.current?.select()

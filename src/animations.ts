@@ -5,6 +5,7 @@
 
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { currentZoom } from './appearance'
+import { takeGlow, type Glow } from './syncGlow'
 
 // The app's timings, all in one place (picked by the user, DECISIONS.md "Wish list"): big things
 // (windows, side panels, reminder cards, the sync message) and small ones (menus, sections, items
@@ -123,9 +124,10 @@ export function useListItem(ref: RefObject<HTMLElement | null>) {
     const seen = listSeen.get(list)
     if (seen === undefined) listSeen.set(list, performance.now())
     else if (performance.now() - seen > 300 && animationsOn()) {
-      // Measured without a running one (React runs this twice in development)
-      el.getAnimations().forEach((animation) => animation.cancel())
+      // Measured without a running one (React runs this twice in development); sync's tint stays
+      el.getAnimations().forEach((animation) => animation.id !== TINT_ID && animation.cancel())
       el.animate(itemFrames(el, list), { duration: TIMING.openSmall, easing: EASE_OPEN })
+      if (takeGlow(el.dataset.cardId, 'added')) syncTint(el, 'added')
     }
     return () => {
       if (!animationsOn()) return
@@ -134,7 +136,7 @@ export function useListItem(ref: RefObject<HTMLElement | null>) {
       queueMicrotask(() => {
         // Still there (React's test run in development), or its whole list went too
         if (el.isConnected || !list.isConnected) return
-        itemOut(copy, list, next?.parentNode === list ? next : null)
+        itemOut(copy, list, next?.parentNode === list ? next : null, takeGlow(el.dataset.cardId, 'removed'))
       })
     }
   }, [])
@@ -193,12 +195,13 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
 // Reminders list): items are found by their data-item attribute (unique key) inside `ref`. An
 // item grows in when its list (its parent) was already showing items, and shrinks out when its
 // list stays. reset: when it changes, the list changes all at once (a search, a filter): none.
+// glows: items sync brought or deleted get its green / red tint (the sidebar's notes).
 interface Tracked {
   el: HTMLElement
   parent: HTMLElement | null
 }
 
-export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown) {
+export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown, glows = false) {
   const last = useRef<{ items: Map<string, Tracked>; reset: unknown } | null>(null)
   useLayoutEffect(() => {
     const root = ref.current
@@ -214,6 +217,7 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
     for (const [key, { el, parent }] of items) {
       if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
         el.animate(itemFrames(el, parent), { duration: TIMING.openSmall, easing: EASE_OPEN })
+        if (glows && takeGlow(key, 'added')) syncTint(el, 'added')
       }
     }
     const order = [...prev.items.keys()]
@@ -225,7 +229,7 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
         .slice(index + 1)
         .map((after) => items.get(after)?.el)
         .find((after) => after?.parentElement === parent)
-      itemOut(el, parent, next ?? null)
+      itemOut(el, parent, next ?? null, glows && takeGlow(key, 'removed'))
     })
   })
 }
@@ -257,7 +261,8 @@ function itemFrames(el: Element, list: Element): Keyframe[] {
   return [{ ...gone, overflow: 'hidden' }, { ...there, overflow: 'hidden' }]
 }
 
-function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
+// tinted: deleted by sync, so it's red for a moment first (syncTint)
+function itemOut(copy: HTMLElement, list: Element, next: Node | null, tinted = false) {
   // Not found as the item itself (it has the same ids)
   for (const el of [copy, ...copy.querySelectorAll('[data-card-id], [data-line], [data-item]')]) {
     for (const name of ['data-card-id', 'data-line', 'data-item']) el.removeAttribute(name)
@@ -265,6 +270,12 @@ function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
   copy.classList.add('closing')
   copy.inert = true
   list.insertBefore(copy, next)
+  const tint = tinted ? syncTint(copy, 'removed') : undefined
+  if (tint) void tint.finished.finally(() => shrinkAway(copy, list))
+  else shrinkAway(copy, list)
+}
+
+function shrinkAway(copy: HTMLElement, list: Element) {
   const grid = isGrid(list)
   const animation = copy.animate(itemFrames(copy, list).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' })
   animation.finished.finally(() => {
@@ -281,6 +292,31 @@ function itemOut(copy: HTMLElement, list: Element, next: Node | null) {
       if (dx || dy) child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: TIMING.openSmall, easing: EASE_OPEN })
     })
   })
+}
+
+// Sync's tint (syncGlow.ts, DECISIONS.md "Sync changes tinted green / red"): the item's
+// background turns green (new) or red (deleted), under its text. Green stays 2 s then fades;
+// red stays 1 s and the item then shrinks away still red (the animation holds its end).
+// An inset shadow covering the whole box, added to the item's own shadows (a folded group's pile).
+const TINT = { in: 200, added: 2000, removed: 1000, out: 800 }
+const TINT_ID = 'sync-tint' // i18n-ok
+
+function syncTint(item: Element, glow: Glow) {
+  // A note row: its button. A group: its header (its cards have their own background).
+  const el = item.matches('li') ? item.firstElementChild : item.matches('.card-group') ? item.querySelector(':scope > .card-group-head') : item
+  if (!el) return
+  const color = getComputedStyle(document.documentElement).getPropertyValue(glow === 'added' ? '--hl-green' : '--hl-red')
+  const own = getComputedStyle(el).boxShadow
+  const shadow = (tint: string) => `inset 0 0 0 100vmax ${tint}${own === 'none' ? '' : `, ${own}`}` // i18n-ok
+  const out = glow === 'added' ? TINT.out : 0
+  const total = TINT.in + TINT[glow] + out
+  const frames: Keyframe[] = [
+    { boxShadow: shadow('transparent') },
+    { boxShadow: shadow(color), offset: TINT.in / total },
+    { boxShadow: shadow(color), offset: (TINT.in + TINT[glow]) / total },
+  ]
+  if (out) frames.push({ boxShadow: shadow('transparent') })
+  return el.animate(frames, { id: TINT_ID, duration: total, easing: 'ease-out', fill: out ? 'none' : 'forwards' })
 }
 
 // What gets a closing animation, and which one
