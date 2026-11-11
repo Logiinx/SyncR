@@ -124,7 +124,8 @@ export async function addPlaylist(link: string, keepChecking: boolean) {
     listId: found.id,
     name: found.name,
     keepChecking,
-    reversed: false,
+    newestFirst: false,
+    youtubeOrder: false,
     deleted: false,
     ...(before && { restoredAt: now }),
     updatedAt: now,
@@ -134,7 +135,7 @@ export async function addPlaylist(link: string, keepChecking: boolean) {
   return id
 }
 
-export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'reversed'>>) {
+export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'newestFirst' | 'youtubeOrder'>>) {
   await db.videoPlaylists.update(id, { ...change, updatedAt: Date.now() })
   changed()
 }
@@ -147,7 +148,13 @@ export async function removePlaylist(id: string) {
   changed()
 }
 
-export const playOrder = <T,>(videos: T[], playlist: VideoPlaylist) => (playlist.reversed ? [...videos].reverse() : videos)
+// Oldest first by upload date (same date: YouTube's order), or YouTube's order if chosen; then
+// turned around for newest first. A video without a date counts as the newest.
+export function playOrder<T extends { published: number }>(videos: T[], playlist: VideoPlaylist) {
+  const when = (video: T) => (Number.isFinite(video.published) ? video.published : Infinity)
+  const ordered = playlist.youtubeOrder ? [...videos] : [...videos].sort((a, b) => when(a) - when(b) || 0)
+  return playlist.newestFirst ? ordered.reverse() : ordered
+}
 
 // The video to play after this one: the next not watched yet, in the order chosen now
 export async function nextInPlaylist(playlistId: string, videoId: string) {

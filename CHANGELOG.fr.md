@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** des playlists : lues de la plus ancienne à la plus récente, l’ordre de YouTube reste dans leur menu clic droit
+
 ## [0.67.0] - 2026-11-11
 
 **Synchronisation**

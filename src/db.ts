@@ -345,7 +345,10 @@ export interface VideoPlaylist {
   listId: string // its YouTube id
   name: string
   keepChecking: boolean // looks for new videos once a day; off for an old, finished one
-  reversed: boolean // plays from the end of YouTube's order to its start
+  // Played oldest first by upload date, or in YouTube's order; newestFirst turns either around.
+  // Both missing on playlists from before (the old "reversed" meant YouTube's order turned around).
+  newestFirst?: boolean
+  youtubeOrder?: boolean
   deleted: boolean
   restoredAt?: number // added again after being removed (see localWins, sync.ts)
   updatedAt: number

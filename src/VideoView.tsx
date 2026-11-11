@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListChecks, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListChecks, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
 import { type VideoFolder, type VideoPlaylist } from './db'
@@ -34,6 +34,12 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 }
 
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
+
+// What the playlist row's order button does when clicked
+function orderButtonTitle(playlist: VideoPlaylist) {
+  if (playlist.youtubeOrder) return playlist.newestFirst ? t('Back to YouTube’s order') : t('Reverse YouTube’s order')
+  return playlist.newestFirst ? t('Show the oldest first') : t('Show the newest first')
+}
 
 const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : undefined)
 
@@ -346,10 +352,10 @@ function VideoView() {
         actions={
           <>
             <button
-              className={`video-row-action${playlist.reversed ? ' on' : ''}`}
-              aria-pressed={playlist.reversed}
-              title={playlist.reversed ? t('Back to the playlist’s order') : t('Reverse the order')}
-              onClick={() => void changePlaylist(playlist.id, { reversed: !playlist.reversed })}
+              className={`video-row-action${playlist.newestFirst ? ' on' : ''}`}
+              aria-pressed={!!playlist.newestFirst}
+              title={orderButtonTitle(playlist)}
+              onClick={() => void changePlaylist(playlist.id, { newestFirst: !playlist.newestFirst })}
             >
               <ArrowDownUp size={16} />
             </button>
@@ -523,7 +529,8 @@ function VideoView() {
           y={playlistMenu.y}
           onClose={() => setPlaylistMenu(null)}
           items={[
-            { label: t('Reverse the order'), icon: ArrowDownUp, checked: playlistMenu.playlist.reversed, onClick: () => void changePlaylist(playlistMenu.playlist.id, { reversed: !playlistMenu.playlist.reversed }) },
+            { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
+            { label: t('YouTube’s order'), icon: ListOrdered, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
             { label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },

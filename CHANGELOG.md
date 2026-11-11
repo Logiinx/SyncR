@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** playlists to play oldest first by release date, with YouTube's own order still in their right-click menu
+
 ## [0.67.0] - 2026-11-11
 
 **Sync**
