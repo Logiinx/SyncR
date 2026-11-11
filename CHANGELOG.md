@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Added** HowLongToBeat play times in the game window, with a link to fix a wrong match
+
 **Video**
 - **Added** playlists in your own folders, by dragging them or with Move to folder in their right-click menu
 - **Added** a slider for how see-through the chat is in full screen, in the player's Chat settings

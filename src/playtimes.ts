@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, updateGame, type Game, type Playtime } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
+import { playedTime } from './steam'
 
 // HowLongToBeat's play times, through the Worker's /playtime (it searches once per game, then
 // reads the game's page). Kept on each device (db.playtimes): each device asks for itself. Only a
@@ -99,3 +100,11 @@ export const playtimeLink = (hltbId: number) => `https://howlongtobeat.com/game/
 export function usePlaytimes() {
   return useLiveQuery(async () => new Map((await db.playtimes.toArray()).map((row) => [row.id, row])), [])
 }
+
+// One game's times: undefined while loading or not asked yet
+export function usePlaytime(gameId: string) {
+  return useLiveQuery(() => db.playtimes.get(gameId), [gameId])
+}
+
+// "52 h", "7.5 h", "35 min" (like the hours played from Steam)
+export const playtimeText = (seconds: number) => playedTime(Math.max(1, Math.round(seconds / 60)))

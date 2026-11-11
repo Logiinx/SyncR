@@ -7158,6 +7158,74 @@ button.history-row.selected {
   overflow-wrap: anywhere;
 }
 
+/* HowLongToBeat's times under the extras (GameExtrasView.tsx): "⌛ label time · label time ↗ ✎",
+   each "label time" on one line, wrapping between them; its two small buttons are dim like the
+   icon. Under the title on a PC, a full-width row under the cover on a phone (GameDialog.tsx). */
+.game-playtime {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.85em;
+}
+
+/* As tall as a line, so it stays beside the first one when the times wrap */
+.game-playtime > .price-icon {
+  height: 1lh;
+}
+
+.game-playtime-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  row-gap: 2px;
+  min-width: 0;
+}
+
+.game-playtime-part {
+  white-space: nowrap;
+}
+
+.game-playtime-part + .game-playtime-part::before {
+  content: '· ';
+}
+
+.game-playtime.in-row {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .game-playtime.in-title {
+    display: none;
+  }
+
+  .game-playtime.in-row {
+    display: flex;
+    margin-top: 0;
+  }
+}
+
+.game-playtime-label,
+.game-playtime-none {
+  color: var(--text-dim);
+}
+
+.game-playtime-button {
+  display: inline-flex;
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.game-playtime-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
 /* Prices under the extras (GameExtrasView.tsx): a price opens its Steam or GG.deals page */
 .game-prices {
   display: grid;

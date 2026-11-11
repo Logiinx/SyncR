@@ -10,7 +10,7 @@ import { endingHeader, endingMenuItems, ENDINGS } from './gameMenu'
 import ContextMenu from './ContextMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
-import { GameExtrasInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
+import { GameExtrasInfo, GamePlaytimeInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
 import { isHundred, playedTime, updateSteamStats } from './steam'
@@ -128,10 +128,12 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               <p>{t('Alert: {when}', { when: formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000) })}</p>
             )}
             <GameExtrasInfo igdbId={game.igdbId} />
+            <GamePlaytimeInfo game={game} place="title" />
             <GamePricesInfo igdbId={game.igdbId} name={game.name} />
           </div>
           <CloseButton onClick={onClose} />
         </div>
+        <GamePlaytimeInfo game={game} place="row" />
 
         <FillSwitch
           className="gd-status"

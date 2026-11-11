@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
-import { ChevronRight, Flame, KeyRound, Play, TriangleAlert } from 'lucide-react'
+import { ChevronRight, ExternalLink, Flame, Hourglass, KeyRound, Pencil, Play, TriangleAlert } from 'lucide-react'
+import Dialog from './Dialog'
+import type { Game } from './db'
+import { pickPlaytimePage, playtimeLink, playtimeText, usePlaytime } from './playtimes'
 import BackButton from './BackButton'
 import Window from './Window'
 import CloseButton from './CloseButton'
@@ -94,6 +97,66 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
       )}
       {lows.length > 0 && <p className="price-lows">{t('Lowest ever: {prices}', { prices: lows.join(' · ') })}</p>}
       {check}
+    </div>
+  )
+}
+
+// HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
+// 104 h · Completionist 175 h", then its page and "use another page" (a pasted link, synced). Not
+// found: a button to add the link. Nothing until it's been asked (a game just added: ~2 s).
+// place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
+// it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
+export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' | 'row' }) {
+  const row = usePlaytime(game.id)
+  const [asking, setAsking] = useState<'ask' | 'wrong' | null>(null)
+  if (!row) return null
+  const times = [
+    { label: t('Main story'), seconds: row.main },
+    { label: t('Main + extras'), seconds: row.plus },
+    { label: t('Completionist'), seconds: row.full },
+  ].filter((time) => time.seconds > 0)
+  return (
+    <div className={`game-playtime in-${place}`}>
+      <Hourglass className="price-icon" aria-label={t('Time to beat')} />
+      <span className="game-playtime-times">
+        {row.hltbId === null ? (
+          <span className="game-playtime-none">{t('Not found on HowLongToBeat')}</span>
+        ) : times.length === 0 ? (
+          <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
+        ) : (
+          times.map(({ label, seconds }) => (
+            <span key={label} className="game-playtime-part">
+              <span className="game-playtime-label">{label}</span> {playtimeText(seconds)}
+            </span>
+          ))
+        )}
+        {/* After the last time, wrapping with them */}
+        {row.hltbId !== null && (
+          <button className="game-playtime-button" title={t('Open on HowLongToBeat')} onClick={() => openLink(playtimeLink(row.hltbId!))}>
+            <ExternalLink size={13} />
+          </button>
+        )}
+        {row.hltbId === null ? (
+          <button className="price-link" onClick={() => setAsking('ask')}>{t('Add its link')}</button>
+        ) : (
+          <button className="game-playtime-button" title={t('Use another HowLongToBeat page')} onClick={() => setAsking('ask')}>
+            <Pencil size={13} />
+          </button>
+        )}
+      </span>
+      {asking && (
+        <Dialog
+          request={{
+            title: t('HowLongToBeat page'),
+            message: asking === 'wrong' ? t('That isn’t a link to a game on HowLongToBeat. Paste the link of this game’s page.') : t('Paste the link of this game’s page on HowLongToBeat.'),
+            input: { initial: '', placeholder: 'https://howlongtobeat.com/game/…' }, // i18n-ok
+            confirmLabel: t('Use'),
+            // Not a game's link: asked again, saying why (after the box has closed)
+            onConfirm: (link) => void pickPlaytimePage(game, link).then((ok) => !ok && setAsking('wrong')),
+          }}
+          onClose={() => setAsking(null)}
+        />
+      )}
     </div>
   )
 }
