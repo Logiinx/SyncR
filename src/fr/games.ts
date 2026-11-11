@@ -120,6 +120,7 @@ export const games = {
   'Time to beat': 'Durée de jeu',
   'Main story': 'Histoire principale',
   'Main + extras': 'Histoire + extras',
+  'Main story on HowLongToBeat': 'Histoire principale sur HowLongToBeat',
   'Not found on HowLongToBeat': 'Introuvable sur HowLongToBeat',
   'No times yet on HowLongToBeat': 'Pas encore de durées sur HowLongToBeat',
   'Add its link': 'Ajouter son lien',

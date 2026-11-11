@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
-- **Added** HowLongToBeat play times in the game window, with a link to fix a wrong match
+- **Added** HowLongToBeat play times: all three in the game window, the main story on every game in the list
 
 **Video**
 - **Added** playlists in your own folders, by dragging them or with Move to folder in their right-click menu

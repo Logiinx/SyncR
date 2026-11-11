@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
-import { GamePriceLine } from './GameExtrasView'
+import { GamePriceLine, PlaytimeShort, useMainPlaytime } from './GameExtrasView'
+import { PlaytimesContext, usePlaytimes } from './playtimes'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
 import { isHundred, PLAYING_ON_OPEN, playedText, refreshPlaying, useSteamProfile } from './steam'
@@ -102,7 +103,9 @@ function GamesView() {
   }
 
   const inList = new Map(games?.map((g) => [g.id, g.status]))
+  const playtimes = usePlaytimes()
   return (
+    <PlaytimesContext.Provider value={playtimes}>
     <main className="page games-page" ref={pageRef}>
       {/* Wide only for the month grid (not for the "set up the game search" text, which then
           sat further left than in My games) */}
@@ -231,6 +234,7 @@ function GamesView() {
       )}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
+    </PlaytimesContext.Provider>
   )
 }
 
@@ -275,7 +279,11 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
   const since = t('since {date}', { date: shortDate(game.statusAt) })
-  const details = stats ? `${playedText(stats.minutes)} · ${since}` : since[0].toUpperCase() + since.slice(1)
+  const main = useMainPlaytime(game.id)
+  // "42 h played · ⌛ 52 h · since 21 Oct 2026": what you played next to the main story's time
+  const details = stats
+    ? dotted([playedText(stats.minutes), main > 0 && <PlaytimeShort seconds={main} />, since])
+    : dotted([since[0].toUpperCase() + since.slice(1), main > 0 && <PlaytimeShort seconds={main} />])
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -311,6 +319,16 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
   )
 }
 
+// Parts of a details line with " · " between those that show
+function dotted(parts: ReactNode[]) {
+  return parts.filter(Boolean).map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 && ' · '}
+      {part}
+    </Fragment>
+  ))
+}
+
 // The games of one status: big covers in a grid, or rows
 function GameShelf({
   games,
@@ -340,6 +358,7 @@ function GameShelf({
 // waiting (or the vague date), "★ 4.5" once rated, else the release year. Badge: GameBadge
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const when = releaseText(game, 'short')
+  const main = useMainPlaytime(game.id)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -360,11 +379,11 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         {game.preordered && <PreorderBadge />}
       </div>
       <div className="game-tile-name">{game.name}</div>
-      {showsRated(game) ? (
-        <GameRated game={game} />
-      ) : (
-        <div className="game-details">{when}</div>
-      )}
+      {/* The year, countdown or rating, and the main story's time at the right */}
+      <div className="game-tile-line">
+        {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
+        {main > 0 && <PlaytimeShort seconds={main} />}
+      </div>
       {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
     </div>
   )
@@ -379,6 +398,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
   const details = [releaseText(game, 'year'), preview].filter(Boolean).join(' · ')
+  const main = useMainPlaytime(game.id)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -399,7 +419,9 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       </span>
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
-        <div className="game-details" title={details}>{details}</div>
+        <div className="game-details" title={details}>
+          {dotted([releaseText(game, 'year'), main > 0 && <PlaytimeShort seconds={main} />, preview])}
+        </div>
         {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
       </div>
       {showsRated(game) && <GameRated game={game} />}

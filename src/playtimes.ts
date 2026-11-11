@@ -1,3 +1,4 @@
+import { createContext } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, updateGame, type Game, type Playtime } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
@@ -100,6 +101,9 @@ export const playtimeLink = (hltbId: number) => `https://howlongtobeat.com/game/
 export function usePlaytimes() {
   return useLiveQuery(async () => new Map((await db.playtimes.toArray()).map((row) => [row.id, row])), [])
 }
+
+// The Games page reads them once for all its tiles and rows (GamesView.tsx), not once per game
+export const PlaytimesContext = createContext<Map<string, Playtime> | undefined>(undefined)
 
 // One game's times: undefined while loading or not asked yet
 export function usePlaytime(gameId: string) {

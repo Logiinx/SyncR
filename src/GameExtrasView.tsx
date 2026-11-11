@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
 import { ChevronRight, ExternalLink, Flame, Hourglass, KeyRound, Pencil, Play, TriangleAlert } from 'lucide-react'
 import Dialog from './Dialog'
 import type { Game } from './db'
-import { pickPlaytimePage, playtimeLink, playtimeText, usePlaytime } from './playtimes'
+import { pickPlaytimePage, playtimeLink, PlaytimesContext, playtimeText, usePlaytime } from './playtimes'
 import BackButton from './BackButton'
 import Window from './Window'
 import CloseButton from './CloseButton'
@@ -113,7 +113,7 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
   const times = [
     { label: t('Main story'), seconds: row.main },
     { label: t('Main + extras'), seconds: row.plus },
-    { label: '100%', seconds: row.full }, // i18n-ok: completionist, shorter (user); the same in French
+    { label: '100%', seconds: row.full, gold: true }, // i18n-ok: completionist, shorter (user), dim gold like 100% achievements
   ].filter((time) => time.seconds > 0)
   return (
     <div className={`game-playtime in-${place}`}>
@@ -124,9 +124,9 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
         ) : times.length === 0 ? (
           <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
         ) : (
-          times.map(({ label, seconds }) => (
+          times.map(({ label, seconds, gold }) => (
             <span key={label} className="game-playtime-part">
-              <span className="game-playtime-label">{label}</span> {playtimeText(seconds)}
+              <span className={gold ? 'game-playtime-label gold' : 'game-playtime-label'}>{label}</span> {playtimeText(seconds)}
             </span>
           ))
         )}
@@ -158,6 +158,18 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
         />
       )}
     </div>
+  )
+}
+
+// The main story's time on the Games page's tiles, rows and Playing cards: a dim "⌛ 27 h".
+// useMainPlaytime: 0 until it's known (PlaytimesContext).
+export const useMainPlaytime = (gameId: string) => useContext(PlaytimesContext)?.get(gameId)?.main ?? 0
+export function PlaytimeShort({ seconds }: { seconds: number }) {
+  return (
+    <span className="game-playtime-short" title={t('Main story on HowLongToBeat')}>
+      <Hourglass aria-hidden />
+      {playtimeText(seconds)}
+    </span>
   )
 }
 
