@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Correction** d’un problème où un lien vidéo collé ignorait son temps de départ (?t=)
+
 ## [0.68.0] - 2026-11-11
 
 **Vidéo**

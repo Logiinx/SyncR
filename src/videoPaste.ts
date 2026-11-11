@@ -31,6 +31,14 @@ export function linkIn(text: string) {
   }
 }
 
+// Seconds from a link's time: t=90, t=90s, t=1m30s, t=1h2m3s (YouTube and Twitch), YouTube's
+// start=90 and #t=90. 0 when there's none.
+export function linkTime(url: URL) {
+  const raw = url.searchParams.get('t') ?? url.searchParams.get('start') ?? new URLSearchParams(url.hash.slice(1)).get('t') ?? ''
+  const parts = raw.trim().toLowerCase().match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/)
+  return parts ? Number(parts[1] ?? 0) * 3600 + Number(parts[2] ?? 0) * 60 + Number(parts[3] ?? 0) : 0
+}
+
 // Throws what to tell the user if it can't
 export async function openPastedLink(url: URL): Promise<PastedLink> {
   if (!SITE.test(url.hostname)) throw new Error(t('Only YouTube and Twitch links can be opened here'))
@@ -43,7 +51,7 @@ export async function openPastedLink(url: URL): Promise<PastedLink> {
   }
   try {
     const { followId, video, already, playlistId } = await addOrFindVideo(url.href)
-    playVideo(video, playlistId)
+    playVideo(video, playlistId, linkTime(url))
     void markOpened(video.id)
     return { kind: 'video', followId, added: !already }
   } catch (e) {

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed** an issue where a pasted video link ignored its start time (?t=)
+
 ## [0.68.0] - 2026-11-11
 
 **Video**

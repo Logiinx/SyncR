@@ -192,8 +192,12 @@ function playerAddress(video: PlayableVideo, way: Way) {
 
 const viaText = (way: Way) => (OTHER_SITES.includes(way) ? t('via {site}', { site: way }) : '')
 
+// The time in a pasted link (?t=), for that video's opening only: it wins over where you stopped
+let linkStart: { videoId: string; t: number } | null = null
+
 // A video marked as Watched starts from the beginning. Seconds, or 0.
 function startAt(video: PlayableVideo) {
+  if (linkStart?.videoId === video.id) return linkStart.t
   return video.watched ? 0 : Math.floor(resumePosition(video.id)?.t ?? 0)
 }
 
@@ -366,8 +370,9 @@ function playNext() {
     .catch((error) => console.error('Video player failed', error))
 }
 
-// playlistId: it plays in that playlist
-export function playVideo(video: PlayableVideo, playlistId?: string) {
+// playlistId: it plays in that playlist. start: seconds from a pasted link's time.
+export function playVideo(video: PlayableVideo, playlistId?: string, start?: number) {
+  linkStart = start ? { videoId: video.id, t: Math.floor(start) } : null
   if (!isTauri()) {
     openLink(video.url)
     return
