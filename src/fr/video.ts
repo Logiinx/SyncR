@@ -130,7 +130,6 @@ export const video = {
   'You can resume by jumping to {time}': 'Vous pouvez reprendre en allant à {time}',
   'Progress bar': 'Barre de progression',
   'Game changes': 'Changements de jeu',
-  'Time of day': 'Heure réelle',
   'Go to a time': 'Aller à un moment',
   'Twitch answered {status}': 'Twitch a répondu {status}',
   'A place in the video, like 1:23:45, then Enter': 'Un moment de la vidéo, comme 1:23:45, puis Entrée',

@@ -120,6 +120,7 @@ const controls = playerControls({
   hooks: {
     fillTip: (seconds) => fillTip(seconds),
     besideTime: (seconds) => dayAt(seconds),
+    besideOnHover: true, // the time of day: only while the time is hovered
     menu: (menu) => {
       chatMenu(menu)
       timelineMenu(menu)

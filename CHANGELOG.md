@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** the time of day on Twitch videos: it slides out when you hover the video's time, no setting needed
+
 **Reminders**
 - **Fixed** the grid / list switch moving when changing view, in Reminders and the Games calendar
 

@@ -93,9 +93,9 @@ async function askPreviews(url) {
 
 // ---- Time of day -------------------------------------------------------------------------------
 // The stream's start plus the position, in the PC's time zone. 24 hours, same as dates.ts.
+// Always on: it slides out of the bar's time while hovered (controls.js), and shows in the tip.
 let streamStart = null // ms
-let showDay = stored('player.timeOfDay', 0) === 1
-const dayKnown = () => showDay && streamStart !== null
+const dayKnown = () => streamStart !== null
 dayAt = (seconds) => (dayKnown() ? new Date(streamStart + seconds * 1000).toLocaleTimeString(data.locale || undefined, { hour: '2-digit', minute: '2-digit' }) : '')
 
 function noteStart(recordedAt) {
@@ -105,8 +105,8 @@ function noteStart(recordedAt) {
 }
 
 // ---- Go to a time -------------------------------------------------------------------------------
-// A place in the video: 23:45 or 1:23:45. With the time of day on, 21:30 means the time of day, so
-// only 1:23:45 is a place. Answers in seconds, or null.
+// A place in the video: 23:45 or 1:23:45. With the time of day known, 21:30 means the time of day
+// first (a place only when that time isn't in the stream). Answers in seconds, or null.
 function placeIn(text, needsHours) {
   const match = text.match(/^(?:(\d+):)?(\d+):(\d{1,2})$/)
   if (!match || Number(match[3]) > 59) return null
@@ -149,9 +149,8 @@ function dayMoment(text) {
 }
 
 function findMoment(text) {
-  const place = placeIn(text, dayKnown())
-  if (place !== null && place < video.duration) return place
-  return dayKnown() ? dayMoment(text) : null
+  const inside = (at) => (at !== null && at < video.duration ? at : null)
+  return inside(placeIn(text, dayKnown())) ?? (dayKnown() ? dayMoment(text) : null) ?? inside(placeIn(text, false))
 }
 
 function drawGoToNote(wrong) {
@@ -209,11 +208,6 @@ function timelineMenu({ row, title }) {
     showGames = !showGames
     localStorage.setItem('player.gameChanges', showGames ? 1 : 0)
     drawMarks()
-  })
-  row(labels.timeOfDay, showDay, () => {
-    showDay = !showDay
-    localStorage.setItem('player.timeOfDay', showDay ? 1 : 0)
-    drawTime()
   })
 }
 

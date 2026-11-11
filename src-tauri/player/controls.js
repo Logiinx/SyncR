@@ -7,7 +7,7 @@
 //   root: document or a shadow root ($ looks there), box: the element they go in (#player),
 //   surface: what a click on the picture lands on, html: (text) => what innerHTML takes,
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
-//   hooks: { fillTip, besideTime: (seconds) => text after the time, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
+//   hooks: { fillTip, besideTime: (seconds) => text after the time, besideOnHover: it slides out only while the time is hovered, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
 //            keys: { key: action }, keepShowing,
 //            beforeMenu, pictureClick: () => true when it did something }
 // }
@@ -83,6 +83,7 @@ function playerControls(env, media) {
   <div id="message" hidden><div id="message-text"></div><button id="retry"></button></div>`))
 
   // ---- Time -----------------------------------------------------------------------------------
+  $('time-beside').classList.toggle('on-hover', !!hooks.besideOnHover)
   function clock(seconds) {
     const total = Math.max(0, Math.floor(seconds || 0))
     const hours = Math.floor(total / 3600)
@@ -772,6 +773,9 @@ const CONTROLS_CSS = `
   #time-now { flex: none; }
   #time-beside { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #time-beside:empty { display: none; }
+  /* Slides out to the right while the time is hovered (or its Go to box is open), like the volume */
+  #time-beside.on-hover { max-width: 0; margin-left: -4px; opacity: 0; transition: max-width 0.2s, margin 0.2s, opacity 0.2s; }
+  #time:hover #time-beside.on-hover, #time.open #time-beside.on-hover, #time:focus-visible #time-beside.on-hover { max-width: 120px; margin-left: 0; opacity: 1; }
   #spacer { flex: 1; min-width: 0; }
   #settings { flex: 0 1 auto; width: auto; min-width: 40px; gap: 6px; padding: 0 8px; box-sizing: border-box; }
   #settings span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }

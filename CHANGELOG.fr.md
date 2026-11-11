@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** de l’heure réelle sur les vidéos Twitch : elle apparaît au survol du temps de la vidéo, sans réglage
+
 **Rappels**
 - **Correction** du bouton grille / liste qui bougeait en changeant de vue, dans Rappels et le calendrier des jeux
 
