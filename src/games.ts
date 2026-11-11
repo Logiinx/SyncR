@@ -9,6 +9,7 @@ import { knownDiscount, loadListPrices } from './prices'
 import { loadListEditions } from './editions'
 import { startWatchChecks } from './priceWatch'
 import { followSteam, refreshPlaying, refreshSteamStats } from './steam'
+import { refreshPlaytimes } from './playtimes'
 import { shortDate } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
@@ -108,6 +109,7 @@ export async function addGame(found: FoundGame, status?: GameStatus, completed?:
     updatedAt: now,
   })
   changed()
+  void refreshPlaytimes() // its HowLongToBeat times, next
 }
 
 // "Remove game?" (Games, Board, Reminders): the game leaves your list with its note and review;
@@ -373,6 +375,7 @@ export function startGameChecks() {
     } catch (e) {
       console.warn('Game refresh failed', e)
     }
+    void refreshPlaytimes() // in the background: slow on purpose (one game every 1.5 s)
     // To buy (and watched Upcoming) prices, once per start, after the first sync brought the list up to date
     // and the price alert checks (every hour, see startWatchChecks); a minute later the editions (game windows)
     if (!pricesLoaded) {

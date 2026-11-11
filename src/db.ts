@@ -206,6 +206,7 @@ export interface Game {
   watch?: PriceWatch // To buy and Upcoming games only (canWatch)
   editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
+  hltbId?: number // its HowLongToBeat page, when the user pasted a link (playtimes.ts); else found by search
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)
   createdAt: number
@@ -369,6 +370,18 @@ export interface PlaylistVideos {
   videos: PlaylistEpisode[]
 }
 
+// A game's HowLongToBeat times (playtimes.ts). Only on this device, like a playlist's videos: they
+// can be asked again, and saving them on the game would make background writes win over an edit
+// made on the other device.
+export interface Playtime {
+  id: string // the game's id
+  hltbId: number | null // its page; null = not found when checked
+  main: number // seconds, 0 = not known yet: main story
+  plus: number // main + extras
+  full: number // completionist
+  checkedAt: number
+}
+
 // Which folder a video is in. Apart from its mark, so a move here and "opened" on another device
 // can't overwrite each other.
 export interface VideoPlace {
@@ -437,6 +450,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   remoteFiles: EntityTable<RemoteFile, 'path'>
   syncListing: EntityTable<SyncListing, 'name'>
   unusedImages: EntityTable<UnusedImage, 'id'>
+  playtimes: EntityTable<Playtime, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -540,6 +554,10 @@ export function defineSchema(d: Dexie) {
 
   d.version(22).stores({
     unusedImages: 'id',
+  })
+
+  d.version(23).stores({
+    playtimes: 'id',
   })
 }
 
