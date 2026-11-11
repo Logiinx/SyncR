@@ -5,6 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** Delete to a video's right-click menu, to remove it from To watch or Watched for good
+- **Changed** Watched videos to a To watch | Watched switch at the start of the Video tab's top bar
 - **Fixed** an issue where a pasted video link ignored its start time (?t=)
 
 ## [0.68.0] - 2026-11-11

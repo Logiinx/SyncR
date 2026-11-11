@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListChecks, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu from './ContextMenu'
+import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
 import { nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
@@ -452,11 +453,16 @@ function VideoView() {
     <main className="page games-page" ref={pageRef}>
       <div className="games">
         <div className="games-views reminders-toolbar video-toolbar">
-          {list === 'watched' && (
-            <button className="video-watched-chip" title={t('Back to the videos to watch')} onClick={() => setList('towatch')}>
-              {t('Watched videos')} <X size={14} />
-            </button>
-          )}
+          <FillSwitch
+            className="video-list-switch"
+            options={[
+              { value: 'towatch', label: t('To watch') },
+              { value: 'watched', label: t('Watched|list') },
+            ]}
+            value={list}
+            onChange={setList}
+            label={t('Show')}
+          />
           {!!follows?.length && (
             <select className="video-channel-filter" value={shownChannel} onChange={(e) => setChannel(e.target.value)}>
               <option value="all">{t('All follows')}</option>
@@ -527,7 +533,6 @@ function VideoView() {
                   { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null }) },
                 ]
               : [
-                  { label: t('Watched videos'), icon: ListChecks, checked: list === 'watched', onClick: () => setList(list === 'watched' ? 'towatch' : 'watched') },
                   {
                     label: t('By channel'),
                     icon: ListTree,
@@ -633,6 +638,8 @@ function VideoView() {
             ...(moving.video.folderId
               ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void moveToFolder(moving.video.id, null) }]
               : []),
+            // Gone for good, on every device, like Clear (adding it again by link brings it back)
+            { label: t('Delete'), icon: Trash2, danger: true, onClick: () => void clearWatched([moving.video.id]) },
           ]}
         />
       )}

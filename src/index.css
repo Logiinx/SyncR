@@ -7661,13 +7661,10 @@ button.history-row.selected {
 }
 
 /* Showing Watched instead of To watch: says so, and ✕ goes back */
-.games-views .video-watched-chip {
+/* To watch | Watched: its buttons look like the Games views' (.games-views button) */
+.video-list-switch {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--text);
+  gap: 4px;
 }
 
 .video-channel-filter {

@@ -5,6 +5,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** de Supprimer dans le menu clic droit d’une vidéo, pour la retirer définitivement d’À regarder ou de Vues
+- **Changement** des vidéos vues : un bouton À regarder | Vues au début de la barre de l’onglet Vidéo
 - **Correction** d’un problème où un lien vidéo collé ignorait son temps de départ (?t=)
 
 ## [0.68.0] - 2026-11-11
