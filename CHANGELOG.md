@@ -14,7 +14,8 @@ All notable changes to SyncR. Newest version first.
 - **Changed** the order inside channel rows and folders to oldest on top, like playlists
 - **Fixed** YouTube subtitles vanishing while the controls showed or while you dragged them
 - **Fixed** Twitch videos getting stuck loading the same part again and again on a slow connection
-- **Fixed** small issues: Twitch videos going back to normal speed after recovering from an error
+- **Fixed** Twitch chat replay missing some messages in busy moments
+- **Fixed** small issues: Twitch videos back to normal speed after an error, chat waiting 20 s after one failed load
 
 **App**
 - **Changed** every sliding switch (My games | Calendar, To watch | Watched…) to one look, a sunken track

@@ -1,6 +1,8 @@
 // Chat replay beside the video (uses player.js's video, labels, icon, stored). Twitch only answers
-// by position: about 59 messages around the moment asked, starting before it and ending after it,
-// with nothing missing in between. Asking past the last message gives "service error".
+// by position: about 59 messages around the moment asked, starting before it and ending after it.
+// In busy moments an answer can leave some out (and the same question can get another answer), so
+// the next answer's messages are kept as long as the video hasn't reached them, wherever they fall.
+// Asking past the last message gives "service error".
 // Chat comes from strangers: only ever text nodes and pictures from Twitch's address, never HTML.
 const CHAT_QUERY = 'query($id: ID!, $offset: Int) { video(id: $id) { comments(contentOffsetSeconds: $offset) { edges { node { id contentOffsetSeconds commenter { login displayName } message { userColor userBadges { setID version } fragments { text emote { emoteID } } } } } pageInfo { hasNextPage } } } }'
 const BADGES_QUERY = 'query($id: ID!) { badges { setID version title imageURL(size: NORMAL) } video(id: $id) { owner { id broadcastBadges { setID version title imageURL(size: NORMAL) } } } }'
@@ -12,7 +14,8 @@ const VIDEO_MIN = 360 // what dragging the chat's edge always leaves for the vid
 const CHAT_NEEDS = 700 // narrower than this: no chat, the video keeps its size
 const ASK_AHEAD = 15 // seconds of messages ready ahead of the video
 const JUMP_WAIT = 250 // ms: several jumps in a row only ask once
-const ASK_AGAIN = 20000 // ms after a failed answer
+const ASK_SOON = 3000 // ms after a failed answer
+const ASK_AGAIN = 20000 // ms after the next ones
 const ASK_AFTER_END = 60000 // ms: "service error" is normally the end, but could be a passing problem
 const FILL = 50 // lines shown just before the moment jumped to
 const LINES = 200 // lines kept in the page
@@ -286,6 +289,7 @@ let chatEnded = false // Twitch has nothing after knownTo
 let askEndAgain = false // that was "service error": probably the end, asked again a bit later
 let askAfter = 0 // no new question before this time
 let asking = false
+let failures = 0 // failed answers in a row
 let askTurn = 0 // a jump makes earlier answers useless
 let jumpTimer
 
@@ -353,20 +357,26 @@ async function askAt(position, fresh) {
     console.error(error)
     if (turn !== askTurn) return
     asking = false
-    askAfter = Date.now() + ASK_AGAIN
+    askAfter = Date.now() + (failures++ ? ASK_AGAIN : ASK_SOON)
     if (!chatList.childElementCount) showNote(labels.chatFailed)
     return
   }
   asking = false
+  failures = 0
   const comments = answer.data?.video?.comments
   const edges = comments?.edges || []
-  const messages = edges.map(readMessage).filter((message) => !knownIds.has(message.id) && message.at >= knownTo)
+  // New ones from where it got to, and ones an earlier answer left out that are still ahead
+  const now = video.currentTime
+  const messages = edges.map(readMessage).filter((message) => !knownIds.has(message.id) && (message.at >= knownTo || message.at > now))
   messages.sort((a, b) => a.at - b.at)
   for (const message of messages) knownIds.add(message.id)
+  // The late ones go in their place, ahead of what's shown (all of that is at or before now)
   known.push(...messages)
+  known.sort((a, b) => a.at - b.at)
+  const onward = messages.filter((message) => message.at >= knownTo)
   if (fresh) knownFrom = messages.length ? Math.min(messages[0].at, position) : position
   // Nothing new though Twitch says there's more: moves on instead of asking the same again
-  knownTo = messages.length ? Math.max(messages.at(-1).at, position) : position + ASK_AHEAD
+  knownTo = onward.length ? Math.max(onward.at(-1).at, position) : position + ASK_AHEAD
   chatEnded = comments?.pageInfo?.hasNextPage === false || !edges.length
   askEndAgain = chatEnded && !!answer.errors?.length
   askAfter = askEndAgain ? Date.now() + ASK_AFTER_END : 0

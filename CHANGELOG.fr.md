@@ -14,7 +14,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
 - **Correction** des sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
 - **Correction** des vidéos Twitch bloquées à recharger le même passage en boucle sur une connexion lente
-- **Correction** de petits problèmes : les vidéos Twitch revenaient à la vitesse normale après une erreur
+- **Correction** du chat Twitch en différé qui manquait des messages aux moments chargés
+- **Correction** de petits problèmes : vitesse normale après une erreur sur Twitch, chat qui attendait 20 s après un échec
 
 **Application**
 - **Changement** des sélecteurs coulissants (Mes jeux | Calendrier, À regarder | Vues…) : un seul style, en creux
