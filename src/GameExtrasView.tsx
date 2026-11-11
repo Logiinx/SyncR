@@ -102,7 +102,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
 }
 
 // HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
-// 104 h · Completionist 175 h", then its page and "use another page" (a pasted link, synced). Not
+// 104 h · 100% 175 h", then its page and "use another page" (a pasted link, synced). Not
 // found: a button to add the link. Nothing until it's been asked (a game just added: ~2 s).
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
@@ -113,7 +113,7 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
   const times = [
     { label: t('Main story'), seconds: row.main },
     { label: t('Main + extras'), seconds: row.plus },
-    { label: t('Completionist'), seconds: row.full },
+    { label: '100%', seconds: row.full }, // i18n-ok: completionist, shorter (user); the same in French
   ].filter((time) => time.seconds > 0)
   return (
     <div className={`game-playtime in-${place}`}>
