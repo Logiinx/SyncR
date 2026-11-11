@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-11-11
+
 **Synchronisation**
 - **Ajout** d’une brève teinte verte, bleue ou rouge sur ce que l’autre appareil a ajouté, modifié ou supprimé, même dans les notes
 

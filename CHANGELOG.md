@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-11-11
+
 **Sync**
 - **Added** a brief green, blue or red tint on what your other device added, edited or deleted, even inside notes
 
