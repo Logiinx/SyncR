@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.69.0] - 2026-11-11
+
 **Video**
 - **Added** subtitles to YouTube's controls: a button, language or translation, size, drag them anywhere
 - **Added** chapters, preview pictures and SponsorBlock's parts to the YouTube progress bar
