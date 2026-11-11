@@ -3,7 +3,8 @@
 // Client Secret, which can't be in the app (public code). This Worker holds the secret,
 // gets the Twitch access token, forwards the app's query and adds the CORS headers.
 // It also does Google Calendar's sign-in exchange, for the same reason (see /google/token),
-// and reads web pages for the link cards in notes (see /preview).
+// reads web pages for the link cards in notes (see /preview), and HowLongToBeat's play times
+// (see /playtime).
 //
 // Settings (Cloudflare dashboard → the Worker → Settings → Variables and Secrets, type Secret):
 //   TWITCH_CLIENT_ID      from dev.twitch.tv/console (your application)
@@ -820,6 +821,140 @@ async function videoFeed(env, endpoint, request) {
   throw videoError(`Unknown endpoint: ${endpoint}`, 404)
 }
 
+// ---------- HowLongToBeat (play times) ----------
+// Body (JSON):
+//   { igdbId }  → finds the game on HowLongToBeat (by its name and year, checked against its
+//                 Steam number when IGDB has one)
+//   { hltbId }  → reads that page again (a game found before, or a link the user pasted)
+// Answer: { id, main, plus, full } (seconds; 0 = not known yet), or { id: null } when not found.
+// Their search isn't a public API: it needs a token from its /init and an address read from
+// their scripts, both of which change now and then. A game's page is plain data and steadier,
+// so the app keeps the page's id and only searches once per game.
+const HLTB = 'https://howlongtobeat.com'
+const HLTB_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+  Referer: `${HLTB}/`,
+}
+let hltbSearchPath = '/api/search/site' // the last one that worked; read again when it stops working
+
+// The search's address, from the fetch(…, { method: "POST" }) in their scripts
+async function hltbFindPath() {
+  const home = await (await fetch(`${HLTB}/`, { headers: HLTB_HEADERS })).text()
+  const scripts = [...home.matchAll(/<script[^>]+src="([^"]*\/_next\/static\/chunks\/[^"]+)"/g)].map((m) => m[1]).slice(0, 30)
+  for (const src of scripts) {
+    const code = await (await fetch(new URL(src, HLTB), { headers: HLTB_HEADERS })).text()
+    const found = code.match(/fetch\s*\(\s*["']\/api\/([a-zA-Z0-9_/]+)[^"']*["']\s*,\s*{[^}]*method:\s*["']POST["'][^}]*}/is)
+    if (found) return `/api/${found[1].replace(/\/+$/, '')}`
+  }
+  throw new Error('HowLongToBeat: search not found in their page')
+}
+
+// One search with a fresh token (it's tied to who asks). null = refused: the address may have changed.
+async function hltbSearchAt(path, words) {
+  const init = await fetch(`${HLTB}${path}/init?t=${Date.now()}`, { headers: HLTB_HEADERS })
+  const auth = init.ok ? await init.json().catch(() => null) : null
+  if (!auth) return null
+  let key, value
+  for (const [field, content] of Object.entries(auth)) {
+    if (/key/i.test(field)) key = content
+    if (/val/i.test(field)) value = content
+  }
+  const body = {
+    searchType: 'games',
+    searchTerms: words,
+    searchPage: 1,
+    size: 20,
+    searchOptions: {
+      games: {
+        userId: 0,
+        platform: '',
+        sortCategory: 'popular',
+        rangeCategory: 'main',
+        rangeTime: { min: 0, max: 0 },
+        gameplay: { perspective: '', flow: '', genre: '', difficulty: '' },
+        rangeYear: { max: '', min: '' },
+        modifier: 'hide_dlc',
+      },
+      users: { sortCategory: 'postcount' },
+      lists: { sortCategory: 'follows' },
+      filter: '',
+      sort: 0,
+      randomizer: 0,
+    },
+    useCache: true,
+  }
+  if (key) body[key] = value
+  const headers = { ...HLTB_HEADERS, 'Content-Type': 'application/json', Accept: '*/*', Origin: `${HLTB}/` }
+  if (auth.token) Object.assign(headers, { 'x-auth-token': auth.token, 'x-hp-key': key ?? '', 'x-hp-val': value ?? '' })
+  const response = await fetch(`${HLTB}${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
+  const answer = response.ok ? await response.json().catch(() => null) : null
+  return Array.isArray(answer?.data) ? answer.data : null
+}
+
+async function hltbSearch(words) {
+  const results = await hltbSearchAt(hltbSearchPath, words)
+  if (results) return results
+  hltbSearchPath = await hltbFindPath()
+  const again = await hltbSearchAt(hltbSearchPath, words)
+  if (!again) throw new Error('HowLongToBeat: search refused')
+  return again
+}
+
+// A game's page: its times and Steam number. null = no such page.
+async function hltbPage(id) {
+  const response = await fetch(`${HLTB}/game/${id}`, { headers: HLTB_HEADERS })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`HowLongToBeat answered ${response.status}`)
+  const data = (await response.text()).match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
+  const game = data && JSON.parse(data[1]).props?.pageProps?.game?.data?.game?.find((entry) => entry.game_id === id)
+  if (!game) return null
+  return { id, steam: Number(game.profile_steam) || 0, main: game.comp_main || 0, plus: game.comp_plus || 0, full: game.comp_100 || 0 }
+}
+
+// Lower case, no accents, signs or ™, so "Marvel's Spider-Man™" = "marvel s spider man"
+const plainName = (text) =>
+  String(text ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()
+
+async function findPlaytime(env, igdbId) {
+  const query = `fields name, first_release_date, external_games.uid, external_games.external_game_source, external_games.category; where id = ${igdbId};`
+  let response = await askIgdb(env, 'games', query, await getToken(env))
+  if (response.status === 401) response = await askIgdb(env, 'games', query, await getToken(env, true))
+  const game = (await response.json())?.[0]
+  if (!game) return { id: null }
+  const name = plainName(game.name)
+  const year = game.first_release_date ? new Date(game.first_release_date * 1000).getUTCFullYear() : 0
+  const steamLink = (game.external_games ?? []).find((link) => (link.external_game_source ?? link.category) === 1 && /^\d+$/.test(link.uid ?? ''))
+  const steam = steamLink ? Number(steamLink.uid) : 0
+  // Same name (or one of its other names), a year off at most when both are known
+  const scored = (await hltbSearch(name.split(' ')))
+    .map((found) => {
+      const names = [found.game_name, ...String(found.game_alias ?? '').split(',')].map(plainName)
+      let score = names[0] === name ? 3 : names.includes(name) ? 2 : 0
+      if (year && found.release_world) score += Math.abs(found.release_world - year) <= 1 ? 1 : -2
+      return { id: found.game_id, score }
+    })
+    .filter((found) => found.score > 0)
+    .sort((a, b) => b.score - a.score)
+  // The Steam number decides when both have one; without it, only a sure name (and year) match
+  for (const found of scored.slice(0, 3)) {
+    const page = await hltbPage(found.id)
+    if (!page) continue
+    if (steam && page.steam) {
+      if (page.steam === steam) return page
+      continue
+    }
+    if (found.score >= 3) return page
+  }
+  return { id: null }
+}
+
+async function playtime(env, request) {
+  const { igdbId, hltbId } = await request.json()
+  if (Number.isInteger(hltbId) && hltbId > 0) return (await hltbPage(hltbId)) ?? { id: null }
+  if (Number.isInteger(igdbId) && igdbId > 0) return findPlaytime(env, igdbId)
+  throw new Error('Send igdbId or hltbId')
+}
+
 function askIgdb(env, endpoint, query, accessToken) {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
@@ -881,6 +1016,14 @@ export default {
       try {
         const { temporary, ...preview } = await linkPreview(env, request)
         return reply(preview, temporary ? 502 : 200)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    // Play times: free to ask, so the friend password gets them too
+    if (endpoint === 'playtime') {
+      try {
+        return reply(await playtime(env, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
       }
