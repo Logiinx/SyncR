@@ -135,7 +135,7 @@ export async function addPlaylist(link: string, keepChecking: boolean) {
   return id
 }
 
-export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'newestFirst' | 'youtubeOrder'>>) {
+export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'newestFirst' | 'youtubeOrder' | 'folderId'>>) {
   await db.videoPlaylists.update(id, { ...change, updatedAt: Date.now() })
   changed()
 }

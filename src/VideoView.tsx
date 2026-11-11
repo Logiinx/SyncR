@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderOutput, FolderPlus, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -12,7 +12,7 @@ import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
-import { dragVideo } from './videoDrag'
+import { dragPlaylist, dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, moveToFolder, renameFolder } from './videoFolders'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
@@ -63,8 +63,9 @@ function FoldRow(props: {
   depth?: number
   onToggle: () => void
   onMenu?: (x: number, y: number) => void
+  onPointerDown?: (e: React.PointerEvent<HTMLElement>) => void // dragging the row itself (a playlist)
 }) {
-  const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu } = props
+  const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown } = props
   return (
     <li
       className={open ? 'video-row video-group' : 'video-row video-group folded'}
@@ -73,6 +74,7 @@ function FoldRow(props: {
       data-drop-folder={drop ? drop.folder ?? '' : undefined}
       data-drop-channel={drop ? drop.channel ?? '' : undefined}
       data-open={drop?.open}
+      onPointerDown={onPointerDown}
       onContextMenu={
         onMenu &&
         ((e) => {
@@ -242,7 +244,8 @@ function VideoView() {
   const [removingPlaylist, setRemovingPlaylist] = useState<VideoPlaylist | null>(null)
   // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
   // folder to rename
-  const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string } | { folder: VideoFolder } | null>(null)
+  const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
+  const [movingPlaylist, setMovingPlaylist] = useState<{ playlist: VideoPlaylist; x: number; y: number } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
@@ -344,10 +347,21 @@ function VideoView() {
     ]
   }
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
-  // A folder, then what's in it when it's open: its sub-folders, then its videos, oldest on top
-  // like a playlist. Only in To watch, empty ones too, or a new folder couldn't be reached.
+  // Playlists, each at the top or in one of your own folders (one deleted or a channel's: the top).
+  // Only in To watch with all follows: it's your own list, not a channel's.
+  const playlists = list === 'towatch' && shownChannel === 'all' ? feed?.playlists ?? [] : []
+  const placeOf = (playlist: VideoPlaylist) => {
+    const folder = folders.find((other) => other.id === playlist.folderId)
+    return folder && !topFolder(folder)?.channel ? folder.id : null
+  }
+  const playlistsIn = (folderId: string | null) => playlists.filter(({ playlist }) => placeOf(playlist) === folderId)
+  const allPlaylistsIn = (folder: VideoFolder): typeof playlists => [...playlistsIn(folder.id), ...foldersIn(folder.id).flatMap(allPlaylistsIn)]
+  // A folder, then what's in it when it's open: its sub-folders, its playlists, then its videos,
+  // oldest on top like a playlist. Only in To watch, empty ones too, or a new folder couldn't be
+  // reached. Its count is its own videos; its "new" also counts its playlists' new videos.
   function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
     const inside = allIn(folder)
+    const newInPlaylists = allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes).filter(tagNew).length
     const open = openGroups.includes(folder.id)
     return [
       <FoldRow
@@ -358,7 +372,7 @@ function VideoView() {
         title={folder.name}
         count={inside.length}
         newest={[...inside].sort((a, b) => b.published - a.published)[0]}
-        newCount={inside.filter(tagNew).length}
+        newCount={inside.filter(tagNew).length + newInPlaylists}
         open={open}
         depth={depth}
         onToggle={() => toggleGroup(folder.id)}
@@ -367,14 +381,15 @@ function VideoView() {
       ...(open
         ? [
             ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
+            ...playlistsIn(folder.id).flatMap((entry) => playlistRows(entry, depth + 1)),
             ...videosIn(folder.id).reverse().map((video) => videoRow(video, depth + 1)),
           ]
         : []),
     ]
   }
-  // A playlist's row, then its videos in the chosen order when it's open. Only in To watch with all
-  // follows: it's your own list, not a channel's, and its watched videos stay in it.
-  const playlistRows = (list === 'towatch' && shownChannel === 'all' ? feed?.playlists ?? [] : []).flatMap(({ playlist, videos: episodes }) => {
+  // A playlist's row, then its videos in the chosen order when it's open (its watched videos stay in
+  // it). Dragged by its row into your own folders.
+  function playlistRows({ playlist, videos: episodes }: (typeof playlists)[number], depth: number): ReactNode[] {
     const open = openGroups.includes(playlist.id)
     const nextUp = episodes.find((video) => !video.watched)
     return [
@@ -388,8 +403,10 @@ function VideoView() {
         countText={t('{watched} of {total} watched', { watched: episodes.filter((video) => video.watched).length, total: episodes.length })}
         newCount={episodes.filter(tagNew).length}
         open={open}
+        depth={depth}
         onToggle={() => toggleGroup(playlist.id)}
         onMenu={(x, y) => setPlaylistMenu({ playlist, x, y })}
+        onPointerDown={(e) => dragPlaylist(e, playlist.id, placeOf(playlist), openRow)}
         actions={
           <>
             <button
@@ -415,9 +432,9 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={1} playlistId={playlist.id} onOpenRow={openRow} />) : []),
+      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} onOpenRow={openRow} />) : []),
     ]
-  })
+  }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
   function channelRows(id: string, key: string, shown: { name: string; icon: string | null; platform: FeedVideo['platform'] }, group: FeedVideo[], subs: VideoFolder[]) {
     const open = openGroups.includes(id)
@@ -446,7 +463,7 @@ function VideoView() {
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
   const rows = [
-    ...playlistRows,
+    ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     // A flat list, so a video stays the same item whether it's in a group or not
     ...(grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
@@ -589,8 +606,30 @@ function VideoView() {
             { label: t('YouTube’s order'), icon: ListOrdered, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
             { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
-            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            { label: t('Move to folder…'), icon: FolderInput, divider: true, onClick: () => setMovingPlaylist(playlistMenu) },
+            { label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
+          ]}
+        />
+      )}
+      {movingPlaylist && (
+        <ContextMenu
+          x={movingPlaylist.x}
+          y={movingPlaylist.y}
+          onClose={() => setMovingPlaylist(null)}
+          header={{ title: t('Move to folder') }}
+          items={[
+            // Your own folders only: a playlist isn't a channel's
+            ...folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), '').map(({ folder, path }): MenuItem => ({
+              label: path,
+              icon: Folder,
+              checked: folder.id === placeOf(movingPlaylist.playlist),
+              onClick: () => void changePlaylist(movingPlaylist.playlist.id, { folderId: folder.id }),
+            })),
+            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, playlistId: movingPlaylist.playlist.id }) },
+            ...(placeOf(movingPlaylist.playlist)
+              ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void changePlaylist(movingPlaylist.playlist.id, { folderId: null }) }]
+              : []),
           ]}
         />
       )}
@@ -663,8 +702,10 @@ function VideoView() {
               if (!name) return
               if ('folder' in naming) void renameFolder(naming.folder.id, name)
               else {
-                const { parentId, channel: inChannel, videoId } = naming
-                void createFolder(name, parentId, inChannel).then((id) => (videoId ? moveToFolder(videoId, id) : undefined))
+                const { parentId, channel: inChannel, videoId, playlistId } = naming
+                void createFolder(name, parentId, inChannel).then((id) =>
+                  videoId ? moveToFolder(videoId, id) : playlistId ? changePlaylist(playlistId, { folderId: id }) : undefined,
+                )
                 // Unfolded to show it
                 const openId = naming.openId ?? parentId
                 if (openId) openRow(openId)
@@ -678,7 +719,13 @@ function VideoView() {
         <Dialog
           request={{
             title: t('Delete {name}?', { name: deleting.name }),
-            message: foldersIn(deleting.id).length ? t('Its sub-folders go too. All their videos go back to the main list.') : t('Its videos go back to the main list.'),
+            message: foldersIn(deleting.id).length
+              ? allPlaylistsIn(deleting).length
+                ? t('Its sub-folders go too. All their videos and playlists go back to the main list.')
+                : t('Its sub-folders go too. All their videos go back to the main list.')
+              : playlistsIn(deleting.id).length
+                ? t('Its videos and playlists go back to the main list.')
+                : t('Its videos go back to the main list.'),
             confirmLabel: t('Delete'),
             danger: true,
             onConfirm: () => void deleteFolder(deleting.id),

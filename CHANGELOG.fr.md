@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** des playlists dans vos propres dossiers, en les faisant glisser ou par Déplacer vers un dossier au clic droit
 - **Ajout** d’un curseur pour la transparence du chat en plein écran, dans les réglages Chat du lecteur
 - **Changement** de l’heure réelle sur les vidéos Twitch : elle apparaît au survol du temps de la vidéo, sans réglage
 

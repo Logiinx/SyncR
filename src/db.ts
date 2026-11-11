@@ -349,6 +349,7 @@ export interface VideoPlaylist {
   // Both missing on playlists from before (the old "reversed" meant YouTube's order turned around).
   newestFirst?: boolean
   youtubeOrder?: boolean
+  folderId?: string | null // in one of your own folders; missing, null or a deleted folder: at the top
   deleted: boolean
   restoredAt?: number // added again after being removed (see localWins, sync.ts)
   updatedAt: number

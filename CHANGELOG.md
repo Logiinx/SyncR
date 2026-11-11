@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** playlists in your own folders, by dragging them or with Move to folder in their right-click menu
 - **Added** a slider for how see-through the chat is in full screen, in the player's Chat settings
 - **Changed** the time of day on Twitch videos: it slides out when you hover the video's time, no setting needed
 
