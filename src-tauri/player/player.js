@@ -151,7 +151,7 @@ const controls = playerControls({
   },
 }, media)
 // For timeline.js and chat.js
-const { $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines } = controls
+const { $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
 
 // ---- The window takes the video's shape (video_window.rs) ------------------------------------------------
 let shapeSent = ''

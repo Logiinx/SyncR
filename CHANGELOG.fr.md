@@ -11,6 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Recommencer dans À revoir efface ce que vous y avez vu
 - **Nouveau :** « Dernier visionnage il y a 2 mois » sur les vidéos et playlists À revoir
 - **Nouveau :** clic droit dans les lecteurs : copier le lien de la vidéo, aussi à ce moment
+- **Nouveau :** liste des chapitres YouTube : cliquez sur le temps ou le chapitre pour y aller
 - **Amélioré :** l’étiquette Nouvelle reste une semaine, jusqu’à ce que vous ouvriez la vidéo
 - **Amélioré :** un peu plus d’espace entre les boutons des lecteurs
 - **Changé :** bouton du jeu du lecteur Twitch maintenant juste après le temps

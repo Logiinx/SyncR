@@ -87,6 +87,7 @@ function playerControls(env, media) {
   <button id="skip" hidden></button>
   <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
   <div id="context" hidden></div>
+  <div id="parts-box" hidden><div id="parts-list"></div></div>
   <div id="spinner"><span></span></div>
   <div id="flash"></div>
   <div id="message" hidden><div id="message-text"></div><button id="retry"></button></div>`))
@@ -260,7 +261,7 @@ function playerControls(env, media) {
 
   // ---- Controls that fade -----------------------------------------------------------------------
   let quietTimer
-  const keepShowing = () => media.paused() || dragging !== null || !$('menu').hidden || !$('context').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
+  const keepShowing = () => media.paused() || dragging !== null || !$('menu').hidden || !$('context').hidden || !$('parts-box').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
   function wake() {
     box.classList.remove('quiet')
     clearTimeout(quietTimer)
@@ -327,6 +328,7 @@ function playerControls(env, media) {
   // A click on the picture: closes the menu if it's open, otherwise play or pause
   env.surface.addEventListener('click', () => {
     if (skipClick) skipClick = false // it only closed the right-click menu
+    else if (partsShown) closeParts()
     else if (!$('menu').hidden) closeMenu()
     else if (!hooks.pictureClick?.()) togglePlay()
   })
@@ -355,6 +357,7 @@ function playerControls(env, media) {
   env.surface.addEventListener('contextmenu', (event) => {
     if (!media.link) return
     closeMenu()
+    closeParts()
     hooks.beforeMenu?.()
     const at = Math.floor(media.time())
     const menu = $('context')
@@ -695,6 +698,7 @@ function playerControls(env, media) {
   }
   function openMenu() {
     closeContext()
+    closeParts()
     hooks.beforeMenu?.()
     sideKey = null
     narrow = false
@@ -712,6 +716,99 @@ function playerControls(env, media) {
     $('settings').classList.remove('open')
   }
   $('settings').onclick = () => ($('menu').hidden ? openMenu() : closeMenu())
+
+  // ---- A list of the video's parts: Twitch's games, YouTube's chapters ----------------------------
+  // Opened by a button of the bar, over it, bottoms in line with the gear menu: a title, then one line
+  // per part (its picture if any, name, how long it lasts, an underline of how far the video is in
+  // it: full once passed, filling up while it plays, empty ahead). The current one in blue, a click
+  // jumps to its start. openParts({ button, title, parts: [{ at: seconds, name }], picture(part) }).
+  let partsShown = null
+  // "2 h 05 min", "45 min", "< 1 min" (the same in English and French)
+  function lasting(seconds) {
+    const minutes = Math.round(seconds / 60)
+    if (minutes < 1) return '< 1 min'
+    const hours = Math.floor(minutes / 60)
+    return hours ? `${hours} h ${String(minutes % 60).padStart(2, '0')} min` : `${minutes} min`
+  }
+  const partIndexAt = (parts, seconds) => {
+    let found = 0
+    parts.forEach((part, index) => { if (part.at <= seconds) found = index })
+    return found
+  }
+  function drawPartsList() {
+    if (!partsShown) return
+    const { title, parts, picture } = partsShown
+    const list = $('parts-list')
+    const scrolled = list.scrollTop
+    list.textContent = ''
+    const head = document.createElement('div')
+    head.className = 'menu-title'
+    head.textContent = title
+    list.append(head)
+    parts.forEach((part, index) => {
+      const line = document.createElement('button')
+      line.className = `menu-item part-line${picture ? ' with-picture' : ''}`
+      if (picture) line.append(picture(part))
+      const name = document.createElement('span')
+      name.className = 'part-name'
+      name.textContent = name.title = part.name
+      const end = parts[index + 1]?.at ?? media.duration()
+      const length = document.createElement('span')
+      length.className = 'part-length'
+      length.textContent = end > part.at ? lasting(end - part.at) : ''
+      const progress = document.createElement('span')
+      progress.className = 'part-progress'
+      progress.dataset.at = part.at
+      progress.dataset.end = end
+      progress.append(document.createElement('span'))
+      line.append(name, length, progress)
+      line.onclick = () => {
+        closeParts()
+        jumpTo(part.at)
+      }
+      list.append(line)
+    })
+    list.scrollTop = scrolled
+    drawPartsProgress()
+  }
+  function drawPartsProgress() {
+    if (!partsShown) return
+    const now = media.time()
+    const current = partIndexAt(partsShown.parts, now)
+    $('parts-list').querySelectorAll('.part-line').forEach((line, index) => line.classList.toggle('on', index === current))
+    for (const progress of $('parts-list').querySelectorAll('.part-progress')) {
+      const from = Number(progress.dataset.at)
+      const end = Number(progress.dataset.end)
+      // No known end (the video's length not read yet): full once started
+      const done = end > from ? (now - from) / (end - from) : now >= from ? 1 : 0
+      progress.firstChild.style.width = `${Math.min(1, Math.max(0, done)) * 100}%`
+    }
+  }
+  function openParts(shown) {
+    closeMenu()
+    closeContext()
+    hooks.beforeMenu?.()
+    partsShown = shown
+    const holder = $('parts-box')
+    holder.hidden = false
+    shown.button.classList.add('open')
+    drawPartsList()
+    // Over its button, like the time's Go to box, kept inside the player (measured at its own width first)
+    holder.style.left = ''
+    holder.style.left = `${Math.max(Math.min(shown.button.offsetLeft, $('bottom').clientWidth - holder.offsetWidth - 12), 12)}px`
+    $('parts-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' })
+    wake()
+  }
+  function closeParts() {
+    if (!partsShown) return
+    $('parts-box').hidden = true
+    partsShown.button.classList.remove('open')
+    partsShown = null
+  }
+  // Open at all, or opened by that button
+  const partsOpen = (button) => !!partsShown && (!button || partsShown.button === button)
+  for (const kind of ['timeupdate', 'seeking']) video.addEventListener(kind, drawPartsProgress)
+  video.addEventListener('durationchange', drawPartsList)
 
   // ---- Keyboard ---------------------------------------------------------------------------------
   function changeVolume(by) {
@@ -745,7 +842,7 @@ function playerControls(env, media) {
       return
     }
     // Not held back: the browser leaves full screen on it by itself
-    if (event.key === 'Escape') { closeContext(); return closeMenu() }
+    if (event.key === 'Escape') { closeContext(); closeParts(); return closeMenu() }
     if (env.stopKeys && event.key !== 'Tab') event.stopImmediatePropagation()
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
     if (/^[0-9]$/.test(key)) {
@@ -808,7 +905,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, $, icon, clock, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, $, icon, clock, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -921,6 +1018,20 @@ const CONTROLS_CSS = `
     background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4);
   }
   #context .menu-item { justify-content: flex-start; white-space: nowrap; }
+  #parts-box { position: absolute; top: 18px; left: 12px; bottom: 70px; z-index: 5; display: flex; align-items: flex-end; pointer-events: none; }
+  #parts-list {
+    min-width: 250px; max-width: 340px; max-height: 100%; overflow: auto; box-sizing: border-box; pointer-events: auto;
+    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+    padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4);
+  }
+  .menu-item.part-line { position: relative; justify-content: flex-start; gap: 10px; min-height: 38px; }
+  .menu-item.part-line.with-picture { min-height: 44px; padding-left: 8px; }
+  .part-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .part-length { flex: none; color: var(--text-dim, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
+  /* Under the name and length (after the picture), like the main bar: grey track, blue played part */
+  .part-progress { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(255, 255, 255, 0.25); pointer-events: none; }
+  .with-picture .part-progress { left: 45px; }
+  .part-progress span { display: block; height: 100%; width: 0; background: var(--text-blue, #6ea8fe); }
   #menu-side { min-width: 250px; max-width: 340px; }
   #menus.narrow #menu { display: none; }
   #menu-side.unfold { animation: unfold 0.16s cubic-bezier(0.32, 0.72, 0, 1); /* the app's menus: 0.16 s, --ease-open */ }

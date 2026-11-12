@@ -346,6 +346,9 @@
         .map(({ chapterRenderer: one }) => ({ at: one.timeRangeStartMillis / 1000, name: one.title?.simpleText || one.title?.runs?.map((run) => run.text).join('') || '' }))
         .sort((a, b) => a.at - b.at)
       controls.setGaps(chapters.map((chapter) => chapter.at))
+      // Another video's (the next one of a playlist): its list is redrawn, or the time is just the time
+      if (controls.partsOpen()) chapters.length ? controls.openParts(chaptersList()) : controls.closeParts()
+      drawTimeButton()
       return true
     }
     // "base|w#h#count#cols#rows#interval#name#sigh|…", the last kind the sharpest
@@ -410,6 +413,8 @@
         tries = 0
         controls.setGaps([])
         controls.setMarked([])
+        controls.closeParts()
+        drawTimeButton()
         askSponsorBlock(id)
       }
       // YouTube's answers can come a little after the video
@@ -440,6 +445,20 @@
       },
     }, media)
     root.getElementById('chat-button').hidden = true
+    // A click on the time (and the chapter after it) lists the chapters, like the Twitch player's games
+    const timeButton = root.getElementById('time')
+    const chaptersList = () => ({ button: timeButton, title: labels.chapters, parts: chapters })
+    function drawTimeButton() {
+      timeButton.title = chapters.length ? labels.chapters || '' : ''
+      // Without chapters the time is only text (the page's style: no clicks, no hover)
+      timeButton.style.pointerEvents = chapters.length ? 'auto' : ''
+    }
+    timeButton.onclick = () => {
+      if (!chapters.length) return
+      if (controls.partsOpen()) controls.closeParts()
+      else controls.openParts(chaptersList())
+    }
+    drawTimeButton()
     // YouTube keeps its subtitles 2% above the bottom; our bar is 72 px high (controls.js) at the app's scale
     const BAR_HEIGHT = 72
     const LOWEST = 0.02

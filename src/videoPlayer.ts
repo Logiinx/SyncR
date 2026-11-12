@@ -160,6 +160,7 @@ function controlsData() {
       smaller: t('Smaller'),
       bigger: t('Bigger'),
       resetPosition: t('Reset position'),
+      chapters: t('Chapters'),
       copyLink: t('Copy link'),
       copyLinkAt: t('Copy link at {time}'),
       linkCopied: t('Link copied'),

@@ -42,24 +42,11 @@
   #chat-bg input { flex: 1; min-width: 0; margin: 0; accent-color: #fff; cursor: pointer; }
   #chat-bg output { width: 34px; text-align: right; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
 
-  /* The games button (right of the time) and its list, bottoms in line with the ⚙️ menu */
+  /* The games button (right of the time) and the box art in its list (the list: controls.js) */
   .game-art { width: 22px; height: 29px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 3px; }
   .game-art img { width: 100%; height: 100%; object-fit: cover; }
   .game-art svg { width: 20px; height: 20px; }
-  #games-box { position: absolute; top: 18px; left: 12px; bottom: 70px; z-index: 5; display: flex; align-items: flex-end; pointer-events: none; }
-  #games-list {
-    min-width: 250px; max-width: 340px; max-height: 100%; overflow: auto; box-sizing: border-box; pointer-events: auto;
-    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-    padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4);
-  }
-  .menu-item.game-line { justify-content: flex-start; gap: 10px; min-height: 44px; padding: 0 12px 0 8px; }
-  .game-line .game-art { width: 27px; height: 36px; }
-  .game-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .game-length { flex: none; color: var(--text-dim, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
-  /* Under the name and length (after the box art), like the main bar: grey track, blue played part */
-  .menu-item.game-line { position: relative; }
-  .game-progress { position: absolute; left: 45px; right: 12px; bottom: 4px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(255, 255, 255, 0.25); pointer-events: none; }
-  .game-progress span { display: block; height: 100%; width: 0; background: var(--text-blue, #6ea8fe); }
+  .part-line .game-art { width: 27px; height: 36px; }
 
   #chat { position: relative; flex: none; box-sizing: border-box; display: flex; flex-direction: column; background: var(--bg, #161616); border-left: 1px solid rgba(255, 255, 255, 0.1); color: var(--text, #e4e4e4); }
   #chat-edge { position: absolute; top: 0; bottom: 0; left: -4px; width: 7px; z-index: 2; cursor: col-resize; touch-action: none; }

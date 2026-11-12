@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Start over in Rewatch clears what you watched there
 - **New:** "Last watched 2 months ago" on videos and playlists in Rewatch
 - **New:** right-click in the players: copy the video's link, also at this moment
+- **New:** YouTube chapters list: click the time or chapter name to jump
 - **Better:** the New tag stays a week, until you open the video
 - **Better:** a bit more space between the players' buttons
 - **Changed:** Twitch player's game button now right after the time

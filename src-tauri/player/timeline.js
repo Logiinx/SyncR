@@ -77,13 +77,6 @@ gamesButton.id = 'games'
 gamesButton.title = labels.games
 gamesButton.hidden = true
 $('time').after(gamesButton)
-// Bottoms in line with the ⚙️ menu's
-const gamesBox = document.createElement('div')
-gamesBox.id = 'games-box'
-gamesBox.hidden = true
-gamesBox.innerHTML = '<div id="games-list"></div>'
-player.append(gamesBox)
-
 let gameShown = -1 // the game the button shows (its index), so it's only drawn again when that changes
 const gameIndexAt = (seconds) => {
   let found = 0
@@ -105,14 +98,6 @@ function gamePicture(game) {
   holder.append(picture)
   return holder
 }
-// "2 h 05 min", "45 min", "< 1 min" (the same in English and French)
-function playedFor(seconds) {
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 1) return '< 1 min'
-  const hours = Math.floor(minutes / 60)
-  return hours ? `${hours} h ${String(minutes % 60).padStart(2, '0')} min` : `${minutes} min`
-}
-
 function drawGamesButton() {
   gamesButton.hidden = !games.length
   if (!games.length) return closeGames()
@@ -121,79 +106,19 @@ function drawGamesButton() {
   gameShown = index
   gamesButton.textContent = ''
   gamesButton.append(gamePicture(games[index]))
-  if (!gamesBox.hidden) drawGamesList()
+  if (gamesOpen()) drawPartsList()
 }
 
-function drawGamesList() {
-  const list = $('games-list')
-  const scrolled = list.scrollTop
-  list.textContent = ''
-  const title = document.createElement('div')
-  title.className = 'menu-title'
-  title.textContent = labels.games
-  list.append(title)
-  const current = gameIndexAt(video.currentTime)
-  games.forEach((game, index) => {
-    const line = document.createElement('button')
-    line.className = `menu-item game-line${index === current ? ' on' : ''}`
-    const name = document.createElement('span')
-    name.className = 'game-name'
-    name.textContent = name.title = game.name
-    const end = games[index + 1]?.at ?? video.duration
-    const length = document.createElement('span')
-    length.className = 'game-length'
-    length.textContent = end > game.at ? playedFor(end - game.at) : ''
-    // How far the video is in this game: full once passed, filling up while it plays, empty ahead
-    const progress = document.createElement('span')
-    progress.className = 'game-progress'
-    progress.dataset.at = game.at
-    progress.dataset.end = end
-    progress.append(document.createElement('span'))
-    line.append(gamePicture(game), name, length, progress)
-    line.onclick = () => {
-      closeGames()
-      jumpTo(game.at)
-    }
-    list.append(line)
-  })
-  list.scrollTop = scrolled
-  drawGameProgress()
-}
-
-function drawGameProgress() {
-  const now = video.currentTime
-  for (const progress of $('games-list').querySelectorAll('.game-progress')) {
-    const at = Number(progress.dataset.at)
-    const end = Number(progress.dataset.end)
-    // No known end (the video's length not read yet): full once started
-    const part = end > at ? (now - at) / (end - at) : now >= at ? 1 : 0
-    progress.firstChild.style.width = `${Math.min(1, Math.max(0, part)) * 100}%`
-  }
-}
-
-const gamesOpen = () => !gamesBox.hidden
+// The list: the controls' shared one (controls.js), with the box art
+const gamesOpen = () => partsOpen(gamesButton)
+const closeGames = () => { if (gamesOpen()) closeParts() }
 function openGames() {
-  closeMenu()
   closeGoTo()
-  gamesBox.hidden = false
-  gamesButton.classList.add('open')
-  drawGamesList()
-  // Over the button, like the time's Go to box, kept inside the player (measured at its own width first)
-  gamesBox.style.left = ''
-  gamesBox.style.left = `${Math.max(Math.min(gamesButton.offsetLeft, $('bottom').clientWidth - gamesBox.offsetWidth - 12), 12)}px`
-  $('games-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' })
-  wake()
-}
-function closeGames() {
-  gamesBox.hidden = true
-  gamesButton.classList.remove('open')
+  openParts({ button: gamesButton, title: labels.games, parts: games, picture: gamePicture })
 }
 gamesButton.onclick = () => (gamesOpen() ? closeGames() : openGames())
 video.addEventListener('timeupdate', drawGamesButton)
 video.addEventListener('seeking', drawGamesButton)
-for (const event of ['timeupdate', 'seeking']) video.addEventListener(event, () => { if (gamesOpen()) drawGameProgress() })
-video.addEventListener('durationchange', () => { if (gamesOpen()) drawGamesList() })
-addEventListener('keydown', (event) => { if (event.key === 'Escape') closeGames() })
 
 // ---- Preview pictures ---------------------------------------------------------------------------
 // Twitch's own list: about 200 small pictures per video, on sheets of a few rows and columns
