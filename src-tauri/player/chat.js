@@ -467,7 +467,7 @@ function toggleChat() {
   }
   placeChat()
 }
-$('chat-button').innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>'
+$('chat-button').innerHTML = icon('chat')
 $('chat-button').onclick = toggleChat
 chatLatest.textContent = labels.chatLatest
 chatPanel.addEventListener('pointerdown', closeMenu)
@@ -509,7 +509,7 @@ function drawChatSize() {
 }
 // Its panel in the player's menu (controls.js, drawMenu)
 function chatMenu({ panel }) {
-  panel('chat', labels.chatTitle, '', (side) => drawChatPanel(side))
+  panel('chat', labels.chatTitle, '', (side) => drawChatPanel(side), 'chat')
 }
 function drawChatPanel({ title, row, choices, element: menu }) {
   title(labels.chatSize)

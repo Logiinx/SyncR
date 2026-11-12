@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Added** icons to the players' ⚙️ menu: Quality, Speed, Subtitles and Chat
 - **Improved** the video window's extensions menu: same colors and frame as the ⚙️ menu, easier to see over a video
 - **Improved** the Video tab's menus: each Add and More item has its own icon, a video's menu shows its title
 - **Changed** the ✕ on a video that's no longer available: it now removes it for good, not into Watched

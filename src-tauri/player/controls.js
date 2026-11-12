@@ -34,6 +34,10 @@ function playerControls(env, media) {
     check: '<path d="M20 6 9 17l-5-5"/>',
     chevronLeft: '<path d="m15 18-6-6 6-6"/>',
     subtitles: '<rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/>',
+    // The ⚙️ menu's rows (Lucide SlidersHorizontal, Gauge); chat = Lucide MessageSquare, also the chat button's
+    quality: '<path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>',
+    speed: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+    chat: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>',
     minus: '<path d="M5 12h14"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   }
@@ -467,14 +471,16 @@ function playerControls(env, media) {
     return { title, row, pick, choices, element: target }
   }
 
-  // A row of the list that opens a panel: its name, then what's chosen there, dim
-  function panelRow(menu, key, text, value, fill) {
+  // A row of the list that opens a panel: its icon and name, then what's chosen there, dim
+  function panelRow(menu, key, text, value, fill, iconName) {
     panels[key] = fill
     const button = document.createElement('button')
     button.className = 'menu-item menu-panel'
     button.dataset.panel = key
     const name = document.createElement('span')
-    name.textContent = text
+    name.className = 'menu-name'
+    name.insertAdjacentHTML('beforeend', html(icon(iconName)))
+    name.append(text)
     const shown = document.createElement('span')
     shown.className = 'menu-value'
     const valueText = document.createElement('span')
@@ -503,22 +509,22 @@ function playerControls(env, media) {
     menu.textContent = ''
     panels = {}
     const main = builder(menu)
-    const panel = (key, text, value, fill) => panelRow(menu, key, text, value, fill)
+    const panel = (key, text, value, fill, iconName) => panelRow(menu, key, text, value, fill, iconName)
     const levels = media.qualities()
     if (levels.length) {
       panel('quality', labels.quality, media.qualityText(), (side) => {
         const ticked = media.quality()
         for (const item of levels) side.pick(item.text, item.value === ticked, () => media.setQuality(item.value))
-      })
+      }, 'quality')
     }
     panel('speed', labels.speed, speedName(media.rate()), (side) => {
       for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
-    })
+    }, 'speed')
     const tracks = subtitles?.tracks() || []
     if (tracks.length) {
       const current = subtitles.track()
       const on = tracks.find((item) => item.value === current)
-      panel('subtitles', labels.subtitles, on ? on.text : labels.subtitlesOff, (side) => drawSubtitlesMenu(side, tracks))
+      panel('subtitles', labels.subtitles, on ? on.text : labels.subtitlesOff, (side) => drawSubtitlesMenu(side, tracks), 'subtitles')
     }
     hooks.menu?.({ ...main, panel })
     const info = document.createElement('div')
@@ -850,6 +856,8 @@ const CONTROLS_CSS = `
   .menu-value { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--text-dim, #9a9a9a); }
   .menu-value span { min-width: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu-value svg { flex-shrink: 0; }
+  .menu-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .menu-name svg { flex-shrink: 0; color: var(--text-dim, #9a9a9a); }
   .menu-item.menu-back { justify-content: flex-start; gap: 6px; padding-left: 8px; }
   .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   /* What's playing: wraps within the menu's width instead of widening it */

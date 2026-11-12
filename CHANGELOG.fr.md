@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Ajout** d’icônes dans le menu ⚙️ des lecteurs : Qualité, Vitesse, Sous-titres et Chat
 - **Amélioration** du menu des extensions de la fenêtre vidéo : mêmes couleurs et cadre que le menu ⚙️, plus visible sur une vidéo
 - **Amélioration** des menus de l’onglet Vidéo : chaque élément d’Ajouter et Plus a son icône, le menu d’une vidéo montre son titre
 - **Changement** du ✕ sur une vidéo qui n’est plus disponible : il la retire pour de bon, sans passer par Vues
