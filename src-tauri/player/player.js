@@ -73,6 +73,8 @@ video.addEventListener('volumechange', () => {
 
 const media = {
   element: video,
+  // Twitch's own form for a time: ?t=1h2m3s
+  link: (at) => `https://www.twitch.tv/videos/${videoId}${at ? `?t=${Math.floor(at / 3600)}h${Math.floor((at % 3600) / 60)}m${at % 60}s` : ''}`,
   paused: () => video.paused || video.ended,
   time: () => video.currentTime,
   duration: () => video.duration || 0,

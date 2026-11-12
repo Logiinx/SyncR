@@ -270,6 +270,8 @@
     const media = {
       element,
       paused: () => ![1, 3].includes(player.getPlayerState()),
+      // YouTube's own short form (its Share button's)
+      link: (at) => `https://youtu.be/${player.getVideoData().video_id}${at ? `?t=${at}` : ''}`,
       time: () => player.getCurrentTime() || 0,
       duration: () => player.getDuration() || 0,
       bufferedEnd: () => (player.getVideoLoadedFraction() || 0) * (player.getDuration() || 0),

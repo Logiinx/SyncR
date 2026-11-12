@@ -137,6 +137,8 @@ export const video = {
   Smaller: 'Plus petits',
   Bigger: 'Plus grands',
   'Reset position': 'Remettre à leur place',
+  'Copy link at {time}': 'Copier le lien à {time}',
+  'Link copied': 'Lien copié',
   'Drag the subtitles to move them': 'Faites glisser les sous-titres pour les déplacer',
   Sponsor: 'Sponsor',
   'Self-promotion': 'Autopromotion',

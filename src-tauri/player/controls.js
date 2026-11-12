@@ -16,6 +16,7 @@
 //   play(), pause(), seek(seconds), volume() 0-1, muted(), setVolume(0-1), setMuted(on),
 //   rate(), setRate(speed), qualities(): [{ value, text }], quality(): the value ticked,
 //   qualityText(): shown on the ⚙️ button, setQuality(value),
+//   link(seconds or none): the video's address, starting at that second (none: no right-click menu),
 //   subtitles (only a player that has them): { tracks(): [{ value, text }], track(): the value on
 //     or '' when off, setTrack(value or ''), toggle(), size(), setSize(n), moved(), resetPlace() }
 // }
@@ -39,6 +40,9 @@ function playerControls(env, media) {
     speed: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
     chat: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>',
     minus: '<path d="M5 12h14"/>',
+    // The right-click menu's lines (Lucide Copy, Clock)
+    copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    clock: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   }
   const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`
@@ -82,6 +86,7 @@ function playerControls(env, media) {
   </div>
   <button id="skip" hidden></button>
   <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
+  <div id="context" hidden></div>
   <div id="spinner"><span></span></div>
   <div id="flash"></div>
   <div id="message" hidden><div id="message-text"></div><button id="retry"></button></div>`))
@@ -255,7 +260,7 @@ function playerControls(env, media) {
 
   // ---- Controls that fade -----------------------------------------------------------------------
   let quietTimer
-  const keepShowing = () => media.paused() || dragging !== null || !$('menu').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
+  const keepShowing = () => media.paused() || dragging !== null || !$('menu').hidden || !$('context').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
   function wake() {
     box.classList.remove('quiet')
     clearTimeout(quietTimer)
@@ -271,12 +276,12 @@ function playerControls(env, media) {
   })
 
   let flashTimer
-  function flash(text) {
+  function flash(text, showFor = 500) {
     const shown = $('flash')
     shown.textContent = text
     shown.classList.add('show')
     clearTimeout(flashTimer)
-    flashTimer = setTimeout(() => shown.classList.remove('show'), 500)
+    flashTimer = setTimeout(() => shown.classList.remove('show'), showFor)
   }
 
   // ---- Buttons ----------------------------------------------------------------------------------
@@ -321,11 +326,72 @@ function playerControls(env, media) {
 
   // A click on the picture: closes the menu if it's open, otherwise play or pause
   env.surface.addEventListener('click', () => {
-    if (!$('menu').hidden) closeMenu()
+    if (skipClick) skipClick = false // it only closed the right-click menu
+    else if (!$('menu').hidden) closeMenu()
     else if (!hooks.pictureClick?.()) togglePlay()
   })
   env.surface.addEventListener('dblclick', toggleFull)
   box.addEventListener('contextmenu', (event) => event.preventDefault())
+
+  // ---- Right-click on the picture: copy the video's link, or the link at the current second ----
+  // Same look as the ⚙️ menu, at the mouse, kept inside the player.
+  let skipClick = false
+  const closeContext = () => { $('context').hidden = true }
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // When the page may not use the clipboard: the old way, a hidden box selected and copied
+      const field = document.createElement('textarea')
+      field.value = text
+      field.style.cssText = 'position: fixed; top: 0; left: 0; opacity: 0'
+      document.body.append(field)
+      field.select()
+      document.execCommand('copy')
+      field.remove()
+    }
+    flash(labels.linkCopied, 1200)
+  }
+  env.surface.addEventListener('contextmenu', (event) => {
+    if (!media.link) return
+    closeMenu()
+    hooks.beforeMenu?.()
+    const at = Math.floor(media.time())
+    const menu = $('context')
+    menu.textContent = ''
+    const line = (iconName, text, link, allowed = true) => {
+      const button = document.createElement('button')
+      button.className = 'menu-item'
+      button.disabled = !allowed
+      const name = document.createElement('span')
+      name.className = 'menu-name'
+      name.insertAdjacentHTML('beforeend', html(icon(iconName)))
+      name.append(text)
+      button.append(name)
+      button.onclick = () => { closeContext(); copyText(link) }
+      menu.append(button)
+    }
+    line('copy', labels.copyLink, media.link())
+    line('clock', (labels.copyLinkAt || '{time}').replace('{time}', clock(at)), media.link(at), at > 0)
+    menu.hidden = false
+    // In the player's own pixels: the app's scale is a zoom on it
+    const area = box.getBoundingClientRect()
+    const scale = area.width / box.offsetWidth || 1
+    const x = (event.clientX - area.left) / scale
+    const y = (event.clientY - area.top) / scale
+    menu.style.left = `${Math.max(8, Math.min(x, box.offsetWidth - menu.offsetWidth - 8))}px`
+    menu.style.top = `${Math.max(8, Math.min(y, box.offsetHeight - menu.offsetHeight - 8))}px`
+    wake()
+  })
+  // A press anywhere else closes it (on the picture, without also playing or pausing)
+  addEventListener('pointerdown', (event) => {
+    skipClick = false
+    if ($('context').hidden || event.composedPath().includes($('context'))) return
+    closeContext()
+    skipClick = event.button === 0
+  }, true)
+  addEventListener('blur', closeContext)
+  addEventListener('resize', closeContext)
   // The keyboard always stays with the page: Space on a clicked button would press it again
   const focused = () => env.root.activeElement
   const typing = () => !!focused()?.matches('input[type=text]')
@@ -628,6 +694,7 @@ function playerControls(env, media) {
     menu.append(reset, hint)
   }
   function openMenu() {
+    closeContext()
     hooks.beforeMenu?.()
     sideKey = null
     narrow = false
@@ -678,7 +745,7 @@ function playerControls(env, media) {
       return
     }
     // Not held back: the browser leaves full screen on it by itself
-    if (event.key === 'Escape') return closeMenu()
+    if (event.key === 'Escape') { closeContext(); return closeMenu() }
     if (env.stopKeys && event.key !== 'Tab') event.stopImmediatePropagation()
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
     if (/^[0-9]$/.test(key)) {
@@ -849,6 +916,11 @@ const CONTROLS_CSS = `
     color: var(--text, #e4e4e4);
   }
   #menu { min-width: 220px; }
+  #context {
+    position: absolute; z-index: 6; min-width: 200px; padding: 6px; box-sizing: border-box; border-radius: 8px; pointer-events: auto;
+    background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4);
+  }
+  #context .menu-item { justify-content: flex-start; white-space: nowrap; }
   #menu-side { min-width: 250px; max-width: 340px; }
   #menus.narrow #menu { display: none; }
   #menu-side.unfold { animation: unfold 0.16s cubic-bezier(0.32, 0.72, 0, 1); /* the app's menus: 0.16 s, --ease-open */ }
