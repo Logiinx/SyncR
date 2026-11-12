@@ -4,13 +4,13 @@ import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
-import { nearDay, shortDate } from './dates'
+import { lastWatchedText, nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
-import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
@@ -19,16 +19,16 @@ import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
-import { useResumePosition, videoClock } from './videoPositions'
+import { useResumePosition, videoClock, type VideoPosition } from './videoPositions'
 
 type List = 'towatch' | 'rewatch' | 'watched'
 
-// Videos found since the tab last showed get a "New" tag for as long as it stays open, also those
-// that arrive meanwhile. Marked as shown right away: the next time the tab opens, they aren't new.
+// Videos found since the tab last showed: marked as shown right away, which gives older ones (found
+// before foundAt existed) their week of "New" from now. Kept here too so the tag doesn't blink.
 function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   const [newIds, setNewIds] = useState<ReadonlySet<string>>(new Set())
   useEffect(() => {
-    const fresh = [...(feed?.toWatch ?? []), ...(feed?.watched ?? []), ...(feed?.playlists ?? []).flatMap((list) => list.videos)].filter((video) => video.fresh).map((video) => video.id)
+    const fresh = [...(feed?.toWatch ?? []), ...(feed?.rewatch ?? []), ...(feed?.watched ?? []), ...(feed?.playlists ?? []).flatMap((list) => list.videos)].filter((video) => video.fresh).map((video) => video.id)
     if (!fresh.length) return
     void clearFresh(fresh)
     setNewIds((now) => new Set([...now, ...fresh]))
@@ -37,6 +37,13 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 }
 
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
+
+// "12 min left", "1 h 05 left": what's left of a video stopped partway
+function timeLeft({ t: at, length }: VideoPosition) {
+  const minutes = Math.ceil((length - at) / 60)
+  if (minutes < 60) return plural(minutes, '{n} min left', '{n} min left|plural')
+  return t('{h} h {mm} left', { h: Math.floor(minutes / 60), mm: String(minutes % 60).padStart(2, '0') })
+}
 
 // What the playlist row's order button does when clicked
 function orderButtonTitle(playlist: VideoPlaylist) {
@@ -141,13 +148,15 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list. In a playlist
 // (playlistId): the next one follows at its end and it can't be moved to a folder. In a playlist or
-// in Rewatch (kept), it stays there grayed once watched.
-function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, onMenu, onOpenRow }: {
+// in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
+// Tags: "New" (green), or what's left when it was stopped partway (blue), never both.
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
   playlistId?: string
   kept?: boolean
+  lastWatched?: boolean
   onMenu?: (x: number, y: number) => void
   onOpenRow: (id: string) => void
 }) {
@@ -196,8 +205,12 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, on
             <span className="video-channel" title={video.channel}>{video.channel}</span>
             <span>· {videoDay(video)}</span>
             {video.gone && <span>· {t('No longer available')}</span>}
-            {video.opened && !video.gone && !video.watched && <span className="video-opened">{t('Opened')}</span>}
-            {isNew && <span className="video-new">{t('New')}</span>}
+            {lastWatched && video.watchedAt && <span>· {lastWatchedText(video.watchedAt)}</span>}
+            {position && !video.gone && !video.watched ? (
+              <span className="video-opened">{timeLeft(position)}</span>
+            ) : (
+              isNew && <span className="video-new">{t('New')}</span>
+            )}
           </span>
         </span>
       </button>
@@ -271,7 +284,7 @@ function VideoView() {
   // One channel chosen: there's nothing to group. Watched is one plain list, watched last on top.
   const grouping = grouped && shownChannel === 'all' && list === 'towatch'
   useListItems(listRef, `${list} ${shownChannel} ${grouping}`)
-  const tagNew = (video: FeedVideo) => newIds.has(video.id) && !video.opened && !video.gone && !video.watched
+  const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
   const anyFollowsOrVideos = !!follows?.length || anyVideos
@@ -318,7 +331,7 @@ function VideoView() {
   const videosIn = (folderId: string) => (rewatchIds.has(folderId) ? feed?.rewatch ?? [] : videos ?? []).filter((video) => video.folderId === folderId)
   // Outside Watched, a watched video is one of Rewatch's: it stays, grayed
   const videoRow = (video: FeedVideo, depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
@@ -416,6 +429,10 @@ function VideoView() {
   function playlistRows({ playlist, videos: episodes }: (typeof playlists)[number], depth: number): ReactNode[] {
     const open = openGroups.includes(playlist.id)
     const nextUp = episodes.find((video) => !video.watched)
+    // In Rewatch: when one of its videos was last watched
+    const inRewatch = !!playlist.folderId && rewatchIds.has(playlist.folderId)
+    const lastAt = inRewatch ? Math.max(0, ...episodes.map((video) => video.watchedAt ?? 0)) : 0
+    const watchedCount = t('{watched} of {total} watched', { watched: episodes.filter((video) => video.watched).length, total: episodes.length })
     return [
       <FoldRow
         key={playlist.id}
@@ -424,7 +441,7 @@ function VideoView() {
         title={playlist.name}
         logo={<VideoLogo platform="youtube" />}
         count={episodes.length}
-        countText={t('{watched} of {total} watched', { watched: episodes.filter((video) => video.watched).length, total: episodes.length })}
+        countText={lastAt ? `${watchedCount} · ${lastWatchedText(lastAt)}` : watchedCount}
         newCount={episodes.filter(tagNew).length}
         open={open}
         depth={depth}
@@ -456,7 +473,7 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} onOpenRow={openRow} />) : []),
+      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} onOpenRow={openRow} />) : []),
     ]
   }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos

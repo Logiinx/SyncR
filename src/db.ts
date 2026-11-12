@@ -306,6 +306,7 @@ export interface VideoRow {
   gone: boolean // the site no longer has it
   games?: VideoGame[] // Twitch: every game played in it (video.ts); not asked yet = undefined
   fresh?: boolean // found by a check and not shown yet: tagged "New" when the Video tab shows it
+  foundAt?: number // when a check found it: "New" for a week, until it's opened (none: a follow's first videos)
 }
 
 // A game played in a Twitch stream: Twitch's own name and the one it shows (translated, e.g.
@@ -398,6 +399,7 @@ export interface VideoMark {
   id: string // videoMarkId(the video's id): also its file name in Dropbox
   opened: boolean
   watched: boolean
+  watchedAt?: number // last marked as watched (Rewatch's "Last watched"); Start over keeps it
   cleared?: boolean // removed from Watched: never shows again, even if a check lists it again
   updatedAt: number
   syncedRev?: string // Dropbox revision last synced

@@ -273,7 +273,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
   // Only what's new or different: every save redraws the list
   const changes = rows
     // A new follow's first videos are what you asked for, not news
-    .map((row, i) => ({ ...row, games: saved[i]?.games, fresh: saved[i] ? saved[i].fresh : !firstCheck }))
+    .map((row, i) => ({ ...row, games: saved[i]?.games, fresh: saved[i] ? saved[i].fresh : !firstCheck, foundAt: saved[i] ? saved[i].foundAt : firstCheck ? undefined : Date.now() }))
     .filter((row, i) => {
       const old = saved[i]
       return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
@@ -281,14 +281,19 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
   if (changes.length) await db.videos.bulkPut(changes)
 }
 
-// These videos have been shown: not new anymore the next time the tab opens
+// These videos have been shown. One found before foundAt existed counts its week from now.
 export async function clearFresh(videoIds: string[]) {
+  const now = Date.now()
   const rows = (await db.videos.bulkGet(videoIds)).filter((row) => row?.fresh) as VideoRow[]
-  if (rows.length) await db.videos.bulkPut(rows.map((row) => ({ ...row, fresh: false })))
+  if (rows.length) await db.videos.bulkPut(rows.map((row) => ({ ...row, fresh: false, foundAt: row.foundAt ?? now })))
   const shown = new Set(videoIds)
   const lists = (await db.playlistVideos.toArray()).filter((list) => list.videos.some((video) => video.fresh && shown.has(video.id)))
-  if (lists.length) await db.playlistVideos.bulkPut(lists.map((list) => ({ ...list, videos: list.videos.map((video) => (shown.has(video.id) ? { ...video, fresh: false } : video)) })))
+  if (lists.length) await db.playlistVideos.bulkPut(lists.map((list) => ({ ...list, videos: list.videos.map((video) => (shown.has(video.id) && video.fresh ? { ...video, fresh: false, foundAt: video.foundAt ?? now } : video)) })))
 }
+
+const NEW_FOR = 7 * 24 * 60 * 60 * 1000
+// "New": found by a check less than a week ago, and not opened yet
+export const isRecent = (video: FeedVideo) => !!video.foundAt && Date.now() - video.foundAt < NEW_FOR
 
 type ListMarks = Record<string, { mark: string; at: number }>
 
@@ -466,7 +471,8 @@ const videoMarkId = (videoId: string) => alertMarkId(videoId)
 async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
   const ids = videoIds.map(videoMarkId)
   const marks = await db.videoMarks.bulkGet(ids)
-  await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, updatedAt: Date.now() })))
+  const now = Date.now()
+  await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, ...(change.watched && { watchedAt: now }), updatedAt: now })))
   changed()
 }
 
@@ -483,10 +489,15 @@ export const markOpened = (videoId: string) => saveMarks([videoId], { opened: tr
 export const setWatched = (videoId: string, watched: boolean) => saveMarks([videoId], { watched })
 export const markAllWatched = (videoIds: string[]) => saveMarks(videoIds, { watched: true })
 export const clearWatched = (videoIds: string[]) => saveMarks(videoIds, { cleared: true })
-// Rewatch's Start over: not watched, not opened, from the beginning
-export function startOver(videoIds: string[]) {
+// Rewatch's Start over: not watched, not opened, from the beginning. "Last watched" stays (an
+// older mark without watchedAt keeps the day of its tick).
+export async function startOver(videoIds: string[]) {
   forgetPositions(videoIds)
-  return saveMarks(videoIds, { watched: false, opened: false })
+  const ids = videoIds.map(videoMarkId)
+  const marks = await db.videoMarks.bulkGet(ids)
+  const now = Date.now()
+  await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, ...marks[i], watchedAt: watchedAtOf(marks[i]), watched: false, opened: false, updatedAt: now })))
+  changed()
 }
 
 export interface FeedVideo extends VideoRow {
@@ -496,7 +507,11 @@ export interface FeedVideo extends VideoRow {
   opened: boolean
   watched: boolean
   folderId: string | null // the folder it shows in; null = the main list
+  watchedAt?: number // last marked as watched
 }
+
+// Older marks don't have watchedAt: their last change was the tick
+const watchedAtOf = (mark: VideoMark | undefined) => mark?.watchedAt ?? (mark?.watched ? mark.updatedAt : undefined)
 
 // Which channel a video or follow is of, whether it's followed or not (folders: videoFolders.ts)
 export const channelKey = (of: { platform: string; channelId: string }) => `${of.platform} ${of.channelId}` // i18n-ok
@@ -651,7 +666,7 @@ export function useVideoFeed() {
         const id = videoMarkId(video.id)
         const mark = markOf.get(id)
         const place = placeOf.get(id)
-        return mark?.cleared || inPlaylist.has(video.id) ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched, folderId: place && folderIds.has(place) ? place : null }]
+        return mark?.cleared || inPlaylist.has(video.id) ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: place && folderIds.has(place) ? place : null }]
       })
       .sort((a, b) => b.sortAt - a.sortAt || a.id.localeCompare(b.id))
     // Rewatch's videos stay there, watched or not, and never count
@@ -680,7 +695,7 @@ export function useVideoFeed() {
         playlist,
         videos: playOrder(listOf.get(playlist.id) ?? [], playlist).map(({ later: _later, ...video }): FeedVideo => {
           const mark = markOf.get(videoMarkId(video.id))
-          return { ...video, gone: false, followId: playlist.id, channelIcon: null, opened: !!mark?.opened, watched: !!mark?.watched, folderId: null }
+          return { ...video, gone: false, followId: playlist.id, channelIcon: null, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
         }),
       })),
       newCount: toWatch.filter((video) => !video.opened && !video.gone).length + newInPlaylists.size,

@@ -9,6 +9,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** À revoir peut être une section en bas de À regarder (Paramètres vidéo)
 - **Nouveau :** les playlists terminées peuvent aller seules dans À revoir (Paramètres vidéo)
 - **Nouveau :** Recommencer dans À revoir efface ce que vous y avez vu
+- **Nouveau :** « Dernier visionnage il y a 2 mois » sur les vidéos et playlists À revoir
+- **Amélioré :** l’étiquette Nouvelle reste une semaine, jusqu’à ce que vous ouvriez la vidéo
+- **Changé :** l’étiquette « Ouverte » remplacée par le temps restant, comme « 12 min restantes »
 
 ## [0.76.0] - 2026-11-12
 

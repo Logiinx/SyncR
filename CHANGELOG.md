@@ -9,6 +9,9 @@ All notable changes to SyncR. Newest version first.
 - **New:** Rewatch can be a section at the bottom of To watch instead (Video settings)
 - **New:** finished playlists can go to Rewatch by themselves (Video settings)
 - **New:** Start over in Rewatch clears what you watched there
+- **New:** "Last watched 2 months ago" on videos and playlists in Rewatch
+- **Better:** the New tag stays a week, until you open the video
+- **Changed:** "Opened" tag replaced by the time left, like "12 min left"
 
 ## [0.76.0] - 2026-11-12
 

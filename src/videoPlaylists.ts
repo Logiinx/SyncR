@@ -55,6 +55,7 @@ async function saveEpisodes(id: string, listed: Awaited<ReturnType<typeof readPl
       duration: video.duration,
       fresh: before ? before.fresh : !first,
       later: before ? before.later : !first,
+      foundAt: before ? before.foundAt : first ? undefined : Date.now(),
     }]
   })
   // Only when different: every save redraws the list
