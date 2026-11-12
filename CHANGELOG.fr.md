@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Nouveau :** une fenêtre Paramètres vidéo : ⚙️ dans l’onglet Vidéo, ou Paramètres → Application
+- **Changé :** les réglages du lecteur et la liste des extensions y sont maintenant
+
 ## [0.75.0] - 2026-11-12
 
 **Application**

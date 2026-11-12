@@ -7828,6 +7828,19 @@ button.history-row.selected {
   margin-top: 12px;
 }
 
+/* The Video settings window: Settings' cards, in one narrower column (also on the PC) */
+.dialog.settings.video-settings {
+  width: min(560px, 100%);
+}
+
+.video-settings .settings-cards {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.video-settings .video-extensions-foot {
+  margin: 4px 0 6px;
+}
+
 /* ---------- Video tab: the list (VideoView.tsx) ---------- */
 .video-logo {
   flex-shrink: 0;

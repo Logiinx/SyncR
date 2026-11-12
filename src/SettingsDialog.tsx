@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, X, type LucideIcon } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
+import { SettingRow, SettingsCard } from './SettingsCard'
 import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -29,8 +30,7 @@ import {
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { useVideoEnabled } from './video'
-import VideoExtensions from './VideoExtensions'
-import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES } from './videoPlayer'
+import VideoSettings from './VideoSettings'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -100,7 +100,6 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   const [links, setLinks] = useState(loadLinkPreviewSettings)
   const videoOn = useVideoEnabled()
-  const [player, setPlayer] = useState(loadPlayerSettings)
   function updateLinks(change: Partial<LinkPreviewSettings>) {
     saveLinkPreviewSettings(change)
     setLinks(loadLinkPreviewSettings())
@@ -142,7 +141,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
-  const [showExtensions, setShowExtensions] = useState(false)
+  const [showVideo, setShowVideo] = useState(false)
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
   useEffect(() => {
@@ -194,7 +193,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   }, [])
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
-  if (showExtensions) return <VideoExtensions onClose={() => setShowExtensions(false)} />
+  if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
@@ -480,73 +479,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           />
         )}
         {isTauri() && videoOn && (
-          <SettingRow label={t('Mark as watched closes the video player')}>
-            <input
-              type="checkbox"
-              checked={player.watchedCloses}
-              onChange={(e) => {
-                savePlayerSettings({ watchedCloses: e.target.checked })
-                setPlayer(loadPlayerSettings())
-              }}
-            />
-          </SettingRow>
-        )}
-        {isTauri() && videoOn && (
-          <SettingRow
-            label={
-              <>
-                {t('Mark a video as watched near its end')}{' '}
-                <InfoTip label={t('About marking near the end')}>{t('With 2 minutes or 5% left, whichever is shorter. You can undo it on the player bar.')}</InfoTip>
-              </>
-            }
-          >
-            <input
-              type="checkbox"
-              checked={player.watchedNearEnd}
-              onChange={(e) => {
-                savePlayerSettings({ watchedNearEnd: e.target.checked })
-                setPlayer(loadPlayerSettings())
-              }}
-            />
-          </SettingRow>
-        )}
-        {isTauri() && videoOn && (
-          <SettingRow label={t('YouTube start quality')} title={t('Or the highest under it. The player can still change it for one video.')}>
-            <select
-              value={player.quality}
-              onChange={(e) => {
-                savePlayerSettings({ quality: e.target.value as typeof player.quality })
-                setPlayer(loadPlayerSettings())
-              }}
-            >
-              {YOUTUBE_QUALITIES.map(([value, label]) => (
-                <option key={value} value={value}>{label || t('Auto')}</option>
-              ))}
-            </select>
-          </SettingRow>
-        )}
-        {isTauri() && videoOn && (
-          <SettingRow
-            label={t('YouTube subtitles')}
-            title={t('Their language. On or off is remembered for each channel, with the button in the player.')}
-          >
-            <select
-              value={player.subtitleLanguage}
-              onChange={(e) => {
-                savePlayerSettings({ subtitleLanguage: e.target.value as typeof player.subtitleLanguage })
-                setPlayer(loadPlayerSettings())
-              }}
-            >
-              {SUBTITLE_LANGUAGES.map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </SettingRow>
-        )}
-        {isTauri() && videoOn && (
-          <SettingRow label={t('Video extensions')}>
-            <button className="setting-button" onClick={() => setShowExtensions(true)}>
-              {t('Manage…')}
+          <SettingRow label={t('Video')}>
+            <button className="setting-button" onClick={() => setShowVideo(true)}>
+              {t('Video settings…')}
             </button>
           </SettingRow>
         )}
@@ -661,38 +596,6 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         cards
       )}
     </Window>
-  )
-}
-
-// A card of settings: icon + title, then its rows
-function SettingsCard({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
-  return (
-    <section className="settings-card">
-      <h3 className="settings-card-title">
-        <Icon size={15} /> {title}
-      </h3>
-      {children}
-    </section>
-  )
-}
-
-// One setting: its name (and a dim detail) on the left, its control on the right. `title`: a
-// longer explanation on hover.
-function SettingRow({ label, value, title, className, children }: {
-  label: React.ReactNode
-  value?: string
-  title?: string
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className={`settings-row${className ? ` ${className}` : ''}`} title={title}>
-      <span className="settings-row-label">
-        {label}
-        {value && <span className="setting-value"> {value}</span>}
-      </span>
-      <span className="settings-row-control">{children}</span>
-    </div>
   )
 }
 

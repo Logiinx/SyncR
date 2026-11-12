@@ -46,7 +46,7 @@ export const SUBTITLE_LANGUAGES = [
 ] as const
 
 // Per device, like the rest of the Video tab
-interface PlayerSettings {
+export interface PlayerSettings {
   alwaysOnTop: boolean
   watchedCloses: boolean // Watched on the bar also closes the window
   watchedNearEnd: boolean // near its end, a video moves to Watched by itself

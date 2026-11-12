@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListPlus, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListPlus, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -12,6 +12,7 @@ import { useLocalState } from './localState'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
+import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, moveToFolder, renameFolder } from './videoFolders'
 import VideoLogo from './VideoLogo'
@@ -252,6 +253,7 @@ function VideoView() {
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false) // the Video settings window
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
   const [grouped, setGrouped] = useLocalState('syncr.video.byChannel', false)
@@ -521,6 +523,9 @@ function VideoView() {
             <button className="reminders-refresh" title={t('More')} onClick={(e) => openBarMenu('more', e.currentTarget)}>
               <Ellipsis size={15} />
             </button>
+            <button className="reminders-refresh" title={t('Video settings')} onClick={() => setSettingsOpen(true)}>
+              <Settings size={15} />
+            </button>
           </div>
         </div>
         {pasted && (
@@ -558,6 +563,7 @@ function VideoView() {
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {addingPlaylist && <AddPlaylistDialog onAdded={showAdded} onClose={() => setAddingPlaylist(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
+      {settingsOpen && <VideoSettings onClose={() => setSettingsOpen(false)} />}
       {barMenu && (
         <ContextMenu
           x={barMenu.x}
