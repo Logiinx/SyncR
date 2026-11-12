@@ -47,6 +47,10 @@
   .game-line .game-art { width: 27px; height: 36px; }
   .game-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .game-length { flex: none; color: var(--text-dim, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
+  /* Under the name and length (after the box art), like the main bar: grey track, blue played part */
+  .menu-item.game-line { position: relative; }
+  .game-progress { position: absolute; left: 45px; right: 12px; bottom: 4px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(255, 255, 255, 0.25); pointer-events: none; }
+  .game-progress span { display: block; height: 100%; width: 0; background: var(--text-blue, #6ea8fe); }
 
   #chat { position: relative; flex: none; box-sizing: border-box; display: flex; flex-direction: column; background: var(--bg, #161616); border-left: 1px solid rgba(255, 255, 255, 0.1); color: var(--text, #e4e4e4); }
   #chat-edge { position: absolute; top: 0; bottom: 0; left: -4px; width: 7px; z-index: 2; cursor: col-resize; touch-action: none; }

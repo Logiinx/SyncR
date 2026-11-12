@@ -143,7 +143,13 @@ function drawGamesList() {
     const length = document.createElement('span')
     length.className = 'game-length'
     length.textContent = end > game.at ? playedFor(end - game.at) : ''
-    line.append(gamePicture(game), name, length)
+    // How far the video is in this game: full once passed, filling up while it plays, empty ahead
+    const progress = document.createElement('span')
+    progress.className = 'game-progress'
+    progress.dataset.at = game.at
+    progress.dataset.end = end
+    progress.append(document.createElement('span'))
+    line.append(gamePicture(game), name, length, progress)
     line.onclick = () => {
       closeGames()
       jumpTo(game.at)
@@ -151,6 +157,18 @@ function drawGamesList() {
     list.append(line)
   })
   list.scrollTop = scrolled
+  drawGameProgress()
+}
+
+function drawGameProgress() {
+  const now = video.currentTime
+  for (const progress of $('games-list').querySelectorAll('.game-progress')) {
+    const at = Number(progress.dataset.at)
+    const end = Number(progress.dataset.end)
+    // No known end (the video's length not read yet): full once started
+    const part = end > at ? (now - at) / (end - at) : now >= at ? 1 : 0
+    progress.firstChild.style.width = `${Math.min(1, Math.max(0, part)) * 100}%`
+  }
 }
 
 const gamesOpen = () => !gamesBox.hidden
@@ -170,6 +188,7 @@ function closeGames() {
 gamesButton.onclick = () => (gamesOpen() ? closeGames() : openGames())
 video.addEventListener('timeupdate', drawGamesButton)
 video.addEventListener('seeking', drawGamesButton)
+for (const event of ['timeupdate', 'seeking']) video.addEventListener(event, () => { if (gamesOpen()) drawGameProgress() })
 video.addEventListener('durationchange', () => { if (gamesOpen()) drawGamesList() })
 addEventListener('keydown', (event) => { if (event.key === 'Escape') closeGames() })
 
