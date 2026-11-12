@@ -37,6 +37,8 @@ import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSende
 import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
+import { SpecialIcon, type SpecialTab } from './tabIcons'
+import { saveTabColors, useTabColors } from './tabColors'
 import { checkSteamProfile, followSteam, saveSteamFollow, saveSteamProfile, useSteamFollow, useSteamProfile, type SteamProfile } from './steam'
 import {
   findPopupScreen,
@@ -171,6 +173,16 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   const gmailAccounts = useGmailAccounts()
   const allDayAlert = useAllDayAlert()
   const languageChoice = useLanguageChoice()
+  // The special tabs' icon colors: one button per tab this device has, a click opens the color list
+  const tabColors = useTabColors()
+  const [tabColorMenu, setTabColorMenu] = useState<{ kind: SpecialTab; x: number; y: number } | null>(null)
+  const tabNames: Record<SpecialTab, string> = { games: t('Games'), reminders: t('Reminders'), mail: t('Mail'), video: t('Video') }
+  const colorTabs: SpecialTab[] = [
+    'games',
+    'reminders',
+    ...(isTauri() || import.meta.env.DEV ? (['mail'] as const) : []),
+    ...(videoOn ? (['video'] as const) : []),
+  ]
   const instant = useInstantStatus()
   const proxyStatus = useProxyStatus(useConnection() ?? null)
   const steam = useSteamProfile()
@@ -431,6 +443,42 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
         <SettingRow label={t('Animations')}>
           <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
         </SettingRow>
+        {tabColors && (
+          <>
+            <SettingRow label={<>{t('Colored tab icons')} <Synced /></>}>
+              <input type="checkbox" checked={tabColors.on} onChange={(e) => saveTabColors({ on: e.target.checked })} />
+            </SettingRow>
+            <SettingRow label={t('Tab colors')}>
+              <span className="tab-color-buttons">
+                {colorTabs.map((kind) => (
+                  <button
+                    key={kind}
+                    className="tab-color-button"
+                    title={tabNames[kind]}
+                    aria-label={tabNames[kind]}
+                    disabled={!tabColors.on}
+                    onClick={(e) => setTabColorMenu({ kind, x: e.clientX, y: e.clientY })}
+                  >
+                    <SpecialIcon kind={kind} size={16} />
+                  </button>
+                ))}
+              </span>
+            </SettingRow>
+          </>
+        )}
+        {tabColorMenu && tabColors && (
+          <ContextMenu
+            x={tabColorMenu.x}
+            y={tabColorMenu.y}
+            onClose={() => setTabColorMenu(null)}
+            header={{ title: tabNames[tabColorMenu.kind] }}
+            items={colorMenuItems(
+              tabColors.colors[tabColorMenu.kind],
+              (color) => color && saveTabColors({ colors: { ...tabColors.colors, [tabColorMenu.kind]: color } }),
+              false,
+            )}
+          />
+        )}
         {isTauri() && videoOn && (
           <SettingRow label={t('Mark as watched closes the video player')}>
             <input

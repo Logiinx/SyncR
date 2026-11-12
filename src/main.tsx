@@ -14,6 +14,7 @@ import { prepareLocalDb, receiveLocalKey } from './localDb'
 import KeyMissing from './KeyMissing'
 import LockScreen from './LockScreen'
 import { followLanguageChoice, startTrayTexts } from './language'
+import { followTabColors } from './tabColors'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -44,6 +45,7 @@ void loadSecrets().then(() => prepareLocalDb(isPopup)).then(async (state) => {
   const ready = () => setTimeout(() => document.documentElement.classList.add('ready'), 1000)
   const showApp = () => {
     followLanguageChoice()
+    followTabColors()
     root.render(<StrictMode><App /></StrictMode>)
     ready()
   }

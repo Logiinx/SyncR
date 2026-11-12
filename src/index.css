@@ -4758,6 +4758,28 @@ button {
   background: var(--border);
 }
 
+/* Settings → App: one button per special tab, its icon in its color; a click opens the color list
+   (like the account's color dot above) */
+.tab-color-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-color-button {
+  display: flex;
+  padding: 5px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.tab-color-button:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.tab-color-button:disabled {
+  cursor: default;
+}
+
 .gmail-account-email {
   overflow: hidden;
   white-space: nowrap;

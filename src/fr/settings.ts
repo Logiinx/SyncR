@@ -138,6 +138,8 @@ export const settings = {
   App: 'Application',
   'App scaling': 'Échelle',
   Animations: 'Animations',
+  'Colored tab icons': 'Icônes d’onglets en couleur',
+  'Tab colors': 'Couleurs des onglets',
   'hides SyncR in the tray': 'masque SyncR dans la zone de notification',
   'About the tray': 'À propos de la zone de notification',
   'Keeps reminders working. Quit is in the tray menu.': 'Les rappels continuent de fonctionner. « Quitter » est dans le menu de l’icône.',
