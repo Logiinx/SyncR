@@ -608,12 +608,12 @@ function VideoView() {
           y={playlistMenu.y}
           onClose={() => setPlaylistMenu(null)}
           items={[
-            // The order (the second line's name depends on the first), checking, then elsewhere
-            { label: t('YouTube’s order'), icon: ListOrdered, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
+            // Moving first, then the order (the second line's name depends on the first), checking, then elsewhere
+            { label: t('Move to folder…'), icon: FolderInput, onClick: () => setMovingPlaylist(playlistMenu) },
+            { label: t('YouTube’s order'), icon: ListOrdered, divider: true, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
             { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
-            { label: t('Move to folder…'), icon: FolderInput, divider: true, onClick: () => setMovingPlaylist(playlistMenu) },
-            { label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
           ]}
         />

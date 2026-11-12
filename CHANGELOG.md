@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed** small issues: "Move to folder…" comes first in a playlist's right-click menu
+
 ## [0.73.0] - 2026-11-12
 
 **App**

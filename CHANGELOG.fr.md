@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Correction** de petits soucis : « Déplacer vers un dossier… » vient en premier dans le menu d’une playlist
+
 ## [0.73.0] - 2026-11-12
 
 **Application**
