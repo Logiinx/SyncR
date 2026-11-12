@@ -33,6 +33,7 @@
     "allow-save-attachment",
     "allow-open-video-player",
     "allow-video-player-way",
+    "allow-video-player-note",
     "allow-video-player-next",
     "allow-video-player-watched",
     "allow-close-video-player",

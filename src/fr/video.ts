@@ -131,6 +131,8 @@ export const video = {
   'Skip muted part': 'Passer la partie sans son',
   'Resumed at {time}': 'Reprise à {time}',
   'You can resume by jumping to {time}': 'Vous pouvez reprendre en allant à {time}',
+  'Subscriber-only video': 'Vidéo réservée aux abonnés',
+  'Original sound': 'Son d’origine',
   'Progress bar': 'Barre de progression',
   'Game changes': 'Changements de jeu',
   'Go to a time': 'Aller à un moment',

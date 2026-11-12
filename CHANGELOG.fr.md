@@ -6,6 +6,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Ajout** d’un bouton des jeux à gauche de la barre du lecteur Twitch : choisissez un jeu dans la liste pour aller à son début
+- **Ajout** de la lecture des vidéos Twitch réservées aux abonnés dans le lecteur Twitch, jusqu’à leur qualité d’origine (même 1440p)
+- **Correction** des parties sans son qui n’apparaissaient pas en orange sur les vidéos Twitch récentes
 
 ## [0.71.0] - 2026-11-12
 

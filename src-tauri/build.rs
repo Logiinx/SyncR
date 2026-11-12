@@ -14,6 +14,7 @@ fn main() {
     "video_bar",
     "video_menu",
     "video_player_way",
+    "video_player_note",
     "video_player_next",
     "video_player_watched",
     "close_video_player",

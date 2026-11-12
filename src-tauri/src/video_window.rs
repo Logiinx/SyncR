@@ -27,7 +27,8 @@ fn twitch_host(host: &str) -> bool {
 }
 
 // Playlists name their pieces by full address: those must come through /v/ too. A piece with its
-// sound cut is listed as "-unmuted", but only its "-muted" file can be fetched.
+// sound cut can be listed as "-unmuted" (always in a video folder's own list), but its "-muted"
+// file is the one that's sure to be there. (player.js tries the uncut sound itself.)
 fn local_playlist(text: &str) -> String {
   let mut out = String::with_capacity(text.len());
   for line in text.lines() {
@@ -36,10 +37,10 @@ fn local_playlist(text: &str) -> String {
         out.push_str("/v/");
         out.push_str(rest);
       }
-      _ => match line.strip_suffix("-unmuted.ts") {
-        Some(start) => {
+      _ => match line.strip_suffix("-unmuted.ts").map(|start| (start, "-muted.ts")).or_else(|| line.strip_suffix("-unmuted.mp4").map(|start| (start, "-muted.mp4"))) {
+        Some((start, end)) => {
           out.push_str(start);
-          out.push_str("-muted.ts");
+          out.push_str(end);
         }
         None => out.push_str(line),
       },
@@ -124,6 +125,14 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     "/subtitles" => {
       if let (Some(on), Some(video)) = (query_value(&uri, "on"), query_value(&uri, "video")) {
         let _ = app.emit_to("main", "video-subtitles", serde_json::json!({ "on": on == "1", "video": video }));
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
+    // Something the bar should say (player.js). Also open to any site in the window: only these
+    // words pass, and the app only takes them while our own Twitch player shows that video.
+    "/note" => {
+      if let (Some(code @ ("subscriber" | "sound")), Some(video)) = (query_value(&uri, "code"), query_value(&uri, "video")) {
+        let _ = app.emit_to("main", "video-note", serde_json::json!({ "code": code, "video": video }));
       }
       return answer(204, "text/plain", Vec::new());
     }
@@ -581,6 +590,15 @@ pub fn video_player_way(app: tauri::AppHandle, address: String, via: String, not
   };
   site.navigate(video_site_url(&bar, &address)?).map_err(|e| e.to_string())?;
   show_video_way(&bar, &via, &note, note_stays)
+}
+
+// A note on the bar while the video plays (videoPlayer.ts), gone after a moment
+#[tauri::command]
+pub fn video_player_note(app: tauri::AppHandle, via: String, note: String) -> Result<(), String> {
+  let Some(bar) = app.get_webview(VIDEO_BAR) else {
+    return Ok(()); // closed in the meantime
+  };
+  show_video_way(&bar, &via, &note, false)
 }
 
 // The next video of a playlist (videoPlayer.ts): in the same window, which stays where it is. A new

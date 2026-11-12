@@ -9,10 +9,11 @@ const MUTED_GAP = 1 // seconds: parts closer than this count as one
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
 // video_window.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
+// (.ts in older videos, .mp4 in newer ones)
 function noteMutedParts(pieces) {
   const parts = []
   for (const piece of pieces) {
-    if (!piece.relurl?.includes('-muted.ts')) continue
+    if (!/-muted\.(ts|mp4)$/.test(piece.relurl ?? '')) continue
     const last = parts[parts.length - 1]
     const end = piece.start + piece.duration
     if (last && piece.start - last.end < MUTED_GAP) last.end = end

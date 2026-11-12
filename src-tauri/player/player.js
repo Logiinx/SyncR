@@ -180,15 +180,104 @@ function giveUp() {
   location.href = `https://syncr-video.invalid/failed?video=${encodeURIComponent(videoId)}`
 }
 
-async function askTwitch() {
-  const query = 'query($id: ID!) { videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
+async function askTwitch(query) {
   const response = await fetch('https://gql.twitch.tv/gql', {
     method: 'POST',
     headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables: { id: videoId } }),
   })
   if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
-  return (await response.json()).data?.videoPlaybackAccessToken ?? null
+  return (await response.json()).data?.video ?? null
+}
+const TOKEN_QUERY = 'query($id: ID!) { video: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
+
+// ---- Videos Twitch refuses (subscribers only) ---------------------------------------------------
+// Their files still lie next to their preview pictures, one folder per quality, and can be read.
+// "chunked" is the original, which can be above 1080p. Its size is only written inside its first
+// file (sourceHeight); older videos have none, so it's taken as 1080p then and corrected once its
+// picture shows (measureSource).
+const FOLDERS = { '1080p60': 7500000, '1080p30': 5000000, '720p60': 3100000, '720p30': 2000000, '480p30': 1200000, '360p30': 566000, '160p30': 182000 } // bits per second, as Twitch lists them
+const REBUILT = `${location.origin}/rebuilt.m3u8` // never fetched: the list is written here (listLoader)
+let rebuilt = null // the list, once a video has been found this way
+
+async function rebuild() {
+  const previews = (await askTwitch('query($id: ID!) { video(id: $id) { seekPreviewsURL } }'))?.seekPreviewsURL
+  if (!previews) return null // deleted or private
+  const address = new URL(previews)
+  const parts = address.pathname.split('/')
+  const folder = parts[parts.indexOf('storyboards') - 1]
+  if (!folder) return null
+  // A past stream's list is index-dvr, a highlight's is named after it
+  const names = ['index-dvr.m3u8', `highlight-${encodeURIComponent(videoId)}.m3u8`]
+  const found = await Promise.all([...Object.keys(FOLDERS), 'chunked'].map(async (quality) => {
+    for (const name of names) {
+      const url = `${location.origin}/v/${address.host}/${folder}/${quality}/${name}`
+      const response = await fetch(url)
+      if (response.ok) return { quality, url, text: quality === 'chunked' ? await response.text() : '' }
+    }
+    return null
+  }))
+  const lines = ['#EXTM3U']
+  const add = (url, height, frameRate, bandwidth) => lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${Math.round(height * 16 / 9)}x${height},FRAME-RATE=${frameRate}`, url)
+  const named = found.filter((one) => one && one.quality !== 'chunked')
+  const source = found.find((one) => one?.quality === 'chunked')
+  // Only when it's above the copies, or it would show twice
+  const top = Math.max(0, ...named.map((one) => Number(one.quality.split('p')[0])))
+  const height = source ? await sourceHeight(source).catch(() => 0) : 0
+  if (source && (height > top || (!height && top < 1080))) {
+    add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, FOLDERS['1080p60'])
+  }
+  for (const { quality, url } of named) add(url, Number(quality.split('p')[0]), Number(quality.split('p')[1]), FOLDERS[quality])
+  return lines.length > 1 ? lines.join('\n') : null
+}
+
+// Each track's header (tkhd) ends with its width and height in 1/65536ths; the sound's are 0
+async function sourceHeight(source) {
+  const first = source.text.match(/#EXT-X-MAP:URI="([^"]+)"/)?.[1]
+  if (!first) return 0
+  const bytes = new Uint8Array(await (await fetch(new URL(first, source.url))).arrayBuffer())
+  const view = new DataView(bytes.buffer)
+  for (let at = 4; at + 4 <= bytes.length; at++) {
+    if (bytes[at] !== 0x74 || bytes[at + 1] !== 0x6b || bytes[at + 2] !== 0x68 || bytes[at + 3] !== 0x64) continue // "tkhd"
+    const end = at - 4 + view.getUint32(at - 4)
+    if (end - 8 > at && end <= bytes.length && view.getUint32(end - 4)) return Math.round(view.getUint32(end - 4) / 65536)
+  }
+  return 0
+}
+
+// Hands hls.js the list written above: this page may only read its own address
+class ListLoader extends Hls.DefaultConfig.loader {
+  load(context, config, callbacks) {
+    if (context.url !== REBUILT) return super.load(context, config, callbacks)
+    const now = performance.now()
+    Object.assign(this.stats.loading, { start: now, first: now, end: now })
+    this.stats.loaded = this.stats.total = rebuilt.length
+    queueMicrotask(() => callbacks.onSuccess({ url: context.url, data: rebuilt }, this.stats, context, null))
+  }
+}
+
+// The original's real size, once its picture shows. The first picture can come before hls.js
+// says which quality it is.
+function measureSource() {
+  if (!rebuilt || !hls || !video.videoHeight) return
+  if (hls.currentLevel < 0) return hls.once(Hls.Events.LEVEL_SWITCHED, measureSource)
+  const level = hls.levels[hls.currentLevel]
+  if (!level?.url[0]?.includes('/chunked/') || level.height === video.videoHeight) return
+  level.height = video.videoHeight
+  level.width = video.videoWidth
+  drawSettings()
+}
+video.addEventListener('resize', measureSource)
+
+async function playRebuilt() {
+  try {
+    rebuilt = await rebuild()
+  } catch (error) {
+    console.error(error)
+    return failed()
+  }
+  if (!rebuilt) return giveUp()
+  load()
 }
 
 function failed() {
@@ -226,14 +315,18 @@ const loadPolicy = (timeouts, errors) => ({
 })
 
 async function load() {
-  let token
-  try {
-    token = await askTwitch()
-  } catch (error) {
-    console.error(error)
-    return failed()
+  let source = REBUILT
+  if (!rebuilt) {
+    let token
+    try {
+      token = await askTwitch(TOKEN_QUERY)
+    } catch (error) {
+      console.error(error)
+      return failed()
+    }
+    if (!token) return playRebuilt() // deleted or private: retrying won't help
+    source = `/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`
   }
-  if (!token) return giveUp() // deleted or private: retrying won't help
   hls?.destroy()
   hls = new Hls({
     maxBufferLength: 30,
@@ -242,6 +335,7 @@ async function load() {
     startPosition: position,
     fragLoadPolicy: loadPolicy(4, 6),
     playlistLoadPolicy: loadPolicy(2, 2),
+    pLoader: ListLoader,
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
     const wanted = wantedLevel()
@@ -257,7 +351,7 @@ async function load() {
     console.error(error.details, error.response?.code)
     // Twitch says no (subscribers only, deleted): only the first time, later it's an old token
     const code = error.response?.code
-    if (!everPlayed && code >= 400 && code < 500 && error.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) return giveUp()
+    if (!everPlayed && code >= 400 && code < 500 && error.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) return rebuilt ? giveUp() : playRebuilt()
     if (error.type === Hls.ErrorTypes.MEDIA_ERROR && Date.now() - recoveredAt > 10000) {
       recoveredAt = Date.now()
       hls.recoverMediaError()
@@ -265,12 +359,15 @@ async function load() {
     }
     failed()
   })
-  const source = `/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`
   hls.loadSource(source)
   hls.attachMedia(video)
 }
 
+// Asks the bar to say something (videoPlayer.ts has the words, in the app's language)
+const tellBar = (code) => fetch(`/note?code=${code}&video=${encodeURIComponent(videoId)}`).catch(() => {})
+
 video.addEventListener('playing', () => {
+  if (rebuilt && !everPlayed) tellBar('subscriber')
   everPlayed = true
   // A problem again soon after isn't a new problem
   clearTimeout(calmTimer)

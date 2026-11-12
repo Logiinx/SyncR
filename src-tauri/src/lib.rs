@@ -320,6 +320,7 @@ pub fn run() {
       video_window::open_video_player,
       video_window::video_bar,
       video_window::video_player_way,
+      video_window::video_player_note,
       video_window::video_player_next,
       video_window::video_player_watched,
       video_window::close_video_player,

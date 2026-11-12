@@ -285,12 +285,22 @@ let playlist: string | null = null // the playlist it plays in: the next one fol
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
 
+// Notes from our own Twitch player (player.js), shown on the bar with the opening's note while it lasts
+const BAR_NOTE_FOR = 6000 // ms, as in video-bar.html
+let playerNotes: { text: string; at: number }[] = []
+let wayShownAt = 0
+function newWayShown() {
+  playerNotes = []
+  wayShownAt = Date.now()
+}
+
 function changeWay(video: PlayableVideo, way: Way) {
   queue = queue
     .then(async () => {
       if (current !== video) return // another video was opened in the meantime
       currentWay = way
       rememberWay(video, way)
+      newWayShown()
       await invoke<void>('video_player_way', { address: playerAddress(video, way), via: viaText(way), ...noteFor(video, way) })
     })
     .catch((error) => console.error('Video player failed', error))
@@ -333,6 +343,18 @@ function listenToBar() {
   void listen<{ on: boolean; video: string }>('video-subtitles', ({ payload: { on, video } }) => {
     if (current?.id === `youtube-${video}`) saveSubtitles(current, on)
   })
+  // Our own Twitch player found something worth saying (player.js). A site could fake this
+  // signal, so it only counts for our player's current video.
+  void listen<{ code: string; video: string }>('video-note', ({ payload: { code, video } }) => {
+    if (!current || current.id !== `twitch-${video}` || currentWay !== 'own') return
+    const text = code === 'subscriber' ? t('Subscriber-only video') : code === 'sound' ? t('Original sound') : '' // i18n-ok
+    if (!text || playerNotes.some((one) => one.text === text)) return
+    const now = Date.now()
+    playerNotes.push({ text, at: now })
+    const opening = now - wayShownAt < BAR_NOTE_FOR ? noteFor(current, currentWay).note : ''
+    const note = [opening, ...playerNotes.filter((one) => now - one.at < BAR_NOTE_FOR).map((one) => one.text)].filter(Boolean).join(' · ')
+    void invoke('video_player_note', { via: viaText(currentWay), note }).catch((error) => console.error('Video player failed', error))
+  })
   void listen<{ request?: string; code?: string; video?: string }>('video-site', ({ payload: { request, code, video } }) => {
     // The button on our message (video-stopped.html). A site could fake this signal, so it only
     // counts while that message shows.
@@ -362,6 +384,7 @@ function startWatching(video: PlayableVideo, playlistId: string | null) {
   undone = false
   reportsFrom = Date.now() + REPORTS_AFTER
   currentWay = rememberedWay(video)
+  newWayShown()
   stopWatching()
 }
 
