@@ -199,7 +199,6 @@ function picture(className, source, double, text) {
   image.alt = text
   image.title = text
   image.draggable = false
-  image.referrerPolicy = 'no-referrer'
   return image
 }
 
