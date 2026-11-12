@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video**
 - **Changed** the ✕ on a video that's no longer available: it now removes it for good, not into Watched
-- **Fixed** small issues: "Move to folder…" comes first in a playlist's right-click menu
+- **Fixed** small issues: playlist menu order, a puzzle icon for extensions without one of their own
 
 ## [0.73.0] - 2026-11-12
 

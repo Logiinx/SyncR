@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { RefreshCw, Settings, Trash2 } from 'lucide-react'
+import { Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import Window from './Window'
@@ -77,7 +77,7 @@ export default function VideoExtensions({ onClose }: { onClose: () => void }) {
         <ul className="video-follow-list">
           {rows?.map((row) => (
             <li key={row.folder} className="video-follow-row">
-              {row.icon ? <img className="video-extension-icon" src={row.icon} alt="" /> : <span className="video-extension-icon" />}
+              {row.icon ? <img className="video-extension-icon" src={row.icon} alt="" /> : <Puzzle className="video-extension-icon none" />}
               <span className="video-follow-text">
                 <span className="video-follow-name" title={row.name}>{row.name}</span>
                 {row.error ? (
