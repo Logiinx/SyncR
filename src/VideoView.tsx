@@ -678,7 +678,7 @@ function VideoView() {
           x={moving.x}
           y={moving.y}
           onClose={() => setMoving(null)}
-          header={{ title: t('Move to folder') }}
+          header={{ title: moving.video.title, subtitle: moving.video.channel }} // what was right-clicked, like Mail's
           items={[
             ...videoFolderItems(moving.video),
             { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, videoId: moving.video.id }) },
