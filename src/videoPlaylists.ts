@@ -2,6 +2,7 @@ import { alertMarkId, changed, db, type PlaylistEpisode, type VideoPlaylist } fr
 import { t } from './i18n'
 import { igdbProxyFetch } from './igdb'
 import { read, write } from './localState'
+import { autoRewatchOn, REWATCH, shownFolderIds } from './videoFolders'
 import type { ListedVideo } from './video'
 
 // The Video tab's YouTube playlists: read through the Worker, checked once a day if asked, played
@@ -118,8 +119,11 @@ export async function addPlaylist(link: string, keepChecking: boolean) {
   if (before && !before.deleted) throw new Error(t('This playlist is already in the list'))
   const now = Date.now()
   await saveEpisodes(id, found.videos, true)
+  // Back in its folder if it still exists; finished and at the top: in Rewatch if that's on
+  const toRewatch = !keepChecking && autoRewatchOn() && !(await shownFolderIds()).has(before?.folderId ?? '')
   await db.videoPlaylists.put({
     ...before,
+    ...(toRewatch && { folderId: REWATCH }),
     id,
     listId: found.id,
     name: found.name,
@@ -136,6 +140,10 @@ export async function addPlaylist(link: string, keepChecking: boolean) {
 }
 
 export async function changePlaylist(id: string, change: Partial<Pick<VideoPlaylist, 'keepChecking' | 'newestFirst' | 'youtubeOrder' | 'folderId'>>) {
+  // Its check turned off at the top: finished, in Rewatch if that's on
+  if (change.keepChecking === false && autoRewatchOn() && !(await shownFolderIds()).has((await db.videoPlaylists.get(id))?.folderId ?? '')) {
+    change = { ...change, folderId: REWATCH }
+  }
   await db.videoPlaylists.update(id, { ...change, updatedAt: Date.now() })
   changed()
 }

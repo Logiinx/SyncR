@@ -19,26 +19,57 @@ export async function moveToFolder(videoId: string, folderId: string | null) {
   changed()
 }
 
-// Rewatch: a built-in folder at the bottom of To watch, for what you watch again (finished
-// playlists...). Its videos stay there once watched, grayed. Never saved: what's in it has this
-// id as its folder (an older app version shows those as in no folder).
+// Rewatch: a built-in folder, its own list or a section at the bottom of To watch, for what you
+// watch again (finished playlists...). Its videos stay there once watched, grayed. Never saved:
+// what's in it has this id as its folder (an older app version shows those as in no folder).
 export const REWATCH = 'rewatch' // i18n-ok
 export const rewatchFolder = (): VideoFolder => ({ id: REWATCH, name: '', parentId: null, channel: null, deleted: false, updatedAt: 0 })
 
-// Where Rewatch shows, on this PC: its own list in the To watch | Rewatch | Watched switch (the
-// default), or a section at the bottom of To watch (Video settings window)
-const SECTION_KEY = 'syncr.video.rewatchSection'
-let asSection = read(SECTION_KEY, false)
-const sectionListeners = new Set<() => void>()
-export function setRewatchSection(on: boolean) {
-  asSection = on
-  write(SECTION_KEY, on)
-  for (const listener of sectionListeners) listener()
+// An on/off setting of this PC (Video settings window) that the Video tab follows live
+function localSwitch(key: string) {
+  let on = read(key, false)
+  const listeners = new Set<() => void>()
+  return {
+    get: () => on,
+    set(value: boolean) {
+      on = value
+      write(key, value)
+      for (const listener of listeners) listener()
+    },
+    use: () => useSyncExternalStore((listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    }, () => on),
+  }
 }
-export const useRewatchSection = () => useSyncExternalStore((listener) => {
-  sectionListeners.add(listener)
-  return () => sectionListeners.delete(listener)
-}, () => asSection)
+
+// Where Rewatch shows: its own list in the To watch | Rewatch | Watched switch (the default), or a
+// section at the bottom of To watch
+const section = localSwitch('syncr.video.rewatchSection')
+export const setRewatchSection = section.set
+export const useRewatchSection = section.use
+
+// Finished playlists (no daily check) go to Rewatch by themselves: when added, when their check is
+// turned off, and all at once when this is turned on. Only from the top: one in your own folder
+// stays there. Turning it off leaves them where they are; one taken out by hand stays out (until
+// this is turned on again).
+const autoRewatch = localSwitch('syncr.video.autoRewatch')
+export const autoRewatchOn = autoRewatch.get
+export const useAutoRewatch = autoRewatch.use
+export async function setAutoRewatch(on: boolean) {
+  autoRewatch.set(on)
+  if (!on) return
+  const shown = await shownFolderIds()
+  const moving = (await db.videoPlaylists.toArray()).filter((playlist) => !playlist.deleted && !playlist.keepChecking && !shown.has(playlist.folderId ?? ''))
+  if (!moving.length) return
+  await db.videoPlaylists.bulkPut(moving.map((playlist) => ({ ...playlist, folderId: REWATCH, updatedAt: Date.now() })))
+  changed()
+}
+
+// The folders a playlist can be in (a deleted one's: at the top)
+export async function shownFolderIds() {
+  return new Set(liveFolders([rewatchFolder(), ...(await db.videoFolders.toArray())]).map((folder) => folder.id))
+}
 
 // Your own folder in or out of Rewatch (null = the top)
 export async function moveFolder(id: string, parentId: string | null) {

@@ -8,7 +8,7 @@ import { SettingRow, SettingsCard } from './SettingsCard'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
 import { t } from './i18n'
-import { setRewatchSection, useRewatchSection } from './videoFolders'
+import { setAutoRewatch, setRewatchSection, useAutoRewatch, useRewatchSection } from './videoFolders'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -35,6 +35,7 @@ function problemText(problem: unknown): string {
 export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const [player, setPlayer] = useState(loadPlayerSettings)
   const rewatchSection = useRewatchSection()
+  const autoRewatch = useAutoRewatch()
   function updatePlayer(change: Partial<PlayerSettings>) {
     savePlayerSettings(change)
     setPlayer(loadPlayerSettings())
@@ -90,6 +91,12 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
           <SettingsCard icon={ListVideo} title={t('List')}>
             <SettingRow label={t('Rewatch as a section in To watch')} title={t('At the bottom of To watch, instead of its own button between To watch and Watched')}>
               <input type="checkbox" checked={rewatchSection} onChange={(e) => setRewatchSection(e.target.checked)} />
+            </SettingRow>
+            <SettingRow
+              label={t('Put finished playlists in Rewatch')}
+              title={t('Those that don’t check for new videos once a day, unless they’re in one of your folders. Turning this off leaves them where they are.')}
+            >
+              <input type="checkbox" checked={autoRewatch} onChange={(e) => void setAutoRewatch(e.target.checked)} />
             </SettingRow>
           </SettingsCard>
           <SettingsCard icon={Play} title={t('Player')}>

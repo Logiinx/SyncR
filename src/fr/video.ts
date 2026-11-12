@@ -28,6 +28,8 @@ export const video = {
   'Rewatch shows everything in it': 'À revoir montre tout ce qu’il contient',
   'Only in Rewatch': 'Seulement dans À revoir',
   'Rewatch as a section in To watch': 'À revoir en section dans À regarder',
+  'Put finished playlists in Rewatch': 'Mettre les playlists terminées dans À revoir',
+  'Those that don’t check for new videos once a day, unless they’re in one of your folders. Turning this off leaves them where they are.': 'Celles qui ne cherchent pas de nouvelles vidéos chaque jour, sauf si elles sont dans un de vos dossiers. Désactiver ceci les laisse où elles sont.',
   'At the bottom of To watch, instead of its own button between To watch and Watched': 'En bas de À regarder, au lieu de son propre bouton entre À regarder et Vues',
   'Video link': 'Lien de la vidéo',
   'Paste a YouTube or Twitch video’s link': 'Collez le lien d’une vidéo YouTube ou Twitch',

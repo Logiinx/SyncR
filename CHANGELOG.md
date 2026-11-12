@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Video**
 - **New:** Rewatch list next to To watch, for videos and playlists to see again
 - **New:** Rewatch can be a section at the bottom of To watch instead (Video settings)
+- **New:** finished playlists can go to Rewatch by themselves (Video settings)
 - **New:** Start over in Rewatch clears what you watched there
 
 ## [0.76.0] - 2026-11-12
