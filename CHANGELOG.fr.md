@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Amélioration** de la ligne entre les onglets épinglés et les autres : plus haute et plus claire, plus visible
+
 ## [0.72.2] - 2026-11-12
 
 **Vidéo**

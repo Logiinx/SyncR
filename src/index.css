@@ -482,12 +482,14 @@ button {
   flex-shrink: 0;
 }
 
+/* Between the pinned tabs and the others: tall and light enough to see at a glance */
 .tabs-divider {
   flex-shrink: 0;
-  width: 1px;
-  height: 16px;
-  margin: 0 6px;
-  background: var(--border);
+  width: 2px;
+  height: 22px;
+  margin: 0 10px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text-dim) 50%, var(--bg));
 }
 
 /* A tab: icon, title, ✕. The open one is a lighter tile with a thin muted blue line under its title. */

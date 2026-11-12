@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Improved** the line between pinned tabs and the other tabs: taller and lighter, easier to see
+
 ## [0.72.2] - 2026-11-12
 
 **Video**
