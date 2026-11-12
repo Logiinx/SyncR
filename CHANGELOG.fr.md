@@ -15,7 +15,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** bouton du jeu du lecteur Twitch maintenant juste après le temps
 - **Changé :** l’étiquette « Ouverte » remplacée par le temps restant, comme « 12 min restantes »
 - **Corrigé :** sous-titres YouTube décentrés, ou loin de la souris en les déplaçant
-- **Petites corrections :** espace sous les sous-titres YouTube en bas
+- **Petites corrections :** espace sous les sous-titres YouTube en bas, menus au-dessus de la barre de progression
 
 ## [0.76.0] - 2026-11-12
 

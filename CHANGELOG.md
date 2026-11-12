@@ -15,7 +15,7 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** Twitch player's game button now right after the time
 - **Changed:** "Opened" tag replaced by the time left, like "12 min left"
 - **Fixed:** YouTube subtitles off-center, or away from the mouse when dragged
-- **Small fixes:** gap under YouTube subtitles at the bottom
+- **Small fixes:** gap under YouTube subtitles at the bottom, menus clear of the progress bar
 
 ## [0.76.0] - 2026-11-12
 

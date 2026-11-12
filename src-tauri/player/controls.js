@@ -840,7 +840,7 @@ const CONTROLS_CSS = `
   @container (max-width: 540px) { #time-beside { display: none; } }
 
   /* The list on the right, a row's panel on its left, bottoms in line */
-  #menus { position: absolute; top: 18px; right: 12px; bottom: 62px; z-index: 5; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; }
+  #menus { position: absolute; top: 18px; right: 12px; bottom: 70px; z-index: 5; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; }
   #menu, #menu-side {
     flex-shrink: 0; max-height: 100%; overflow: auto; box-sizing: border-box; pointer-events: auto;
     scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
@@ -877,7 +877,7 @@ const CONTROLS_CSS = `
   .menu-size-value { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
   .menu-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   #goto-text { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
-  #goto { position: absolute; bottom: 76px; width: 250px; box-sizing: border-box; padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4); }
+  #goto { position: absolute; bottom: 70px; width: 250px; box-sizing: border-box; padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4); }
   #goto-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
   #goto-note.wrong { color: var(--text-orange, #f0a052); }
   .menu-item.on { color: var(--text-blue, #6ea8fe); }
