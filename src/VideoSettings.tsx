@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { Play, Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
@@ -61,7 +61,10 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
     setBusy(false)
   }
 
+  // The extensions need the desktop app (Rust): in a browser, no Extensions card
+  const extensions = isTauri()
   useEffect(() => {
+    if (!extensions) return
     void run(async () => {})
     return () => void invoke('video_extensions_done')
   }, [])
@@ -114,55 +117,57 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
               </select>
             </SettingRow>
           </SettingsCard>
-          <SettingsCard icon={Puzzle} title={t('Extensions')}>
-            <p className="video-extensions-about">{t('They only run in the video window and can’t reach your notes. Nothing updates by itself.')}</p>
-            {rows?.length === 0 && <p className="video-extensions-none">{t('No extensions yet')}</p>}
-            <ul className="video-follow-list">
-              {rows?.map((row) => (
-                <li key={row.folder} className="video-follow-row">
-                  {row.icon ? <img className="video-extension-icon" src={row.icon} alt="" /> : <Puzzle className="video-extension-icon none" />}
-                  <span className="video-follow-text">
-                    <span className="video-follow-name" title={row.name}>{row.name}</span>
-                    {row.error ? (
-                      <span className="video-follow-summary video-extension-failed" title={row.error}>{t('Didn’t load: {why}', { why: row.error })}</span>
-                    ) : (
-                      <span className="video-follow-summary">{row.version}</span>
-                    )}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={row.enabled}
-                    disabled={busy || !!row.error}
-                    title={row.enabled ? t('On') : t('Off')}
-                    aria-label={row.name}
-                    onChange={(event) => {
-                      const on = event.target.checked
-                      void run(() => invoke('video_extension_enable', { folder: row.folder, on }))
-                    }}
-                  />
-                  <button
-                    disabled={busy || !row.has_settings || !!row.error}
-                    title={row.has_settings ? t('Settings') : t('This extension has no settings page')}
-                    onClick={() => void run(() => invoke('video_extension_settings', { folder: row.folder }))}
-                  >
-                    <Settings size={15} />
-                  </button>
-                  <button disabled={busy} title={t('Update from a folder')} onClick={() => void pick(row.folder)}>
-                    <RefreshCw size={15} />
-                  </button>
-                  <button disabled={busy} title={t('Remove')} onClick={() => setRemoving(row)}>
-                    <Trash2 size={15} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {error && <p className="event-error">{error}</p>}
-            <div className="video-extensions-foot">
-              <button className="setting-button" disabled={busy} onClick={() => void pick()}>
-                {t('Add from a folder…')}
-              </button>
-            </div>
-          </SettingsCard>
+          {extensions && (
+            <SettingsCard icon={Puzzle} title={t('Extensions')}>
+              <p className="video-extensions-about">{t('They only run in the video window and can’t reach your notes. Nothing updates by itself.')}</p>
+              {rows?.length === 0 && <p className="video-extensions-none">{t('No extensions yet')}</p>}
+              <ul className="video-follow-list">
+                {rows?.map((row) => (
+                  <li key={row.folder} className="video-follow-row">
+                    {row.icon ? <img className="video-extension-icon" src={row.icon} alt="" /> : <Puzzle className="video-extension-icon none" />}
+                    <span className="video-follow-text">
+                      <span className="video-follow-name" title={row.name}>{row.name}</span>
+                      {row.error ? (
+                        <span className="video-follow-summary video-extension-failed" title={row.error}>{t('Didn’t load: {why}', { why: row.error })}</span>
+                      ) : (
+                        <span className="video-follow-summary">{row.version}</span>
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={row.enabled}
+                      disabled={busy || !!row.error}
+                      title={row.enabled ? t('On') : t('Off')}
+                      aria-label={row.name}
+                      onChange={(event) => {
+                        const on = event.target.checked
+                        void run(() => invoke('video_extension_enable', { folder: row.folder, on }))
+                      }}
+                    />
+                    <button
+                      disabled={busy || !row.has_settings || !!row.error}
+                      title={row.has_settings ? t('Settings') : t('This extension has no settings page')}
+                      onClick={() => void run(() => invoke('video_extension_settings', { folder: row.folder }))}
+                    >
+                      <Settings size={15} />
+                    </button>
+                    <button disabled={busy} title={t('Update from a folder')} onClick={() => void pick(row.folder)}>
+                      <RefreshCw size={15} />
+                    </button>
+                    <button disabled={busy} title={t('Remove')} onClick={() => setRemoving(row)}>
+                      <Trash2 size={15} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {error && <p className="event-error">{error}</p>}
+              <div className="video-extensions-foot">
+                <button className="setting-button" disabled={busy} onClick={() => void pick()}>
+                  {t('Add from a folder…')}
+                </button>
+              </div>
+            </SettingsCard>
+          )}
         </div>
       </Window>
       {removing && (
