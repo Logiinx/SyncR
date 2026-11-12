@@ -291,6 +291,11 @@
         const name = player.getPlaybackQualityLabel?.() || qualityData().find((one) => one.quality === player.getPlaybackQuality())?.qualityLabel || ''
         return chosenQuality === 'auto' ? (name ? `${data.labels?.auto} (${name})` : data.labels?.auto) : name
       },
+      // For the ⚙️ menu's last line: the picture's codec, from YouTube's "Stats for nerds"
+      // ("avc1.640028 (137) / mp4a.40.2 (140)"); nothing when YouTube doesn't say
+      info: () => {
+        try { return { codec: (player.getStatsForNerds?.()?.codecs || '').split(' ')[0] } } catch { return {} }
+      },
       setQuality: (value) => {
         chosenQuality = value
         qualityFrom = -1 // the start quality above is done with

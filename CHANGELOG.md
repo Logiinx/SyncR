@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video**
 - **Added** a progress line under each game in the Twitch player's games list, showing how far you are
+- **Added** what's playing (size, fps, codec, bitrate) at the bottom of the video players' ⚙️ menu
 - **Fixed** small issues: the video window's buttons now show the hand cursor, like the rest of the app
 
 ## [0.72.2] - 2026-11-12

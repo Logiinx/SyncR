@@ -519,6 +519,10 @@ function playerControls(env, media) {
       panel('subtitles', labels.subtitles, on ? on.text : labels.subtitlesOff, (side) => drawSubtitlesMenu(side, tracks))
     }
     hooks.menu?.({ ...main, panel })
+    const info = document.createElement('div')
+    info.id = 'menu-info'
+    menu.append(info)
+    drawInfo()
     drawSide()
   }
 
@@ -682,6 +686,42 @@ function playerControls(env, media) {
   }, true)
 
   // Everything drawn again, for a player whose video events don't tell about every change
+  // ---- What's playing: a dim last line in the ⚙️ menu --------------------------------------------
+  // The size from the picture itself; frames and video data per second measured over the last few
+  // seconds played (per second of video, so pauses and speed don't change them); the codec and
+  // the source from the player (media.info).
+  const CODECS = { avc1: 'H.264', avc3: 'H.264', hvc1: 'HEVC', hev1: 'HEVC', vp09: 'VP9', vp9: 'VP9', vp8: 'VP8', av01: 'AV1' }
+  const codecName = (codec) => (codec ? CODECS[codec.split('.')[0]] || codec.split('.')[0] : '')
+  let samples = []
+  setInterval(() => {
+    const at = video.currentTime
+    const last = samples[samples.length - 1]
+    if (last && at <= last.at) return // paused: nothing new
+    samples.push({ at, frames: video.getVideoPlaybackQuality?.().totalVideoFrames, bytes: video.webkitVideoDecodedByteCount })
+    if (samples.length > 6) samples.shift()
+    if (!$('menu').hidden) drawInfo()
+  }, 1000)
+  video.addEventListener('seeking', () => { samples = [] })
+  video.addEventListener('resize', () => { if (!$('menu').hidden) drawInfo() })
+
+  function infoText() {
+    const parts = []
+    if (video.videoHeight) parts.push(`${video.videoWidth}×${video.videoHeight}`)
+    const first = samples[0]
+    const last = samples[samples.length - 1]
+    const span = last ? last.at - first.at : 0
+    if (span >= 1 && last.frames > first.frames) parts.push((labels.fps || '{n} fps').replace('{n}', Math.round((last.frames - first.frames) / span)))
+    const info = media.info?.() || {}
+    const codec = codecName(info.codec)
+    if (codec) parts.push(codec)
+    if (span >= 1 && last.bytes > first.bytes) parts.push(`${numbers.format(Math.round(((last.bytes - first.bytes) * 8) / span / 1e5) / 10)} Mb/s`)
+    return [...parts, ...(info.extra || [])].join(' · ')
+  }
+  function drawInfo() {
+    const line = $('menu-info')
+    if (line) line.textContent = infoText()
+  }
+
   function refresh() {
     drawPlay()
     drawVolume()
@@ -810,6 +850,9 @@ const CONTROLS_CSS = `
   .menu-value svg { flex-shrink: 0; }
   .menu-item.menu-back { justify-content: flex-start; gap: 6px; padding-left: 8px; }
   .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
+  /* What's playing: wraps within the menu's width instead of widening it */
+  #menu-info { width: 0; min-width: calc(100% - 24px); padding: 6px 12px 4px; color: var(--text-dim, #9a9a9a); font-size: 11px; line-height: 15px; font-variant-numeric: tabular-nums; user-select: text; }
+  #menu-info:empty { display: none; }
   .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 6px; text-align: left; }
   .menu-item:hover { background: var(--hover, #262626); }
   .menu-item:disabled { opacity: 0.4; background: none; }

@@ -103,6 +103,15 @@ const media = {
     const name = playing ? levelName(playing) : ''
     return chosen === 'auto' ? (name ? `${labels.auto} (${name})` : labels.auto) : name
   },
+  // For the ⚙️ menu's last line (controls.js): the picture's codec, which folder it comes from, and
+  // the sound of muted parts when the video has some
+  info() {
+    const level = hls?.levels[hls.currentLevel]
+    const extra = []
+    if (level) extra.push(level.url[0]?.includes('/chunked/') ? labels.infoOriginal : labels.infoCopy)
+    if (mutedSound) extra.push(mutedSound === 'uncut' ? labels.infoUncut : labels.infoMuted)
+    return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
+  },
   setQuality(value) {
     chosen = value
     localStorage.setItem('player.quality', chosen)
@@ -338,6 +347,8 @@ const folderOf = (url) => url.slice(0, url.lastIndexOf('/') + 1)
 const uncutChecks = {} // quality folder → its check
 const uncutFolders = new Set() // the folders that have it
 let soundTold = false
+let mutedSound = '' // the quality playing has muted parts: 'uncut' (original sound) or 'muted'
+let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
 // On the first muted piece hls.js asks for, or when its list loads (whichever comes first)
 function startCheck(url) {
@@ -359,6 +370,7 @@ function drawMuted() {
   const level = hls?.levels[hls.currentLevel] ?? hls?.levels[hls.loadLevel]
   const pieces = level?.details?.fragments ?? []
   const uncut = pieces.some((one) => MUTED_PIECE.test(one.url) && uncutFolders.has(folderOf(one.url)))
+  mutedSound = !pieces.some((one) => MUTED_PIECE.test(one.url)) ? '' : uncut ? 'uncut' : 'muted'
   noteMutedParts(uncut ? [] : pieces)
   if (uncut && !soundTold) {
     soundTold = true
@@ -520,6 +532,7 @@ async function load() {
     drawMuted()
   })
   hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => checkUncut(loaded.details.fragments))
+  hls.on(Hls.Events.BUFFER_CODECS, (_, tracks) => { playingCodec = tracks.video?.codec || playingCodec })
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)
