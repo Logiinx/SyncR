@@ -6,196 +6,197 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **Better:** the What's new window: clearer versions and areas, with icons and dates
-- **Changed** the colored Games, Reminders, Mail and Video icons: off by default, turn them on in Settings
+- **Changed:** colored tab icons are now off by default, turn them on in Settings
 
 ## [0.74.0] - 2026-11-12
 
 **Video**
-- **Added** icons to the players' ⚙️ menu: Quality, Speed, Subtitles and Chat
-- **Improved** the video window's extensions menu: same colors and frame as the ⚙️ menu, easier to see over a video
-- **Improved** the Video tab's menus: each Add and More item has its own icon, a video's menu shows its title
-- **Changed** the ✕ on a video that's no longer available: it now removes it for good, not into Watched
-- **Fixed** an issue where chat names in the Twitch player seemed to glow when the mouse entered the video
-- **Fixed** small issues: playlist menu order, a puzzle icon for extensions without one, long ⚙️ values in full on hover, cleaner bold chat names
+- **New:** icons in the players' ⚙️ menu: Quality, Speed, Subtitles, Chat
+- **Better:** the extensions menu matches the ⚙️ menu, easier to see over a video
+- **Better:** every item in the Video tab's Add and More menus has its own icon
+- **Better:** a video's right-click menu shows its title at the top
+- **Changed:** ✕ on a video that's no longer available now deletes it
+- **Fixed:** Twitch chat names glowing when the mouse entered the video
+- **Small fixes:** playlist menu order, puzzle icon, long ⚙️ values, sharper chat names
 
 ## [0.73.0] - 2026-11-12
 
-**App**
-- **Improved** the Games, Reminders, Mail and Video icons: each has its own color, adjustable in Settings
-- **Improved** the line between pinned tabs and the other tabs: taller and lighter, easier to see
-
 **Video**
-- **Added** a progress line under each game in the Twitch player's games list, showing how far you are
-- **Added** what's playing (size, fps, codec, bitrate) at the bottom of the video players' ⚙️ menu
-- **Fixed** small issues: the video window's buttons now show the hand cursor, like the rest of the app
+- **New:** a progress line under each game in the Twitch player's games list
+- **New:** details on what's playing (size, fps…) at the bottom of the ⚙️ menu
+- **Small fixes:** the video window's buttons show the hand cursor
+
+**App**
+- **Better:** Games, Reminders, Mail and Video icons each have a color, set in Settings
+- **Better:** a taller, lighter line between pinned tabs and the others
 
 ## [0.72.2] - 2026-11-12
 
 **Video**
-- **Changed** Twitch videos: they open on Twitch's page for good only after the Twitch player fails twice in a row
+- **Changed:** a Twitch video moves to Twitch's page only after failing twice in a row
 
 ## [0.72.1] - 2026-11-12
 
 **Video**
-- **Improved** privacy in the Twitch player: picture and emote servers are no longer told which page asks
-- **Fixed** an issue where a subscriber-only Twitch video could open on Twitch's page after a brief connection hiccup
+- **Better:** Twitch player privacy: image servers no longer see which page asked
+- **Fixed:** subscriber-only Twitch videos opening on Twitch's page after a short hiccup
 
 ## [0.72.0] - 2026-11-12
 
 **Video**
-- **Added** a games button at the left of the Twitch player's bar: pick a game in the list to jump to where it starts
-- **Added** 1440p in the Twitch player for streams recorded in 1440p
-- **Added** subscriber-only Twitch videos playing in the Twitch player
-- **Added** the original sound in muted parts of recent Twitch videos, while Twitch still keeps it
-- **Improved** the Twitch player: it waits for the internet to come back and restarts a frozen video by itself
-- **Fixed** an issue where muted parts didn't show in orange on newer Twitch videos
+- **New:** a games button on the Twitch player's bar: jump to where each game starts
+- **New:** subscriber-only Twitch videos play in the Twitch player
+- **New:** original sound in muted parts of recent Twitch videos, while Twitch has it
+- **New:** 1440p in the Twitch player, for streams recorded in 1440p
+- **Better:** the Twitch player waits for the internet and restarts a frozen video itself
+- **Fixed:** muted parts not showing in orange on newer Twitch videos
 
 ## [0.71.0] - 2026-11-12
 
 **Games**
-- **Added** HowLongToBeat play times: all three in the game window, the main story on every game in the list
+- **New:** HowLongToBeat play times: all three in the game window, main story in the list
 
 **Video**
-- **Added** playlists in your own folders, by dragging them or with Move to folder in their right-click menu
-- **Added** a slider for how see-through the chat is in full screen, in the player's Chat settings
-- **Changed** the time of day on Twitch videos: it slides out when you hover the video's time, no setting needed
+- **New:** playlists in your own folders: drag them, or Move to folder in their menu
+- **New:** a slider for how see-through the chat is in full screen (Chat settings)
+- **Changed:** the time of day on Twitch videos shows when you hover the video's time
 
 **Reminders**
-- **Fixed** the grid / list switch moving when changing view, in Reminders and the Games calendar
+- **Fixed:** the grid / list switch moving when changing view (also in the Games calendar)
 
 ## [0.70.0] - 2026-11-11
 
 **Video**
-- **Added** a Try again button when a YouTube video stops on an error, after one try on its own
-- **Improved** the player's settings menu: a short list, each part's choices open beside it on hover
-- **Improved** quality changes on Twitch videos: no more pause, the new quality takes over within seconds
-- **Improved** quick jumps in a row (a held arrow key, the 10 s buttons): one jump at the end, loading faster
-- **Improved** the video and playlist right-click menus: grouped, and your folders apart from the channel’s
-- **Changed** the Watched list to one plain list, last watched on top, without channel rows or folders
-- **Changed** the order inside channel rows and folders to oldest on top, like playlists
-- **Fixed** YouTube subtitles vanishing while the controls showed or while you dragged them
-- **Fixed** Twitch videos getting stuck loading the same part again and again on a slow connection
-- **Fixed** Twitch chat replay missing some messages in busy moments
-- **Fixed** small issues: Twitch videos back to normal speed after an error, chat waiting 20 s after one failed load
+- **New:** a Try again button when a YouTube video stops on an error
+- **Better:** a shorter player settings menu, each part's choices open beside it on hover
+- **Better:** quality changes on Twitch: no pause, the new quality comes in seconds
+- **Better:** quick jumps in a row (held arrow key, 10 s buttons) load faster
+- **Better:** grouped right-click menus for videos and playlists, your folders apart
+- **Changed:** Watched is one plain list, last watched on top
+- **Changed:** oldest on top in channel rows and folders, like playlists
+- **Fixed:** YouTube subtitles vanishing while the controls showed or while dragging them
+- **Fixed:** Twitch videos loading the same part again and again on a slow connection
+- **Fixed:** Twitch chat replay missing messages in busy moments
+- **Small fixes:** normal speed after a Twitch error, chat retrying sooner after a failure
 
 **App**
-- **Changed** every sliding switch (My games | Calendar, To watch | Watched…) to one look, a sunken track
+- **Better:** every sliding switch (My games | Calendar…) now has the same sunken look
 
 ## [0.69.0] - 2026-11-11
 
 **Video**
-- **Added** subtitles to YouTube's controls: a button, language or translation, size, drag them anywhere
-- **Added** chapters, preview pictures and SponsorBlock's parts to the YouTube progress bar
-- **Changed** YouTube videos to our own controls, the same as the Twitch player's, instead of YouTube's
-- **Changed** the Twitch player's game changes into gaps in the progress bar, like YouTube's chapters
+- **New:** subtitles in YouTube's controls: language or translation, size, drag anywhere
+- **New:** chapters, preview pictures and SponsorBlock parts on the YouTube progress bar
+- **Changed:** YouTube videos use our own controls, the same as the Twitch player's
+- **Changed:** game changes in the Twitch player show as gaps in the bar, like chapters
 
 ## [0.68.1] - 2026-11-11
 
 **Video**
-- **Added** Delete to a video's right-click menu, to remove it from To watch or Watched for good
-- **Changed** Watched videos to a To watch | Watched switch at the start of the Video tab's top bar
-- **Fixed** an issue where a pasted video link ignored its start time (?t=)
+- **New:** Delete in a video's right-click menu, to remove it from To watch or Watched
+- **Changed:** Watched videos are behind a To watch | Watched switch in the tab's top bar
+- **Fixed:** a pasted video link ignoring its start time (?t=)
 
 ## [0.68.0] - 2026-11-11
 
 **Video**
-- **Added** Ctrl+V in the Video tab, or Ctrl+Alt+Shift+V anywhere, to open a copied YouTube or Twitch link
-- **Changed** playlists to play oldest first by release date, with YouTube's own order still in their right-click menu
+- **New:** Ctrl+V in the Video tab (or Ctrl+Alt+Shift+V anywhere) opens a copied video link
+- **Changed:** playlists play oldest first, YouTube's order is in their right-click menu
 
 ## [0.67.0] - 2026-11-11
 
 **Sync**
-- **Added** a brief green, blue or red tint on what your other device added, edited or deleted, even inside notes
+- **New:** a short colored tint on what your other device added, edited or deleted
 
 **Notes**
-- **Changed** typing "+ " at the start of a line so it stays as typed instead of starting a bullet list
+- **Changed:** "+ " at the start of a line stays as typed, no more bullet list
 
 ## [0.66.2] - 2026-11-10
 
 **Notes**
-- **Fixed** an issue where the cursor could jump to the end of a note or card while typing or deleting
+- **Fixed:** the cursor jumping to the end of a note or card while typing
 
 ## [0.66.1] - 2026-11-10
 
 **Video**
-- **Changed** the player controls (YouTube and Twitch) to fade 1.5 s after the mouse stops, instead of 2.8 s
+- **Changed:** the players' controls fade sooner after the mouse stops
 
 ## [0.66.0] - 2026-11-10
 
 **Sync**
-- **Improved** sync speed: about twice as quick day to day, 3–4× after big changes like marking many videos
-- **Improved** safety: a synced file copied over another one in Dropbox is now refused instead of used
+- **Better:** sync is about twice as fast day to day, 3–4× after big changes
+- **Better:** a synced file copied over another one in Dropbox is now refused
 
 **Video**
-- **Fixed** small issues: on clock change nights, going to a time of day in the Twitch player could miss it
+- **Small fixes:** going to a time of day in the Twitch player on clock change nights
 
 ## [0.65.2] - 2026-11-09
 
 **App**
-- **Fixed** an issue where, in French with the PIN lock on, all sign-ins looked signed out after unlocking
-- **Fixed** small issues: the "already postponed" notice and section labels stayed in English in French
+- **Fixed:** sign-ins looking signed out after unlocking the PIN lock, in French
+- **Small fixes:** the "already postponed" notice and section labels now in French
 
 **Video**
-- **Fixed** an issue where videos already seen could show as New again the next time the tab opened
-- **Fixed** an issue where an extension could disappear when its update failed
-- **Fixed** small issues: the next playlist video in full screen could show the wrong site on the bar
+- **Fixed:** watched videos showing as New again when the tab opened
+- **Fixed:** an extension disappearing when its update failed
+- **Small fixes:** wrong site on the bar for the next playlist video in full screen
 
 **Sync**
-- **Improved** syncing, which no longer slows down once a day while old note versions are cleaned up
+- **Better:** sync no longer slows down once a day while old note versions are cleaned
 
 **Mail**
-- **Fixed** an issue where links starting with // in an email did nothing when clicked
+- **Fixed:** links starting with // in an email doing nothing when clicked
 
 ## [0.65.1] - 2026-11-09
 
 **Video**
-- **Added** the time of day back to the Twitch player (its setting, the bar and the go-to box)
+- **New:** the time of day is back in the Twitch player (setting, bar, go-to box)
 
 ## [0.65.0] - 2026-11-09
 
 **Video**
-- **Changed** the video player to have its own taskbar button, with YouTube's or Twitch's icon
+- **Changed:** the video player has its own taskbar button, with YouTube's or Twitch's icon
 
 ## [0.64.0] - 2026-11-09
 
 **Video**
-- **Added** following a Twitch channel by the games played in its streams, not only by title words
-- **Changed** Twitch's own page (when a video can't play in SyncR's player) to start in theater mode
-- **Removed** the time of day from the Twitch player (its setting, the bar and the go-to box)
+- **New:** follow a Twitch channel by the games it streams, not only by title words
+- **Changed:** Twitch's own page (when a video can't play in SyncR) opens in theater mode
+- **Removed:** the time of day in the Twitch player (setting, bar, go-to box)
 
 ## [0.63.2] - 2026-11-09
 
 **Games**
-- **Fixed** the calendar missing games that leave early access, like Path of Exile 2 (now marked as such)
+- **Fixed:** the calendar missing games leaving early access, like Path of Exile 2
 
 ## [0.63.1] - 2026-11-09
 
 **Sync**
-- **Fixed** the phone's sync vibration coming about 2 seconds after the cloud turned green
+- **Fixed:** the phone's sync buzz coming about 2 s after the cloud turned green
 
 ## [0.63.0] - 2026-11-08
 
 **Games**
-- **Changed** 100% achievement games in Library to show the green Completed check inside their gold ring
+- **Changed:** 100% games in Library show the green Completed check in their gold ring
 
 ## [0.62.0] - 2026-11-07
 
 **Sync**
-- **Changed** the phone's sync vibration to a single buzz once syncing is fully done, not after every step
+- **Changed:** the phone buzzes once when sync is fully done, not after every step
 
 ## [0.61.0] - 2026-11-07
 
 **Video**
-- **Changed** the extension icons on the video window's top bar into a single Extensions menu
+- **Changed:** the extension icons on the video window's bar are now one Extensions menu
 
 ## [0.60.0] - 2026-11-07
 
 **Video**
-- **Added** YouTube playlists: the next video starts by itself, and the order can be reversed
-- **Added** an automatic move to Watched near a video's end, with an on/off switch in Settings
+- **New:** YouTube playlists: the next video starts by itself, the order can be reversed
+- **New:** videos move to Watched near their end, with an on/off switch in Settings
 
 **Sync**
-- **Added** a small vibration on the phone after each successful sync
+- **New:** a small buzz on the phone after each successful sync
 
 ## [0.59.0] - 2026-11-07
 

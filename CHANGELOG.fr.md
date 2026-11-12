@@ -6,196 +6,197 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Amélioré :** la fenêtre Nouveautés : versions et rubriques plus claires, avec icônes et dates
-- **Changement** des icônes colorées Jeux, Rappels, Mail et Vidéo : désactivées par défaut, à activer dans les Paramètres
+- **Changé :** les icônes d’onglets colorées sont désactivées par défaut, à activer dans les Paramètres
 
 ## [0.74.0] - 2026-11-12
 
 **Vidéo**
-- **Ajout** d’icônes dans le menu ⚙️ des lecteurs : Qualité, Vitesse, Sous-titres et Chat
-- **Amélioration** du menu des extensions de la fenêtre vidéo : mêmes couleurs et cadre que le menu ⚙️, plus visible sur une vidéo
-- **Amélioration** des menus de l’onglet Vidéo : chaque élément d’Ajouter et Plus a son icône, le menu d’une vidéo montre son titre
-- **Changement** du ✕ sur une vidéo qui n’est plus disponible : il la retire pour de bon, sans passer par Vues
-- **Correction** d’un souci où les pseudos du chat du lecteur Twitch semblaient briller quand la souris entrait sur la vidéo
-- **Correction** de petits soucis : ordre du menu d’une playlist, une pièce de puzzle pour les extensions sans icône, les longues valeurs du menu ⚙️ en entier au survol, des pseudos du chat en gras plus nets
+- **Nouveau :** des icônes dans le menu ⚙️ des lecteurs : Qualité, Vitesse, Sous-titres, Chat
+- **Amélioré :** le menu des extensions ressemble au menu ⚙️, plus visible sur une vidéo
+- **Amélioré :** chaque élément des menus Ajouter et Plus de l’onglet Vidéo a son icône
+- **Amélioré :** le menu clic droit d’une vidéo montre son titre en haut
+- **Changé :** le ✕ sur une vidéo qui n’est plus disponible la supprime
+- **Corrigé :** les pseudos du chat Twitch qui brillaient quand la souris entrait sur la vidéo
+- **Petites corrections :** ordre du menu des playlists, pièce de puzzle, longues valeurs ⚙️, pseudos plus nets
 
 ## [0.73.0] - 2026-11-12
 
-**Application**
-- **Amélioration** des icônes Jeux, Rappels, Mail et Vidéo : chacune a sa couleur, réglable dans les Paramètres
-- **Amélioration** de la ligne entre les onglets épinglés et les autres : plus haute et plus claire, plus visible
-
 **Vidéo**
-- **Ajout** d’une ligne de progression sous chaque jeu de la liste du lecteur Twitch, pour voir où vous en êtes
-- **Ajout** de ce qui est lu (taille, i/s, codec, débit) en bas du menu ⚙️ des lecteurs vidéo
-- **Correction** de petits soucis : les boutons de la fenêtre vidéo montrent la main, comme le reste de l’app
+- **Nouveau :** une ligne de progression sous chaque jeu de la liste des jeux du lecteur Twitch
+- **Nouveau :** des détails sur ce qui est lu (taille, i/s…) en bas du menu ⚙️
+- **Petites corrections :** les boutons de la fenêtre vidéo montrent la main
+
+**Application**
+- **Amélioré :** les icônes Jeux, Rappels, Mail et Vidéo ont chacune une couleur, réglable dans les Paramètres
+- **Amélioré :** une ligne plus haute et plus claire entre les onglets épinglés et les autres
 
 ## [0.72.2] - 2026-11-12
 
 **Vidéo**
-- **Changement** des vidéos Twitch : elles s’ouvrent pour de bon sur la page de Twitch seulement après deux échecs de suite du lecteur Twitch
+- **Changé :** une vidéo Twitch passe sur la page de Twitch seulement après deux échecs de suite
 
 ## [0.72.1] - 2026-11-12
 
 **Vidéo**
-- **Amélioration** de la confidentialité du lecteur Twitch : les serveurs d’images et d’emotes ne savent plus quelle page les demande
-- **Correction** d’une vidéo Twitch réservée aux abonnés qui pouvait s’ouvrir sur la page de Twitch après une courte coupure
+- **Amélioré :** confidentialité du lecteur Twitch : les serveurs d’images ne voient plus la page qui demande
+- **Corrigé :** les vidéos Twitch réservées aux abonnés qui s’ouvraient sur la page de Twitch après une courte coupure
 
 ## [0.72.0] - 2026-11-12
 
 **Vidéo**
-- **Ajout** d’un bouton des jeux à gauche de la barre du lecteur Twitch : choisissez un jeu dans la liste pour aller à son début
-- **Ajout** du 1440p dans le lecteur Twitch pour les streams enregistrés en 1440p
-- **Ajout** de la lecture des vidéos Twitch réservées aux abonnés dans le lecteur Twitch
-- **Ajout** du son d’origine dans les parties sans son des vidéos Twitch récentes, tant que Twitch le garde
-- **Amélioration** du lecteur Twitch : il attend le retour d’internet et relance seul une vidéo figée
-- **Correction** des parties sans son qui n’apparaissaient pas en orange sur les vidéos Twitch récentes
+- **Nouveau :** un bouton des jeux sur la barre du lecteur Twitch : allez au début de chaque jeu
+- **Nouveau :** les vidéos Twitch réservées aux abonnés passent dans le lecteur Twitch
+- **Nouveau :** le son d’origine dans les parties sans son des vidéos Twitch récentes, tant que Twitch l’a
+- **Nouveau :** le 1440p dans le lecteur Twitch, pour les streams enregistrés en 1440p
+- **Amélioré :** le lecteur Twitch attend le retour d’internet et relance seul une vidéo figée
+- **Corrigé :** les parties sans son qui n’apparaissaient pas en orange sur les vidéos Twitch récentes
 
 ## [0.71.0] - 2026-11-12
 
 **Jeux**
-- **Ajout** des durées de jeu HowLongToBeat : les trois dans la fenêtre du jeu, l’histoire principale sur chaque jeu de la liste
+- **Nouveau :** les durées HowLongToBeat : les trois dans la fenêtre du jeu, l’histoire principale dans la liste
 
 **Vidéo**
-- **Ajout** des playlists dans vos propres dossiers, en les faisant glisser ou par Déplacer vers un dossier au clic droit
-- **Ajout** d’un curseur pour la transparence du chat en plein écran, dans les réglages Chat du lecteur
-- **Changement** de l’heure réelle sur les vidéos Twitch : elle apparaît au survol du temps de la vidéo, sans réglage
+- **Nouveau :** les playlists dans vos propres dossiers : glissez-les, ou Déplacer vers un dossier dans leur menu
+- **Nouveau :** un curseur pour la transparence du chat en plein écran (réglages Chat)
+- **Changé :** l’heure réelle sur les vidéos Twitch apparaît au survol du temps de la vidéo
 
 **Rappels**
-- **Correction** du bouton grille / liste qui bougeait en changeant de vue, dans Rappels et le calendrier des jeux
+- **Corrigé :** le bouton grille / liste qui bougeait en changeant de vue (aussi dans le calendrier des jeux)
 
 ## [0.70.0] - 2026-11-11
 
 **Vidéo**
-- **Ajout** d’un bouton Réessayer quand une vidéo YouTube s’arrête sur une erreur, après un essai automatique
-- **Amélioration** du menu des réglages du lecteur : une liste courte, les choix de chaque partie s’ouvrent à côté au survol
-- **Amélioration** des changements de qualité sur Twitch : plus de pause, la nouvelle qualité prend le relais en quelques secondes
-- **Amélioration** des sauts rapides à la suite (flèche maintenue, boutons 10 s) : un seul saut à la fin, chargement plus rapide
-- **Amélioration** des menus clic droit des vidéos et des playlists : regroupés, vos dossiers à part de ceux de la chaîne
-- **Changement** de la liste Vues : une seule liste, la dernière vue en haut, sans lignes par chaîne ni dossiers
-- **Changement** de l’ordre dans les lignes par chaîne et les dossiers : la plus ancienne en haut, comme les playlists
-- **Correction** des sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
-- **Correction** des vidéos Twitch bloquées à recharger le même passage en boucle sur une connexion lente
-- **Correction** du chat Twitch en différé qui manquait des messages aux moments chargés
-- **Correction** de petits problèmes : vitesse normale après une erreur sur Twitch, chat qui attendait 20 s après un échec
+- **Nouveau :** un bouton Réessayer quand une vidéo YouTube s’arrête sur une erreur
+- **Amélioré :** un menu des réglages du lecteur plus court, les choix de chaque partie s’ouvrent à côté au survol
+- **Amélioré :** les changements de qualité sur Twitch : plus de pause, la nouvelle qualité arrive en quelques secondes
+- **Amélioré :** les sauts rapides à la suite (flèche maintenue, boutons 10 s) chargent plus vite
+- **Amélioré :** les menus clic droit des vidéos et des playlists sont regroupés, vos dossiers à part
+- **Changé :** Vues est une seule liste, la dernière vue en haut
+- **Changé :** la plus ancienne en haut dans les lignes par chaîne et les dossiers, comme les playlists
+- **Corrigé :** les sous-titres YouTube qui disparaissaient quand les contrôles s’affichaient ou pendant leur déplacement
+- **Corrigé :** les vidéos Twitch qui rechargeaient le même passage en boucle sur une connexion lente
+- **Corrigé :** le chat Twitch en différé qui manquait des messages aux moments chargés
+- **Petites corrections :** vitesse normale après une erreur Twitch, chat qui réessaie plus tôt après un échec
 
 **Application**
-- **Changement** des sélecteurs coulissants (Mes jeux | Calendrier, À regarder | Vues…) : un seul style, en creux
+- **Amélioré :** tous les sélecteurs coulissants (Mes jeux | Calendrier…) ont le même style en creux
 
 ## [0.69.0] - 2026-11-11
 
 **Vidéo**
-- **Ajout** des sous-titres aux contrôles YouTube : un bouton, la langue ou une traduction, la taille, à déplacer
-- **Ajout** des chapitres, des aperçus et des parties SponsorBlock dans la barre de progression YouTube
-- **Changement** des vidéos YouTube : nos propres contrôles, les mêmes que ceux du lecteur Twitch
-- **Changement** des changements de jeu du lecteur Twitch : des coupures dans la barre, comme les chapitres YouTube
+- **Nouveau :** les sous-titres dans les contrôles YouTube : langue ou traduction, taille, à déplacer
+- **Nouveau :** chapitres, aperçus et parties SponsorBlock dans la barre de progression YouTube
+- **Changé :** les vidéos YouTube utilisent nos propres contrôles, les mêmes que le lecteur Twitch
+- **Changé :** les changements de jeu du lecteur Twitch sont des coupures dans la barre, comme les chapitres
 
 ## [0.68.1] - 2026-11-11
 
 **Vidéo**
-- **Ajout** de Supprimer dans le menu clic droit d’une vidéo, pour la retirer définitivement d’À regarder ou de Vues
-- **Changement** des vidéos vues : un bouton À regarder | Vues au début de la barre de l’onglet Vidéo
-- **Correction** d’un problème où un lien vidéo collé ignorait son temps de départ (?t=)
+- **Nouveau :** Supprimer dans le menu clic droit d’une vidéo, pour la retirer d’À regarder ou de Vues
+- **Changé :** les vidéos vues sont derrière un bouton À regarder | Vues dans la barre de l’onglet
+- **Corrigé :** un lien vidéo collé qui ignorait son temps de départ (?t=)
 
 ## [0.68.0] - 2026-11-11
 
 **Vidéo**
-- **Ajout** de Ctrl+V dans l’onglet Vidéo, ou Ctrl+Alt+Maj+V partout, pour ouvrir un lien YouTube ou Twitch copié
-- **Changement** des playlists : lues de la plus ancienne à la plus récente, l’ordre de YouTube reste dans leur menu clic droit
+- **Nouveau :** Ctrl+V dans l’onglet Vidéo (ou Ctrl+Alt+Maj+V partout) ouvre un lien vidéo copié
+- **Changé :** les playlists se lisent de la plus ancienne à la plus récente, l’ordre de YouTube est dans leur menu
 
 ## [0.67.0] - 2026-11-11
 
 **Synchronisation**
-- **Ajout** d’une brève teinte verte, bleue ou rouge sur ce que l’autre appareil a ajouté, modifié ou supprimé, même dans les notes
+- **Nouveau :** une brève teinte colorée sur ce que votre autre appareil a ajouté, modifié ou supprimé
 
 **Notes**
-- **Changement** de « + » suivi d’une espace en début de ligne : il reste tel quel au lieu de lancer une liste à puces
+- **Changé :** « + » suivi d’une espace en début de ligne reste tel quel, sans liste à puces
 
 ## [0.66.2] - 2026-11-10
 
 **Notes**
-- **Correction** d’un problème où le curseur pouvait sauter à la fin d’une note ou d’une carte pendant la frappe
+- **Corrigé :** le curseur qui sautait à la fin d’une note ou d’une carte pendant la frappe
 
 ## [0.66.1] - 2026-11-10
 
 **Vidéo**
-- **Changement** des commandes du lecteur (YouTube et Twitch) : elles s’effacent 1,5 s après l’arrêt de la souris, au lieu de 2,8 s
+- **Changé :** les contrôles des lecteurs s’effacent plus tôt après l’arrêt de la souris
 
 ## [0.66.0] - 2026-11-10
 
 **Synchronisation**
-- **Amélioration** de la vitesse de synchro : environ 2× plus rapide au quotidien, 3 à 4× après de gros changements
-- **Amélioration** de la sécurité : un fichier copié sur un autre dans Dropbox est maintenant refusé
+- **Amélioré :** la synchro est environ 2× plus rapide au quotidien, 3 à 4× après de gros changements
+- **Amélioré :** un fichier synchronisé copié sur un autre dans Dropbox est maintenant refusé
 
 **Vidéo**
-- **Correction** de petits problèmes : les nuits de changement d’heure, aller à une heure dans le lecteur Twitch pouvait la manquer
+- **Petites corrections :** aller à une heure dans le lecteur Twitch les nuits de changement d’heure
 
 ## [0.65.2] - 2026-11-09
 
 **Application**
-- **Correction** d’un problème où, en français avec le verrouillage par PIN, tous les comptes semblaient déconnectés après le déverrouillage
-- **Correction** de petits problèmes : l’avis « déjà reporté » et les libellés des sections restaient en anglais en français
+- **Corrigé :** les comptes qui semblaient déconnectés après le déverrouillage par PIN, en français
+- **Petites corrections :** l’avis « déjà reporté » et les libellés des sections maintenant en français
 
 **Vidéo**
-- **Correction** d’un problème où des vidéos déjà vues pouvaient réapparaître comme Nouvelles à la prochaine ouverture de l’onglet
-- **Correction** d’un problème où une extension pouvait disparaître quand sa mise à jour échouait
-- **Correction** de petits problèmes : la vidéo suivante d’une playlist en plein écran pouvait afficher le mauvais site sur la barre
+- **Corrigé :** des vidéos vues qui réapparaissaient comme Nouvelles à l’ouverture de l’onglet
+- **Corrigé :** une extension qui disparaissait quand sa mise à jour échouait
+- **Petites corrections :** mauvais site sur la barre pour la vidéo suivante d’une playlist en plein écran
 
 **Synchronisation**
-- **Amélioration** de la synchronisation, qui ne ralentit plus une fois par jour pendant le nettoyage des anciennes versions des notes
+- **Amélioré :** la synchro ne ralentit plus une fois par jour pendant le nettoyage des anciennes versions
 
 **Mail**
-- **Correction** d’un problème où les liens commençant par // dans un e-mail ne faisaient rien au clic
+- **Corrigé :** les liens commençant par // dans un e-mail qui ne faisaient rien au clic
 
 ## [0.65.1] - 2026-11-09
 
 **Vidéo**
-- **Ajout** du retour de l’heure réelle dans le lecteur Twitch (son réglage, la barre et la case « Aller à un moment »)
+- **Nouveau :** le retour de l’heure réelle dans le lecteur Twitch (réglage, barre, case « Aller à un moment »)
 
 ## [0.65.0] - 2026-11-09
 
 **Vidéo**
-- **Changement** du lecteur vidéo : il a son propre bouton dans la barre des tâches, avec l’icône de YouTube ou Twitch
+- **Changé :** le lecteur vidéo a son propre bouton dans la barre des tâches, avec l’icône de YouTube ou Twitch
 
 ## [0.64.0] - 2026-11-09
 
 **Vidéo**
-- **Ajout** du suivi d’une chaîne Twitch selon les jeux joués dans ses streams, pas seulement les mots du titre
-- **Changement** de la page de Twitch (quand une vidéo ne passe pas dans le lecteur de SyncR) : elle s’ouvre en mode cinéma
-- **Suppression** de l’heure réelle dans le lecteur Twitch (son réglage, la barre et la case « Aller à un moment »)
+- **Nouveau :** suivre une chaîne Twitch selon les jeux de ses streams, pas seulement les mots du titre
+- **Changé :** la page de Twitch (quand une vidéo ne passe pas dans SyncR) s’ouvre en mode cinéma
+- **Supprimé :** l’heure réelle dans le lecteur Twitch (réglage, barre, case « Aller à un moment »)
 
 ## [0.63.2] - 2026-11-09
 
 **Jeux**
-- **Correction** du calendrier qui oubliait les jeux sortant de l’accès anticipé, comme Path of Exile 2
+- **Corrigé :** le calendrier qui oubliait les jeux sortant de l’accès anticipé, comme Path of Exile 2
 
 ## [0.63.1] - 2026-11-09
 
 **Synchronisation**
-- **Correction** de la vibration du téléphone qui arrivait environ 2 secondes après le nuage vert
+- **Corrigé :** la vibration du téléphone qui arrivait environ 2 s après le nuage vert
 
 ## [0.63.0] - 2026-11-08
 
 **Jeux**
-- **Changement** des jeux à 100 % dans Bibliothèque : la coche verte Terminé s’affiche dans leur anneau doré
+- **Changé :** les jeux à 100 % dans Bibliothèque montrent la coche verte Terminé dans leur anneau doré
 
 ## [0.62.0] - 2026-11-07
 
 **Synchronisation**
-- **Changement** de la vibration du téléphone : une seule, une fois la synchronisation vraiment terminée
+- **Changé :** le téléphone vibre une seule fois, quand la synchro est vraiment terminée
 
 ## [0.61.0] - 2026-11-07
 
 **Vidéo**
-- **Changement** des icônes d’extensions de la barre de la fenêtre vidéo en un seul menu Extensions
+- **Changé :** les icônes d’extensions de la barre de la fenêtre vidéo sont un seul menu Extensions
 
 ## [0.60.0] - 2026-11-07
 
 **Vidéo**
-- **Ajout** des playlists YouTube : la vidéo suivante démarre seule, et l’ordre peut être inversé
-- **Ajout** du passage automatique d’une vidéo dans les vues près de sa fin, avec un réglage pour le désactiver
+- **Nouveau :** les playlists YouTube : la vidéo suivante démarre seule, l’ordre peut être inversé
+- **Nouveau :** une vidéo passe dans Vues près de sa fin, avec un réglage pour le désactiver
 
 **Synchronisation**
-- **Ajout** d’une petite vibration sur le téléphone après chaque synchronisation réussie
+- **Nouveau :** une petite vibration sur le téléphone après chaque synchro réussie
 
 ## [0.59.0] - 2026-11-07
 
