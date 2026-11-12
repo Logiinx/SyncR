@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-11-12
+
 **Video**
 - **New:** Rewatch list next to To watch, for videos and playlists to see again
 - **New:** Rewatch can be a section at the bottom of To watch instead (Video settings)
@@ -14,8 +16,8 @@ All notable changes to SyncR. Newest version first.
 - **New:** YouTube chapters list: click the time or chapter name to jump
 - **Better:** the New tag stays a week, until you open the video
 - **Better:** a bit more space between the players' buttons
-- **Changed:** Twitch player's game button now right after the time
 - **Changed:** "Opened" tag replaced by the time left, like "12 min left"
+- **Changed:** Twitch player's game button now right after the time
 - **Fixed:** YouTube subtitles off-center, or away from the mouse when dragged
 - **Small fixes:** gap under YouTube subtitles at the bottom, menus clear of the progress bar
 

@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-11-12
+
 **Vidéo**
 - **Nouveau :** liste À revoir à côté de À regarder, pour les vidéos et playlists à revoir
 - **Nouveau :** À revoir peut être une section en bas de À regarder (Paramètres vidéo)
@@ -14,8 +16,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** liste des chapitres YouTube : cliquez sur le temps ou le chapitre pour y aller
 - **Amélioré :** l’étiquette Nouvelle reste une semaine, jusqu’à ce que vous ouvriez la vidéo
 - **Amélioré :** un peu plus d’espace entre les boutons des lecteurs
-- **Changé :** bouton du jeu du lecteur Twitch maintenant juste après le temps
 - **Changé :** l’étiquette « Ouverte » remplacée par le temps restant, comme « 12 min restantes »
+- **Changé :** bouton du jeu du lecteur Twitch maintenant juste après le temps
 - **Corrigé :** sous-titres YouTube décentrés, ou loin de la souris en les déplaçant
 - **Petites corrections :** espace sous les sous-titres YouTube en bas, menus au-dessus de la barre de progression
 
