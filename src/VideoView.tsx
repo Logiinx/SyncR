@@ -216,7 +216,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, onMenu, onOpenRow }: {
           )}
         </>
       ) : video.gone ? (
-        <button className="video-row-action" title={t('Remove')} onClick={() => void setWatched(video.id, true)}>
+        <button className="video-row-action" title={t('Remove')} onClick={() => void clearWatched([video.id])}>
           <X size={16} />
         </button>
       ) : (

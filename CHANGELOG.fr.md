@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Changement** du ✕ sur une vidéo qui n’est plus disponible : il la retire pour de bon, sans passer par Vues
 - **Correction** de petits soucis : « Déplacer vers un dossier… » vient en premier dans le menu d’une playlist
 
 ## [0.73.0] - 2026-11-12
