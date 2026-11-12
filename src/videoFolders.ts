@@ -17,6 +17,30 @@ export async function moveToFolder(videoId: string, folderId: string | null) {
   changed()
 }
 
+// Rewatch: a built-in folder at the bottom of To watch, for what you watch again (finished
+// playlists...). Its videos stay there once watched, grayed. Never saved: what's in it has this
+// id as its folder (an older app version shows those as in no folder).
+export const REWATCH = 'rewatch' // i18n-ok
+export const rewatchFolder = (): VideoFolder => ({ id: REWATCH, name: '', parentId: null, channel: null, deleted: false, updatedAt: 0 })
+
+// Your own folder in or out of Rewatch (null = the top)
+export async function moveFolder(id: string, parentId: string | null) {
+  await db.videoFolders.update(id, { parentId, updatedAt: Date.now() })
+  changed()
+}
+
+// The folders in Rewatch, at any depth
+export function inRewatch(folders: VideoFolder[]) {
+  const byId = new Map(folders.map((folder) => [folder.id, folder]))
+  const ids = new Set<string>()
+  for (const folder of folders) {
+    let at: VideoFolder | undefined = folder
+    while (at?.parentId) at = byId.get(at.parentId)
+    if (at?.id === REWATCH) ids.add(folder.id)
+  }
+  return ids
+}
+
 export async function renameFolder(id: string, name: string) {
   await db.videoFolders.update(id, { name, updatedAt: Date.now() })
   changed()

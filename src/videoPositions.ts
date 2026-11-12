@@ -25,6 +25,15 @@ export function savePosition(videoId: string, position: VideoPosition) {
   for (const listener of listeners) listener()
 }
 
+// Start over: these start from the beginning again
+export function forgetPositions(videoIds: string[]) {
+  const kept = { ...positions }
+  for (const id of videoIds) delete kept[id]
+  positions = kept
+  write(KEY, positions)
+  for (const listener of listeners) listener()
+}
+
 // It counts as finished: it starts from the beginning again, and may move to Watched (videoPlayer.ts)
 export const nearlyDone = ({ t, length }: VideoPosition) => length - t <= Math.min(NEARLY_DONE, length * NEARLY_DONE_SHARE)
 

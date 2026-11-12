@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **New:** Rewatch section at the bottom of To watch, by right-click or drag
+- **New:** Start over in Rewatch clears what you watched there
+
 ## [0.76.0] - 2026-11-12
 
 **App**

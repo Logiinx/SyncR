@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListPlus, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListPlus, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -10,11 +10,11 @@ import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import Spinner from './Spinner'
-import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
-import { createFolder, deleteFolder, moveToFolder, renameFolder } from './videoFolders'
+import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, renameFolder, REWATCH } from './videoFolders'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
@@ -140,13 +140,14 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 
 // One video: a click opens it in the player window and marks it as opened; it stays in To watch
 // until it's ticked. A video that's gone can't be opened, only removed from the list. In a playlist
-// (playlistId): the next one follows at its end, it stays there grayed once watched, and it can't
-// be moved to a folder.
-function VideoRow({ video, isNew, depth = 0, playlistId, onMenu, onOpenRow }: {
+// (playlistId): the next one follows at its end and it can't be moved to a folder. In a playlist or
+// in Rewatch (kept), it stays there grayed once watched.
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
   playlistId?: string
+  kept?: boolean
   onMenu?: (x: number, y: number) => void
   onOpenRow: (id: string) => void
 }) {
@@ -161,7 +162,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, onMenu, onOpenRow }: {
   }
   return (
     <li
-      className={`video-row${video.gone ? ' gone' : ''}${playlistId && video.watched ? ' seen' : ''}`}
+      className={`video-row${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}`}
       style={depthStyle(depth)}
       data-item={playlistId ? `${playlistId} ${video.id}` : video.id}
       onPointerDown={playlistId ? undefined : (e) => dragVideo(e, video, onOpenRow)}
@@ -190,7 +191,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, onMenu, onOpenRow }: {
         <span className="video-text">
           <span className="video-title" title={video.title}>{video.title}</span>
           <span className="video-meta">
-            {playlistId && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
+            {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
             <VideoLogo platform={video.platform} />
             <span className="video-channel" title={video.channel}>{video.channel}</span>
             <span>· {videoDay(video)}</span>
@@ -210,7 +211,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, onMenu, onOpenRow }: {
           <button className="video-row-action" title={t('Back to To watch')} onClick={() => void setWatched(video.id, false)}>
             <Undo2 size={16} />
           </button>
-          {!playlistId && (
+          {!kept && (
             <button className="video-row-action" title={t('Remove from Watched')} onClick={() => void clearWatched([video.id])}>
               <X size={16} />
             </button>
@@ -306,15 +307,20 @@ function VideoView() {
   }, [])
   const allFolders = feed?.folders ?? []
   const folders = shownChannel === 'all' && list === 'towatch' ? allFolders : []
-  const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel)
-  const videosIn = (folderId: string) => (videos ?? []).filter((video) => video.folderId === folderId)
+  // Rewatch is at the bottom, not among the folders by name
+  const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel && folder.id !== REWATCH)
+  const rewatchIds = inRewatch(allFolders)
+  // Rewatch's videos (feed.rewatch) only show in To watch with all follows, like folders
+  const videosIn = (folderId: string) => (rewatchIds.has(folderId) ? feed?.rewatch ?? [] : videos ?? []).filter((video) => video.folderId === folderId)
+  // In To watch, a watched video is one of Rewatch's: it stays, grayed
   const videoRow = (video: FeedVideo, depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list === 'towatch'} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
+  const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
   function folderChoices(level: VideoFolder[], path: string): { folder: VideoFolder; path: string }[] {
     return level.flatMap((folder) => {
-      const own = path + folder.name
+      const own = path + folderName(folder)
       return [{ folder, path: own }, ...folderChoices(allFolders.filter((other) => other.parentId === folder.id), `${own} / `)]
     })
   }
@@ -330,15 +336,21 @@ function VideoView() {
     const top = topFolder(allFolders.find((other) => other.id === video.folderId))
     return !!top && !top.channel
   }
+  // Your own folders by name, then Rewatch with its own
+  const ownFolderChoices = () => folderChoices([
+    ...allFolders.filter((folder) => !folder.parentId && !folder.channel && folder.id !== REWATCH),
+    ...allFolders.filter((folder) => folder.id === REWATCH),
+  ], '')
+  const folderIcon = (folder: VideoFolder) => (folder.id === REWATCH ? Repeat : Folder)
   // Your own folders, then those of this video's channel: it can't go in another channel's. With
   // both, each list gets a small title instead of the channel's name on every line.
   function videoFolderItems(video: FeedVideo): MenuItem[] {
-    const own = folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), '')
+    const own = ownFolderChoices()
     const theirs = allFolders.filter((folder) => !folder.parentId && folder.channel === channelKey(video))
     const titled = own.length > 0 && theirs.length > 0
     const items = (choices: { folder: VideoFolder; path: string }[], section?: string) => choices.map(({ folder, path }, index): MenuItem => ({
       label: path,
-      icon: Folder,
+      icon: folderIcon(folder),
       section: index === 0 ? section : undefined,
       checked: folder.id === video.folderId,
       onClick: () => void moveToFolder(video.id, folder.id),
@@ -375,8 +387,8 @@ function VideoView() {
         key={folder.id}
         id={folder.id}
         drop={{ folder: folder.id, channel: topFolder(folder)?.channel ?? undefined, open: folder.id }}
-        icon={<span className="video-follow-icon video-folder-icon"><Folder size={15} /></span>}
-        title={folder.name}
+        icon={<span className="video-follow-icon video-folder-icon">{folder.id === REWATCH ? <Repeat size={15} /> : <Folder size={15} />}</span>}
+        title={folderName(folder)}
         count={inside.length}
         countText={countText}
         newest={[...inside].sort((a, b) => b.published - a.published)[0]}
@@ -470,7 +482,20 @@ function VideoView() {
   // channel's sub-folders: these only exist in the channel's row.
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
-  const rows = [
+  // What's in Rewatch, folded at the bottom of To watch; no row when it's empty (menus reach it)
+  const rewatch = folders.find((folder) => folder.id === REWATCH)
+  const rewatchRows = rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length) ? folderRows(rewatch, 0) : []
+  // A folder or playlist's videos to start over: those watched or opened
+  const startOverIds = (episodes: FeedVideo[]) => episodes.filter((video) => video.watched || video.opened).map((video) => video.id)
+  const folderStartOver = (folder: VideoFolder) => startOverIds([...allIn(folder), ...allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes)])
+  const startOverItem = (ids: string[]): MenuItem => ({
+    label: t('Start over'),
+    icon: RotateCcw,
+    disabled: !ids.length,
+    hint: ids.length ? undefined : t('Nothing watched yet'),
+    onClick: () => void startOver(ids),
+  })
+  const mainRows = [
     ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     // A flat list, so a video stays the same item whether it's in a group or not
@@ -489,6 +514,7 @@ function VideoView() {
       return channelRows(follow.id, key, follow, [], subs)
     }),
   ]
+  const rows = [...mainRows, ...rewatchRows]
   const empty = !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
 
   return (
@@ -542,7 +568,7 @@ function VideoView() {
         {errors.map((error) => (
           <p key={error} className="games-empty error">{error}</p>
         ))}
-        {feed && !rows.length && checking && list === 'towatch' && follows?.length ? (
+        {feed && !mainRows.length && checking && list === 'towatch' && follows?.length ? (
           <ul className="video-list">
             {[0, 1, 2].map((row) => (
               <li key={row} className="video-row">
@@ -555,7 +581,7 @@ function VideoView() {
             ))}
           </ul>
         ) : (
-          feed && !rows.length && <p className="games-empty">{empty}</p>
+          feed && !mainRows.length && <p className="games-empty">{empty}</p>
         )}
         <ul className="video-list" ref={listRef}>{rows}</ul>
       </div>
@@ -620,6 +646,9 @@ function VideoView() {
             { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
             { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            ...(playlistMenu.playlist.folderId && rewatchIds.has(playlistMenu.playlist.folderId)
+              ? [{ ...startOverItem(startOverIds(playlists.find(({ playlist }) => playlist.id === playlistMenu.playlist.id)?.videos ?? [])), divider: true }]
+              : []),
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
           ]}
         />
@@ -632,9 +661,9 @@ function VideoView() {
           header={{ title: t('Move to folder') }}
           items={[
             // Your own folders only: a playlist isn't a channel's
-            ...folderChoices(allFolders.filter((folder) => !folder.parentId && !folder.channel), '').map(({ folder, path }): MenuItem => ({
+            ...ownFolderChoices().map(({ folder, path }): MenuItem => ({
               label: path,
-              icon: Folder,
+              icon: folderIcon(folder),
               checked: folder.id === placeOf(movingPlaylist.playlist),
               onClick: () => void changePlaylist(movingPlaylist.playlist.id, { folderId: folder.id }),
             })),
@@ -662,11 +691,25 @@ function VideoView() {
           x={folderMenu.x}
           y={folderMenu.y}
           onClose={() => setFolderMenu(null)}
-          items={[
-            { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id }) },
-            { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
-            { label: t('Delete'), icon: Trash2, danger: true, onClick: () => setDeleting(folderMenu.folder) },
-          ]}
+          items={
+            folderMenu.folder.id === REWATCH
+              ? [
+                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: REWATCH }) },
+                  { ...startOverItem(folderStartOver(folderMenu.folder)), divider: true },
+                ]
+              : [
+                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id }) },
+                  { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
+                  // Only a folder at the top or right in Rewatch: a sub-folder stays with its parent
+                  ...(!folderMenu.folder.parentId && !folderMenu.folder.channel
+                    ? [{ label: t('Move to Rewatch'), icon: Repeat, divider: true, onClick: () => void moveFolder(folderMenu.folder.id, REWATCH) }]
+                    : folderMenu.folder.parentId === REWATCH
+                      ? [{ label: t('Out of Rewatch'), icon: FolderOutput, divider: true, onClick: () => void moveFolder(folderMenu.folder.id, null) }]
+                      : []),
+                  ...(rewatchIds.has(folderMenu.folder.id) ? [startOverItem(folderStartOver(folderMenu.folder))] : []),
+                  { label: t('Delete'), icon: Trash2, danger: true, onClick: () => setDeleting(folderMenu.folder) },
+                ]
+          }
         />
       )}
       {channelMenu && (
