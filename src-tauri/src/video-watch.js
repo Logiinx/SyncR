@@ -211,7 +211,7 @@
     // Our font (the same numbers as index.css): a shadow root can't declare one
     // Subtitles move up out of the way while our controls show (lift, below), as YouTube does for its own.
     // Each box moves, not their layer: a moved layer gets painted under the video. Not while being
-    // dragged: they follow the mouse, down to the very bottom.
+    // dragged: they follow the mouse, down to YouTube's own place (LOWEST).
     pageStyle.textContent = `${HIDE_YOUTUBE.join(', ')} { display: none !important; }
       html.syncr-stopped .ytp-error { display: none !important; }
       ${data.animations === false ? '' : 'html:not(.syncr-moving-subtitles) .caption-window { transition: translate 0.2s ease; }'}
@@ -440,16 +440,21 @@
     root.getElementById('chat-button').hidden = true
     // YouTube keeps its subtitles 2% above the bottom; our bar is 72 px high (controls.js) at the app's scale
     const BAR_HEIGHT = 72
+    const LOWEST = 0.02
     const lift = () => {
       document.documentElement.classList.toggle('syncr-controls-shown', !box.classList.contains('quiet'))
-      const bottom = look.x === undefined ? 0.02 : look.y
+      const bottom = look.x === undefined ? LOWEST : Math.max(look.y, LOWEST)
       // In the box's own pixels: its size is a zoom
       document.documentElement.style.setProperty('--syncr-lift', `${Math.max(0, (BAR_HEIGHT + 4) * (data.zoom || 1) - bottom * innerHeight) / (look.size || 1)}px`)
     }
-    // Zoom keeps their middle and bottom where they were (a size, not an animation)
+    // Always placed by their middle: YouTube places auto-generated ones (rollup) by their left edge,
+    // so a bigger size grew them to the right only, and a moved place put their left edge in the middle.
+    // Never closer to the bottom than YouTube's own place (a small gap).
     const drawLook = () => {
-      const place = look.x === undefined ? '' : `left: ${look.x * 100}% !important; bottom: ${look.y * 100}% !important;`
-      lookStyle.textContent = `.caption-window { zoom: ${look.size || 1}; } .caption-window.ytp-caption-window-bottom { ${place} }`
+      const middle = look.x === undefined ? 0.5 : look.x
+      const bottom = look.x === undefined ? '' : `bottom: ${Math.max(look.y, LOWEST) * 100}% !important;`
+      lookStyle.textContent = `.caption-window { zoom: ${look.size || 1}; }
+        .caption-window.ytp-caption-window-bottom { left: ${middle * 100}% !important; margin-left: 0 !important; transform: translateX(-50%) !important; ${bottom} }`
       lift()
     }
     new MutationObserver(lift).observe(box, { attributes: true, attributeFilter: ['class'] })
@@ -491,7 +496,7 @@
       moving.moved = true
       const within = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high))
       look.x = within(moving.x + dx / moving.frame.width, moving.half, 1 - moving.half)
-      look.y = within(moving.y - dy / moving.frame.height, 0, 1 - moving.height)
+      look.y = within(moving.y - dy / moving.frame.height, LOWEST, 1 - moving.height)
       drawLook()
     })
     const endMove = () => {

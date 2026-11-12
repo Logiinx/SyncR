@@ -12,6 +12,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** « Dernier visionnage il y a 2 mois » sur les vidéos et playlists À revoir
 - **Amélioré :** l’étiquette Nouvelle reste une semaine, jusqu’à ce que vous ouvriez la vidéo
 - **Changé :** l’étiquette « Ouverte » remplacée par le temps restant, comme « 12 min restantes »
+- **Corrigé :** sous-titres YouTube décentrés, ou loin de la souris en les déplaçant
+- **Petites corrections :** espace sous les sous-titres YouTube en bas
 
 ## [0.76.0] - 2026-11-12
 

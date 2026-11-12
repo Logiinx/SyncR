@@ -12,6 +12,8 @@ All notable changes to SyncR. Newest version first.
 - **New:** "Last watched 2 months ago" on videos and playlists in Rewatch
 - **Better:** the New tag stays a week, until you open the video
 - **Changed:** "Opened" tag replaced by the time left, like "12 min left"
+- **Fixed:** YouTube subtitles off-center, or away from the mouse when dragged
+- **Small fixes:** gap under YouTube subtitles at the bottom
 
 ## [0.76.0] - 2026-11-12
 
