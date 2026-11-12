@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListPlus, ListTree, ListVideo, Pencil, Play, Plus, RefreshCw, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -568,8 +568,8 @@ function VideoView() {
             barMenu.kind === 'add'
               ? [
                   { label: t('Add a video'), icon: Plus, onClick: () => setAddingVideo(true) },
-                  { label: t('Add a playlist'), icon: ListVideo, onClick: () => setAddingPlaylist(true) },
-                  { label: t('Add a follow'), icon: Plus, onClick: () => setAdding('') },
+                  { label: t('Add a playlist'), icon: ListPlus, onClick: () => setAddingPlaylist(true) },
+                  { label: t('Add a follow'), icon: UserPlus, onClick: () => setAdding('') },
                   { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null }) },
                 ]
               : [
@@ -581,7 +581,7 @@ function VideoView() {
                     hint: !anyFollowsOrVideos ? t('No follows yet') : list !== 'towatch' ? t('Only in To watch') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),
                     onClick: () => setGrouped(!grouped),
                   },
-                  { label: t('Follows'), icon: ListVideo, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },
+                  { label: t('Follows'), icon: Users, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },
                   // What the list shows now: all follows, or the chosen one
                   {
                     label: t('Mark all as watched'),
