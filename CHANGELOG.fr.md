@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-11-12
+
 **Vidéo**
 - **Ajout** d’icônes dans le menu ⚙️ des lecteurs : Qualité, Vitesse, Sous-titres et Chat
 - **Amélioration** du menu des extensions de la fenêtre vidéo : mêmes couleurs et cadre que le menu ⚙️, plus visible sur une vidéo

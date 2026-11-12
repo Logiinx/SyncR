@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-11-12
+
 **Video**
 - **Added** icons to the players' ⚙️ menu: Quality, Speed, Subtitles and Chat
 - **Improved** the video window's extensions menu: same colors and frame as the ⚙️ menu, easier to see over a video
