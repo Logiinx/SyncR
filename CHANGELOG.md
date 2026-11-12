@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-11-12
+
 **App**
 - **Changed:** Settings regrouped in 7 cards, in 3 columns on a wide window
 

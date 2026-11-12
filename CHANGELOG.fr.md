@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-11-12
+
 **Application**
 - **Changé :** Paramètres regroupés en 7 cartes, sur 3 colonnes si la fenêtre est large
 
