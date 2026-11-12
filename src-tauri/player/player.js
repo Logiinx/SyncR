@@ -197,8 +197,10 @@ const TOKEN_QUERY = 'query($id: ID!) { video: videoPlaybackAccessToken(id: $id, 
 // file (sourceHeight); older videos have none, so it's taken as 1080p then and corrected once its
 // picture shows (measureSource).
 const FOLDERS = { '1080p60': 7500000, '1080p30': 5000000, '720p60': 3100000, '720p30': 2000000, '480p30': 1200000, '360p30': 566000, '160p30': 182000 } // bits per second, as Twitch lists them
-const REBUILT = `${location.origin}/rebuilt.m3u8` // never fetched: the list is written here (listLoader)
-let rebuilt = null // the list, once a video has been found this way
+const bandwidthFor = (height) => Math.round(FOLDERS['1080p60'] * (height / 1080) ** 2)
+const OWN_LIST = `${location.origin}/list.m3u8` // never fetched: hls.js gets `list` there (ListLoader)
+let list = '' // the video's qualities: Twitch's list (plus the original, withOriginal), or rebuilt
+let refused = false // Twitch refused the video: its list was rebuilt from its folders
 
 async function rebuild() {
   const previews = (await askTwitch('query($id: ID!) { video(id: $id) { seekPreviewsURL } }'))?.seekPreviewsURL
@@ -225,7 +227,7 @@ async function rebuild() {
   const top = Math.max(0, ...named.map((one) => Number(one.quality.split('p')[0])))
   const height = source ? await sourceHeight(source).catch(() => 0) : 0
   if (source && (height > top || (!height && top < 1080))) {
-    add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, FOLDERS['1080p60'])
+    add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, bandwidthFor(height || 1080))
   }
   for (const { quality, url } of named) add(url, Number(quality.split('p')[0]), Number(quality.split('p')[1]), FOLDERS[quality])
   return lines.length > 1 ? lines.join('\n') : null
@@ -245,21 +247,46 @@ async function sourceHeight(source) {
   return 0
 }
 
-// Hands hls.js the list written above: this page may only read its own address
+// Twitch's list stops at 1080p for viewers who aren't signed in, while the original folder can be
+// above it (1440p): it's added on top then. Only newer videos say its size (sourceHeight).
+async function withOriginal(text) {
+  try {
+    const lines = text.split('\n')
+    const addresses = lines.filter((line) => line.startsWith('/v/'))
+    if (!addresses.length || addresses.some((line) => line.includes('/chunked/'))) return text
+    const parts = addresses[0].split('/') // /v/<host>/<video's folder>/<quality>/<list>
+    const name = parts.at(-1).startsWith('highlight-') ? `highlight-${encodeURIComponent(videoId)}.m3u8` : 'index-dvr.m3u8'
+    const url = `${location.origin}${parts.slice(0, -2).join('/')}/chunked/${name}`
+    const answer = await fetch(url)
+    if (!answer.ok) return text
+    const height = await sourceHeight({ url, text: await answer.text() })
+    const top = Math.max(0, ...lines.map((line) => Number(line.match(/RESOLUTION=\d+x(\d+)/)?.[1] ?? 0)))
+    if (height <= top) return text
+    const smooth = lines.some((line) => Number(line.match(/FRAME-RATE=([\d.]+)/)?.[1]) >= 50)
+    const at = lines.findIndex((line) => line.startsWith('#EXT-X-MEDIA') || line.startsWith('#EXT-X-STREAM-INF'))
+    lines.splice(at, 0, `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthFor(height)},RESOLUTION=${Math.round(height * 16 / 9)}x${height},FRAME-RATE=${smooth ? 60 : 30}`, url)
+    return lines.join('\n')
+  } catch (error) {
+    console.error(error)
+    return text // Twitch's list as it is
+  }
+}
+
+// Hands hls.js the list above: this page may only read its own address
 class ListLoader extends Hls.DefaultConfig.loader {
   load(context, config, callbacks) {
-    if (context.url !== REBUILT) return super.load(context, config, callbacks)
+    if (context.url !== OWN_LIST) return super.load(context, config, callbacks)
     const now = performance.now()
     Object.assign(this.stats.loading, { start: now, first: now, end: now })
-    this.stats.loaded = this.stats.total = rebuilt.length
-    queueMicrotask(() => callbacks.onSuccess({ url: context.url, data: rebuilt }, this.stats, context, null))
+    this.stats.loaded = this.stats.total = list.length
+    queueMicrotask(() => callbacks.onSuccess({ url: context.url, data: list }, this.stats, context, null))
   }
 }
 
 // The original's real size, once its picture shows. The first picture can come before hls.js
 // says which quality it is.
 function measureSource() {
-  if (!rebuilt || !hls || !video.videoHeight) return
+  if (!hls || !video.videoHeight) return
   if (hls.currentLevel < 0) return hls.once(Hls.Events.LEVEL_SWITCHED, measureSource)
   const level = hls.levels[hls.currentLevel]
   if (!level?.url[0]?.includes('/chunked/') || level.height === video.videoHeight) return
@@ -354,6 +381,7 @@ class PieceLoader extends Hls.DefaultConfig.loader {
 }
 
 async function playRebuilt() {
+  let rebuilt
   try {
     rebuilt = await rebuild()
   } catch (error) {
@@ -361,6 +389,8 @@ async function playRebuilt() {
     return failed()
   }
   if (!rebuilt) return giveUp()
+  list = rebuilt
+  refused = true
   load()
 }
 
@@ -399,8 +429,7 @@ const loadPolicy = (timeouts, errors) => ({
 })
 
 async function load() {
-  let source = REBUILT
-  if (!rebuilt) {
+  if (!refused) {
     let token
     try {
       token = await askTwitch(TOKEN_QUERY)
@@ -409,7 +438,16 @@ async function load() {
       return failed()
     }
     if (!token) return playRebuilt() // deleted or private: retrying won't help
-    source = `/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`
+    try {
+      const answer = await fetch(`/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`)
+      // Twitch says no (subscribers only): only the first time, later it's an old token
+      if (!everPlayed && answer.status >= 400 && answer.status < 500) return playRebuilt()
+      if (!answer.ok) throw new Error(`Twitch answered ${answer.status}`)
+      list = await withOriginal(await answer.text())
+    } catch (error) {
+      console.error(error)
+      return failed()
+    }
   }
   hls?.destroy()
   hls = new Hls({
@@ -437,9 +475,6 @@ async function load() {
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)
-    // Twitch says no (subscribers only, deleted): only the first time, later it's an old token
-    const code = error.response?.code
-    if (!everPlayed && code >= 400 && code < 500 && error.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) return rebuilt ? giveUp() : playRebuilt()
     if (error.type === Hls.ErrorTypes.MEDIA_ERROR && Date.now() - recoveredAt > 10000) {
       recoveredAt = Date.now()
       hls.recoverMediaError()
@@ -447,7 +482,7 @@ async function load() {
     }
     failed()
   })
-  hls.loadSource(source)
+  hls.loadSource(OWN_LIST)
   hls.attachMedia(video)
 }
 
@@ -455,7 +490,7 @@ async function load() {
 const tellBar = (code) => fetch(`/note?code=${code}&video=${encodeURIComponent(videoId)}`).catch(() => {})
 
 video.addEventListener('playing', () => {
-  if (rebuilt && !everPlayed) tellBar('subscriber')
+  if (refused && !everPlayed) tellBar('subscriber')
   everPlayed = true
   // A problem again soon after isn't a new problem
   clearTimeout(calmTimer)

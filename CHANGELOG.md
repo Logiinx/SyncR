@@ -6,7 +6,8 @@ All notable changes to SyncR. Newest version first.
 
 **Video**
 - **Added** a games button at the left of the Twitch player's bar: pick a game in the list to jump to where it starts
-- **Added** subscriber-only Twitch videos playing in the Twitch player, up to their original quality (even 1440p)
+- **Added** 1440p in the Twitch player for streams recorded in 1440p
+- **Added** subscriber-only Twitch videos playing in the Twitch player
 - **Added** the original sound in muted parts of recent Twitch videos, while Twitch still keeps it
 - **Fixed** an issue where muted parts didn't show in orange on newer Twitch videos
 

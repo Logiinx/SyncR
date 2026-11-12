@@ -6,7 +6,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Ajout** d’un bouton des jeux à gauche de la barre du lecteur Twitch : choisissez un jeu dans la liste pour aller à son début
-- **Ajout** de la lecture des vidéos Twitch réservées aux abonnés dans le lecteur Twitch, jusqu’à leur qualité d’origine (même 1440p)
+- **Ajout** du 1440p dans le lecteur Twitch pour les streams enregistrés en 1440p
+- **Ajout** de la lecture des vidéos Twitch réservées aux abonnés dans le lecteur Twitch
 - **Ajout** du son d’origine dans les parties sans son des vidéos Twitch récentes, tant que Twitch le garde
 - **Correction** des parties sans son qui n’apparaissaient pas en orange sur les vidéos Twitch récentes
 
