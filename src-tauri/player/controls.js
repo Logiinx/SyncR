@@ -702,7 +702,9 @@ const CONTROLS_CSS = `
   :where(#player) { position: relative; overflow: hidden; outline: none; color: #fff; font: 13px 'SyncR UI', sans-serif; user-select: none; cursor: default; }
   :where(#player) [hidden] { display: none !important; }
   :where(#player) svg { display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  :where(#player) button { padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+  :where(#player) button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+  /* Grayed ones can't be used: the plain arrow (hidden controls: none, as they let the mouse through) */
+  :where(#player) button:disabled, :where(#player) button.off { cursor: default; }
   #player.quiet { cursor: none; }
 
   #ui { position: absolute; inset: 0; opacity: 1; pointer-events: none; transition: opacity 0.2s ease; }

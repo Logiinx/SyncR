@@ -19,7 +19,8 @@
   body { color: #fff; font: 13px 'SyncR UI', sans-serif; user-select: none; cursor: default; }
   [hidden] { display: none !important; }
   svg { display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  button { padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+  button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+  button:disabled, button.off { cursor: default; }
 
   #stage { position: fixed; inset: 0; display: flex; }
   #player { flex: 1; min-width: 0; background: #000; }

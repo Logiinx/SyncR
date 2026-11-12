@@ -8,6 +8,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioration** des icônes Jeux, Rappels, Mail et Vidéo : chacune a sa couleur, réglable dans les Paramètres
 - **Amélioration** de la ligne entre les onglets épinglés et les autres : plus haute et plus claire, plus visible
 
+**Vidéo**
+- **Correction** de petits soucis : les boutons de la fenêtre vidéo montrent la main, comme le reste de l’app
+
 ## [0.72.2] - 2026-11-12
 
 **Vidéo**

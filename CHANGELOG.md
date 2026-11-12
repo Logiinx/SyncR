@@ -8,6 +8,9 @@ All notable changes to SyncR. Newest version first.
 - **Improved** the Games, Reminders, Mail and Video icons: each has its own color, adjustable in Settings
 - **Improved** the line between pinned tabs and the other tabs: taller and lighter, easier to see
 
+**Video**
+- **Fixed** small issues: the video window's buttons now show the hand cursor, like the rest of the app
+
 ## [0.72.2] - 2026-11-12
 
 **Video**
