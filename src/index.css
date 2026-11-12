@@ -5073,6 +5073,31 @@ button {
   flex-shrink: 0;
 }
 
+/* The Games, Reminders, Mail and Video icons' own colors (tabIcons.tsx), in the tab bar and the
+   sidebar: found at a glance. Note palette colors */
+:root {
+  --tab-games: var(--text-green);
+  --tab-reminders: var(--text-yellow);
+  --tab-mail: var(--text-blue);
+  --tab-video: var(--text-red);
+}
+
+.icon-games {
+  color: var(--tab-games);
+}
+
+.icon-reminders {
+  color: var(--tab-reminders);
+}
+
+.icon-mail {
+  color: var(--tab-mail);
+}
+
+.icon-video {
+  color: var(--tab-video);
+}
+
 /* The entry above the notes list (Sidebar.tsx) */
 .sidebar-games {
   display: flex;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, useLanguage } from './i18n'
-import { Bell, ChevronLeft, Gamepad2, Mail, Menu, Pencil, Pin, PinOff, Plus, Trash2, Video, X } from 'lucide-react'
+import { ChevronLeft, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
+import { SpecialIcon } from './tabIcons'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -119,8 +120,8 @@ function App() {
   )
   // The tabs that exist: notes found in the database, and the Games, Reminders, Mail and Video tabs
   const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
-    if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <Gamepad2 size={14} className="tab-icon" /> }]
-    if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <Bell size={14} className="tab-icon" /> }]
+    if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <SpecialIcon kind="games" size={14} className="tab-icon" /> }]
+    if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <SpecialIcon kind="reminders" size={14} className="tab-icon" /> }]
     if (id === MAIL_TAB) return [{ id, title: t('Mail'), icon: <MailTabIcon /> }]
     if (id === VIDEO_TAB) return videoOn ? [{ id, title: t('Video'), icon: <VideoTabIcon /> }] : []
     const note = tabsResult?.notes[i]
@@ -380,11 +381,11 @@ function CountIcon({ icon, count, title }: { icon: ReactNode; count: number; tit
 }
 
 function MailTabIcon() {
-  return <CountIcon icon={<Mail size={14} className="tab-icon" />} count={useMissed().length} title={t('Missed emails')} />
+  return <CountIcon icon={<SpecialIcon kind="mail" size={14} className="tab-icon" />} count={useMissed().length} title={t('Missed emails')} />
 }
 
 function VideoTabIcon() {
-  return <CountIcon icon={<Video size={14} className="tab-icon" />} count={useVideoFeed()?.newCount ?? 0} title={t('New videos')} />
+  return <CountIcon icon={<SpecialIcon kind="video" size={14} className="tab-icon" />} count={useVideoFeed()?.newCount ?? 0} title={t('New videos')} />
 }
 
 // The page when no tab is open; crossfades like the others (animations.ts)

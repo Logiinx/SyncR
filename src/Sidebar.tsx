@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { t } from './i18n'
 import { useEffect, useRef, useState } from 'react'
 import { useListItems, useSlideIn } from './animations'
-import { Bell, Gamepad2, Mail, RefreshCw, Search, Settings, TriangleAlert, Video, X } from 'lucide-react'
+import { RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
+import { SpecialIcon } from './tabIcons'
 import { isTauri } from '@tauri-apps/api/core'
 import { useGmailAccounts } from './gmail'
 import { useMissed } from './mailAlerts'
@@ -79,25 +80,25 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
       <div className={'backdrop' + slideIn} onClick={onClose} />
       <aside className={'sidebar' + slideIn}>
         <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
-          <Gamepad2 size={15} /> {t('Games')}
+          <SpecialIcon kind="games" size={15} /> {t('Games')}
         </button>
         <button
           className={activeId === REMINDERS_TAB ? 'sidebar-games active' : 'sidebar-games'}
           onClick={onReminders}
         >
-          <Bell size={15} /> {t('Reminders')}
+          <SpecialIcon kind="reminders" size={15} /> {t('Reminders')}
         </button>
         {/* PC only (the phone has the Gmail app), once a Gmail account is added. The count:
             emails whose pop-up left them unread ("missed") */}
         {(isTauri() || import.meta.env.DEV) && accounts.length > 0 && (
           <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
-            <Mail size={15} /> {t('Mail')}
+            <SpecialIcon kind="mail" size={15} /> {t('Mail')}
             {missed.length > 0 && <span className="sidebar-count" title={t('Missed emails')}>{missed.length}</span>}
           </button>
         )}
         {onVideo && (
           <button className={activeId === VIDEO_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onVideo}>
-            <Video size={15} /> {t('Video')}
+            <SpecialIcon kind="video" size={15} /> {t('Video')}
             {newVideos > 0 && <span className="sidebar-count" title={t('New videos')}>{newVideos}</span>}
           </button>
         )}
