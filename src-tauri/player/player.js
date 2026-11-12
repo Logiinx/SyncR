@@ -269,6 +269,90 @@ function measureSource() {
 }
 video.addEventListener('resize', measureSource)
 
+// ---- Muted parts with their sound ---------------------------------------------------------------
+// For a while after a stream, Twitch still has a muted piece's uncut file: "N.ts" in older videos
+// (often gone within a day), "N-unmuted.mp4" in newer ones. It can be gone in one quality and not in
+// another, so each quality is checked once, on its first muted piece. Its muted pieces then load
+// uncut (muted if one is refused), and the bar shows no muted parts for it.
+const MUTED_PIECE = /^(.*\/)(\d+)-muted\.(ts|mp4)$/ // video_window.rs names them all "-muted"
+const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind) => `${folder}${number}${kind === 'ts' ? '.ts' : '-unmuted.mp4'}`)
+const folderOf = (url) => url.slice(0, url.lastIndexOf('/') + 1)
+const uncutChecks = {} // quality folder → its check
+const uncutFolders = new Set() // the folders that have it
+let soundTold = false
+
+// On the first muted piece hls.js asks for, or when its list loads (whichever comes first)
+function startCheck(url) {
+  const folder = folderOf(url)
+  uncutChecks[folder] ??= fetch(uncutAddress(url)).then((response) => {
+    if (response.ok) uncutFolders.add(folder)
+  }, () => {})
+  return uncutChecks[folder]
+}
+
+async function checkUncut(pieces) {
+  const piece = pieces.find((one) => MUTED_PIECE.test(one.url))
+  if (piece) await startCheck(piece.url)
+  drawMuted()
+}
+
+// The muted parts of the quality playing (or about to)
+function drawMuted() {
+  const level = hls?.levels[hls.currentLevel] ?? hls?.levels[hls.loadLevel]
+  const pieces = level?.details?.fragments ?? []
+  const uncut = pieces.some((one) => MUTED_PIECE.test(one.url) && uncutFolders.has(folderOf(one.url)))
+  noteMutedParts(uncut ? [] : pieces)
+  if (uncut && !soundTold) {
+    soundTold = true
+    tellBar('sound')
+  }
+}
+
+class PieceLoader extends Hls.DefaultConfig.loader {
+  constructor(config) {
+    super(config)
+    this.hlsConfig = config
+  }
+  // A muted piece waits for its quality's check
+  load(context, config, callbacks) {
+    if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
+    this.stopped = false
+    startCheck(context.url).then(() => {
+      if (this.stopped) return
+      if (uncutFolders.has(folderOf(context.url))) this.loadUncut(context, config, callbacks)
+      else super.load(context, config, callbacks)
+    })
+  }
+  loadUncut(context, config, callbacks) {
+    const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
+    const muted = () => {
+      inner.destroy()
+      this.inner = null
+      super.load(context, config, callbacks)
+    }
+    inner.load({ ...context, url: uncutAddress(context.url) }, config, {
+      ...callbacks,
+      onSuccess: (response, stats, _, details) => {
+        Object.assign(this.stats, stats)
+        callbacks.onSuccess(response, this.stats, context, details)
+      },
+      onError: muted,
+      onTimeout: muted,
+    })
+  }
+  abort() {
+    this.stopped = true
+    this.inner?.abort()
+    super.abort()
+  }
+  destroy() {
+    this.stopped = true
+    this.inner?.destroy()
+    this.inner = null
+    super.destroy()
+  }
+}
+
 async function playRebuilt() {
   try {
     rebuilt = await rebuild()
@@ -336,6 +420,7 @@ async function load() {
     fragLoadPolicy: loadPolicy(4, 6),
     playlistLoadPolicy: loadPolicy(2, 2),
     pLoader: ListLoader,
+    fLoader: PieceLoader,
   })
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
     const wanted = wantedLevel()
@@ -344,8 +429,11 @@ async function load() {
     drawSettings()
     if (!controls.userPaused()) video.play().catch(() => loading(false)) // refused: the big play button shows
   })
-  hls.on(Hls.Events.LEVEL_SWITCHED, drawSettings)
-  hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => noteMutedParts(loaded.details.fragments))
+  hls.on(Hls.Events.LEVEL_SWITCHED, () => {
+    drawSettings()
+    drawMuted()
+  })
+  hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => checkUncut(loaded.details.fragments))
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
     console.error(error.details, error.response?.code)
