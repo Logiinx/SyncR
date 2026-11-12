@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.72.1] - 2026-11-12
+
+**Video**
+- **Improved** privacy in the Twitch player: picture and emote servers are no longer told which page asks
+- **Fixed** an issue where a subscriber-only Twitch video could open on Twitch's page after a brief connection hiccup
+
 ## [0.72.0] - 2026-11-12
 
 **Video**

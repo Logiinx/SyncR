@@ -4,6 +4,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.72.1] - 2026-11-12
+
+**Vidéo**
+- **Amélioration** de la confidentialité du lecteur Twitch : les serveurs d’images et d’emotes ne savent plus quelle page les demande
+- **Correction** d’une vidéo Twitch réservée aux abonnés qui pouvait s’ouvrir sur la page de Twitch après une courte coupure
+
 ## [0.72.0] - 2026-11-12
 
 **Vidéo**
