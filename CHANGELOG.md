@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-11-12
+
 **App**
 - **Better:** the What's new window: clearer versions and areas, with icons and dates
 - **Changed:** colored tab icons are now off by default, turn them on in Settings

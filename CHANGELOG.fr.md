@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-11-12
+
 **Application**
 - **Amélioré :** la fenêtre Nouveautés : versions et rubriques plus claires, avec icônes et dates
 - **Changé :** les icônes d’onglets colorées sont désactivées par défaut, à activer dans les Paramètres
