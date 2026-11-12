@@ -220,35 +220,59 @@ async function rebuild() {
     return null
   }))
   const lines = ['#EXTM3U']
-  const add = (url, height, frameRate, bandwidth) => lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${Math.round(height * 16 / 9)}x${height},FRAME-RATE=${frameRate}`, url)
+  const add = (url, height, frameRate, bandwidth, codec) => lines.push(qualityLine(height, frameRate, bandwidth, codec), url)
   const named = found.filter((one) => one && one.quality !== 'chunked')
   const source = found.find((one) => one?.quality === 'chunked')
-  // Only when it's above the copies, or it would show twice
+  // Only when it's above the copies (or it would show twice), and when this PC can play it
   const top = Math.max(0, ...named.map((one) => Number(one.quality.split('p')[0])))
-  const height = source ? await sourceHeight(source).catch(() => 0) : 0
-  if (source && (height > top || (!height && top < 1080))) {
-    add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, bandwidthFor(height || 1080))
+  const { height, codec } = source ? await sourceInfo(source).catch(() => ({ height: 0, codec: '' })) : { height: 0, codec: '' }
+  if (source && (codec ? playable(codec) && height > top : top < 1080)) {
+    add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, bandwidthFor(height || 1080), codec)
   }
   for (const { quality, url } of named) add(url, Number(quality.split('p')[0]), Number(quality.split('p')[1]), FOLDERS[quality])
   return lines.length > 1 ? lines.join('\n') : null
 }
 
-// Each track's header (tkhd) ends with its width and height in 1/65536ths; the sound's are 0
-async function sourceHeight(source) {
+// The original's size and picture format, from its first file. Older videos (.ts) have none.
+async function sourceInfo(source) {
   const first = source.text.match(/#EXT-X-MAP:URI="([^"]+)"/)?.[1]
-  if (!first) return 0
+  if (!first) return { height: 0, codec: '' }
   const bytes = new Uint8Array(await (await fetch(new URL(first, source.url))).arrayBuffer())
   const view = new DataView(bytes.buffer)
-  for (let at = 4; at + 4 <= bytes.length; at++) {
-    if (bytes[at] !== 0x74 || bytes[at + 1] !== 0x6b || bytes[at + 2] !== 0x68 || bytes[at + 3] !== 0x64) continue // "tkhd"
-    const end = at - 4 + view.getUint32(at - 4)
-    if (end - 8 > at && end <= bytes.length && view.getUint32(end - 4)) return Math.round(view.getUint32(end - 4) / 65536)
+  // Where a box's content starts, after its size and name
+  const find = (name, from = 4) => {
+    for (let at = from; at + 4 <= bytes.length; at++) if (String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]) === name) return at + 4
+    return -1
   }
-  return 0
+  // Each track's header (tkhd) ends with its width and height in 1/65536ths; the sound's are 0
+  let height = 0
+  for (let at = find('tkhd'); at > 0 && !height; at = find('tkhd', at)) {
+    const end = at - 8 + view.getUint32(at - 8)
+    if (end - 8 > at && end <= bytes.length) height = Math.round(view.getUint32(end - 4) / 65536)
+  }
+  // The format as browsers name it (RFC 6381), from its setup: avcC (H.264) or hvcC (HEVC). The
+  // 1440p originals are HEVC, which a PC only plays with the right graphics card and Windows parts.
+  let codec = ''
+  const avc = find('avcC')
+  const hevc = find('hvcC')
+  if (avc > 0) codec = 'avc1.' + [1, 2, 3].map((i) => bytes[avc + i].toString(16).padStart(2, '0')).join('')
+  else if (hevc > 0) {
+    const flags = bytes[hevc + 1]
+    let compatible = view.getUint32(hevc + 2)
+    let reversed = 0
+    for (let i = 0; i < 32; i++, compatible >>>= 1) reversed = ((reversed << 1) | (compatible & 1)) >>> 0
+    const constraints = [...bytes.subarray(hevc + 6, hevc + 12)]
+    while (constraints.length && !constraints[constraints.length - 1]) constraints.pop()
+    codec = [find('hev1') > 0 ? 'hev1' : 'hvc1', ['', 'A', 'B', 'C'][flags >> 6] + (flags & 0x1f), reversed.toString(16).toUpperCase(), (flags & 0x20 ? 'H' : 'L') + bytes[hevc + 12], ...constraints.map((one) => one.toString(16).toUpperCase())].join('.')
+  } else codec = 'unknown' // AV1 or something else: not offered
+  return { height, codec }
 }
+const playable = (codec) => !!window.MediaSource?.isTypeSupported(`video/mp4; codecs="${codec}"`)
+const qualityLine = (height, frameRate, bandwidth, codec) => `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${Math.round(height * 16 / 9)}x${height},FRAME-RATE=${frameRate}${codec ? `,CODECS="${codec},mp4a.40.2"` : ''}`
 
 // Twitch's list stops at 1080p for viewers who aren't signed in, while the original folder can be
-// above it (1440p): it's added on top then. Only newer videos say its size (sourceHeight).
+// above it (1440p): it's added on top then, if this PC can play it. Only newer videos say its size
+// and format (sourceInfo).
 async function withOriginal(text) {
   try {
     const lines = text.split('\n')
@@ -259,12 +283,12 @@ async function withOriginal(text) {
     const url = `${location.origin}${parts.slice(0, -2).join('/')}/chunked/${name}`
     const answer = await fetch(url)
     if (!answer.ok) return text
-    const height = await sourceHeight({ url, text: await answer.text() })
+    const { height, codec } = await sourceInfo({ url, text: await answer.text() })
     const top = Math.max(0, ...lines.map((line) => Number(line.match(/RESOLUTION=\d+x(\d+)/)?.[1] ?? 0)))
-    if (height <= top) return text
+    if (height <= top || !playable(codec)) return text
     const smooth = lines.some((line) => Number(line.match(/FRAME-RATE=([\d.]+)/)?.[1]) >= 50)
     const at = lines.findIndex((line) => line.startsWith('#EXT-X-MEDIA') || line.startsWith('#EXT-X-STREAM-INF'))
-    lines.splice(at, 0, `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthFor(height)},RESOLUTION=${Math.round(height * 16 / 9)}x${height},FRAME-RATE=${smooth ? 60 : 30}`, url)
+    lines.splice(at, 0, qualityLine(height, smooth ? 60 : 30, bandwidthFor(height), codec), url)
     return lines.join('\n')
   } catch (error) {
     console.error(error)
