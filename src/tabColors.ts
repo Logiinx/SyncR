@@ -5,7 +5,7 @@ import { changed, db } from './db'
 import type { SpecialTab } from './tabIcons'
 
 // The Games, Reminders, Mail and Video icons' colors (Settings → App): synced, so every device
-// shows the same. Off: the icons take the grey of the text next to them, as before the colors.
+// shows the same. Off (the default): the icons take the grey of the text next to them.
 const SETTING = 'tabcolors' // lower case: Dropbox lists file names in lower case
 
 export interface TabColors {
@@ -14,7 +14,7 @@ export interface TabColors {
 }
 
 export const TAB_COLOR_DEFAULTS: TabColors = {
-  on: true,
+  on: false,
   colors: { games: 'green', reminders: 'yellow', mail: 'blue', video: 'red' },
 }
 
@@ -26,7 +26,7 @@ function valid(value: unknown): TabColors {
     const color = saved.colors?.[kind]
     if (COLORS.some(({ id }) => id === color)) colors[kind] = color as string
   }
-  return { on: saved.on !== false, colors }
+  return { on: saved.on === true, colors }
 }
 
 const load = async () => valid((await db.settings.get(SETTING))?.value)

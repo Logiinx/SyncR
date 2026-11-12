@@ -5096,12 +5096,12 @@ button {
 }
 
 /* The Games, Reminders, Mail and Video icons' own colors (tabIcons.tsx), in the tab bar and the
-   sidebar: found at a glance. Note palette colors */
+   sidebar: found at a glance. Off by default: the grey around them until tabColors.ts sets them */
 :root {
-  --tab-games: var(--text-green);
-  --tab-reminders: var(--text-yellow);
-  --tab-mail: var(--text-blue);
-  --tab-video: var(--text-red);
+  --tab-games: currentColor;
+  --tab-reminders: currentColor;
+  --tab-mail: currentColor;
+  --tab-video: currentColor;
 }
 
 .icon-games {

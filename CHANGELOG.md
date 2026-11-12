@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Changed** the colored Games, Reminders, Mail and Video icons: off by default, turn them on in Settings
+
 ## [0.74.0] - 2026-11-12
 
 **Video**
