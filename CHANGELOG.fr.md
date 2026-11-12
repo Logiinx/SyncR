@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.73.0] - 2026-11-12
+
 **Application**
 - **Amélioration** des icônes Jeux, Rappels, Mail et Vidéo : chacune a sa couleur, réglable dans les Paramètres
 - **Amélioration** de la ligne entre les onglets épinglés et les autres : plus haute et plus claire, plus visible
