@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-11-12
+
 **Video**
 - **Added** a games button at the left of the Twitch player's bar: pick a game in the list to jump to where it starts
 - **Added** 1440p in the Twitch player for streams recorded in 1440p
