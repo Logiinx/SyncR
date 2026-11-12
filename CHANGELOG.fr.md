@@ -6,7 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Changement** du ✕ sur une vidéo qui n’est plus disponible : il la retire pour de bon, sans passer par Vues
-- **Correction** de petits soucis : ordre du menu d’une playlist, une pièce de puzzle pour les extensions sans icône
+- **Correction** de petits soucis : ordre du menu d’une playlist, une pièce de puzzle pour les extensions sans icône, les longues valeurs du menu ⚙️ en entier au survol
 
 ## [0.73.0] - 2026-11-12
 

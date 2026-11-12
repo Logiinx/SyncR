@@ -484,6 +484,8 @@ function playerControls(env, media) {
     button.append(name, shown)
     button.onpointerenter = () => {
       clearTimeout(hoverTimer)
+      // Cut with dots (a long subtitle track): its full text on hover
+      valueText.title = valueText.scrollWidth > valueText.clientWidth ? valueText.textContent : ''
       if (narrow) return
       if (!sideKey) openSide(key, true)
       else hoverTimer = setTimeout(() => openSide(key, true), SWITCH_WAIT)
