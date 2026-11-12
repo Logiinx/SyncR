@@ -187,7 +187,10 @@ async function askTwitch(query) {
     body: JSON.stringify({ query, variables: { id: videoId } }),
   })
   if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
-  return (await response.json()).data?.video ?? null
+  const answer = await response.json()
+  // An error instead of an answer is a hiccup on Twitch's side, not a missing video: tried again
+  if (!answer.data?.video && answer.errors?.length) throw new Error(`Twitch answered ${JSON.stringify(answer.errors).slice(0, 200)}`)
+  return answer.data?.video ?? null
 }
 const TOKEN_QUERY = 'query($id: ID!) { video: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
 
@@ -211,14 +214,18 @@ async function rebuild() {
   if (!folder) return null
   // A past stream's list is index-dvr, a highlight's is named after it
   const names = ['index-dvr.m3u8', `highlight-${encodeURIComponent(videoId)}.m3u8`]
+  let unreachable = false // a folder that couldn't be asked (network, Twitch's servers), not one that isn't there
   const found = await Promise.all([...Object.keys(FOLDERS), 'chunked'].map(async (quality) => {
     for (const name of names) {
       const url = `${location.origin}/v/${address.host}/${folder}/${quality}/${name}`
       const response = await fetch(url)
       if (response.ok) return { quality, url, text: quality === 'chunked' ? await response.text() : '' }
+      if (response.status >= 500 || response.status === 429) unreachable = true
     }
     return null
   }))
+  // None found because of a hiccup: tried again (playRebuilt) instead of giving up
+  if (unreachable && !found.some(Boolean)) throw new Error('Twitch\'s video folders couldn\'t be reached')
   const lines = ['#EXTM3U']
   const add = (url, height, frameRate, bandwidth, codec) => lines.push(qualityLine(height, frameRate, bandwidth, codec), url)
   const named = found.filter((one) => one && one.quality !== 'chunked')
