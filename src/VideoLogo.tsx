@@ -25,4 +25,9 @@ function VideoLogo({ platform, size = 15 }: { platform: 'twitch' | 'youtube'; si
   )
 }
 
+// A channel's picture (group rows, Follows window); an empty circle until it has one
+export function ChannelPicture({ src }: { src: string | null | undefined }) {
+  return src ? <img className="video-follow-icon" src={src} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="video-follow-icon" />
+}
+
 export default VideoLogo

@@ -4,7 +4,7 @@ import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
 import Spinner from './Spinner'
-import VideoLogo from './VideoLogo'
+import VideoLogo, { ChannelPicture } from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
@@ -118,17 +118,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
       {error && <p className="event-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
-        <button type="submit" className="primary" disabled={busy || (!follow && !link.trim())}>
-          {busy ? (
-            <span className="loading-line">
-              <Spinner size={13} /> {t('Saving…')}
-            </span>
-          ) : follow ? (
-            t('Save')
-          ) : (
-            t('Add')
-          )}
-        </button>
+        <SubmitButton busy={busy} disabled={!follow && !link.trim()} label={follow ? t('Save') : t('Add')} />
       </div>
     </Window>
   )
@@ -275,6 +265,21 @@ function GamePicker(props: { id: string; channelId?: string; games: string[]; on
 }
 
 // What a follow keeps, in words, e.g. "Only: hotline · Under 15 min hidden"
+// The add windows' main button: "Saving…" with a spinner while it works
+function SubmitButton({ busy, disabled, label }: { busy: boolean; disabled: boolean; label: string }) {
+  return (
+    <button type="submit" className="primary" disabled={busy || disabled}>
+      {busy ? (
+        <span className="loading-line">
+          <Spinner size={13} /> {t('Saving…')}
+        </span>
+      ) : (
+        label
+      )}
+    </button>
+  )
+}
+
 function followSummary(follow: VideoFollow) {
   const rules = [
     follow.onlyWords.length ? t('Only: {words}', { words: follow.onlyWords.join(', ') }) : '',
@@ -317,15 +322,7 @@ export function AddVideoDialog({ onAdded, onClose }: { onAdded: (followId: strin
       {error && <p className="event-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
-        <button type="submit" className="primary" disabled={busy || !link.trim()}>
-          {busy ? (
-            <span className="loading-line">
-              <Spinner size={13} /> {t('Saving…')}
-            </span>
-          ) : (
-            t('Add')
-          )}
-        </button>
+        <SubmitButton busy={busy} disabled={!link.trim()} label={t('Add')} />
       </div>
     </Window>
   )
@@ -365,15 +362,7 @@ export function AddPlaylistDialog({ onAdded, onClose }: { onAdded: (playlistId: 
       {error && <p className="event-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
-        <button type="submit" className="primary" disabled={busy || !link.trim()}>
-          {busy ? (
-            <span className="loading-line">
-              <Spinner size={13} /> {t('Saving…')}
-            </span>
-          ) : (
-            t('Add')
-          )}
-        </button>
+        <SubmitButton busy={busy} disabled={!link.trim()} label={t('Add')} />
       </div>
     </Window>
   )
@@ -402,11 +391,7 @@ export function FollowsWindow({ onClose }: { onClose: () => void }) {
             const summary = followSummary(follow)
             return (
               <li key={follow.id} className="video-follow-row">
-                {follow.icon ? (
-                  <img className="video-follow-icon" src={follow.icon} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="video-follow-icon" />
-                )}
+                <ChannelPicture src={follow.icon} />
                 <span className="video-follow-text">
                   <span className="video-follow-name" title={follow.name}>{follow.name}</span>
                   <span className="video-follow-line">
