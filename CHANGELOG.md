@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **Added** 1440p in the Twitch player for streams recorded in 1440p
 - **Added** subscriber-only Twitch videos playing in the Twitch player
 - **Added** the original sound in muted parts of recent Twitch videos, while Twitch still keeps it
+- **Improved** the Twitch player: it waits for the internet to come back and restarts a frozen video by itself
 - **Fixed** an issue where muted parts didn't show in orange on newer Twitch videos
 
 ## [0.71.0] - 2026-11-12

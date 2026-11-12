@@ -418,9 +418,22 @@ async function playRebuilt() {
   load()
 }
 
+let waitingOnline = false
 function failed() {
   clearTimeout(calmTimer)
   clearTimeout(retryTimer)
+  // Offline (Wi-Fi gone, the PC waking up): nothing to try until it's back, which isn't counted as a try
+  if (navigator.onLine === false) {
+    loading(true)
+    if (!waitingOnline) {
+      waitingOnline = true
+      window.addEventListener('online', () => {
+        waitingOnline = false
+        load()
+      }, { once: true })
+    }
+    return
+  }
   if (retries < RETRY_AFTER.length) {
     loading(true)
     retryTimer = setTimeout(load, RETRY_AFTER[retries++])
@@ -481,6 +494,10 @@ async function load() {
     startPosition: position,
     fragLoadPolicy: loadPolicy(4, 6),
     playlistLoadPolicy: loadPolicy(2, 2),
+    // Labels inside the pieces that nothing here reads
+    enableID3MetadataCues: false,
+    enableEmsgMetadataCues: false,
+    enableDateRangeMetadataCues: false,
     pLoader: ListLoader,
     fLoader: PieceLoader,
   })
@@ -520,6 +537,23 @@ video.addEventListener('playing', () => {
   clearTimeout(calmTimer)
   calmTimer = setTimeout(() => { retries = 0 }, 20000)
 })
+
+// A picture stuck on the spinner without any error: after a while, start again where it was, as
+// for an error. Not while paused, offline (failed waits for the connection) or hidden.
+const FROZEN_AFTER = 30000 // ms
+let frozenTimer
+function watchFrozen() {
+  clearTimeout(frozenTimer)
+  const at = video.currentTime
+  frozenTimer = setTimeout(() => {
+    if (!hls || video.paused || video.currentTime !== at) return
+    if (document.hidden || navigator.onLine === false) return watchFrozen()
+    console.error('No picture for 30 s')
+    failed()
+  }, FROZEN_AFTER)
+}
+video.addEventListener('waiting', watchFrozen)
+video.addEventListener('playing', () => clearTimeout(frozenTimer))
 
 player.focus()
 load()

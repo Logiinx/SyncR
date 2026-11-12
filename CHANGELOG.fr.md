@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Ajout** du 1440p dans le lecteur Twitch pour les streams enregistrés en 1440p
 - **Ajout** de la lecture des vidéos Twitch réservées aux abonnés dans le lecteur Twitch
 - **Ajout** du son d’origine dans les parties sans son des vidéos Twitch récentes, tant que Twitch le garde
+- **Amélioration** du lecteur Twitch : il attend le retour d’internet et relance seul une vidéo figée
 - **Correction** des parties sans son qui n’apparaissaient pas en orange sur les vidéos Twitch récentes
 
 ## [0.71.0] - 2026-11-12
