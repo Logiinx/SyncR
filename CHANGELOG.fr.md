@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Amélioration** du menu des extensions de la fenêtre vidéo : mêmes couleurs et cadre que le menu ⚙️, plus visible sur une vidéo
 - **Changement** du ✕ sur une vidéo qui n’est plus disponible : il la retire pour de bon, sans passer par Vues
 - **Correction** de petits soucis : ordre du menu d’une playlist, une pièce de puzzle pour les extensions sans icône, les longues valeurs du menu ⚙️ en entier au survol
 

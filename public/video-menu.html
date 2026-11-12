@@ -14,13 +14,14 @@
   html, body { height: 100%; margin: 0; }
   body {
     overflow-y: auto;
-    background: var(--bg-raised, #202020);
+    background: var(--bg, #161616);
     color: var(--text);
     font: 16px 'SyncR UI', sans-serif;
     user-select: none;
     cursor: default;
   }
-  /* As the app's menus (.context-menu), but square: this page is a rectangle over the video */
+  /* As the players' ⚙️ menu (controls.js): a light frame that shows over a black video. Square:
+     this page is a rectangle over the video */
   #list {
     box-sizing: border-box;
     display: flex;
@@ -29,7 +30,7 @@
     min-width: 150px;
     max-width: 280px;
     padding: 4px;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.14);
   }
   button {
     display: flex;
@@ -46,7 +47,7 @@
 
     cursor: pointer;
   }
-  button:hover, button:focus-visible { background: var(--border); }
+  button:hover, button:focus-visible { background: var(--hover); }
   button span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   img, svg { width: 16px; height: 16px; flex-shrink: 0; }
   svg { fill: none; stroke: var(--text-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

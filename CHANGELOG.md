@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Improved** the video window's extensions menu: same colors and frame as the ⚙️ menu, easier to see over a video
 - **Changed** the ✕ on a video that's no longer available: it now removes it for good, not into Watched
 - **Fixed** small issues: playlist menu order, a puzzle icon for extensions without one, long ⚙️ values in full on hover
 
