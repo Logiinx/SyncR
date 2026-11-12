@@ -45,6 +45,10 @@ for (let i = 0; i < Math.min(en.length, fr.length) && errors.length < 10; i++) {
   const verb = a.match(/^- \*\*(\w+)\*\* /)
   if (verb) {
     if (!b.startsWith(`- **${VERBS[verb[1]]}** `)) errors.push(where)
+    const number = version.match(/\[(\d+)\.(\d+)\./)
+    const old = number && +number[1] === 0 && +number[2] < 60 // Unreleased and 0.60.0 on use the tags
+    if (!old)
+      errors.push(`CHANGELOG.md, ${version}: old verb "${verb[1]}", use a tag (${ORDER.join(', ')})`)
     continue
   }
   const area = a.match(/^\*\*(\w+)\*\*$/)
