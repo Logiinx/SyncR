@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from 'react'
 import { alertMarkId, changed, db, type VideoFolder } from './db'
+import { read, write } from './localState'
 
 // The Video tab's folders. A video's place is kept by its mark's id (see video.ts).
 // channel: at the top of that channel (channelKey) instead of among your own
@@ -22,6 +24,21 @@ export async function moveToFolder(videoId: string, folderId: string | null) {
 // id as its folder (an older app version shows those as in no folder).
 export const REWATCH = 'rewatch' // i18n-ok
 export const rewatchFolder = (): VideoFolder => ({ id: REWATCH, name: '', parentId: null, channel: null, deleted: false, updatedAt: 0 })
+
+// Where Rewatch shows, on this PC: its own list in the To watch | Rewatch | Watched switch (the
+// default), or a section at the bottom of To watch (Video settings window)
+const SECTION_KEY = 'syncr.video.rewatchSection'
+let asSection = read(SECTION_KEY, false)
+const sectionListeners = new Set<() => void>()
+export function setRewatchSection(on: boolean) {
+  asSection = on
+  write(SECTION_KEY, on)
+  for (const listener of sectionListeners) listener()
+}
+export const useRewatchSection = () => useSyncExternalStore((listener) => {
+  sectionListeners.add(listener)
+  return () => sectionListeners.delete(listener)
+}, () => asSection)
 
 // Your own folder in or out of Rewatch (null = the top)
 export async function moveFolder(id: string, parentId: string | null) {

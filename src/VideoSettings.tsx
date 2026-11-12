@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Play, Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
+import { ListVideo, Play, Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import Window from './Window'
@@ -8,6 +8,7 @@ import { SettingRow, SettingsCard } from './SettingsCard'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
 import { t } from './i18n'
+import { setRewatchSection, useRewatchSection } from './videoFolders'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -33,6 +34,7 @@ function problemText(problem: unknown): string {
 // window's extensions. The extensions' files and everything else: video_extensions.rs
 export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const [player, setPlayer] = useState(loadPlayerSettings)
+  const rewatchSection = useRewatchSection()
   function updatePlayer(change: Partial<PlayerSettings>) {
     savePlayerSettings(change)
     setPlayer(loadPlayerSettings())
@@ -85,6 +87,11 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
           <CloseButton onClick={onClose} />
         </div>
         <div className="settings-cards">
+          <SettingsCard icon={ListVideo} title={t('List')}>
+            <SettingRow label={t('Rewatch as a section in To watch')} title={t('At the bottom of To watch, instead of its own button between To watch and Watched')}>
+              <input type="checkbox" checked={rewatchSection} onChange={(e) => setRewatchSection(e.target.checked)} />
+            </SettingRow>
+          </SettingsCard>
           <SettingsCard icon={Play} title={t('Player')}>
             <SettingRow label={t('Mark as watched closes the video player')}>
               <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />

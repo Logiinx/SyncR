@@ -5,7 +5,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
-- **Nouveau :** section À revoir en bas de À regarder, par clic droit ou glisser
+- **Nouveau :** liste À revoir à côté de À regarder, pour les vidéos et playlists à revoir
+- **Nouveau :** À revoir peut être une section en bas de À regarder (Paramètres vidéo)
 - **Nouveau :** Recommencer dans À revoir efface ce que vous y avez vu
 
 ## [0.76.0] - 2026-11-12

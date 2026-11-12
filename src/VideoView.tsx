@@ -14,14 +14,14 @@ import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, markAl
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
-import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, renameFolder, REWATCH } from './videoFolders'
+import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, renameFolder, REWATCH, useRewatchSection } from './videoFolders'
 import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
 import { useResumePosition, videoClock } from './videoPositions'
 
-type List = 'towatch' | 'watched'
+type List = 'towatch' | 'rewatch' | 'watched'
 
 // Videos found since the tab last showed get a "New" tag for as long as it stays open, also those
 // that arrive meanwhile. Marked as shown right away: the next time the tab opens, they aren't new.
@@ -237,7 +237,10 @@ function VideoView() {
   const feed = useVideoFeed()
   const newIds = useNewVideos(feed)
   const { checking, errors } = useChecking()
-  const [list, setList] = useState<List>('towatch')
+  const [pickedList, setList] = useState<List>('towatch')
+  // Rewatch is its own list, or a section at the bottom of To watch (Video settings window)
+  const asSection = useRewatchSection()
+  const list: List = asSection && pickedList === 'rewatch' ? 'towatch' : pickedList
   const [channel, setChannel] = useState('all') // a follow's id, or all of them
   const [adding, setAdding] = useState<string | null>(null) // Add a follow open, with the link it starts with
   const [addingVideo, setAddingVideo] = useState(false)
@@ -260,9 +263,10 @@ function VideoView() {
   const [grouped, setGrouped] = useLocalState('syncr.video.byChannel', false)
   const [openGroups, setOpenGroups] = useLocalState<string[]>('syncr.video.openGroups', [])
   const follows = feed?.follows
-  // A follow that was just removed: back to all of them
-  const shownChannel = follows?.some((follow) => follow.id === channel) ? channel : 'all'
-  const videos = (list === 'towatch' ? feed?.toWatch : feed?.watched)?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
+  // A follow that was just removed: back to all of them. Rewatch is your own list, like folders.
+  const shownChannel = list !== 'rewatch' && follows?.some((follow) => follow.id === channel) ? channel : 'all'
+  // Rewatch's videos are only in its folders (videosIn)
+  const videos = (list === 'towatch' ? feed?.toWatch : list === 'watched' ? feed?.watched : [])?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
   const listRef = useRef<HTMLUListElement>(null)
   // One channel chosen: there's nothing to group. Watched is one plain list, watched last on top.
   const grouping = grouped && shownChannel === 'all' && list === 'towatch'
@@ -306,15 +310,15 @@ function VideoView() {
     return () => document.removeEventListener('paste', onPaste)
   }, [])
   const allFolders = feed?.folders ?? []
-  const folders = shownChannel === 'all' && list === 'towatch' ? allFolders : []
+  const folders = shownChannel === 'all' && list !== 'watched' ? allFolders : []
   // Rewatch is at the bottom, not among the folders by name
   const foldersIn = (parentId: string | null) => folders.filter((folder) => folder.parentId === parentId && !folder.channel && folder.id !== REWATCH)
   const rewatchIds = inRewatch(allFolders)
   // Rewatch's videos (feed.rewatch) only show in To watch with all follows, like folders
   const videosIn = (folderId: string) => (rewatchIds.has(folderId) ? feed?.rewatch ?? [] : videos ?? []).filter((video) => video.folderId === folderId)
-  // In To watch, a watched video is one of Rewatch's: it stays, grayed
+  // Outside Watched, a watched video is one of Rewatch's: it stays, grayed
   const videoRow = (video: FeedVideo, depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list === 'towatch'} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
@@ -363,7 +367,7 @@ function VideoView() {
   const allIn = (folder: VideoFolder): FeedVideo[] => [...videosIn(folder.id), ...foldersIn(folder.id).flatMap(allIn)]
   // Playlists, each at the top or in one of your own folders (one deleted or a channel's: the top).
   // Only in To watch with all follows: it's your own list, not a channel's.
-  const playlists = list === 'towatch' && shownChannel === 'all' ? feed?.playlists ?? [] : []
+  const playlists = list !== 'watched' && shownChannel === 'all' ? feed?.playlists ?? [] : []
   const placeOf = (playlist: VideoPlaylist) => {
     const folder = folders.find((other) => other.id === playlist.folderId)
     return folder && !topFolder(folder)?.channel ? folder.id : null
@@ -482,9 +486,17 @@ function VideoView() {
   // channel's sub-folders: these only exist in the channel's row.
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
-  // What's in Rewatch, folded at the bottom of To watch; no row when it's empty (menus reach it)
+  // As a section: what's in Rewatch, folded at the bottom of To watch; no row when it's empty
+  // (menus reach it). As a list: what's in it, like an open folder's.
   const rewatch = folders.find((folder) => folder.id === REWATCH)
-  const rewatchRows = rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length) ? folderRows(rewatch, 0) : []
+  const rewatchRows = asSection && rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length) ? folderRows(rewatch, 0) : []
+  const rewatchList = list === 'rewatch' && rewatch
+    ? [
+        ...foldersIn(REWATCH).flatMap((folder) => folderRows(folder, 0)),
+        ...playlistsIn(REWATCH).flatMap((entry) => playlistRows(entry, 0)),
+        ...videosIn(REWATCH).reverse().map((video) => videoRow(video)),
+      ]
+    : []
   // A folder or playlist's videos to start over: those watched or opened
   const startOverIds = (episodes: FeedVideo[]) => episodes.filter((video) => video.watched || video.opened).map((video) => video.id)
   const folderStartOver = (folder: VideoFolder) => startOverIds([...allIn(folder), ...allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes)])
@@ -495,7 +507,7 @@ function VideoView() {
     hint: ids.length ? undefined : t('Nothing watched yet'),
     onClick: () => void startOver(ids),
   })
-  const mainRows = [
+  const mainRows = list === 'rewatch' ? rewatchList : [
     ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     // A flat list, so a video stays the same item whether it's in a group or not
@@ -515,7 +527,9 @@ function VideoView() {
     }),
   ]
   const rows = [...mainRows, ...rewatchRows]
-  const empty = !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
+  const empty = list === 'rewatch'
+    ? t('Nothing in Rewatch yet. Right-click a playlist, folder or video to move it here.')
+    : !follows?.length && !anyVideos ? t('No follows yet') : list === 'towatch' ? t('Nothing to watch') : t('No watched videos yet')
 
   return (
     <main className="page games-page" ref={pageRef}>
@@ -525,6 +539,7 @@ function VideoView() {
             className="video-list-switch"
             options={[
               { value: 'towatch', label: t('To watch') },
+              ...(asSection ? [] : [{ value: 'rewatch' as const, label: t('Rewatch') }]),
               { value: 'watched', label: t('Watched|list') },
             ]}
             value={list}
@@ -532,7 +547,13 @@ function VideoView() {
             label={t('Show')}
           />
           {!!follows?.length && (
-            <select className="video-channel-filter" value={shownChannel} onChange={(e) => setChannel(e.target.value)}>
+            <select
+              className="video-channel-filter"
+              value={shownChannel}
+              disabled={list === 'rewatch'}
+              title={list === 'rewatch' ? t('Rewatch shows everything in it') : undefined}
+              onChange={(e) => setChannel(e.target.value)}
+            >
               <option value="all">{t('All follows')}</option>
               {follows.map((follow) => (
                 <option key={follow.id} value={follow.id}>{follow.name}</option>
@@ -602,7 +623,8 @@ function VideoView() {
                   { label: t('Add a video'), icon: Plus, onClick: () => setAddingVideo(true) },
                   { label: t('Add a playlist'), icon: ListPlus, onClick: () => setAddingPlaylist(true) },
                   { label: t('Add a follow'), icon: UserPlus, onClick: () => setAdding('') },
-                  { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null }) },
+                  // In the Rewatch list, it goes there
+                  { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: list === 'rewatch' ? REWATCH : null }) },
                 ]
               : [
                   {
@@ -630,6 +652,10 @@ function VideoView() {
                     hint: list !== 'watched' ? t('Only in Watched videos') : videos?.length ? undefined : t('No watched videos yet'),
                     onClick: () => setClearingAll(true),
                   },
+                  // As a section, its row's menu has it
+                  ...(asSection
+                    ? []
+                    : [{ ...(list === 'rewatch' && rewatch ? startOverItem(folderStartOver(rewatch)) : { ...startOverItem([]), hint: t('Only in Rewatch') }), divider: true }]),
                 ]
           }
         />
