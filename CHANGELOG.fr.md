@@ -4,8 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Changé :** Paramètres regroupés en 7 cartes, sur 3 colonnes si la fenêtre est large
+
 **Vidéo**
-- **Nouveau :** une fenêtre Paramètres vidéo : ⚙️ dans l’onglet Vidéo, ou Paramètres → Application
+- **Nouveau :** une fenêtre Paramètres vidéo : ⚙️ dans l’onglet Vidéo, ou Paramètres → Vidéo
 - **Changé :** les réglages du lecteur et la liste des extensions y sont maintenant
 
 ## [0.75.0] - 2026-11-12

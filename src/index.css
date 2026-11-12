@@ -4386,9 +4386,10 @@ button {
   text-transform: uppercase;
 }
 
-/* Four cards, all open (two columns on the PC, one on the phone); each setting a row: name
-   left, control right. The top stays at the same place when "Manage accounts…" changes the
-   height. Phone: full screen. */
+/* Seven cards, all open, in columns (3 on a wide window, else 2; 1 on the phone: the count and
+   which card goes where are in SettingsDialog.tsx); each setting a row: name left, control
+   right. The top stays at the same place when "Manage accounts…" changes the height. Phone:
+   full screen. */
 .dialog.settings {
   --settings-top: calc(8vh / var(--zoom, 1));
   align-self: flex-start;
@@ -4397,11 +4398,21 @@ button {
   margin-top: var(--settings-top);
 }
 
+.dialog.settings.wide {
+  width: min(1300px, 100%);
+}
+
 .settings-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--settings-columns, 2), minmax(0, 1fr));
   align-items: start;
   gap: 14px;
+}
+
+.settings-column {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
 }
 
 .settings-card {

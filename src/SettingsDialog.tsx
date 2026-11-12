@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, NotebookPen, Play, Plug, X } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { SettingRow, SettingsCard } from './SettingsCard'
@@ -192,371 +192,403 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('google-change', refresh)
   }, [])
 
+  // Columns of cards: 3 when the window is wide enough at the app's scale, 1 on a phone (the same
+  // 700 px as index.css). The cards change columns, so the browser can't do it alone.
+  const columnsFor = () => (window.innerWidth < 700 ? 1 : window.innerWidth / (appearance.scale / 100) >= WIDE_SETTINGS ? 3 : 2)
+  const [columns, setColumns] = useState(columnsFor)
+  useEffect(() => {
+    const resize = () => setColumns(columnsFor())
+    resize()
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [appearance.scale])
+
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
-  const cards = (
-    <div className="settings-cards">
-      <SettingsCard icon={NotebookPen} title={t('Notes')}>
-        <SettingRow label={t('Font')}>
-          {/* Each choice is shown in its own font */}
-          <select
-            value={appearance.font}
-            style={{ fontFamily: FONTS[appearance.font].css }}
-            onChange={(e) => update({ font: e.target.value as FontId })}
-          >
-            {(Object.keys(FONTS) as FontId[]).map((id) => (
-              <option key={id} value={id} style={{ fontFamily: FONTS[id].css }}>
-                {fontName(id)}
-              </option>
-            ))}
-          </select>
-        </SettingRow>
-        {/* The note behind the dialog changes while dragging */}
-        <SettingRow label={t('Text size')} value={`${appearance.fontSize} px`}>
-          <RulerSlider
-            min={FONT_SIZE_MIN}
-            max={FONT_SIZE_MAX}
-            step={1}
-            mark={DEFAULTS.fontSize}
-            value={appearance.fontSize}
-            aria-label={t('Text size')}
-            onChange={(e) => update({ fontSize: Number(e.target.value) })}
-          />
-        </SettingRow>
-        <SettingRow label={t('Smart typography')} value="“ ” — → … ½ ©">
-          <input
-            type="checkbox"
-            checked={editing.smartTypography}
-            onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
-          />
-        </SettingRow>
-        <SettingRow label={t('Dates in the note list')}>
-          <input type="checkbox" checked={appearance.showDates} onChange={(e) => update({ showDates: e.target.checked })} />
-        </SettingRow>
+  // The cards (Window and privacy, Video: PC only), placed in columns at the end
+  const notesCard = (
+    <SettingsCard key="notes" icon={NotebookPen} title={t('Notes')}>
+      <SettingRow label={t('Font')}>
+        {/* Each choice is shown in its own font */}
+        <select
+          value={appearance.font}
+          style={{ fontFamily: FONTS[appearance.font].css }}
+          onChange={(e) => update({ font: e.target.value as FontId })}
+        >
+          {(Object.keys(FONTS) as FontId[]).map((id) => (
+            <option key={id} value={id} style={{ fontFamily: FONTS[id].css }}>
+              {fontName(id)}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      {/* The note behind the dialog changes while dragging */}
+      <SettingRow label={t('Text size')} value={`${appearance.fontSize} px`}>
+        <RulerSlider
+          min={FONT_SIZE_MIN}
+          max={FONT_SIZE_MAX}
+          step={1}
+          mark={DEFAULTS.fontSize}
+          value={appearance.fontSize}
+          aria-label={t('Text size')}
+          onChange={(e) => update({ fontSize: Number(e.target.value) })}
+        />
+      </SettingRow>
+      <SettingRow label={t('Smart typography')} value="“ ” — → … ½ ©">
+        <input
+          type="checkbox"
+          checked={editing.smartTypography}
+          onChange={(e) => updateEditing({ smartTypography: e.target.checked })}
+        />
+      </SettingRow>
+      <SettingRow label={t('Dates in the note list')}>
+        <input type="checkbox" checked={appearance.showDates} onChange={(e) => update({ showDates: e.target.checked })} />
+      </SettingRow>
+      <SettingRow label={<>{t('Color rules')} <Synced /></>}>
+        {/* The count is in the button: beside the name, the French doesn't fit on one line */}
+        <button className="setting-button" onClick={() => setShowRules(true)}>
+          {rulesSummary && `${rulesSummary} · `}{t('Edit…')}
+        </button>
+      </SettingRow>
+    </SettingsCard>
+  )
+  const linksCard = (
+    <SettingsCard key="links" icon={Link} title={t('Links')}>
+      <SettingRow
+        label={
+          <>
+            {t('Link cards')}
+            <InfoTip label={t('About link cards')}>
+              {t('A website link whose text is its address shows as a card with its title, description and picture. A click opens it; put the cursor on it to edit the address. Links with their own text stay as they are.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <select value={links.style} onChange={(e) => updateLinks({ style: e.target.value as CardStyle })}>
+          {(Object.keys(CARD_STYLES) as CardStyle[]).map((id) => (
+            <option key={id} value={id}>
+              {t(CARD_STYLES[id])}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      {/* Only where there's a mouse (a phone can't hover) */}
+      {matchMedia('(hover: hover)').matches && (
         <SettingRow
           label={
             <>
-              {t('Link cards')}
-              <InfoTip label={t('About link cards')}>
-                {t('A website link whose text is its address shows as a card with its title, description and picture. A click opens it; put the cursor on it to edit the address. Links with their own text stay as they are.')}
-              </InfoTip>
+              {t('Hover card')}
+              <InfoTip label={t('About hover cards')}>{t('Shown while the mouse is on a link card, and on links with their own text.')}</InfoTip>
             </>
           }
         >
-          <select value={links.style} onChange={(e) => updateLinks({ style: e.target.value as CardStyle })}>
-            {(Object.keys(CARD_STYLES) as CardStyle[]).map((id) => (
+          <select value={links.hover} onChange={(e) => updateLinks({ hover: e.target.value as HoverSize })}>
+            {(Object.keys(HOVER_SIZES) as HoverSize[]).map((id) => (
               <option key={id} value={id}>
-                {t(CARD_STYLES[id])}
+                {t(HOVER_SIZES[id])}
               </option>
             ))}
           </select>
         </SettingRow>
-        {/* Only where there's a mouse (a phone can't hover) */}
-        {matchMedia('(hover: hover)').matches && (
+      )}
+      <SettingRow
+        label={
+          <>
+            {t('Link groups')}
+            <InfoTip label={t('About link groups')}>
+              {t('2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips, or folded into one line.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <select
+          value={links.groups}
+          disabled={links.style === 'off'}
+          onChange={(e) => updateLinks({ groups: e.target.value as GroupStyle })}
+        >
+          {(Object.keys(GROUP_STYLES) as GroupStyle[]).map((id) => (
+            <option key={id} value={id}>
+              {t(GROUP_STYLES[id])}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      <SettingRow label={t('Cards for')}>
+        <select
+          value={links.allSites ? 'all' : 'sites'}
+          disabled={links.style === 'off' && links.hover === 'off'}
+          onChange={(e) => updateLinks({ allSites: e.target.value === 'all' })}
+        >
+          <option value="sites">{t('These sites')}</option>
+          <option value="all">{t('All links')}</option>
+        </select>
+      </SettingRow>
+      <SettingRow
+        className="settings-row-sites"
+        label={
+          <>
+            {t('Sites')}
+            <InfoTip label={t('About sites')}>{t('Links to these sites (and their subdomains) get a card. Separate them with commas.')}</InfoTip>
+          </>
+        }
+      >
+        <SitesInput
+          sites={links.sites}
+          disabled={(links.style === 'off' && links.hover === 'off') || links.allSites}
+          onChange={(sites) => updateLinks({ sites })}
+        />
+      </SettingRow>
+    </SettingsCard>
+  )
+  const alertsCard = (
+    <SettingsCard key="alerts" icon={Bell} title={t('Alerts')}>
+      {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
+      <SettingRow label={t('Reminder sound')}>
+        <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('All-day events')} <Synced />
+            <InfoTip label={t('About all-day alerts')}>
+              {t("Google doesn't share its default alert for all-day events with apps. SyncR uses this one for all-day events that have no alert it can see.")}
+            </InfoTip>
+          </>
+        }
+      >
+        {allDayAlert !== undefined && (
+          <select
+            value={allDayAlert === null ? 'none' : String(allDayAlert)}
+            onChange={(e) => saveAllDayAlert(e.target.value === 'none' ? null : Number(e.target.value))}
+          >
+            {ALL_DAY_ALERTS.map((minutes) => (
+              <option key={String(minutes)} value={minutes === null ? 'none' : String(minutes)}>
+                {minutes === null ? t('No alert') : allDayAlertText(minutes)}
+              </option>
+            ))}
+          </select>
+        )}
+      </SettingRow>
+      {mail && gmailAccounts.length > 0 && (
+        <>
+          <SettingRow label={t('Email sound')}>
+            <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
+          </SettingRow>
           <SettingRow
             label={
               <>
-                {t('Hover card')}
-                <InfoTip label={t('About hover cards')}>{t('Shown while the mouse is on a link card, and on links with their own text.')}</InfoTip>
+                {t('Email pop-ups fade')}
+                <InfoTip label={t('About fading')}>{t('A faded email stays unread, as missed (Mail tab).')}</InfoTip>
               </>
             }
           >
-            <select value={links.hover} onChange={(e) => updateLinks({ hover: e.target.value as HoverSize })}>
-              {(Object.keys(HOVER_SIZES) as HoverSize[]).map((id) => (
-                <option key={id} value={id}>
-                  {t(HOVER_SIZES[id])}
+            <select value={background.emailFade} onChange={(e) => updateBackground({ emailFade: Number(e.target.value) })}>
+              {FADE_CHOICES.map(({ seconds, name }) => (
+                <option key={seconds} value={seconds}>
+                  {seconds ? t('after {time}', { time: name }) : t('Never')}
                 </option>
               ))}
             </select>
           </SettingRow>
-        )}
-        <SettingRow
-          label={
-            <>
-              {t('Link groups')}
-              <InfoTip label={t('About link groups')}>
-                {t('2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips, or folded into one line.')}
-              </InfoTip>
-            </>
-          }
-        >
-          <select
-            value={links.groups}
-            disabled={links.style === 'off'}
-            onChange={(e) => updateLinks({ groups: e.target.value as GroupStyle })}
-          >
-            {(Object.keys(GROUP_STYLES) as GroupStyle[]).map((id) => (
-              <option key={id} value={id}>
-                {t(GROUP_STYLES[id])}
-              </option>
-            ))}
-          </select>
-        </SettingRow>
-        <SettingRow label={t('Cards for')}>
-          <select
-            value={links.allSites ? 'all' : 'sites'}
-            disabled={links.style === 'off' && links.hover === 'off'}
-            onChange={(e) => updateLinks({ allSites: e.target.value === 'all' })}
-          >
-            <option value="sites">{t('These sites')}</option>
-            <option value="all">{t('All links')}</option>
-          </select>
-        </SettingRow>
-        <SettingRow
-          className="settings-row-sites"
-          label={
-            <>
-              {t('Sites')}
-              <InfoTip label={t('About sites')}>{t('Links to these sites (and their subdomains) get a card. Separate them with commas.')}</InfoTip>
-            </>
-          }
-        >
-          <SitesInput
-            sites={links.sites}
-            disabled={(links.style === 'off' && links.hover === 'off') || links.allSites}
-            onChange={(sites) => updateLinks({ sites })}
-          />
-        </SettingRow>
-        <SettingRow label={<>{t('Color rules')} <Synced /></>}>
-          {/* The count is in the button: beside the name, the French doesn't fit on one line */}
-          <button className="setting-button" onClick={() => setShowRules(true)}>
-            {rulesSummary && `${rulesSummary} · `}{t('Edit…')}
-          </button>
-        </SettingRow>
-      </SettingsCard>
-
-      <SettingsCard icon={Bell} title={t('Alerts')}>
-        {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
-        <SettingRow label={t('Reminder sound')}>
-          <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
-        </SettingRow>
-        <SettingRow
-          label={
-            <>
-              {t('All-day events')} <Synced />
-              <InfoTip label={t('About all-day alerts')}>
-                {t("Google doesn't share its default alert for all-day events with apps. SyncR uses this one for all-day events that have no alert it can see.")}
-              </InfoTip>
-            </>
-          }
-        >
-          {allDayAlert !== undefined && (
-            <select
-              value={allDayAlert === null ? 'none' : String(allDayAlert)}
-              onChange={(e) => saveAllDayAlert(e.target.value === 'none' ? null : Number(e.target.value))}
-            >
-              {ALL_DAY_ALERTS.map((minutes) => (
-                <option key={String(minutes)} value={minutes === null ? 'none' : String(minutes)}>
-                  {minutes === null ? t('No alert') : allDayAlertText(minutes)}
-                </option>
-              ))}
-            </select>
-          )}
-        </SettingRow>
-        {mail && gmailAccounts.length > 0 && (
-          <>
-            <SettingRow label={t('Email sound')}>
-              <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
-            </SettingRow>
-            <SettingRow
-              label={
-                <>
-                  {t('Email pop-ups fade')}
-                  <InfoTip label={t('About fading')}>{t('A faded email stays unread, as missed (Mail tab).')}</InfoTip>
-                </>
-              }
-            >
-              <select value={background.emailFade} onChange={(e) => updateBackground({ emailFade: Number(e.target.value) })}>
-                {FADE_CHOICES.map(({ seconds, name }) => (
-                  <option key={seconds} value={seconds}>
-                    {seconds ? t('after {time}', { time: name }) : t('Never')}
-                  </option>
-                ))}
-              </select>
-            </SettingRow>
-          </>
-        )}
-        {mail && gmailAccounts.length === 0 && (
-          <SettingRow label={t('Emails')}>
-            <button className="setting-button" onClick={() => showManage(true)}>
-              {t('Add account…')}
-            </button>
-          </SettingRow>
-        )}
-      </SettingsCard>
-
-      <SettingsCard icon={Plug} title={t('Accounts')}>
-        <SettingRow label={<>{t('Game search')} <Synced /></>}>
-          <Status ok={proxyStatus.ok} text={proxyStatus.text} />
-        </SettingRow>
-        <SettingRow label="Steam">
-          <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))} />
-        </SettingRow>
-        <SettingRow label={t('Google Calendar')}>
-          <Status ok={calendar} text={calendar ? connectedText() : t('Not connected')} />
-        </SettingRow>
-        {mail && (
-          <SettingRow label="Gmail">
-            <Status
-              ok={gmailAccounts.length > 0}
-              text={gmailAccounts.length === 0 ? t('No account yet')
-                : `${plural(gmailAccounts.length, '{n} account', '{n} accounts')}${instant.ok ? ` · ${t('instant mail on')}` : ''}`}
-            />
-          </SettingRow>
-        )}
-        <div className="settings-card-foot">
+        </>
+      )}
+      {mail && gmailAccounts.length === 0 && (
+        <SettingRow label={t('Emails')}>
           <button className="setting-button" onClick={() => showManage(true)}>
-            {t('Manage accounts…')}
+            {t('Add account…')}
           </button>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard icon={AppWindow} title={t('App')}>
-        <SettingRow label={<>{t('Language')} <Synced /></>}>
-          {languageChoice !== undefined && (
-            <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
-              <option value="device">{t('System language')}</option>
-              {/* Each in its own language, so it can be found from the other one */}
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-            </select>
-          )}
         </SettingRow>
-        <SettingRow label={t('App scaling')} value={`${scale} %`}>
-          <RulerSlider
-            min={SCALE_MIN}
-            max={SCALE_MAX}
-            step={5}
-            mark={DEFAULTS.scale}
-            value={scale}
-            aria-label={t('App scaling')}
-            onChange={(e) => setScale(Number(e.target.value))}
-            onPointerUp={applyScale}
-            onKeyUp={applyScale}
-            onBlur={applyScale}
+      )}
+    </SettingsCard>
+  )
+  const accountsCard = (
+    <SettingsCard key="accounts" icon={Plug} title={t('Accounts')}>
+      <SettingRow label={<>{t('Game search')} <Synced /></>}>
+        <Status ok={proxyStatus.ok} text={proxyStatus.text} />
+      </SettingRow>
+      <SettingRow label="Steam">
+        <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))} />
+      </SettingRow>
+      <SettingRow label={t('Google Calendar')}>
+        <Status ok={calendar} text={calendar ? connectedText() : t('Not connected')} />
+      </SettingRow>
+      {mail && (
+        <SettingRow label="Gmail">
+          <Status
+            ok={gmailAccounts.length > 0}
+            text={gmailAccounts.length === 0 ? t('No account yet')
+              : `${plural(gmailAccounts.length, '{n} account', '{n} accounts')}${instant.ok ? ` · ${t('instant mail on')}` : ''}`}
           />
         </SettingRow>
-        <SettingRow label={t('Animations')}>
-          <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
-        </SettingRow>
-        {tabColors && (
-          <>
-            <SettingRow label={<>{t('Colored tab icons')} <Synced /></>}>
-              <input type="checkbox" checked={tabColors.on} onChange={(e) => saveTabColors({ on: e.target.checked })} />
-            </SettingRow>
-            <SettingRow label={t('Tab colors')}>
-              <span className="tab-color-buttons">
-                {colorTabs.map((kind) => (
-                  <button
-                    key={kind}
-                    className="tab-color-button"
-                    title={tabNames[kind]}
-                    aria-label={tabNames[kind]}
-                    disabled={!tabColors.on}
-                    onClick={(e) => setTabColorMenu({ kind, x: e.clientX, y: e.clientY })}
-                  >
-                    <SpecialIcon kind={kind} size={16} />
-                  </button>
-                ))}
-              </span>
-            </SettingRow>
-          </>
+      )}
+      <div className="settings-card-foot">
+        <button className="setting-button" onClick={() => showManage(true)}>
+          {t('Manage accounts…')}
+        </button>
+      </div>
+    </SettingsCard>
+  )
+  const lookCard = (
+    <SettingsCard key="look" icon={Palette} title={t('Look')}>
+      <SettingRow label={<>{t('Language')} <Synced /></>}>
+        {languageChoice !== undefined && (
+          <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
+            <option value="device">{t('System language')}</option>
+            {/* Each in its own language, so it can be found from the other one */}
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+          </select>
         )}
-        {tabColorMenu && tabColors && (
-          <ContextMenu
-            x={tabColorMenu.x}
-            y={tabColorMenu.y}
-            onClose={() => setTabColorMenu(null)}
-            header={{ title: tabNames[tabColorMenu.kind] }}
-            items={colorMenuItems(
-              tabColors.colors[tabColorMenu.kind],
-              (color) => color && saveTabColors({ colors: { ...tabColors.colors, [tabColorMenu.kind]: color } }),
-              false,
-            )}
-          />
-        )}
-        {isTauri() && videoOn && (
-          <SettingRow label={t('Video')}>
-            <button className="setting-button" onClick={() => setShowVideo(true)}>
-              {t('Video settings…')}
-            </button>
+      </SettingRow>
+      <SettingRow label={t('App scaling')} value={`${scale} %`}>
+        <RulerSlider
+          min={SCALE_MIN}
+          max={SCALE_MAX}
+          step={5}
+          mark={DEFAULTS.scale}
+          value={scale}
+          aria-label={t('App scaling')}
+          onChange={(e) => setScale(Number(e.target.value))}
+          onPointerUp={applyScale}
+          onKeyUp={applyScale}
+          onBlur={applyScale}
+        />
+      </SettingRow>
+      <SettingRow label={t('Animations')}>
+        <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
+      </SettingRow>
+      {tabColors && (
+        <>
+          <SettingRow label={<>{t('Colored tab icons')} <Synced /></>}>
+            <input type="checkbox" checked={tabColors.on} onChange={(e) => saveTabColors({ on: e.target.checked })} />
           </SettingRow>
-        )}
-        {isTauri() && (
-          <>
-            <SettingRow
-              label={
-                <>
-                  <X size={13} aria-label={t('Close')} /> {t('hides SyncR in the tray')}
-                  <InfoTip label={t('About the tray')}>{t('Keeps reminders working. Quit is in the tray menu.')}</InfoTip>
-                </>
-              }
-            >
-              <input
-                type="checkbox"
-                checked={background.closeToTray}
-                onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
-              />
-            </SettingRow>
-            <SettingRow
-              label={
-                <>
-                  {t('Start with Windows')}
-                  <InfoTip label={t('About starting with Windows')}>{t('When you sign in to Windows.')}</InfoTip>
-                </>
-              }
-            >
-              <input
-                type="checkbox"
-                checked={autostart ?? false}
-                disabled={autostart === null}
-                onChange={(e) => toggleAutostart(e.target.checked)}
-              />
-            </SettingRow>
-            <SettingRow
-              label={
-                <>
-                  {t('Start hidden in the tray')}
-                  <InfoTip label={t('About starting hidden')}>{t('When started with Windows. Otherwise the window shows.')}</InfoTip>
-                </>
-              }
-            >
-              <input
-                type="checkbox"
-                checked={background.startHidden}
-                disabled={!autostart}
-                onChange={(e) => updateBackground({ startHidden: e.target.checked })}
-              />
-            </SettingRow>
-            <SettingRow
-              label={
-                <>
-                  {t('PIN lock')}
-                  <InfoTip label={t('About the PIN lock')}>
-                    {!pinOn && syncReady === false && `${t('Needs sync set up.')} `}
-                    {t('Asks for a PIN when SyncR starts. Notes, sign-ins and the sync key stay locked until then.')}
-                  </InfoTip>
-                </>
-              }
-            >
-              {pinOn && (
-                <button className="setting-button" onClick={() => setPinDialog('change')}>
-                  {t('Change PIN…')}
+          <SettingRow label={t('Tab colors')}>
+            <span className="tab-color-buttons">
+              {colorTabs.map((kind) => (
+                <button
+                  key={kind}
+                  className="tab-color-button"
+                  title={tabNames[kind]}
+                  aria-label={tabNames[kind]}
+                  disabled={!tabColors.on}
+                  onClick={(e) => setTabColorMenu({ kind, x: e.clientX, y: e.clientY })}
+                >
+                  <SpecialIcon kind={kind} size={16} />
                 </button>
-              )}
-              <input
-                type="checkbox"
-                checked={pinOn}
-                disabled={!pinOn && !syncReady}
-                onChange={(e) => setPinDialog(e.target.checked ? 'on' : 'off')}
-              />
-            </SettingRow>
+              ))}
+            </span>
+          </SettingRow>
+        </>
+      )}
+      {tabColorMenu && tabColors && (
+        <ContextMenu
+          x={tabColorMenu.x}
+          y={tabColorMenu.y}
+          onClose={() => setTabColorMenu(null)}
+          header={{ title: tabNames[tabColorMenu.kind] }}
+          items={colorMenuItems(
+            tabColors.colors[tabColorMenu.kind],
+            (color) => color && saveTabColors({ colors: { ...tabColors.colors, [tabColorMenu.kind]: color } }),
+            false,
+          )}
+        />
+      )}
+    </SettingsCard>
+  )
+  const windowCard = isTauri() && (
+    <SettingsCard key="window" icon={AppWindow} title={t('Window and privacy')}>
+      <SettingRow
+        label={
+          <>
+            <X size={13} aria-label={t('Close')} /> {t('hides SyncR in the tray')}
+            <InfoTip label={t('About the tray')}>{t('Keeps reminders working. Quit is in the tray menu.')}</InfoTip>
           </>
+        }
+      >
+        <input
+          type="checkbox"
+          checked={background.closeToTray}
+          onChange={(e) => updateBackground({ closeToTray: e.target.checked })}
+        />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('Start with Windows')}
+            <InfoTip label={t('About starting with Windows')}>{t('When you sign in to Windows.')}</InfoTip>
+          </>
+        }
+      >
+        <input
+          type="checkbox"
+          checked={autostart ?? false}
+          disabled={autostart === null}
+          onChange={(e) => toggleAutostart(e.target.checked)}
+        />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('Start hidden in the tray')}
+            <InfoTip label={t('About starting hidden')}>{t('When started with Windows. Otherwise the window shows.')}</InfoTip>
+          </>
+        }
+      >
+        <input
+          type="checkbox"
+          checked={background.startHidden}
+          disabled={!autostart}
+          onChange={(e) => updateBackground({ startHidden: e.target.checked })}
+        />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('PIN lock')}
+            <InfoTip label={t('About the PIN lock')}>
+              {!pinOn && syncReady === false && `${t('Needs sync set up.')} `}
+              {t('Asks for a PIN when SyncR starts. Notes, sign-ins and the sync key stay locked until then.')}
+            </InfoTip>
+          </>
+        }
+      >
+        {pinOn && (
+          <button className="setting-button" onClick={() => setPinDialog('change')}>
+            {t('Change PIN…')}
+          </button>
         )}
-      </SettingsCard>
+        <input
+          type="checkbox"
+          checked={pinOn}
+          disabled={!pinOn && !syncReady}
+          onChange={(e) => setPinDialog(e.target.checked ? 'on' : 'off')}
+        />
+      </SettingRow>
+    </SettingsCard>
+  )
+  const videoCard = isTauri() && videoOn && (
+    <SettingsCard key="video" icon={Video} title={t('Video')}>
+      <SettingRow label={t('Player and extensions')}>
+        <button className="setting-button" onClick={() => setShowVideo(true)}>
+          {t('Open…')}
+        </button>
+      </SettingRow>
+    </SettingsCard>
+  )
+  // 3 columns on a wide window, 2 with the same cards in another order, 1 on a phone
+  const columnCards =
+    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, videoCard]]
+    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, videoCard]]
+    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, videoCard]]
+
+  const cards = (
+    <div className="settings-cards" style={{ '--settings-columns': columns } as React.CSSProperties}>
+      {columnCards.map((column, i) => (
+        <div key={i} className="settings-column">{column}</div>
+      ))}
       {/* Under all cards. Check for updates: the icon next to Settings in the sidebar */}
       <p className="settings-about">
         SyncR{' '}
@@ -570,7 +602,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   )
 
   return (
-    <Window className="dialog settings" label={t('Settings')} onClose={onClose} ref={dialogRef}>
+    <Window className={`dialog settings${columns === 3 && !manage ? ' wide' : ''}`} label={t('Settings')} onClose={onClose} ref={dialogRef}>
       <div className="dialog-head">
         {manage ? (
           <button className="settings-back" onClick={() => showManage(false)}>
@@ -598,6 +630,10 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
     </Window>
   )
 }
+
+// The app's width (at its scale) from which Settings shows 3 columns: the wide window (index.css,
+// `.dialog.settings.wide`) and the space around it
+const WIDE_SETTINGS = 1340
 
 // Google Calendar's state when signed in
 const connectedText = () => {

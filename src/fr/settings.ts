@@ -135,7 +135,10 @@ export const settings = {
   'Web images show by themselves in their emails': 'Les images web s’affichent d’elles-mêmes dans leurs e-mails',
   'None yet. Add one from an email: "Always for …"': 'Aucun pour l’instant. Ajoutez-en un depuis un e-mail : « Toujours pour … »',
 
-  App: 'Application',
+  Links: 'Liens',
+  Look: 'Apparence',
+  'Window and privacy': 'Fenêtre et confidentialité',
+  'Open…': 'Ouvrir…',
   'App scaling': 'Échelle',
   Animations: 'Animations',
   'Colored tab icons': 'Icônes d’onglets en couleur',

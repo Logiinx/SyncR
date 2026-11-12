@@ -4,8 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Changed:** Settings regrouped in 7 cards, in 3 columns on a wide window
+
 **Video**
-- **New:** a Video settings window: ⚙️ in the Video tab, or Settings → App
+- **New:** a Video settings window: ⚙️ in the Video tab, or Settings → Video
 - **Changed:** the player's settings and the extensions list moved into it
 
 ## [0.75.0] - 2026-11-12
