@@ -5,7 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
-- **Amélioré :** la fenêtre Nouveautés : versions plus claires, chacune avec sa date
+- **Amélioré :** la fenêtre Nouveautés : versions et rubriques plus claires, avec icônes et dates
 - **Changement** des icônes colorées Jeux, Rappels, Mail et Vidéo : désactivées par défaut, à activer dans les Paramètres
 
 ## [0.74.0] - 2026-11-12

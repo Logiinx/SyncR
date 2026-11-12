@@ -7,6 +7,7 @@ import Window from './Window'
 import CloseButton from './CloseButton'
 import { richText } from './richText'
 import { shortDate } from './dates'
+import { AppWindow, Bell, FileText, Gamepad2, Mail, RefreshCw, StickyNote, Video, type LucideIcon } from 'lucide-react'
 
 // After an update, shows once what changed since the version last used on this device.
 // The text comes from CHANGELOG.md or CHANGELOG.fr.md, built into the app. A new device shows nothing.
@@ -26,6 +27,12 @@ interface Release {
 
 // "**Video**": an area's name, on a line of its own
 const AREA = /^\*\*([^*]+)\*\*$/
+// Each area's icon, the one the app shows for it (tab, Board, sync button, Settings' App card).
+// English and French names (i18n-ok: changelog area names, not shown texts)
+const AREA_ICONS: Record<string, LucideIcon> = {
+  Notes: FileText, Board: StickyNote, Reminders: Bell, Rappels: Bell, Games: Gamepad2, Jeux: Gamepad2,
+  Mail, Video, Vidéo: Video, Sync: RefreshCw, Synchronisation: RefreshCw, App: AppWindow, Application: AppWindow,
+}
 // An area's last line, shown dimmer so the real changes stand out
 const SMALL_FIXES = /^\*\*(Small fixes|Petites corrections)\b/
 
@@ -77,9 +84,11 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
     else {
       flushList()
       const heading = line.match(/^###\s+(.*)/) ?? line.match(AREA)
+      const Icon = heading && AREA_ICONS[heading[1]]
       if (heading)
         blocks.push(
           <h4 key={blocks.length} className="whats-new-area">
+            {Icon && <Icon size={14} />}
             {heading[1]}
           </h4>
         )

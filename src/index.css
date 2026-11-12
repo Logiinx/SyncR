@@ -4036,12 +4036,19 @@ button {
   color: var(--text-dim);
 }
 
-/* Area name ("Video"): a small dim label, like a menu's section title */
+/* Area name ("Video"): a small blue label with the area's icon, space above it (user, 2026-11-12) */
 .whats-new-body .whats-new-area {
-  margin: 12px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0 4px;
   font-size: 0.85em;
   font-weight: 600;
-  color: var(--text-dim);
+  color: var(--text-blue);
+}
+
+.whats-new-body .whats-new-version + .whats-new-area {
+  margin-top: 10px; /* the version's line already sets it apart */
 }
 
 .whats-new-body section:first-child > :first-child {
