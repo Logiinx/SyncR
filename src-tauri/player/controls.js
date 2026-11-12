@@ -800,7 +800,7 @@ const CONTROLS_CSS = `
   #tip-part i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
 
-  #bar { display: flex; align-items: center; gap: 2px; height: 46px; }
+  #bar { display: flex; align-items: center; gap: 6px; height: 46px; }
   .button {
     position: relative; width: 40px; height: 40px; flex: none;
     display: flex; align-items: center; justify-content: center;
