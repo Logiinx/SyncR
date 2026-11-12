@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Changed** Twitch videos: they open on Twitch's page for good only after the Twitch player fails twice in a row
+
 ## [0.72.1] - 2026-11-12
 
 **Video**

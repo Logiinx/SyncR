@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Changement** des vidéos Twitch : elles s’ouvrent pour de bon sur la page de Twitch seulement après deux échecs de suite du lecteur Twitch
+
 ## [0.72.1] - 2026-11-12
 
 **Vidéo**

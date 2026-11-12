@@ -101,6 +101,24 @@ function rememberWay(video: PlayableVideo, way: Way) {
   write(WAYS_KEY, Object.fromEntries(Object.entries(ways).slice(-KEPT_WAYS)))
 }
 
+// Our Twitch player giving up once can be a passing problem: Twitch's page is only remembered for a
+// video when it gives up twice in a row. Playing in between, or picking a way by hand, starts the count over.
+const FAILS_KEY = 'syncr.twitchFails'
+function failedTwice(video: PlayableVideo) {
+  const fails = read<Record<string, number>>(FAILS_KEY, {})
+  const twice = (fails[video.id] ?? 0) >= 1
+  delete fails[video.id] // also puts it back as the newest
+  if (!twice) fails[video.id] = 1
+  write(FAILS_KEY, Object.fromEntries(Object.entries(fails).slice(-KEPT_WAYS)))
+  return twice
+}
+function forgetFails(video: PlayableVideo) {
+  const fails = read<Record<string, number>>(FAILS_KEY, {})
+  if (!(video.id in fails)) return
+  delete fails[video.id]
+  write(FAILS_KEY, fails)
+}
+
 function pageColors(names: string[]) {
   const css = getComputedStyle(document.documentElement)
   return Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
@@ -294,12 +312,13 @@ function newWayShown() {
   wayShownAt = Date.now()
 }
 
-function changeWay(video: PlayableVideo, way: Way) {
+// remember: false for this opening only
+function changeWay(video: PlayableVideo, way: Way, remember = true) {
   queue = queue
     .then(async () => {
       if (current !== video) return // another video was opened in the meantime
       currentWay = way
-      rememberWay(video, way)
+      if (remember) rememberWay(video, way)
       newWayShown()
       await invoke<void>('video_player_way', { address: playerAddress(video, way), via: viaText(way), ...noteFor(video, way) })
     })
@@ -328,13 +347,17 @@ function listenToBar() {
       openLink(current.url)
       void invoke('close_video_player') // so you don't hear it twice
     }
-    if (action === 'another-way') changeWay(current, nextWay(current, currentWay))
+    if (action === 'another-way') {
+      forgetFails(current)
+      changeWay(current, nextWay(current, currentWay))
+    }
   })
   // How far the page's video is (video-watch.js). A report much shorter than the video is an ad.
   void listen<{ t: number; length: number }>('video-position', ({ payload: { t: seconds, length } }) => {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length })
+    if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
     if (current.duration > 0 && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
     if (current.duration > 0 && seconds >= length) playNext()
@@ -366,7 +389,7 @@ function listenToBar() {
     }
     // Our own Twitch player can't play it (player.js)
     if (request === '/failed') {
-      if (current?.id === `twitch-${video}` && currentWay === 'own') changeWay(current, nextWay(current, currentWay))
+      if (current?.id === `twitch-${video}` && currentWay === 'own') changeWay(current, nextWay(current, currentWay), failedTwice(current))
       return
     }
     // YouTube showed an error (video-watch.js). "auth": the owner doesn't allow playing outside
