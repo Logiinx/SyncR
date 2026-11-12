@@ -755,7 +755,9 @@ const CONTROLS_CSS = `
   :where(#player) button:disabled, :where(#player) button.off { cursor: default; }
   #player.quiet { cursor: none; }
 
-  #ui { position: absolute; inset: 0; opacity: 1; pointer-events: none; transition: opacity 0.2s ease; }
+  /* Always on a layer of its own: otherwise each fade over a playing video changes how the text
+     beside it (the chat) is drawn, and the names seem to glow for a moment */
+  #ui { position: absolute; inset: 0; opacity: 1; pointer-events: none; transition: opacity 0.2s ease; will-change: opacity; }
   #player.quiet #ui { opacity: 0; }
   #player.quiet #ui * { pointer-events: none !important; }
   #shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent 130px); }
