@@ -6,6 +6,7 @@ import { read, write } from './localState'
 import Window from './Window'
 import CloseButton from './CloseButton'
 import { richText } from './richText'
+import { shortDate } from './dates'
 
 // After an update, shows once what changed since the version last used on this device.
 // The text comes from CHANGELOG.md or CHANGELOG.fr.md, built into the app. A new device shows nothing.
@@ -19,8 +20,14 @@ const ENGLISH_END = /^---\s*$/m
 
 interface Release {
   version: string
+  date?: number // from the heading's "- 2026-11-12"; an update's notes have none
   body: string[] // the lines under the version heading
 }
+
+// "**Video**": an area's name, on a line of its own
+const AREA = /^\*\*([^*]+)\*\*$/
+// An area's last line, shown dimmer so the real changes stand out
+const SMALL_FIXES = /^\*\*(Small fixes|Petites corrections)\b/
 
 // "0.13.3" → [0, 13, 3], compared number by number
 function newer(a: string, b: string) {
@@ -37,8 +44,12 @@ function releasesSince(since: string): Release[] {
   let current: Release | null = null
   const french = currentLanguage() === 'fr'
   for (const line of (french ? frenchSpaces(changelogFr) : changelog).split(/\r?\n/)) {
-    const heading = line.match(/^## \[(\d+\.\d+\.\d+)\]/)
-    if (heading) releases.push((current = { version: heading[1], body: [] }))
+    const heading = line.match(/^## \[(\d+\.\d+\.\d+)\](?: - (\d+)-(\d+)-(\d+))?/)
+    if (heading) {
+      const [, version, y, m, d] = heading
+      const date = y ? new Date(+y, +m - 1, +d).getTime() : undefined // that day, local time
+      releases.push((current = { version, date, body: [] }))
+    }
     else if (line.startsWith('## ')) current = null
     else if (current && line.trim()) current.body.push(line)
   }
@@ -53,7 +64,9 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
       blocks.push(
         <ul key={blocks.length}>
           {items.map((item, i) => (
-            <li key={i}>{richText(item)}</li>
+            <li key={i} className={SMALL_FIXES.test(item) ? 'whats-new-small' : undefined}>
+              {richText(item)}
+            </li>
           ))}
         </ul>
       )
@@ -63,15 +76,25 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
     if (line.startsWith('- ')) items.push(line.slice(2))
     else {
       flushList()
-      const heading = line.match(/^###\s+(.*)/)
-      if (heading) blocks.push(<h3 key={blocks.length}>{heading[1]}</h3>)
+      const heading = line.match(/^###\s+(.*)/) ?? line.match(AREA)
+      if (heading)
+        blocks.push(
+          <h4 key={blocks.length} className="whats-new-area">
+            {heading[1]}
+          </h4>
+        )
       else blocks.push(<p key={blocks.length}>{richText(line)}</p>)
     }
   }
   flushList()
   return (
     <section>
-      {showVersion && <h3 className="whats-new-version">{`v${release.version}`}</h3>}
+      {showVersion && (
+        <h3 className="whats-new-version">
+          {`v${release.version}`}
+          {release.date && <span className="whats-new-date">{shortDate(release.date)}</span>}
+        </h3>
+      )}
       {blocks}
     </section>
   )
