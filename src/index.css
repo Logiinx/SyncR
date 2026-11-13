@@ -5675,7 +5675,7 @@ h3.games-group-title {
 .games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(100px, var(--shelf-width) / 7, 170px), 1fr));
-  gap: 16px 12px;
+  gap: 16px 18px; /* columns: the 2 px rings + their 2 px gap eat 8 px of it */
   margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* wider than the column, centered */
 }
 
@@ -5723,6 +5723,7 @@ h3.games-group-title {
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  min-height: 2.6em; /* always 2 lines, so the lines under it stay in a row across the grid */
   font-size: 0.9em;
   line-height: 1.3;
 }
@@ -6306,6 +6307,11 @@ img[data-fade] {
 @media (max-width: 699px) {
   .games {
     padding: 16px 12px;
+  }
+
+  /* The PC's 18 px would drop small phones to 2 covers per row (100 px at least each) */
+  .games-grid {
+    column-gap: 12px;
   }
 }
 

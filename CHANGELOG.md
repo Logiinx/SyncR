@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Better:** tidier cover grid: years and prices line up, more space between
+
 ## [0.80.2] - 2026-11-13
 
 **Games**
