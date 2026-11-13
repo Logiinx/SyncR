@@ -511,12 +511,13 @@
     }
     // Always placed by their middle: YouTube places auto-generated ones (rollup) by their left edge,
     // so a bigger size grew them to the right only, and a moved place put their left edge in the middle.
+    // Their lines are centered too: rollup ones are left-aligned in a box wider than the text.
     // Never closer to the bottom than YouTube's own place (a small gap).
     const drawLook = () => {
       const middle = look.x === undefined ? 0.5 : look.x
       const bottom = look.x === undefined ? '' : `bottom: ${Math.max(look.y, LOWEST) * 100}% !important;`
       lookStyle.textContent = `.caption-window { zoom: ${look.size || 1}; }
-        .caption-window.ytp-caption-window-bottom { left: ${middle * 100}% !important; margin-left: 0 !important; transform: translateX(-50%) !important; ${bottom} }`
+        .caption-window.ytp-caption-window-bottom { left: ${middle * 100}% !important; margin-left: 0 !important; transform: translateX(-50%) !important; text-align: center !important; ${bottom} }`
       lift()
     }
     new MutationObserver(lift).observe(box, { attributes: true, attributeFilter: ['class'] })

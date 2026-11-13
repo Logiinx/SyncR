@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed:** auto-generated YouTube subtitles sitting left of the middle
+
 ## [0.78.0] - 2026-11-13
 
 **Video**

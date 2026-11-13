@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Corrigé :** sous-titres YouTube automatiques décalés à gauche du centre
+
 ## [0.78.0] - 2026-11-13
 
 **Vidéo**
