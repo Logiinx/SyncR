@@ -290,6 +290,7 @@ function barData(video: PlayableVideo, way: Way) {
       watch: t('Mark as watched'),
       unwatch: t('Back to To watch'),
       onTop: t('Always on top'),
+      nextScreen: t('Move to the other screen'),
       browser: t('Open in browser'),
       anotherWay: t('Try another way'),
       extensions: t('Extensions'),

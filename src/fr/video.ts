@@ -110,6 +110,7 @@ export const video = {
   'Mark as watched': 'Marquer comme vue',
   'Open in browser': 'Ouvrir dans le navigateur',
   'Always on top': 'Toujours au premier plan',
+  'Move to the other screen': 'Déplacer vers l’autre écran',
   'Try another way': 'Essayer un autre moyen',
   Extensions: 'Extensions',
   'via {site}': 'via {site}',

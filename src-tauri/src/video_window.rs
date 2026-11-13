@@ -494,6 +494,13 @@ pub async fn open_video_player(
           let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
         }
       }
+      // A screen plugged in or out while away: the bar's screen button follows
+      WindowEvent::Focused(true) => {
+        if let Some(bar) = moved.get_webview(VIDEO_BAR) {
+          let screens = moved.available_monitors().map(|all| all.len()).unwrap_or(1);
+          let _ = bar.eval(format!("window.setScreens?.({screens})"));
+        }
+      }
       // Out of full screen first, or the plugin remembers the size of the screen
       WindowEvent::CloseRequested { api, .. } if fullscreen => {
         api.prevent_close();
@@ -532,8 +539,11 @@ pub fn video_bar(
   let result = match action.as_str() {
     "ready" => {
       let maximized = window.is_maximized().unwrap_or(false);
+      let screens = window.available_monitors().map(|all| all.len()).unwrap_or(1);
       video_extensions::bar_ready(app);
-      return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
+      return webview
+        .eval(format!("window.setMaximized({maximized}); window.setScreens({screens})"))
+        .map_err(|e| e.to_string());
     }
     // left, at: the button's left edge and middle, in pixels from the window's left edge
     "extensions-menu" => {
@@ -545,6 +555,7 @@ pub fn video_bar(
     }
     "drag" => window.start_dragging(),
     "minimize" => window.minimize(),
+    "next-screen" => move_to_next_screen(&window),
     "maximize" => {
       if window.is_maximized().unwrap_or(false) { window.unmaximize() } else { window.maximize() }
     }
@@ -562,6 +573,27 @@ pub fn video_bar(
     let _ = site.set_focus();
   }
   result.map_err(|e| e.to_string())
+}
+
+// The window to the next screen (left to right, then back to the first), always maximized there.
+// Out of maximized first: a maximized window can't be moved.
+fn move_to_next_screen(window: &tauri::Window) -> tauri::Result<()> {
+  let mut screens = window.available_monitors()?;
+  if screens.len() < 2 {
+    return Ok(());
+  }
+  screens.sort_by_key(|screen| (screen.position().x, screen.position().y));
+  let here = window.current_monitor()?.map(|screen| *screen.position());
+  let next = screens
+    .iter()
+    .position(|screen| Some(*screen.position()) == here)
+    .map_or(0, |index| (index + 1) % screens.len());
+  if window.is_maximized()? {
+    window.unmaximize()?;
+  }
+  let corner = screens[next].position();
+  window.set_position(tauri::PhysicalPosition::new(corner.x + 40, corner.y + 40))?;
+  window.maximize()
 }
 
 // Where to send the site's page: one of SyncR's own pages (next to the bar's), or an https address

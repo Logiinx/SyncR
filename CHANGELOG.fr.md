@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Nouveau :** bouton du lecteur pour le passer sur l’autre écran, agrandi
 - **Nouveau :** images dans la liste des chapitres YouTube
 - **Nouveau :** sous-titres YouTube : « Garder au centre » dans ⚙️, sinon déplaçables partout
 - **Amélioré :** le curseur de volume des lecteurs avance de 1 % à la fois

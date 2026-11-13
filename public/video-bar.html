@@ -48,6 +48,7 @@
   }
   button:hover { background: var(--hover); color: var(--text); }
   svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  button[hidden] { display: none; }
   #extensions { display: none; }
   #extensions.on { display: flex; }
   #via { display: none; flex-shrink: 0; margin-left: auto; padding-left: 12px; color: var(--text-dim); }
@@ -64,6 +65,7 @@
 <button id="another-way"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
 <button id="watched"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>
 <button id="on-top"><svg viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button>
+<button id="next-screen" hidden><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/><path d="M8 10h7"/><path d="m12 7 3 3-3 3"/></svg></button>
 <button id="browser"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
 <div id="controls">
   <button id="minimize"><svg viewBox="0 0 10 10"><path d="M0 5h10"/></svg></button>
@@ -94,6 +96,7 @@
   // Only YouTube has other ways
   $('on-top').title = labels.onTop
   $('browser').title = labels.browser
+  $('next-screen').title = labels.nextScreen
   $('minimize').title = labels.minimize
   $('close').title = labels.close
 
@@ -127,6 +130,8 @@
       : '<rect x="0.625" y="0.625" width="8.75" height="8.75" rx="1"/>'
   }
   // Its menu (video-menu.html) shows the extensions with a popup; none, no button
+  // Only with two screens or more (video_window.rs counts them when the window opens or gets focus)
+  window.setScreens = (count) => { $('next-screen').hidden = count < 2 }
   window.setExtensions = (list) => $('extensions').classList.toggle('on', list.length > 0)
   window.setWatched(!!data.watched)
   showOnTop(!!data.onTop)
@@ -143,6 +148,7 @@
   }
   $('another-way').onclick = () => send('another-way')
   $('browser').onclick = () => send('browser')
+  $('next-screen').onclick = () => send('next-screen')
   $('minimize').onclick = () => send('minimize')
   $('maximize').onclick = () => send('maximize')
   $('close').onclick = () => send('close')
