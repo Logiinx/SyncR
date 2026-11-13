@@ -39,6 +39,8 @@ export const video = {
   Started: 'Commencées',
   'Started videos': 'Vidéos commencées',
   'Videos stopped partway, at the top of Rewatch': 'Vidéos arrêtées en cours, en haut de À revoir',
+  'Videos stopped partway, at the top of To watch': 'Vidéos arrêtées en cours, en haut de À regarder',
+  'Only in To watch and Rewatch': 'Seulement dans À regarder et À revoir',
   Playlist: 'Playlist',
   'Rewatch as a section in To watch': 'À revoir en section dans À regarder',
   'Put finished playlists in Rewatch': 'Mettre les playlists terminées dans À revoir',

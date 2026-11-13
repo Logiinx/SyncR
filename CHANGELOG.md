@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **New:** started videos in To watch too, with its own switch (⋯ menu)
+- **Fixed:** Rewatch's started videos also listing To watch's
+
 ## [0.80.0] - 2026-11-13
 
 **Video**

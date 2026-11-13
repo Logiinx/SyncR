@@ -311,9 +311,12 @@ function VideoView() {
   const [clearingAll, setClearingAll] = useState(false)
   const [grouped, setGrouped] = useLocalState('syncr.video.byChannel', false)
   const [openGroups, setOpenGroups] = useLocalState<string[]>('syncr.video.openGroups', [])
-  // Rewatch's Started group: shown or not (More menu), and folded or not (open at first)
+  // The Started groups of Rewatch and To watch, each on its own: shown or not (More menu), and
+  // folded or not (open at first)
   const [showStarted, setShowStarted] = useLocalState('syncr.video.showStarted', false)
   const [startedFolded, setStartedFolded] = useLocalState('syncr.video.startedFolded', false)
+  const [showStartedToWatch, setShowStartedToWatch] = useLocalState('syncr.video.showStartedToWatch', false)
+  const [startedToWatchFolded, setStartedToWatchFolded] = useLocalState('syncr.video.startedToWatchFolded', false)
   const startedIds = useStartedIds()
   const follows = feed?.follows
   // The filter's follows: music ones in Music, the others elsewhere
@@ -590,40 +593,48 @@ function VideoView() {
   // channel's sub-folders: these only exist in the channel's row.
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
-  // The videos stopped partway, wherever they are (To watch, its folders, Rewatch, playlists), the
-  // last one watched first; not Music's. They also stay where they are.
-  const started = (() => {
-    if (!showStarted || !feed) return []
+  // The videos stopped partway in one list, the last one watched first; they also stay where they
+  // are. Rewatch: its videos, folders and playlists. To watch: its own (the chosen follow's, its
+  // playlists only with All follows), never Rewatch's or Music's (user: each list on its own).
+  function startedIn(inRewatch: boolean) {
+    if (!feed || !(inRewatch ? showStarted : showStartedToWatch)) return []
     const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist }>()
-    for (const video of [...feed.toWatch, ...feed.rewatch]) where.set(video.id, { video })
+    const own = inRewatch ? feed.rewatch : feed.toWatch.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
+    for (const video of own) where.set(video.id, { video })
     for (const { playlist, videos: episodes } of feed.playlists) {
+      if ((!!playlist.folderId && rewatchIds.has(playlist.folderId)) !== inRewatch || (!inRewatch && shownChannel !== 'all')) continue
       for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist })
     }
     return startedIds.flatMap((id) => {
       const entry = where.get(id)
       return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
     })
-  })()
+  }
+  const started = startedIn(true)
+  const startedToWatch = list === 'towatch' ? startedIn(false) : []
   // No row when there's none
-  function startedRows(depth: number): ReactNode[] {
-    if (!started.length) return []
+  function startedRows(depth: number, inRewatch = true): ReactNode[] {
+    const entries = inRewatch ? started : startedToWatch
+    const folded = inRewatch ? startedFolded : startedToWatchFolded
+    const id = inRewatch ? 'started' : 'started-towatch'
+    if (!entries.length) return []
     return [
       <FoldRow
-        key="started"
-        id="started"
+        key={id}
+        id={id}
         icon={<span className="video-follow-icon video-folder-icon"><History size={15} /></span>}
         title={t('Started')}
-        count={started.length}
+        count={entries.length}
         newCount={0}
-        open={!startedFolded}
+        open={!folded}
         depth={depth}
-        onToggle={() => setStartedFolded(!startedFolded)}
+        onToggle={() => (inRewatch ? setStartedFolded(!folded) : setStartedToWatchFolded(!folded))}
       />,
-      ...(startedFolded
+      ...(folded
         ? []
-        : started.map(({ video, playlist }) => (
+        : entries.map(({ video, playlist }) => (
             <VideoRow
-              key={`started ${video.id}`}
+              key={`${id} ${video.id}`}
               video={video}
               isNew={false}
               depth={depth + 1}
@@ -653,13 +664,16 @@ function VideoView() {
   // A folder or playlist's videos to start over: those watched or opened
   const startOverIds = (episodes: FeedVideo[]) => episodes.filter((video) => video.watched || video.opened).map((video) => video.id)
   const folderStartOver = (folder: VideoFolder) => startOverIds([...allIn(folder), ...allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes)])
-  const startedItem = (here: boolean): MenuItem => ({
+  // Rewatch's or To watch's own (none: grayed, in Watched and Music)
+  const startedItem = (of: 'rewatch' | 'towatch' | null): MenuItem => ({
     label: t('Started videos'),
     icon: History,
-    checked: showStarted,
-    disabled: !here,
-    hint: here ? t('Videos stopped partway, at the top of Rewatch') : t('Only in Rewatch'),
-    onClick: () => setShowStarted(!showStarted),
+    checked: of === 'rewatch' ? showStarted : of === 'towatch' && showStartedToWatch,
+    disabled: !of,
+    hint: of === 'rewatch'
+      ? t('Videos stopped partway, at the top of Rewatch')
+      : of === 'towatch' ? t('Videos stopped partway, at the top of To watch') : t('Only in To watch and Rewatch'),
+    onClick: () => (of === 'rewatch' ? setShowStarted(!showStarted) : setShowStartedToWatch(!showStartedToWatch)),
   })
   const startOverItem = (ids: string[]): MenuItem => ({
     label: t('Start over'),
@@ -679,6 +693,7 @@ function VideoView() {
   })
   const musicList = list === 'music' ? [...foldersIn(MUSIC).flatMap((folder) => folderRows(folder, 0)), ...videoRows()] : []
   const mainRows = list === 'rewatch' ? rewatchList : list === 'music' ? musicList : [
+    ...startedRows(0, false),
     ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     ...videoRows(),
@@ -809,8 +824,8 @@ function VideoView() {
                     hint: !anyFollowsOrVideos ? t('No follows yet') : list !== 'towatch' ? t('Only in To watch') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),
                     onClick: () => setGrouped(!grouped),
                   },
-                  // As a section, its row's menu has it
-                  ...(asSection ? [] : [startedItem(list === 'rewatch')]),
+                  // Rewatch's own, as a section, is in its row's menu
+                  startedItem(list === 'rewatch' || list === 'towatch' ? list : null),
                   { label: t('Follows'), icon: Users, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },
                   // What the list shows now: all follows, or the chosen one
                   {
@@ -876,7 +891,7 @@ function VideoView() {
             folderMenu.folder.id === REWATCH
               ? [
                   { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: REWATCH }) },
-                  { ...startedItem(true), divider: true },
+                  { ...startedItem('rewatch'), divider: true },
                   startOverItem(folderStartOver(folderMenu.folder)),
                 ]
               : [
