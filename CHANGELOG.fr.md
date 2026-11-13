@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.80.1] - 2026-11-13
+
 **Vidéo**
 - **Nouveau :** vidéos commencées aussi dans À regarder, avec son propre interrupteur (menu ⋯)
 - **Corrigé :** les vidéos commencées de À revoir listaient aussi celles de À regarder
