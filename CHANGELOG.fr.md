@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-11-13
+
 **Vidéo**
 - **Nouveau :** bouton du lecteur pour le passer sur l’autre écran, agrandi
 - **Nouveau :** images dans la liste des chapitres YouTube

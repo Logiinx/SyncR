@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-11-13
+
 **Video**
 - **New:** player window button to move it to your other screen, maximized
 - **New:** pictures in the YouTube chapters list
