@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Ellipsis, FolderInput, Gamepad2, Palette, PinOff, Sparkles } from 'lucide-react'
 import { changed, db, setCardColor, setCardPriority, type Card } from './db'
 import { colorMenuItems, tintStyle } from './cardColors'
-import ContextMenu from './ContextMenu'
+import ContextMenu, { type MenuItem } from './ContextMenu'
 import Cover from './GameCover'
 import { useListItem } from './animations'
 
@@ -13,14 +13,14 @@ interface Props {
   onDelete: () => void
   onPress: (event: React.PointerEvent) => void // may start a drag (Board.tsx)
   onOpen: (gameId: string) => void // the game's details
-  onMoveToGroup: (x: number, y: number) => void // "Move to group…" (Board.tsx)
+  moveToGroupItems: () => MenuItem[] // "Move to group"'s list (Board.tsx)
 }
 
 // A game pinned to the Board ("Pin to Board" in the Games tab): cover and name. Moves, gets
 // priority and is unpinned like any card (Card.tsx: its menu), but has no text to edit. Click: the game's details
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
-function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
+function GameCard({ card, onDelete, onPress, onOpen, moveToGroupItems }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
@@ -89,7 +89,7 @@ function GameCard({ card, onDelete, onPress, onOpen, onMoveToGroup }: Props) {
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: t('Move to group…'), icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: t('Move to group'), icon: FolderInput, submenu: { title: t('Move to group'), items: moveToGroupItems() } },
             { label: t('Unpin from Board'), icon: PinOff, danger: true, onClick: onDelete },
           ]}
         />

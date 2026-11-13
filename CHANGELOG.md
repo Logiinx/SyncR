@@ -8,7 +8,11 @@ All notable changes to SyncR. Newest version first.
 - **Better:** ±10 s buttons and arrow keys jump at every press
 - **Better:** no loading circle flashing on quick jumps
 - **Better:** YouTube subtitles button turns blue right as you click it
+- **Better:** playlists' Move to folder opens its list as soon as you hover it
 - **Changed:** video window closes when its video ends (Video settings)
+
+**Board**
+- **Better:** Move to group opens its list as soon as you hover it
 
 ## [0.78.1] - 2026-11-13
 

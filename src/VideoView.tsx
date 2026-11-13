@@ -291,7 +291,6 @@ function VideoView() {
   // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
   // folder to rename
   const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
-  const [movingPlaylist, setMovingPlaylist] = useState<{ playlist: VideoPlaylist; x: number; y: number } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
@@ -389,6 +388,20 @@ function VideoView() {
   const folderIcon = (folder: VideoFolder) => (folder.id === REWATCH ? Repeat : Folder)
   // Your own folders, then those of this video's channel: it can't go in another channel's. With
   // both, each list gets a small title instead of the channel's name on every line.
+  // A playlist's Move to folder list: your own folders only (a playlist isn't a channel's)
+  function playlistFolderItems(playlist: VideoPlaylist): MenuItem[] {
+    return [
+      ...ownFolderChoices().map(({ folder, path }): MenuItem => ({
+        label: path,
+        icon: folderIcon(folder),
+        checked: folder.id === placeOf(playlist),
+        onClick: () => void changePlaylist(playlist.id, { folderId: folder.id }),
+      })),
+      { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, playlistId: playlist.id }) },
+      ...(placeOf(playlist) ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void changePlaylist(playlist.id, { folderId: null }) }] : []),
+    ]
+  }
+
   function videoFolderItems(video: FeedVideo): MenuItem[] {
     const own = ownFolderChoices()
     const theirs = allFolders.filter((folder) => !folder.parentId && folder.channel === channelKey(video))
@@ -712,7 +725,7 @@ function VideoView() {
           onClose={() => setPlaylistMenu(null)}
           items={[
             // Moving first, then the order (the second line's name depends on the first), checking, then elsewhere
-            { label: t('Move to folder…'), icon: FolderInput, onClick: () => setMovingPlaylist(playlistMenu) },
+            { label: t('Move to folder'), icon: FolderInput, submenu: { title: t('Move to folder'), items: playlistFolderItems(playlistMenu.playlist) } },
             { label: t('YouTube’s order'), icon: ListOrdered, divider: true, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
             { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
@@ -721,27 +734,6 @@ function VideoView() {
               ? [{ ...startOverItem(startOverIds(playlists.find(({ playlist }) => playlist.id === playlistMenu.playlist.id)?.videos ?? [])), divider: true }]
               : []),
             { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
-          ]}
-        />
-      )}
-      {movingPlaylist && (
-        <ContextMenu
-          x={movingPlaylist.x}
-          y={movingPlaylist.y}
-          onClose={() => setMovingPlaylist(null)}
-          header={{ title: t('Move to folder') }}
-          items={[
-            // Your own folders only: a playlist isn't a channel's
-            ...ownFolderChoices().map(({ folder, path }): MenuItem => ({
-              label: path,
-              icon: folderIcon(folder),
-              checked: folder.id === placeOf(movingPlaylist.playlist),
-              onClick: () => void changePlaylist(movingPlaylist.playlist.id, { folderId: folder.id }),
-            })),
-            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: null, playlistId: movingPlaylist.playlist.id }) },
-            ...(placeOf(movingPlaylist.playlist)
-              ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void changePlaylist(movingPlaylist.playlist.id, { folderId: null }) }]
-              : []),
           ]}
         />
       )}

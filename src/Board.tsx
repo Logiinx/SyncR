@@ -16,7 +16,6 @@ import {
 import Card from './Card'
 import CardGroup from './CardGroup'
 import GameCard from './GameCard'
-import ContextMenu from './ContextMenu'
 import GameDialog from './GameDialog'
 import { removeGameQuestion } from './games'
 import Dialog, { type DialogRequest } from './Dialog'
@@ -63,8 +62,6 @@ function Board({ onClose }: Props) {
   const [newCardId, setNewCardId] = useState<string | null>(null)
   // The card (or group) just deleted, while "Undo" is offered: what it brings back
   const [undo, setUndo] = useState<{ ids: string[]; label: string } | null>(null)
-  // "Move to group" in a card's menu: the groups to choose from
-  const [groupMenu, setGroupMenu] = useState<{ cardId: string; x: number; y: number } | null>(null)
   // A pinned game's details (click its card), and the "Remove game?" question from there
   const [openGame, setOpenGame] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
@@ -360,14 +357,14 @@ function Board({ onClose }: Props) {
   }
 
   function renderCard(card: CardData) {
-    const onMoveToGroup = (x: number, y: number) => setGroupMenu({ cardId: card.id, x, y })
+    const moveToGroupItems = () => groupMenuItems(card.id)
     return card.game ? (
       <GameCard
         card={{ ...card, game: card.game }}
         onDelete={() => deleteCard(card.id)}
         onPress={(event) => pressCard(card.id, event)}
         onOpen={setOpenGame}
-        onMoveToGroup={onMoveToGroup}
+        moveToGroupItems={moveToGroupItems}
       />
     ) : (
       <Card
@@ -375,7 +372,7 @@ function Board({ onClose }: Props) {
         autoFocus={card.id === newCardId}
         onDelete={() => deleteCard(card.id)}
         onPress={(event) => pressCard(card.id, event)}
-        onMoveToGroup={onMoveToGroup}
+        moveToGroupItems={moveToGroupItems}
       />
     )
   }
@@ -470,15 +467,6 @@ function Board({ onClose }: Props) {
           {t('New card')}
         </button>
         {openGame &&<GameDialog id={openGame} onClose={() => setOpenGame(null)} onRemove={() => askRemoveGame(openGame)} />}
-        {groupMenu && (
-          <ContextMenu
-            x={groupMenu.x}
-            y={groupMenu.y}
-            onClose={() => setGroupMenu(null)}
-            header={{ title: t('Move to group') }}
-            items={groupMenuItems(groupMenu.cardId)}
-          />
-        )}
         {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
       </aside>
     </>

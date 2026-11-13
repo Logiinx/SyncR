@@ -19,7 +19,6 @@ export const board = {
   'Remove priority': 'Retirer la priorité',
   'Mark as priority': 'Marquer comme prioritaire',
   'Move to group': 'Déplacer vers un groupe',
-  'Move to group…': 'Déplacer vers un groupe…',
 
   // Groups
   Group: 'Groupe',

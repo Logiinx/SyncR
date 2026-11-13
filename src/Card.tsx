@@ -15,7 +15,7 @@ import {
 import { extensions } from './NoteEditor'
 import { ownSaves } from './ownSaves'
 import { colorMenuItems, tintStyle } from './cardColors'
-import ContextMenu from './ContextMenu'
+import ContextMenu, { type MenuItem } from './ContextMenu'
 import ColorPicker, { currentTextColor, pickTextColor } from './ColorPicker'
 import { useFoldAnimation, useListItem } from './animations'
 import { currentZoom } from './appearance'
@@ -45,7 +45,7 @@ interface Props {
   autoFocus: boolean // just added with "+": starts in edit mode, cursor in it
   onDelete: () => void
   onPress: (event: React.PointerEvent) => void // pressed (not while editing): may start a drag (Board.tsx)
-  onMoveToGroup: (x: number, y: number) => void // "Move to group…": the Board shows the groups there
+  moveToGroupItems: () => MenuItem[] // "Move to group"'s list (Board.tsx)
 }
 
 // One card on the Board: the same editor as notes, saved shortly after you stop typing.
@@ -58,7 +58,7 @@ interface Props {
 // A card with a title but no text is kept.
 // Left empty when editing ends: removed silently, nothing to undo. (Left empty when the
 // Board closes: the Board removes it the next time it opens.)
-function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
+function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
   // colors: a color list instead of the menu. editing: as it was when the menu opened, so
@@ -357,7 +357,7 @@ function Card({ card, autoFocus, onDelete, onPress, onMoveToGroup }: Props) {
               divider: true,
               onClick: () => setCardPriority(card.id, !card.priority),
             },
-            { label: t('Move to group…'), icon: FolderInput, onClick: () => onMoveToGroup(menu.x, menu.y) },
+            { label: t('Move to group'), icon: FolderInput, submenu: { title: t('Move to group'), items: moveToGroupItems() } },
             { label: t('Delete'), icon: Trash2, danger: true, onClick: onDelete },
           ]}
         />

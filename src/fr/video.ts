@@ -18,7 +18,6 @@ export const video = {
   'Its sub-folders go too. All their videos go back to the main list.': 'Ses sous-dossiers partent aussi. Toutes leurs vidéos retournent dans la liste principale.',
   'Its videos and playlists go back to the main list.': 'Ses vidéos et playlists retournent dans la liste principale.',
   'Its sub-folders go too. All their videos and playlists go back to the main list.': 'Ses sous-dossiers partent aussi. Toutes leurs vidéos et playlists retournent dans la liste principale.',
-  'Move to folder…': 'Déplacer vers un dossier…',
   Rewatch: 'À revoir',
   'Move to Rewatch': 'Déplacer vers À revoir',
   'Out of Rewatch': 'Retirer de À revoir',
