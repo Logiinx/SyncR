@@ -159,6 +159,7 @@ function controlsData() {
       subtitleSize: t('Size|subtitles'),
       smaller: t('Smaller'),
       bigger: t('Bigger'),
+      keepCentered: t('Keep centered'),
       resetPosition: t('Reset position'),
       chapters: t('Chapters'),
       copyLink: t('Copy link'),

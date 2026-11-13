@@ -136,6 +136,7 @@ export const video = {
   'Size|subtitles': 'Taille',
   Smaller: 'Plus petits',
   Bigger: 'Plus grands',
+  'Keep centered': 'Garder au centre',
   'Reset position': 'Remettre à leur place',
   'Chapters': 'Chapitres',
   'Copy link at {time}': 'Copier le lien à {time}',

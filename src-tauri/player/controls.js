@@ -683,6 +683,7 @@ function playerControls(env, media) {
     }
     line.append(name, change('minus', labels.smaller, -SIZES.step, size > SIZES.smallest), shown, change('plus', labels.bigger, SIZES.step, size < SIZES.biggest))
     menu.append(line)
+    side.row(labels.keepCentered, subtitles.centered(), () => subtitles.setCentered(!subtitles.centered()))
     const reset = document.createElement('button')
     reset.className = 'menu-item'
     reset.textContent = labels.resetPosition

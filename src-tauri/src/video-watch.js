@@ -239,6 +239,7 @@
 
     // Subtitles: their size and place, the same for every video, kept by this page's storage.
     // x and y: the middle of their bottom edge, as parts of the player (none = YouTube's place).
+    // free: dragged anywhere; otherwise (the default) kept in the middle, moving only up and down.
     const LOOK_KEY = 'syncr-subtitles-look'
     let look = {}
     try { look = JSON.parse(localStorage.getItem(LOOK_KEY) || '{}') || {} } catch {}
@@ -316,6 +317,9 @@
         size: () => look.size || 1,
         setSize: (size) => { look.size = size; saveLook(); drawLook() },
         moved: () => look.x !== undefined,
+        centered: () => !look.free,
+        // Back in the middle at the same height
+        setCentered: (on) => { look.free = !on; if (on && look.x !== undefined) look.x = 0.5; saveLook(); drawLook() },
         resetPlace: () => { delete look.x; delete look.y; saveLook(); drawLook() },
       },
     }
@@ -516,7 +520,7 @@
       if (!moving.moved) document.documentElement.classList.add('syncr-moving-subtitles')
       moving.moved = true
       const within = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high))
-      look.x = within(moving.x + dx / moving.frame.width, moving.half, 1 - moving.half)
+      look.x = look.free ? within(moving.x + dx / moving.frame.width, moving.half, 1 - moving.half) : 0.5
       look.y = within(moving.y - dy / moving.frame.height, LOWEST, 1 - moving.height)
       drawLook()
     })
