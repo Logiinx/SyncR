@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.80.2] - 2026-11-13
+
 **Jeux**
 - **Petites corrections :** temps ⌛ placé trop haut
 
