@@ -15,7 +15,7 @@ import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from '
 import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, renameFolder, REWATCH, useRewatchSection } from './videoFolders'
-import VideoLogo from './VideoLogo'
+import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
@@ -432,9 +432,21 @@ function VideoView() {
   // oldest on top like a playlist. Only in To watch, empty ones too, or a new folder couldn't be
   // reached. Its count is its own videos and playlists ("3 videos · 1 playlist", "1 playlist"); its
   // "new" also counts its playlists' new videos.
+  // A folder of yours whose videos, playlists and sub-folders all come from one channel: that
+  // channel's picture (none when empty, mixed, or no picture is known; never Rewatch or a channel's)
+  function folderPicture(folder: VideoFolder, inside: FeedVideo[], lists: typeof playlists) {
+    if (folder.id === REWATCH || topFolder(folder)?.channel) return null
+    const all = [...inside, ...lists.flatMap(({ videos: episodes }) => episodes)]
+    const channels = new Set(all.map(channelKey))
+    if (channels.size !== 1) return null
+    const [only] = channels
+    return follows?.find((follow) => channelKey(follow) === only)?.icon ?? all.find((video) => video.channelIcon)?.channelIcon ?? null
+  }
+
   function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
     const inside = allIn(folder)
     const lists = allPlaylistsIn(folder)
+    const picture = folderPicture(folder, inside, lists)
     const newInPlaylists = lists.flatMap(({ videos: episodes }) => episodes).filter(tagNew).length
     const countText = lists.length
       ? [inside.length ? plural(inside.length, '{n} video', '{n} videos') : '', plural(lists.length, '{n} playlist', '{n} playlists')].filter(Boolean).join(' · ')
@@ -445,7 +457,16 @@ function VideoView() {
         key={folder.id}
         id={folder.id}
         drop={{ folder: folder.id, channel: topFolder(folder)?.channel ?? undefined, open: folder.id }}
-        icon={<span className="video-follow-icon video-folder-icon">{folder.id === REWATCH ? <Repeat size={15} /> : <Folder size={15} />}</span>}
+        icon={
+          picture ? (
+            <span className="video-folder-picture">
+              <ChannelPicture src={picture} />
+              <span className="video-folder-badge"><Folder size={10} /></span>
+            </span>
+          ) : (
+            <span className="video-follow-icon video-folder-icon">{folder.id === REWATCH ? <Repeat size={15} /> : <Folder size={15} />}</span>
+          )
+        }
         title={folderName(folder)}
         count={inside.length}
         countText={countText}

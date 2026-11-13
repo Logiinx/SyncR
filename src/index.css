@@ -7960,6 +7960,28 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
+/* A folder holding one channel's videos: its picture, with a small folder in the corner */
+.video-folder-picture {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.video-folder-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-dim);
+}
+
 /* A playlist that doesn't check for new videos */
 .video-folder-icon.not-checking {
   opacity: 0.4;
