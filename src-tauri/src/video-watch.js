@@ -273,6 +273,9 @@
     }
 
     const qualityData = () => (player.getAvailableQualityData?.() || []).filter((one) => one.isPlayable !== false)
+    // Subtitles just asked for: { value: their track ('' = off), at }
+    const ASK_SHOWS = 3000 // ms
+    let asked = null
     const media = {
       element,
       paused: () => ![1, 3].includes(player.getPlayerState()),
@@ -311,14 +314,26 @@
       },
       subtitles: {
         tracks: () => subtitleTracks().map(({ value, text }) => ({ value, text })),
-        track: () => (currentTrack()?.languageCode ? trackKey(currentTrack()) : ''),
+        // What was just asked for shows at once (the button turns blue on the click): YouTube only
+        // says so once it has the track. Its own answer wins after ASK_SHOWS (it may refuse).
+        track: () => {
+          const real = currentTrack()?.languageCode ? trackKey(currentTrack()) : ''
+          if (asked && real !== asked.value && Date.now() - asked.at < ASK_SHOWS) return asked.value
+          asked = null
+          return real
+        },
         // A change right after a click or key: the check above notes on or off for the channel
         setTrack: (value) => {
           const found = value && subtitleTracks().find((one) => one.value === value)
           if (found) chosenTrack = value
+          asked = { value: found ? value : '', at: Date.now() }
           player.setOption('captions', 'track', found ? found.track : {})
         },
-        toggle: () => player.setOption('captions', 'track', currentTrack()?.languageCode ? {} : pickTrack(player, tracklist())),
+        toggle: () => {
+          const track = media.subtitles.track() ? {} : pickTrack(player, tracklist())
+          asked = { value: track?.languageCode ? trackKey(track) : '', at: Date.now() }
+          player.setOption('captions', 'track', track)
+        },
         size: () => look.size || 1,
         setSize: (size) => { look.size = size; saveLook(); drawLook() },
         moved: () => look.x !== undefined,

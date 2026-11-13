@@ -453,6 +453,8 @@ function playerControls(env, media) {
   function toggleSubtitles() {
     if (!subtitles?.tracks().length) return
     subtitles.toggle()
+    drawSubtitles() // at once: the player shows what was asked for
+    drawSettings()
   }
   $('subtitles').onclick = toggleSubtitles
 
@@ -659,7 +661,7 @@ function playerControls(env, media) {
   function drawSubtitlesMenu(side, tracks) {
     const current = subtitles.track()
     for (const item of [{ value: '', text: labels.subtitlesOff }, ...tracks]) {
-      side.pick(item.text, item.value === current, () => subtitles.setTrack(item.value))
+      side.pick(item.text, item.value === current, () => { subtitles.setTrack(item.value); drawSubtitles() })
     }
     const menu = side.element
     const size = Math.round(subtitles.size() * 10) / 10

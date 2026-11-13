@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Better:** YouTube subtitles button turns blue right as you click it
+
 ## [0.78.1] - 2026-11-13
 
 **Video**

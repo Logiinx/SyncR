@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Amélioré :** le bouton des sous-titres YouTube devient bleu dès le clic
+
 ## [0.78.1] - 2026-11-13
 
 **Vidéo**
