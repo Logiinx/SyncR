@@ -185,6 +185,8 @@ export const video = {
   'Corner, left': 'Dans le coin, à gauche',
   "This video can't play in the player window": 'Cette vidéo ne peut pas être lue dans le lecteur',
   'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
+  'Close the video player when a video ends': 'Fermer le lecteur vidéo à la fin d’une vidéo',
+  'In a playlist, after its last video': 'Dans une playlist, après sa dernière vidéo',
   'Add a playlist': 'Ajouter une playlist',
   'Playlist link': 'Lien de la playlist',
   'Paste a YouTube playlist’s link': 'Collez le lien d’une playlist YouTube',

@@ -49,6 +49,7 @@ export const SUBTITLE_LANGUAGES = [
 export interface PlayerSettings {
   alwaysOnTop: boolean
   watchedCloses: boolean // Watched on the bar also closes the window
+  endCloses: boolean // the window closes when its video ends (in a playlist: after the last one)
   watchedNearEnd: boolean // near its end, a video moves to Watched by itself
   quality: (typeof YOUTUBE_QUALITIES)[number][0]
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
@@ -57,6 +58,7 @@ const KEY = 'syncr.videoPlayer'
 export const loadPlayerSettings = (): PlayerSettings => ({
   alwaysOnTop: false,
   watchedCloses: false,
+  endCloses: true,
   watchedNearEnd: true,
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
@@ -414,6 +416,7 @@ function listenToBar() {
 // What goes with a video starting in the window
 function startWatching(video: PlayableVideo, playlistId: string | null) {
   current = video
+  closedAtEnd = null
   playlist = playlistId
   watchedNow = video.watched
   undone = false
@@ -433,16 +436,18 @@ function followWatched(video: PlayableVideo) {
 }
 
 // The open video reached its end: the next one of its playlist, in the same window. Once, as more
-// reports of its end can come. After the last one, it just stays there.
+// reports of its end can come. With none after it, the window closes (a setting, on by default).
 function playNext() {
   const ended = current
   const playlistId = playlist
-  if (!ended || !playlistId) return
+  if (!ended) return
+  if (!playlistId) return closeAtEnd(ended)
   playlist = null
   queue = queue
     .then(async () => {
       const next = await nextInPlaylist(playlistId, ended.id)
-      if (!next || current !== ended) return // another video was opened in the meantime
+      if (current !== ended) return // another video was opened in the meantime
+      if (!next) return closeAtEnd(ended)
       const way = rememberedWay(next)
       // Not the new page's reports for the old video. It becomes the current one once the window
       // has it: if this fails, the window still shows the old one.
@@ -462,6 +467,13 @@ function playNext() {
       void markOpened(next.id)
     })
     .catch((error) => console.error('Video player failed', error))
+}
+
+let closedAtEnd: PlayableVideo | null = null
+function closeAtEnd(video: PlayableVideo) {
+  if (closedAtEnd === video || !loadPlayerSettings().endCloses) return
+  closedAtEnd = video
+  void invoke('close_video_player')
 }
 
 // playlistId: it plays in that playlist. start: seconds from a pasted link's time.

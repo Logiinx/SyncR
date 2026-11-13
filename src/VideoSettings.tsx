@@ -103,6 +103,9 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             <SettingRow label={t('Mark as watched closes the video player')}>
               <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />
             </SettingRow>
+            <SettingRow label={t('Close the video player when a video ends')} title={t('In a playlist, after its last video')}>
+              <input type="checkbox" checked={player.endCloses} onChange={(e) => updatePlayer({ endCloses: e.target.checked })} />
+            </SettingRow>
             <SettingRow
               label={
                 <>
