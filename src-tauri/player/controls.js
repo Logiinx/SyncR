@@ -72,7 +72,7 @@ function playerControls(env, media) {
         <button class="button" id="forward"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><b>10</b></button>
         <div id="volume">
           <button class="button" id="mute"></button>
-          <input id="level" type="range" min="0" max="1" step="0.05">
+          <input id="level" type="range" min="0" max="1" step="0.01">
           <span id="level-text"></span>
         </div>
         <button class="button" id="time"><span id="time-now"></span><span id="time-beside"></span></button>
