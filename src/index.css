@@ -7321,11 +7321,10 @@ button.history-row.selected {
   color: color-mix(in srgb, var(--text-yellow) 75%, var(--bg));
 }
 
-/* The main story's time on tiles, list rows and Playing cards: "⌛ 27 h", dim */
+/* The main story's time on tiles, list rows and Playing cards: "⌛ 27 h", dim. Plain inline text,
+   not inline-flex: a flex box sits on the line by its icon's bottom edge, which lifted the time
+   ~2 px above the text around it. The icon is moved down onto the text's middle instead. */
 .game-playtime-short {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
   flex-shrink: 0;
   color: var(--text-dim);
   white-space: nowrap;
@@ -7334,6 +7333,8 @@ button.history-row.selected {
 .game-playtime-short svg {
   width: 1em;
   height: 1em;
+  margin-right: 3px;
+  vertical-align: -0.175em;
 }
 
 .game-playtime-button {
