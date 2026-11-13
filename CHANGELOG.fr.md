@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** plus de cercle de chargement qui clignote sur les sauts rapides
 - **Amélioré :** le bouton des sous-titres YouTube devient bleu dès le clic
 - **Amélioré :** Déplacer vers un dossier (playlists) ouvre sa liste dès le survol
+- **Amélioré :** icône atténuée sur les playlists qui ne cherchent plus de vidéos
 - **Changé :** la fenêtre vidéo se ferme à la fin de sa vidéo (Paramètres vidéo)
 
 **Board**

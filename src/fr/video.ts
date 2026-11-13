@@ -9,6 +9,8 @@ export const video = {
   'New folder…': 'Nouveau dossier…',
   'New folder in {name}…': 'Nouveau dossier dans {name}…',
   'Move to folder': 'Déplacer vers un dossier',
+  'Checks for new videos once a day': 'Cherche de nouvelles vidéos une fois par jour',
+  'Doesn’t check for new videos': 'Ne cherche pas de nouvelles vidéos',
   'Your folders': 'Vos dossiers',
   'Remove from folder': 'Retirer du dossier',
   'Delete {name}?': 'Supprimer {name} ?',

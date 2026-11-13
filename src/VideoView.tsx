@@ -478,7 +478,15 @@ function VideoView() {
       <FoldRow
         key={playlist.id}
         id={playlist.id}
-        icon={<span className="video-follow-icon video-folder-icon"><ListVideo size={15} /></span>}
+        // Dimmed when it doesn't check for new videos (an old, finished one)
+        icon={
+          <span
+            className={playlist.keepChecking ? 'video-follow-icon video-folder-icon' : 'video-follow-icon video-folder-icon not-checking'}
+            title={playlist.keepChecking ? t('Checks for new videos once a day') : t('Doesn’t check for new videos')}
+          >
+            <ListVideo size={15} />
+          </span>
+        }
         title={playlist.name}
         logo={<VideoLogo platform="youtube" />}
         count={episodes.length}

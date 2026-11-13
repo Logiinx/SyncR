@@ -7960,6 +7960,11 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
+/* A playlist that doesn't check for new videos */
+.video-folder-icon.not-checking {
+  opacity: 0.4;
+}
+
 .video-thumb {
   position: relative;
   flex-shrink: 0;

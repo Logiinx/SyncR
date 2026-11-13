@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **Better:** no loading circle flashing on quick jumps
 - **Better:** YouTube subtitles button turns blue right as you click it
 - **Better:** playlists' Move to folder opens its list as soon as you hover it
+- **Better:** playlists that don't check for new videos have a dimmed icon
 - **Changed:** video window closes when its video ends (Video settings)
 
 **Board**
