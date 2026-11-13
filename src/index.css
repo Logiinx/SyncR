@@ -5675,14 +5675,21 @@ h3.games-group-title {
 .games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(100px, var(--shelf-width) / 7, 170px), 1fr));
-  gap: 16px 18px; /* columns: the 2 px rings + their 2 px gap eat 8 px of it */
+  column-gap: 18px; /* the 2 px rings + their 2 px gap eat 8 px of it. Rows: the tiles' padding */
   margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* wider than the column, centered */
 }
 
+/* Each tile's cover, name, year line and prices sit in rows shared by the whole grid row
+   (subgrid): a row whose names all fit on one line takes one, and the lines under them stay
+   in line across it. Prices: the 4th row (empty when there are none). */
 .game-tile {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+  align-items: start;
   min-width: 0;
+  padding-bottom: 16px;
   cursor: pointer;
 }
 
@@ -5723,7 +5730,6 @@ h3.games-group-title {
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  min-height: 2.6em; /* always 2 lines, so the lines under it stay in a row across the grid */
   font-size: 0.9em;
   line-height: 1.3;
 }
@@ -7416,7 +7422,6 @@ button.history-row.selected {
    tiles, a sale tag, a lowest-ever mark) */
 .game-tile .game-price-line {
   justify-content: space-between;
-  margin-top: auto; /* at the bottom of the tile: prices line up across a row */
   padding-top: 2px;
   font-size: 0.8em;
 }
