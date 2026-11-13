@@ -190,6 +190,8 @@
   // YouTube's own parts are hidden, not removed: its player keeps working underneath, and its error
   // screen stays (the check above reads it). Ours sit in a shadow root, so neither page's looks
   // reach the other. The page refuses HTML given as plain text (Trusted Types): a policy of our own.
+  // Chapters' pictures in their list: 16:9, as high as the Twitch player's box art (36 px)
+  const CHAPTER_PICTURE = { width: 64, height: 36 }
   let data = {}
   try { data = JSON.parse(wanted.get('syncr-data') || '{}') } catch {}
   let chosenQuality = null // the menu's choice for this video: a quality's name, 'auto', or none yet
@@ -226,6 +228,9 @@
     const root = host.attachShadow({ mode: 'open' })
     const style = document.createElement('style')
     style.textContent = `${CONTROLS_CSS} #player { position: absolute; inset: 0; } #surface { position: absolute; inset: 0; } #time { pointer-events: none; }
+      .chapter-picture { width: ${CHAPTER_PICTURE.width}px; height: ${CHAPTER_PICTURE.height}px; flex: none; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, 0.08) no-repeat; }
+      .chapter-picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .part-line:has(.chapter-picture) { --picture-width: ${CHAPTER_PICTURE.width}px; }
       #surface.over-subtitles { cursor: grab; } #player.moving-subtitles #surface { cursor: grabbing; } #player.quiet #surface { cursor: none; }`
     const box = document.createElement('div')
     box.id = 'player'
@@ -328,7 +333,7 @@
     // again for the next video of a playlist (same page). One missing leaves only that one out.
     // Set up before the controls, which draw the time (and so ask for the chapter) at once.
     let shownFor = null // the video they belong to
-    let chapters = [] // { at: seconds, name }
+    let chapters = [] // { at: seconds, name, picture: YouTube's own address, or none }
     let previews = null // YouTube's picture sheets, the sharpest kind
     let sponsorParts = [] // { start, end, category }
     let tries = 0
@@ -342,12 +347,22 @@
       }
       return null
     }
+    // The smallest of YouTube's sizes still sharp at twice the list's size (screens at 200 %)
+    const chapterPicture = (sizes) => {
+      const usable = (sizes || []).filter((size) => size.url).sort((a, b) => a.width - b.width)
+      const found = usable.find((size) => size.width >= CHAPTER_PICTURE.width * 2) || usable[usable.length - 1]
+      return found ? found.url.replace(/^\/\//, 'https://') : null
+    }
     const readChapters = (id) => {
       const answer = player.getWatchNextResponse?.()
       const answerFor = answer?.currentVideoEndpoint?.watchEndpoint?.videoId
       if (!answer || (answerFor && answerFor !== id)) return false
       chapters = (findChapters(answer) || [])
-        .map(({ chapterRenderer: one }) => ({ at: one.timeRangeStartMillis / 1000, name: one.title?.simpleText || one.title?.runs?.map((run) => run.text).join('') || '' }))
+        .map(({ chapterRenderer: one }) => ({
+          at: one.timeRangeStartMillis / 1000,
+          name: one.title?.simpleText || one.title?.runs?.map((run) => run.text).join('') || '',
+          picture: chapterPicture(one.thumbnail?.thumbnails),
+        }))
         .sort((a, b) => a.at - b.at)
       controls.setGaps(chapters.map((chapter) => chapter.at))
       // Another video's (the next one of a playlist): its list is redrawn, or the time is just the time
@@ -451,7 +466,29 @@
     root.getElementById('chat-button').hidden = true
     // A click on the time (and the chapter after it) lists the chapters, like the Twitch player's games
     const timeButton = root.getElementById('time')
-    const chaptersList = () => ({ button: timeButton, title: labels.chapters, parts: chapters })
+    const chaptersList = () => ({ button: timeButton, title: labels.chapters, parts: chapters, picture: chapterPictureBox })
+    // A chapter's picture: YouTube's own, else the hover preview at its start, else an empty box
+    function chapterPictureBox(chapter) {
+      const holder = document.createElement('span')
+      holder.className = 'chapter-picture'
+      const fromPreviews = () => {
+        const spot = pictureAt(chapter.at)
+        if (!spot) return
+        const scale = CHAPTER_PICTURE.width / spot.width
+        holder.style.backgroundImage = `url("${spot.address}")`
+        holder.style.backgroundSize = `${spot.cols * spot.width * scale}px auto`
+        holder.style.backgroundPosition = `-${spot.column * spot.width * scale}px -${spot.row * spot.height * scale}px`
+      }
+      if (!chapter.picture) return fromPreviews(), holder
+      const image = document.createElement('img')
+      image.alt = ''
+      image.onerror = () => { image.remove(); fromPreviews() }
+      // A missing picture comes back as YouTube's gray 120 × 90 stand-in, not an error (chapters' are 16:9)
+      image.onload = () => { if (image.naturalWidth === 120 && image.naturalHeight === 90) image.onerror() }
+      image.src = chapter.picture
+      holder.append(image)
+      return holder
+    }
     function drawTimeButton() {
       timeButton.title = chapters.length ? labels.chapters || '' : ''
       // Without chapters the time is only text (the page's style: no clicks, no hover)

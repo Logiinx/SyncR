@@ -1031,7 +1031,7 @@ const CONTROLS_CSS = `
   .part-length { flex: none; color: var(--text-dim, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
   /* Under the name and length (after the picture), like the main bar: grey track, blue played part */
   .part-progress { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px; border-radius: 1px; overflow: hidden; background: rgba(255, 255, 255, 0.25); pointer-events: none; }
-  .with-picture .part-progress { left: 45px; }
+  .with-picture .part-progress { left: calc(18px + var(--picture-width, 27px)); } /* after the picture: 8 px padding, it, 10 px gap */
   .part-progress span { display: block; height: 100%; width: 0; background: var(--text-blue, #6ea8fe); }
   #menu-side { min-width: 250px; max-width: 340px; }
   #menus.narrow #menu { display: none; }

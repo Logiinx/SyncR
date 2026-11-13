@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **New:** pictures in the YouTube chapters list
 - **New:** YouTube subtitles: "Keep centered" in ⚙️, off = drag anywhere
 - **Better:** volume slider in the players moves 1% at a time
 
