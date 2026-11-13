@@ -4,10 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-11-13
+
 **Video**
 - **New:** Music list for channels marked as music in their follow window
-- **New:** Music button can show its icon alone (Video settings)
 - **New:** folders holding one channel's videos show that channel's picture
+- **New:** Music button can show its icon alone (Video settings)
 - **Better:** ±10 s buttons and arrow keys jump at every press
 - **Better:** no loading circle flashing on quick jumps
 - **Better:** YouTube subtitles button turns blue right as you click it
