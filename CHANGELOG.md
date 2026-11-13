@@ -5,6 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **New:** Music list for channels marked as music in their follow window
+- **New:** Music button can show its icon alone (Video settings)
 - **New:** folders holding one channel's videos show that channel's picture
 - **Better:** ±10 s buttons and arrow keys jump at every press
 - **Better:** no loading circle flashing on quick jumps

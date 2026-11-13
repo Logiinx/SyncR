@@ -285,6 +285,7 @@ export interface VideoFollow {
   onlyGames?: string[] // Twitch: a stream with one of these games played; with onlyWords, either one keeps it
   minMinutes: number // shorter videos are hidden; 0 = off
   hideShorts: boolean // YouTube only
+  music?: boolean // YouTube only: its videos go to the Music list, a list of new songs (missing on older follows)
   startAt: number // ms: older videos aren't shown; 0 = all that are still available
   deleted: boolean
   updatedAt: number

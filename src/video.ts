@@ -6,7 +6,7 @@ import { alertMarkId, changed, db, type AddedVideo, type VideoFollow, type Video
 import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
-import { inRewatch, liveFolders, rewatchFolder } from './videoFolders'
+import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
 import { checkPlaylists, playlistFailures, playOrder } from './videoPlaylists'
 import { forgetPositions } from './videoPositions'
 import { addTwitchGames } from './videoTwitch'
@@ -69,7 +69,7 @@ export interface VideoChannel {
   icon: string | null
 }
 
-export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts'>
+export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts' | 'music'>
 export type PastChoice = 'today' | '30' | '60' | 'all'
 
 const TWITCH_TABS = new Set(['about', 'clips', 'home', 'schedule', 'videos'])
@@ -508,6 +508,7 @@ export interface FeedVideo extends VideoRow {
   watched: boolean
   folderId: string | null // the folder it shows in; null = the main list
   watchedAt?: number // last marked as watched
+  music: boolean // of a follow marked as music: in the Music list only
 }
 
 // Older marks don't have watchedAt: their last change was the tick
@@ -632,9 +633,10 @@ export function useVideoFeed() {
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
     const followOf = new Map(follows.map((follow) => [channelKey(follow), follow]))
     const markOf = new Map(marks.map((mark) => [mark.id, mark]))
-    const folders = liveFolders([rewatchFolder(), ...allFolders])
+    const folders = liveFolders([rewatchFolder(), musicFolder(), ...allFolders])
     const folderIds = new Set(folders.map((folder) => folder.id))
     const rewatchIds = inRewatch(folders)
+    const musicIds = inMusic(folders)
     const placeOf = new Map(places.map((place) => [place.id, place.folderId]))
     const addedIds = new Set(added.map((video) => video.videoId))
     const playlistRows = allPlaylists.filter((playlist) => !playlist.deleted).sort((a, b) => a.name.localeCompare(b.name))
@@ -642,7 +644,7 @@ export function useVideoFeed() {
     const episodes = playlistRows.flatMap((playlist) => listOf.get(playlist.id) ?? [])
     // A video in a playlist shows there, not also in the main list
     const inPlaylist = new Set(episodes.map((video) => video.id))
-    const listed: (Omit<FeedVideo, 'opened' | 'watched' | 'folderId'> & { sortAt: number })[] = [
+    const listed: (Omit<FeedVideo, 'opened' | 'watched' | 'folderId' | 'music'> & { sortAt: number })[] = [
       ...rows.flatMap((video) => {
         const follow = followOf.get(channelKey(video))
         if (!follow || addedIds.has(video.id) || !videoKept(follow, video)) return []
@@ -666,12 +668,17 @@ export function useVideoFeed() {
         const id = videoMarkId(video.id)
         const mark = markOf.get(id)
         const place = placeOf.get(id)
-        return mark?.cleared || inPlaylist.has(video.id) ? [] : [{ ...video, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: place && folderIds.has(place) ? place : null }]
+        // A music video only in Music's folders, any other never there (the follow changed since)
+        const music = !!followOf.get(channelKey(video))?.music
+        const folderId = place && folderIds.has(place) && musicIds.has(place) === music ? place : null
+        return mark?.cleared || inPlaylist.has(video.id) ? [] : [{ ...video, music, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId }]
       })
       .sort((a, b) => b.sortAt - a.sortAt || a.id.localeCompare(b.id))
+    // Music: new songs, until ticked (which clears them); never in the other lists. They count.
+    const music = videos.filter((video) => video.music && !video.watched)
     // Rewatch's videos stay there, watched or not, and never count
-    const rewatch = videos.filter((video) => video.folderId && rewatchIds.has(video.folderId))
-    const others = videos.filter((video) => !video.folderId || !rewatchIds.has(video.folderId))
+    const rewatch = videos.filter((video) => !video.music && video.folderId && rewatchIds.has(video.folderId))
+    const others = videos.filter((video) => !video.music && (!video.folderId || !rewatchIds.has(video.folderId)))
     const toWatch = others.filter((video) => !video.watched)
     // Only what came after a playlist was added counts, or a long one would fill the count for good
     const counted = new Set(playlistRows.filter((playlist) => !playlist.folderId || !rewatchIds.has(playlist.folderId)).flatMap((playlist) => listOf.get(playlist.id) ?? []).map((video) => video.id))
@@ -685,6 +692,7 @@ export function useVideoFeed() {
       folders,
       toWatch,
       rewatch,
+      music,
       // Watched last on top: its mark's last change is when it was marked (or opened again)
       watched: others
         .filter((video) => video.watched)
@@ -695,10 +703,10 @@ export function useVideoFeed() {
         playlist,
         videos: playOrder(listOf.get(playlist.id) ?? [], playlist).map(({ later: _later, ...video }): FeedVideo => {
           const mark = markOf.get(videoMarkId(video.id))
-          return { ...video, gone: false, followId: playlist.id, channelIcon: null, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
+          return { ...video, gone: false, followId: playlist.id, channelIcon: null, music: false, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
         }),
       })),
-      newCount: toWatch.filter((video) => !video.opened && !video.gone).length + newInPlaylists.size,
+      newCount: [...toWatch, ...music].filter((video) => !video.opened && !video.gone).length + newInPlaylists.size,
     }
   }, [])
 }

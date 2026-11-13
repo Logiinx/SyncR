@@ -19,6 +19,7 @@ interface PlayableVideo {
   url: string
   watched: boolean
   duration: number // 0 when unknown
+  music?: boolean // a music channel's: never marked as watched by itself (Music is cleared by hand)
 }
 
 // YouTube's names for its qualities, as its player wants them (video-watch.js)
@@ -373,7 +374,7 @@ function listenToBar() {
     savePosition(current.id, { t: seconds, length })
     if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
-    if (current.duration > 0 && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
+    if (current.duration > 0 && !current.music && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
     if (current.duration > 0 && seconds >= length) playNext()
   })
   // Subtitles turned on or off by hand. The video's own id, as a site could send this too.

@@ -25,6 +25,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
   const [games, setGames] = useState(follow?.onlyGames ?? [])
   const [minutes, setMinutes] = useState(follow?.minMinutes ? String(follow.minMinutes) : '')
   const [hideShorts, setHideShorts] = useState(follow?.hideShorts ?? true)
+  const [music, setMusic] = useState(!!follow?.music)
   const [past, setPast] = useState<PastChoice>('today')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -36,7 +37,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
     if (busy || (!follow && !link.trim())) return
     setBusy(true)
     setError('')
-    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : games, minMinutes: minuteCount(minutes), hideShorts }
+    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : games, minMinutes: minuteCount(minutes), hideShorts, music: youtube && music }
     try {
       if (follow) await updateFollow(follow.id, settings)
       else await addFollow(await findChannel(link), settings, past)
@@ -102,6 +103,13 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
         <label className="dialog-check">
           <input type="checkbox" checked={hideShorts} onChange={(e) => setHideShorts(e.target.checked)} />
           {t('Hide Shorts')}
+        </label>
+      )}
+      {youtube && (
+        <label className="dialog-check">
+          <input type="checkbox" checked={music} onChange={(e) => setMusic(e.target.checked)} />
+          {t('Music channel')}
+          <InfoTip label={t('About music channels')}>{t('Its videos go to the Music list instead of To watch. Ticking one there removes it.')}</InfoTip>
         </label>
       )}
       {!follow && (
@@ -282,6 +290,7 @@ function SubmitButton({ busy, disabled, label }: { busy: boolean; disabled: bool
 
 function followSummary(follow: VideoFollow) {
   const rules = [
+    follow.music ? t('Music channel') : '',
     follow.onlyWords.length ? t('Only: {words}', { words: follow.onlyWords.join(', ') }) : '',
     follow.onlyGames?.length ? t('Games: {games}', { games: follow.onlyGames.join(', ') }) : '',
     follow.exceptWords.length ? t('Except: {words}', { words: follow.exceptWords.join(', ') }) : '',

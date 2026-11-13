@@ -7862,6 +7862,11 @@ button.history-row.selected {
   flex-wrap: wrap;
 }
 
+/* Music: its own switch, a little apart from To watch | Rewatch | Watched (the bar's gap) */
+.video-music-switch.fill-switch > button {
+  gap: 6px;
+}
+
 .video-toolbar .reminders-tools {
   flex-wrap: wrap;
   justify-content: flex-end;

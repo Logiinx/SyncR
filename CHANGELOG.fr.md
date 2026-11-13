@@ -5,6 +5,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Nouveau :** liste Musique pour les chaînes marquées musicales dans leur fenêtre
+- **Nouveau :** le bouton Musique peut n’afficher que son icône (Paramètres vidéo)
 - **Nouveau :** les dossiers d’une seule chaîne affichent l’image de cette chaîne
 - **Amélioré :** les boutons ±10 s et les flèches sautent à chaque appui
 - **Amélioré :** plus de cercle de chargement qui clignote sur les sauts rapides
