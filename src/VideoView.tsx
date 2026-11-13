@@ -19,7 +19,7 @@ import VideoLogo from './VideoLogo'
 import { playVideo } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
-import { useResumePosition, videoClock, type VideoPosition } from './videoPositions'
+import { useResumePosition, videoClock } from './videoPositions'
 
 type List = 'towatch' | 'rewatch' | 'watched'
 
@@ -38,11 +38,22 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
 
-// "12 min left", "1 h 05 left": what's left of a video stopped partway
-function timeLeft({ t: at, length }: VideoPosition) {
-  const minutes = Math.ceil((length - at) / 60)
-  if (minutes < 60) return plural(minutes, '{n} min left', '{n} min left|plural')
-  return t('{h} h {mm} left', { h: Math.floor(minutes / 60), mm: String(minutes % 60).padStart(2, '0') })
+// A video row's tags and extras: on a line of their own under a 1-line title, after the date under a
+// 2-line one (the row stays as high as its thumbnail). Seen by the title's height (data-long-title).
+let titleSizes: ResizeObserver | undefined
+function watchTitle(title: HTMLElement | null) {
+  if (!title) return
+  titleSizes ??= new ResizeObserver((entries) => {
+    for (const { target } of entries) {
+      const text = target.parentElement
+      const meta = text?.querySelector<HTMLElement>('.video-meta')
+      // Both in the same pixels (any app scale): one title line is a little taller than the meta line
+      if (text && meta) text.toggleAttribute('data-long-title', (target as HTMLElement).offsetHeight > meta.offsetHeight * 1.5)
+    }
+  })
+  const sizes = titleSizes
+  sizes.observe(title)
+  return () => sizes.unobserve(title)
 }
 
 // What the playlist row's order button does when clicked
@@ -149,7 +160,7 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // until it's ticked. A video that's gone can't be opened, only removed from the list. In a playlist
 // (playlistId): the next one follows at its end and it can't be moved to a folder. In a playlist or
 // in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
-// Tags: "New" (green), or what's left when it was stopped partway (blue), never both.
+// Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both.
 function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
@@ -161,6 +172,9 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   onOpenRow: (id: string) => void
 }) {
   const position = useResumePosition(video.id)
+  // Stopped partway: tagged Opened, with its progress on the thumbnail
+  const opened = position && !video.watched && !video.gone ? position : null
+  const showLastWatched = !!lastWatched && !!video.watchedAt
   function open() {
     playVideo(video, playlistId)
     void markOpened(video.id)
@@ -192,24 +206,38 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
               onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
             />
           )}
-          {!video.gone && video.duration > 0 && <span className="video-duration">{videoClock(video.duration)}</span>}
-          {position && !video.watched && !video.gone && (
-            <span className="video-progress"><span style={{ width: `${(position.t / position.length) * 100}%` }} /></span>
+          {!video.gone && video.duration > 0 && (
+            <span className="video-duration">
+              {opened ? (
+                <>
+                  <span className="video-length">{videoClock(video.duration)}</span>
+                  {/* On hover: how far it was watched */}
+                  <span className="video-spot">{`${videoClock(opened.t, video.duration >= 3600)} / ${videoClock(video.duration)}`}</span>
+                </>
+              ) : (
+                videoClock(video.duration)
+              )}
+            </span>
+          )}
+          {opened && (
+            <span className="video-progress"><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
           )}
         </span>
         <span className="video-text">
-          <span className="video-title" title={video.title}>{video.title}</span>
-          <span className="video-meta">
-            {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
-            <VideoLogo platform={video.platform} />
-            <span className="video-channel" title={video.channel}>{video.channel}</span>
-            <span>· {videoDay(video)}</span>
-            {video.gone && <span>· {t('No longer available')}</span>}
-            {lastWatched && video.watchedAt && <span>· {lastWatchedText(video.watchedAt)}</span>}
-            {position && !video.gone && !video.watched ? (
-              <span className="video-opened">{timeLeft(position)}</span>
-            ) : (
-              isNew && <span className="video-new">{t('New')}</span>
+          <span className="video-title" title={video.title} ref={watchTitle}>{video.title}</span>
+          <span className="video-meta-lines">
+            <span className="video-meta">
+              {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
+              <VideoLogo platform={video.platform} />
+              <span className="video-channel" title={video.channel}>{video.channel}</span>
+              <span>· {videoDay(video)}</span>
+            </span>
+            {(video.gone || showLastWatched || opened || isNew) && (
+              <span className="video-extras">
+                {video.gone && <span className="video-extra">{t('No longer available')}</span>}
+                {showLastWatched && <span className="video-extra">{lastWatchedText(video.watchedAt!)}</span>}
+                {opened ? <span className="video-opened">{t('Opened')}</span> : isNew && <span className="video-new">{t('New')}</span>}
+              </span>
             )}
           </span>
         </span>

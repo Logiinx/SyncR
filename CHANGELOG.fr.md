@@ -5,6 +5,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Nouveau :** survoler une vidéo arrêtée en cours montre où vous en êtes
+- **Changé :** l’étiquette « Ouverte » revient à la place du temps restant
+- **Changé :** étiquettes sur leur propre ligne sous les titres courts
 - **Corrigé :** sous-titres YouTube automatiques décalés à gauche du centre
 
 ## [0.78.0] - 2026-11-13

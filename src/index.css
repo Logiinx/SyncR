@@ -8041,6 +8041,50 @@ button.history-row.selected {
   flex-shrink: 1;
 }
 
+/* A video's channel line, then its tags and extras: on a line of their own under a 1-line title,
+   after the date under a 2-line one (VideoView.tsx sets data-long-title) */
+.video-meta-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+[data-long-title] > .video-meta-lines {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.video-meta-lines > .video-meta {
+  min-width: 0;
+}
+
+.video-extras {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.video-extra + .video-extra::before,
+[data-long-title] .video-extra::before {
+  content: '· ';
+}
+
+/* Stopped partway: on hover, the time shows how far it was watched */
+.video-spot,
+.video-row-open:hover .video-length {
+  display: none;
+}
+
+.video-row-open:hover .video-spot {
+  display: inline;
+}
+
 .video-opened,
 .video-new {
   padding: 0 5px;

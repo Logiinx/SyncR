@@ -51,10 +51,11 @@ export function useResumePosition(videoId: string) {
   return unfinished(position)
 }
 
-// 1:02:03, or 48:32 under an hour
-export function videoClock(seconds: number) {
+// 1:02:03, or 48:32 under an hour (unless withHours: 0:48:32)
+export function videoClock(time: number, withHours = false) {
+  const seconds = Math.floor(time)
   const part = (value: number) => String(value).padStart(2, '0')
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  return hours ? `${hours}:${part(minutes)}:${part(seconds % 60)}` : `${minutes}:${part(seconds % 60)}`
+  return hours || withHours ? `${hours}:${part(minutes)}:${part(seconds % 60)}` : `${minutes}:${part(seconds % 60)}`
 }

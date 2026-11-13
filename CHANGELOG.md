@@ -5,6 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **New:** hovering a video you stopped partway shows how far you got
+- **Changed:** "Opened" tag is back instead of the time left
+- **Changed:** tags on their own line under short titles
 - **Fixed:** auto-generated YouTube subtitles sitting left of the middle
 
 ## [0.78.0] - 2026-11-13
