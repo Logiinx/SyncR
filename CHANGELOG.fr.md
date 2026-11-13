@@ -5,7 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
-- **Amélioré :** grille de jaquettes plus nette : années et prix alignés, plus d’espace
+- **Amélioré :** grille de jaquettes plus nette : lignes alignées, les deux prix sur une ligne
 
 ## [0.80.2] - 2026-11-13
 

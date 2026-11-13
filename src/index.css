@@ -7412,8 +7412,10 @@ button.history-row.selected {
   font-size: 0.85em;
 }
 
+/* Grid: Steam left, key right on one line; the key goes under it when both don't fit (narrow
+   tiles, a sale tag, a lowest-ever mark) */
 .game-tile .game-price-line {
-  flex-direction: column; /* grid: Steam and key on their own lines, every tile the same shape */
+  justify-content: space-between;
   margin-top: auto; /* at the bottom of the tile: prices line up across a row */
   padding-top: 2px;
   font-size: 0.8em;
@@ -7429,6 +7431,8 @@ button.history-row.selected {
 /* Narrow tiles (phone): discount + star + flame can be wider than the tile, they wrap */
 .game-tile .game-price-line > span {
   flex-wrap: wrap;
+  flex-shrink: 0; /* the key moves down instead of squeezing the Steam part */
+  max-width: 100%;
   row-gap: 2px;
 }
 
