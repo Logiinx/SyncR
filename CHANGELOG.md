@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-11-13
+
 **Video**
 - **New:** started videos in Rewatch, to resume them in one place (⋯ menu)
 - **Fixed:** video window reopens where you left it: same screen and size
