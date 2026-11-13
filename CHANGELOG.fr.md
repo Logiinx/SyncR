@@ -10,6 +10,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** sous-titres YouTube : « Garder au centre » dans ⚙️, sinon déplaçables partout
 - **Amélioré :** le curseur de volume des lecteurs avance de 1 % à la fois
 
+**Notes**
+- **Nouveau :** cartes de lien avec la publication d’abord (Paramètres → Liens → Ordre des cartes)
+
 ## [0.77.0] - 2026-11-12
 
 **Vidéo**

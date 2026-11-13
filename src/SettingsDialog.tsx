@@ -11,12 +11,14 @@ import {
   CARD_STYLES,
   DEFAULT_SITES,
   GROUP_STYLES,
+  CARD_ORDERS,
   HOVER_SIZES,
   loadLinkPreviewSettings,
   parseSites,
   saveLinkPreviewSettings,
   type CardStyle,
   type GroupStyle,
+  type CardOrder,
   type HoverSize,
   type LinkPreviewSettings,
 } from './linkPreviews'
@@ -271,6 +273,28 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
           {(Object.keys(CARD_STYLES) as CardStyle[]).map((id) => (
             <option key={id} value={id}>
               {t(CARD_STYLES[id])}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('Card order')}
+            <InfoTip label={t('About card order')}>
+              {t('Post first: a post shows its text and picture before who wrote it, and other links show their picture instead of the site’s icon.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <select
+          value={links.order}
+          disabled={links.style === 'off' && links.hover === 'off'}
+          onChange={(e) => updateLinks({ order: e.target.value as CardOrder })}
+        >
+          {(Object.keys(CARD_ORDERS) as CardOrder[]).map((id) => (
+            <option key={id} value={id}>
+              {t(CARD_ORDERS[id])}
             </option>
           ))}
         </select>

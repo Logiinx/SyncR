@@ -47,6 +47,10 @@ export type CardStyle = keyof typeof CARD_STYLES
 export const HOVER_SIZES = { off: textKey('Off'), small: textKey('Small'), large: textKey('Large') }
 export type HoverSize = keyof typeof HOVER_SIZES
 // 2+ lines in a row holding only a link card: as today (list), side by side, as chips, or folded
+// What a card puts first: who wrote it (the old look) or the post itself, its text and picture
+export const CARD_ORDERS = { author: textKey('Author first'), post: textKey('Post first') }
+export type CardOrder = keyof typeof CARD_ORDERS
+
 export const GROUP_STYLES = { list: textKey('List'), grid: textKey('Grid'), chips: textKey('Chips'), folded: textKey('Folded') }
 export type GroupStyle = keyof typeof GROUP_STYLES
 
@@ -54,6 +58,7 @@ export interface LinkPreviewSettings {
   style: CardStyle
   hover: HoverSize
   groups: GroupStyle
+  order: CardOrder
   allSites: boolean // every link, or only links to `sites` (and their subdomains)
   sites: string[]
   plain: string[] // addresses shown as plain links ("Show as plain link" in the right-click menu)
@@ -61,7 +66,7 @@ export interface LinkPreviewSettings {
 
 const SETTINGS_KEY = 'syncr.linkPreviews'
 export const DEFAULT_SITES = ['github.com', 'fxtwitter.com', 'x.com', 'twitter.com']
-const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', groups: 'list', allSites: false, sites: DEFAULT_SITES, plain: [] }
+const DEFAULTS: LinkPreviewSettings = { style: 'card', hover: 'large', groups: 'list', order: 'author', allSites: false, sites: DEFAULT_SITES, plain: [] }
 
 // Read on every redraw, so kept in memory
 let settings: LinkPreviewSettings | undefined
@@ -71,6 +76,7 @@ export function loadLinkPreviewSettings(): LinkPreviewSettings {
   if (!(settings.style in CARD_STYLES)) settings.style = DEFAULTS.style
   if (!(settings.hover in HOVER_SIZES)) settings.hover = DEFAULTS.hover
   if (!(settings.groups in GROUP_STYLES)) settings.groups = DEFAULTS.groups
+  if (!(settings.order in CARD_ORDERS)) settings.order = DEFAULTS.order
   return settings
 }
 
@@ -236,11 +242,17 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '')
 // "1234" → "1.2K"
 const count = (n: number) => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 
+// "Post first" (setting): a tweet's text leads and its writer follows, dim. Only tweets with text.
+const postFirst = () => loadLinkPreviewSettings().order === 'post'
+const textFirst = (preview: LinkPreview) => postFirst() && preview.kind === 'tweet' && !!preview.description
+// "Name @handle"
+const byline = (preview: LinkPreview) => `${preview.author ?? ''}${preview.handle ? ` @${preview.handle}` : ''}`.trim()
+
 // What every style shows, from the preview: title and site
 function parts(href: string, preview: LinkPreview) {
   const tweet = preview.kind === 'tweet'
   return {
-    title: (tweet && preview.handle ? `${preview.author ?? ''} @${preview.handle}`.trim() : preview.title) ?? href,
+    title: (textFirst(preview) ? preview.description : tweet && preview.handle ? byline(preview) : preview.title) ?? href,
     site: preview.site ?? hostOf(href),
   }
 }
@@ -270,17 +282,22 @@ function counted(icon: SvgIconName, n: number, one: TextKey, other: TextKey) {
   return node
 }
 
-// A small icon's pictures: GitHub: the repo owner's picture, like style C; else the site's icon
+// A small icon's pictures: GitHub: the repo owner's picture, like style C; else the site's icon.
+// Post first: the other way round (the page's or post's picture; GitHub's only one is its owner).
 const iconSources = (preview: LinkPreview) =>
-  preview.kind === 'github' ? [preview.image, preview.icon] : [preview.icon, preview.image]
+  (preview.kind === 'github') !== postFirst() ? [preview.image, preview.icon] : [preview.icon, preview.image]
+// Style C's picture: the page's or post's, else the icon. Post first: GitHub's icon, not its owner.
+const pictureSources = (preview: LinkPreview) =>
+  preview.kind === 'github' && postFirst() ? [preview.icon, preview.image] : [preview.image, preview.icon]
 
 // B: one line as high as the text: icon, title, dim description
 function lineCard(href: string, preview: LinkPreview) {
   const { title } = parts(href, preview)
   const root = element('span', 'link-card link-card-line-style')
-  const label = preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
+  const label = textFirst(preview) ? title : preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
   root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
-  if (preview.description) root.append(element('span', 'link-card-line', `· ${preview.description}`))
+  const after = textFirst(preview) ? (preview.handle ? `@${preview.handle}` : preview.author) : preview.description
+  if (after) root.append(element('span', 'link-card-line', `· ${after}`))
   return root
 }
 
@@ -290,8 +307,9 @@ function twoLineCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card')
   const text = element('span', 'link-card-text')
   text.append(element('span', 'link-card-title', title))
-  text.append(element('span', 'link-card-line', preview.description ? `${site} · ${preview.description}` : site))
-  root.append(picture('link-card-picture', [preview.image, preview.icon]), text)
+  const line = textFirst(preview) ? byline(preview) : preview.description ? `${site} · ${preview.description}` : site
+  text.append(element('span', 'link-card-line', line))
+  root.append(picture('link-card-picture', pictureSources(preview)), text)
   return root
 }
 
@@ -302,9 +320,12 @@ function largeCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card link-card-large')
   const head = element('span', 'link-card-site')
   head.append(picture('link-card-icon', [preview.icon]), element('span', 'link-card-site-name', site))
-  root.append(head, element('span', 'link-card-title', title))
+  // Post first: the text (3 lines) in place of the title, the writer leading the extras
+  const first = textFirst(preview)
+  root.append(head)
+  if (!first) root.append(element('span', 'link-card-title', title))
   if (preview.description) root.append(element('span', 'link-card-description', preview.description))
-  const extras = extrasLine(preview)
+  const extras = extrasLine(preview, first ? byline(preview) : undefined)
   if (extras) root.append(extras)
   if (preview.image && preview.kind !== 'github') {
     const image = picture('link-card-image', [preview.image])
@@ -318,7 +339,7 @@ function chipCard(href: string, preview: LinkPreview) {
   const { title } = parts(href, preview)
   const root = element('span', 'link-card link-card-line-style link-card-chip')
   const tweet = preview.kind === 'tweet' && preview.handle
-  const label = tweet ? `@${preview.handle}${preview.description ? ` · ${preview.description}` : ''}` : title
+  const label = textFirst(preview) ? title : tweet ? `@${preview.handle}${preview.description ? ` · ${preview.description}` : ''}` : title
   root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
   return root
 }
@@ -382,9 +403,13 @@ export function hoverCard(href: string, onInlineCard: boolean) {
   // Small: title, the whole description, the address
   const { title, site } = parts(href, preview)
   const root = element('span', 'link-card link-card-small link-hover-card')
-  root.append(element('span', 'link-card-title', title))
-  if (preview.description) root.append(element('span', 'link-card-description', preview.description))
-  else root.append(extrasLine(preview, site)!)
+  if (textFirst(preview)) {
+    root.append(element('span', 'link-card-description', preview.description!), element('span', 'link-card-line', byline(preview)))
+  } else {
+    root.append(element('span', 'link-card-title', title))
+    if (preview.description) root.append(element('span', 'link-card-description', preview.description))
+    else root.append(extrasLine(preview, site)!)
+  }
   root.append(element('span', 'link-card-address', href))
   return root
 }
@@ -588,7 +613,7 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>, 
           Decoration.widget(group[0].from, (view) => {
             const summary: HTMLElement = groupSummary(group, open, () => toggleGroup(view, summary, groupKey, open))
             return summary
-          }, { key: `group|${open}|${group.map((line) => line.link.href).join(' ')}`, side: -1, ignoreSelection: true }),
+          }, { key: `group|${open}|${settings.order}|${group.map((line) => line.link.href).join(' ')}`, side: -1, ignoreSelection: true }),
         )
         if (!open) for (const line of group) {
           found.push(Decoration.node(line.from, line.to, { class: 'link-group-hidden' }))
@@ -617,7 +642,7 @@ function decorations(state: EditorState, focused: boolean, opened: Set<string>, 
     // After the hidden address, so the cursor at the link's end shows after the card. The browser
     // draws no cursor right behind a card: an invisible image after it gives the cursor a place.
     found.push(
-      Decoration.widget(link.to, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${link.href}|${previewId(preview)}`, side: -1, ignoreSelection: true }),
+      Decoration.widget(link.to, () => card(link.href, preview, look), { key: `${look}|${settings.hover}|${settings.order}|${link.href}|${previewId(preview)}`, side: -1, ignoreSelection: true }),
       Decoration.widget(link.to, caretSpot, { key: 'caret-spot', side: -1, raw: true }),
       Decoration.inline(link.from, link.to, { class: 'link-carded' }),
     )

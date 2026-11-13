@@ -21,6 +21,11 @@ export const settings = {
   'About hover cards': 'À propos des cartes au survol',
   'Shown while the mouse is on a link card, and on links with their own text.':
     'Affichée tant que la souris est sur une carte de lien, et sur les liens avec leur propre texte.',
+  'Card order': 'Ordre des cartes',
+  'About card order': 'À propos de l’ordre des cartes',
+  'Post first: a post shows its text and picture before who wrote it, and other links show their picture instead of the site’s icon.': 'Publication d’abord : une publication montre son texte et son image avant son auteur, et les autres liens montrent leur image au lieu de l’icône du site.',
+  'Author first': 'Auteur d’abord',
+  'Post first': 'Publication d’abord',
   'Link groups': 'Groupes de liens',
   'About link groups': 'À propos des groupes de liens',
   '2 or more lines in a row holding only a link card: as a list, side by side (grid), as small chips, or folded into one line.':
