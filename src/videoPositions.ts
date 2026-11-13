@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { read, write } from './localState'
 
 // How far each video got, on this PC. The player window's pages can't call the app, so they send
@@ -43,12 +43,19 @@ const unfinished = (position: VideoPosition | undefined) =>
 // Where it would continue, or null when it starts from the beginning
 export const resumePosition = (videoId: string) => unfinished(positions[videoId])
 
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
 export function useResumePosition(videoId: string) {
-  const position = useSyncExternalStore((listener) => {
-    listeners.add(listener)
-    return () => listeners.delete(listener)
-  }, () => positions[videoId])
-  return unfinished(position)
+  return unfinished(useSyncExternalStore(subscribe, () => positions[videoId]))
+}
+
+// The videos stopped partway, the last one watched first (Rewatch's Started group)
+export function useStartedIds() {
+  const all = useSyncExternalStore(subscribe, () => positions)
+  return useMemo(() => Object.keys(all).filter((id) => unfinished(all[id])).reverse(), [all])
 }
 
 // 1:02:03, or 48:32 under an hour (unless withHours: 0:48:32)

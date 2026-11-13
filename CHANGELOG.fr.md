@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo**
+- **Nouveau :** vidéos commencées dans À revoir, pour les reprendre au même endroit (menu ⋯)
 - **Corrigé :** la fenêtre vidéo rouvre là où vous l’avez laissée : même écran, même taille
 
 ## [0.79.0] - 2026-11-13
