@@ -103,12 +103,14 @@ function playerControls(env, media) {
   }
 
   let dragging = null // the moment being dragged to, 0 to 1
-  // Quick jumps in a row (a held arrow key, the 10 s buttons, number keys) make one: the first at
-  // once, the rest when they stop. Each jump drops what the player was downloading (on Twitch the
-  // app still fetches it to the end), so many in a row would only slow it down.
-  const GATHER = 300 // ms
-  let pending = null // where the gathered jumps lead, or none
+  // Quick jumps in a row (the 10 s buttons, arrow and number keys) each jump at once. Only faster
+  // than a hand presses (a held key repeats about 30 times a second) they wait: one jump every
+  // JUMP_GAP at most, to where the last one leads. Each jump drops what the player was downloading
+  // (on Twitch the app still fetches it to the end), so a held key would only slow it down.
+  const JUMP_GAP = 150 // ms
+  let pending = null // where the waiting jump leads, or none
   let gatherTimer = null
+  let lastJump = 0
   const target = () => pending ?? media.time()
   function drawTime() {
     const length = media.duration() || 0
@@ -123,16 +125,17 @@ function playerControls(env, media) {
     $('buffer').style.width = `${length ? (media.bufferedEnd() / length) * 100 : 0}%`
   }
 
-  // gathered: one of quick jumps in a row (above); otherwise at once
+  // gathered: one of the quick jumps above; otherwise at once (the bar, a chapter)
   function jumpTo(seconds, gathered) {
     const length = media.duration()
     if (!length) return
     const place = Math.min(Math.max(seconds, 0), length - 0.5)
-    const soon = gathered && gatherTimer !== null
+    const wait = gathered ? lastJump + JUMP_GAP - Date.now() : 0
     clearTimeout(gatherTimer)
-    gatherTimer = gathered ? setTimeout(endGathering, GATHER) : null
-    pending = soon ? place : null
-    if (!soon) media.seek(place)
+    gatherTimer = null
+    pending = place
+    if (wait > 0) gatherTimer = setTimeout(endGathering, wait)
+    else endGathering()
     drawTime()
   }
   function endGathering() {
@@ -140,6 +143,7 @@ function playerControls(env, media) {
     if (pending === null) return
     const place = pending
     pending = null
+    lastJump = Date.now()
     media.seek(place)
     drawTime()
   }
@@ -304,9 +308,17 @@ function playerControls(env, media) {
   }
   for (const kind of ['play', 'pause', 'ended']) video.addEventListener(kind, drawPlay)
 
+  // The spinner only after SPINNER_AFTER of waiting: a jump into what's already downloaded is done
+  // sooner, and a spinner flashing then made it look slow. The big play button hides at once.
+  const SPINNER_AFTER = 300 // ms
+  let spinnerTimer = null
   function loading(on) {
     box.classList.toggle('loading', on)
-    $('spinner').hidden = !on
+    if (on && spinnerTimer === null && $('spinner').hidden) spinnerTimer = setTimeout(() => { spinnerTimer = null; $('spinner').hidden = false }, SPINNER_AFTER)
+    if (on) return
+    clearTimeout(spinnerTimer)
+    spinnerTimer = null
+    $('spinner').hidden = true
   }
   video.addEventListener('waiting', () => loading(true))
   video.addEventListener('seeking', () => loading(true))

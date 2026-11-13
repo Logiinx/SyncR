@@ -5,6 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video**
+- **Better:** ±10 s buttons and arrow keys jump at every press
+- **Better:** no loading circle flashing on quick jumps
 - **Better:** YouTube subtitles button turns blue right as you click it
 
 ## [0.78.1] - 2026-11-13
