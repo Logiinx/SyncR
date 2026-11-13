@@ -7,8 +7,7 @@ use tauri::Manager;
 // (public/video-bar.html) above the real site, so the site can't touch or fake the bar. A third
 // one, hidden, is the bar's menu (public/video-menu.html). The site is in no capability file, and
 // they have their own storage folder, apart from the notes. The next
-// video replaces the current one, closed first so the window-state plugin remembers its place and
-// size. The site's address is either a site's page or our page that forwards to YouTube's player
+// video replaces the current one, closed first so its place is saved (VideoPlace). The site's address is either a site's page or our page that forwards to YouTube's player
 // (public/video-forward.html).
 pub const VIDEO_WINDOW: &str = "video-player";
 pub const VIDEO_BAR: &str = "video-player-bar";
@@ -287,6 +286,93 @@ fn settle_video_window(window: &tauri::Window, now: tauri::PhysicalSize<u32>) {
   });
 }
 
+// Where the window was last: its place and size out of maximized, and whether it was maximized
+// (closed in full screen counts as maximized). Saved in video-window.json in the app's data at each
+// closing, put back at the next opening. Not the window-state plugin: it only writes to disk when
+// the app quits cleanly.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
+struct VideoPlace {
+  x: i32,
+  y: i32,
+  width: u32,
+  height: u32,
+  maximized: bool,
+}
+static VIDEO_PLACE: std::sync::Mutex<Option<VideoPlace>> = std::sync::Mutex::new(None);
+// From the closing on, the moves out of full screen and maximized aren't the place to remember
+static VIDEO_CLOSING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn video_place_file(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+  app.path().app_local_data_dir().ok().map(|folder| folder.join("video-window.json"))
+}
+
+fn save_video_place(app: &tauri::AppHandle) {
+  let Some(place) = *VIDEO_PLACE.lock().unwrap() else {
+    return;
+  };
+  let (Some(file), Ok(text)) = (video_place_file(app), serde_json::to_vec(&place)) else {
+    return;
+  };
+  if let Some(folder) = file.parent() {
+    let _ = std::fs::create_dir_all(folder);
+  }
+  let _ = std::fs::write(file, text);
+}
+
+fn note_video_place(window: &tauri::Window) {
+  use std::sync::atomic::Ordering;
+  if VIDEO_CLOSING.load(Ordering::SeqCst) || window.is_fullscreen().unwrap_or(true) || window.is_minimized().unwrap_or(true) {
+    return;
+  }
+  let mut place = VIDEO_PLACE.lock().unwrap();
+  if window.is_maximized().unwrap_or(true) {
+    if let Some(place) = place.as_mut() {
+      place.maximized = true;
+    }
+    return;
+  }
+  let (Ok(at), Ok(size)) = (window.outer_position(), window.inner_size()) else {
+    return;
+  };
+  if size.width > 0 && size.height > 0 {
+    *place = Some(VideoPlace { x: at.x, y: at.y, width: size.width, height: size.height, maximized: false });
+  }
+}
+
+// Back where it was, or centered with its last size when that screen is gone. Gives whether to
+// maximize it, once shown: maximized while hidden, it can show up unmaximized or elsewhere.
+fn restore_video_place(app: &tauri::AppHandle, window: &tauri::Window) -> bool {
+  use tauri::{PhysicalPosition, PhysicalSize};
+  let saved: Option<VideoPlace> = video_place_file(app)
+    .and_then(|file| std::fs::read(file).ok())
+    .and_then(|text| serde_json::from_slice(&text).ok());
+  if let Some(place) = saved {
+    let (middle_x, middle_y) = (place.x + place.width as i32 / 2, place.y + place.height as i32 / 2);
+    let on_screen = window.available_monitors().unwrap_or_default().iter().any(|screen| {
+      let area = screen.work_area();
+      middle_x >= area.position.x
+        && middle_x < area.position.x + area.size.width as i32
+        && middle_y >= area.position.y
+        && middle_y < area.position.y + area.size.height as i32
+    });
+    // The place first: on a screen with another scale Windows resizes the window
+    if on_screen {
+      let _ = window.set_position(PhysicalPosition::new(place.x, place.y));
+    }
+    let _ = window.set_size(PhysicalSize::new(place.width, place.height));
+    if !on_screen {
+      let _ = window.center();
+    }
+  }
+  let maximized = saved.is_some_and(|place| place.maximized);
+  // Known from the start, so maximizing before any move still has a size to come back to
+  if let (Ok(at), Ok(size)) = (window.outer_position(), window.inner_size()) {
+    *VIDEO_PLACE.lock().unwrap() = Some(VideoPlace { x: at.x, y: at.y, width: size.width, height: size.height, maximized });
+  }
+  VIDEO_CLOSING.store(false, std::sync::atomic::Ordering::SeqCst);
+  maximized
+}
+
 fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
   let Some(current) = app.get_window(VIDEO_WINDOW) else {
     return Ok(());
@@ -383,9 +469,7 @@ pub async fn open_video_player(
   close_video_window(&app)?;
   let folder = video_extensions::player_folder(&app)?;
   let requests = app.clone();
-  // With its border for now: the window-state plugin removes it here before restoring the size.
-  // Without this change a new window still counts a title bar, and each opening gets that much
-  // taller.
+  // With its border for now, removed below before its size is set
   let window = WindowBuilder::new(&app, VIDEO_WINDOW)
     .title(title)
     .inner_size(1280.0, 760.0)
@@ -457,13 +541,13 @@ pub async fn open_video_player(
     .map_err(|e| e.to_string())?;
   let _ = menu.hide();
   video_extensions::menu_is_new();
-  // On its first opening, or after an older version, the plugin left the border on
   let _ = window.set_decorations(false);
   // The resize edges of a borderless window sit under pages added later: this makes new ones on top
   let _ = window.set_resizable(false);
   let _ = window.set_resizable(true);
-  // The app was quit while in full screen: the site isn't anymore, and there'd be no bar to get out
+  // Never starts in full screen: the site isn't, and there'd be no bar to get out
   let _ = window.set_fullscreen(false);
+  let maximize = restore_video_place(&app, &window);
   place_video_pages(&window, bar_height);
   *VIDEO_SHAPE.lock().unwrap() = None;
   *VIDEO_BAR_HEIGHT.lock().unwrap() = bar_height;
@@ -472,8 +556,24 @@ pub async fn open_video_player(
   }
   let moved = window.clone();
   let was_maximized = AtomicBool::new(false);
+  let closing = app.clone();
   window.on_window_event(move |event| {
     let fullscreen = moved.is_fullscreen().unwrap_or(false);
+    match event {
+      WindowEvent::Moved(_) | WindowEvent::Resized(_) => note_video_place(&moved),
+      WindowEvent::CloseRequested { .. } => {
+        if fullscreen {
+          if let Some(place) = VIDEO_PLACE.lock().unwrap().as_mut() {
+            place.maximized = true;
+          }
+        }
+        VIDEO_CLOSING.store(true, Ordering::SeqCst);
+        save_video_place(&closing);
+      }
+      // Closed without that (the app quitting), or forced shut after a site's "leave this page?"
+      WindowEvent::Destroyed => save_video_place(&closing),
+      _ => {}
+    }
     match event {
       // Full screen from a maximized window: it stays the size of the screen without the taskbar,
       // and no resize comes to hide the bar (only this move). So full screen from a normal window.
@@ -501,7 +601,7 @@ pub async fn open_video_player(
           let _ = bar.eval(format!("window.setScreens?.({screens})"));
         }
       }
-      // Out of full screen first, or the plugin remembers the size of the screen
+      // Out of full screen first, so the window closes as a normal one
       WindowEvent::CloseRequested { api, .. } if fullscreen => {
         api.prevent_close();
         let _ = moved.set_fullscreen(false);
@@ -511,6 +611,9 @@ pub async fn open_video_player(
     }
   });
   window.show().map_err(|e| e.to_string())?;
+  if maximize {
+    let _ = window.maximize();
+  }
   let _ = window.set_focus();
   let _ = site.set_focus();
   // The site holds the extensions' storage now (video_extensions.rs)

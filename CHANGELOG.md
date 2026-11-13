@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed:** video window reopens where you left it: same screen and size
+
 ## [0.79.0] - 2026-11-13
 
 **Video**
