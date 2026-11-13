@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.78.1] - 2026-11-13
+
 **Video**
 - **New:** hovering a video you stopped partway shows how far you got
 - **Changed:** "Opened" tag is back instead of the time left

@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.78.1] - 2026-11-13
+
 **Vidéo**
 - **Nouveau :** survoler une vidéo arrêtée en cours montre où vous en êtes
 - **Changé :** l’étiquette « Ouverte » revient à la place du temps restant
