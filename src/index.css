@@ -7301,8 +7301,9 @@ button.history-row.selected {
   white-space: nowrap;
 }
 
-.game-playtime-part + .game-playtime-part::before {
-  content: '· ';
+/* The dot ends a part, so a wrapped line never starts with one */
+.game-playtime-part:not(:last-child)::after {
+  content: ' ·';
 }
 
 .game-playtime.in-row {
