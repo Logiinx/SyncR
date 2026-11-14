@@ -90,9 +90,11 @@ function GamesView() {
   }
 
   // The shared game menu (gameMenu.ts)
-  function menuItems({ game, pinned, x, y }: GameMenu): MenuItem[] {
+  function menuItems({ game, pinned, hltbId, x, y }: GameMenu): MenuItem[] {
     return gameMenuItems(game, {
       pinned,
+      hltbId,
+      onAsk: setDialog,
       onAskEnding: () => setEndingMenu({ game, pinned, x, y }),
       onWatch: () => {
         setOpenWatch(game.id)

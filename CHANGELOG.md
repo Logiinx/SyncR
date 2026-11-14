@@ -7,7 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Games**
 - **Better:** cover grid: the date sits right under each game's name
 - **Better:** HowLongToBeat times: 100% on its own line, with a gold trophy
-- **Changed:** HowLongToBeat's link buttons are in a menu: click its name
+- **Changed:** HowLongToBeat page: open or change it by right-clicking a game
 - **Removed:** Pin to Board in the game window (still in the right-click menu)
 
 ## [0.80.3] - 2026-11-13

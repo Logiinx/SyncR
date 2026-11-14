@@ -39,7 +39,6 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
   const played = isPlayed(game)
   const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
   const [endingAt, setEndingAt] = useState<{ x: number; y: number } | null>(null) // "How did it end?" (Playing → Library)
-  const [playtimeMenu, setPlaytimeMenu] = useState(false) // the HowLongToBeat title's menu
   const narrow = useNarrow()
   // Focused when it opens (so Escape works), without scrolling; again after the trailer view
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -68,7 +67,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
       className="dialog game-dialog"
       label={game.name}
       onClose={onClose}
-      escapeCloses={!endingAt && !playtimeMenu} // Escape closes an open menu first
+      escapeCloses={!endingAt} // Escape closes the "How did it end?" menu first
       ref={dialogRef}
       inRow
       beside={trailerOpen && <TrailerPanel igdbId={game.igdbId} />}
@@ -118,12 +117,12 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               <p>{t('Alert: {when}', { when: formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000) })}</p>
             )}
             <GameExtrasInfo igdbId={game.igdbId} />
-            <GamePlaytimeInfo game={game} place="title" onMenu={setPlaytimeMenu} />
+            <GamePlaytimeInfo game={game} place="title" />
             <GamePricesInfo igdbId={game.igdbId} name={game.name} />
           </div>
           <CloseButton onClick={onClose} />
         </div>
-        <GamePlaytimeInfo game={game} place="row" onMenu={setPlaytimeMenu} />
+        <GamePlaytimeInfo game={game} place="row" />
 
         <FillSwitch
           className="gd-status"

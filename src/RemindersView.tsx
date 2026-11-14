@@ -329,6 +329,8 @@ function RemindersView() {
           onClose={() => setGameMenu(null)}
           items={gameMenuItems(gameMenu.game, {
             pinned: gameMenu.pinned,
+            hltbId: gameMenu.hltbId,
+            onAsk: setDialog,
             onWatch: () => {
               setOpenWatch(gameMenu.game.id)
               setOpenGame(gameMenu.game.id)

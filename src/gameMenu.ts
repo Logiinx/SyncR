@@ -1,17 +1,21 @@
-import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, Heart, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
+import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, ExternalLink, Heart, Hourglass, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { t, textKey, type TextKey } from './i18n'
-import { canWatch, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
+import { canWatch, db, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
 import { endingChange, endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
+import type { DialogRequest } from './Dialog'
+import { openLink } from './links'
+import { playtimeLink, playtimePageQuestion } from './playtimes'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
 // Groups: Move to … ("Start playing" for Playing) | Library: how it ended | priority, price alert,
-// Board (priority first) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
+// Board (priority first), HowLongToBeat's page (open it, or paste another one: view.onAsk shows the
+// box) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
 // With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
 export function gameMenuItems(
   game: Game,
-  view: { pinned: boolean; onWatch: () => void; onRemove: () => void; onAskEnding?: () => void },
+  view: { pinned: boolean; hltbId?: number | null; onWatch: () => void; onRemove: () => void; onAsk: (request: DialogRequest) => void; onAskEnding?: () => void },
 ): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
@@ -51,6 +55,9 @@ export function gameMenuItems(
             window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
           },
         },
+    // Grayed while its page isn't known (not found, or not asked yet)
+    { label: t('Open on HowLongToBeat'), icon: ExternalLink, disabled: !view.hltbId, onClick: () => openLink(playtimeLink(view.hltbId!)) },
+    { label: t('HowLongToBeat page…'), icon: Hourglass, onClick: () => view.onAsk(playtimePageQuestion(game, view.onAsk)) },
     { label: t('Remove from list'), icon: Trash2, danger: true, onClick: view.onRemove },
   ]
 }
@@ -73,9 +80,10 @@ export const endingMenuItems = (game: Game): MenuItem[] =>
 export const endingHeader = () => ({ title: t('How did it end?'), subtitle: t('Moves it to the Library') })
 
 // The menu to open at x, y: whether the game has a Board card ("Pin to Board" or "Unpin from
-// Board") is looked up once here, not kept up to date while no menu is open
-export type GameMenu = { game: Game; x: number; y: number; pinned: boolean }
+// Board") and its HowLongToBeat page are looked up once here, not kept up to date while no menu is open
+export type GameMenu = { game: Game; x: number; y: number; pinned: boolean; hltbId?: number | null }
 
 export async function gameMenuAt(game: Game, x: number, y: number): Promise<GameMenu> {
-  return { game, x, y, pinned: !!(await pinnedCard(game.id)) }
+  const [card, playtime] = await Promise.all([pinnedCard(game.id), db.playtimes.get(game.id)])
+  return { game, x, y, pinned: !!card, hltbId: playtime?.hltbId }
 }

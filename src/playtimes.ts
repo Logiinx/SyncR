@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, updateGame, type Game, type Playtime } from './db'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { playedTime } from './steam'
+import { t } from './i18n'
+import type { DialogRequest } from './Dialog'
 
 // HowLongToBeat's play times, through the Worker's /playtime (it searches once per game, then
 // reads the game's page). Kept on each device (db.playtimes): each device asks for itself. Only a
@@ -85,8 +87,8 @@ export async function refreshPlaytimes() {
   }
 }
 
-// A HowLongToBeat link pasted in the game window: that page from now on, on every device. Answers
-// false when it isn't a game's link.
+// A HowLongToBeat link pasted in "HowLongToBeat page…" (a game's right-click menu): that page from
+// now on, on every device. Answers false when it isn't a game's link.
 export async function pickPlaytimePage(game: Game, link: string) {
   const id = Number(link.trim().match(/howlongtobeat\.com\/game\/(\d+)/i)?.[1] ?? NaN)
   if (!Number.isInteger(id) || id <= 0) return false
@@ -96,6 +98,18 @@ export async function pickPlaytimePage(game: Game, link: string) {
 }
 
 export const playtimeLink = (hltbId: number) => `https://howlongtobeat.com/game/${hltbId}`
+
+// "HowLongToBeat page…": the box asking for the link, shown by the view (show). Not a game's link:
+// asked again, saying why (after the box has closed).
+export function playtimePageQuestion(game: Game, show: (request: DialogRequest) => void, wrong = false): DialogRequest {
+  return {
+    title: t('HowLongToBeat page'),
+    message: wrong ? t('That isn’t a link to a game on HowLongToBeat. Paste the link of this game’s page.') : t('Paste the link of this game’s page on HowLongToBeat.'),
+    input: { initial: '', placeholder: 'https://howlongtobeat.com/game/…' }, // i18n-ok
+    confirmLabel: t('Use'),
+    onConfirm: (link) => void pickPlaytimePage(game, link).then((ok) => !ok && show(playtimePageQuestion(game, show, true))),
+  }
+}
 
 // The times of every game, by its id. undefined while loading.
 export function usePlaytimes() {
