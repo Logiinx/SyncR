@@ -87,6 +87,7 @@ export function HoverTip({ tip, className, children }: { tip: () => ReactNode; c
     <span
       ref={ref}
       className={className}
+      title="" // no browser tooltip from around it (e.g. a tile's game name) over its box
       onPointerEnter={(e) => {
         if (e.pointerType !== 'mouse') return
         clearTimeout(timer.current)

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Small fixes:** game name popping up over the sale guess
+
 ## [0.81.1] - 2026-11-14
 
 **Games**

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Petites corrections :** nom du jeu par-dessus la promo estimée
+
 ## [0.81.1] - 2026-11-14
 
 **Jeux**
