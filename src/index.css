@@ -5679,15 +5679,11 @@ h3.games-group-title {
   margin-inline: min(0px, (100% - var(--shelf-width)) / 2); /* wider than the column, centered */
 }
 
-/* Each tile's cover, name, year line and prices sit in rows shared by the whole grid row
-   (subgrid): a row whose names all fit on one line takes one, and the lines under them stay
-   in line across it. Prices: the 4th row (empty when there are none). */
+/* A grid row is as tall as its tallest tile; each tile's name, year line and prices stay
+   together under the cover, and the spare room goes under them (before the next row). */
 .game-tile {
-  display: grid;
-  grid-row: span 4;
-  grid-template-rows: subgrid;
-  row-gap: 0;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   padding-bottom: 16px;
   cursor: pointer;

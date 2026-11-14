@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Better:** cover grid: the date sits right under each game's name
+
 ## [0.80.3] - 2026-11-13
 
 **Games**
