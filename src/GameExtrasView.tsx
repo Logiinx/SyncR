@@ -102,7 +102,8 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
 }
 
 // HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
-// 104 h · 🏆 175 h" (100%: a gold trophy, like 100% achievements), then its page and "use another page" (a pasted link, synced). Not
+// 104 h", then "🏆 175 h" on a line of its own (100%: a gold trophy, like 100% achievements), then
+// its page and "use another page" (a pasted link, synced). Not
 // found: a button to add the link. Nothing until it's been asked (a game just added: ~2 s).
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
@@ -124,7 +125,9 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
         ) : times.length === 0 ? (
           <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
         ) : (
-          times.map(({ label, seconds, gold }) => (
+          times.map(({ label, seconds, gold }, i) => [
+            // 100% on its own line, easier to read (user)
+            gold && i > 0 && <span key="break" className="game-playtime-break" />,
             <span key={label} className="game-playtime-part">
               {gold ? (
                 <Trophy className="game-playtime-trophy" aria-label={label}><title>{label}</title></Trophy>
@@ -132,8 +135,8 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
                 <span className="game-playtime-label">{label}</span>
               )}{' '}
               {playtimeText(seconds)}
-            </span>
-          ))
+            </span>,
+          ])
         )}
         {/* After the last time, wrapping with them */}
         {row.hltbId !== null && (

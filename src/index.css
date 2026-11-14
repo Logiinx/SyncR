@@ -7292,8 +7292,13 @@ button.history-row.selected {
   flex-wrap: wrap;
   align-items: center;
   column-gap: 4px;
-  row-gap: 2px;
   min-width: 0;
+  margin-block: -1px; /* lines 2 px apart: 1 px above and below each item (an empty line, the
+                         break before 100%, then adds nothing) */
+}
+
+.game-playtime-times > * {
+  margin-block: 1px;
 }
 
 .game-playtime-part {
@@ -7302,6 +7307,12 @@ button.history-row.selected {
 
 .game-playtime-part + .game-playtime-part::before {
   content: '· ';
+}
+
+/* Before the 100% time: ends the line (no dot, as it doesn't follow a time) */
+.game-playtime-break {
+  flex-basis: 100%;
+  margin-block: 0;
 }
 
 .game-playtime.in-row {

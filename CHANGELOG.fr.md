@@ -6,7 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Jeux**
 - **Amélioré :** grille de jaquettes : la date juste sous le nom de chaque jeu
-- **Amélioré :** temps 100 % de HowLongToBeat affiché avec un trophée doré
+- **Amélioré :** temps 100 % de HowLongToBeat sur sa propre ligne, avec un trophée doré
 
 ## [0.80.3] - 2026-11-13
 
