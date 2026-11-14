@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { locale, plural, t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, PackageCheck, Heart, Pin, PinOff, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
+import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, PackageCheck, Heart, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
-import { canWatch, db, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
+import { canWatch, db, setGameStatus, setPreordered, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
 import { endingHeader, endingMenuItems, ENDINGS } from './gameMenu'
 import ContextMenu from './ContextMenu'
@@ -37,7 +37,6 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
   const [note, setNote] = useState(game.note)
   const [review, setReview] = useState(game.review)
   const played = isPlayed(game)
-  const pinned = useLiveQuery(async () => !!(await pinnedCard(game.id)), [game.id])
   const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
   const [endingAt, setEndingAt] = useState<{ x: number; y: number } | null>(null) // "How did it end?" (Playing → Library)
   const [playtimeMenu, setPlaytimeMenu] = useState(false) // the HowLongToBeat title's menu
@@ -94,17 +93,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
               ? <><Heart size={15} fill={game.priority ? 'currentColor' : 'none'} /> <span>{t('Favorite')}</span></>
               : <><Sparkles size={15} /> <span>{t('Priority')}</span></>}
           </button>
-          <button
-            className="gd-action"
-            onClick={async () => {
-              if (pinned) return unpinGameFromBoard(game.id)
-              await pinGameToBoard(game)
-              window.dispatchEvent(new Event('open-board')) // show it (App.tsx)
-            }}
-            title={pinned ? t('Unpin from Board') : t('Pin to Board')}
-          >
-            {pinned ? <PinOff size={15} /> : <Pin size={15} />} <span>{pinned ? t('Unpin from Board') : t('Pin to Board')}</span>
-          </button>
+          {/* No "Pin to Board" here: it's in the Games tab's right-click menu (user) */}
           {/* Its release event (made by SyncR for Waiting games, games.ts) */}
           {releaseEvent && (
             <button className="gd-action" title={t('Open in Google Calendar')} onClick={() => openLink(releaseEvent.link)}>
