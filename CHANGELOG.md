@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-11-14
+
 **Games**
 - **New:** next Steam sale guess: hover a Steam price, or see the game window
 - **Better:** cover grid: the date sits right under each game's name
