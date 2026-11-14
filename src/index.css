@@ -7274,15 +7274,17 @@ button.history-row.selected {
 /* HowLongToBeat's times under the extras (GameExtrasView.tsx): "⌛ label time · label time ↗ ✎",
    each "label time" on one line, wrapping between them; its two small buttons are dim like the
    icon. Under the title on a PC, a full-width row under the cover on a phone (GameDialog.tsx). */
+/* Two columns: the icons (⌛, then 🏆 under it) and their times. Only a 100% time: just the 🏆 row */
 .game-playtime {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 2px 6px;
   margin-top: 8px;
   font-size: 0.85em;
 }
 
-/* As tall as a line, so it stays beside the first one when the times wrap */
+/* As tall as a line, so they stay beside the first line of their times when these wrap */
 .game-playtime > .price-icon {
   height: 1lh;
 }
@@ -7291,14 +7293,8 @@ button.history-row.selected {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: 4px;
+  gap: 2px 4px;
   min-width: 0;
-  margin-block: -1px; /* lines 2 px apart: 1 px above and below each item (an empty line, the
-                         break before 100%, then adds nothing) */
-}
-
-.game-playtime-times > * {
-  margin-block: 1px;
 }
 
 .game-playtime-part {
@@ -7307,12 +7303,6 @@ button.history-row.selected {
 
 .game-playtime-part + .game-playtime-part::before {
   content: '· ';
-}
-
-/* Before the 100% time: ends the line (no dot, as it doesn't follow a time) */
-.game-playtime-break {
-  flex-basis: 100%;
-  margin-block: 0;
 }
 
 .game-playtime.in-row {
@@ -7325,7 +7315,7 @@ button.history-row.selected {
   }
 
   .game-playtime.in-row {
-    display: flex;
+    display: grid;
     margin-top: 0;
   }
 }
@@ -7335,12 +7325,8 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
-/* 100%: a trophy in a dim gold, like 100% achievements. Inline in the text: moved down onto
-   the text's middle */
-.game-playtime-trophy {
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.15em;
+/* 100%: a trophy in a dim gold, like 100% achievements */
+.game-playtime > .game-playtime-trophy {
   color: color-mix(in srgb, var(--text-yellow) 75%, var(--bg));
 }
 

@@ -101,9 +101,10 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
 }
 
 // HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
-// 104 h", then "🏆 175 h" on a line of its own (100%: a gold trophy, like 100% achievements).
-// Its page is opened or changed from the game's right-click menu (gameMenu.ts). Not found: a dim
-// line saying so. Nothing until it's been asked (a game just added: ~2 s).
+// 104 h", then "🏆 175 h" under it, its trophy under the hourglass (100%: a gold trophy, like 100%
+// achievements); only a 100% time: just that line, no hourglass. Its page is opened or changed
+// from the game's right-click menu (gameMenu.ts). Not found: a dim line saying so. Nothing until
+// it's been asked (a game just added: ~2 s).
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
 export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' | 'row' }) {
@@ -112,31 +113,36 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
   const times = [
     { label: t('Main story'), seconds: row.main },
     { label: t('Main + extras'), seconds: row.plus },
-    { label: t('Everything (100%)'), seconds: row.full, gold: true },
   ].filter((time) => time.seconds > 0)
+  const found = row.hltbId !== null
+  const full = found ? row.full : 0
+  const everything = t('Everything (100%)')
   return (
     <div className={`game-playtime in-${place}`}>
-      <Hourglass className="price-icon" aria-label={t('Time to beat')} />
-      <span className="game-playtime-times">
-        {row.hltbId === null ? (
-          <span className="game-playtime-none">{t('Not found on HowLongToBeat')}</span>
-        ) : times.length === 0 ? (
-          <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
-        ) : (
-          times.map(({ label, seconds, gold }, i) => [
-            // 100% on its own line, easier to read (user)
-            gold && i > 0 && <span key="break" className="game-playtime-break" />,
-            <span key={label} className="game-playtime-part">
-              {gold ? (
-                <Trophy className="game-playtime-trophy" aria-label={label}><title>{label}</title></Trophy>
-              ) : (
-                <span className="game-playtime-label">{label}</span>
-              )}{' '}
-              {playtimeText(seconds)}
-            </span>,
-          ])
-        )}
-      </span>
+      {(times.length > 0 || !full) && (
+        <>
+          <Hourglass className="price-icon" aria-label={t('Time to beat')} />
+          <span className="game-playtime-times">
+            {!found ? (
+              <span className="game-playtime-none">{t('Not found on HowLongToBeat')}</span>
+            ) : times.length === 0 ? (
+              <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
+            ) : (
+              times.map(({ label, seconds }) => (
+                <span key={label} className="game-playtime-part">
+                  <span className="game-playtime-label">{label}</span> {playtimeText(seconds)}
+                </span>
+              ))
+            )}
+          </span>
+        </>
+      )}
+      {full > 0 && (
+        <>
+          <Trophy className="price-icon game-playtime-trophy" aria-label={everything}><title>{everything}</title></Trophy>
+          <span className="game-playtime-times">{playtimeText(full)}</span>
+        </>
+      )}
     </div>
   )
 }
