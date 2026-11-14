@@ -217,8 +217,8 @@ const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 
 // "17 December, 2026" or "December 17, 2026" → "2026-12-17" (null when it isn't a date, e.g. "TBD")
 function saleDay(text) {
   const month = MONTHS.findIndex((name) => text.toLowerCase().includes(name))
-  const day = text.match(/(d{1,2})/)?.[1]
-  const year = text.match(/(d{4})/)?.[1]
+  const day = text.match(/\b(\d{1,2})\b/)?.[1]
+  const year = text.match(/\b(\d{4})\b/)?.[1]
   if (month < 0 || !day || !year) return null
   return `${year}-${String(month + 1).padStart(2, '0')}-${day.padStart(2, '0')}`
 }
@@ -234,8 +234,8 @@ async function bigSales() {
   try {
     const response = await fetch(SALES_PAGE, { headers: { 'Accept-Language': 'en' } })
     if (response.ok) {
-      const text = (await response.text()).replace(/<[^>]+>/g, ' ').replace(/s+/g, ' ')
-      for (const match of text.matchAll(/(w+ Sale) (d{4}) | ([^|]+?) - ([^|]+?d{4})/g)) {
+      const text = (await response.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+      for (const match of text.matchAll(/(\w+ Sale) (\d{4}) \| ([^|]+?) - ([^|]+?\d{4})/g)) {
         const [start, end] = [saleDay(match[3]), saleDay(match[4])]
         if (start && end && !sales.some((sale) => sale.start === start)) sales.push({ name: match[1], start, end })
       }
@@ -254,7 +254,7 @@ async function steamHistory(env, steamId) {
   const found = await askJson(`${ITAD}/games/lookup/v1?key=${env.ITAD_KEY}&appid=${steamId}`)
   if (!found.found || !found.game?.id) return null
   // As in IsThereAnyDeal's examples: "2024-11-14T10:00:00+00:00" (no milliseconds)
-  const since = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().replace(/.d+Z$/, '+00:00')
+  const since = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, '+00:00')
   const params = new URLSearchParams({ key: env.ITAD_KEY, id: found.game.id, country: 'FR', shops: String(ITAD_STEAM), since })
   const response = await fetch(`${ITAD}/games/history/v2?${params}`)
   if (!response.ok) throw new Error(`IsThereAnyDeal answered ${response.status}: ${(await response.text()).slice(0, 300)}`)
