@@ -15,6 +15,8 @@
 //                         and Google sign-in work, game prices don't (your GG.deals limit)
 //   GOOGLE_CLIENT_SECRET  console.cloud.google.com → Google Auth Platform → Clients → SyncR
 //   GGDEALS_KEY           gg.deals → Settings → API key (game prices, see /prices)
+//   ITAD_KEY              optional: isthereanydeal.com → (signed in) Settings → API → register
+//                         an app, its "API key" (Steam price history for the sale guess, see /sales)
 //   STEAM_KEY             steamcommunity.com/dev/apikey (your Steam games and achievements,
 //                         see /steam/…; your profile's "Game details" must be public)
 //   GITHUB_TOKEN          optional: github.com → Settings → Developer settings → Fine-grained
@@ -199,6 +201,79 @@ async function gameEditions(request) {
     }))
   }
   return result
+}
+
+// ---------- Sales (owner only): when a game might next be on sale ----------
+// Answer: { bigSales: [{ name, start, end }] (Steam's announced seasonal sales, days as
+// "YYYY-MM-DD", end included), history: [{ at, price, regular, cut }] (the game's Steam price
+// changes in France over the last 2 years, oldest first: ms, cents, cents, %) or null (no
+// ITAD_KEY, or the game isn't on IsThereAnyDeal) }. The app makes the guess from these.
+
+const SALES_PAGE = 'https://partner.steamgames.com/doc/marketing/upcoming_events?l=english'
+const ITAD = 'https://api.isthereanydeal.com'
+const ITAD_STEAM = 61 // IsThereAnyDeal's id for the Steam store
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+// "17 December, 2026" or "December 17, 2026" → "2026-12-17" (null when it isn't a date, e.g. "TBD")
+function saleDay(text) {
+  const month = MONTHS.findIndex((name) => text.toLowerCase().includes(name))
+  const day = text.match(/(d{1,2})/)?.[1]
+  const year = text.match(/(d{4})/)?.[1]
+  if (month < 0 || !day || !year) return null
+  return `${year}-${String(month + 1).padStart(2, '0')}-${day.padStart(2, '0')}`
+}
+
+// Valve's page of upcoming events: lines like "Winter Sale 2026 | 17 December, 2026 - 4 January,
+// 2027" under "Seasonal Sales". Kept a day in Cloudflare's cache (it changes a few times a year).
+async function bigSales() {
+  const cache = caches.default
+  const key = new Request('https://syncr.cache/steam-big-sales-v1')
+  const kept = await cache.match(key)
+  if (kept) return kept.json()
+  let sales = []
+  try {
+    const response = await fetch(SALES_PAGE, { headers: { 'Accept-Language': 'en' } })
+    if (response.ok) {
+      const text = (await response.text()).replace(/<[^>]+>/g, ' ').replace(/s+/g, ' ')
+      for (const match of text.matchAll(/(w+ Sale) (d{4}) | ([^|]+?) - ([^|]+?d{4})/g)) {
+        const [start, end] = [saleDay(match[3]), saleDay(match[4])]
+        if (start && end && !sales.some((sale) => sale.start === start)) sales.push({ name: match[1], start, end })
+      }
+    }
+  } catch {
+    // Valve's page can't be read now: no big sales this time, asked again next time
+  }
+  if (sales.length > 0) {
+    await cache.put(key, new Response(JSON.stringify(sales), { headers: { 'Cache-Control': 'max-age=86400' } }))
+  }
+  return sales
+}
+
+async function steamHistory(env, steamId) {
+  if (!env.ITAD_KEY) return null
+  const found = await askJson(`${ITAD}/games/lookup/v1?key=${env.ITAD_KEY}&appid=${steamId}`)
+  if (!found.found || !found.game?.id) return null
+  const since = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString()
+  const params = new URLSearchParams({ key: env.ITAD_KEY, id: found.game.id, country: 'FR', shops: String(ITAD_STEAM), since })
+  const response = await fetch(`${ITAD}/games/history/v2?${params}`)
+  if (!response.ok) throw new Error(`IsThereAnyDeal answered ${response.status}`)
+  const changes = await response.json()
+  return (Array.isArray(changes) ? changes : [])
+    .map((change) => ({
+      at: Date.parse(change.timestamp),
+      price: change.deal?.price?.amountInt,
+      regular: change.deal?.regular?.amountInt,
+      cut: change.deal?.cut ?? 0,
+    }))
+    .filter((change) => Number.isFinite(change.at) && Number.isInteger(change.price))
+    .sort((a, b) => a.at - b.at)
+}
+
+async function sales(env, request) {
+  const { steamId } = await request.json()
+  if (!Number.isInteger(steamId) || steamId <= 0) throw new Error('Send steamId')
+  const [big, history] = await Promise.all([bigSales(), steamHistory(env, steamId)])
+  return { bigSales: big, history }
 }
 
 // ---------- Steam (owner only) ----------
@@ -1019,6 +1094,14 @@ export default {
       try {
         const response = await googleToken(env, request)
         return reply(await response.text(), response.status)
+      } catch (error) {
+        return reply({ error: String(error.message ?? error) }, 502)
+      }
+    }
+    if (endpoint === 'sales') {
+      if (!owner) return reply({ bigSales: [], history: null }, 200) // the app then shows no guess
+      try {
+        return reply(await sales(env, request), 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)
       }
