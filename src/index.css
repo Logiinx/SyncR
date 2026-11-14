@@ -7368,19 +7368,39 @@ button.history-row.selected {
 
 /* The next Steam sale guess (GameExtrasView SaleGuessLines): dim lines under the lowest prices;
    in the game window on a phone, a full-width row under the cover instead */
-.sale-guess {
-  display: grid;
+.sale-guess,
+.game-prices > .sale-guess {
+  display: grid; /* one line under the other, not side by side like a price row */
   gap: 2px;
+  margin-top: 2px; /* like the lowest prices above */
   color: var(--text-dim);
 }
 
-.sale-guess p {
+.dialog .sale-guess p {
   margin: 0;
   font-size: 1em; /* not shrunk again by .gd-title p */
 }
 
+/* Its pieces ("Steam Winter Sale: 17 Dec – 4 Jan · in 33 days"): each on one line, wrapping only
+   between them; the dot ends a piece, so a wrapped line never starts with one */
+.sale-parts {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 4px;
+  row-gap: 2px;
+}
+
+.sale-parts > span {
+  white-space: nowrap;
+}
+
+.sale-parts > span:not(:last-child)::after {
+  content: ' ·';
+}
+
 .sale-guess.in-row {
   display: none;
+  margin-top: 0;
   font-size: 0.85em;
 }
 
@@ -7395,8 +7415,11 @@ button.history-row.selected {
 }
 
 /* Its box on a Steam price in the lists (SaleGuessTip): the sale, then the game's own line, dim */
-.sale-guess-game {
-  display: block;
+.info-tip-box .sale-parts {
+  margin: 0;
+}
+
+.info-tip-box .sale-guess-game {
   margin-top: 4px;
   color: var(--text-dim);
 }

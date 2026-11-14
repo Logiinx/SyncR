@@ -9,6 +9,12 @@ function dayText(time: number, month: 'short' | 'long', weekday?: 'long') {
 // The app's day format, "21 Oct 2026", used wherever a plain date shows (notes, sync, games).
 export const shortDate = (time: number) => dayText(time, 'short')
 
+// "17 Dec": a day near enough that its year goes without saying (the next Steam sale)
+export function dayMonth(time: number) {
+  const text = new Date(time).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
+  return currentLanguage() === 'fr' ? text.replace(/(^|\s)1 /, '$11er ') : text
+}
+
 // Reminders spell the month out ("21 October 2026"): their dates are the main content there.
 export const longDate = (time: number) => dayText(time, 'long')
 
