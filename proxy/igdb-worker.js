@@ -253,10 +253,11 @@ async function steamHistory(env, steamId) {
   if (!env.ITAD_KEY) return null
   const found = await askJson(`${ITAD}/games/lookup/v1?key=${env.ITAD_KEY}&appid=${steamId}`)
   if (!found.found || !found.game?.id) return null
-  const since = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString()
+  // As in IsThereAnyDeal's examples: "2024-11-14T10:00:00+00:00" (no milliseconds)
+  const since = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().replace(/.d+Z$/, '+00:00')
   const params = new URLSearchParams({ key: env.ITAD_KEY, id: found.game.id, country: 'FR', shops: String(ITAD_STEAM), since })
   const response = await fetch(`${ITAD}/games/history/v2?${params}`)
-  if (!response.ok) throw new Error(`IsThereAnyDeal answered ${response.status}`)
+  if (!response.ok) throw new Error(`IsThereAnyDeal answered ${response.status}: ${(await response.text()).slice(0, 300)}`)
   const changes = await response.json()
   return (Array.isArray(changes) ? changes : [])
     .map((change) => ({

@@ -204,4 +204,17 @@ export const games = {
   'Wrong password for the game search proxy': 'Mauvais mot de passe pour le proxy de recherche de jeux',
   'Game search failed ({status}): {details}': 'Échec de la recherche de jeux ({status}) : {details}',
   'The game search proxy address is wrong (it answered with a web page)': 'L’adresse du proxy de recherche de jeux est erronée (il a répondu par une page web)',
+  // Next Steam sale guess (saleGuess.ts)
+  'Winter Sale': 'Soldes d’hiver',
+  'Spring Sale': 'Soldes de printemps',
+  'Summer Sale': 'Soldes d’été',
+  'Autumn Sale': 'Soldes d’automne',
+  'No big Steam sale announced yet': 'Pas encore de grands soldes Steam annoncés',
+  '{sale} on until {date}': '{sale} en cours jusqu’au {date}',
+  'Next big sale: {sale}, {start} – {end} ({when})': 'Prochains grands soldes : {sale}, du {start} au {end} ({when})',
+  'No Steam discount in the last 2 years': 'Aucune remise Steam ces 2 dernières années',
+  '−{cut}% last year at that time': '−{cut} % l’an dernier à cette période',
+  'not on sale last year at that time': 'pas en promo l’an dernier à cette période',
+  'usually −{cut}%': 'en général −{cut} %',
+  'last on sale {date} (−{cut}%)': 'dernière promo le {date} (−{cut} %)',
 }
