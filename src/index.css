@@ -7324,8 +7324,12 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
-/* "100%": a dim gold, like 100% achievements */
-.game-playtime-label.gold {
+/* 100%: a trophy in a dim gold, like 100% achievements. Inline in the text: moved down onto
+   the text's middle */
+.game-playtime-trophy {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
   color: color-mix(in srgb, var(--text-yellow) 75%, var(--bg));
 }
 

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
-import { ChevronRight, ExternalLink, Flame, Hourglass, KeyRound, Pencil, Play, TriangleAlert } from 'lucide-react'
+import { ChevronRight, ExternalLink, Flame, Hourglass, KeyRound, Pencil, Play, TriangleAlert, Trophy } from 'lucide-react'
 import Dialog from './Dialog'
 import type { Game } from './db'
 import { pickPlaytimePage, playtimeLink, PlaytimesContext, playtimeText, usePlaytime } from './playtimes'
@@ -102,7 +102,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
 }
 
 // HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
-// 104 h · 100% 175 h", then its page and "use another page" (a pasted link, synced). Not
+// 104 h · 🏆 175 h" (100%: a gold trophy, like 100% achievements), then its page and "use another page" (a pasted link, synced). Not
 // found: a button to add the link. Nothing until it's been asked (a game just added: ~2 s).
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
@@ -113,7 +113,7 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
   const times = [
     { label: t('Main story'), seconds: row.main },
     { label: t('Main + extras'), seconds: row.plus },
-    { label: '100%', seconds: row.full, gold: true }, // i18n-ok: completionist, shorter (user), dim gold like 100% achievements
+    { label: t('Everything (100%)'), seconds: row.full, gold: true },
   ].filter((time) => time.seconds > 0)
   return (
     <div className={`game-playtime in-${place}`}>
@@ -126,7 +126,12 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
         ) : (
           times.map(({ label, seconds, gold }) => (
             <span key={label} className="game-playtime-part">
-              <span className={gold ? 'game-playtime-label gold' : 'game-playtime-label'}>{label}</span> {playtimeText(seconds)}
+              {gold ? (
+                <Trophy className="game-playtime-trophy" aria-label={label}><title>{label}</title></Trophy>
+              ) : (
+                <span className="game-playtime-label">{label}</span>
+              )}{' '}
+              {playtimeText(seconds)}
             </span>
           ))
         )}
