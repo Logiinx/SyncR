@@ -204,8 +204,8 @@ async function gameEditions(request) {
 }
 
 // ---------- Sales (owner only): when a game might next be on sale ----------
-// Answer: { bigSales: [{ name, start, end }] (Steam's announced seasonal sales, days as
-// "YYYY-MM-DD", end included), history: [{ at, price, regular, cut }] (the game's Steam price
+// Answer: { bigSales: [{ name, start, end, official? }] (Steam's announced seasonal sales, days
+// as "YYYY-MM-DD", end included; Black Friday with official: false), history: [{ at, price, regular, cut }] (the game's Steam price
 // changes in France over the last 2 years, oldest first: ms, cents, cents, %) or null (no
 // ITAD_KEY, or the game isn't on IsThereAnyDeal) }. The app makes the guess from these.
 
@@ -227,7 +227,7 @@ function saleDay(text) {
 // 2027" under "Seasonal Sales". Kept a day in Cloudflare's cache (it changes a few times a year).
 async function bigSales() {
   const cache = caches.default
-  const key = new Request('https://syncr.cache/steam-big-sales-v1')
+  const key = new Request('https://syncr.cache/steam-big-sales-v2') // v2: with Black Friday
   const kept = await cache.match(key)
   if (kept) return kept.json()
   let sales = []
@@ -238,6 +238,14 @@ async function bigSales() {
       for (const match of text.matchAll(/(\w+ Sale) (\d{4}) \| ([^|]+?) - ([^|]+?\d{4})/g)) {
         const [start, end] = [saleDay(match[3]), saleDay(match[4])]
         if (start && end && !sales.some((sale) => sale.start === start)) sales.push({ name: match[1], start, end })
+      }
+      // Black Friday: not a Steam sale (publishers' own discounts, Steam's Discounts & Events page
+      // as a hub), in a sentence: "Black Friday 2026 … From November 26th 10AM PT through November
+      // 30th 10AM PT". official: false. Worded otherwise one day: just left out.
+      const friday = text.match(/Black Friday (\d{4}) .{0,800}?From (\w+ \d{1,2})(?:st|nd|rd|th)?\b.{0,40}?through (\w+ \d{1,2})(?:st|nd|rd|th)?\b/)
+      if (friday) {
+        const [start, end] = [saleDay(`${friday[2]}, ${friday[1]}`), saleDay(`${friday[3]}, ${friday[1]}`)]
+        if (start && end) sales.push({ name: 'Black Friday', start, end, official: false })
       }
     }
   } catch {

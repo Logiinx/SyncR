@@ -10,7 +10,7 @@ import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
 import { HoverTip } from './InfoTip'
-import { bigSaleParts, gameSaleParts, useSaleGuess } from './saleGuess'
+import { saleLines, useSaleGuess, type SalePiece } from './saleGuess'
 import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
@@ -259,29 +259,32 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
   )
 }
 
-// The next Steam sale guess (saleGuess.ts), in the game windows: two dim lines under the lowest
-// prices, "Next big sale: Winter Sale · 17 Dec 2026 – 4 Jan 2027 · in 33 days" and the game's own
-// "−40% last year at that time · usually −40% · last on sale 12 Aug 2026 (−35%)". Each piece stays
-// on one line (wrapping only between pieces, like the HowLongToBeat times). Nothing while it
-// loads or when there's nothing to say. In the game window on a phone, the prices' column beside
-// the cover is too narrow: a full-width row under it instead (GameSaleRow, CSS keeps one).
+// The next Steam sale guess (saleGuess.ts), in the game windows: dim lines under the lowest prices
+// with their values bright, like the HowLongToBeat times: Black Friday while it comes first
+// ("Black Friday deals (not a Steam sale): 26–30 Nov · in 12 days"), the big sale ("Steam Winter
+// Sale: 17 Dec – 4 Jan · in 33 days") and the game's own ("Last year: −40% · usually −40% · last
+// sale 12 Aug 2026 (−35%)"). Each piece stays on one line (wrapping only between pieces). Nothing
+// while it loads or when there's nothing to say. In the game window on a phone, the prices'
+// column beside the cover is too narrow: a full-width row under it instead (GameSaleRow, CSS keeps one).
 function SaleGuessLines({ prices, place }: { prices: GamePrices; place: 'title' | 'row' }) {
   const guess = useSaleGuess(prices, true)
   if (!guess) return null
-  const game = gameSaleParts(guess)
   return (
     <div className={`sale-guess in-${place}`}>
-      <SaleParts parts={bigSaleParts(guess)} />
-      {game && <SaleParts parts={game} />}
+      {saleLines(guess).map((line, i) => (
+        <SaleLine key={i} line={line} />
+      ))}
     </div>
   )
 }
 
-function SaleParts({ parts, className = '' }: { parts: string[]; className?: string }) {
+function SaleLine({ line }: { line: SalePiece[] }) {
   return (
-    <p className={`sale-parts ${className}`}>
-      {parts.map((part) => (
-        <span key={part}>{part}</span>
+    <p className="sale-parts">
+      {line.map((piece, i) => (
+        <span key={i}>
+          {piece.map((segment, j) => (segment.value ? <span key={j} className="sale-value">{segment.text}</span> : segment.text))}
+        </span>
       ))}
     </p>
   )
@@ -299,12 +302,12 @@ function SaleGuessTip({ prices }: { prices: GamePrices }) {
   const guess = useSaleGuess(prices, true)
   if (guess === undefined) return <span className="sale-guess-dim">{t('Looking for Steam sales…')}</span>
   if (guess === null) return <span className="sale-guess-dim">{t('No sale information for this game')}</span>
-  const game = gameSaleParts(guess)
   return (
-    <>
-      <SaleParts parts={bigSaleParts(guess)} />
-      {game && <SaleParts parts={game} className="sale-guess-game" />}
-    </>
+    <span className="sale-guess-tip">
+      {saleLines(guess).map((line, i) => (
+        <SaleLine key={i} line={line} />
+      ))}
+    </span>
   )
 }
 

@@ -7416,13 +7416,20 @@ button.history-row.selected {
 }
 
 /* Its box on a Steam price in the lists (SaleGuessTip): the sale, then the game's own line, dim */
-.info-tip-box .sale-parts {
-  margin: 0;
+/* The values (dates, days, discounts): bright among the dim words, like the HowLongToBeat times */
+.sale-value {
+  color: var(--text);
 }
 
-.info-tip-box .sale-guess-game {
-  margin-top: 4px;
+/* The same lines in the hover box on a list's Steam price (SaleGuessTip) */
+.sale-guess-tip {
+  display: grid;
+  gap: 4px;
   color: var(--text-dim);
+}
+
+.info-tip-box .sale-parts {
+  margin: 0;
 }
 
 .sale-guess-dim {

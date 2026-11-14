@@ -3,7 +3,7 @@
 // (proxy/igdb-worker.js). Asked only when shown (hover on a Steam price, the game window), kept
 // in memory for this session, never saved or synced. Information only: price alerts don't use it.
 import { useEffect, useState } from 'react'
-import { capitalize, t } from './i18n'
+import { capitalize, t, textKey, type TextKey } from './i18n'
 import { dayMonth, shortDate } from './dates'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import type { GamePrices } from './prices'
@@ -12,6 +12,7 @@ interface BigSale {
   name: string // Valve's English name, e.g. "Winter Sale"
   start: string // "YYYY-MM-DD", first day
   end: string // last day (included)
+  official?: false // Black Friday: publishers' own discounts, not a Steam sale
 }
 interface PriceChange {
   at: number // ms
@@ -31,6 +32,8 @@ const AROUND = 7 * DAY // "at that time last year": a sale starting up to a week
 export interface SaleGuess {
   // Steam's next (or current) big sale; undefined when none is announced
   bigSale?: { name: string; start: number; end: number; now: boolean }
+  // Black Friday (not a Steam sale), only while it comes before that big sale
+  deals?: { start: number; end: number; now: boolean }
   // Only when the history is known:
   history?: {
     never: boolean // no discount in the last 2 years
@@ -64,11 +67,16 @@ function salesOf(history: PriceChange[]) {
 // The guess from the proxy's answer; now: today (a parameter, to test it with other dates)
 export function makeGuess(answer: SalesAnswer, now = Date.now()): SaleGuess {
   const today = new Date(now).setHours(0, 0, 0, 0)
-  const next = answer.bigSales
-    .map((sale) => ({ name: sale.name, start: dayStart(sale.start), end: dayStart(sale.end) + DAY - 1 }))
+  const coming = answer.bigSales
+    .map((sale) => ({ name: sale.name, official: sale.official !== false, start: dayStart(sale.start), end: dayStart(sale.end) + DAY - 1 }))
     .filter((sale) => sale.end >= now)
-    .sort((a, b) => a.start - b.start)[0]
-  const guess: SaleGuess = next ? { bigSale: { ...next, now: next.start <= now } } : {}
+    .sort((a, b) => a.start - b.start)
+  const found = coming.find((sale) => sale.official)
+  const next = found && { name: found.name, start: found.start, end: found.end }
+  const friday = coming.find((sale) => !sale.official && (!next || sale.start < next.start))
+  const guess: SaleGuess = {}
+  if (next) guess.bigSale = { ...next, now: next.start <= now }
+  if (friday) guess.deals = { start: friday.start, end: friday.end, now: friday.start <= now }
   if (!answer.history) return guess
   const sales = salesOf(answer.history)
   if (sales.length === 0) return { ...guess, history: { never: true } }
@@ -126,7 +134,7 @@ export function useSaleGuess(prices: GamePrices | null | undefined, active: bool
     loadSales(appId).then((answer) => {
       if (!current) return
       const made = answer && makeGuess(answer)
-      setGuess({ appId, guess: made && (made.bigSale || made.history) ? made : null })
+      setGuess({ appId, guess: made && (made.bigSale || made.deals || made.history) ? made : null })
     })
     return () => {
       current = false
@@ -137,6 +145,22 @@ export function useSaleGuess(prices: GamePrices | null | undefined, active: bool
 }
 
 // ---------- Its words ----------
+
+// A piece of a line, kept on one line; its values (dates, days, discounts) show bright, the words
+// around them dim, like the HowLongToBeat times
+export type SalePiece = { text: string; value?: boolean }[]
+
+const MARK = '\u0001'
+// The text of a key with its values as bright segments (words: values shown dim, e.g. a name)
+function piece(key: TextKey, values: Record<string, string> = {}, words: Record<string, string> = {}): SalePiece {
+  const marks = Object.fromEntries(Object.keys(values).map((name) => [name, `${MARK}${name}${MARK}`]))
+  return t(key, { ...words, ...marks })
+    .split(MARK)
+    .map((text, i) => (i % 2 ? { text: values[text], value: true } : { text }))
+    .filter((segment) => segment.text)
+}
+const bright = (text: string): SalePiece => [{ text, value: true }]
+const discount = (cut: number) => t('−{n}%', { n: cut })
 
 // Valve's sale names in the app's language (another name shows as Valve wrote it, after "Steam")
 function saleName(name: string) {
@@ -149,35 +173,51 @@ function saleName(name: string) {
   return names[name]?.() ?? `Steam ${name}` // i18n-ok: Valve's own name
 }
 
-// The big sale as short pieces, each kept on one line (the line wraps only between them):
-// ["Steam Winter Sale: 17 Dec – 4 Jan", "in 33 days"] (no years: it's the coming one), or one
-// piece "Steam Winter Sale until 4 Jan" / "No big Steam sale announced yet"
-export function bigSaleParts(guess: SaleGuess, now = Date.now()): string[] {
-  const sale = guess.bigSale
-  if (!sale) return [t('No big Steam sale announced yet')]
-  const name = saleName(sale.name)
-  if (sale.now) return [t('{sale} until {date}', { sale: name, date: dayMonth(sale.end) })]
-  const days = Math.round((sale.start - new Date(now).setHours(0, 0, 0, 0)) / DAY)
-  return [
-    t('{sale}: {dates}', { sale: name, dates: `${dayMonth(sale.start)} – ${dayMonth(sale.end)}` }),
-    days <= 1 ? t('tomorrow') : t('in {n} days', { n: days }),
-  ]
+// "in 33 days" / "tomorrow"
+function whenText(start: number, now: number) {
+  const days = Math.round((start - new Date(now).setHours(0, 0, 0, 0)) / DAY)
+  return days <= 1 ? t('tomorrow') : t('in {n} days', { n: days })
+}
+// "17 Dec – 4 Jan", or "26–30 Nov" within one month
+function datesText(sale: { start: number; end: number }) {
+  const [start, end] = [new Date(sale.start), new Date(sale.end)]
+  if (start.getMonth() === end.getMonth()) return `${start.getDate()}–${dayMonth(sale.end)}`
+  return `${dayMonth(sale.start)} – ${dayMonth(sale.end)}`
 }
 
-// The game's own pieces: ["Last year: −40%", "usually −40%", "last sale 12 Aug 2026 (−35%)"]
-// (the first one capitalized; "last year" = around this big sale's dates); null without history
-export function gameSaleParts(guess: SaleGuess): string[] | null {
+// The lines, each a list of pieces (a line wraps only between them):
+// - Black Friday, while it comes first: "Black Friday deals (not a Steam sale): 26–30 Nov · in 12 days"
+// - the big sale: "Steam Winter Sale: 17 Dec – 4 Jan · in 33 days" (no years: it's the coming one),
+//   "Steam Winter Sale until 4 Jan", or "No big Steam sale announced yet"
+// - the game's own, when its history is known: "Last year: −40% · usually −40% · last sale 12 Aug
+//   2026 (−35%)" ("last year" = around the big sale's dates), or "No Steam discount in the last 2 years"
+export function saleLines(guess: SaleGuess, now = Date.now()): SalePiece[][] {
+  const lines: SalePiece[][] = []
+  const deals = guess.deals
+  if (deals) {
+    lines.push(
+      deals.now
+        ? [piece(textKey('Black Friday deals (not a Steam sale) until {date}'), { date: dayMonth(deals.end) })]
+        : [piece(textKey('Black Friday deals (not a Steam sale): {dates}'), { dates: datesText(deals) }), bright(whenText(deals.start, now))],
+    )
+  }
+  const sale = guess.bigSale
+  if (!sale) lines.push([piece(textKey('No big Steam sale announced yet'))])
+  else if (sale.now) lines.push([piece(textKey('{sale} until {date}'), { date: dayMonth(sale.end) }, { sale: saleName(sale.name) })])
+  else lines.push([piece(textKey('{sale}: {dates}'), { dates: datesText(sale) }, { sale: saleName(sale.name) }), bright(whenText(sale.start, now))])
   const history = guess.history
-  if (!history) return null
-  if (history.never) return [t('No Steam discount in the last 2 years')]
-  const parts = [
-    history.lastYear === undefined
-      ? null
-      : history.lastYear > 0
-        ? t('Last year: −{cut}%', { cut: history.lastYear })
-        : t('Last year: no discount'),
-    history.usual && t('usually −{cut}%', { cut: history.usual }),
-    history.last && t('last sale {date} (−{cut}%)', { date: shortDate(history.last.at), cut: history.last.cut }),
-  ].filter(Boolean) as string[]
-  return parts.length > 0 ? [capitalize(parts[0]), ...parts.slice(1)] : null
+  if (history?.never) lines.push([piece(textKey('No Steam discount in the last 2 years'))])
+  else if (history) {
+    const game = [
+      history.lastYear !== undefined &&
+        piece(textKey('Last year: {cut}'), { cut: history.lastYear > 0 ? discount(history.lastYear) : t('no discount') }),
+      history.usual && piece(textKey('usually {cut}'), { cut: discount(history.usual) }),
+      history.last && piece(textKey('last sale {date} ({cut})'), { date: shortDate(history.last.at), cut: discount(history.last.cut) }),
+    ].filter(Boolean) as SalePiece[]
+    if (game.length > 0) {
+      game[0] = game[0].map((segment, i) => (i === 0 ? { ...segment, text: capitalize(segment.text) } : segment))
+      lines.push(game)
+    }
+  }
+  return lines
 }
