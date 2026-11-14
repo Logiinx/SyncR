@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
 import { ChevronRight, ExternalLink, Flame, Hourglass, KeyRound, Pencil, Play, TriangleAlert, Trophy } from 'lucide-react'
 import Dialog from './Dialog'
+import ContextMenu, { type MenuItem } from './ContextMenu'
 import type { Game } from './db'
 import { pickPlaytimePage, playtimeLink, PlaytimesContext, playtimeText, usePlaytime } from './playtimes'
 import BackButton from './BackButton'
@@ -101,57 +102,70 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
   )
 }
 
-// HowLongToBeat's times in the game window (playtimes.ts): "⌛ Main story 52 h · Main + extras
-// 104 h", then "🏆 175 h" on a line of its own (100%: a gold trophy, like 100% achievements), then
-// its page and "use another page" (a pasted link, synced). Not
-// found: a button to add the link. Nothing until it's been asked (a game just added: ~2 s).
+// HowLongToBeat's times in the game window (playtimes.ts): a small dim "HowLongToBeat" title, then
+// "Main story 52 h · Main + extras 104 h" and "🏆 175 h" on a line of its own (100%: a gold
+// trophy, like 100% achievements). A click or right-click on the title: open its page or use
+// another page (a pasted link, synced). Not found: a discreet dim "Not found" (the menu then
+// offers to add the link). Nothing until it's been asked (a game just added: ~2 s).
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
-export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' | 'row' }) {
+// onMenu: its menu or link box opened or closed (the game window then leaves Escape to it)
+export function GamePlaytimeInfo({ game, place, onMenu }: { game: Game; place: 'title' | 'row'; onMenu?: (open: boolean) => void }) {
   const row = usePlaytime(game.id)
   const [asking, setAsking] = useState<'ask' | 'wrong' | null>(null)
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const menuOpen = !!menuAt || !!asking
+  useEffect(() => onMenu?.(menuOpen), [menuOpen, onMenu])
   if (!row) return null
   const times = [
     { label: t('Main story'), seconds: row.main },
     { label: t('Main + extras'), seconds: row.plus },
     { label: t('Everything (100%)'), seconds: row.full, gold: true },
   ].filter((time) => time.seconds > 0)
+  const found = row.hltbId !== null
+  const menuItems: MenuItem[] = [
+    { label: t('Open on HowLongToBeat'), icon: ExternalLink, disabled: !found, onClick: () => openLink(playtimeLink(row.hltbId!)) },
+    { label: found ? t('Use another HowLongToBeat page') : t('Add its link'), icon: Pencil, onClick: () => setAsking('ask') },
+  ]
   return (
-    <div className={`game-playtime in-${place}`}>
-      <Hourglass className="price-icon" aria-label={t('Time to beat')} />
-      <span className="game-playtime-times">
-        {row.hltbId === null ? (
-          <span className="game-playtime-none">{t('Not found on HowLongToBeat')}</span>
-        ) : times.length === 0 ? (
-          <span className="game-playtime-none">{t('No times yet on HowLongToBeat')}</span>
-        ) : (
-          times.map(({ label, seconds, gold }, i) => [
-            // 100% on its own line, easier to read (user)
-            gold && i > 0 && <span key="break" className="game-playtime-break" />,
-            <span key={label} className="game-playtime-part">
-              {gold ? (
-                <Trophy className="game-playtime-trophy" aria-label={label}><title>{label}</title></Trophy>
-              ) : (
-                <span className="game-playtime-label">{label}</span>
-              )}{' '}
-              {playtimeText(seconds)}
-            </span>,
-          ])
-        )}
-        {/* After the last time, wrapping with them */}
-        {row.hltbId !== null && (
-          <button className="game-playtime-button" title={t('Open on HowLongToBeat')} onClick={() => openLink(playtimeLink(row.hltbId!))}>
-            <ExternalLink size={13} />
-          </button>
-        )}
-        {row.hltbId === null ? (
-          <button className="price-link" onClick={() => setAsking('ask')}>{t('Add its link')}</button>
-        ) : (
-          <button className="game-playtime-button" title={t('Use another HowLongToBeat page')} onClick={() => setAsking('ask')}>
-            <Pencil size={13} />
-          </button>
-        )}
-      </span>
+    <>
+      <div className={`game-playtime in-${place}`}>
+        <button
+          className={menuAt ? 'game-playtime-title open' : 'game-playtime-title'}
+          onClick={(e) => {
+            const box = e.currentTarget.getBoundingClientRect()
+            setMenuAt(menuAt ? null : { x: box.left, y: box.bottom + 4 })
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setMenuAt({ x: e.clientX, y: e.clientY })
+          }}
+        >
+          HowLongToBeat {/* i18n-ok: a name */}
+        </button>
+        <span className="game-playtime-times">
+          {!found ? (
+            <span className="game-playtime-none">{t('Not found')}</span>
+          ) : times.length === 0 ? (
+            <span className="game-playtime-none">{t('No times yet')}</span>
+          ) : (
+            times.map(({ label, seconds, gold }, i) => [
+              // 100% on its own line, easier to read (user)
+              gold && i > 0 && <span key="break" className="game-playtime-break" />,
+              <span key={label} className="game-playtime-part">
+                {gold ? (
+                  <Trophy className="game-playtime-trophy" aria-label={label}><title>{label}</title></Trophy>
+                ) : (
+                  <span className="game-playtime-label">{label}</span>
+                )}{' '}
+                {playtimeText(seconds)}
+              </span>,
+            ])
+          )}
+        </span>
+      </div>
+      {/* Outside the line, so they don't take its smaller text */}
+      {menuAt && <ContextMenu x={menuAt.x} y={menuAt.y} items={menuItems} onClose={() => setMenuAt(null)} />}
       {asking && (
         <Dialog
           request={{
@@ -165,7 +179,7 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
           onClose={() => setAsking(null)}
         />
       )}
-    </div>
+    </>
   )
 }
 

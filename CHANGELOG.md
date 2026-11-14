@@ -6,7 +6,8 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **Better:** cover grid: the date sits right under each game's name
-- **Better:** HowLongToBeat's 100% time on its own line, with a gold trophy
+- **Better:** HowLongToBeat times: 100% on its own line, with a gold trophy
+- **Changed:** HowLongToBeat's link buttons are in a menu: click its name
 
 ## [0.80.3] - 2026-11-13
 
