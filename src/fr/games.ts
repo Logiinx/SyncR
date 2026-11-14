@@ -217,4 +217,6 @@ export const games = {
   'not on sale last year at that time': 'pas en promo l’an dernier à cette période',
   'usually −{cut}%': 'en général −{cut} %',
   'last on sale {date} (−{cut}%)': 'dernière promo le {date} (−{cut} %)',
+  'Looking for Steam sales…': 'Recherche des promos Steam…',
+  'No sale information for this game': 'Aucune info de promo pour ce jeu',
 }

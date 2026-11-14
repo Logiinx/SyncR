@@ -7366,6 +7366,45 @@ button.history-row.selected {
   font-size: 1em; /* not shrunk again by .gd-title p */
 }
 
+/* The next Steam sale guess (GameExtrasView SaleGuessLines): dim lines under the lowest prices;
+   in the game window on a phone, a full-width row under the cover instead */
+.sale-guess {
+  display: grid;
+  gap: 2px;
+  color: var(--text-dim);
+}
+
+.sale-guess p {
+  margin: 0;
+  font-size: 1em; /* not shrunk again by .gd-title p */
+}
+
+.sale-guess.in-row {
+  display: none;
+  font-size: 0.85em;
+}
+
+@media (max-width: 699px) {
+  .game-dialog .sale-guess.in-title {
+    display: none;
+  }
+
+  .game-dialog .sale-guess.in-row {
+    display: grid;
+  }
+}
+
+/* Its box on a Steam price in the lists (SaleGuessTip): the sale, then the game's own line, dim */
+.sale-guess-game {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-dim);
+}
+
+.sale-guess-dim {
+  color: var(--text-dim);
+}
+
 /* The prices are for another product (IGDB linked the wrong Steam page) */
 .dialog .game-prices .price-mismatch {
   display: flex;

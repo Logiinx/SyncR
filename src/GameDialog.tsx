@@ -10,7 +10,7 @@ import { endingHeader, endingMenuItems, ENDINGS } from './gameMenu'
 import ContextMenu from './ContextMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
-import { GameExtrasInfo, GamePlaytimeInfo, GamePricesInfo, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
+import { GameExtrasInfo, GamePlaytimeInfo, GamePricesInfo, GameSaleRow, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
 import { useNarrow } from './useNarrow'
 import { PriceWatchView } from './PriceWatchView'
 import { isHundred, playedTime, updateSteamStats } from './steam'
@@ -123,6 +123,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           <CloseButton onClick={onClose} />
         </div>
         <GamePlaytimeInfo game={game} place="row" />
+        <GameSaleRow igdbId={game.igdbId} />
 
         <FillSwitch
           className="gd-status"

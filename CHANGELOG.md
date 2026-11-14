@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **New:** next Steam sale guess: hover a Steam price, or see the game window
 - **Better:** cover grid: the date sits right under each game's name
 - **Better:** HowLongToBeat times: 100% on its own line, with a gold trophy
 - **Changed:** HowLongToBeat page: open or change it by right-clicking a game

@@ -9,6 +9,8 @@ import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
+import { HoverTip } from './InfoTip'
+import { bigSaleText, gameSaleText, useSaleGuess } from './saleGuess'
 import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
@@ -95,6 +97,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
         </div>
       )}
       {lows.length > 0 && <p className="price-lows">{t('Lowest ever: {prices}', { prices: lows.join(' · ') })}</p>}
+      {steam && <SaleGuessLines prices={prices} place="title" />}
       {check}
     </div>
   )
@@ -240,11 +243,11 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
   return (
     <div className="game-price-line">
       {steam && (
-        <span className={deals?.keyshops && !steamWins ? 'price-dearer' : undefined}>
+        <HoverTip className={deals?.keyshops && !steamWins ? 'price-dearer' : undefined} tip={() => <SaleGuessTip prices={prices} />}>
           <SteamIcon cheapest={steamWins} /> {formatEuros(steam.final)}
           {steam.discount > 0 && <span className="price-badge">−{steam.discount}%</span>}
           {steamAtLowest(prices) && <LowestEver />}
-        </span>
+        </HoverTip>
       )}
       {deals?.keyshops && (
         <span className={steamWins ? 'price-dearer' : undefined}>
@@ -253,6 +256,44 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
         </span>
       )}
     </div>
+  )
+}
+
+// The next Steam sale guess (saleGuess.ts), in the game windows: two dim lines under the lowest
+// prices, "Next big sale: Winter Sale, 17 Dec 2026 – 4 Jan 2027 (in 33 days)" and the game's own
+// "−40% last year at that time · usually −40% · last on sale 12 Aug 2026 (−35%)". Nothing while
+// it loads or when there's nothing to say. In the game window on a phone, the prices' column
+// beside the cover is too narrow: a full-width row under it instead (GameSaleRow, CSS keeps one).
+function SaleGuessLines({ prices, place }: { prices: GamePrices; place: 'title' | 'row' }) {
+  const guess = useSaleGuess(prices, true)
+  if (!guess) return null
+  const game = gameSaleText(guess)
+  return (
+    <div className={`sale-guess in-${place}`}>
+      <p>{bigSaleText(guess)}</p>
+      {game && <p>{game}</p>}
+    </div>
+  )
+}
+
+// The game window's row of it on a phone (the prices the window loaded: no lookup of its own)
+export function GameSaleRow({ igdbId }: { igdbId: number }) {
+  const prices = useKnownPrice(igdbId)
+  if (!prices?.steam) return null
+  return <SaleGuessLines prices={prices} place="row" />
+}
+
+// The same in a box when hovering a Steam price in the Games lists (asked only then)
+function SaleGuessTip({ prices }: { prices: GamePrices }) {
+  const guess = useSaleGuess(prices, true)
+  if (guess === undefined) return <span className="sale-guess-dim">{t('Looking for Steam sales…')}</span>
+  if (guess === null) return <span className="sale-guess-dim">{t('No sale information for this game')}</span>
+  const game = gameSaleText(guess)
+  return (
+    <>
+      {bigSaleText(guess)}
+      {game && <span className="sale-guess-game">{game}</span>}
+    </>
   )
 }
 

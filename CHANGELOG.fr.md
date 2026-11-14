@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
+- **Nouveau :** prochaine promo Steam estimée : survolez un prix Steam, ou voyez la fenêtre du jeu
 - **Amélioré :** grille de jaquettes : la date juste sous le nom de chaque jeu
 - **Amélioré :** durées HowLongToBeat : 100 % sur sa propre ligne, avec un trophée doré
 - **Changé :** page HowLongToBeat : l’ouvrir ou la changer par clic droit sur un jeu
