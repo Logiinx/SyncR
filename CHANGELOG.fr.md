@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.81.1] - 2026-11-14
+
 **Jeux**
 - **Nouveau :** promos du Black Friday dans la prochaine promo Steam estimée, quand elles viennent avant
 - **Amélioré :** prochaine promo Steam estimée : dates et remises bien visibles

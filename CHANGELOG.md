@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.81.1] - 2026-11-14
+
 **Games**
 - **New:** Black Friday deals in the next Steam sale guess, while they come first
 - **Better:** next Steam sale guess: dates and discounts stand out
