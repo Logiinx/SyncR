@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
+
 **Vidéo**
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo
 

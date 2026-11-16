@@ -1020,16 +1020,33 @@ async function hltbPage(id) {
 const plainName = (text) =>
   String(text ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()
 
+const IGDB_UPDATE = 14 // game_type: a free update of another game ("… Remastered")
+
+const steamNumber = (game) => {
+  const link = (game?.external_games ?? []).find((one) => (one.external_game_source ?? one.category) === 1 && /^\d+$/.test(one.uid ?? ''))
+  return link ? Number(link.uid) : 0
+}
+
 async function findPlaytime(env, igdbId) {
-  const query = `fields name, first_release_date, external_games.uid, external_games.external_game_source, external_games.category; where id = ${igdbId};`
+  const links = 'external_games.uid, external_games.external_game_source, external_games.category'
+  const query = `fields name, first_release_date, game_type, ${links}, parent_game.name, parent_game.first_release_date, parent_game.${links.replaceAll(', ', ', parent_game.')}; where id = ${igdbId};`
   let response = await askIgdb(env, 'games', query, await getToken(env))
   if (response.status === 401) response = await askIgdb(env, 'games', query, await getToken(env, true))
   const game = (await response.json())?.[0]
   if (!game) return { id: null }
-  const name = plainName(game.name)
-  const year = game.first_release_date ? new Date(game.first_release_date * 1000).getUTCFullYear() : 0
-  const steamLink = (game.external_games ?? []).find((link) => (link.external_game_source ?? link.category) === 1 && /^\d+$/.test(link.uid ?? ''))
-  const steam = steamLink ? Number(steamLink.uid) : 0
+  // HowLongToBeat keeps an update on its game's page (renamed, with the game's date and Steam
+  // number): no year check, the game's Steam number, and the game's own name when its fails
+  const parent = (game.game_type?.id ?? game.game_type) === IGDB_UPDATE ? game.parent_game : null
+  if (!parent) return findPlaytimeAs(game.name, game.first_release_date, steamNumber(game))
+  const steam = steamNumber(game) || steamNumber(parent)
+  const found = await findPlaytimeAs(game.name, 0, steam)
+  return found.id ? found : findPlaytimeAs(parent.name, parent.first_release_date, steam)
+}
+
+// date: IGDB's (seconds), or 0 when unknown or not to be checked
+async function findPlaytimeAs(gameName, date, steam) {
+  const name = plainName(gameName)
+  const year = date ? new Date(date * 1000).getUTCFullYear() : 0
   // Same name (or one of its other names), a year off at most when both are known
   const scored = (await hltbSearch(name.split(' ')))
     .map((found) => {

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
+
 **Video**
 - **Fixed:** a link's start time ignored by the Add a video window
 
