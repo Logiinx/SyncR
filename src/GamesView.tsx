@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, Settings, X } from 'lucide-react'
+import GamesSettings from './GamesSettings'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
-import { GamePriceLine, PlaytimeShort, useMainPlaytime } from './GameExtrasView'
+import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
@@ -64,6 +65,7 @@ function GamesView() {
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
+  const [settingsOpen, setSettingsOpen] = useState(false) // the Games settings window
   // Playing games' Steam hours and achievements, unless looked at in the last 5 minutes
   useEffect(() => {
     refreshPlaying(PLAYING_ON_OPEN)
@@ -159,6 +161,7 @@ function GamesView() {
               </p>
             )}
             {importing && <SteamImport onClose={() => setImporting(false)} />}
+            {settingsOpen && <GamesSettings onClose={() => setSettingsOpen(false)} />}
             {games && games.length > 0 && (
               <>
                 {/* Underlined tabs, each a quarter of the row, with an icon (an empty status shows no
@@ -188,6 +191,9 @@ function GamesView() {
                       </button>
                     )}
                     <FillSwitch className="calendar-layouts games-layouts" options={shelfLayouts()} value={shelf} onChange={setShelf} />
+                    <button className="games-import games-settings-button" title={t('Games settings')} onClick={() => setSettingsOpen(true)}>
+                      <Settings size={14} />
+                    </button>
                   </div>
                 </div>
                 {/* A new list for each tab and layout (switching isn't games coming and going),
@@ -281,11 +287,11 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
   const since = t('since {date}', { date: shortDate(game.statusAt) })
-  const main = useMainPlaytime(game.id)
-  // "42 h played · ⌛ 52 h · since 21 Oct 2026": what you played next to the main story's time
+  const time = useShortTime(game.id)
+  // "42 h played · ⌛ 52 h · since 21 Oct 2026": what you played next to the HowLongToBeat time (Games settings)
   const details = stats
-    ? dotted([playedText(stats.minutes), main > 0 && <PlaytimeShort seconds={main} />, since])
-    : dotted([since[0].toUpperCase() + since.slice(1), main > 0 && <PlaytimeShort seconds={main} />])
+    ? dotted([playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />, since])
+    : dotted([since[0].toUpperCase() + since.slice(1), time > 0 && <PlaytimeShort seconds={time} />])
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -360,7 +366,7 @@ function GameShelf({
 // waiting (or the vague date), "★ 4.5" once rated, else the release year. Badge: GameBadge
 function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const when = releaseText(game, 'short')
-  const main = useMainPlaytime(game.id)
+  const time = useShortTime(game.id)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -381,10 +387,10 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         {game.preordered && <PreorderBadge />}
       </div>
       <div className="game-tile-name">{game.name}</div>
-      {/* The year, countdown or rating, and the main story's time at the right */}
+      {/* The year, countdown or rating, and the HowLongToBeat time at the right */}
       <div className="game-tile-line">
         {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
-        {main > 0 && <PlaytimeShort seconds={main} />}
+        {time > 0 && <PlaytimeShort seconds={time} />}
       </div>
       {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
     </div>
@@ -400,7 +406,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
   const text = (played && game.review.trim()) || game.note.trim()
   const preview = text && (played && game.review.trim() ? `“${text}”` : text)
   const details = [releaseText(game, 'year'), preview].filter(Boolean).join(' · ')
-  const main = useMainPlaytime(game.id)
+  const time = useShortTime(game.id)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -422,7 +428,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
       <div className="game-text">
         <div className="game-name" title={game.name}>{game.name}</div>
         <div className="game-details" title={details}>
-          {dotted([releaseText(game, 'year'), main > 0 && <PlaytimeShort seconds={main} />, preview])}
+          {dotted([releaseText(game, 'year'), time > 0 && <PlaytimeShort seconds={time} />, preview])}
         </div>
         {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
       </div>

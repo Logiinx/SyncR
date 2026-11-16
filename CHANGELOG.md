@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **New:** Games settings (⚙️ in My games): pick which HowLongToBeat time tiles show, or none
 - **Better:** game search with editions grays copies of the same Steam game
 - **Better:** price alerts name the exact Steam product they watch
 - **Fixed:** no prices for editions without their own Steam page (Sekiro GOTY)

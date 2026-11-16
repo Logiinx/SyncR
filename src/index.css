@@ -4002,6 +4002,14 @@ button {
   color: var(--text);
 }
 
+/* My games' ⚙️ (Games settings), right of the Covers / list switch: a square as tall as it */
+.games-status-tabs .games-settings-button {
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
 
 .games-empty-import {
   padding: 0;
@@ -7360,6 +7368,11 @@ button.history-row.selected {
   vertical-align: -0.175em;
 }
 
+/* Everything (100%) picked in Games settings: the game window's dim gold trophy */
+.game-playtime-short.full svg {
+  color: color-mix(in srgb, var(--text-yellow) 75%, var(--bg));
+}
+
 /* Prices under the extras (GameExtrasView.tsx): a price opens its Steam or GG.deals page */
 .game-prices {
   display: grid;
@@ -7936,12 +7949,14 @@ button.history-row.selected {
   margin-top: 12px;
 }
 
-/* The Video settings window: Settings' cards, in one narrower column (also on the PC) */
-.dialog.settings.video-settings {
+/* The Video and Games settings windows: Settings' cards, in one narrower column (also on the PC) */
+.dialog.settings.video-settings,
+.dialog.settings.games-settings {
   width: min(560px, 100%);
 }
 
-.video-settings .settings-cards {
+.video-settings .settings-cards,
+.games-settings .settings-cards {
   grid-template-columns: minmax(0, 1fr);
 }
 

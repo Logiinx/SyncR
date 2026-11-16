@@ -3,6 +3,7 @@ import { t, textKey, type TextKey } from './i18n'
 import { ChevronRight, Flame, Hourglass, KeyRound, Play, TriangleAlert, Trophy } from 'lucide-react'
 import type { Game } from './db'
 import { PlaytimesContext, playtimeText, usePlaytime } from './playtimes'
+import { useShortPlaytime } from './gamesOptions'
 import BackButton from './BackButton'
 import Window from './Window'
 import CloseButton from './CloseButton'
@@ -153,13 +154,21 @@ export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' |
   )
 }
 
-// The main story's time on the Games page's tiles, rows and Playing cards: a dim "⌛ 27 h".
-// useMainPlaytime: 0 until it's known (PlaytimesContext).
-export const useMainPlaytime = (gameId: string) => useContext(PlaytimesContext)?.get(gameId)?.main ?? 0
+// One time on the Games page's tiles, rows and Playing cards: a dim "⌛ 27 h" (🏆 for 100%), the
+// one picked in Games settings. useShortTime: 0 when off, or until it's known (PlaytimesContext); a
+// game without the picked time shows none (another time would mix them up).
+export function useShortTime(gameId: string) {
+  const picked = useShortPlaytime()
+  const row = useContext(PlaytimesContext)?.get(gameId)
+  return picked === 'off' || !row ? 0 : row[picked]
+}
 export function PlaytimeShort({ seconds }: { seconds: number }) {
+  const picked = useShortPlaytime()
+  const full = picked === 'full'
+  const title = full ? t('Everything (100%) on HowLongToBeat') : picked === 'plus' ? t('Main + extras on HowLongToBeat') : t('Main story on HowLongToBeat')
   return (
-    <span className="game-playtime-short" title={t('Main story on HowLongToBeat')}>
-      <Hourglass aria-hidden />
+    <span className={full ? 'game-playtime-short full' : 'game-playtime-short'} title={title}>
+      {full ? <Trophy aria-hidden /> : <Hourglass aria-hidden />}
       {playtimeText(seconds)}
     </span>
   )
