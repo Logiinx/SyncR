@@ -270,8 +270,9 @@ function playerControls(env, media) {
   $('progress').addEventListener('pointercancel', () => endDrag(false))
 
   // ---- Controls that fade -----------------------------------------------------------------------
+  // Paused too (user, 2026-11-16): they and the big play button fade the same way
   let quietTimer
-  const keepShowing = () => media.paused() || dragging !== null || !$('menu').hidden || !$('context').hidden || !$('parts-box').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
+  const keepShowing = () => dragging !== null || !$('menu').hidden || !$('context').hidden || !$('parts-box').hidden || $('bottom').matches(':hover') || !!hooks.keepShowing?.()
   function wake() {
     box.classList.remove('quiet')
     clearTimeout(quietTimer)
