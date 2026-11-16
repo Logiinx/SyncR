@@ -45,6 +45,9 @@ export const locale = () => (language === 'fr' ? 'fr-FR' : 'en-GB')
 export const decimal = (n: number, digits: number) =>
   n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
+// 1234 → "1.2K" ("1,2 k"): counts shown small (link cards, video cards)
+export const compactNumber = (n: number) => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+
 // French dates and months come in lower case: for those starting a line or a title
 export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 

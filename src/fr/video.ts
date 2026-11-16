@@ -276,4 +276,6 @@ export const video = {
   '{n} videos move to Watched.': '{n} vidéos passent dans les vidéos vues.',
   'New videos': 'Nouvelles vidéos',
   '{name}: {error}': '{name} : {error}',
+  '{count} view': '{count} vue',
+  '{count} views': '{count} vues',
 }

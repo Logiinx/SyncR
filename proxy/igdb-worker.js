@@ -598,6 +598,8 @@ async function linkPreview(env, request) {
 //                                           quota unit instead of 3.
 //   video/exists   { platform, ids }        { existing: [...] }: the ones still there
 //   video/one      { link }                 { platform, channel: { id, name, icon }, video }
+//   video/stats    { platform, id }         { views, likes }: now (likes null when hidden, and on Twitch);
+//                                           { gone: true } when it's gone. 1 quota unit (a hover card).
 //   video/playlist { link, pageToken }      One page of a YouTube playlist, in its order: { videos, nextPageToken },
 //                                           and on the first page { id, name }. Costs 2 quota units a page + 1.
 const TWITCH_API = 'https://api.twitch.tv/helix'
@@ -811,6 +813,21 @@ async function existingVideos(env, { platform, ids }) {
   return { existing }
 }
 
+// How many views and likes a video has now (a video's hover card in the app)
+async function videoStats(env, { platform, id }) {
+  const twitch = platform === 'twitch'
+  if (!twitch && platform !== 'youtube') throw videoError('Unknown channel')
+  if (typeof id !== 'string' || !(twitch ? /^\d+$/ : /^[\w-]{6,20}$/).test(id)) throw videoError('Unknown video')
+  if (twitch) {
+    const video = (await askTwitch(env, `videos?id=${id}`)).data?.[0]
+    return video ? { views: video.view_count ?? null, likes: null } : { gone: true }
+  }
+  const video = (await askYouTube(env, 'videos', { part: 'statistics', id })).items?.[0]
+  if (!video) return { gone: true }
+  const count = (value) => (value === undefined ? null : Number(value))
+  return { views: count(video.statistics?.viewCount), likes: count(video.statistics?.likeCount) }
+}
+
 // The video a pasted link points to, or null
 function videoLink(text) {
   const typed = String(text ?? '').trim()
@@ -904,6 +921,7 @@ async function videoFeed(env, endpoint, request) {
   if (endpoint === 'video/list') return listVideos(env, body)
   if (endpoint === 'video/exists') return existingVideos(env, body)
   if (endpoint === 'video/one') return oneVideo(env, body.link)
+  if (endpoint === 'video/stats') return videoStats(env, body)
   if (endpoint === 'video/playlist') return onePlaylist(env, body)
   throw videoError(`Unknown endpoint: ${endpoint}`, 404)
 }

@@ -12,33 +12,42 @@ const HOVER_DELAY = 350 // ms over a HoverTip before its box opens (the mouse ju
 // above it when there's no room. Placed from screen pixels, so divided by the app scale (CSS zoom).
 export function TipBox({ at, className, children }: { at: RefObject<Element | null>; className?: string; children: ReactNode }) {
   const boxRef = useRef<HTMLSpanElement>(null)
-  useLayoutEffect(() => {
+  // Placed again when its content changes size (e.g. a video card's numbers arriving)
+  useEffect(() => {
     const box = boxRef.current
-    const anchor = at.current
-    if (!box || !anchor) return
-    const zoom = currentZoom()
-    const near = anchor.getBoundingClientRect()
-    const size = box.getBoundingClientRect()
-    const screenW = window.innerWidth / zoom
-    const screenH = window.innerHeight / zoom
-    const below = near.bottom / zoom + GAP
-    const above = near.top / zoom - GAP - size.height / zoom
-    const height = size.height / zoom
-    // Fitting neither way (a big box, a small window): the side with more room, kept on screen
-    const downwards = below + height <= screenH - MARGIN || (above < MARGIN && screenH - near.bottom / zoom >= near.top / zoom)
-    const top = Math.max(MARGIN, Math.min(downwards ? below : above, screenH - MARGIN - height))
-    const left = Math.max(MARGIN, Math.min(near.left / zoom - MARGIN, screenW - MARGIN - size.width / zoom))
-    box.style.top = `${top}px`
-    box.style.left = `${left}px`
-    box.classList.toggle('above', !downwards)
-    box.style.visibility = ''
-  })
+    if (!box) return
+    const sizes = new ResizeObserver(() => place(box, at.current))
+    sizes.observe(box)
+    return () => sizes.disconnect()
+  }, [at])
+  useLayoutEffect(() => place(boxRef.current, at.current))
   return createPortal(
     <span ref={boxRef} className={`info-tip-box${className ? ` ${className}` : ''}`} role="tooltip" style={{ visibility: 'hidden' }}>
       {children}
     </span>,
     document.body,
   )
+}
+
+// Below its anchor, or above when there's no room (see TipBox)
+function place(box: HTMLElement | null, anchor: Element | null) {
+  if (!box || !anchor) return
+  const zoom = currentZoom()
+  const near = anchor.getBoundingClientRect()
+  const size = box.getBoundingClientRect()
+  const screenW = window.innerWidth / zoom
+  const screenH = window.innerHeight / zoom
+  const below = near.bottom / zoom + GAP
+  const above = near.top / zoom - GAP - size.height / zoom
+  const height = size.height / zoom
+  // Fitting neither way (a big box, a small window): the side with more room, kept on screen
+  const downwards = below + height <= screenH - MARGIN || (above < MARGIN && screenH - near.bottom / zoom >= near.top / zoom)
+  const top = Math.max(MARGIN, Math.min(downwards ? below : above, screenH - MARGIN - height))
+  const left = Math.max(MARGIN, Math.min(near.left / zoom - MARGIN, screenW - MARGIN - size.width / zoom))
+  box.style.top = `${top}px`
+  box.style.left = `${left}px`
+  box.classList.toggle('above', !downwards)
+  box.style.visibility = ''
 }
 
 // A small ⓘ after a label that explains it in a box: opens on hover with a mouse, or on a

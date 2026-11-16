@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/react'
-import { locale, plural, t, textKey, type TextKey } from './i18n'
+import { compactNumber, plural, t, textKey, type TextKey } from './i18n'
 import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
@@ -239,8 +239,7 @@ function picture(className: string, sources: (string | null)[]) {
 
 const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '')
 
-// "1234" → "1.2K"
-const count = (n: number) => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+const count = compactNumber
 
 // "Post first" (setting): a tweet's text leads and its writer follows, dim. Only tweets with text.
 const postFirst = () => loadLinkPreviewSettings().order === 'post'
