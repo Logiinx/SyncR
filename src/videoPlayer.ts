@@ -184,6 +184,7 @@ function controlsData() {
       retry: t('Try again'),
       nextUp: t('Next|video'),
       noNext: t('No next video'),
+      close: t('Close'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {
         sponsor: t('Sponsor'),

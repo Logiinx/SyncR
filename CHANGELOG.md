@@ -13,6 +13,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video**
 - **New:** ⏭ in the player plays the next video of its list (or Shift+N)
+- **New:** the next video shows in a card 20 s before the end, a click plays it
 - **New:** Video settings: play the next video at the end, also outside playlists
 - **Fixed:** a link's start time ignored by the Add a video window
 

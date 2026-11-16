@@ -28,6 +28,7 @@ function playerControls(env, media) {
   const ICONS = {
     play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
     pause: '<rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/>',
+    close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', // Lucide X
     next: '<path d="M21 4v16"/><path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/>', // Lucide SkipForward
     volumeHigh: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
     volumeLow: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/>',
@@ -89,6 +90,7 @@ function playerControls(env, media) {
     </div>
   </div>
   <button id="skip" hidden></button>
+  <div id="endcard" hidden><div id="endcard-picture"></div><div id="endcard-text"><div id="endcard-label"></div><div id="endcard-title"></div></div><button id="endcard-close">${icon('close')}</button></div>
   <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
   <div id="context" hidden></div>
   <div id="parts-box" hidden><div id="parts-list"></div></div>
@@ -350,25 +352,46 @@ function playerControls(env, media) {
     const button = $('next')
     button.classList.toggle('off', !next)
     button.title = next ? '' : labels.noNext || ''
-    $('upnext-label').textContent = labels.nextUp || ''
-    $('upnext-title').textContent = next?.title || ''
-    const picture = $('upnext-picture')
-    picture.replaceChildren()
-    picture.hidden = !next?.thumbnail
-    if (next?.thumbnail) {
-      const image = document.createElement('img')
-      image.alt = ''
-      image.onerror = () => { picture.hidden = true }
-      image.src = next.thumbnail
-      picture.append(image)
+    for (const card of ['upnext', 'endcard']) {
+      $(`${card}-label`).textContent = labels.nextUp || ''
+      $(`${card}-title`).textContent = next?.title || ''
+      const picture = $(`${card}-picture`)
+      picture.replaceChildren()
+      picture.hidden = !next?.thumbnail
+      if (next?.thumbnail) {
+        const image = document.createElement('img')
+        image.alt = ''
+        image.onerror = () => { picture.hidden = true }
+        image.src = next.thumbnail
+        picture.append(image)
+      }
     }
     if (!next) $('upnext').hidden = true
+    drawEndCard()
   }
   function playNext() {
     if (!next) return
     $('upnext').hidden = true
+    $('endcard').hidden = true
     fetch('https://syncr-video.localhost/next', { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
   }
+  // The same card in the last END_CARD_FOR seconds, over the video (it stays when the controls
+  // fade): a click plays it now, ✕ hides it for this video. Not on videos shorter than twice that.
+  const END_CARD_FOR = 20 // seconds
+  let endCardClosed = false
+  function drawEndCard() {
+    const length = media.duration()
+    const show = !!next && !endCardClosed && Number.isFinite(length) && length > END_CARD_FOR * 2 && length - media.time() <= END_CARD_FOR
+    $('endcard').hidden = !show
+  }
+  $('endcard').onclick = playNext
+  $('endcard-close').title = labels.close || ''
+  $('endcard-close').onclick = (event) => {
+    event.stopPropagation()
+    endCardClosed = true
+    drawEndCard()
+  }
+  for (const kind of ['timeupdate', 'durationchange', 'seeked']) video.addEventListener(kind, drawEndCard)
   // Its left edge over the button's, kept inside the player
   function showUpNext() {
     if (!next) return
@@ -380,8 +403,10 @@ function playerControls(env, media) {
   $('next').onclick = playNext
   $('next').onmouseenter = showUpNext
   $('next').onmouseleave = () => { $('upnext').hidden = true }
+  // A new video in the same page (video-watch.js): its own end card again
   function setNext(shown) {
     next = shown || null
+    endCardClosed = false
     drawNext()
   }
   drawNext()
@@ -1038,6 +1063,24 @@ const CONTROLS_CSS = `
   #upnext-label { color: var(--text-dim, #9a9a9a); }
   #upnext-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   #next svg { fill: currentColor; }
+  /* The end card (drawEndCard): over the chat too, so z-index above it */
+  #endcard {
+    position: absolute; z-index: 5; right: 12px; bottom: 80px; display: flex; align-items: center; gap: 10px;
+    width: 320px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px 30px 6px 6px; border-radius: 6px;
+    background: rgba(0, 0, 0, 0.85); font-size: 12px; line-height: 1.35; cursor: pointer; animation: endcard-in 0.2s ease;
+  }
+  #endcard[hidden] { display: none; }
+  #endcard:hover { background: rgba(0, 0, 0, 0.92); }
+  #endcard-picture { flex: none; width: 120px; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+  #endcard-picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #endcard-text { min-width: 0; }
+  #endcard-label { color: var(--text-dim, #9a9a9a); }
+  #endcard-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  #endcard-close { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-dim, #9a9a9a); }
+  #endcard-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  #endcard-close svg { width: 16px; height: 16px; }
+  @keyframes endcard-in { from { opacity: 0; } }
+  .no-animations #endcard { animation: none; }
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
 
   #bar { display: flex; align-items: center; gap: 6px; height: 46px; }
