@@ -229,8 +229,9 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
 // Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both. In Rewatch's
 // Started group (started): a second copy of the row, not dragged; a playlist's video shows its
-// playlist (from) instead of its channel. after: the videos after it in its list, for ⏭.
-function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, started, from, after, onMenu, onOpenRow }: {
+// playlist (from) instead of its channel; one of Rewatch's in To watch's group (ofRewatch) gets a
+// ↻ icon. after: the videos after it in its list, for ⏭.
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, started, ofRewatch, from, after, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
@@ -238,6 +239,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   kept?: boolean
   lastWatched?: boolean
   started?: boolean
+  ofRewatch?: boolean
   from?: string
   after?: UpNext[]
   onMenu?: (x: number, y: number) => void
@@ -281,6 +283,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
           <span className="video-meta-lines">
             <span className="video-meta">
               {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
+              {ofRewatch && <Repeat size={14} className="video-logo" aria-label={t('In Rewatch')} />}
               {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
               <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
@@ -749,22 +752,27 @@ function VideoView() {
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
   // The videos stopped partway in one list, the last one watched first; they also stay where they
   // are. Rewatch: its videos, folders and playlists. To watch: its own (the chosen follow's, its
-  // playlists only with All follows), never Rewatch's or Music's (user: each list on its own).
+  // playlists only with All follows), plus Rewatch's with All follows (user: one place to resume
+  // anything; tagged rewatch), never Music's.
   function startedIn(inRewatch: boolean) {
     if (!feed || !(inRewatch ? showStarted : showStartedToWatch)) return []
-    const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist }>()
-    const own = inRewatch ? feed.rewatch : feed.toWatch.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
-    for (const video of own) where.set(video.id, { video })
+    const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist; rewatch?: boolean }>()
+    const allFollows = shownChannel === 'all'
+    if (!inRewatch) for (const video of feed.toWatch) if (allFollows || video.followId === shownChannel) where.set(video.id, { video })
+    if (inRewatch || allFollows) for (const video of feed.rewatch) if (!where.has(video.id)) where.set(video.id, { video, rewatch: !inRewatch })
     for (const { playlist, videos: episodes } of feed.playlists) {
-      if ((!!playlist.folderId && rewatchIds.has(playlist.folderId)) !== inRewatch || (!inRewatch && shownChannel !== 'all')) continue
-      for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist })
+      const ofRewatch = !!playlist.folderId && rewatchIds.has(playlist.folderId)
+      if (inRewatch ? !ofRewatch : !allFollows) continue
+      for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist, rewatch: ofRewatch && !inRewatch })
     }
     return startedIds.flatMap((id) => {
       const entry = where.get(id)
       return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
     })
   }
-  const started = startedIn(true)
+  // Rewatch as a section: its own group hides while To watch's lists them (no copies on one screen)
+  const startedInToWatch = asSection && list === 'towatch' && showStartedToWatch && shownChannel === 'all'
+  const started = startedInToWatch ? [] : startedIn(true)
   const startedToWatch = list === 'towatch' ? startedIn(false) : []
   // No row when there's none
   function startedRows(depth: number, inRewatch = true): ReactNode[] {
@@ -786,7 +794,7 @@ function VideoView() {
       />,
       ...(folded
         ? []
-        : entries.map(({ video, playlist }, index) => (
+        : entries.map(({ video, playlist, rewatch: ofRewatch }, index) => (
             <VideoRow
               key={`${id} ${video.id}`}
               video={video}
@@ -794,6 +802,7 @@ function VideoView() {
               depth={depth + 1}
               playlistId={playlist?.id}
               started
+              ofRewatch={ofRewatch}
               from={playlist?.name}
               after={entries.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
               onMenu={playlist ? undefined : (x, y) => setMoving({ video, x, y })}
@@ -824,10 +833,10 @@ function VideoView() {
     label: t('Started videos'),
     icon: History,
     checked: of === 'rewatch' ? showStarted : of === 'towatch' && showStartedToWatch,
-    disabled: !of,
+    disabled: !of || (of === 'rewatch' && startedInToWatch),
     hint: of === 'rewatch'
-      ? t('Videos stopped partway, at the top of Rewatch')
-      : of === 'towatch' ? t('Videos stopped partway, at the top of To watch') : t('Only in To watch and Rewatch'),
+      ? startedInToWatch ? t("Shown in To watch's Started group") : t('Videos stopped partway, at the top of Rewatch')
+      : of === 'towatch' ? t("Videos stopped partway, Rewatch's too, at the top of To watch") : t('Only in To watch and Rewatch'),
     onClick: () => (of === 'rewatch' ? setShowStarted(!showStarted) : setShowStartedToWatch(!showStartedToWatch)),
   })
   const startOverItem = (ids: string[]): MenuItem => ({

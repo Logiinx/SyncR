@@ -20,6 +20,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Paramètres vidéo → Cartes au survol : choisir ce que montrent les cartes
 - **Amélioré :** l’onglet Vidéo rouvre la liste et la chaîne suivie où vous l’aviez laissé
 - **Amélioré :** chaque liste Vidéo garde votre position, même après un redémarrage
+- **Amélioré :** le groupe Commencées d’À regarder montre aussi celles d’À revoir
 - **Changé :** les commandes du lecteur se masquent aussi en pause, et dès que la souris sort
 - **Changé :** les boutons de saut et les flèches du lecteur sautent 5 s, pas 10
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo

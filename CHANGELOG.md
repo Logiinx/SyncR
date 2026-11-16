@@ -20,6 +20,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Video settings → Hover cards: choose what the cards show
 - **Better:** the Video tab reopens on the list and follow you left it on
 - **Better:** each Video list keeps your scroll spot, also after a restart
+- **Better:** To watch’s Started group also lists videos started in Rewatch
 - **Changed:** the player’s controls also hide while paused, and as soon as the mouse leaves
 - **Changed:** the player’s jump buttons and arrow keys skip 5 s, not 10
 - **Fixed:** a link's start time ignored by the Add a video window
