@@ -194,6 +194,7 @@
   const CHAPTER_PICTURE = { width: 64, height: 36 }
   let data = {}
   try { data = JSON.parse(wanted.get('syncr-data') || '{}') } catch {}
+  let setNextShown = () => {} // what ⏭ plays, once our controls are there (syncrNextVideo)
   let chosenQuality = null // the menu's choice for this video: a quality's name, 'auto', or none yet
   const HIDE_YOUTUBE = [
     '.ytp-chrome-top', '.ytp-chrome-bottom', '.ytp-gradient-top', '.ytp-gradient-bottom', '.ytp-pause-overlay',
@@ -463,6 +464,7 @@
       box,
       surface,
       html: (text) => policy.createHTML(text),
+      next: data.next,
       labels: data.labels,
       locale: data.locale,
       stopKeys: true,
@@ -479,6 +481,7 @@
       },
     }, media)
     root.getElementById('chat-button').hidden = true
+    setNextShown = controls.setNext
     // A click on the time (and the chapter after it) lists the chapters, like the Twitch player's games
     const timeButton = root.getElementById('time')
     const chaptersList = () => ({ button: timeButton, title: labels.chapters, parts: chapters, picture: chapterPictureBox })
@@ -664,11 +667,13 @@
   // The next video of a playlist while in full screen (video_window.rs, video_player_next): this same page
   // plays it, as a new page would leave full screen. The address changes too, as extensions read
   // the video from it. Says whether it could.
-  window.syncrNextVideo = (id, start, subtitles) => {
+  // upcoming: what its ⏭ plays in turn (controls.js)
+  window.syncrNextVideo = (id, start, subtitles, upcoming) => {
     const player = document.querySelector('#movie_player')
     if (!document.fullscreenElement || !player?.loadVideoById || !/^[\w-]{6,20}$/.test(id)) return false
     history.replaceState(history.state, '', `/embed/${id}${location.search}${location.hash}`)
     player.loadVideoById({ videoId: id, startSeconds: start })
+    setNextShown(upcoming)
     qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))
     chosenQuality = null
     chosenTrack = null

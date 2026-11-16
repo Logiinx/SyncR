@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Steam sale guess running past the edge of its box and window
 
 **Video**
+- **New:** ⏭ in the player plays the next video of its list (or Shift+N)
 - **New:** Video settings: play the next video at the end, also outside playlists
 - **Fixed:** a link's start time ignored by the Add a video window
 

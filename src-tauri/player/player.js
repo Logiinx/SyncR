@@ -126,6 +126,7 @@ const controls = playerControls({
   root: document,
   box: player,
   surface: video,
+  next: data.next,
   labels,
   locale: data.locale,
   hooks: {

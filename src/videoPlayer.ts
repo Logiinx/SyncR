@@ -17,6 +17,7 @@ interface PlayableVideo {
   title: string
   channelId: string
   url: string
+  thumbnail?: string | null // shown by the player's ⏭ for the video that comes next
   watched: boolean
   duration: number // 0 when unknown
   music?: boolean // a music channel's: never marked as watched by itself (Music is cleared by hand)
@@ -140,6 +141,7 @@ function pageColors(names: string[]) {
 // the bar, their pages have their own storage and no access to the app's translations or colors.
 function controlsData() {
   return {
+    next: shownNext, // what the ⏭ button plays (controls.js), or null: grayed
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
@@ -180,6 +182,8 @@ function controlsData() {
       dragSubtitles: t('Drag the subtitles to move them'),
       stoppedLoading: t('The video stopped loading'),
       retry: t('Try again'),
+      nextUp: t('Next|video'),
+      noNext: t('No next video'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {
         sponsor: t('Sponsor'),
@@ -326,6 +330,9 @@ let playlist: string | null = null // the playlist it plays in: its next one com
 // Outside a playlist: the videos after it in the list it was opened from, as they were then
 let upNext: UpNext[] = []
 let endSeen = false // its end was handled: more reports of it can come
+// What the player's ⏭ shows for the open video: the one after it (title and picture), or null
+type ShownNext = { title: string; thumbnail: string | null } | null
+let shownNext: ShownNext = null
 // Not from the page of a video that was just replaced
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
@@ -363,6 +370,12 @@ let listening = false
 function listenToBar() {
   if (listening) return
   listening = true
+  // The player's ⏭ button or Shift+N (controls.js). A site in the window could send it too: all it
+  // can do is play the next video of the list. Not again in the 3 s a new video takes to start, so
+  // a double press doesn't skip two.
+  void listen('video-next', () => {
+    if (Date.now() >= reportsFrom) playNextNow()
+  })
   void listen<{ action: string; on?: boolean }>('video-bar', ({ payload: { action, on } }) => {
     if (action === 'always-on-top') savePlayerSettings({ alwaysOnTop: !!on })
     if (!current) return
@@ -468,13 +481,19 @@ export function playNextNow() {
 }
 
 // What plays after the open video: its playlist's next, or the first of the list's videos after it
-async function findNext(video: PlayableVideo): Promise<{ next: UpNext; after: UpNext[] } | null> {
-  if (playlist) {
-    const next = await nextInPlaylist(playlist, video.id)
-    return next ? { next: { video: next, playlistId: playlist }, after: [] } : null
+async function findNext(video: PlayableVideo, playlistId = playlist, list = upNext): Promise<{ next: UpNext; after: UpNext[] } | null> {
+  if (playlistId) {
+    const next = await nextInPlaylist(playlistId, video.id)
+    return next ? { next: { video: next, playlistId }, after: [] } : null
   }
-  const [next, ...after] = upNext
+  const [next, ...after] = list
   return next ? { next, after } : null
+}
+
+// The same for a video about to start, for its ⏭
+async function nextToShow(video: PlayableVideo, playlistId: string | null, after: UpNext[]): Promise<ShownNext> {
+  const found = await findNext(video, playlistId, playlistId ? [] : after).catch(() => null)
+  return found ? { title: found.next.video.title, thumbnail: found.next.video.thumbnail ?? null } : null
 }
 
 function goNext(from: PlayableVideo, atEnd: boolean) {
@@ -488,6 +507,7 @@ function goNext(from: PlayableVideo, atEnd: boolean) {
       }
       const { next: { video: next, playlistId }, after } = found
       const way = rememberedWay(next)
+      shownNext = await nextToShow(next, playlistId ?? null, after)
       // Not the new page's reports for the old video. It becomes the current one once the window
       // has it: if this fails, the window still shows the old one.
       reportsFrom = Date.now() + REPORTS_AFTER
@@ -497,6 +517,8 @@ function goNext(from: PlayableVideo, atEnd: boolean) {
         start: startAt(next),
         subtitles: subtitlesOn(next),
         inPlace: way === 'own' && currentWay === 'own' && next.platform === 'youtube' && from.platform === 'youtube',
+        upcoming: shownNext, // for a page that plays it in place
+        site: next.platform, // the taskbar button's icon
         title: next.title,
         via: viaText(way),
         ...noteFor(next, way),
@@ -527,6 +549,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string, start?: num
   queue = queue
     .then(async () => {
       startWatching(video, playlistId ?? null, after)
+      shownNext = await nextToShow(video, playlistId ?? null, after)
       await invoke<void>('open_video_player', {
         address: playerAddress(video, currentWay),
         title: video.title,

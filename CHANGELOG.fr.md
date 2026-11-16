@@ -12,6 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** prévision des soldes Steam qui dépassait du bord de sa bulle et de la fenêtre
 
 **Vidéo**
+- **Nouveau :** ⏭ dans le lecteur lit la vidéo suivante de sa liste (ou Maj+N)
 - **Nouveau :** Paramètres vidéo : lire la vidéo suivante à la fin, aussi hors playlists
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo
 

@@ -5,6 +5,7 @@
 //
 // env: {
 //   root: document or a shadow root ($ looks there), box: the element they go in (#player),
+//   next: { title, thumbnail } of the video ⏭ plays (videoPlayer.ts), or null (grayed),
 //   surface: what a click on the picture lands on, html: (text) => what innerHTML takes,
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
 //   hooks: { fillTip, besideTime: (seconds) => text after the time, besideOnHover: it slides out only while the time is hovered, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
@@ -27,6 +28,7 @@ function playerControls(env, media) {
   const ICONS = {
     play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
     pause: '<rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/>',
+    next: '<path d="M21 4v16"/><path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/>', // Lucide SkipForward
     volumeHigh: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
     volumeLow: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/>',
     volumeOff: '<path d="M11 4.702a.7.7 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.7.7 0 0 0 11 19.298z"/><path d="m16.5 14.5 5-5"/><path d="m16.5 9.5 5 5"/>',
@@ -65,9 +67,11 @@ function playerControls(env, media) {
         <div id="knob"></div>
         <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div></div>
       </div>
+      <div id="upnext" hidden><div id="upnext-picture"></div><div id="upnext-label"></div><div id="upnext-title"></div></div>
       <div id="goto" hidden><div class="menu-title" id="goto-title"></div><input id="goto-text" type="text" spellcheck="false" autocomplete="off"><div id="goto-note"></div></div>
       <div id="bar">
         <button class="button" id="play"></button>
+        <button class="button" id="next"></button>
         <button class="button" id="back"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><b>10</b></button>
         <button class="button" id="forward"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><b>10</b></button>
         <div id="volume">
@@ -336,6 +340,51 @@ function playerControls(env, media) {
   $('forward').onclick = () => jumpTo(target() + JUMP, true)
   $('back').title = labels.back
   $('forward').title = labels.forward
+
+  // ---- Next video (⏭, Shift+N): the next one of the list it was opened from (videoPlayer.ts). The
+  // app plays it (through video_window.rs's /next). Hovered, a card above the button shows its
+  // picture and title; none: grayed, with "No next video".
+  let next = env.next || null
+  setIcon($('next'), 'next')
+  function drawNext() {
+    const button = $('next')
+    button.classList.toggle('off', !next)
+    button.title = next ? '' : labels.noNext || ''
+    $('upnext-label').textContent = labels.nextUp || ''
+    $('upnext-title').textContent = next?.title || ''
+    const picture = $('upnext-picture')
+    picture.replaceChildren()
+    picture.hidden = !next?.thumbnail
+    if (next?.thumbnail) {
+      const image = document.createElement('img')
+      image.alt = ''
+      image.onerror = () => { picture.hidden = true }
+      image.src = next.thumbnail
+      picture.append(image)
+    }
+    if (!next) $('upnext').hidden = true
+  }
+  function playNext() {
+    if (!next) return
+    $('upnext').hidden = true
+    fetch('https://syncr-video.localhost/next', { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+  }
+  // Its left edge over the button's, kept inside the player
+  function showUpNext() {
+    if (!next) return
+    const card = $('upnext')
+    card.hidden = false
+    const room = $('bottom').clientWidth - card.offsetWidth - 12
+    card.style.left = `${Math.max(12, Math.min($('next').offsetLeft, room))}px`
+  }
+  $('next').onclick = playNext
+  $('next').onmouseenter = showUpNext
+  $('next').onmouseleave = () => { $('upnext').hidden = true }
+  function setNext(shown) {
+    next = shown || null
+    drawNext()
+  }
+  drawNext()
 
   // A click on the picture: closes the menu if it's open, otherwise play or pause
   env.surface.addEventListener('click', () => {
@@ -845,10 +894,11 @@ function playerControls(env, media) {
     ArrowDown: () => changeVolume(-0.05),
     m: () => $('mute').click(),
     f: toggleFull,
+    N: playNext, // Shift+N, as on YouTube
     ...(subtitles ? { c: toggleSubtitles } : {}),
     ...hooks.keys,
   }
-  const NO_REPEAT = [' ', 'k', 'm', 'f', 'c', ...Object.keys(hooks.keys || {})]
+  const NO_REPEAT = [' ', 'k', 'm', 'f', 'c', 'N', ...Object.keys(hooks.keys || {})]
   addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.altKey || event.metaKey) return
     if (typing()) {
@@ -859,7 +909,8 @@ function playerControls(env, media) {
     // Not held back: the browser leaves full screen on it by itself
     if (event.key === 'Escape') { closeContext(); closeParts(); return closeMenu() }
     if (env.stopKeys && event.key !== 'Tab') event.stopImmediatePropagation()
-    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
+    const plain = event.key.length === 1 ? event.key.toLowerCase() : event.key
+    const key = plain === 'n' && event.shiftKey ? 'N' : plain
     if (/^[0-9]$/.test(key)) {
       jumpTo((media.duration() || 0) * (Number(key) / 10), true)
       return event.preventDefault()
@@ -920,7 +971,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, $, icon, clock, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, $, icon, clock, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -977,6 +1028,16 @@ const CONTROLS_CSS = `
   #tip-game { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #9a9a9a); }
   #tip-part { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-dim, #9a9a9a); }
   #tip-part i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+  /* The next video's card over ⏭ (playNext): like the tip, its picture 16:9 */
+  #upnext {
+    position: absolute; bottom: 76px; width: 176px; padding: 6px 8px 7px; border-radius: 6px;
+    background: rgba(0, 0, 0, 0.85); font-size: 12px; line-height: 1.35; pointer-events: none;
+  }
+  #upnext-picture { margin: 0 -2px 5px; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+  #upnext-picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #upnext-label { color: var(--text-dim, #9a9a9a); }
+  #upnext-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  #next svg { fill: currentColor; }
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
 
   #bar { display: flex; align-items: center; gap: 6px; height: 46px; }

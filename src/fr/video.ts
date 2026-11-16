@@ -203,6 +203,8 @@ export const video = {
   'Close the video player when a video ends': 'Fermer le lecteur vidéo à la fin d’une vidéo',
   'When no next video plays after it': 'Quand aucune vidéo suivante n’est lue après elle',
   'Play the next video at the end': 'Lire la vidéo suivante à la fin',
+  'Next|video': 'À suivre',
+  'No next video': 'Aucune vidéo suivante',
   'The next one of its playlist, or of the list you opened it from': 'La suivante de sa playlist, ou de la liste d’où vous l’avez ouverte',
   'In playlists': 'Dans les playlists',
   'Always': 'Toujours',

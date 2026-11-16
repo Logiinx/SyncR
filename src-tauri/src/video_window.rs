@@ -83,7 +83,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     if kind == "text/html" {
       response = response.header(
         "Content-Security-Policy",
-        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app 'self'; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://i.ytimg.com https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app 'self'; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       );
     }
     response.body(body).unwrap_or_default()
@@ -125,6 +125,12 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
       if let (Some(on), Some(video)) = (query_value(&uri, "on"), query_value(&uri, "video")) {
         let _ = app.emit_to("main", "video-subtitles", serde_json::json!({ "on": on == "1", "video": video }));
       }
+      return answer(204, "text/plain", Vec::new());
+    }
+    // The ⏭ button or Shift+N (controls.js): the app plays the next video of the list. Also open to
+    // any site in the window: that's all it can do.
+    "/next" => {
+      let _ = app.emit_to("main", "video-next", ());
       return answer(204, "text/plain", Vec::new());
     }
     // Something the bar should say (player.js). Also open to any site in the window: only these
@@ -411,14 +417,7 @@ fn own_taskbar_button(window: &tauri::Window, site: &str) {
   use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
   use windows::Win32::System::Variant::VT_LPWSTR;
   use windows::Win32::UI::Shell::PropertiesSystem::{IPropertyStore, SHGetPropertyStoreForWindow};
-  let icon: &'static [u8] = if site == "twitch" {
-    include_bytes!("../icons/video-twitch.rgba")
-  } else {
-    include_bytes!("../icons/video-youtube.rgba")
-  };
-  if let Err(e) = window.set_icon(tauri::image::Image::new(icon, 64, 64)) {
-    log::warn!("Video window icon: {e}");
-  }
+  site_icon(window, site);
   let Ok(hwnd) = window.hwnd() else { return };
   // As a number: a window handle can't be sent to another thread
   let raw = hwnd.0 as isize;
@@ -439,6 +438,18 @@ fn own_taskbar_button(window: &tauri::Window, site: &str) {
       log::warn!("Video window app id: {e}");
     }
   });
+}
+
+// The window's icon (its taskbar button): the video's site, "youtube" or "twitch"
+fn site_icon(window: &tauri::Window, site: &str) {
+  let icon: &'static [u8] = if site == "twitch" {
+    include_bytes!("../icons/video-twitch.rgba")
+  } else {
+    include_bytes!("../icons/video-youtube.rgba")
+  };
+  if let Err(e) = window.set_icon(tauri::image::Image::new(icon, 64, 64)) {
+    log::warn!("Video window icon: {e}");
+  }
 }
 
 // site: "youtube" or "twitch", for the taskbar button's icon
@@ -742,11 +753,15 @@ pub fn video_player_note(app: tauri::AppHandle, via: String, note: String) -> Re
 // as this one (our own YouTube page), so the bar's "via" stays true.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
-  let (Some(window), Some(site), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
+// upcoming: what the new video's ⏭ shows (controls.js), for a page that plays it in place. site:
+// the new video's, for the taskbar button's icon (a next video can be from the other site).
+pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, upcoming: serde_json::Value, site: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
+  let (Some(window), Some(page), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
     return Ok(()); // closed in the meantime
   };
   let url = video_site_url(&bar, &address)?;
+  site_icon(&window, &site);
+  let site = page;
   let _ = window.set_title(&title);
   *VIDEO_SHAPE.lock().unwrap() = None;
   let title = serde_json::to_string(&title).map_err(|e| e.to_string())?;
@@ -754,7 +769,7 @@ pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, 
   if in_place && window.is_fullscreen().unwrap_or(false) {
     let video = serde_json::to_string(&video).map_err(|e| e.to_string())?;
     let url = serde_json::to_string(url.as_str()).map_err(|e| e.to_string())?;
-    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles})) location.href = {url}")).map_err(|e| e.to_string())?;
+    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles}, {upcoming})) location.href = {url}")).map_err(|e| e.to_string())?;
   } else {
     site.navigate(url).map_err(|e| e.to_string())?;
   }
