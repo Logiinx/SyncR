@@ -278,4 +278,10 @@ export const video = {
   '{name}: {error}': '{name} : {error}',
   '{count} view': '{count} vue',
   '{count} views': '{count} vues',
+  '{n} video to watch': '{n} vidéo à regarder',
+  '{n} videos to watch': '{n} vidéos à regarder',
+  '{n} to watch': '{n} à regarder',
+  'all watched': 'toutes vues',
+  '{time} left': 'encore {time}',
+  'Latest video: {day}': 'Dernière vidéo : {day}',
 }

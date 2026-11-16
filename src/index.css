@@ -8249,6 +8249,33 @@ button.history-row.selected {
   color: var(--text-dim);
 }
 
+/* A channel row's, folder's or playlist's card: the row's picture, bigger, before its name */
+.video-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.video-card-head .video-follow-icon,
+.video-card-head .video-folder-picture {
+  width: 40px;
+  height: 40px;
+}
+
+.video-card-head .video-folder-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Its latest video's title, under "Latest video: <day>" */
+.video-card-latest {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
 /* Views and likes: "1.2K" after its icon, like link cards' counts */
 .video-card-count {
   display: inline-flex;

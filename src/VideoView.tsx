@@ -22,7 +22,8 @@ import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
-import { useResumePosition, useStartedIds, videoClock, type VideoPosition } from './videoPositions'
+import { resumePosition, useResumePosition, useStartedIds, videoClock, type VideoPosition } from './videoPositions'
+import { playtimeText } from './playtimes'
 
 type List = 'towatch' | 'rewatch' | 'watched' | 'music'
 
@@ -88,10 +89,14 @@ function FoldRow(props: {
   onToggle: () => void
   onMenu?: (x: number, y: number) => void
   onPointerDown?: (e: React.PointerEvent<HTMLElement>) => void // dragging the row itself (a playlist)
+  card?: ListCardContent // its card on hover; none: no card (Started)
 }) {
-  const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown } = props
+  const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown, card } = props
+  const rowRef = useRef<HTMLLIElement>(null)
+  const hover = useHoverTip(CARD_DELAY)
   return (
     <li
+      ref={rowRef}
       className={open ? 'video-row video-group' : 'video-row video-group folded'}
       style={depthStyle(depth)}
       data-item={props.id}
@@ -107,11 +112,11 @@ function FoldRow(props: {
         })
       }
     >
-      <button className="video-row-open" aria-expanded={open} onClick={onToggle}>
+      <button className="video-row-open" aria-expanded={open} onClick={onToggle} {...(card && hover.props)}>
         <ChevronDown size={14} className="video-group-chevron" />
         {icon}
         <span className="video-text">
-          <span className="video-title" title={title}>{title}</span>
+          <span className="video-title" title={card ? undefined : title}>{title}</span>
           <span className="video-meta">
             {logo}
             <span>{countText ?? plural(count, '{n} video', '{n} videos')}</span>
@@ -121,7 +126,56 @@ function FoldRow(props: {
         </span>
       </button>
       {actions}
+      {card && hover.open && (
+        <TipBox at={rowRef} className="video-card">
+          <ListCard title={title} icon={icon} {...card} />
+        </TipBox>
+      )}
     </li>
+  )
+}
+
+// What a channel row's, folder's or playlist's card shows: everything inside (sub-folders and
+// playlists too), how many playlists, and a picture as wide as the card (a playlist's first video)
+interface ListCardContent {
+  videos: FeedVideo[]
+  playlists?: number
+  thumbnail?: string | null
+}
+
+// A channel row's, folder's or playlist's card, shown after resting the mouse on it: its picture
+// (the row's, bigger), its whole name, how many videos and how many are left to watch, the time
+// they take (minus where the started ones stopped), and its latest video
+function ListCard({ title, icon, videos, playlists = 0, thumbnail }: ListCardContent & { title: string; icon: ReactNode }) {
+  const left = videos.filter((video) => !video.watched && !video.gone)
+  const seconds = left.reduce((sum, video) => sum + Math.max(0, video.duration - (resumePosition(video.id)?.t ?? 0)), 0)
+  const latest = videos.reduce<FeedVideo | undefined>((newest, video) => (!newest || video.published > newest.published ? video : newest), undefined)
+  const allLeft = videos.length > 0 && left.length === videos.length
+  const counts = [
+    allLeft ? plural(videos.length, '{n} video to watch', '{n} videos to watch') : plural(videos.length, '{n} video', '{n} videos'),
+    allLeft || !videos.length ? '' : left.length ? plural(left.length, '{n} to watch', '{n} to watch') : t('all watched'),
+    playlists ? plural(playlists, '{n} playlist', '{n} playlists') : '',
+  ].filter(Boolean)
+  return (
+    <>
+      {thumbnail && (
+        <span className="video-thumb">
+          <img src={thumbnail} alt="" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+        </span>
+      )}
+      <span className="video-card-head">
+        {!thumbnail && icon}
+        <span className="video-card-title">{title}</span>
+      </span>
+      <span className="video-card-line">{counts.join(' · ')}</span>
+      {seconds > 0 && <span className="video-card-line">{t('{time} left', { time: playtimeText(seconds) })}</span>}
+      {latest && (
+        <>
+          <span className="video-card-line">{t('Latest video: {day}', { day: videoDay(latest) })}</span>
+          <span className="video-card-latest">{latest.title}</span>
+        </>
+      )}
+    </>
   )
 }
 
@@ -157,6 +211,7 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
       open={open}
       onMenu={onMenu}
       onToggle={onToggle}
+      card={{ videos }}
     />
   )
 }
@@ -578,6 +633,7 @@ function VideoView() {
         depth={depth}
         onToggle={() => toggleGroup(folder.id)}
         onMenu={(x, y) => setFolderMenu({ folder, x, y })}
+        card={{ videos: [...inside, ...lists.flatMap(({ videos: episodes }) => episodes)], playlists: lists.length }}
       />,
       ...(open
         ? [
@@ -620,6 +676,7 @@ function VideoView() {
         onToggle={() => toggleGroup(playlist.id)}
         onMenu={(x, y) => setPlaylistMenu({ playlist, x, y })}
         onPointerDown={(e) => dragPlaylist(e, playlist.id, placeOf(playlist), openRow)}
+        card={{ videos: episodes, thumbnail: episodes[0]?.thumbnail }}
         actions={
           <>
             <button
