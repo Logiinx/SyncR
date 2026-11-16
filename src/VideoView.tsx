@@ -12,6 +12,7 @@ import { useLocalState } from './localState'
 import { useListScroll } from './videoScroll'
 import { TipBox, useHoverTip } from './InfoTip'
 import { useVideoStats } from './videoStats'
+import { LIST_PIECES, useCardPieces, VIDEO_PIECES, type CardPiece } from './videoCards'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
@@ -94,6 +95,8 @@ function FoldRow(props: {
   const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown, card } = props
   const rowRef = useRef<HTMLLIElement>(null)
   const hover = useHoverTip(CARD_DELAY)
+  const shows = useCardPieces()
+  const withCard = !!card && LIST_PIECES.some(shows)
   return (
     <li
       ref={rowRef}
@@ -112,11 +115,11 @@ function FoldRow(props: {
         })
       }
     >
-      <button className="video-row-open" aria-expanded={open} onClick={onToggle} {...(card && hover.props)}>
+      <button className="video-row-open" aria-expanded={open} onClick={onToggle} {...(withCard && hover.props)}>
         <ChevronDown size={14} className="video-group-chevron" />
         {icon}
         <span className="video-text">
-          <span className="video-title" title={card ? undefined : title}>{title}</span>
+          <span className="video-title" title={withCard && shows('listPicture') ? undefined : title}>{title}</span>
           <span className="video-meta">
             {logo}
             <span>{countText ?? plural(count, '{n} video', '{n} videos')}</span>
@@ -126,9 +129,9 @@ function FoldRow(props: {
         </span>
       </button>
       {actions}
-      {card && hover.open && (
+      {withCard && hover.open && (
         <TipBox at={rowRef} className="video-card">
-          <ListCard title={title} icon={icon} {...card} />
+          <ListCard title={title} icon={icon} shows={shows} {...card} />
         </TipBox>
       )}
     </li>
@@ -146,7 +149,7 @@ interface ListCardContent {
 // A channel row's, folder's or playlist's card, shown after resting the mouse on it: its picture
 // (the row's, bigger), its whole name, how many videos and how many are left to watch, the time
 // they take (minus where the started ones stopped), and its latest video
-function ListCard({ title, icon, videos, playlists = 0, thumbnail }: ListCardContent & { title: string; icon: ReactNode }) {
+function ListCard({ title, icon, shows, videos, playlists = 0, thumbnail }: ListCardContent & { title: string; icon: ReactNode; shows: (piece: CardPiece) => boolean }) {
   const left = videos.filter((video) => !video.watched && !video.gone)
   const seconds = left.reduce((sum, video) => sum + Math.max(0, video.duration - (resumePosition(video.id)?.t ?? 0)), 0)
   const latest = videos.reduce<FeedVideo | undefined>((newest, video) => (!newest || video.published > newest.published ? video : newest), undefined)
@@ -158,18 +161,22 @@ function ListCard({ title, icon, videos, playlists = 0, thumbnail }: ListCardCon
   ].filter(Boolean)
   return (
     <>
-      {thumbnail && (
-        <span className="video-thumb">
-          <img src={thumbnail} alt="" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
-        </span>
+      {shows('listPicture') && (
+        <>
+          {thumbnail && (
+            <span className="video-thumb">
+              <img src={thumbnail} alt="" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+            </span>
+          )}
+          <span className="video-card-head">
+            {!thumbnail && icon}
+            <span className="video-card-title">{title}</span>
+          </span>
+        </>
       )}
-      <span className="video-card-head">
-        {!thumbnail && icon}
-        <span className="video-card-title">{title}</span>
-      </span>
-      <span className="video-card-line">{counts.join(' · ')}</span>
-      {seconds > 0 && <span className="video-card-line">{t('{time} left', { time: playtimeText(seconds) })}</span>}
-      {latest && (
+      {shows('listCounts') && <span className="video-card-line">{counts.join(' · ')}</span>}
+      {shows('listTime') && seconds > 0 && <span className="video-card-line">{t('{time} left', { time: playtimeText(seconds) })}</span>}
+      {shows('listLatest') && latest && (
         <>
           <span className="video-card-line">{t('Latest video: {day}', { day: videoDay(latest) })}</span>
           <span className="video-card-latest">{latest.title}</span>
@@ -242,6 +249,10 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   const showLastWatched = !!lastWatched && !!video.watchedAt
   const rowRef = useRef<HTMLLIElement>(null)
   const hover = useHoverTip(CARD_DELAY)
+  const shows = useCardPieces()
+  const withCard = VIDEO_PIECES.some(shows)
+  // The card shows the whole title and channel: no browser tooltip then
+  const tooltips = !withCard || !shows('videoDetails')
   function open() {
     playVideo(video, playlistId, undefined, after)
     void markOpened(video.id)
@@ -263,15 +274,15 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
         onMenu?.(e.clientX, e.clientY)
       }}
     >
-      <button className="video-row-open" disabled={video.gone} onClick={open} {...hover.props}>
+      <button className="video-row-open" disabled={video.gone} onClick={open} {...(withCard && hover.props)}>
         <VideoThumb video={video} opened={opened} />
         <span className="video-text">
-          <span className="video-title" ref={watchTitle}>{video.title}</span>
+          <span className="video-title" title={tooltips ? video.title : undefined} ref={watchTitle}>{video.title}</span>
           <span className="video-meta-lines">
             <span className="video-meta">
               {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
               {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
-              <span className="video-channel">{from ?? video.channel}</span>
+              <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
             </span>
             {(video.gone || showLastWatched || opened || isNew) && (
@@ -313,9 +324,9 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
           <Check size={16} />
         </button>
       )}
-      {hover.open && (
+      {withCard && hover.open && (
         <TipBox at={rowRef} className="video-card">
-          <VideoCard video={video} opened={opened} from={from} />
+          <VideoCard video={video} opened={opened} from={from} shows={shows} />
         </TipBox>
       )}
     </li>
@@ -369,28 +380,32 @@ function StatCount({ icon: Icon, n, one, other }: { icon: LucideIcon; n: number;
 // A video row's card, shown after resting the mouse on it: a bigger picture, the whole title, its
 // channel (and playlist), the day and time it came out, and its views and likes now (asked on the
 // first hover: "…" meanwhile; nothing when gone or the ask failed)
-function VideoCard({ video, opened, from }: { video: FeedVideo; opened: VideoPosition | null; from?: string }) {
-  const stats = useVideoStats(video)
+function VideoCard({ video, opened, from, shows }: { video: FeedVideo; opened: VideoPosition | null; from?: string; shows: (piece: CardPiece) => boolean }) {
+  const stats = useVideoStats(video, shows('videoStats'))
   const counts = stats && [
     stats.views !== null && <StatCount key="views" icon={Eye} n={stats.views} one="{count} view" other="{count} views" />,
     stats.likes !== null && <StatCount key="likes" icon={ThumbsUp} n={stats.likes} one="{count} like" other="{count} likes" />,
   ].filter(Boolean)
   return (
     <>
-      {video.thumbnail && !video.gone && <VideoThumb video={video} opened={opened} />}
-      <span className="video-card-title">{video.title}</span>
-      <span className="video-card-line">
-        <VideoLogo platform={video.platform} />
-        <span>{video.channel}</span>
-      </span>
-      {from && (
-        <span className="video-card-line">
-          <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} />
-          <span>{from}</span>
-        </span>
+      {shows('videoPicture') && video.thumbnail && !video.gone && <VideoThumb video={video} opened={opened} />}
+      {shows('videoDetails') && (
+        <>
+          <span className="video-card-title">{video.title}</span>
+          <span className="video-card-line">
+            <VideoLogo platform={video.platform} />
+            <span>{video.channel}</span>
+          </span>
+          {from && (
+            <span className="video-card-line">
+              <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} />
+              <span>{from}</span>
+            </span>
+          )}
+          <span className="video-card-line">{`${fullDate(video.published)}, ${clockTime(video.published)}`}</span>
+        </>
       )}
-      <span className="video-card-line">{`${fullDate(video.published)}, ${clockTime(video.published)}`}</span>
-      {stats === undefined ? (
+      {shows('videoStats') && stats === undefined ? (
         <span className="video-card-line">…</span>
       ) : (
         !!counts?.length && <span className="video-card-line">{counts.flatMap((count, i) => (i ? [' · ', count] : [count]))}</span>

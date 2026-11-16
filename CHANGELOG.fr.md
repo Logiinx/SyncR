@@ -17,6 +17,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Paramètres vidéo : lire la vidéo suivante à la fin, aussi hors playlists
 - **Nouveau :** carte d’une vidéo au survol : grande image, titre entier, date, vues et j’aime
 - **Nouveau :** une carte aussi pour les playlists, chaînes et dossiers : nombres, temps restant, dernière vidéo
+- **Nouveau :** Paramètres vidéo → Cartes au survol : choisir ce que montrent les cartes
 - **Amélioré :** l’onglet Vidéo rouvre la liste et la chaîne suivie où vous l’aviez laissé
 - **Amélioré :** chaque liste Vidéo garde votre position, même après un redémarrage
 - **Changé :** les commandes du lecteur se masquent aussi en pause, et dès que la souris sort

@@ -17,6 +17,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Video settings: play the next video at the end, also outside playlists
 - **New:** a video's card on hover: bigger picture, full title, date, views and likes
 - **New:** playlists, channels and folders get a card too: counts, time left, latest video
+- **New:** Video settings → Hover cards: choose what the cards show
 - **Better:** the Video tab reopens on the list and follow you left it on
 - **Better:** each Video list keeps your scroll spot, also after a restart
 - **Changed:** the player’s controls also hide while paused, and as soon as the mouse leaves

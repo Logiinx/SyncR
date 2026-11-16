@@ -4582,6 +4582,14 @@ button {
   color: var(--text-green); /* like the details' status lines */
 }
 
+/* A small dim heading over a few rows of a card (Video settings → Hover cards: Videos, Playlists…) */
+.settings-card-sub {
+  margin: 8px 0 2px;
+  color: var(--text-dim);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
 .settings-card-foot {
   display: flex;
   justify-content: flex-end;

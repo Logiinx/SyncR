@@ -40,10 +40,11 @@ async function ask(videoId: string, platform: string) {
   }
 }
 
-// undefined while asking, null when there's nothing to show
-export function useVideoStats(video: { id: string; platform: string; gone?: boolean }) {
+// undefined while asking, null when there's nothing to show (or not wanted: on = false)
+export function useVideoStats(video: { id: string; platform: string; gone?: boolean }, on = true) {
+  const none = video.gone || !on
   useEffect(() => {
-    if (!video.gone) void ask(video.id, video.platform)
-  }, [video.id, video.platform, video.gone])
-  return useSyncExternalStore(subscribe, () => (video.gone || failed.has(video.id) ? null : known.get(video.id)))
+    if (!none) void ask(video.id, video.platform)
+  }, [video.id, video.platform, none])
+  return useSyncExternalStore(subscribe, () => (none || failed.has(video.id) ? null : known.get(video.id)))
 }

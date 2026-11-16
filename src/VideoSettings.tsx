@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { ListVideo, Play, Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
+import { ListVideo, Play, Puzzle, RefreshCw, Settings, SquareMousePointer, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import Window from './Window'
@@ -9,6 +9,7 @@ import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
 import { t } from './i18n'
 import { setAutoRewatch, setMusicName, setRewatchSection, useAutoRewatch, useMusicName, useRewatchSection } from './videoFolders'
+import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -37,6 +38,13 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const rewatchSection = useRewatchSection()
   const musicName = useMusicName()
   const autoRewatch = useAutoRewatch()
+  const shows = useCardPieces()
+  // One checkbox per piece of the hover cards (videoCards.ts)
+  const pieceRow = (piece: CardPiece, label: string) => (
+    <SettingRow key={piece} label={label}>
+      <input type="checkbox" checked={shows(piece)} onChange={(e) => setCardPiece(piece, e.target.checked)} />
+    </SettingRow>
+  )
   function updatePlayer(change: Partial<PlayerSettings>) {
     savePlayerSettings(change)
     setPlayer(loadPlayerSettings())
@@ -102,6 +110,17 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             <SettingRow label={t('Show “Music” next to its icon')} title={t('Off: the music note alone, its name when hovered')}>
               <input type="checkbox" checked={musicName} onChange={(e) => setMusicName(e.target.checked)} />
             </SettingRow>
+          </SettingsCard>
+          <SettingsCard icon={SquareMousePointer} title={t('Hover cards')}>
+            <h4 className="settings-card-sub">{t('Videos')}</h4>
+            {pieceRow('videoPicture', t('Bigger picture'))}
+            {pieceRow('videoDetails', t('Title, channel and date'))}
+            {pieceRow('videoStats', t('Views and likes'))}
+            <h4 className="settings-card-sub">{t('Playlists, channels and folders')}</h4>
+            {pieceRow('listPicture', t('Picture and name'))}
+            {pieceRow('listCounts', t('Number of videos'))}
+            {pieceRow('listTime', t('Time left'))}
+            {pieceRow('listLatest', t('Latest video'))}
           </SettingsCard>
           <SettingsCard icon={Play} title={t('Player')}>
             <SettingRow label={t('Mark as watched closes the video player')}>
