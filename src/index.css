@@ -8206,6 +8206,49 @@ button.history-row.selected {
   display: inline;
 }
 
+/* A video row's card on hover (VideoCard): its picture as wide as the card, the spot always shown.
+   The mouse goes through it: over it = over what's under it (it may cover its row in a small window) */
+.info-tip-box.video-card {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 300px;
+  padding: 8px;
+}
+
+.video-card .video-thumb {
+  width: 100%;
+  height: auto;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  aspect-ratio: 16 / 9;
+}
+
+.video-card .video-duration {
+  font-size: 0.85em;
+}
+
+.video-card .video-length {
+  display: none;
+}
+
+.video-card .video-spot {
+  display: inline;
+}
+
+.video-card-title {
+  overflow-wrap: anywhere;
+  font-size: 1.1em;
+}
+
+.video-card-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+}
+
 .video-opened,
 .video-new {
   padding: 0 5px;

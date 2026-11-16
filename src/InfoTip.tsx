@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Info } from 'lucide-react'
 import { currentZoom } from './appearance'
@@ -10,7 +10,7 @@ const HOVER_DELAY = 350 // ms over a HoverTip before its box opens (the mouse ju
 // The box of an InfoTip or a HoverTip: looks like a menu (.context-menu) and unfolds like one.
 // It's drawn over the whole app (not inside its window, which would cut it off), below `at`, or
 // above it when there's no room. Placed from screen pixels, so divided by the app scale (CSS zoom).
-function TipBox({ at, children }: { at: RefObject<Element | null>; children: ReactNode }) {
+export function TipBox({ at, className, children }: { at: RefObject<Element | null>; className?: string; children: ReactNode }) {
   const boxRef = useRef<HTMLSpanElement>(null)
   useLayoutEffect(() => {
     const box = boxRef.current
@@ -23,15 +23,18 @@ function TipBox({ at, children }: { at: RefObject<Element | null>; children: Rea
     const screenH = window.innerHeight / zoom
     const below = near.bottom / zoom + GAP
     const above = near.top / zoom - GAP - size.height / zoom
-    const top = below + size.height / zoom <= screenH - MARGIN || above < MARGIN ? below : above
+    const height = size.height / zoom
+    // Fitting neither way (a big box, a small window): the side with more room, kept on screen
+    const downwards = below + height <= screenH - MARGIN || (above < MARGIN && screenH - near.bottom / zoom >= near.top / zoom)
+    const top = Math.max(MARGIN, Math.min(downwards ? below : above, screenH - MARGIN - height))
     const left = Math.max(MARGIN, Math.min(near.left / zoom - MARGIN, screenW - MARGIN - size.width / zoom))
     box.style.top = `${top}px`
     box.style.left = `${left}px`
-    box.classList.toggle('above', top !== below)
+    box.classList.toggle('above', !downwards)
     box.style.visibility = ''
   })
   return createPortal(
-    <span ref={boxRef} className="info-tip-box" role="tooltip" style={{ visibility: 'hidden' }}>
+    <span ref={boxRef} className={`info-tip-box${className ? ` ${className}` : ''}`} role="tooltip" style={{ visibility: 'hidden' }}>
       {children}
     </span>,
     document.body,
@@ -75,31 +78,52 @@ export default function InfoTip({ label, children }: { label: string; children: 
   )
 }
 
-// The same box over something else (e.g. a Steam price in the Games lists), with a mouse only:
-// opens after a short hover, closes when the mouse leaves. tip is only made while it's open, so
-// what it shows can be asked for then.
-export function HoverTip({ tip, className, children }: { tip: () => ReactNode; className?: string; children: ReactNode }) {
+// Opens a box after a short hover with a mouse (the mouse just passing doesn't), closes when the
+// mouse leaves, and on a click, a right-click or a scroll (the box would stay behind). Not while
+// a button is held (a drag passing over). props go on the hovered element.
+export function useHoverTip(delay = HOVER_DELAY) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLSpanElement>(null)
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    const events = ['scroll', 'wheel', 'pointerdown', 'contextmenu', 'keydown'] as const
+    events.forEach((name) => document.addEventListener(name, close, true))
+    return () => events.forEach((name) => document.removeEventListener(name, close, true))
+  }, [open])
+  function hide() {
+    clearTimeout(timer.current)
+    setOpen(false)
+  }
+  return {
+    open,
+    props: {
+      onPointerEnter(e: ReactPointerEvent) {
+        if (e.pointerType !== 'mouse' || e.buttons) return
+        clearTimeout(timer.current)
+        timer.current = window.setTimeout(() => setOpen(true), delay)
+      },
+      onPointerLeave: hide,
+      onWheel: hide, // before it opened
+    },
+  }
+}
+
+// The same box over something else (e.g. a Steam price in the Games lists), with a mouse only.
+// tip is only made while it's open, so what it shows can be asked for then.
+export function HoverTip({ tip, className, children }: { tip: () => ReactNode; className?: string; children: ReactNode }) {
+  const hover = useHoverTip()
+  const ref = useRef<HTMLSpanElement>(null)
   return (
     <span
       ref={ref}
       className={className}
       title="" // no browser tooltip from around it (e.g. a tile's game name) over its box
-      onPointerEnter={(e) => {
-        if (e.pointerType !== 'mouse') return
-        clearTimeout(timer.current)
-        timer.current = window.setTimeout(() => setOpen(true), HOVER_DELAY)
-      }}
-      onPointerLeave={() => {
-        clearTimeout(timer.current)
-        setOpen(false)
-      }}
+      {...hover.props}
     >
       {children}
-      {open && <TipBox at={ref}>{tip()}</TipBox>}
+      {hover.open && <TipBox at={ref}>{tip()}</TipBox>}
     </span>
   )
 }

@@ -4,12 +4,13 @@ import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
-import { lastWatchedText, nearDay, shortDate } from './dates'
+import { clockTime, fullDate, lastWatchedText, nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { useListScroll } from './videoScroll'
+import { TipBox, useHoverTip } from './InfoTip'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
@@ -20,7 +21,7 @@ import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
-import { useResumePosition, useStartedIds, videoClock } from './videoPositions'
+import { useResumePosition, useStartedIds, videoClock, type VideoPosition } from './videoPositions'
 
 type List = 'towatch' | 'rewatch' | 'watched' | 'music'
 
@@ -38,6 +39,8 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 }
 
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
+
+const CARD_DELAY = 600 // ms resting the mouse on a row before its card shows
 
 // A video row's tags and extras: on a line of their own under a 1-line title, after the date under a
 // 2-line one (the row stays as high as its thumbnail). Seen by the title's height (data-long-title).
@@ -181,6 +184,8 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   // Stopped partway: tagged Opened, with its progress on the thumbnail
   const opened = position && !video.watched && !video.gone ? position : null
   const showLastWatched = !!lastWatched && !!video.watchedAt
+  const rowRef = useRef<HTMLLIElement>(null)
+  const hover = useHoverTip(CARD_DELAY)
   function open() {
     playVideo(video, playlistId, undefined, after)
     void markOpened(video.id)
@@ -191,6 +196,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   }
   return (
     <li
+      ref={rowRef}
       className={`video-row${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}`}
       style={depthStyle(depth)}
       data-item={`${started ? 'started ' : ''}${playlistId ? `${playlistId} ${video.id}` : video.id}`}
@@ -201,41 +207,15 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
         onMenu?.(e.clientX, e.clientY)
       }}
     >
-      <button className="video-row-open" disabled={video.gone} onClick={open}>
-        <span className="video-thumb">
-          {video.thumbnail && !video.gone && (
-            <img
-              src={video.thumbnail}
-              alt=""
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
-            />
-          )}
-          {!video.gone && video.duration > 0 && (
-            <span className="video-duration">
-              {opened ? (
-                <>
-                  <span className="video-length">{videoClock(video.duration)}</span>
-                  {/* On hover: how far it was watched */}
-                  <span className="video-spot">{`${videoClock(opened.t, video.duration >= 3600)} / ${videoClock(video.duration)}`}</span>
-                </>
-              ) : (
-                videoClock(video.duration)
-              )}
-            </span>
-          )}
-          {opened && (
-            <span className="video-progress"><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
-          )}
-        </span>
+      <button className="video-row-open" disabled={video.gone} onClick={open} {...hover.props}>
+        <VideoThumb video={video} opened={opened} />
         <span className="video-text">
-          <span className="video-title" title={video.title} ref={watchTitle}>{video.title}</span>
+          <span className="video-title" ref={watchTitle}>{video.title}</span>
           <span className="video-meta-lines">
             <span className="video-meta">
               {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
               {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
-              <span className="video-channel" title={from ?? video.channel}>{from ?? video.channel}</span>
+              <span className="video-channel">{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
             </span>
             {(video.gone || showLastWatched || opened || isNew) && (
@@ -277,7 +257,67 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
           <Check size={16} />
         </button>
       )}
+      {hover.open && (
+        <TipBox at={rowRef} className="video-card">
+          <VideoCard video={video} opened={opened} from={from} />
+        </TipBox>
+      )}
     </li>
+  )
+}
+
+// A video's picture with its length, and how far it was watched when it was stopped partway (on
+// the row: the time shows it on hover; on its card: always)
+function VideoThumb({ video, opened }: { video: FeedVideo; opened: VideoPosition | null }) {
+  return (
+    <span className="video-thumb">
+      {video.thumbnail && !video.gone && (
+        <img
+          src={video.thumbnail}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+        />
+      )}
+      {!video.gone && video.duration > 0 && (
+        <span className="video-duration">
+          {opened ? (
+            <>
+              <span className="video-length">{videoClock(video.duration)}</span>
+              <span className="video-spot">{`${videoClock(opened.t, video.duration >= 3600)} / ${videoClock(video.duration)}`}</span>
+            </>
+          ) : (
+            videoClock(video.duration)
+          )}
+        </span>
+      )}
+      {opened && (
+        <span className="video-progress"><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
+      )}
+    </span>
+  )
+}
+
+// A video row's card, shown after resting the mouse on it: a bigger picture, the whole title, its
+// channel (and playlist), and the day and time it came out
+function VideoCard({ video, opened, from }: { video: FeedVideo; opened: VideoPosition | null; from?: string }) {
+  return (
+    <>
+      {video.thumbnail && !video.gone && <VideoThumb video={video} opened={opened} />}
+      <span className="video-card-title">{video.title}</span>
+      <span className="video-card-line">
+        <VideoLogo platform={video.platform} />
+        <span>{video.channel}</span>
+      </span>
+      {from && (
+        <span className="video-card-line">
+          <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} />
+          <span>{from}</span>
+        </span>
+      )}
+      <span className="video-card-line">{`${fullDate(video.published)}, ${clockTime(video.published)}`}</span>
+    </>
   )
 }
 

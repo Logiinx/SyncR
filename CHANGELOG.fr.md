@@ -15,6 +15,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** ⏭ dans le lecteur lit la vidéo suivante de sa liste (ou Maj+N)
 - **Nouveau :** la vidéo suivante s’affiche dans une carte 20 s avant la fin, un clic la lance
 - **Nouveau :** Paramètres vidéo : lire la vidéo suivante à la fin, aussi hors playlists
+- **Nouveau :** la souris posée sur une vidéo affiche une carte : grande image, titre entier, date
 - **Amélioré :** l’onglet Vidéo rouvre la liste et la chaîne suivie où vous l’aviez laissé
 - **Amélioré :** chaque liste Vidéo garde votre position, même après un redémarrage
 - **Changé :** les commandes du lecteur se masquent aussi en pause, et dès que la souris sort
