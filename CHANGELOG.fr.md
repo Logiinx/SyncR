@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo
+
 ## [0.81.2] - 2026-11-14
 
 **Jeux**

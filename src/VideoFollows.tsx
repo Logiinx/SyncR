@@ -9,6 +9,7 @@ import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
 import { addFollow, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { linkIn, linkTime } from './videoPaste'
 import { addPlaylist } from './videoPlaylists'
 import { channelGames, searchTwitchGames } from './videoTwitch'
 
@@ -313,7 +314,8 @@ export function AddVideoDialog({ onAdded, onClose }: { onAdded: (followId: strin
     setBusy(true)
     setError('')
     try {
-      onAdded(await addVideo(link))
+      const url = linkIn(link)
+      onAdded(await addVideo(link, url ? linkTime(url) : 0))
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

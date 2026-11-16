@@ -8,7 +8,7 @@ import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
 import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
 import { checkPlaylists, playlistFailures, playOrder } from './videoPlaylists'
-import { forgetPositions } from './videoPositions'
+import { forgetPositions, savePosition } from './videoPositions'
 import { addTwitchGames } from './videoTwitch'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
@@ -598,10 +598,12 @@ export async function addOrFindVideo(link: string) {
 }
 
 // The Add a video window: refuses what's there already. Gives back the followId it's listed under.
-export async function addVideo(link: string) {
-  const { followId, already } = await addOrFindVideo(link)
+// start: seconds from the link's time (?t=), kept as where it continues, as if watched up to there.
+export async function addVideo(link: string, start = 0) {
+  const { followId, video, already } = await addOrFindVideo(link)
   if (already === 'playlist') throw new Error(t('This video is already in a playlist'))
   if (already) throw new Error(already === 'watched' ? t('This video is already in Watched') : t('This video is already in To watch'))
+  if (start > 0 && start < video.duration) savePosition(video.id, { t: Math.floor(start), length: video.duration })
   return followId
 }
 

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Fixed:** a link's start time ignored by the Add a video window
+
 ## [0.81.2] - 2026-11-14
 
 **Games**
