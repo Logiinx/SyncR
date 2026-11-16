@@ -287,12 +287,14 @@ function VideoView() {
   const feed = useVideoFeed()
   const newIds = useNewVideos(feed)
   const { checking, errors } = useChecking()
-  const [pickedList, setList] = useState<List>('towatch')
+  // The list and follow last shown, on this PC (user, 2026-11-16): the tab reopens on them
+  const [storedList, setList] = useLocalState<List>('syncr.video.list', 'towatch')
+  const pickedList: List = ['towatch', 'rewatch', 'watched', 'music'].includes(storedList) ? storedList : 'towatch' // i18n-ok
   // Rewatch is its own list, or a section at the bottom of To watch (Video settings window)
   const asSection = useRewatchSection()
   const musicName = useMusicName()
   const list: List = asSection && pickedList === 'rewatch' ? 'towatch' : pickedList
-  const [channel, setChannel] = useState('all') // a follow's id, or all of them
+  const [channel, setChannel] = useLocalState('syncr.video.follow', 'all') // a follow's id, or all of them
   const [adding, setAdding] = useState<string | null>(null) // Add a follow open, with the link it starts with
   const [addingVideo, setAddingVideo] = useState(false)
   const [addingPlaylist, setAddingPlaylist] = useState(false)
@@ -323,6 +325,14 @@ function VideoView() {
   // The filter's follows: music ones in Music, the others elsewhere
   const listFollows = follows?.filter((follow) => !!follow.music === (list === 'music'))
   const anyMusic = !!follows?.some((follow) => follow.music) || !!feed?.music.length
+  // Reopened on Music with no music left: To watch. Only on opening: removing the last music
+  // follow while in Music keeps you there, as before.
+  const openingChecked = useRef(false)
+  useEffect(() => {
+    if (openingChecked.current || !feed) return
+    openingChecked.current = true
+    if (pickedList === 'music' && !anyMusic) setList('towatch')
+  }, [feed, pickedList, anyMusic, setList])
   // A follow that was just removed: back to all of them. Rewatch is your own list, like folders.
   const shownChannel = list !== 'rewatch' && listFollows?.some((follow) => follow.id === channel) ? channel : 'all'
   // Rewatch's videos are only in its folders (videosIn)
