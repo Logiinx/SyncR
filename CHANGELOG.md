@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **Better:** price alerts name the exact Steam product they watch
 - **Fixed:** no prices for editions without their own Steam page (Sekiro GOTY)
 - **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
+- **Fixed:** Steam sale guess running past the edge of its box and window
 
 **Video**
 - **Fixed:** a link's start time ignored by the Add a video window

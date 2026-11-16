@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** alertes de prix : nom exact du produit Steam surveillé
 - **Corrigé :** aucun prix pour les éditions sans page Steam à elles (Sekiro GOTY)
 - **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
+- **Corrigé :** prévision des soldes Steam qui dépassait du bord de sa bulle et de la fenêtre
 
 **Vidéo**
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo

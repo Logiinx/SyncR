@@ -7388,7 +7388,10 @@ button.history-row.selected {
 }
 
 /* Its pieces ("Steam Winter Sale: 17 Dec – 4 Jan · in 33 days"): each on one line, wrapping only
-   between them; the dot ends a piece, so a wrapped line never starts with one */
+   between them; the dot ends a piece, so a wrapped line never starts with one. A piece longer than
+   a whole line (French Black Friday in the hover box or a narrow game window) wraps inside instead
+   of spilling past the edge: as a flex item it still moves down whole when it fits there. Its
+   values (dates, days) never break. */
 .sale-parts {
   display: flex;
   flex-wrap: wrap;
@@ -7396,7 +7399,7 @@ button.history-row.selected {
   row-gap: 2px;
 }
 
-.sale-parts > span {
+.sale-parts .sale-value {
   white-space: nowrap;
 }
 
@@ -7435,6 +7438,12 @@ button.history-row.selected {
 
 .info-tip-box .sale-parts {
   margin: 0;
+}
+
+/* A bit wider than other hover boxes: its pieces are long ("Black Friday deals (not a Steam
+   sale): 26–30 Nov"), so at 320 px most of them took a line of their own */
+.info-tip-box:has(.sale-guess-tip) {
+  max-width: min(380px, 100vw / var(--zoom, 1) - 16px);
 }
 
 .sale-guess-dim {
