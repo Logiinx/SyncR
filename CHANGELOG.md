@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **Better:** game search with editions grays copies of the same Steam game
+- **Better:** price alerts name the exact Steam product they watch
 - **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
 
 **Video**

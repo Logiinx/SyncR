@@ -19,6 +19,10 @@ type SteamPrice = GamePrices['steam']
 // Kept a few minutes, so reopening a game window doesn't ask again
 const CACHE_MS = 10 * 60_000
 const cache = new Map<number, { editions: Edition[]; time: number }>()
+// Each game's own Steam page name ("Sekiro™: Shadows Die Twice - GOTY Edition"): what its
+// price alert watches, which can differ from the game's name. Known once its editions were asked.
+const steamNames = new Map<number, string>()
+export const steamPageName = (igdbId: number) => steamNames.get(igdbId)
 
 // Editions by IGDB id (games without any: an empty list). Throws when the proxy can't be reached.
 export async function gameEditions(games: { igdbId: number; name: string }[], options: LookupOptions = {}): Promise<Map<number, Edition[]>> {
@@ -34,12 +38,17 @@ export async function gameEditions(games: { igdbId: number; name: string }[], op
   for (const [igdbId, ref] of refs) if (ref.kind === 'app') apps.set(ref.id, igdbId)
 
   const found: Record<string, { kind: Edition['kind']; id: number; name: string; steam: SteamPrice }[]> = {}
+  const names: Record<string, string> = {} // Steam app id → its page's name
   const ids = [...apps.keys()]
   for (let i = 0; i < ids.length; i += 100) {
     const response = await igdbProxyFetch('editions', JSON.stringify({ steamIds: ids.slice(i, i + 100) }), 20_000)
     if (!response.ok) throw new Error(t('Edition lookup failed ({status})', { status: response.status }))
-    Object.assign(found, await response.json())
+    const answer = await response.json()
+    Object.assign(names, answer._names)
+    delete answer._names
+    Object.assign(found, answer)
   }
+  for (const [appId, igdbId] of apps) if (names[appId]) steamNames.set(igdbId, names[appId])
   // Their key price and lows from GG.deals (/prices). Packages: with Steam's price again.
   // Bundles: Steam's price stays the one from the game's page (Steam's own bundle lookup leaves
   // out today's discount).

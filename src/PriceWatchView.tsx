@@ -4,7 +4,7 @@ import { Bell, BellOff, BellRing, ExternalLink, PackageCheck } from 'lucide-reac
 import type { Game, PriceWatch } from './db'
 import { shortDate } from './dates'
 import { openLink } from './links'
-import { editionLabel, gameEditions, knownEditions, type Edition } from './editions'
+import { editionLabel, gameEditions, knownEditions, steamPageName, type Edition } from './editions'
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
 import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
 
@@ -111,7 +111,7 @@ export function PriceWatchView({ game, focus }: { game: Game; focus?: boolean })
       <span>{t('Price alerts')}</span>
       {canWatch && (
         <WatchRow
-          name={game.name}
+          name={steamPageName(game.igdbId) ?? game.name}
           note={editionRows.length > 0 ? t('(base game)') : undefined}
           watch={watch}
           prices={prices}

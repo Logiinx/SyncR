@@ -183,8 +183,11 @@ async function gameEditions(request) {
     data_request: { include_all_purchase_options: true },
   }
   const answer = await askJson(`https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`)
-  const result = {}
+  // _names: each Steam page's own name ("Sekiro™: Shadows Die Twice - GOTY Edition"), apart, as
+  // apps before v0.82 read every other key as a game's list
+  const result = { _names: {} }
   for (const item of answer.response?.store_items ?? []) {
+    if (item.name) result._names[item.appid] = item.name
     // Options with other games in them ("Dead Space + Cronos", franchise bundles) aren't editions
     const options = (item.purchase_options ?? []).slice(1).filter((option) => (option.included_game_count ?? 1) <= 1)
     result[item.appid] = options.map((option) => ({
