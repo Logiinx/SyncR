@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { t } from './i18n'
 import { db, isWatched, type Game } from './db'
-import { igdb, igdbProxyFetch, isComplete, loadConnection } from './igdb'
+import { findSteam, igdb, igdbProxyFetch, isComplete, loadConnection, type IgdbExternal, type SteamRef } from './igdb'
 
 export interface GamePrices {
   name?: string | null // the product the prices are for (GG.deals, else Steam's package name)
@@ -18,34 +18,7 @@ export interface GamePrices {
   } | null
 }
 
-const STEAM = 1 // IGDB external game source
-
-interface IgdbExternal {
-  id: number
-  external_games?: { uid?: string; external_game_source?: number; category?: number }[]
-  websites?: { url?: string }[]
-}
-
-// Where a game is sold on Steam: a game page ("app"), or a package ("sub") for editions sold as
-// a bundle of the game and its add-ons (e.g. Fallout: New Vegas Ultimate Edition)
-export interface SteamRef {
-  kind: 'app' | 'sub' | 'bundle' // bundle: only editions (editions.ts), GG.deals' prices only
-  id: number
-}
-
-// The Steam store page among the game's web links first (the current one: IGDB's other Steam
-// links can be old pages, e.g. Fallout: New Vegas also lists a removed one), else IGDB's Steam
-// link, else a package page (editions often have only that). Games not on Steam are left out.
-function findSteam(game: IgdbExternal): SteamRef | undefined {
-  const page = (kind: SteamRef['kind']) => {
-    for (const site of game.websites ?? []) {
-      const match = site.url?.match(new RegExp(`store\\.steampowered\\.com/${kind}/(\\d+)`))
-      if (match) return { kind, id: Number(match[1]) }
-    }
-  }
-  const linked = game.external_games?.find((e) => (e.external_game_source ?? e.category) === STEAM && Number(e.uid) > 0)
-  return page('app') ?? (linked && { kind: 'app', id: Number(linked.uid) }) ?? page('sub')
-}
+export type { SteamRef }
 
 // Do the prices fit the game? Every word of the game's name must be in the product's name, so a
 // DLC or an edition priced as another product (IGDB linked the wrong Steam page) is caught.

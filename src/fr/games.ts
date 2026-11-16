@@ -222,4 +222,6 @@ export const games = {
   'Black Friday deals (not a Steam sale) until {date}': 'Promos du Black Friday (hors soldes Steam) jusqu’au {date}',
   'Looking for Steam sales…': 'Recherche des promos Steam…',
   'No sale information for this game': 'Aucune info de promo pour ce jeu',
+  'Same game as {name} on Steam': 'Même jeu que {name} sur Steam',
+  'No Steam page of its own · see {name}': 'Pas de page Steam à lui · voir {name}',
 }

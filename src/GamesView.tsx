@@ -12,7 +12,7 @@ import { PreorderBadge, WatchBell } from './PriceWatchView'
 import { isHundred, PLAYING_ON_OPEN, playedText, refreshPlaying, useSteamProfile } from './steam'
 import { shortDate } from './dates'
 import SteamImport from './SteamImport'
-import { isComplete, searchGames, useConnection, type FoundGame } from './igdb'
+import { isComplete, searchGames, useConnection, type FoundGame, type SameAs } from './igdb'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { calendarLayouts, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
@@ -525,6 +525,7 @@ function GameSearch({ inList, onOpen, onMenu }: {
   const [text, setText] = useState('')
   const [includeDlc, setIncludeDlc] = useLocalState('syncr.gamesIncludeDlc', false)
   const [results, setResults] = useState<FoundGame[] | null>(null)
+  const [sameAs, setSameAs] = useState<Map<number, SameAs>>(new Map())
   const [preview, setPreview] = useState<FoundGame | null>(null)
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(false)
@@ -542,7 +543,8 @@ function GameSearch({ inList, onOpen, onMenu }: {
       try {
         const found = await searchGames(text, includeDlc)
         if (run === latest.current) {
-          setResults(found)
+          setResults(found.games)
+          setSameAs(found.sameAs)
           setError('')
         }
       } catch (e) {
@@ -588,10 +590,12 @@ function GameSearch({ inList, onOpen, onMenu }: {
           {results.map((found) => {
             const id = gameId(found.igdbId)
             const status = inList.get(id)
+            const same = sameAs.get(found.igdbId)
+            const sameText = same && (same.kind === 'steam' ? t('Same game as {name} on Steam', { name: same.name }) : t('No Steam page of its own · see {name}', { name: same.name }))
             return (
               <div
                 key={found.igdbId}
-                className="game-row game-result"
+                className={`game-row game-result${same ? ' same-as' : ''}`}
                 onClick={() => (status ? onOpen(id) : setPreview(found))}
                 onContextMenu={(e) => {
                   if (!status) return
@@ -602,8 +606,8 @@ function GameSearch({ inList, onOpen, onMenu }: {
                 <Cover coverId={found.coverId} />
                 <div className="game-text">
                   <div className="game-name" title={found.name}>{found.name}</div>
-                  <div className="game-details">
-                    {[releaseText(found, 'full'), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
+                  <div className="game-details" title={sameText}>
+                    {sameText || [releaseText(found, 'full'), shortPlatforms(found.platforms)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <AddOrInList

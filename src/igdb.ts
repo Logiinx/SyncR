@@ -118,6 +118,37 @@ interface IgdbGame {
   release_dates?: IgdbReleaseDate[]
 }
 
+const STEAM = 1 // IGDB external game source
+
+// A game's store links: its Steam page (findSteam)
+const STEAM_FIELDS = 'external_games.uid, external_games.external_game_source, external_games.category, websites.url' // i18n-ok
+export interface IgdbExternal {
+  id: number
+  external_games?: { uid?: string; external_game_source?: number; category?: number }[]
+  websites?: { url?: string }[]
+}
+
+// Where a game is sold on Steam: a game page ("app"), or a package ("sub") for editions sold as
+// a bundle of the game and its add-ons (e.g. Fallout: New Vegas Ultimate Edition)
+export interface SteamRef {
+  kind: 'app' | 'sub' | 'bundle' // bundle: only editions (editions.ts), GG.deals' prices only
+  id: number
+}
+
+// The Steam store page among the game's web links first (the current one: IGDB's other Steam
+// links can be old pages, e.g. Fallout: New Vegas also lists a removed one), else IGDB's Steam
+// link, else a package page (editions often have only that). Games not on Steam are left out.
+export function findSteam(game: IgdbExternal): SteamRef | undefined {
+  const page = (kind: SteamRef['kind']) => {
+    for (const site of game.websites ?? []) {
+      const match = site.url?.match(new RegExp(`store\\.steampowered\\.com/${kind}/(\\d+)`))
+      if (match) return { kind, id: Number(match[1]) }
+    }
+  }
+  const linked = game.external_games?.find((e) => (e.external_game_source ?? e.category) === STEAM && Number(e.uid) > 0)
+  return page('app') ?? (linked && { kind: 'app', id: Number(linked.uid) }) ?? page('sub')
+}
+
 // Everything SyncR reads about a game, in one request
 const GAME_FIELDS =
   'name, first_release_date, cover.image_id, platforms.name, platforms.abbreviation, release_dates.date, release_dates.date_format, release_dates.platform, release_dates.human, release_dates.status.name' // i18n-ok
@@ -163,33 +194,76 @@ const nameWords = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).
 // Two queries, because IGDB's own search only matches whole words ("Cronos the new d" finds
 // nothing): its search, plus names containing every typed word, each as the start of a word
 // in the name (so a word still being typed counts). Exact names first, then most popular.
-export async function searchGames(text: string, includeDlc: boolean): Promise<FoundGame[]> {
+// A search result that is another result again on Steam (only with DLCs and editions included,
+// as IGDB often lists one Steam product several times): the name of the one to pick. 'steam':
+// the same Steam page; 'edition': an edition or update without a Steam page of its own.
+export interface SameAs {
+  name: string
+  kind: 'steam' | 'edition'
+}
+
+type IgdbSearchGame = IgdbGame & IgdbExternal & { version_parent?: number; parent_game?: number; game_type?: number }
+
+const MAIN_TYPES = [0, 4, 8, 9, 10, 11] // as MAIN_GAME_TYPES
+const UPDATE = 14
+
+function findSameAs(shown: IgdbSearchGame[]) {
+  const result = new Map<number, SameAs>()
+  const isMain = (game: IgdbSearchGame) => !game.version_parent && MAIN_TYPES.includes(game.game_type ?? 0)
+  const steamKey = (game: IgdbSearchGame) => {
+    const ref = findSteam(game)
+    return ref && `${ref.kind}-${ref.id}`
+  }
+  // One per Steam page: a main game, else the first shown
+  const kept = new Map<string, IgdbSearchGame>()
+  for (const game of shown) {
+    const key = steamKey(game)
+    const before = key && kept.get(key)
+    if (key && (!before || (isMain(game) && !isMain(before)))) kept.set(key, game)
+  }
+  const byId = new Map(shown.map((game) => [game.id, game]))
+  for (const game of shown) {
+    const key = steamKey(game)
+    if (key) {
+      const main = kept.get(key)!
+      if (main !== game) result.set(game.id, { name: main.name, kind: 'steam' })
+      continue
+    }
+    // Not DLCs: they're their own products, sold apart
+    const parent = byId.get(game.version_parent ?? (game.game_type === UPDATE ? game.parent_game ?? 0 : 0))
+    if (parent) result.set(game.id, { name: parent.name, kind: 'edition' })
+  }
+  return result
+}
+
+export async function searchGames(text: string, includeDlc: boolean): Promise<{ games: FoundGame[]; sameAs: Map<number, SameAs> }> {
   const typed = nameWords(text)
-  if (typed.length === 0) return []
+  if (typed.length === 0) return { games: [], sameAs: new Map() }
   const filter = includeDlc ? [] : [`game_type = ${MAIN_GAME_TYPES}`, 'version_parent = null']
   const searchWhere = filter.length ? ` where ${filter.join(' & ')};` : ''
   const nameWhere = [...typed.map((word) => `name ~ *"${word}"*`), ...filter].join(' & ') // i18n-ok
+  const fields = includeDlc ? `${GAME_FIELDS}, version_parent, parent_game, game_type, ${STEAM_FIELDS}` : GAME_FIELDS
   const [bySearch, byName] = await Promise.all([
-    igdb<IgdbGame>('games', `search "${typed.join(' ')}"; fields ${GAME_FIELDS};${searchWhere} limit ${SEARCH_LIMIT};`),
-    igdb<IgdbGame>('games', `fields ${GAME_FIELDS}; where ${nameWhere}; sort hypes desc; limit ${SEARCH_LIMIT};`),
+    igdb<IgdbSearchGame>('games', `search "${typed.join(' ')}"; fields ${fields};${searchWhere} limit ${SEARCH_LIMIT};`),
+    igdb<IgdbSearchGame>('games', `fields ${fields}; where ${nameWhere}; sort hypes desc; limit ${SEARCH_LIMIT};`),
   ])
   const startsWords = (game: IgdbGame) => {
     const words = nameWords(game.name)
     return typed.every((t) => words.some((w) => w.startsWith(t)))
   }
-  const games = new Map<number, IgdbGame>()
+  const games = new Map<number, IgdbSearchGame>()
   for (const game of [...bySearch, ...byName.filter(startsWords)]) games.set(game.id, game)
 
   const score = await popularity([...games.keys()])
   const exact = (game: IgdbGame) => (nameWords(game.name).join(' ') === typed.join(' ') ? 1 : 0)
   const rank = (game: IgdbGame) => [exact(game), score.get(game.id)?.wantToPlay ?? 0, score.get(game.id)?.visits ?? 0]
-  return [...games.values()]
+  const shown = [...games.values()]
     .sort((a, b) => {
       const [ra, rb] = [rank(a), rank(b)]
       return rb[0] - ra[0] || rb[1] - ra[1] || rb[2] - ra[2]
     })
     .slice(0, SEARCH_SHOWN)
-    .map(toFoundGame)
+  return { games: shown.map(toFoundGame), sameAs: includeDlc ? findSameAs(shown) : new Map() }
 }
 
 // IGDB's popularity scores: "Want to Play" ranks best (also covers upcoming games),

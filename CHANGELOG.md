@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **Better:** game search with editions grays copies of the same Steam game
 - **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
 
 **Video**

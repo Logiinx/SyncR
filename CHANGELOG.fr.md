@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
+- **Amélioré :** recherche avec éditions : les doublons d’un même jeu Steam grisés
 - **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
 
 **Vidéo**

@@ -6184,6 +6184,11 @@ h3.games-group-title {
   cursor: pointer;
 }
 
+/* Another result again on Steam (SameAs, igdb.ts): grayed, still clickable, the hint in place of its details */
+.game-result.same-as > :not(.add-split, .add-single, .game-in-list) {
+  opacity: 0.45;
+}
+
 /* Priority: the Board cards' blue frame */
 .game-row.priority {
   outline: 1.5px solid var(--text-blue);
