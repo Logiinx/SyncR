@@ -16,9 +16,11 @@ All notable changes to SyncR. Newest version first.
 - **New:** the next video shows in a card 20 s before the end, a click plays it
 - **New:** Video settings: play the next video at the end, also outside playlists
 - **Better:** the Video tab reopens on the list and follow you left it on
+- **Better:** each Video list keeps your scroll spot, also after a restart
 - **Changed:** the player’s controls also hide while paused, and as soon as the mouse leaves
 - **Changed:** the player’s jump buttons and arrow keys skip 5 s, not 10
 - **Fixed:** a link's start time ignored by the Add a video window
+- **Small fixes:** rows growing in on opening the tab
 
 ## [0.81.2] - 2026-11-14
 

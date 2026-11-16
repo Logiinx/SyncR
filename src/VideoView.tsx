@@ -9,6 +9,7 @@ import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
+import { useListScroll } from './videoScroll'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
@@ -335,12 +336,15 @@ function VideoView() {
   }, [feed, pickedList, anyMusic, setList])
   // A follow that was just removed: back to all of them. Rewatch is your own list, like folders.
   const shownChannel = list !== 'rewatch' && listFollows?.some((follow) => follow.id === channel) ? channel : 'all'
+  useListScroll(pageRef, list, !!feed, shownChannel)
   // Rewatch's videos are only in its folders (videosIn)
   const videos = (list === 'towatch' ? feed?.toWatch : list === 'watched' ? feed?.watched : list === 'music' ? feed?.music : [])?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
   const listRef = useRef<HTMLUListElement>(null)
   // One channel chosen: there's nothing to group. Watched is one plain list, watched last on top.
   const grouping = grouped && shownChannel === 'all' && (list === 'towatch' || list === 'music')
-  useListItems(listRef, `${list} ${shownChannel} ${grouping}`)
+  // The list loading counts as a change all at once too: its rows don't grow in when the tab opens
+  // (which also put the remembered scroll back to the top, the page being short meanwhile)
+  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed}`)
   const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
