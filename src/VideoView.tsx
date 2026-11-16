@@ -16,7 +16,7 @@ import VideoSettings from './VideoSettings'
 import { dragPlaylist, dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useMusicName, useRewatchSection } from './videoFolders'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
-import { playVideo } from './videoPlayer'
+import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
 import { useResumePosition, useStartedIds, videoClock } from './videoPositions'
@@ -162,8 +162,8 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
 // Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both. In Rewatch's
 // Started group (started): a second copy of the row, not dragged; a playlist's video shows its
-// playlist (from) instead of its channel.
-function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, started, from, onMenu, onOpenRow }: {
+// playlist (from) instead of its channel. after: the videos after it in its list, for ⏭.
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, started, from, after, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
@@ -172,6 +172,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   lastWatched?: boolean
   started?: boolean
   from?: string
+  after?: UpNext[]
   onMenu?: (x: number, y: number) => void
   onOpenRow: (id: string) => void
 }) {
@@ -180,7 +181,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   const opened = position && !video.watched && !video.gone ? position : null
   const showLastWatched = !!lastWatched && !!video.watchedAt
   function open() {
-    playVideo(video, playlistId)
+    playVideo(video, playlistId, undefined, after)
     void markOpened(video.id)
   }
   function openInBrowser() {
@@ -375,9 +376,13 @@ function VideoView() {
   const rewatchIds = inRewatch(allFolders)
   // Rewatch's videos (feed.rewatch) only show in To watch with all follows, like folders
   const videosIn = (folderId: string) => (rewatchIds.has(folderId) ? feed?.rewatch ?? [] : videos ?? []).filter((video) => video.folderId === folderId)
+  // The videos after this one among those shown with it (siblings), for ⏭: never one that's gone,
+  // nor a watched one (as in playlists), except in Watched where they all are
+  const upNextOf = (video: FeedVideo, siblings: FeedVideo[]): UpNext[] =>
+    siblings.slice(siblings.indexOf(video) + 1).filter((other) => !other.gone && (list === 'watched' || !other.watched)).map((other) => ({ video: other }))
   // Outside Watched, a watched video is one of Rewatch's: it stays, grayed
-  const videoRow = (video: FeedVideo, depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+  const videoRow = (video: FeedVideo, siblings: FeedVideo[], depth = 0) => (
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
@@ -501,7 +506,7 @@ function VideoView() {
         ? [
             ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
             ...playlistsIn(folder.id).flatMap((entry) => playlistRows(entry, depth + 1)),
-            ...videosIn(folder.id).reverse().map((video) => videoRow(video, depth + 1)),
+            ...videosIn(folder.id).reverse().map((video, _, all) => videoRow(video, all, depth + 1)),
           ]
         : []),
     ]
@@ -584,7 +589,7 @@ function VideoView() {
       ...(open
         ? [
             ...subs.flatMap((sub) => folderRows(sub, 1)),
-            ...group.filter((video) => !video.folderId).reverse().map((video) => videoRow(video, 1)),
+            ...group.filter((video) => !video.folderId).reverse().map((video, _, all) => videoRow(video, all, 1)),
           ]
         : []),
     ]
@@ -632,7 +637,7 @@ function VideoView() {
       />,
       ...(folded
         ? []
-        : entries.map(({ video, playlist }) => (
+        : entries.map(({ video, playlist }, index) => (
             <VideoRow
               key={`${id} ${video.id}`}
               video={video}
@@ -641,6 +646,7 @@ function VideoView() {
               playlistId={playlist?.id}
               started
               from={playlist?.name}
+              after={entries.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
               onMenu={playlist ? undefined : (x, y) => setMoving({ video, x, y })}
               onOpenRow={openRow}
             />
@@ -658,7 +664,7 @@ function VideoView() {
         ...startedRows(0),
         ...foldersIn(REWATCH).flatMap((folder) => folderRows(folder, 0)),
         ...playlistsIn(REWATCH).flatMap((entry) => playlistRows(entry, 0)),
-        ...videosIn(REWATCH).reverse().map((video) => videoRow(video)),
+        ...videosIn(REWATCH).reverse().map((video, _, all) => videoRow(video, all)),
       ]
     : []
   // A folder or playlist's videos to start over: those watched or opened
@@ -684,13 +690,19 @@ function VideoView() {
   })
   // A flat list, so a video stays the same item whether it's in a group or not. Music has no
   // channel sub-folders (its videos only go in Music's own folders).
-  const videoRows = () => (grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video])).flatMap((group) => {
+  function videoRows() {
+    const groups = (grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video]))
+      .map((group) => ({ group, subs: grouping && list !== 'music' ? channelFolders(channelKey(group[0])) : [] }))
+    // The videos shown on their own row (not in a channel's): one list for ⏭
+    const loose = groups.flatMap(({ group, subs }) => (group.length === 1 && !subs.length ? group : []))
+    return groups.flatMap(({ group, subs }) => videoGroupRows(group, subs, loose))
+  }
+  function videoGroupRows(group: FeedVideo[], subs: VideoFolder[], loose: FeedVideo[]) {
     const key = channelKey(group[0])
-    const subs = grouping && list !== 'music' ? channelFolders(key) : []
-    if (group.length === 1 && !subs.length) return [videoRow(group[0])]
+    if (group.length === 1 && !subs.length) return [videoRow(group[0], loose)]
     const { followId, channel: name, channelIcon: icon, platform } = group[0]
     return channelRows(followId, key, { name, icon, platform }, group, subs, list !== 'music')
-  })
+  }
   const musicList = list === 'music' ? [...foldersIn(MUSIC).flatMap((folder) => folderRows(folder, 0)), ...videoRows()] : []
   const mainRows = list === 'rewatch' ? rewatchList : list === 'music' ? musicList : [
     ...startedRows(0, false),

@@ -107,7 +107,14 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             <SettingRow label={t('Mark as watched closes the video player')}>
               <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />
             </SettingRow>
-            <SettingRow label={t('Close the video player when a video ends')} title={t('In a playlist, after its last video')}>
+            <SettingRow label={t('Play the next video at the end')} title={t('The next one of its playlist, or of the list you opened it from')}>
+              <select value={player.autoNext} onChange={(e) => updatePlayer({ autoNext: e.target.value as PlayerSettings['autoNext'] })}>
+                <option value="off">{t('Never')}</option>
+                <option value="playlists">{t('In playlists')}</option>
+                <option value="always">{t('Always')}</option>
+              </select>
+            </SettingRow>
+            <SettingRow label={t('Close the video player when a video ends')} title={t('When no next video plays after it')}>
               <input type="checkbox" checked={player.endCloses} onChange={(e) => updatePlayer({ endCloses: e.target.checked })} />
             </SettingRow>
             <SettingRow

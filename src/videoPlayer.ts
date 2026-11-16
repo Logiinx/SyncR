@@ -22,6 +22,13 @@ interface PlayableVideo {
   music?: boolean // a music channel's: never marked as watched by itself (Music is cleared by hand)
 }
 
+// A video after the open one in the list it was opened from; playlistId: one of a playlist's
+// (Started mixes them in), which then plays in that playlist
+export interface UpNext {
+  video: PlayableVideo
+  playlistId?: string
+}
+
 // YouTube's names for its qualities, as its player wants them (video-watch.js)
 export const YOUTUBE_QUALITIES = [
   ['auto', ''], // i18n-ok
@@ -50,7 +57,8 @@ export const SUBTITLE_LANGUAGES = [
 export interface PlayerSettings {
   alwaysOnTop: boolean
   watchedCloses: boolean // Watched on the bar also closes the window
-  endCloses: boolean // the window closes when its video ends (in a playlist: after the last one)
+  endCloses: boolean // the window closes when its video ends and no next one plays
+  autoNext: 'off' | 'playlists' | 'always' // at its end, the next video plays: never, in a playlist, always
   watchedNearEnd: boolean // near its end, a video moves to Watched by itself
   quality: (typeof YOUTUBE_QUALITIES)[number][0]
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
@@ -60,6 +68,7 @@ export const loadPlayerSettings = (): PlayerSettings => ({
   alwaysOnTop: false,
   watchedCloses: false,
   endCloses: true,
+  autoNext: 'playlists',
   watchedNearEnd: true,
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
@@ -313,7 +322,10 @@ let queue = Promise.resolve()
 let stopWatching = () => {}
 let watchedNow = false // the open video's Watched mark
 let undone = false // taken out of Watched during this viewing: it stays out
-let playlist: string | null = null // the playlist it plays in: the next one follows at its end
+let playlist: string | null = null // the playlist it plays in: its next one comes from there
+// Outside a playlist: the videos after it in the list it was opened from, as they were then
+let upNext: UpNext[] = []
+let endSeen = false // its end was handled: more reports of it can come
 // Not from the page of a video that was just replaced
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
@@ -415,10 +427,12 @@ function listenToBar() {
 }
 
 // What goes with a video starting in the window
-function startWatching(video: PlayableVideo, playlistId: string | null) {
+function startWatching(video: PlayableVideo, playlistId: string | null, after: UpNext[]) {
   current = video
   closedAtEnd = null
+  endSeen = false
   playlist = playlistId
+  upNext = playlistId ? [] : after
   watchedNow = video.watched
   undone = false
   reportsFrom = Date.now() + REPORTS_AFTER
@@ -436,34 +450,58 @@ function followWatched(video: PlayableVideo) {
   })
 }
 
-// The open video reached its end: the next one of its playlist, in the same window. Once, as more
-// reports of its end can come. With none after it, the window closes (a setting, on by default).
+// The open video reached its end. Once, as more reports of its end can come. The next one plays in
+// the same window when the setting says so (by default only in a playlist); otherwise, or with none
+// after it, the window closes (a setting, on by default).
 function playNext() {
   const ended = current
-  const playlistId = playlist
-  if (!ended) return
-  if (!playlistId) return closeAtEnd(ended)
-  playlist = null
+  if (!ended || endSeen) return
+  endSeen = true
+  const { autoNext } = loadPlayerSettings()
+  if (autoNext === 'always' || (autoNext === 'playlists' && playlist)) goNext(ended, true)
+  else closeAtEnd(ended)
+}
+
+// The ⏭ button: the next video now (the one left keeps its spot, like closing the window)
+export function playNextNow() {
+  if (current) goNext(current, false)
+}
+
+// What plays after the open video: its playlist's next, or the first of the list's videos after it
+async function findNext(video: PlayableVideo): Promise<{ next: UpNext; after: UpNext[] } | null> {
+  if (playlist) {
+    const next = await nextInPlaylist(playlist, video.id)
+    return next ? { next: { video: next, playlistId: playlist }, after: [] } : null
+  }
+  const [next, ...after] = upNext
+  return next ? { next, after } : null
+}
+
+function goNext(from: PlayableVideo, atEnd: boolean) {
   queue = queue
     .then(async () => {
-      const next = await nextInPlaylist(playlistId, ended.id)
-      if (current !== ended) return // another video was opened in the meantime
-      if (!next) return closeAtEnd(ended)
+      const found = await findNext(from)
+      if (current !== from) return // another video was opened in the meantime
+      if (!found) {
+        if (atEnd) closeAtEnd(from)
+        return
+      }
+      const { next: { video: next, playlistId }, after } = found
       const way = rememberedWay(next)
       // Not the new page's reports for the old video. It becomes the current one once the window
       // has it: if this fails, the window still shows the old one.
       reportsFrom = Date.now() + REPORTS_AFTER
       await invoke<void>('video_player_next', {
         address: playerAddress(next, way),
-        video: next.id.slice('youtube-'.length), // playlists are YouTube's
+        video: next.id.slice('youtube-'.length), // only used in place, which is YouTube to YouTube
         start: startAt(next),
         subtitles: subtitlesOn(next),
-        inPlace: way === 'own' && currentWay === 'own',
+        inPlace: way === 'own' && currentWay === 'own' && next.platform === 'youtube' && from.platform === 'youtube',
         title: next.title,
         via: viaText(way),
         ...noteFor(next, way),
       })
-      startWatching(next, playlistId)
+      startWatching(next, playlistId ?? null, after)
       followWatched(next)
       void markOpened(next.id)
     })
@@ -477,8 +515,9 @@ function closeAtEnd(video: PlayableVideo) {
   void invoke('close_video_player')
 }
 
-// playlistId: it plays in that playlist. start: seconds from a pasted link's time.
-export function playVideo(video: PlayableVideo, playlistId?: string, start?: number) {
+// playlistId: it plays in that playlist. start: seconds from a pasted link's time. after: the
+// videos after it in the list it's opened from (⏭ and, with the setting, its end play them).
+export function playVideo(video: PlayableVideo, playlistId?: string, start?: number, after: UpNext[] = []) {
   linkStart = start ? { videoId: video.id, t: Math.floor(start) } : null
   if (!isTauri()) {
     openLink(video.url)
@@ -487,7 +526,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string, start?: num
   listenToBar()
   queue = queue
     .then(async () => {
-      startWatching(video, playlistId ?? null)
+      startWatching(video, playlistId ?? null, after)
       await invoke<void>('open_video_player', {
         address: playerAddress(video, currentWay),
         title: video.title,
