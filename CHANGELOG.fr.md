@@ -4,13 +4,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
-**Jeux**
-- **Nouveau :** Paramètres des jeux (⚙️ dans Mes jeux) : la durée HowLongToBeat sur les vignettes, ou aucune
-- **Amélioré :** recherche avec éditions : les doublons d’un même jeu Steam grisés
-- **Amélioré :** alertes de prix : nom exact du produit Steam surveillé
-- **Corrigé :** aucun prix pour les éditions sans page Steam à elles (Sekiro GOTY)
-- **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
-- **Corrigé :** prévision des soldes Steam qui dépassait du bord de sa bulle et de la fenêtre
+## [0.82.0] - 2026-11-16
 
 **Vidéo**
 - **Nouveau :** ⏭ dans le lecteur lit la vidéo suivante de sa liste (ou Maj+N)
@@ -26,6 +20,14 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** les boutons de saut et les flèches du lecteur sautent 5 s, pas 10
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo
 - **Petites corrections :** lignes qui s’agrandissaient à l’ouverture de l’onglet
+
+**Jeux**
+- **Nouveau :** Paramètres des jeux (⚙️ dans Mes jeux) : la durée HowLongToBeat sur les vignettes, ou aucune
+- **Amélioré :** recherche avec éditions : les doublons d’un même jeu Steam grisés
+- **Amélioré :** alertes de prix : nom exact du produit Steam surveillé
+- **Corrigé :** aucun prix pour les éditions sans page Steam à elles (Sekiro GOTY)
+- **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
+- **Corrigé :** prévision des soldes Steam qui dépassait du bord de sa bulle et de la fenêtre
 
 ## [0.81.2] - 2026-11-14
 

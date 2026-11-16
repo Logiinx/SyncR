@@ -4,13 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Games**
-- **New:** Games settings (⚙️ in My games): pick which HowLongToBeat time tiles show, or none
-- **Better:** game search with editions grays copies of the same Steam game
-- **Better:** price alerts name the exact Steam product they watch
-- **Fixed:** no prices for editions without their own Steam page (Sekiro GOTY)
-- **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
-- **Fixed:** Steam sale guess running past the edge of its box and window
+## [0.82.0] - 2026-11-16
 
 **Video**
 - **New:** ⏭ in the player plays the next video of its list (or Shift+N)
@@ -26,6 +20,14 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** the player’s jump buttons and arrow keys skip 5 s, not 10
 - **Fixed:** a link's start time ignored by the Add a video window
 - **Small fixes:** rows growing in on opening the tab
+
+**Games**
+- **New:** Games settings (⚙️ in My games): pick which HowLongToBeat time tiles show, or none
+- **Better:** game search with editions grays copies of the same Steam game
+- **Better:** price alerts name the exact Steam product they watch
+- **Fixed:** no prices for editions without their own Steam page (Sekiro GOTY)
+- **Fixed:** HowLongToBeat times missing for free updates like Witcher 3 Remastered
+- **Fixed:** Steam sale guess running past the edge of its box and window
 
 ## [0.81.2] - 2026-11-14
 
