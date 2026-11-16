@@ -15,6 +15,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** ⏭ dans le lecteur lit la vidéo suivante de sa liste (ou Maj+N)
 - **Nouveau :** la vidéo suivante s’affiche dans une carte 20 s avant la fin, un clic la lance
 - **Nouveau :** Paramètres vidéo : lire la vidéo suivante à la fin, aussi hors playlists
+- **Changé :** les boutons de saut et les flèches du lecteur sautent 5 s, pas 10
 - **Corrigé :** le moment de départ d’un lien ignoré par la fenêtre Ajouter une vidéo
 
 ## [0.81.2] - 2026-11-14

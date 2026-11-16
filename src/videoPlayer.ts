@@ -149,8 +149,8 @@ function controlsData() {
     labels: {
       play: t('Play video'),
       pause: t('Pause'),
-      back: t('Back {seconds} s', { seconds: 10 }),
-      forward: t('Forward {seconds} s', { seconds: 10 }),
+      back: t('Back {seconds} s', { seconds: 5 }),
+      forward: t('Forward {seconds} s', { seconds: 5 }),
       mute: t('Mute'),
       unmute: t('Unmute'),
       volume: t('Volume'),

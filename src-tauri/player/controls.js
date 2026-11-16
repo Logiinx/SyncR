@@ -23,7 +23,7 @@
 // }
 function playerControls(env, media) {
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
-  const JUMP = 10 // seconds
+  const JUMP = 5 // seconds (the buttons, arrows, J and L)
   const QUIET_AFTER = 1500 // ms without moving the mouse before the controls fade
   const ICONS = {
     play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
@@ -73,8 +73,8 @@ function playerControls(env, media) {
       <div id="bar">
         <button class="button" id="play"></button>
         <button class="button" id="next"></button>
-        <button class="button" id="back"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><b>10</b></button>
-        <button class="button" id="forward"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><b>10</b></button>
+        <button class="button" id="back"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><b>${JUMP}</b></button>
+        <button class="button" id="forward"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg><b>${JUMP}</b></button>
         <div id="volume">
           <button class="button" id="mute"></button>
           <input id="level" type="range" min="0" max="1" step="0.01">
@@ -109,7 +109,7 @@ function playerControls(env, media) {
   }
 
   let dragging = null // the moment being dragged to, 0 to 1
-  // Quick jumps in a row (the 10 s buttons, arrow and number keys) each jump at once. Only faster
+  // Quick jumps in a row (the 5 s buttons, arrow and number keys) each jump at once. Only faster
   // than a hand presses (a held key repeats about 30 times a second) they wait: one jump every
   // JUMP_GAP at most, to where the last one leads. Each jump drops what the player was downloading
   // (on Twitch the app still fetches it to the end), so a held key would only slow it down.
