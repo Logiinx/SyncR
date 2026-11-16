@@ -7,6 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Jeux**
 - **Amélioré :** recherche avec éditions : les doublons d’un même jeu Steam grisés
 - **Amélioré :** alertes de prix : nom exact du produit Steam surveillé
+- **Corrigé :** aucun prix pour les éditions sans page Steam à elles (Sekiro GOTY)
 - **Corrigé :** durées HowLongToBeat absentes des mises à jour gratuites comme Witcher 3 Remastered
 
 **Vidéo**

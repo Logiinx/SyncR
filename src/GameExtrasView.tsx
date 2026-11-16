@@ -45,13 +45,16 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
 // works in France (GG.deals), then the all-time lows. A price opens its Steam or GG.deals page.
 // Nothing shows for games not on Steam or when prices can't load.
 // When the prices are for another product than this game (IGDB linked the wrong Steam page):
-// "Prices for: …" (fix the link on igdb.com).
+// "Prices for: …" (fix the link on igdb.com). Borrowed from the main game: "Prices from …", dim.
 export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string }) {
   const prices = useGamePrices(igdbId)
   if (prices === undefined) return <Spinner />
   if (!prices) return null
   const { steam, deals } = prices
-  const check = !pricesFit(name, prices) && (
+  // Borrowed from the main game: said plainly, it's expected (no warning)
+  const check = prices.from ? (
+    <p className="price-from">{t('Prices from {name}', { name: prices.from })}</p>
+  ) : !pricesFit(name, prices) && (
     <p className="price-mismatch">
       <TriangleAlert size={13} /> {t('Prices for: {name}', { name: prices.name ?? '' })}
     </p>

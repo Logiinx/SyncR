@@ -122,6 +122,8 @@ const STEAM = 1 // IGDB external game source
 
 // A game's store links: its Steam page (findSteam)
 const STEAM_FIELDS = 'external_games.uid, external_games.external_game_source, external_games.category, websites.url' // i18n-ok
+// The same, inside another field ("version_parent.")
+export const steamFields = (inside = '') => STEAM_FIELDS.split(', ').map((field) => inside + field).join(', ')
 export interface IgdbExternal {
   id: number
   external_games?: { uid?: string; external_game_source?: number; category?: number }[]

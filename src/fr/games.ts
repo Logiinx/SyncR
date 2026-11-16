@@ -114,6 +114,7 @@ export const games = {
   Key: 'Clé',
   'No price': 'Pas de prix',
   'Prices for: {name}': 'Prix pour : {name}',
+  'Prices from {name}': 'Prix de {name}',
   'Lowest ever: {prices}': 'Le plus bas : {prices}',
 
   // HowLongToBeat (GameExtrasView.tsx)

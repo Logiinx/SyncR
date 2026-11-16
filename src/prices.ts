@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { t } from './i18n'
 import { db, isWatched, type Game } from './db'
-import { findSteam, igdb, igdbProxyFetch, isComplete, loadConnection, type IgdbExternal, type SteamRef } from './igdb'
+import { findSteam, igdb, igdbProxyFetch, isComplete, loadConnection, steamFields, type IgdbExternal, type SteamRef } from './igdb'
 
 export interface GamePrices {
   name?: string | null // the product the prices are for (GG.deals, else Steam's package name)
   steamUrl: string // the Steam store page (a game, or a package for some editions)
+  from?: string // borrowed from this main game (no Steam page of its own, steamRefs)
   steam: { final: number; initial: number; discount: number } | null // cents; null = free or not sold
   deals: {
     url: string // the game's GG.deals page
@@ -33,17 +34,31 @@ export function nameFits(gameName: string, productName: string) {
   return words(gameName).every((w) => product.has(w))
 }
 
-export async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef>> {
-  const result = new Map<number, SteamRef>()
+type MainGame = Omit<IgdbExternal, 'id'> & { name?: string }
+type IgdbWithMain = IgdbExternal & { game_type?: number; version_parent?: MainGame; parent_game?: MainGame }
+const UPDATE = 14 // IGDB game type
+
+// from: an edition or update without a Steam page of its own (IGDB often lists one Steam product
+// several times, e.g. Sekiro's GOTY Edition) borrows its main game's, whose name this is
+export async function steamRefs(igdbIds: number[]): Promise<Map<number, SteamRef & { from?: string }>> {
+  const result = new Map<number, SteamRef & { from?: string }>()
+  const main = (inside: string) => `${inside}name, ${steamFields(inside)}` // i18n-ok
   for (let i = 0; i < igdbIds.length; i += 500) {
     const ids = igdbIds.slice(i, i + 500)
-    const games = await igdb<IgdbExternal>(
+    const games = await igdb<IgdbWithMain>(
       'games',
-      `fields external_games.uid, external_games.external_game_source, external_games.category, websites.url; where id = (${ids.join(',')}); limit 500;`,
+      `fields ${steamFields()}, game_type, ${main('version_parent.')}, ${main('parent_game.')}; where id = (${ids.join(',')}); limit 500;`, // i18n-ok
     )
     for (const game of games) {
       const steam = findSteam(game)
-      if (steam) result.set(game.id, steam)
+      if (steam) {
+        result.set(game.id, steam)
+        continue
+      }
+      // Not DLCs: they're sold apart, their main game's prices would be wrong
+      const parent = game.version_parent ?? (game.game_type === UPDATE ? game.parent_game : undefined)
+      const borrowed = parent && findSteam({ id: 0, ...parent })
+      if (borrowed) result.set(game.id, { ...borrowed, from: parent.name })
     }
   }
   return result
@@ -88,7 +103,8 @@ export async function gamePrices(igdbIds: number[], options: LookupOptions = {})
   const found = await steamPrices([...steam.values()], options)
   for (const id of missing) {
     const ref = steam.get(id)
-    result.set(id, ref ? found.get(refKey(ref)) ?? null : null)
+    const prices = ref ? found.get(refKey(ref)) ?? null : null
+    result.set(id, prices && ref?.from ? { ...prices, from: ref.from } : prices)
     cache.set(id, { prices: result.get(id)!, time: Date.now() })
   }
   listeners.forEach((listener) => listener())
