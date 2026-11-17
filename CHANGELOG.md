@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-11-18
+
 **Games**
 - **New:** the next-sale guess shows the price the game would likely drop to
 - **New:** price alerts show the next sale’s guessed price, click it to use it

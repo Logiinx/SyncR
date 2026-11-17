@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-11-18
+
 **Jeux**
 - **Nouveau :** la prévision de promo affiche le prix auquel le jeu devrait tomber
 - **Nouveau :** les alertes de prix montrent le prix prévu aux prochains soldes, un clic pour l’utiliser
