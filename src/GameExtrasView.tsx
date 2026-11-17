@@ -1,6 +1,6 @@
-import { useContext, useEffect, useRef } from 'react'
+import { Fragment, useContext, useEffect, useRef } from 'react'
 import { t, textKey, type TextKey } from './i18n'
-import { ChevronRight, Flame, Hourglass, KeyRound, Play, TriangleAlert, Trophy } from 'lucide-react'
+import { ArrowRight, ChevronRight, Flame, Hourglass, KeyRound, Play, TriangleAlert, Trophy } from 'lucide-react'
 import type { Game } from './db'
 import { PlaytimesContext, playtimeText, usePlaytime } from './playtimes'
 import { useShortPlaytime } from './gamesOptions'
@@ -11,7 +11,7 @@ import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
 import { HoverTip } from './InfoTip'
-import { saleLines, useSaleGuess, type SalePiece } from './saleGuess'
+import { discountText, saleTable, useSaleGuess, type SaleGuess, type SalePiece } from './saleGuess'
 import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
 // The extra details in the game windows (gameExtras.ts): developer, publisher, game modes, and
@@ -271,36 +271,73 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
   )
 }
 
-// The next Steam sale guess (saleGuess.ts), in the game windows: dim lines under the lowest prices
-// with their values bright, like the HowLongToBeat times: Black Friday while it comes first
-// ("Black Friday deals (not a Steam sale): 26–30 Nov · in 12 days"), the big sale ("Steam Winter
-// Sale: 17 Dec – 4 Jan · in 33 days") and the game's own ("Last year: −40% · usually −40% · last
-// sale 12 Aug 2026 (−35%)"). Each piece stays on one line (wrapping only between pieces). Nothing
-// while it loads or when there's nothing to say. In the game window on a phone, the prices'
-// column beside the cover is too narrow: a full-width row under it instead (GameSaleRow, CSS keeps one).
+// The next Steam sale guess (saleGuess.ts) as a small table under the lowest prices in the game
+// windows: a row per sale (name · dates · "in 33 days"), then the game's own with the estimated
+// sale price. Nothing while it loads or when there's nothing to say. In the game window on a
+// phone, the prices' column beside the cover is too narrow: a full-width row under it instead
+// (GameSaleRow, CSS keeps one).
 function SaleGuessLines({ prices, place }: { prices: GamePrices; place: 'title' | 'row' }) {
   const guess = useSaleGuess(prices, true)
   if (!guess) return null
+  return <SaleTable guess={guess} prices={prices} className={`sale-guess in-${place}`} />
+}
+
+// Its table, also in the hover box on a list's Steam price
+function SaleTable({ guess, prices, className }: { guess: SaleGuess; prices: GamePrices; className: string }) {
+  const { sales, noBigSale, game } = saleTable(guess, prices.steam?.initial ?? null)
   return (
-    <div className={`sale-guess in-${place}`}>
-      {saleLines(guess).map((line, i) => (
-        <SaleLine key={i} line={line} />
+    <div className={`sale-table ${className}`}>
+      {sales.map((sale) => (
+        <Fragment key={sale.name}>
+          <span className="sale-name">
+            {sale.name}
+            {sale.notSteam && <sup>1</sup>}
+          </span>
+          <span className="sale-value">{sale.dates}</span>
+          <span className={sale.now ? 'sale-value' : undefined}>{sale.when}</span>
+        </Fragment>
       ))}
+      {noBigSale && <span className="sale-wide-all">{t('No big Steam sale announced yet')}</span>}
+      {game && (
+        <>
+          <span className="sale-rule" />
+          <span className="sale-name">{t('This game')}</span>
+          {game.never && <span className="sale-wide">{t('No Steam discount in the last 2 years')}</span>}
+          {game.estimate && (
+            <>
+              <span className="sale-estimate">
+                <span className="sale-value discount">{discountText(game.estimate.cut)}</span>
+                <ArrowRight className="sale-arrow" aria-hidden />
+                <span className="sale-value">≈ {formatEuros(game.estimate.price)}</span>
+              </span>
+              <span>{game.estimate.from === 'lastYear' ? t('last year') : t('usually')}</span>
+            </>
+          )}
+          {game.facts.length > 0 && <SaleFacts facts={game.facts} wide={game.estimate ? 'under' : 'beside'} />}
+        </>
+      )}
+      {sales.some((sale) => sale.notSteam) && (
+        <span className="sale-wide-all sale-footnote">
+          <sup>1</sup> {t('not a Steam sale')}
+        </span>
+      )}
     </div>
   )
 }
 
-function SaleLine({ line }: { line: SalePiece[] }) {
+// The game's other facts ("usually −40% · last sale 12 Aug 2026 (−35%)"), each kept on one line
+// (wrapping only between them, the " ·" ending one): beside "This game", or under the estimate
+function SaleFacts({ facts, wide }: { facts: SalePiece[]; wide: 'beside' | 'under' }) {
   return (
-    <p className="sale-parts">
-      {line.map((piece, i) => (
+    <span className={`sale-parts sale-wide${wide === 'under' ? ' sale-under' : ''}`}>
+      {facts.map((fact, i) => (
         <span key={i}>
-          {piece.map((segment, j) =>
+          {fact.map((segment, j) =>
             segment.value ? <span key={j} className={segment.discount ? 'sale-value discount' : 'sale-value'}>{segment.text}</span> : segment.text,
           )}
         </span>
       ))}
-    </p>
+    </span>
   )
 }
 
@@ -316,13 +353,7 @@ function SaleGuessTip({ prices }: { prices: GamePrices }) {
   const guess = useSaleGuess(prices, true)
   if (guess === undefined) return <span className="sale-guess-dim">{t('Looking for Steam sales…')}</span>
   if (guess === null) return <span className="sale-guess-dim">{t('No sale information for this game')}</span>
-  return (
-    <span className="sale-guess-tip">
-      {saleLines(guess).map((line, i) => (
-        <SaleLine key={i} line={line} />
-      ))}
-    </span>
-  )
+  return <SaleTable guess={guess} prices={prices} className="sale-guess-tip" />
 }
 
 // "Watch trailer", the game windows' main (blue) button: opens the trailer view (PC,

@@ -7548,26 +7548,84 @@ button.history-row.selected {
   font-size: 1em; /* not shrunk again by .gd-title p */
 }
 
-/* The next Steam sale guess (GameExtrasView SaleGuessLines): dim lines under the lowest prices;
-   in the game window on a phone, a full-width row under the cover instead */
+/* The next Steam sale guess (GameExtrasView SaleTable): a small dim table under the lowest prices
+   (in the game window on a phone, a full-width row under the cover instead) and in the hover box
+   on a list's Steam price. A row per sale (name · dates · "in 33 days"), then the game's own. */
+.sale-table,
+.game-prices > .sale-table {
+  display: grid; /* a table, not side by side like a price row */
+  /* the last column takes what's left, so the game's long facts line (spanning the last two)
+     wraps there instead of squeezing the names; never narrower than its own words ("in 33 days"):
+     when it's tight (phone), the names wrap instead */
+  grid-template-columns: auto max-content minmax(max-content, 1fr);
+  column-gap: 12px;
+  row-gap: 2px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .sale-guess,
 .game-prices > .sale-guess {
-  display: grid; /* one line under the other, not side by side like a price row */
-  gap: 2px;
-  margin-top: 2px; /* like the lowest prices above */
-  color: var(--text-dim);
+  margin-top: 4px;
 }
 
-.dialog .sale-guess p {
-  margin: 0;
-  font-size: 1em; /* not shrunk again by .gd-title p */
+/* Dates, days and the estimate never break; a long name (French) wraps in its column, and the
+   wide cells wrap between their parts */
+.sale-table > span {
+  white-space: nowrap;
 }
 
-/* Its pieces ("Steam Winter Sale: 17 Dec – 4 Jan · in 33 days"): each on one line, wrapping only
-   between them; the dot ends a piece, so a wrapped line never starts with one. A piece longer than
-   a whole line (French Black Friday in the hover box or a narrow game window) wraps inside instead
-   of spilling past the edge: as a flex item it still moves down whole when it fits there. Its
-   values (dates, days) never break. */
+.sale-table > .sale-name,
+.sale-table > .sale-wide,
+.sale-table > .sale-wide-all {
+  white-space: normal;
+}
+
+/* Cells across columns don't widen them (contain: their text wraps in the room the rows leave) */
+.sale-wide {
+  grid-column: 2 / -1;
+  contain: inline-size;
+}
+
+.sale-wide-all {
+  grid-column: 1 / -1;
+  contain: inline-size;
+}
+
+/* A thin line between the sales and the game's own */
+.sale-rule {
+  grid-column: 1 / -1;
+  margin: 2px 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+/* "−40% → ≈ 14,70 €": the arrow a dim Lucide icon, the size of the text */
+.sale-estimate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sale-arrow {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.sale-table sup {
+  font-size: 0.7em;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+.sale-footnote {
+  margin-top: 2px;
+  font-size: 0.85em;
+}
+
+/* The game's facts ("usually −40% · last sale 12 Aug 2026 (−35%)"): each on one line, wrapping
+   only between them; the dot ends a fact, so a wrapped line never starts with one. Their values
+   never break. */
 .sale-parts {
   display: flex;
   flex-wrap: wrap;
@@ -7599,8 +7657,8 @@ button.history-row.selected {
   }
 }
 
-/* Its box on a Steam price in the lists (SaleGuessTip): the sale, then the game's own line, dim */
-/* The values (dates, days, discounts): bright among the dim words, like the HowLongToBeat times */
+/* The values (dates, the estimate, "on now"): bright among the dim words, like the HowLongToBeat
+   times */
 .sale-value {
   color: var(--text);
 }
@@ -7610,19 +7668,7 @@ button.history-row.selected {
   color: var(--text-green);
 }
 
-/* The same lines in the hover box on a list's Steam price (SaleGuessTip) */
-.sale-guess-tip {
-  display: grid;
-  gap: 4px;
-  color: var(--text-dim);
-}
-
-.info-tip-box .sale-parts {
-  margin: 0;
-}
-
-/* A bit wider than other hover boxes: its pieces are long ("Black Friday deals (not a Steam
-   sale): 26–30 Nov"), so at 320 px most of them took a line of their own */
+/* A bit wider than other hover boxes, for the table's three columns */
 .info-tip-box:has(.sale-guess-tip) {
   max-width: min(380px, 100vw / var(--zoom, 1) - 16px);
 }

@@ -4,11 +4,13 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **New:** the next-sale guess shows the price the game would likely drop to
+- **Better:** next Steam sales shown as a small table, easier to read at a glance
+- **Better:** discounts in plain green text, on prices and in sale guesses
+
 **Video** (PC only)
 - **New:** Twitch player: a spinner on ⚙️ while a new quality is on its way
-
-**Games**
-- **Better:** discounts in plain green text, on prices and in sale guesses
 
 **App**
 - **Changed:** a sleeping mouse shows “Zz” by the clock, not a yellow dot (PC only)
