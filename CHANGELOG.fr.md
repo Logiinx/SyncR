@@ -12,7 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Paramètres vidéo : grandes ou petites cartes des nouvelles vidéos en pop-up
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
-- **Amélioré :** nom de la chaîne en gras clair sur les cartes au survol, plus facile à repérer
+- **Amélioré :** cartes au survol : chaîne et âge (« Il y a 3 jours ») en gras clair
 - **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 

@@ -40,6 +40,23 @@ export function lastWatchedText(time: number) {
   return plural(Math.floor(days / 365), 'Last watched {n} year ago', 'Last watched {n} years ago')
 }
 
+// How old something is, starting a line: "Just now", "25 min ago", "3 h ago", then in calendar
+// days "Yesterday", "3 days ago", "2 weeks ago", "5 months ago", "2 years ago". Null when it's
+// still to come (a scheduled video).
+export function ageText(time: number) {
+  const minutes = Math.floor((Date.now() - time) / 60_000)
+  if (minutes < 0) return null
+  if (minutes < 1) return capitalize(t('just now'))
+  if (minutes < 60) return capitalize(t('{n} min ago', { n: minutes }))
+  if (minutes < 24 * 60) return capitalize(t('{n} h ago', { n: Math.floor(minutes / 60) }))
+  const days = Math.max(1, Math.round((new Date().setHours(0, 0, 0, 0) - new Date(time).setHours(0, 0, 0, 0)) / 86_400_000))
+  if (days === 1) return t('Yesterday')
+  if (days < 14) return plural(days, '{n} day ago', '{n} days ago')
+  if (days < 60) return plural(Math.floor(days / 7), '{n} week ago', '{n} weeks ago')
+  if (days < 730) return plural(Math.floor(days / 30.4), '{n} month ago', '{n} months ago')
+  return plural(Math.floor(days / 365), '{n} year ago', '{n} years ago')
+}
+
 // "Today", "Tomorrow" or "Yesterday", else null. Counts calendar days (setDate, not "minus 24
 // hours": days with a clock change are 23 or 25 hours long).
 export function nearDay(time: number): string | null {

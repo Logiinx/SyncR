@@ -2862,9 +2862,9 @@ button {
   font-size: 13px;
 }
 
-/* A video's channel or a post's writer in a card's dim lines (link cards and the Video tab's
-   hover cards): bright and semi-bold, the most useful thing to spot there */
-.card-author {
+/* The most useful things to spot in a card's dim lines: a video's channel or a post's writer
+   (link cards and the Video tab's hover cards), a video's age ("3 days ago", hover cards) */
+.card-highlight {
   color: var(--text);
   font-weight: 600;
 }
