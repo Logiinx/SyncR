@@ -505,27 +505,41 @@ fn draw(look: &Look) -> Option<Canvas> {
   let (highlight, highlight_alpha) = if look.light { ([0u8, 0, 0], 0.06) } else { ([255u8, 255, 255], 0.08) };
   let inset = size(4) as f32;
   let corner = size(4) as f32;
+  // No answer: a yellow dot on the mouse's bottom right corner, at full strength, with a thin gap
+  // cut around it like Windows' badges
+  let dot = theme::caution(look.light);
+  let (dot_x, dot_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
+  let (dot_radius, dot_gap) = (size(3) as f32, size(3) as f32 * 0.5);
   let columns = canvas.width;
   for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {
     let (x, y) = ((index % columns) as i32, (index / columns) as i32);
-    let cover = pixel[2] as f32 / 255.0 * strength;
+    let from_dot = ((x as f32 + 0.5 - dot_x).powi(2) + (y as f32 + 0.5 - dot_y).powi(2)).sqrt();
+    let (dot_cover, gap_cover) = if look.dim {
+      ((dot_radius + 0.5 - from_dot).clamp(0.0, 1.0), (dot_radius + dot_gap + 0.5 - from_dot).clamp(0.0, 1.0))
+    } else {
+      (0.0, 0.0)
+    };
+    let cover = pixel[2] as f32 / 255.0 * strength * (1.0 - gap_cover);
     let color = if x < text_left || (look.charging && x >= bolt_left) { plain } else { number };
     let background = if look.hover {
       highlight_alpha * rounded_box(x as f32 + 0.5, y as f32 + 0.5, 0.0, inset, width as f32, height as f32 - inset, corner)
     } else {
       0.0
     };
-    let alpha = cover + background * (1.0 - cover);
+    // Text over the highlight, then the dot over both
+    let under = cover + background * (1.0 - cover);
+    let alpha = dot_cover + under * (1.0 - dot_cover);
     if alpha < 1.0 / 255.0 {
       pixel.copy_from_slice(&[0, 0, 0, 1]);
       continue;
     }
-    let channel = |front: u8, back: u8| {
-      ((front as f32 * cover + back as f32 * background * (1.0 - cover)).round()).clamp(0.0, 255.0) as u8
+    let channel = |part: usize| {
+      let below = color[part] as f32 * cover + highlight[part] as f32 * background * (1.0 - cover);
+      (dot[part] as f32 * dot_cover + below * (1.0 - dot_cover)).round().clamp(0.0, 255.0) as u8
     };
-    pixel[0] = channel(color[2], highlight[2]);
-    pixel[1] = channel(color[1], highlight[1]);
-    pixel[2] = channel(color[0], highlight[0]);
+    pixel[0] = channel(2);
+    pixel[1] = channel(1);
+    pixel[2] = channel(0);
     pixel[3] = (alpha * 255.0).round().clamp(1.0, 255.0) as u8;
   }
   Some(canvas)

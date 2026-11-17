@@ -171,46 +171,63 @@ mod hid {
   use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
   use windows_sys::Win32::System::Threading::{CreateEventW, ResetEvent, WaitForSingleObject};
 
-  // Teevolution Terra Pro, 8K receiver (CompX firmware). Its other collections don't understand
-  // the questions, so the right one is picked by its usage page and usage.
-  // More devices later: a list of these.
-  const DEVICE_ID: &str = "vid_3554&pid_f523";
+  // Teevolution Terra Pro (CompX firmware). On its charging cable the mouse is a device of its own
+  // (the receiver then says it isn't connected), answering the same questions: asked first, so a
+  // charging mouse shows its bolt. Their other collections don't understand the questions, so the
+  // right one is picked by its usage page and usage. More devices later: more IDs.
+  const DEVICE_IDS: [&str; 2] = [
+    "vid_3554&pid_f522", // the mouse on its USB cable
+    "vid_3554&pid_f523", // the 8K receiver
+  ];
   const USAGE_PAGE: u16 = 0xFF02;
   const USAGE: u16 = 0x0002;
   const REPORT: usize = 17; // [08][question][14 × 00][checksum]
   const REPORT_ID: u8 = 0x08;
-  const ONLINE: u8 = 0x03; // reply byte 6: 1 when the mouse is connected to the receiver
+  const ONLINE: u8 = 0x03; // reply byte 6: 1 when the mouse is connected (to the receiver)
   const BATTERY: u8 = 0x04; // reply byte 6: percent, 7: charging, 8–9: millivolts
   const REPLY_WAIT: Duration = Duration::from_millis(500);
 
-  // None: no receiver, the mouse sleeps or is off, or no valid answer
+  // None: neither cable nor receiver, the mouse sleeps or is off, or no valid answer
   pub fn read_battery() -> Option<Reading> {
-    for path in device_paths() {
-      if !String::from_utf16_lossy(&path).to_lowercase().contains(DEVICE_ID) {
-        continue;
+    let paths: Vec<(Vec<u16>, String)> = device_paths()
+      .into_iter()
+      .map(|path| {
+        let name = String::from_utf16_lossy(&path).to_lowercase();
+        (path, name)
+      })
+      .collect();
+    for id in DEVICE_IDS {
+      for (path, _) in paths.iter().filter(|(_, name)| name.contains(id)) {
+        let Some(device) = Device::open(path) else { continue };
+        let Some((input, output)) = device.report_lengths() else { continue };
+        if let Some(reading) = ask_battery(&device, input, output) {
+          return Some(reading);
+        }
+        break; // the right collection didn't answer: the next device
       }
-      let Some(device) = Device::open(&path) else { continue };
-      let Some((input, output)) = device.report_lengths() else { continue };
-      // Asleep or off: no battery question. No answer to this one: ask anyway.
-      if device.ask(ONLINE, input, output).is_some_and(|reply| reply[6] == 0) {
-        return None;
-      }
-      let reply = device.ask(BATTERY, input, output)?;
-      if reply[6] > 100 {
-        return None;
-      }
-      let at = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|since| since.as_millis() as u64)
-        .unwrap_or(0);
-      return Some(Reading {
-        percent: reply[6],
-        charging: reply[7] != 0,
-        millivolts: u16::from_be_bytes([reply[8], reply[9]]),
-        at,
-      });
     }
     None
+  }
+
+  fn ask_battery(device: &Device, input: usize, output: usize) -> Option<Reading> {
+    // Asleep or off: no battery question. No answer to this one: ask anyway.
+    if device.ask(ONLINE, input, output).is_some_and(|reply| reply[6] == 0) {
+      return None;
+    }
+    let reply = device.ask(BATTERY, input, output)?;
+    if reply[6] > 100 {
+      return None;
+    }
+    let at = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .map(|since| since.as_millis() as u64)
+      .unwrap_or(0);
+    Some(Reading {
+      percent: reply[6],
+      charging: reply[7] != 0,
+      millivolts: u16::from_be_bytes([reply[8], reply[9]]),
+      at,
+    })
   }
 
   // 0x55 minus the sum of the first 16 bytes, kept to one byte
@@ -514,6 +531,11 @@ mod theme {
       (false, true) => [255, 92, 92],
       (true, true) => [196, 43, 28],
     }
+  }
+
+  // Windows' own "caution" yellow (no answer from the mouse): bright on a dark taskbar, amber on a light one
+  pub fn caution(light: bool) -> [u8; 3] {
+    if light { [157, 93, 0] } else { [252, 225, 0] }
   }
 
   pub fn light_taskbar() -> bool {
