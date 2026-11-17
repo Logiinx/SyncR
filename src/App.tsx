@@ -26,6 +26,7 @@ import { startVideoChecks, useVideoEnabled, useVideoFeed, VIDEO_TAB } from './vi
 import VideoView from './VideoView'
 import { startLinkShortcut } from './videoPaste'
 import { isTauri } from '@tauri-apps/api/core'
+import { listenMouseBatteryOpen } from './mouseBattery'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
@@ -112,6 +113,17 @@ function App() {
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number; tab?: boolean } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // A click on the mouse battery's taskbar strip opens Settings straight on its window (a new key
+  // starts it there again when Settings was already open)
+  const [settingsStart, setSettingsStart] = useState<{ page?: 'mouse-battery'; key: number }>({ key: 0 })
+  useEffect(
+    () =>
+      listenMouseBatteryOpen(() => {
+        setSettingsStart((start) => ({ page: 'mouse-battery', key: start.key + 1 }))
+        setSettingsOpen(true)
+      }),
+    [],
+  )
 
   // `ids` lets us check the result matches the current tabs (it can lag one render behind)
   const tabsResult = useLiveQuery(
@@ -359,7 +371,16 @@ function App() {
       <ReminderAlerts />
       <ImageViewer />
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
-      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDialog
+          key={settingsStart.key}
+          page={settingsStart.page}
+          onClose={() => {
+            setSettingsOpen(false)
+            setSettingsStart((start) => ({ key: start.key }))
+          }}
+        />
+      )}
       <WhatsNew />
     </div>
   )

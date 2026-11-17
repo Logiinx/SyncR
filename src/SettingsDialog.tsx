@@ -84,7 +84,8 @@ import { saveLanguageChoice, useLanguageChoice } from './language'
 // setting one row: name on the left, its control on the right. The Accounts card shows how
 // each connection is doing; "Manage accounts…" opens the details in the same window, with
 // ← Back. Changes are saved right away. Closed with Escape or a click outside it.
-function SettingsDialog({ onClose }: { onClose: () => void }) {
+// page: opens straight on that window, and closing it closes Settings (a click on the taskbar strip)
+function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-battery' }) {
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
@@ -147,7 +148,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
-  const [showBattery, setShowBattery] = useState(false)
+  const [showBattery, setShowBattery] = useState(page === 'mouse-battery')
   const mouseBattery = useMouseBattery()
   const [quitWarning, setQuitWarning] = useState(false) // Modules: "✕ quits SyncR" (modulesCard)
   const [rulesSummary, setRulesSummary] = useState('')
@@ -213,7 +214,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
-  if (showBattery) return <MouseBatterySettings onClose={() => setShowBattery(false)} />
+  if (showBattery) return <MouseBatterySettings onClose={() => (page ? onClose() : setShowBattery(false))} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 

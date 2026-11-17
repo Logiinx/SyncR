@@ -1,8 +1,11 @@
 // Every command of the app needs a permission, per window (capabilities/): without this list any
 // page of the app's own addresses can call all of them. A new command goes here and in the
 // capability of each window that calls it.
+// The Windows app manifest is our own (windows-app-manifest.xml: Tauri's + supported Windows versions).
 fn main() {
-  tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
+  println!("cargo:rerun-if-changed=windows-app-manifest.xml");
+  let windows = tauri_build::WindowsAttributes::new().app_manifest(include_str!("windows-app-manifest.xml"));
+  tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows).app_manifest(tauri_build::AppManifest::new().commands(&[
     "started_hidden",
     "set_tray_texts",
     "google_sign_in",

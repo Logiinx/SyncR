@@ -48,8 +48,22 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
           <SettingRow
             label={
               <>
+                {t('In the taskbar')}
+                <InfoTip label={t('About the taskbar display')}>
+                  {t('The mouse and its percent, left of the icons next to the clock. A click opens this window.')}
+                </InfoTip>
+              </>
+            }
+          >
+            <input type="checkbox" checked={settings.taskbar} onChange={(e) => saveMouseBattery({ taskbar: e.target.checked })} />
+          </SettingRow>
+          <SettingRow
+            label={
+              <>
                 {t('Tray icon')}
-                <InfoTip label={t('About the tray icon')}>{t('Its own icon next to the clock, with the number in it.')}</InfoTip>
+                <InfoTip label={t('About the tray icon')}>
+                  {t('Its own icon next to the clock, with the number in it. Also shown when the taskbar is on a side of the screen.')}
+                </InfoTip>
               </>
             }
           >

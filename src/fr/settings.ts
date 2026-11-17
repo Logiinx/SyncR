@@ -188,7 +188,12 @@ export const settings = {
   '{time}, asleep or out of reach': '{time}, en veille ou hors de portée',
   'Tray icon': 'Icône dans la zone de notification',
   'About the tray icon': 'À propos de l’icône',
-  'Its own icon next to the clock, with the number in it.': 'Une icône à part près de l’horloge, avec le nombre dedans.',
+  'Its own icon next to the clock, with the number in it. Also shown when the taskbar is on a side of the screen.':
+    'Une icône à part près de l’horloge, avec le nombre dedans. Affichée aussi quand la barre des tâches est sur un côté de l’écran.',
+  'In the taskbar': 'Dans la barre des tâches',
+  'About the taskbar display': 'À propos de l’affichage dans la barre des tâches',
+  'The mouse and its percent, left of the icons next to the clock. A click opens this window.':
+    'La souris et son pourcentage, à gauche des icônes près de l’horloge. Un clic ouvre cette fenêtre.',
   'Low battery': 'Batterie faible',
   'About low battery': 'À propos de la batterie faible',
   'At or below this level, the number turns red.': 'À ce niveau ou en dessous, le nombre passe en rouge.',
