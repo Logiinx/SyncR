@@ -30,6 +30,7 @@ fn main() {
     "start_link_shortcut",
     "mouse_battery_config",
     "mouse_battery_status",
+    "mouse_battery_tip",
   ])))
   .expect("failed to build");
 }

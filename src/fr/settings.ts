@@ -183,6 +183,8 @@ export const settings = {
   '{percent}%': '{percent} %',
   '{percent}%, charging': '{percent} %, en charge',
   'Last answer': 'Dernière réponse',
+  'Last answer: {time}': 'Dernière réponse : {time}',
+  'Asleep or out of reach': 'En veille ou hors de portée',
   '{time}, asleep or out of reach': '{time}, en veille ou hors de portée',
   'Low battery': 'Batterie faible',
   'About low battery': 'À propos de la batterie faible',

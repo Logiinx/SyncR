@@ -42,10 +42,11 @@ pub struct Status {
   answering: bool,       // the last check got an answer
 }
 
-// The settings while on (None: off), the last check, and the check thread's channel (dropping it
-// ends the thread)
+// The settings while on (None: off), the last check, the strip's tooltip (made by the page, in
+// its language) and the check thread's channel (a message = check now; dropping it ends the thread)
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static STATUS: Mutex<Status> = Mutex::new(Status { last: None, answering: false });
+static TIP: Mutex<String> = Mutex::new(String::new());
 static WORKER: Mutex<Option<Sender<()>>> = Mutex::new(None);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -60,13 +61,32 @@ fn status() -> Status {
   lock(&STATUS).clone()
 }
 
-// What the strip shows: the percent (or a dash before any answer), and whether it's at or below
-// the low level
-fn shown() -> (String, bool) {
-  let (last, low) = (status().last, config().map_or(0, |config| config.low));
-  match last {
-    Some(reading) => (format!("{}%", reading.percent), reading.percent <= low),
-    None => ("–".to_string(), false),
+// What the strip shows: the percent (or a dash before any answer), whether it's at or below the
+// low level, charging, and no answer to the last check (dimmed)
+struct Shown {
+  text: String,
+  low: bool,
+  charging: bool,
+  dim: bool,
+}
+
+fn shown() -> Shown {
+  let (status, low) = (status(), config().map_or(0, |config| config.low));
+  let dim = !status.answering;
+  match status.last {
+    Some(reading) => Shown { text: format!("{}%", reading.percent), low: reading.percent <= low, charging: reading.charging, dim },
+    None => Shown { text: "–".to_string(), low: false, charging: false, dim },
+  }
+}
+
+fn tip() -> String {
+  lock(&TIP).clone()
+}
+
+// The receiver was plugged in or the PC woke up (strip.rs): ask now
+fn check_now() {
+  if let Some(sender) = lock(&WORKER).as_ref() {
+    let _ = sender.send(());
   }
 }
 
@@ -97,6 +117,13 @@ pub fn mouse_battery_status() -> Status {
   status()
 }
 
+// The strip's tooltip, sent by the page after each check and when the language changes
+#[tauri::command]
+pub fn mouse_battery_tip(text: String) {
+  *lock(&TIP) = text;
+  strip::refresh();
+}
+
 fn run(app: AppHandle, receiver: Receiver<()>) {
   loop {
     let reading = hid::read_battery();
@@ -110,7 +137,7 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
     };
     let _ = app.emit("mouse-battery", now);
     strip::refresh();
-    // Nothing is ever sent: the channel only closes when the module is turned off
+    // A message: check now (plug-in, wake-up); closed: the module was turned off
     match receiver.recv_timeout(CHECK_EVERY) {
       Ok(()) | Err(RecvTimeoutError::Timeout) => {}
       Err(RecvTimeoutError::Disconnected) => return,

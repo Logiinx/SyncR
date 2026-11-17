@@ -1,14 +1,17 @@
 // The mouse battery inside the taskbar (main screen): a see-through child window of the taskbar,
-// just left of the notification area, with an outlined mouse (Windows' icon font) and the percent
-// in the clock's font. A click opens the Mouse battery window in SyncR.
+// just left of the notification area, with an outlined mouse (Windows' icon font), the percent in
+// the clock's font and a bolt while charging; half strength when the last check got no answer.
+// Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the
+// page). A click opens the Mouse battery window in SyncR.
 // Its own thread: once inside the taskbar it shares Windows' input with it, so it must never wait
 // on anything slow (the receiver is asked by the check thread). Placed again every second: the
 // notification area changes width when icons come and go, and an Explorer restart takes the strip
 // along. Taskbar on a side of the screen or not found: no strip.
+// Its hidden window also hears devices being plugged in and the PC waking up: a check then.
 
 use super::gdi::Canvas;
-use super::{config, lock, shown, theme, wide};
-use std::cell::RefCell;
+use super::{check_now, config, lock, shown, theme, tip, wide};
+use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -16,20 +19,30 @@ use tauri::{AppHandle, Emitter};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, DT_LEFT, FW_NORMAL};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::UI::Controls::{
+  InitCommonControlsEx, SetWindowTheme, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, TOOLTIPS_CLASSW, TTF_IDISHWND, TTF_SUBCLASS,
+  TTM_ADDTOOLW, TTM_SETMAXTIPWIDTH, TTM_UPDATETIPTEXTW, TTS_ALWAYSTIP, TTS_NOPREFIX, TTTOOLINFOW, WM_MOUSELEAVE,
+};
 use windows_sys::Win32::UI::HiDpi::GetDpiForWindow;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetMessageW, GetParent,
-  GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
-  TranslateMessage, UpdateLayeredWindow, HWND_TOP, IDC_ARROW, MA_NOACTIVATE, MSG, SWP_NOACTIVATE, SWP_SHOWWINDOW,
-  ULW_ALPHA, WM_APP, WM_CLOSE, WM_DESTROY, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW,
-  WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_POPUP,
+  GetWindowRect, IsWindow, KillTimer, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SendMessageW, SetTimer,
+  SetWindowPos, TranslateMessage, UpdateLayeredWindow, HWND_TOP, IDC_ARROW, MA_NOACTIVATE, MSG, PBT_APMRESUMEAUTOMATIC,
+  SWP_NOACTIVATE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_DESTROY, WM_DEVICECHANGE, WM_LBUTTONUP,
+  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD,
+  WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
 const PLACE_TIMER: usize = 1;
+const CHECK_TIMER: usize = 2;
+const PLUGGED_WAIT: u32 = 2000; // Windows sends many signals while it sets a device up
+const WOKEN_WAIT: u32 = 5000; // USB needs a moment after the PC wakes up
 const CONTROLLER_CLASS: &str = "SyncRMouseBatteryControl";
 const STRIP_CLASS: &str = "SyncRMouseBatteryStrip";
 const MOUSE_GLYPH: &str = "\u{E962}"; // "Mouse" in Windows' icon fonts
+const BOLT_GLYPH: &str = "\u{E945}"; // "LightningBolt"
 const ICON_FONTS: &[&str] = &["Segoe Fluent Icons", "Segoe MDL2 Assets"]; // Windows 11, Windows 10
 const TEXT_FONTS: &[&str] = &["Segoe UI Variable Text", "Segoe UI"]; // the clock's, Windows 11 then 10
 
@@ -39,7 +52,7 @@ static CONTROLLER: Mutex<isize> = Mutex::new(0);
 static STARTS: AtomicU64 = AtomicU64::new(0);
 static APP: Mutex<Option<AppHandle>> = Mutex::new(None);
 
-// The module turned on (step 3 also hangs plug-in and wake-up signals on this thread)
+// The module turned on
 pub fn start(app: AppHandle) {
   *lock(&APP) = Some(app);
   let start = STARTS.fetch_add(1, Ordering::SeqCst) + 1;
@@ -54,7 +67,7 @@ pub fn stop() {
   }
 }
 
-// New settings or a new check: draw again
+// New settings, a new check, a new tooltip, the mouse over it: draw again
 pub fn refresh() {
   let controller = *lock(&CONTROLLER);
   if controller != 0 {
@@ -69,6 +82,9 @@ struct Look {
   height: i32,
   text: String,
   low: bool,
+  charging: bool,
+  dim: bool,
+  hover: bool,
   light: bool,
 }
 
@@ -80,22 +96,39 @@ struct Drawn {
 
 // This thread's own state (only the strip thread touches it)
 struct Local {
+  controller: HWND,
   strip: HWND,
+  tooltip: HWND,
+  tip: String,             // the tooltip's text now
+  tip_light: Option<bool>, // the tooltip's look now (light or dark, like the taskbar)
   drawn: Option<Drawn>,
 }
 
 thread_local! {
-  static LOCAL: RefCell<Local> = const { RefCell::new(Local { strip: null_mut(), drawn: None }) };
+  static LOCAL: RefCell<Local> = const {
+    RefCell::new(Local {
+      controller: null_mut(),
+      strip: null_mut(),
+      tooltip: null_mut(),
+      tip: String::new(),
+      tip_light: None,
+      drawn: None,
+    })
+  };
+  // Apart from LOCAL: the strip's own messages change it, also while LOCAL is busy
+  static HOVER: Cell<bool> = const { Cell::new(false) };
 }
 
 fn run(start: u64) {
   unsafe {
     let instance = GetModuleHandleW(null());
+    let controls = INITCOMMONCONTROLSEX { dwSize: std::mem::size_of::<INITCOMMONCONTROLSEX>() as u32, dwICC: ICC_WIN95_CLASSES };
+    InitCommonControlsEx(&controls); // the tooltip
     let controller_class = wide(CONTROLLER_CLASS);
     let strip_class = wide(STRIP_CLASS);
     register(instance, &controller_class, Some(controller_proc));
     register(instance, &strip_class, Some(strip_proc));
-    // Hidden and never shown: a top-level window, so it hears Windows' settings changes
+    // Hidden and never shown: a top-level window, so it hears Windows' settings, device and power changes
     let controller = CreateWindowExW(
       WS_EX_TOOLWINDOW,
       controller_class.as_ptr(),
@@ -122,6 +155,11 @@ fn run(start: u64) {
       }
       *registered = controller as isize;
     }
+    LOCAL.with(|local| {
+      if let Ok(mut local) = local.try_borrow_mut() {
+        local.controller = controller;
+      }
+    });
     SetTimer(controller, PLACE_TIMER, 1000, None);
     place();
     let mut message: MSG = std::mem::zeroed();
@@ -153,9 +191,26 @@ unsafe fn register(instance: windows_sys::Win32::Foundation::HMODULE, class: &[u
 
 unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
   match message {
+    WM_TIMER if wparam == CHECK_TIMER => {
+      unsafe { KillTimer(window, CHECK_TIMER) };
+      check_now();
+      0
+    }
     WM_TIMER | WM_REFRESH => {
       place();
       0
+    }
+    // A device was plugged in or out (maybe the receiver): check once things settle. A new signal
+    // restarts the wait, so a burst of them gives one check.
+    WM_DEVICECHANGE => {
+      unsafe { SetTimer(window, CHECK_TIMER, PLUGGED_WAIT, None) };
+      1
+    }
+    WM_POWERBROADCAST => {
+      if wparam as u32 == PBT_APMRESUMEAUTOMATIC {
+        unsafe { SetTimer(window, CHECK_TIMER, WOKEN_WAIT, None) };
+      }
+      1
     }
     // Light/dark may have changed. It arrives while Windows waits, so redrawn a moment later.
     WM_SETTINGCHANGE => {
@@ -191,6 +246,26 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
       }
       0
     }
+    // The mouse came over it: highlight, and hear when it leaves
+    WM_MOUSEMOVE => {
+      if !HOVER.get() {
+        HOVER.set(true);
+        let mut track = TRACKMOUSEEVENT {
+          cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+          dwFlags: TME_LEAVE,
+          hwndTrack: window,
+          dwHoverTime: 0,
+        };
+        unsafe { TrackMouseEvent(&mut track) };
+        refresh();
+      }
+      0
+    }
+    WM_MOUSELEAVE => {
+      HOVER.set(false);
+      refresh();
+      0
+    }
     _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
   }
 }
@@ -207,13 +282,18 @@ fn place() {
 }
 
 fn hide(local: &mut Local) {
+  let tooltip = std::mem::replace(&mut local.tooltip, null_mut());
   let strip = std::mem::replace(&mut local.strip, null_mut());
   local.drawn = None;
-  if !strip.is_null() {
-    unsafe {
-      if IsWindow(strip) != 0 {
-        DestroyWindow(strip);
-      }
+  local.tip = String::new();
+  local.tip_light = None;
+  HOVER.set(false);
+  unsafe {
+    if !tooltip.is_null() && IsWindow(tooltip) != 0 {
+      DestroyWindow(tooltip);
+    }
+    if !strip.is_null() && IsWindow(strip) != 0 {
+      DestroyWindow(strip);
     }
   }
 }
@@ -253,8 +333,17 @@ fn taskbar_spot() -> Option<Spot> {
 
 // false: it couldn't be drawn or put in the taskbar
 fn show(local: &mut Local, spot: &Spot) -> bool {
-  let (text, low) = shown();
-  let look = Look { dpi: spot.dpi, height: spot.height, text, low, light: theme::light_taskbar() };
+  let now = shown();
+  let look = Look {
+    dpi: spot.dpi,
+    height: spot.height,
+    text: now.text,
+    low: now.low,
+    charging: now.charging,
+    dim: now.dim,
+    hover: HOVER.get(),
+    light: theme::light_taskbar(),
+  };
   unsafe {
     // Gone with an Explorer restart, or inside an old taskbar: a new one
     if !local.strip.is_null() && (IsWindow(local.strip) == 0 || GetParent(local.strip) != spot.taskbar) {
@@ -293,6 +382,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
         return false;
       }
       local.strip = strip;
+      local.tooltip = add_tooltip(local.controller, strip);
     }
     if let Some(picture) = &picture {
       let size = SIZE { cx: width, cy: spot.height };
@@ -311,9 +401,71 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     if moved || picture.is_some() {
       SetWindowPos(local.strip, HWND_TOP, x, 0, width, spot.height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
+    update_tooltip(local, look.light);
     local.drawn = Some(Drawn { look, x, width });
   }
   true
+}
+
+// Windows' own tooltip for the strip (it follows the mouse over the strip by itself). Owned by the
+// hidden window, which is ours, not by the taskbar.
+fn add_tooltip(owner: HWND, strip: HWND) -> HWND {
+  unsafe {
+    let tooltip = CreateWindowExW(
+      WS_EX_TOPMOST,
+      TOOLTIPS_CLASSW,
+      null(),
+      WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+      0,
+      0,
+      0,
+      0,
+      owner,
+      null_mut(),
+      GetModuleHandleW(null()),
+      null(),
+    );
+    if tooltip.is_null() {
+      return null_mut();
+    }
+    let mut text = wide("");
+    let info = tool(strip, &mut text);
+    SendMessageW(tooltip, TTM_ADDTOOLW, 0, &info as *const TTTOOLINFOW as LPARAM);
+    SendMessageW(tooltip, TTM_SETMAXTIPWIDTH, 0, 600); // lets "\n" start new lines
+    tooltip
+  }
+}
+
+fn tool(strip: HWND, text: &mut [u16]) -> TTTOOLINFOW {
+  TTTOOLINFOW {
+    cbSize: std::mem::size_of::<TTTOOLINFOW>() as u32,
+    uFlags: TTF_IDISHWND | TTF_SUBCLASS,
+    hwnd: strip,
+    uId: strip as usize,
+    lpszText: text.as_mut_ptr(),
+    ..Default::default()
+  }
+}
+
+// New words from the page, or the taskbar turned light/dark
+fn update_tooltip(local: &mut Local, light: bool) {
+  if local.tooltip.is_null() {
+    return;
+  }
+  let text = tip();
+  unsafe {
+    if text != local.tip {
+      let mut words = wide(&text);
+      let info = tool(local.strip, &mut words);
+      SendMessageW(local.tooltip, TTM_UPDATETIPTEXTW, 0, &info as *const TTTOOLINFOW as LPARAM);
+      local.tip = text;
+    }
+    if local.tip_light != Some(light) {
+      let theme = wide(if light { "Explorer" } else { "DarkMode_Explorer" });
+      SetWindowTheme(local.tooltip, theme.as_ptr(), null());
+      local.tip_light = Some(light);
+    }
+  }
 }
 
 // Sizes in the taskbar's pixels: `px` at 100% scale
@@ -321,34 +473,69 @@ fn scaled(px: i32, dpi: u32) -> i32 {
   (px * dpi as i32 + 48) / 96
 }
 
-// [space][mouse][gap][93%][space], as tall as the taskbar. Premultiplied colors (as Windows wants
-// them); the empty parts are nearly invisible but not fully, so the whole strip takes clicks.
+// [space][mouse][gap][93%][bolt while charging][space], as tall as the taskbar. Premultiplied
+// colors (as Windows wants them); the empty parts are nearly invisible but not fully, so the
+// whole strip takes clicks and hovering.
 fn draw(look: &Look) -> Option<Canvas> {
-  let (pad, gap, icon_px, text_px) = (scaled(6, look.dpi), scaled(4, look.dpi), scaled(16, look.dpi), scaled(12, look.dpi));
+  let size = |px: i32| scaled(px, look.dpi);
+  let (pad, gap, icon_px, text_px, bolt_px, bolt_gap) = (size(6), size(4), size(16), size(12), size(12), size(2));
   let ruler = Canvas::new(1, 1)?;
   let icon_width = ruler.with_font(ICON_FONTS, icon_px, FW_NORMAL, |canvas| canvas.measure(MOUSE_GLYPH).0)?;
   let text_width = ruler.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.measure(&look.text).0)?;
+  let bolt_width = if look.charging {
+    ruler.with_font(ICON_FONTS, bolt_px, FW_NORMAL, |canvas| canvas.measure(BOLT_GLYPH).0)?
+  } else {
+    0
+  };
   drop(ruler);
-  let width = pad + icon_width + gap + text_width + pad;
+  let text_left = pad + icon_width + gap;
+  let bolt_left = text_left + text_width + bolt_gap;
+  let width = if look.charging { bolt_left + bolt_width + pad } else { text_left + text_width + pad };
   let height = look.height;
   let mut canvas = Canvas::new(width.max(1) as usize, height.max(1) as usize)?;
   canvas.with_font(ICON_FONTS, icon_px, FW_NORMAL, |canvas| canvas.text(MOUSE_GLYPH, pad, 0, pad + icon_width, height, DT_LEFT))?;
-  let text_left = pad + icon_width + gap;
   canvas.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.text(&look.text, text_left, 0, width, height, DT_LEFT))?;
-  // Only the number turns red when low, the mouse keeps the taskbar's color
-  let (icon_color, text_color) = (theme::paint(look.light, false), theme::paint(look.light, look.low));
+  if look.charging {
+    canvas.with_font(ICON_FONTS, bolt_px, FW_NORMAL, |canvas| canvas.text(BOLT_GLYPH, bolt_left, 0, width, height, DT_LEFT))?;
+  }
+  // Only the number turns red when low; the mouse and the bolt keep the taskbar's color
+  let (plain, number) = (theme::paint(look.light, false), theme::paint(look.light, look.low));
+  let strength = if look.dim { 0.5 } else { 1.0 };
+  // The hover highlight: like the taskbar's own, a little inside its height, rounded
+  let (highlight, highlight_alpha) = if look.light { ([0u8, 0, 0], 0.06) } else { ([255u8, 255, 255], 0.08) };
+  let inset = size(4) as f32;
+  let corner = size(4) as f32;
   let columns = canvas.width;
   for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {
-    let cover = pixel[2] as u32;
-    if cover == 0 {
+    let (x, y) = ((index % columns) as i32, (index / columns) as i32);
+    let cover = pixel[2] as f32 / 255.0 * strength;
+    let color = if x < text_left || (look.charging && x >= bolt_left) { plain } else { number };
+    let background = if look.hover {
+      highlight_alpha * rounded_box(x as f32 + 0.5, y as f32 + 0.5, 0.0, inset, width as f32, height as f32 - inset, corner)
+    } else {
+      0.0
+    };
+    let alpha = cover + background * (1.0 - cover);
+    if alpha < 1.0 / 255.0 {
       pixel.copy_from_slice(&[0, 0, 0, 1]);
       continue;
     }
-    let [red, green, blue] = if ((index % columns) as i32) < text_left { icon_color } else { text_color };
-    pixel[0] = (blue as u32 * cover / 255) as u8;
-    pixel[1] = (green as u32 * cover / 255) as u8;
-    pixel[2] = (red as u32 * cover / 255) as u8;
-    pixel[3] = cover as u8;
+    let channel = |front: u8, back: u8| {
+      ((front as f32 * cover + back as f32 * background * (1.0 - cover)).round()).clamp(0.0, 255.0) as u8
+    };
+    pixel[0] = channel(color[2], highlight[2]);
+    pixel[1] = channel(color[1], highlight[1]);
+    pixel[2] = channel(color[0], highlight[0]);
+    pixel[3] = (alpha * 255.0).round().clamp(1.0, 255.0) as u8;
   }
   Some(canvas)
+}
+
+// How much of a pixel (its center) is inside a box with rounded corners: 0 to 1, soft at the edge
+fn rounded_box(x: f32, y: f32, left: f32, top: f32, right: f32, bottom: f32, corner: f32) -> f32 {
+  let (center_x, center_y) = ((left + right) / 2.0, (top + bottom) / 2.0);
+  let (half_x, half_y) = ((right - left) / 2.0 - corner, (bottom - top) / 2.0 - corner);
+  let (qx, qy) = ((x - center_x).abs() - half_x, (y - center_y).abs() - half_y);
+  let outside = (qx.max(0.0).powi(2) + qy.max(0.0).powi(2)).sqrt() + qx.max(qy).min(0.0) - corner;
+  (0.5 - outside).clamp(0.0, 1.0)
 }

@@ -2,6 +2,8 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { read, write } from './localState'
+import { subscribe as onLanguageChange, t } from './i18n'
+import { clockTime } from './dates'
 
 // Mouse battery module (PC, Settings → Modules): its settings, kept on this device, never synced.
 // The checks and the taskbar strip are in Rust (mouse_battery.rs, strip.rs): this sends them the
@@ -48,6 +50,28 @@ function send() {
 export function startMouseBattery() {
   if (!isTauri()) return
   if (current.on) send()
+  // The strip's tooltip, in the app's language: after each check and when the language changes
+  let latest: MouseBatteryStatus | null = null
+  const sendTip = () => {
+    if (latest) invoke('mouse_battery_tip', { text: tipText(latest) }).catch(console.error)
+  }
+  void listen<MouseBatteryStatus>('mouse-battery', (event) => {
+    latest = event.payload
+    sendTip()
+  })
+  onLanguageChange(sendTip)
+}
+
+// "Teevolution Terra Pro / 93 %, charging / Last answer: 14:32", one per line (Windows' tooltip)
+export function tipText({ last, answering }: MouseBatteryStatus) {
+  const lines = [t('Teevolution Terra Pro')]
+  if (last) {
+    const percent = last.percent
+    lines.push(last.charging ? t('{percent}%, charging', { percent }) : t('{percent}%', { percent }))
+    lines.push(t('Last answer: {time}', { time: clockTime(last.at) }))
+  } else lines.push(t('No answer yet'))
+  if (last && !answering) lines.push(t('Asleep or out of reach'))
+  return lines.join('\n')
 }
 
 // A click on the taskbar strip (strip.rs): App opens Settings on the Mouse battery window

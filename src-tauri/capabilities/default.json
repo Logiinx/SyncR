@@ -28,6 +28,7 @@
     "allow-set-tray-texts",
     "allow-mouse-battery-config",
     "allow-mouse-battery-status",
+    "allow-mouse-battery-tip",
     "allow-google-sign-in",
     "allow-protect-secret",
     "allow-unprotect-secret",

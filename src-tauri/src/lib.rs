@@ -334,7 +334,8 @@ pub fn run() {
       video_extensions::video_extensions_done,
       link_shortcut::start_link_shortcut,
       mouse_battery::mouse_battery_config,
-      mouse_battery::mouse_battery_status
+      mouse_battery::mouse_battery_status,
+      mouse_battery::mouse_battery_tip
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
