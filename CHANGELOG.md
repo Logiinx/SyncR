@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Fixed:** Twitch player: top quality gone after switching to a lower one
+- **Small fixes:** Twitch qualities say 60 fps, not 59
+
 ## [0.84.0] - 2026-11-17
 
 **Video** (PC only)

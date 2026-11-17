@@ -30,7 +30,8 @@ const stored = (name, fallback) => {
 let hls = null
 // 'top' (the highest, until one is chosen), 'auto', or a quality's name. Remembered for all videos.
 let chosen = localStorage.getItem('player.quality') || 'top'
-const levelName = (level) => `${level.height}p${level.frameRate >= 50 ? Math.round(level.frameRate) : ''}`
+// Twitch's list gives the measured rate (59.4 for a 60 fps stream): named like Twitch's site does
+const levelName = (level) => `${level.height}p${level.frameRate >= 50 ? (level.frameRate >= 58 ? 60 : Math.round(level.frameRate)) : ''}`
 
 function pictureLevels() {
   if (!hls) return []
@@ -326,18 +327,17 @@ class ListLoader extends Hls.DefaultConfig.loader {
   }
 }
 
-// The original's real size, once its picture shows. The first picture can come before hls.js
-// says which quality it is.
-function measureSource() {
-  if (!hls || !video.videoHeight) return
-  if (hls.currentLevel < 0) return hls.once(Hls.Events.LEVEL_SWITCHED, measureSource)
-  const level = hls.levels[hls.currentLevel]
-  if (!level?.url[0]?.includes('/chunked/') || level.height === video.videoHeight) return
-  level.height = video.videoHeight
-  level.width = video.videoWidth
+// The original's real size, from its first piece's picture setup (each piece knows its quality).
+// Not from the picture on screen: right after a switch it can already show the next quality while
+// hls.js still names the original, which then got that quality's size.
+function measureSource(_, parsed) {
+  const level = hls?.levels[parsed.frag.level]
+  const size = parsed.tracks.video?.metadata
+  if (!level?.url[0]?.includes('/chunked/') || !size?.height || level.height === size.height) return
+  level.height = size.height
+  level.width = size.width
   drawSettings()
 }
-video.addEventListener('resize', measureSource)
 
 // ---- Muted parts with their sound ---------------------------------------------------------------
 // For a while after a stream, Twitch still has a muted piece's uncut file: "N.ts" in older videos
@@ -534,6 +534,7 @@ async function load() {
     drawSettings()
     drawMuted()
   })
+  hls.on(Hls.Events.FRAG_PARSING_INIT_SEGMENT, measureSource)
   hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => checkUncut(loaded.details.fragments))
   hls.on(Hls.Events.BUFFER_CODECS, (_, tracks) => { playingCodec = tracks.video?.codec || playingCodec })
   hls.on(Hls.Events.ERROR, (_, error) => {

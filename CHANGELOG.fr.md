@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Corrigé :** lecteur Twitch : meilleure qualité disparue après être passé à une plus basse
+- **Petites corrections :** qualités Twitch en 60 i/s, et non 59
+
 ## [0.84.0] - 2026-11-17
 
 **Vidéo** (PC uniquement)
