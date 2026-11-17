@@ -8,6 +8,7 @@ import { read, write } from './localState'
 import { markOpened, setWatched, watchWatched } from './video'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
+import { queueStarted } from './videoQueue'
 
 // The video player window (desktop only; video_window.rs, open_video_player). In a browser, videos just
 // open in a new tab.
@@ -398,6 +399,7 @@ function listenToBar() {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length })
+    if (!current.music && resumePosition(current.id)) queueStarted(current.id)
     if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
     if (current.duration > 0 && !current.music && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)

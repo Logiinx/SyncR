@@ -8,7 +8,8 @@ import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
 import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
 import { checkPlaylists, playlistFailures, playOrder } from './videoPlaylists'
-import { forgetPositions, savePosition } from './videoPositions'
+import { forgetPositions, resumePosition, savePosition } from './videoPositions'
+import { leaveQueue, queueStarted } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
@@ -473,6 +474,7 @@ async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
   const marks = await db.videoMarks.bulkGet(ids)
   const now = Date.now()
   await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, ...(change.watched && { watchedAt: now }), updatedAt: now })))
+  if (change.watched || change.cleared) leaveQueue(videoIds) // watched or removed: done with
   changed()
 }
 
@@ -603,7 +605,10 @@ export async function addVideo(link: string, start = 0) {
   const { followId, video, already } = await addOrFindVideo(link)
   if (already === 'playlist') throw new Error(t('This video is already in a playlist'))
   if (already) throw new Error(already === 'watched' ? t('This video is already in Watched') : t('This video is already in To watch'))
-  if (start > 0 && start < video.duration) savePosition(video.id, { t: Math.floor(start), length: video.duration })
+  if (start > 0 && start < video.duration) {
+    savePosition(video.id, { t: Math.floor(start), length: video.duration })
+    if (resumePosition(video.id)) queueStarted(video.id)
+  }
   return followId
 }
 
