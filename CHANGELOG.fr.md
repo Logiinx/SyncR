@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** lecteur Twitch : un rond qui tourne sur ⚙️ tant qu’une nouvelle qualité arrive
+
 ## [0.84.1] - 2026-11-17
 
 **Vidéo** (PC uniquement)

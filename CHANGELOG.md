@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** Twitch player: a spinner on ⚙️ while a new quality is on its way
+
 ## [0.84.1] - 2026-11-17
 
 **Video** (PC only)

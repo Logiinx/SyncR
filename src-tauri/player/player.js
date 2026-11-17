@@ -63,6 +63,20 @@ function applyQuality() {
   if (level) hls.nextLevel = level.index
 }
 
+// The quality picked that isn't fully playing yet (shown on the ⚙️ button until it is), or null.
+// Not for Auto: its own changes come and go by themselves.
+let switchingTo = null
+// Asked again at each piece downloaded or thrown away, rather than waited for: a piece of the
+// old quality that was about to play can be thrown away instead. Done once it plays and the
+// downloaded piece after it (if any) is in it too, or once hls.js gave up on it (a failed quality).
+function stillSwitching() {
+  if (switchingTo === null || !hls) return false
+  const after = hls.nextLevel // the downloaded piece after the one playing, -1 if none
+  const arrived = hls.currentLevel === switchingTo && (after < 0 || after === switchingTo)
+  if (arrived || hls.loadLevel !== switchingTo) switchingTo = null
+  return switchingTo !== null
+}
+
 // ---- What the shared controls act on --------------------------------------------------------
 // Volume, remembered in the player's own storage
 video.volume = Math.min(Math.max(stored('player.volume', 1), 0), 1)
@@ -115,10 +129,12 @@ const media = {
     if (mutedSound) extra.push(mutedSound === 'uncut' ? labels.infoUncut : labels.infoMuted)
     return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
   },
+  switchingTo: () => (stillSwitching() ? levelName(hls.levels[switchingTo]) : ''),
   setQuality(value) {
     chosen = value
     localStorage.setItem('player.quality', chosen)
     applyQuality()
+    switchingTo = chosen === 'auto' || hls.currentLevel < 0 ? null : wantedLevel()?.index ?? null
   },
 }
 
@@ -530,6 +546,11 @@ async function load() {
     drawSettings()
     if (!controls.userPaused()) video.play().catch(() => loading(false)) // refused: the big play button shows
   })
+  switchingTo = null
+  // A switch picked (switchingTo) ends with a piece downloaded or thrown away, or one starting to play
+  const switchChecked = () => { if (switchingTo !== null) drawSettings() }
+  hls.on(Hls.Events.FRAG_BUFFERED, switchChecked)
+  hls.on(Hls.Events.BUFFER_FLUSHED, switchChecked)
   hls.on(Hls.Events.LEVEL_SWITCHED, () => {
     drawSettings()
     drawMuted()

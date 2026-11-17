@@ -83,7 +83,7 @@ function playerControls(env, media) {
         <button class="button" id="time"><span id="time-now"></span><span id="time-beside"></span></button>
         <div id="spacer"></div>
         <button class="button" id="subtitles" hidden></button>
-        <button class="button" id="settings"><svg viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
+        <button class="button" id="settings"><svg id="settings-wait" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><svg id="settings-gear" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span id="settings-text"></span></button>
         <button class="button" id="chat-button"></button>
         <button class="button" id="full"></button>
       </div>
@@ -550,7 +550,17 @@ function playerControls(env, media) {
   function drawSettings() {
     const levels = media.qualities()
     const speed = media.rate() === 1 ? '' : speedText(media.rate())
-    $('settings-text').textContent = [levels.length ? media.qualityText() : '', speed].filter(Boolean).join(' · ')
+    // A quality picked but not playing yet (Twitch: at the next piece): spinner, "1440p60 → 720p60"
+    const next = levels.length ? media.switchingTo?.() || '' : ''
+    const text = $('settings-text')
+    text.textContent = levels.length ? media.qualityText() : ''
+    if (next && next !== text.textContent) {
+      const name = document.createElement('em')
+      name.textContent = next
+      text.append(' → ', name)
+    }
+    if (speed) text.append(text.textContent ? ` · ${speed}` : speed)
+    $('settings').classList.toggle('switching', !!next)
     $('settings').title = labels.settings
     // Not while typing in it or dragging a slider: drawing it again would take them away
     if (!$('menu').hidden && !focused()?.matches('input')) drawMenu()
@@ -1116,6 +1126,9 @@ const CONTROLS_CSS = `
   #settings { flex: 0 1 auto; width: auto; min-width: 40px; gap: 6px; padding: 0 8px; box-sizing: border-box; }
   #settings span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   #settings span:empty { display: none; }
+  #settings em { font-style: normal; color: var(--text-dim, #9a9a9a); }
+  #settings-wait, #settings.switching #settings-gear { display: none; }
+  #settings.switching #settings-wait { display: block; flex-shrink: 0; animation: turn 0.8s linear infinite; }
   /* A small window at a large app scale: the least needed go first */
   #bottom { container-type: inline-size; }
   @container (max-width: 490px) { #settings span { display: none; } }
