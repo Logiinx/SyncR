@@ -1,0 +1,100 @@
+{
+  "madeWith": "v0.82.0",
+  "dropbox": {
+    "passphrase": "test passphrase, not a real one",
+    "cryptoJson": "{\"version\":1,\"salt\":\"SaZS2kTzCO7q9dFzUaNE7A==\",\"iterations\":600000,\"check\":\"28DFi4a+8Sj5vXEkhpzMYGpcJKw3rCbjZjy7/5tu8+OY3A5eDiq0nePu2ISlSIqPSZk=\"}",
+    "note": {
+      "plain": {
+        "id": "sample-note",
+        "title": "Ma note — été 🎉",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Hello, 世界"
+                }
+              ]
+            }
+          ]
+        },
+        "text": "Hello, 世界",
+        "updatedAt": 1763337600000
+      },
+      "locked": "l2HFzwSU0ZWtiYUgcnrXCwUE98K0CXIUVogB4E5JQawQMTKwGGGUONNi6kD+DiZXyE1SpYCratuvktqk54yOAuns5sqz4uRF/I6klqjvDyrYrxLbkoOi9JYAGcDNaXjyGvFniiH75Pfu9cQVn8ogvsDd+oPFKcVSPBM3cn6z72rvwff5pQX9ggjPLknpo/OMAHlyUPSflSxKgIurEMfUMpPmdxPXGU844WDfORpsrYU60J0DtBIv6N4SHE5MfPI1ezBl1EYoZ3DuXpSnkjkafYu7P/gE5IHwFyyQSizFB+N1N5q1b8p2P2PbWmP2+j8="
+    },
+    "image": {
+      "plain": "ACVKb5S53gMoTXKXvOEGK1B1mr/kCS5TeJ3C5wwxVnugxeoPNFl+o8jtEjdcgabL8BU6X4SpzvMYPWKHrNH2Gw==",
+      "locked": "wga/AbBjM+v/LpF6tNl1/KBuo6k2eyadTPT7oaWcoOaM+FqnzL87CH21ryDgkeNQzOPFdH+4kFt2lZtapH3RLgn/TY3BharHTfrCVGoADo9BSKibEJgIsFClWRo="
+    }
+  },
+  "pc": {
+    "key": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+    "bytes": {
+      "plain": "ACVKb5S53gMoTXKXvOEGK1B1mr/kCS5TeJ3C5wwxVnugxeoPNFl+o8jtEjdcgabL8BU6X4SpzvMYPWKHrNH2Gw==",
+      "locked": "CSQDg5eYjET1ofXt8WdExFudCzX5oSJEeUsOgsXlkZC5MkEawYtYY/qgWDq5zulWxihoWFSpt15+GKki7HrpWCKPxkDPu35kVA+ZGUlFK69sF06xM1zhk3zSD5k="
+    },
+    "text": {
+      "plain": "Carte mail — ✉️",
+      "locked": "Voj+6SgyUhQSSHthF9PMpzqdP2NZUkCppiy5JK/WxlfO6r4qxpXrcKSUSJtxl7S7Qw=="
+    },
+    "linkAddress": {
+      "plain": "https://example.com/page?a=1",
+      "scrambled": "1c4f797a756770549b2ad83247b612b4c40e05a383b12b352fef61467f879ac2"
+    },
+    "noteRow": {
+      "plain": {
+        "id": "sample-note",
+        "title": "Ma note — été 🎉",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Hello, 世界"
+                }
+              ]
+            }
+          ]
+        },
+        "text": "Hello, 世界",
+        "updatedAt": 1763337600000
+      },
+      "stored": {
+        "id": "sample-note",
+        "updatedAt": 1763337600000,
+        "_sealed": {
+          "bytes": "9VerNTT9K2qdktGJUWVrAIRnNBiV+bp9ypIQK6SZOhpt8nxfpKTV7D6K4LuKc9AMztZECOKYYMI680Qg5hqzYuQpH/kMt/SF1GzWtxnFqnBQo3C+qW+SPH4Pw/QF3vOQxJOl/2EKkrXwPW2IsJifmhx0WsyfC9WnX28OE7R35hzEy6uYl0FcEudvA8RNnsmqD0WqH8ylAqsjEb+gfAwx8LewciTxkudNK6BJXtSanV+CJMD/dKkJ2NW7K3e+w8kiuYk="
+        }
+      }
+    },
+    "imageRow": {
+      "plain": {
+        "id": "sample-image",
+        "noteId": "sample-note",
+        "type": "image/png",
+        "bytes": "ACVKb5S53gMoTXKXvOEGK1B1mr/kCS5TeJ3C5wwxVnugxeoPNFl+o8jtEjdcgabL8BU6X4SpzvMYPWKHrNH2Gw=="
+      },
+      "stored": {
+        "id": "sample-image",
+        "_sealed": {
+          "bytes": "TamcMcp4ST0KYCGd1gZqWWqR9x1yqGF5cOsWFUKNPMYbxb77nUr3mgkxsAaKiEdhf2hOlA=="
+        },
+        "_blobs": {
+          "blob": {
+            "type": "image/png",
+            "data": {
+              "bytes": "CZF6D4iZPT99oec6lsv22keo4HtdRwZHqCiTwNZMb+MeSLAWFb1jtDCXj2h9D87/lY3t5ombRkIw7yrSv/IxNg+fpqByc5XAj1eCeePsR69hwwZ2fMc03fQ46DE="
+            }
+          }
+        }
+      }
+    }
+  }
+}
