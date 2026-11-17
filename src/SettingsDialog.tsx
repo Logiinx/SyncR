@@ -348,7 +348,13 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
           ))}
         </select>
       </SettingRow>
-      <SettingRow label={t('Cards for')}>
+      <SettingRow
+        label={
+          <>
+            {t('Cards for')} <Synced />
+          </>
+        }
+      >
         <select
           value={links.allSites ? 'all' : 'sites'}
           disabled={links.style === 'off' && links.hover === 'off'}
@@ -362,7 +368,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
         className="settings-row-sites"
         label={
           <>
-            {t('Sites')}
+            {t('Sites')} <Synced />
             <InfoTip label={t('About sites')}>{t('Links to these sites (and their subdomains) get a card. Separate them with commas.')}</InfoTip>
           </>
         }
@@ -1139,6 +1145,8 @@ function GmailSettings() {
 function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: boolean; onChange: (sites: string[]) => void }) {
   const [text, setText] = useState(sites.join(', '))
   const save = () => {
+    // Untouched: nothing saved (the list syncs: an old copy here mustn't replace a newer one)
+    if (text === sites.join(', ')) return
     const parsed = parseSites(text)
     const chosen = parsed.length ? parsed : DEFAULT_SITES
     setText(chosen.join(', '))

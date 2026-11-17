@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 
 **Notes**
 - **New:** link cards show the site's logo: YouTube, Reddit, X, Google Drive…
+- **New:** link card sites and plain links are the same on PC and phone
 
 **Games**
 - **New:** Games settings: prices on the right of covers, one line shorter

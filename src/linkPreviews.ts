@@ -5,7 +5,8 @@ import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
 import { liveQuery } from 'dexie'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
-import { db } from './db'
+import { changed, db } from './db'
+import { deviceName } from './device'
 import { previewKey } from './sealing'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { openLink, simplify } from './links'
@@ -84,6 +85,73 @@ export function loadLinkPreviewSettings(): LinkPreviewSettings {
 
 export function saveLinkPreviewSettings(change: Partial<LinkPreviewSettings>) {
   settings = { ...loadLinkPreviewSettings(), ...change }
+  write(SETTINGS_KEY, settings)
+  redrawAll()
+  if (SYNCED_FIELDS.some((field) => field in change)) void saveSyncedSites(pickSynced(settings), Date.now())
+}
+
+// ---------- Synced part: which links get a card ----------
+// The sites, "Cards for" and the "Show as plain link" choices follow you (Settings' "synced" tag);
+// the looks stay per device (a phone and a PC differ). localStorage above keeps a copy of all of
+// it, so cards show at once on start-up; the database's row (synced like other settings) wins.
+// Before this was synced, each device had its own list: the first time a device sees the other
+// one's, it joins both (nothing lost; "Cards for": the PC's), then the newest change wins.
+const SYNCED_SETTING = 'linkcards' // lower case: Dropbox lists file names in lower case
+const SYNCED_FIELDS = ['sites', 'allSites', 'plain'] as const
+type SyncedSites = Pick<LinkPreviewSettings, (typeof SYNCED_FIELDS)[number]> & { device?: string }
+// Set once this device's own list was joined with the other's (or it had nothing of its own)
+const JOINED_KEY = 'syncr.linkSitesJoined'
+
+const pickSynced = ({ sites, allSites, plain }: LinkPreviewSettings): SyncedSites => ({ sites, allSites, plain })
+const strings = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((item, i) => item === b[i])
+
+// What was saved, with the defaults for anything missing or unknown (an older or newer version)
+function validSynced(value: unknown): SyncedSites {
+  const saved = (value ?? {}) as Partial<SyncedSites>
+  const sites = strings(saved.sites)
+  return { sites: sites.length ? sites : DEFAULT_SITES, allSites: saved.allSites === true, plain: strings(saved.plain), device: saved.device }
+}
+
+async function saveSyncedSites(value: SyncedSites, updatedAt: number) {
+  const row = { value: { ...value, device: deviceName() }, updatedAt }
+  if (!(await db.settings.update(SYNCED_SETTING, row))) await db.settings.put({ name: SYNCED_SETTING, ...row })
+  changed()
+}
+
+// Once the database is open: follows the synced row, also when sync brings it from another device
+export function followLinkSites() {
+  // Nothing of its own to join: an untouched list
+  const start = loadLinkPreviewSettings()
+  if (!read(JOINED_KEY, false) && sameList(start.sites, DEFAULT_SITES) && !start.allSites && !start.plain.length) write(JOINED_KEY, true)
+  liveQuery(() => db.settings.get(SYNCED_SETTING)).subscribe((row) => {
+    if (!read(JOINED_KEY, false)) {
+      // Not joined yet: no row = this device's list starts it, as old as can be (any real change
+      // wins over it); a row from the other device = both lists joined, sent back as the newest
+      const own = pickSynced(loadLinkPreviewSettings()) // as it is now, with any change since start-up
+      if (!row) return void saveSyncedSites(own, 1)
+      const theirs = validSynced(row.value)
+      if (theirs.device === deviceName()) return showSynced(theirs)
+      const joined = {
+        sites: [...new Set([...theirs.sites, ...own.sites])],
+        allSites: deviceName() === 'PC' ? own.allSites : theirs.allSites,
+        plain: [...new Set([...theirs.plain, ...own.plain])],
+      }
+      write(JOINED_KEY, true)
+      showSynced(joined)
+      const same = sameList(joined.sites, theirs.sites) && joined.allSites === theirs.allSites && sameList(joined.plain, theirs.plain)
+      if (!same) void saveSyncedSites(joined, Date.now())
+      return
+    }
+    if (row) showSynced(validSynced(row.value))
+  })
+}
+
+// Shows a synced value, if it differs from what's shown
+function showSynced(value: SyncedSites) {
+  const now = loadLinkPreviewSettings()
+  if (sameList(now.sites, value.sites) && now.allSites === value.allSites && sameList(now.plain, value.plain)) return
+  settings = { ...now, sites: value.sites, allSites: value.allSites, plain: value.plain }
   write(SETTINGS_KEY, settings)
   redrawAll()
 }

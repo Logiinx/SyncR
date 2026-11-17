@@ -12,6 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Notes**
 - **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, Google Drive…
+- **Nouveau :** les sites des cartes de liens et les liens simples sont les mêmes sur PC et téléphone
 
 **Jeux**
 - **Nouveau :** Paramètres des jeux : prix à droite des jaquettes, une ligne de moins
