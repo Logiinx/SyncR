@@ -10,6 +10,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 
+**Notes**
+- **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, GitHub…
+
 **Jeux**
 - **Amélioré :** Mes jeux, Calendrier et les onglets de statut restent en haut pendant le défilement
 - **Amélioré :** Paramètres des jeux : joindre les heures proposé seulement avec la durée HowLongToBeat

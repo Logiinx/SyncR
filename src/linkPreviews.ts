@@ -12,6 +12,7 @@ import { openLink, simplify } from './links'
 import { read, write } from './localState'
 import { shortDate } from './dates'
 import { svgIcon, type SvgIconName } from './svgIcons'
+import { siteLogo } from './siteLogos'
 import { animationsOn, growOpen, shrinkThen } from './animations'
 
 // Link cards: a website link in a note is shown as a small card (title, description, picture),
@@ -332,8 +333,14 @@ function twoLineCard(href: string, preview: LinkPreview) {
   // A video: "channel · date · 👁 views" in place of the site
   const video = preview.kind === 'video' ? dotLine(videoExtras(preview)) : null
   const line = textFirst(preview) ? byline(preview) : preview.description ? `${site} · ${preview.description}` : site
-  text.append(video ?? element('span', 'link-card-line', line))
-  root.append(picture('link-card-picture', pictureSources(preview)), text)
+  const second = video ?? element('span', 'link-card-line', line)
+  // A known site's logo leads the second line, unless the picture already is the site's icon
+  // (a tweet's icon is its writer's picture)
+  const sources = pictureSources(preview)
+  const siteIcon = preview.kind !== 'tweet' && !!preview.icon && sources.find(Boolean) === preview.icon
+  if (!siteIcon) second.insertAdjacentHTML('afterbegin', siteLogo(href))
+  text.append(second)
+  root.append(picture('link-card-picture', sources), text)
   return root
 }
 

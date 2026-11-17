@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** a video counts as started after about 5 s, not 30
 - **Fixed:** started videos shown twice in To watch
 
+**Notes**
+- **New:** link cards show the site's logo: YouTube, Reddit, X, GitHub and more
+
 **Games**
 - **Better:** My games, Calendar and the status tabs stay at the top while scrolling
 - **Better:** Games settings: joining hours only offered with HowLongToBeat time on

@@ -2843,6 +2843,12 @@ button {
   fill: none;
 }
 
+/* A known site's logo at the start of the Card style's second line */
+.link-card-line .site-logo {
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+
 /* B, one line: as high as the text around it */
 .link-card.link-card-line-style {
   gap: 6px;
