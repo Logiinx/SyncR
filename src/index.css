@@ -613,6 +613,13 @@ button {
   color: var(--text);
 }
 
+/* Grayed like the menus' and toolbar's unavailable buttons */
+.fill-switch.fill-switch > button:disabled {
+  color: var(--text-dim);
+  opacity: 0.35;
+  cursor: default;
+}
+
 .tab-fill {
   position: absolute;
   inset: 0;

@@ -48,6 +48,7 @@ interface SwitchOption<T> {
   value: T
   label: ReactNode
   title?: string
+  disabled?: boolean // grayed, can't be picked (no hover line)
 }
 
 // A filled switch: the chosen button is blue (My games | Calendar, Top 100…, grid / list).
@@ -88,9 +89,11 @@ export function FillSwitch<T extends string | number>({
           <button
             key={option.value}
             {...lines.tabProps(String(option.value))}
+            {...(option.disabled && { onPointerEnter: undefined })}
             className={buttonClass}
             onClick={() => onChange(option.value)}
             title={option.title}
+            disabled={option.disabled}
           >
             <TabLines fill />
             {option.label}

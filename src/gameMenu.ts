@@ -1,7 +1,7 @@
 import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, ExternalLink, Heart, Hourglass, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { t, textKey, type TextKey } from './i18n'
 import { canWatch, db, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
-import { endingChange, endingOf, isFavoriteTab, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
+import { endingChange, endingOf, isFavoriteTab, isReleased, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
 import { stopWatching } from './priceWatch'
 import type { MenuItem } from './ContextMenu'
 import type { DialogRequest } from './Dialog'
@@ -21,6 +21,7 @@ export function gameMenuItems(
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
       label: status === 'playing' ? t('Start playing') : t('Move to {place}', { place: t(label) }),
       icon: status === 'playing' ? Play : ArrowRight,
+      ...(upcomingClosed(game, status) && { disabled: true, hint: t('Already out') }),
       onClick: () =>
         status === 'library' && game.status === 'playing' && view.onAskEnding
           ? view.onAskEnding()
@@ -61,6 +62,11 @@ export function gameMenuItems(
     { label: t('Remove from list'), icon: Trash2, danger: true, onClick: view.onRemove },
   ]
 }
+
+// A game that's out can't go (back) to Upcoming: the release day check would move it straight out
+// again, with a "Released" line. Grayed in the menu and the game window's status switch.
+export const upcomingClosed = (game: Game, status: Game['status']) =>
+  status === 'waiting' && game.status !== 'waiting' && isReleased(game)
 
 // How a game ended, in the Library (✓ = the current one). Asked when a Playing game moves to the
 // Library ("How did it end?" menu, Games tab and game window), also the game window's choices.

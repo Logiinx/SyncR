@@ -6,7 +6,7 @@ import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, setGameStatus, setPreordered, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
-import { endingHeader, endingMenuItems, ENDINGS } from './gameMenu'
+import { endingHeader, endingMenuItems, ENDINGS, upcomingClosed } from './gameMenu'
 import ContextMenu from './ContextMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
@@ -127,7 +127,11 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
 
         <FillSwitch
           className="gd-status"
-          options={STATUSES.map(({ status, label }) => ({ value: status, label: t(label) }))}
+          options={STATUSES.map(({ status, label }) => ({
+            value: status,
+            label: t(label),
+            ...(upcomingClosed(game, status) && { disabled: true, title: t('Already out') }),
+          }))}
           value={game.status}
           onChange={(status) => {
             if (status === game.status) return

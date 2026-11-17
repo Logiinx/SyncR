@@ -29,6 +29,7 @@ export const games = {
 
   // Release dates
   'out now': 'déjà sorti',
+  'Already out': 'Déjà sorti',
   today: 'aujourd’hui',
   tomorrow: 'demain',
   'in {n} days': 'dans {n} jours',
