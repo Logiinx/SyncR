@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** a price alert changed during a price check no longer comes back as before
 - **Fixed:** price alerts stayed silent when an edition’s price couldn’t be looked up
 - **Fixed:** price alerts could stop checking after the PC woke from sleep
+- **Fixed:** a game added back no longer brings its old price alert, pre-order or priority
 
 ## [0.85.0] - 2026-11-18
 

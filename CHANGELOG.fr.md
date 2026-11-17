@@ -8,6 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** une alerte de prix modifiée pendant une vérification ne revient plus comme avant
 - **Corrigé :** les alertes de prix restaient muettes quand le prix d’une édition était introuvable
 - **Corrigé :** les alertes de prix pouvaient cesser de vérifier après la sortie de veille du PC
+- **Corrigé :** un jeu ajouté à nouveau ne ramène plus son ancienne alerte de prix, précommande ou priorité
 
 ## [0.85.0] - 2026-11-18
 

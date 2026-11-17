@@ -86,28 +86,47 @@ export const isReleased = (game: { releaseDate?: number }) =>
   !!game.releaseDate && new Date(game.releaseDate).setHours(0, 0, 0, 0) <= Date.now()
 
 // Added from the search: Upcoming if it isn't out yet, otherwise To buy. The calendar's pin
-// always gives Waiting. A game removed earlier comes back with its note, review and rating.
+// always gives Waiting. A game removed earlier comes back with what you wrote about it (note,
+// review, rating, how it ended: Paused / Dropped only in the Library, like setGameStatus), its
+// HowLongToBeat link and Steam stats; its old state starts fresh (price alerts, pre-order,
+// Priority / Favorite, the news lines). User's choice.
 export async function addGame(found: FoundGame, status?: GameStatus, completed?: boolean) {
   const id = gameId(found.igdbId)
   const before = await db.games.get(id)
   if (before && !before.deleted) return
   const now = Date.now()
+  const newStatus = status ?? (isReleased(found) ? 'tobuy' : 'waiting')
+  const kept: Partial<Game> = !before ? {} : {
+    note: before.note,
+    review: before.review,
+    rating: before.rating,
+    completed: before.completed,
+    ending: newStatus === 'library' ? before.ending : undefined,
+    hltbId: before.hltbId,
+    steamStats: before.steamStats,
+    createdAt: before.createdAt,
+    // What sync knows about the last synced version
+    syncedRev: before.syncedRev,
+    syncedUpdatedAt: before.syncedUpdatedAt,
+  }
   await db.games.put({
     note: '',
     review: '',
     liked: false,
     priority: false,
     createdAt: now,
-    ...before,
+    ...kept,
     ...found,
     id,
-    status: status ?? (isReleased(found) ? 'tobuy' : 'waiting'),
-    ...(completed && { completed: true }),
+    status: newStatus,
+    ...(completed && { completed: true, ending: undefined }),
     statusAt: now,
     deleted: false,
     ...(before && { restoredAt: now }), // added again after removing: beats the removal in sync
     updatedAt: now,
   })
+  // Its Board card (still there, dimmed) shares the mark: off too, or it would come back
+  if (before?.priority) await updateGame(id, { priority: false })
   changed()
   void refreshPlaytimes() // its HowLongToBeat times, next
 }
