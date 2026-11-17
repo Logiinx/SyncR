@@ -17,7 +17,7 @@ import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
-import { dragPlaylist, dragVideo } from './videoDrag'
+import { dragInQueue, dragPlaylist, dragVideo } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useMusicName, useRewatchSection } from './videoFolders'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
@@ -229,9 +229,9 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // (playlistId): the next one follows at its end and it can't be moved to a folder. In a playlist or
 // in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
 // Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both. In the
-// Queue group (queued): a second copy of the row, not dragged; a playlist's video shows its
-// playlist (from) instead of its channel; one of Rewatch's in To watch's group (ofRewatch) gets a
-// ↻ icon. after: the videos after it in its list, for ⏭.
+// Queue group (queued: that group's id): a second copy of the row, dragged only to change its place
+// in the Queue; a playlist's video shows its playlist (from) instead of its channel; one of
+// Rewatch's in To watch's group (ofRewatch) gets a ↻ icon. after: the videos after it in its list, for ⏭.
 function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
@@ -239,7 +239,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   playlistId?: string
   kept?: boolean
   lastWatched?: boolean
-  queued?: boolean
+  queued?: string
   ofRewatch?: boolean
   from?: string
   after?: UpNext[]
@@ -270,7 +270,9 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
       className={`video-row${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}`}
       style={depthStyle(depth)}
       data-item={`${queued ? 'queued ' : ''}${playlistId ? `${playlistId} ${video.id}` : video.id}`}
-      onPointerDown={playlistId || queued ? undefined : (e) => dragVideo(e, video, onOpenRow)}
+      data-queue-group={queued}
+      data-queue-id={queued && video.id}
+      onPointerDown={queued ? dragInQueue : playlistId ? undefined : (e) => dragVideo(e, video, onOpenRow)}
       onDragStart={(e) => e.preventDefault()} // the thumbnail's own dragging
       onContextMenu={(e) => {
         e.preventDefault()
@@ -802,7 +804,7 @@ function VideoView() {
               isNew={false}
               depth={depth + 1}
               playlistId={playlist?.id}
-              queued
+              queued={id}
               ofRewatch={ofRewatch}
               from={playlist?.name}
               after={entries.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}

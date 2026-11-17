@@ -8173,6 +8173,16 @@ button.history-row.selected {
   pointer-events: none;
 }
 
+/* A Queue row dragged to a new place (dragInQueue): the others slide to make room; once dropped
+   they're already in place, so no slide (settling) */
+.video-list.reordering .video-row:not(.lifted) {
+  transition: transform 0.15s ease;
+}
+
+.video-list.settling .video-row:not(.lifted) {
+  transition: none;
+}
+
 .video-row.drop-into,
 .video-list.dragging .video-row.drop-into .video-row-open:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));

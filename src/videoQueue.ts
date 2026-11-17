@@ -44,6 +44,17 @@ export function leaveQueue(ids: string[]) {
   if (queue.some((entry) => leaving.has(entry.id))) save(queue.filter((entry) => !leaving.has(entry.id)))
 }
 
+// Dragged (videoDrag.ts): just before `before`, or just after `after` when it went last among the
+// rows shown (the Queue can hold videos not shown right now, e.g. with one follow chosen)
+export function moveInQueue(id: string, before: string | null, after: string | null) {
+  const entry = queue.find((other) => other.id === id)
+  if (!entry) return
+  const rest = queue.filter((other) => other !== entry)
+  const at = before ? rest.findIndex((other) => other.id === before) : rest.findIndex((other) => other.id === after) + 1
+  if (at < 0) return
+  save([...rest.slice(0, at), entry, ...rest.slice(at)])
+}
+
 export const inQueue = has
 
 function subscribe(listener: () => void) {

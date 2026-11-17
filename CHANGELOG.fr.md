@@ -5,7 +5,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
-- **Nouveau :** une file d’attente à la place de Commencées : clic droit pour ajouter, les vidéos lancées y entrent seules
+- **Nouveau :** une file d’attente à la place de Commencées : les vidéos lancées y entrent seules
+- **Nouveau :** ajout à la file d’attente par clic droit, et tri en la faisant glisser
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
 - **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30

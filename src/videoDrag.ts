@@ -1,9 +1,11 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { animationsOn, play, TIMING } from './animations'
 import { currentZoom } from './appearance'
 import { channelKey, type FeedVideo } from './video'
 import { moveToFolder } from './videoFolders'
 import { changePlaylist } from './videoPlaylists'
+import { moveInQueue } from './videoQueue'
 
 const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach what's inside
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls
@@ -31,6 +33,98 @@ export function dragPlaylist(event: ReactPointerEvent<HTMLElement>, playlistId: 
     move: (folderId) => changePlaylist(playlistId, { folderId }),
     open,
   })
+}
+
+// Press and drag a Queue row up or down to change its place, among its own group's rows
+// (data-queue-group): the ones it passes slide one place to make room, like the Board's cards.
+export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
+  if (event.button !== 0 || event.pointerType !== 'mouse' || (event.target as HTMLElement).closest('.video-row-action')) return
+  const row = event.currentTarget
+  const list = row.closest<HTMLElement>('.video-list')
+  const page = row.closest<HTMLElement>('.page')
+  const rows = list ? [...list.querySelectorAll<HTMLElement>(`[data-queue-group="${row.dataset.queueGroup}"]`)] : []
+  if (!list || !page || rows.length < 2) return
+
+  const index = rows.indexOf(row)
+  const others = rows.filter((el) => el !== row)
+  const startX = event.clientX
+  const startY = event.clientY
+  const grab = startY - row.getBoundingClientRect().top
+  let pointerY = startY
+  let started = false
+  let frame = 0
+  let place = index // how many of the others end up above it
+
+  // Each frame, as the page can scroll under a mouse that doesn't move. Places are measured in the
+  // list's own pixels (offsetTop: no scroll, no transforms), the mouse in the screen's (zoom).
+  function tick() {
+    if (!row.isConnected) return end()
+    const box = page!.getBoundingClientRect()
+    if (pointerY < box.top + EDGE) page!.scrollTop -= SCROLL_STEP
+    else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
+    row.style.transform = ''
+    const dy = (pointerY - grab - row.getBoundingClientRect().top) / currentZoom()
+    row.style.transform = `translateY(${dy}px)`
+    // Its leading edge passing another row's middle swaps them
+    const edge = row.offsetTop + dy + (dy > 0 ? row.offsetHeight : 0)
+    place = others.findIndex((el) => edge < el.offsetTop + el.offsetHeight / 2)
+    if (place === -1) place = others.length
+    const shift = row.offsetHeight
+    others.forEach((el, k) => {
+      const by = k >= place && k < index ? shift : k < place && k >= index ? -shift : 0
+      el.style.transform = by ? `translateY(${by}px)` : ''
+    })
+    frame = requestAnimationFrame(tick)
+  }
+
+  const move = (e: PointerEvent) => {
+    pointerY = e.clientY
+    if (started || Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
+    started = true
+    row.classList.add('lifted')
+    list!.classList.add('dragging', 'reordering')
+    tick()
+  }
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && end()
+
+  function end(e?: Event) {
+    cancelAnimationFrame(frame)
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', end)
+    window.removeEventListener('pointercancel', end)
+    window.removeEventListener('keydown', onKey)
+    if (!started) return
+    // The click that ends a drag mustn't also open the video
+    const swallow = (c: Event) => c.stopPropagation()
+    window.addEventListener('click', swallow, { capture: true, once: true })
+    window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+    const from = row.style.transform
+    row.classList.remove('lifted')
+    list!.classList.remove('dragging')
+    if (e?.type === 'pointerup' && place !== index) {
+      // Drawn in the new order at once, then the transforms go without sliding (already in place)
+      const id = (el: HTMLElement | undefined) => el?.dataset.queueId ?? null
+      flushSync(() => moveInQueue(id(row)!, id(others[place]), id(others[place - 1])))
+      list!.classList.add('settling')
+      for (const el of rows) el.style.transform = ''
+      requestAnimationFrame(() => list!.classList.remove('settling', 'reordering'))
+      return
+    }
+    // Not moved: the others slide back (CSS), and so does it. Its end is taken off, or it would
+    // hold the row still next time.
+    for (const el of others) el.style.transform = ''
+    row.style.transform = ''
+    window.setTimeout(() => list!.classList.remove('reordering'), 200)
+    if (animationsOn()) {
+      const back = play(row, [{ transform: from }, { transform: 'none' }], TIMING.closeSmall)
+      if (back) back.onfinish = () => back.cancel()
+    }
+  }
+
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', end)
+  window.addEventListener('pointercancel', end)
+  window.addEventListener('keydown', onKey)
 }
 
 // The row only moves up and down, like the Board's cards, and goes by the mouse's height, so leaving
