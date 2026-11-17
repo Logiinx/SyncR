@@ -7,9 +7,9 @@ import { t } from './i18n'
 import { igdbProxyFetch, isComplete, useConnection } from './igdb'
 import { read, useLocalState, write } from './localState'
 import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
-import { checkPlaylists, playlistFailures, playOrder } from './videoPlaylists'
+import { checkPlaylists, nextInPlaylist, playlistFailures, playOrder } from './videoPlaylists'
 import { forgetPositions, resumePosition, savePosition } from './videoPositions'
-import { leaveQueue, queueStarted } from './videoQueue'
+import { joinedAlone, leaveQueue, queueStarted, replaceInQueue } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
@@ -469,11 +469,25 @@ export const sameGame = (a: string, b: string) => titleKey(a) === titleKey(b)
 // have capitals. A hash also keeps which videos out of the file names.
 const videoMarkId = (videoId: string) => alertMarkId(videoId)
 
+// A playlist's video that joined the Queue by being started: once watched, the playlist's next one
+// not watched yet takes its place (user: a series goes on without adding each episode)
+async function queueNextEpisodes(videoIds: string[]) {
+  const episodes = videoIds.filter(joinedAlone)
+  if (!episodes.length) return
+  const lists = await db.playlistVideos.toArray()
+  for (const id of episodes) {
+    const list = lists.find((other) => other.videos.some((video) => video.id === id))
+    const next = list && (await nextInPlaylist(list.id, id))
+    if (next) replaceInQueue(id, next.id)
+  }
+}
+
 async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
   const ids = videoIds.map(videoMarkId)
   const marks = await db.videoMarks.bulkGet(ids)
   const now = Date.now()
   await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, ...(change.watched && { watchedAt: now }), updatedAt: now })))
+  if (change.watched) await queueNextEpisodes(videoIds)
   if (change.watched || change.cleared) leaveQueue(videoIds) // watched or removed: done with
   changed()
 }

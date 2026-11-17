@@ -55,6 +55,15 @@ export function moveInQueue(id: string, before: string | null, after: string | n
   save([...rest.slice(0, at), entry, ...rest.slice(at)])
 }
 
+// Joined by being started (not added by hand)
+export const joinedAlone = (id: string) => !!queue.find((entry) => entry.id === id)?.auto
+
+// A watched episode's place goes to the next one, which counts as joined alone too
+export function replaceInQueue(id: string, next: string) {
+  if (has(next)) return
+  save(queue.map((entry) => (entry.id === id ? { id: next, auto: true } : entry)))
+}
+
 export const inQueue = has
 
 function subscribe(listener: () => void) {
