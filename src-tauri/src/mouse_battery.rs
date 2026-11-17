@@ -1,15 +1,13 @@
 // Mouse battery module (PC, off unless turned on in Settings → Modules): asks the mouse's receiver
-// for its battery every 60 s and shows it inside the taskbar (strip.rs) and/or as a second tray
-// icon with the number in it.
+// for its battery every 60 s and shows it inside the taskbar (strip.rs).
 // Only ever sends the two read questions in `hid` (online? battery?), never anything that changes
 // the mouse. When the module is off, no thread runs and no device is opened.
 // The protocol facts (not code) come from krisgfx9's Wireless-Device-Battery-Monitor.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 // Two threads while on: the checks (here; a check can wait up to a second for the receiver) and
 // the taskbar strip's (strip.rs; it shares Windows' input with the taskbar, so it never waits).
-// Both draw from CONFIG and STATUS, so a late signal can never draw something out of date.
+// The strip draws from CONFIG and STATUS, so a late signal can never draw something out of date.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
@@ -17,19 +15,14 @@ use tauri::{AppHandle, Emitter};
 
 mod strip;
 
-const TRAY_ID: &str = "mouse-battery";
 const CHECK_EVERY: Duration = Duration::from_secs(60);
 
-// What the page sends (mouseBattery.ts): the settings, and the tray's words in the app's language
+// What the page sends (mouseBattery.ts)
 #[derive(Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
   on: bool,
-  taskbar: bool,       // the strip inside the taskbar
-  tray: bool,          // the tray icon (also shown when the strip can't be placed)
-  low: u8,             // at or below this percent the number turns red
-  tip: String,         // tray tooltip, "{percent}" is replaced
-  tip_waiting: String, // tray tooltip before the first answer
+  low: u8, // at or below this percent the number turns red
 }
 
 #[derive(Clone, Copy, serde::Serialize)]
@@ -49,12 +42,11 @@ pub struct Status {
   answering: bool,       // the last check got an answer
 }
 
-// The settings while on (None: off), the last check, the check thread's wake-up channel (dropping
-// it ends the thread) and its number: tray changes queued by an older check thread are ignored
+// The settings while on (None: off), the last check, and the check thread's channel (dropping it
+// ends the thread)
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static STATUS: Mutex<Status> = Mutex::new(Status { last: None, answering: false });
 static WORKER: Mutex<Option<Sender<()>>> = Mutex::new(None);
-static GENERATION: AtomicU64 = AtomicU64::new(0);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
   mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -68,48 +60,35 @@ fn status() -> Status {
   lock(&STATUS).clone()
 }
 
-// What the strip and the tray icon show: the number (or a dash before any answer), and whether
-// it's at or below the low level
-fn shown() -> (String, bool, Option<u8>) {
+// What the strip shows: the percent (or a dash before any answer), and whether it's at or below
+// the low level
+fn shown() -> (String, bool) {
   let (last, low) = (status().last, config().map_or(0, |config| config.low));
   match last {
-    Some(reading) => (format!("{}%", reading.percent), reading.percent <= low, Some(reading.percent)),
-    None => ("–".to_string(), false, None),
+    Some(reading) => (format!("{}%", reading.percent), reading.percent <= low),
+    None => ("–".to_string(), false),
   }
 }
 
-// Redraw the tray icon now (the strip calls this when it stops or starts standing in for it)
-fn wake() {
-  if let Some(sender) = lock(&WORKER).as_ref() {
-    let _ = sender.send(());
-  }
-}
-
-// Called at start and on every settings or language change
+// Called at start and on every settings change
 #[tauri::command]
 pub fn mouse_battery_config(app: AppHandle, config: Config) {
   let mut worker = lock(&WORKER);
   if !config.on {
     *lock(&CONFIG) = None;
     if worker.take().is_some() {
-      GENERATION.fetch_add(1, Ordering::SeqCst);
       strip::stop();
-      let handle = app.clone();
-      let _ = app.run_on_main_thread(move || drop(handle.remove_tray_by_id(TRAY_ID)));
     }
     return;
   }
   *lock(&CONFIG) = Some(config);
-  if let Some(sender) = worker.as_ref() {
-    if sender.send(()).is_ok() {
-      strip::refresh();
-      return;
-    }
+  if worker.is_some() {
+    strip::refresh();
+    return;
   }
-  let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
   let (sender, receiver) = mpsc::channel();
   strip::start(app.clone());
-  std::thread::spawn(move || run(app, receiver, generation));
+  std::thread::spawn(move || run(app, receiver));
   *worker = Some(sender);
 }
 
@@ -118,70 +97,25 @@ pub fn mouse_battery_status() -> Status {
   status()
 }
 
-fn run(app: AppHandle, receiver: Receiver<()>, generation: u64) {
-  let mut check = true;
+fn run(app: AppHandle, receiver: Receiver<()>) {
   loop {
-    if check {
-      let reading = hid::read_battery();
-      let now = {
-        let mut status = lock(&STATUS);
-        status.answering = reading.is_some();
-        if reading.is_some() {
-          status.last = reading;
-        }
-        status.clone()
-      };
-      let _ = app.emit("mouse-battery", now);
-      strip::refresh();
-    }
-    show_tray(&app, generation);
+    let reading = hid::read_battery();
+    let now = {
+      let mut status = lock(&STATUS);
+      status.answering = reading.is_some();
+      if reading.is_some() {
+        status.last = reading;
+      }
+      status.clone()
+    };
+    let _ = app.emit("mouse-battery", now);
+    strip::refresh();
+    // Nothing is ever sent: the channel only closes when the module is turned off
     match receiver.recv_timeout(CHECK_EVERY) {
-      // New settings or a redraw: at once, the next check stays on its 60 s
-      Ok(()) => check = false,
-      Err(RecvTimeoutError::Timeout) => check = true,
+      Ok(()) | Err(RecvTimeoutError::Timeout) => {}
       Err(RecvTimeoutError::Disconnected) => return,
     }
   }
-}
-
-// Draws the tray icon here (this thread), then hands it to the main thread, which owns the tray
-fn show_tray(app: &AppHandle, generation: u64) {
-  let Some(config) = config() else { return };
-  let wanted = config.tray || (config.taskbar && strip::stands_in());
-  let (text, low, percent) = shown();
-  let tip = match percent {
-    Some(percent) => config.tip.replace("{percent}", &percent.to_string()),
-    None => config.tip_waiting.clone(),
-  };
-  let number = percent.map_or(text, |percent| percent.to_string());
-  let image = if wanted { icon::draw(&number, icon::color(low)) } else { None };
-  let handle = app.clone();
-  let _ = app.run_on_main_thread(move || {
-    if GENERATION.load(Ordering::SeqCst) != generation {
-      return;
-    }
-    if !wanted {
-      drop(handle.remove_tray_by_id(TRAY_ID));
-      return;
-    }
-    let Some((rgba, size)) = image else { return };
-    let image = tauri::image::Image::new_owned(rgba, size, size);
-    if let Some(tray) = handle.tray_by_id(TRAY_ID) {
-      let _ = tray.set_icon(Some(image));
-      let _ = tray.set_tooltip(Some(&tip));
-      return;
-    }
-    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-    let _ = TrayIconBuilder::with_id(TRAY_ID)
-      .icon(image)
-      .tooltip(&tip)
-      .on_tray_icon_event(|tray, event| {
-        if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
-          crate::show_main(tray.app_handle());
-        }
-      })
-      .build(&handle);
-  });
 }
 
 fn wide(text: &str) -> Vec<u16> {
@@ -407,7 +341,7 @@ mod hid {
 }
 
 // A small drawing surface for Windows' own text drawing (GDI): white on black, so each pixel's
-// brightness is how much of it the text covers; the strip and the tray icon color it themselves.
+// brightness is how much of it the text covers; the strip colors it itself.
 mod gdi {
   use super::wide;
   use std::ptr::null_mut;
@@ -539,19 +473,12 @@ mod gdi {
   }
 }
 
-// The tray icon: the number drawn by Windows itself (Segoe UI), at the tray's real size
-mod icon {
-  use super::{gdi::Canvas, wide};
-  use std::ptr::null_mut;
-  use windows_sys::Win32::Graphics::Gdi::{DT_CENTER, FW_SEMIBOLD};
-  use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
-  use windows_sys::Win32::UI::HiDpi::{GetDpiForSystem, GetSystemMetricsForDpi};
-  use windows_sys::Win32::UI::WindowsAndMessaging::SM_CXSMICON;
 
-  // Light or dark taskbar (Windows' own setting), red when low
-  pub fn color(low: bool) -> [u8; 3] {
-    paint(light_taskbar(), low)
-  }
+// The taskbar's colors: Windows' own light/dark setting, red for a low number
+mod theme {
+  use super::wide;
+  use std::ptr::null_mut;
+  use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
 
   pub fn paint(light: bool, low: bool) -> [u8; 3] {
     match (light, low) {
@@ -579,52 +506,5 @@ mod icon {
       )
     };
     result == 0 && value == 1
-  }
-
-  // RGBA pixels and their side length. The biggest font whose drawn text fits the icon is used,
-  // and the text is centered by its drawn pixels (digits sit off-center in their line otherwise).
-  pub fn draw(text: &str, color: [u8; 3]) -> Option<(Vec<u8>, u32)> {
-    let size = unsafe { GetSystemMetricsForDpi(SM_CXSMICON, GetDpiForSystem()) }.clamp(16, 64) as usize;
-    let mut canvas = Canvas::new(size * 2, size * 2)?;
-    let side = canvas.width as i32;
-    for em in (6..=size * 3 / 2).rev() {
-      canvas.pixels().fill(0);
-      canvas.with_font(&["Segoe UI"], em as i32, FW_SEMIBOLD, |canvas| canvas.text(text, 0, 0, side, side, DT_CENTER))?;
-      let width = canvas.width;
-      let pixels = canvas.pixels();
-      let Some((left, top, right, bottom)) = drawn_box(pixels, width) else { continue };
-      let (drawn_width, drawn_height) = (right - left + 1, bottom - top + 1);
-      if drawn_width > size || drawn_height > size {
-        continue;
-      }
-      let mut rgba = vec![0u8; size * size * 4];
-      let (x0, y0) = ((size - drawn_width) / 2, (size - drawn_height) / 2);
-      for y in 0..drawn_height {
-        for x in 0..drawn_width {
-          let from = ((top + y) * width + left + x) * 4;
-          let to = ((y0 + y) * size + x0 + x) * 4;
-          rgba[to..to + 3].copy_from_slice(&color);
-          rgba[to + 3] = pixels[from + 2]; // the red channel (all three are the same)
-        }
-      }
-      return Some((rgba, size as u32));
-    }
-    None
-  }
-
-  // The smallest box around the drawn pixels: left, top, right, bottom (inclusive)
-  fn drawn_box(pixels: &[u8], width: usize) -> Option<(usize, usize, usize, usize)> {
-    let mut found: Option<(usize, usize, usize, usize)> = None;
-    for (index, pixel) in pixels.chunks_exact(4).enumerate() {
-      if pixel[2] == 0 {
-        continue;
-      }
-      let (x, y) = (index % width, index / width);
-      found = Some(match found {
-        None => (x, y, x, y),
-        Some((l, t, r, b)) => (l.min(x), t.min(y), r.max(x), b.max(y)),
-      });
-    }
-    found
   }
 }

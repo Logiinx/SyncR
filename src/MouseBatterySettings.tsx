@@ -1,4 +1,4 @@
-import { Eye, Mouse } from 'lucide-react'
+import { Mouse } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import InfoTip from './InfoTip'
@@ -7,7 +7,8 @@ import { clockTime } from './dates'
 import { t } from './i18n'
 import { LOW_LEVELS, saveMouseBattery, useMouseBattery, useMouseBatteryStatus } from './mouseBattery'
 
-// Settings → Modules → Mouse battery → Open…: what it shows now, and how (mouseBattery.ts)
+// Settings → Modules → Mouse battery → Open… (or a click on the taskbar strip): what it shows
+// now, and the low level (mouseBattery.ts)
 export default function MouseBatterySettings({ onClose }: { onClose: () => void }) {
   const settings = useMouseBattery()
   const status = useMouseBatteryStatus(settings.on)
@@ -29,7 +30,7 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
               <>
                 {t('Battery')}
                 <InfoTip label={t('About the battery check')}>
-                  {t('Asked every minute, through the mouse’s 8K receiver. While the mouse sleeps, the last answer stays.')}
+                  {t('Asked every minute, through the mouse’s 8K receiver, and shown in the taskbar left of the icons next to the clock. While the mouse sleeps, the last answer stays.')}
                 </InfoTip>
               </>
             }
@@ -43,32 +44,6 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
               </span>
             </SettingRow>
           )}
-        </SettingsCard>
-        <SettingsCard icon={Eye} title={t('Show')}>
-          <SettingRow
-            label={
-              <>
-                {t('In the taskbar')}
-                <InfoTip label={t('About the taskbar display')}>
-                  {t('The mouse and its percent, left of the icons next to the clock. A click opens this window.')}
-                </InfoTip>
-              </>
-            }
-          >
-            <input type="checkbox" checked={settings.taskbar} onChange={(e) => saveMouseBattery({ taskbar: e.target.checked })} />
-          </SettingRow>
-          <SettingRow
-            label={
-              <>
-                {t('Tray icon')}
-                <InfoTip label={t('About the tray icon')}>
-                  {t('Its own icon next to the clock, with the number in it. Also shown when the taskbar is on a side of the screen.')}
-                </InfoTip>
-              </>
-            }
-          >
-            <input type="checkbox" checked={settings.tray} onChange={(e) => saveMouseBattery({ tray: e.target.checked })} />
-          </SettingRow>
           <SettingRow
             label={
               <>

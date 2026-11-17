@@ -2,22 +2,19 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { read, write } from './localState'
-import { subscribe as onLanguageChange, t } from './i18n'
 
 // Mouse battery module (PC, Settings → Modules): its settings, kept on this device, never synced.
-// The checks, the taskbar strip and the tray icon are in Rust (mouse_battery.rs, strip.rs): this sends them the settings and
-// the tray's words, at start and on every change. Off: Rust runs nothing and opens no device.
+// The checks and the taskbar strip are in Rust (mouse_battery.rs, strip.rs): this sends them the
+// settings, at start and on every change. Off: Rust runs nothing and opens no device.
 
 export interface MouseBatterySettings {
-  on: boolean
-  taskbar: boolean // mouse + percent inside the taskbar, left of the notification area
-  tray: boolean // its own tray icon with the number in it (also shown when the taskbar one can't be)
+  on: boolean // shows the mouse and its percent inside the taskbar, left of the notification area
   low: number // at or below this percent, the number turns red
   warned: boolean // "✕ quits SyncR, and the battery with it" was shown once
 }
 
 const KEY = 'syncr.mouseBattery'
-const DEFAULTS: MouseBatterySettings = { on: false, taskbar: true, tray: false, low: 15, warned: false }
+const DEFAULTS: MouseBatterySettings = { on: false, low: 15, warned: false }
 export const LOW_LEVELS = [5, 10, 15, 20, 25, 30, 40, 50]
 
 let current: MouseBatterySettings = { ...DEFAULTS, ...read<Partial<MouseBatterySettings>>(KEY, {}) }
@@ -43,16 +40,14 @@ export function useMouseBattery() {
 
 function send() {
   if (!isTauri()) return
-  const { on, taskbar, tray, low } = current
-  const config = { on, taskbar, tray, low, tip: t('Mouse battery: {percent}%'), tipWaiting: t('Mouse battery: no answer yet') }
-  invoke('mouse_battery_config', { config }).catch(console.error)
+  const { on, low } = current
+  invoke('mouse_battery_config', { config: { on, low } }).catch(console.error)
 }
 
 // Main window only (main.tsx), once at start
 export function startMouseBattery() {
   if (!isTauri()) return
   if (current.on) send()
-  onLanguageChange(() => current.on && send())
 }
 
 // A click on the taskbar strip (strip.rs): App opens Settings on the Mouse battery window

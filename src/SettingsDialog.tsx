@@ -624,7 +624,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
           <>
             {t('Mouse battery')}
             <InfoTip label={t('About the mouse battery')}>
-              {t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) next to the clock.')}
+              {t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.')}
             </InfoTip>
           </>
         }
