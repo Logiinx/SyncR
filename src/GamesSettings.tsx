@@ -25,12 +25,15 @@ export default function GamesSettings({ onClose }: { onClose: () => void }) {
               <option value="full">{t('Everything (100%)')}</option>
             </select>
           </SettingRow>
-          <SettingRow
-            label={t('Join hours played and HowLongToBeat time')}
-            title={t('On Playing cards: “42 h / 52 h” instead of “42 h played · 52 h”')}
-          >
-            <input type="checkbox" checked={joinTimes} onChange={(e) => setJoinTimes(e.target.checked)} />
-          </SettingRow>
+          {/* Nothing to join without the HowLongToBeat time (user: hidden, not grayed) */}
+          {playtime !== 'off' && (
+            <SettingRow
+              label={t('Join hours played and HowLongToBeat time')}
+              title={t('On Playing cards: “42 h / 52 h” instead of “42 h played · 52 h”')}
+            >
+              <input type="checkbox" checked={joinTimes} onChange={(e) => setJoinTimes(e.target.checked)} />
+            </SettingRow>
+          )}
         </SettingsCard>
       </div>
     </Window>

@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **Better:** My games, Calendar and the status tabs stay at the top while scrolling
+- **Better:** Games settings: joining hours only offered with HowLongToBeat time on
 
 **App**
 - **Better:** mouse battery back to normal as soon as the mouse wakes up

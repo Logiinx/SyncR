@@ -11,6 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Jeux**
 - **Amélioré :** Mes jeux, Calendrier et les onglets de statut restent en haut pendant le défilement
+- **Amélioré :** Paramètres des jeux : joindre les heures proposé seulement avec la durée HowLongToBeat
 
 **Application**
 - **Amélioré :** batterie de la souris normale dès que la souris se réveille
