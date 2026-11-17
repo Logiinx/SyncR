@@ -4,6 +4,8 @@ import { isTauri } from '@tauri-apps/api/core'
 import { ArrowLeft, Bell, Check, ChevronDown, Clock } from 'lucide-react'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
 import { useMailAlerts, useMailCheck } from './mailAlerts'
+import { useVideoAlerts } from './videoAlerts'
+import { useShownVideoAlerts } from './VideoAlertCards'
 import { useInstantMail } from './instantMail'
 import { startMailbox } from './mailbox'
 import { popupMonitor, useReminderPopup } from './popupWindow'
@@ -97,7 +99,8 @@ function ReminderAlerts() {
   useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
   const battery = useLowAlert() // PC: the mouse battery's low warning too
-  const popupFailed = useReminderPopup(due, mails, battery)
+  const videos = useShownVideoAlerts(useVideoAlerts()) // PC: new videos of bell channels
+  const popupFailed = useReminderPopup(due, mails, battery, videos?.length ?? 0)
   const showCards = !isTauri() || popupFailed
   useChime(showCards ? due : undefined)
 

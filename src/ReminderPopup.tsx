@@ -18,18 +18,21 @@ import { EASE_CLOSE, EASE_OPEN, TIMING } from './animations'
 import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWindow'
 import { LOW_ALERT_ID, useLowAlert, type LowAlert } from './mouseBattery'
 import { BatteryCard } from './BatteryCard'
+import { useVideoAlerts } from './videoAlerts'
+import { useShownVideoAlerts, VideoCards, videoFadeKey } from './VideoAlertCards'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
-// ?view=reminder-popup, see main.tsx). Shows the due reminders, the mouse battery's low warning
-// and new emails, plays a sound
+// ?view=reminder-popup, see main.tsx). Shows the due reminders, the mouse battery's low warning,
+// new emails and new videos of bell channels, plays a sound
 // for new ones, sizes the window to fit them, and sends button clicks to the main window.
 function ReminderPopup() {
   useLanguage()
   const due = useDueReminders()
   const mails = useMailAlerts()
   const battery = useLowAlert()
+  const videos = useShownVideoAlerts(useVideoAlerts()) ?? []
   useGmailAccounts() // redraws the cards when an account's color changes
-  usePopupSounds(due, mails, battery)
+  usePopupSounds(due, mails, battery, videos.map(({ alert }) => alert.id))
   const listRef = useRef<HTMLDivElement>(null)
 
   // Each new mail's text is downloaded as soon as its card shows (memory only, mailPrefetch.ts)
@@ -163,7 +166,11 @@ function ReminderPopup() {
     refitRef.current()
   }, [reading !== undefined])
   // The same list until the cards change (a new one each time would restart the fade timers)
-  const fadeCards = useMemo(() => (battery ? [{ key: LOW_ALERT_ID }, ...mails] : mails), [battery, mails])
+  const videoKeys = videos.map(({ alert }) => videoFadeKey(alert.id)).join(' ')
+  const fadeCards = useMemo(
+    () => [...(battery ? [{ key: LOW_ALERT_ID }] : []), ...mails, ...(videoKeys ? videoKeys.split(' ').map((key) => ({ key })) : [])],
+    [battery, mails, videoKeys],
+  )
   const fading = useFade(fadeCards, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
@@ -192,6 +199,7 @@ function ReminderPopup() {
           onRead={read}
         />
       )}
+      {!reading && <VideoCards shown={videos} fading={fading} onAction={(alert, action) => sendFromPopup({ id: alert.id, action })} />}
       {/* The same reader while prepared (unseen, at its size) and read: kept in one place, so
           the mail isn't loaded again when it shows */}
       {open && (
@@ -214,24 +222,24 @@ function ReminderPopup() {
 }
 
 // One sound for what's new since the last change: the reminder sound if a reminder is among
-// it (also when an email came at the same time), else the email sound (emails, low battery)
-function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null) {
+// it (also when an email came at the same time), else the email sound (emails, low battery, videos)
+function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null, videos: string[]) {
   const heard = useRef(new Set<string>())
   useEffect(() => {
     if (!due) return
     const reminders = due.map((item) => `${item.key}@${item.dueAt}`)
-    const keys = [...reminders, ...mails.map((mail) => mail.key), ...(battery ? [LOW_ALERT_ID] : [])]
+    const keys = [...reminders, ...mails.map((mail) => mail.key), ...(battery ? [LOW_ALERT_ID] : []), ...videos.map(videoFadeKey)]
     if (reminders.some((key) => !heard.current.has(key))) playReminderSound()
     else if (keys.some((key) => !heard.current.has(key))) playEmailSound()
     heard.current = new Set(keys)
-  }, [due, mails, battery])
+  }, [due, mails, battery, videos.join(' ')]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // Emails and the low battery card fade by themselves after the delay chosen in Settings → Alerts →
 // Emails (never by default), counted from when each card appeared. Not while the mouse is over
 // the pop-up or a mail is open to read: then every card starts its delay again afterwards.
 // Opened (read) cards don't fade. A faded email goes as "missed" (mailAlerts.ts); its mail
-// stays unread. A faded battery card goes like Done.
+// stays unread. A faded battery card goes like Done, a faded video card like ✕.
 const FADE_OUT_MS = 400 // the fade itself (index.css, .reminder-alert.fading)
 
 function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
@@ -271,8 +279,10 @@ function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
       timers.push(setTimeout(() => {
         setFading((keys) => new Set(keys).add(mail.key))
         const out = loadAppearance().animations ? FADE_OUT_MS : 0
-        const action = mail.key === LOW_ALERT_ID ? 'battery-done' : 'mail-fade'
-        timers.push(setTimeout(() => sendFromPopup({ id: mail.key, action }), out))
+        const message = mail.key === LOW_ALERT_ID ? { id: mail.key, action: 'battery-done' as const }
+          : mail.key.startsWith(videoFadeKey('')) ? { id: mail.key.slice(videoFadeKey('').length), action: 'video-close' as const }
+          : { id: mail.key, action: 'mail-fade' as const }
+        timers.push(setTimeout(() => sendFromPopup(message), out))
       }, Math.max(left, 0)))
     }
     return () => timers.forEach(clearTimeout)

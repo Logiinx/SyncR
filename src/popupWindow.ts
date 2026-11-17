@@ -9,6 +9,12 @@ import { findPopupScreen, loadBackground, popupScreenChange, saveBackground } fr
 import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
 import { runMailAction, type MailAction, type MailAlert } from './mailAlerts'
 import { closeLowAlert, type LowAlert } from './mouseBattery'
+import { db } from './db'
+import { markOpened, VIDEO_TAB } from './video'
+import { removeVideoAlerts } from './videoAlerts'
+import type { VideoAlertAction } from './VideoAlertCards'
+import { playVideo } from './videoPlayer'
+import { addToQueue } from './videoQueue'
 
 // The desktop reminder pop-up: a small always-on-top window in a corner of the screen (both
 // chosen in Settings), shown while reminders are due, new emails came (mailAlerts.ts) or the
@@ -28,8 +34,8 @@ const MARGIN = 12 // from the screen edges
 // Done or faded
 export type BatteryAction = 'battery-open' | 'battery-done'
 export interface PopupMessage {
-  id: string // an event alert's key (DueItem.key), an email's (MailAlert.key, "mail:…") or LOW_ALERT_ID
-  action: ReminderAction | MailAction | BatteryAction
+  id: string // an event alert's key (DueItem.key), an email's (MailAlert.key, "mail:…"), LOW_ALERT_ID or a video's id
+  action: ReminderAction | MailAction | BatteryAction | VideoAlertAction
 }
 const EVENT = 'reminder-popup-action'
 
@@ -172,17 +178,18 @@ async function showMainWindow() {
 // mouse battery is low, and runs its button clicks. Returns true if the pop-up couldn't open
 // (then the main window shows the reminders' cards; emails and the battery then wait for the
 // pop-up, PC only anyway).
-export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null) {
+// videos: how many new-video cards there are (VideoAlertCards.tsx)
+export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null, videos: number) {
   const [failed, setFailed] = useState(false)
 
   // Checked on every change (not just "some due / none due"), so a pop-up closed with
   // Alt+F4 comes back within a minute while reminders are still due
   useEffect(() => {
     if (!isTauri() || due === undefined || failed) return
-    wanted = due.length > 0 || mails.length > 0 || battery !== null
+    wanted = due.length > 0 || mails.length > 0 || battery !== null || videos > 0
     if (wanted) openPopup(() => setFailed(true)).catch(() => setFailed(true))
     else closePopup()
-  }, [due, mails, battery, failed])
+  }, [due, mails, battery, videos, failed])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -192,6 +199,9 @@ export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[],
         emit('mouse-battery-open') // App opens Settings on the Mouse battery window
       }
       else if (action === 'battery-done') closeLowAlert()
+      else if (action.startsWith('video-')) {
+        runVideoAlertAction(id, action as VideoAlertAction).catch((error) => console.error(error))
+      }
       else if (action.startsWith('mail-')) {
         runMailAction(id, action as MailAction).catch((error) => console.error(error))
       }
@@ -204,4 +214,22 @@ export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[],
   }, [])
 
   return failed
+}
+
+// A new-video card's button (VideoAlertCards.tsx). The card goes in every case; the video stays in To
+// watch (Play marks it opened, like a click in the list).
+async function runVideoAlertAction(id: string, action: VideoAlertAction) {
+  removeVideoAlerts([id])
+  if (action === 'video-queue') addToQueue(id)
+  if (action === 'video-open-tab') {
+    showMainWindow()
+    window.dispatchEvent(new CustomEvent('open-note', { detail: { id: VIDEO_TAB } }))
+  }
+  if (action === 'video-play') {
+    const video = await db.videos.get(id)
+    if (!video) return
+    const follow = await db.videoFollows.filter((other) => !other.deleted && other.platform === video.platform && other.channelId === video.channelId).first()
+    playVideo({ ...video, watched: false, music: !!follow?.music })
+    void markOpened(id)
+  }
 }

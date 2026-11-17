@@ -9,7 +9,7 @@ import { read, useLocalState, write } from './localState'
 import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
 import { checkPlaylists, nextInPlaylist, playlistFailures, playOrder } from './videoPlaylists'
 import { forgetPositions, resumePosition, savePosition } from './videoPositions'
-import { addVideoAlerts } from './videoAlerts'
+import { addVideoAlerts, removeVideoAlerts } from './videoAlerts'
 import { joinedAlone, leaveQueue, queueStarted, replaceInQueue } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
 
@@ -187,7 +187,11 @@ export async function setFollowNotify(id: string, notify: boolean) {
 export async function removeFollow(id: string) {
   const follow = await db.videoFollows.get(id)
   await db.videoFollows.update(id, { deleted: true, updatedAt: Date.now() })
-  if (follow) await db.videos.filter((video) => video.platform === follow.platform && video.channelId === follow.channelId).delete()
+  if (follow) {
+    const ids = (await db.videos.filter((video) => video.platform === follow.platform && video.channelId === follow.channelId).toArray()).map((video) => video.id)
+    await db.videos.bulkDelete(ids)
+    removeVideoAlerts(ids) // its pop-up cards
+  }
   const checked = read<Record<string, number>>(CHECKED_KEY, {})
   delete checked[id]
   write(CHECKED_KEY, checked)
@@ -515,6 +519,7 @@ async function saveMarks(videoIds: string[], change: Partial<VideoMark>) {
   await db.videoMarks.bulkPut(ids.map((id, i) => ({ id, opened: false, watched: false, ...marks[i], ...change, ...(change.watched && { watchedAt: now }), updatedAt: now })))
   if (change.watched) await queueNextEpisodes(videoIds)
   if (change.watched || change.cleared) leaveQueue(videoIds) // watched or removed: done with
+  if (change.opened || change.watched || change.cleared) removeVideoAlerts(videoIds) // its pop-up card too
   changed()
 }
 

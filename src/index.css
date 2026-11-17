@@ -1831,6 +1831,36 @@ button {
   transition: opacity 0.4s ease;
 }
 
+/* A new-video card (VideoCards.tsx): the thumbnail beside the title and length */
+.video-alert-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.video-alert-thumb {
+  flex-shrink: 0;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  object-fit: cover;
+  background: rgb(255 255 255 / 6%);
+}
+
+.video-alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* ✕: a square at the right end of its buttons, like an email's trash but not red */
+.reminder-alert-buttons .video-alert-close {
+  flex: 0 0 32px;
+  margin-left: auto;
+}
+
 /* An email card (MailCards.tsx): the subject under the sender; the account's address cut with
    … if long */
 .mail-alert-subject {
