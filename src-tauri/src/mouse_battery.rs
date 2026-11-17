@@ -555,9 +555,9 @@ mod theme {
     if light { [157, 93, 0] } else { [252, 225, 0] }
   }
 
-  // Windows' own "success" green (charging): bright on a dark taskbar, deep on a light one
+  // SyncR's blue (charging): --text-blue on a dark taskbar, the darker --accent on a light one
   pub fn charging(light: bool) -> [u8; 3] {
-    if light { [15, 123, 15] } else { [108, 203, 95] }
+    if light { [45, 79, 124] } else { [111, 169, 242] }
   }
 
   pub fn light_taskbar() -> bool {

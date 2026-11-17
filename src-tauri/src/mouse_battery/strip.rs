@@ -1,6 +1,6 @@
 // The mouse battery inside the taskbar (main screen): a see-through child window of the taskbar,
 // just left of the notification area, with an outlined mouse (Windows' icon font), the percent in
-// the clock's font and a green bolt on the mouse while charging; half strength and a yellow dot
+// the clock's font and a blue bolt on the mouse while charging; half strength and a yellow dot
 // when the last check got no answer.
 // Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the
 // page). A click opens the Mouse battery window in SyncR.
@@ -497,7 +497,7 @@ fn draw(look: &Look) -> Option<Canvas> {
   let inset = size(4) as f32;
   let corner = size(4) as f32;
   // A badge on the mouse's bottom right corner, at full strength, with a thin gap cut around it like
-  // Windows' badges: a yellow dot when there's no answer, else a green bolt while charging (the two
+  // Windows' badges: a yellow dot when there's no answer, else a blue bolt while charging (the two
   // never meet: charging is only known from an answer)
   let badge = if look.dim {
     Some(Badge::Dot)
