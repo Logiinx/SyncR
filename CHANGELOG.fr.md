@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo**
+- **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
+- **Corrigé :** vidéos commencées affichées deux fois dans À regarder
+
 ## [0.83.0] - 2026-11-17
 
 **Application**

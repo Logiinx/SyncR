@@ -750,8 +750,8 @@ function VideoView() {
   // channel's sub-folders: these only exist in the channel's row.
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
-  // The videos stopped partway in one list, the last one watched first; they also stay where they
-  // are. Rewatch: its videos, folders and playlists. To watch: its own (the chosen follow's, its
+  // The videos stopped partway in one list, the last one watched first; folders and playlists also keep
+  // theirs (loose ones in To watch only show here). Rewatch: its videos, folders and playlists. To watch: its own (the chosen follow's, its
   // playlists only with All follows), plus Rewatch's with All follows (user: one place to resume
   // anything; tagged rewatch), never Music's.
   function startedIn(inRewatch: boolean) {
@@ -848,8 +848,12 @@ function VideoView() {
   })
   // A flat list, so a video stays the same item whether it's in a group or not. Music has no
   // channel sub-folders (its videos only go in Music's own folders).
+  // A loose video in To watch's Started group shows only there (user: not twice); in a folder or
+  // playlist it stays in place too (their order matters)
+  const inStarted = new Set(startedToWatch.flatMap(({ video, playlist, rewatch: ofRewatch }) => (playlist || ofRewatch || video.folderId ? [] : [video.id])))
   function videoRows() {
-    const groups = (grouping ? byChannel(mainVideos) : mainVideos.map((video) => [video]))
+    const shown = mainVideos.filter((video) => !inStarted.has(video.id))
+    const groups = (grouping ? byChannel(shown) : shown.map((video) => [video]))
       .map((group) => ({ group, subs: grouping && list !== 'music' ? channelFolders(channelKey(group[0])) : [] }))
     // The videos shown on their own row (not in a channel's): one list for ⏭
     const loose = groups.flatMap(({ group, subs }) => (group.length === 1 && !subs.length ? group : []))

@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video**
+- **Better:** To watch, Rewatch and Watched stay at the top while scrolling
+- **Fixed:** started videos shown twice in To watch
+
 ## [0.83.0] - 2026-11-17
 
 **App**

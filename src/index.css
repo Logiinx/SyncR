@@ -8006,8 +8006,17 @@ button.history-row.selected {
   flex-shrink: 0;
 }
 
+/* Stays at the top while the list scrolls (user: lists can be switched from far down). Same place
+   as before: the padding is taken back by the margins; the rows slide under it (z-index 1, under a
+   lifted row's 2). */
 .video-toolbar {
   flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 12px;
+  margin-block: -12px 4px;
+  background: var(--bg);
 }
 
 /* Music: its own switch, a little apart from To watch | Rewatch | Watched (the bar's gap) */
