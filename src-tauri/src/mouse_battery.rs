@@ -10,7 +10,7 @@
 
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Mutex, MutexGuard};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
 mod strip;
@@ -19,6 +19,11 @@ const CHECK_EVERY: Duration = Duration::from_secs(60);
 // After a plug-in or wake-up with no answer: the mouse may still be finding its receiver (a few
 // seconds after leaving its cable), so ask again sooner, then every minute as usual
 const RETRIES: [u64; 5] = [3, 5, 10, 15, 30];
+// While the mouse doesn't answer (asleep): the pointer is looked at this often, and when it moves
+// the mouse is asked at once (moving it wakes it), not at the next minute's check. At most once per
+// POINTER_GAP, in case another mouse or a touchpad moves it while this one sleeps.
+const WATCH_POINTER: Duration = Duration::from_millis(500);
+const POINTER_GAP: Duration = Duration::from_secs(10);
 
 // What the page sends (mouseBattery.ts)
 #[derive(Clone, serde::Deserialize)]
@@ -130,6 +135,7 @@ pub fn mouse_battery_tip(text: String) {
 
 fn run(app: AppHandle, receiver: Receiver<()>) {
   let mut retries: &[u64] = &[];
+  let mut pointer_check: Option<Instant> = None; // the last check started by the pointer
   loop {
     let reading = hid::read_battery();
     let now = {
@@ -153,13 +159,51 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
         CHECK_EVERY
       }
     };
-    // A message: check now (plug-in, wake-up); closed: the module was turned off
-    match receiver.recv_timeout(wait) {
-      Ok(()) => retries = &RETRIES,
+    let watch = !answering && pointer_check.is_none_or(|at| at.elapsed() >= POINTER_GAP);
+    let waited = if watch { wait_or_pointer(&receiver, wait) } else { receiver.recv_timeout(wait).map(|()| false) };
+    // A message: check now (plug-in, PC wake-up), the pointer moved: the mouse woke up; closed: the
+    // module was turned off
+    match waited {
+      Ok(moved) => {
+        retries = &RETRIES;
+        if moved {
+          pointer_check = Some(Instant::now());
+        }
+      }
       Err(RecvTimeoutError::Timeout) => {}
       Err(RecvTimeoutError::Disconnected) => return,
     }
   }
+}
+
+// Like recv_timeout, but also ends when the pointer moves: Ok(true)
+fn wait_or_pointer(receiver: &Receiver<()>, wait: Duration) -> Result<bool, RecvTimeoutError> {
+  let end = Instant::now() + wait;
+  let start = pointer();
+  loop {
+    let left = end.saturating_duration_since(Instant::now());
+    if left.is_zero() {
+      return Err(RecvTimeoutError::Timeout);
+    }
+    match receiver.recv_timeout(left.min(WATCH_POINTER)) {
+      Ok(()) => return Ok(false),
+      Err(RecvTimeoutError::Timeout) => {}
+      Err(gone) => return Err(gone),
+    }
+    if let (Some(before), Some(now)) = (start, pointer()) {
+      if before != now {
+        return Ok(true);
+      }
+    }
+  }
+}
+
+// Where the pointer is (None when Windows won't say, e.g. on the lock screen)
+fn pointer() -> Option<(i32, i32)> {
+  use windows_sys::Win32::{Foundation::POINT, UI::WindowsAndMessaging::GetCursorPos};
+  let mut point = POINT { x: 0, y: 0 };
+  // point is a valid POINT for Windows to fill
+  (unsafe { GetCursorPos(&mut point) } != 0).then_some((point.x, point.y))
 }
 
 fn wide(text: &str) -> Vec<u16> {

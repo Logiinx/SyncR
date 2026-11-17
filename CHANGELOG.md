@@ -11,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 **Games**
 - **Better:** My games, Calendar and the status tabs stay at the top while scrolling
 
+**App**
+- **Better:** mouse battery back to normal as soon as the mouse wakes up
+
 ## [0.83.0] - 2026-11-17
 
 **App**
