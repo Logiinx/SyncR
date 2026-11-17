@@ -77,6 +77,8 @@ export async function igdb<T>(endpoint: string, query: string, connection?: Igdb
       method: 'POST',
       headers: { 'X-SyncR-Password': connection.password },
       body: query,
+      // A request that hangs (e.g. after the PC slept) would block the checks waiting on it
+      signal: AbortSignal.timeout(30_000),
     })
   } catch {
     throw new Error(t('Could not reach the game search proxy (offline, or wrong address?)'))

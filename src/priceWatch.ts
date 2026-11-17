@@ -5,7 +5,7 @@ import { isComplete, loadConnection } from './igdb'
 import { isConnected as googleConnected } from './google'
 import { savePriceAlertEvent } from './calendarEvents'
 import { gameId } from './games'
-import { gameEditions } from './editions'
+import { gameEditions, type Edition } from './editions'
 
 // Price alerts of To buy and Upcoming games (set in the game window: PriceWatchView.tsx): one
 // target for the cheaper of Steam and the cheapest key, when it alerts, and the check (games.ts: after the first sync, then
@@ -172,7 +172,8 @@ const waiting = (watch?: PriceWatch) => !!watch && !watch.firedAt
 // when its price is reached, the event is made and the watch marked as alerted, so it stays
 // quiet until set again. Each edition alerts on its own. Google unreachable: nothing is
 // marked, the next check tries again. false: it failed (offline, proxy or Google unreachable).
-async function checkWatches(): Promise<boolean> {
+// Exported for the tests (tests/priceWatch.test.ts).
+export async function checkWatches(): Promise<boolean> {
   try {
     if (!isComplete(await loadConnection())) return true
     const games = await db.games
@@ -180,14 +181,23 @@ async function checkWatches(): Promise<boolean> {
       .toArray()
     if (games.length === 0) return true
     const allPrices = await gamePrices(games.filter((g) => waiting(g.watch)).map((g) => g.igdbId), { background: true })
-    const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)), { background: true })
+    // Editions that can't be looked up now don't hold back the games' own alerts
+    let editionsOk = true
+    const allEditions = await gameEditions(games.filter((g) => g.editionWatches?.some(waiting)), { background: true }).catch((e) => {
+      console.warn('Edition prices failed', e)
+      editionsOk = false
+      return new Map<number, Edition[]>()
+    })
     for (const game of games) {
       const watch = game.watch
       const prices = allPrices.get(game.igdbId)
       const met = waiting(watch) && prices ? watchMet(watch!, prices) : null
       if (met) {
         await sendAlert(game, watch!, met, prices!)
-        await updateGame(game.id, { watch: { ...watch!, firedAt: Date.now(), firedPrice: met.price } })
+        // Read again: the lookups take a while, and the watch may have been changed, turned off or
+        // dropped (moved to Not started…) meanwhile. Only the same watch is marked.
+        const now = (await db.games.get(game.id))?.watch
+        if (now?.setAt === watch!.setAt && !now.firedAt) await updateGame(game.id, { watch: { ...now, firedAt: Date.now(), firedPrice: met.price } })
       }
       for (const edition of game.editionWatches?.filter(waiting) ?? []) {
         const editionPrices = allEditions.get(game.igdbId)?.find((e) => e.kind === edition.kind && e.id === edition.id)?.prices
@@ -205,7 +215,7 @@ async function checkWatches(): Promise<boolean> {
         })
       }
     }
-    return true
+    return editionsOk
   } catch (e) {
     console.warn('Price alert check failed', e)
     return false
