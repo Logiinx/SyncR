@@ -9,6 +9,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Paramètres des jeux : joindre heures jouées et durée HowLongToBeat sur les cartes En cours
 - **Changé :** les cartes En cours n’affichent plus depuis quand, plus rien n’est coupé
 
+**Notes**
+- **Corrigé :** cartes de liens YouTube vides, maintenant avec titre, chaîne, date et vues
+
 ## [0.82.0] - 2026-11-16
 
 **Vidéo**

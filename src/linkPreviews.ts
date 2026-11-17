@@ -22,7 +22,7 @@ import { animationsOn, growOpen, shrinkThen } from './animations'
 
 export interface LinkPreview {
   url: string
-  kind: 'github' | 'tweet' | 'reddit' | 'page'
+  kind: 'github' | 'tweet' | 'reddit' | 'video' | 'page'
   site: string | null
   title: string | null
   description: string | null
@@ -30,10 +30,11 @@ export interface LinkPreview {
   icon: string | null
   stars?: number | null // github
   language?: string | null // github
-  author?: string | null // tweet, reddit ("u/name")
+  author?: string | null // tweet, reddit ("u/name"), video (its channel)
   handle?: string | null // tweet
   likes?: number | null // tweet
-  date?: number | null // tweet
+  date?: number | null // tweet, video (released)
+  views?: number | null // video (YouTube, only through the owner's key)
   score?: number | null // reddit: votes
   comments?: number | null // reddit (none for a comment)
 }
@@ -181,7 +182,9 @@ async function ask(url: string) {
     if (row) {
       previews.set(url, row.preview)
       redrawSoon()
-      const fresh = Date.now() - row.fetchedAt < (row.preview ? FRESH_FOR : RETRY_AFTER)
+      // A card without a title (e.g. YouTube's empty pages, before the proxy asked YouTube itself)
+      // is asked again like a failed one
+      const fresh = Date.now() - row.fetchedAt < (row.preview?.title ? FRESH_FOR : RETRY_AFTER)
       if (fresh && row.version === CACHE_VERSION) return
     }
     // No proxy set up: plain links, asked again once it is
@@ -261,6 +264,8 @@ function parts(href: string, preview: LinkPreview) {
 // Stars, likes, votes and comments: a filled icon and the number, like a game's rating.
 function extrasLine(preview: LinkPreview, first?: string) {
   const items: (string | HTMLElement)[] = first ? [first] : []
+  // A YouTube video: "channel · date · 👁 views" (user's order)
+  if (preview.kind === 'video') return dotLine([...items, ...videoExtras(preview)])
   if (preview.stars != null) items.push(counted('star', preview.stars, '{count} star', '{count} stars'))
   if (preview.language) items.push(preview.language)
   if (preview.likes != null) items.push(counted('heart', preview.likes, '{count} like', '{count} likes'))
@@ -268,6 +273,24 @@ function extrasLine(preview: LinkPreview, first?: string) {
   if (preview.score != null) items.push(counted('arrowBigUp', preview.score, '{count} vote', '{count} votes'))
   if (preview.comments != null) items.push(counted('messageSquare', preview.comments, '{count} comment', '{count} comments'))
   if (preview.date) items.push(shortDate(preview.date))
+  return dotLine(items)
+}
+
+// A video's channel, release date and views (an open eye: a filled one reads as a blob)
+function videoExtras(preview: LinkPreview) {
+  const items: (string | HTMLElement)[] = []
+  if (preview.author) items.push(preview.author)
+  if (preview.date) items.push(shortDate(preview.date))
+  if (preview.views != null) {
+    const views = counted('eye', preview.views, '{count} view', '{count} views')
+    views.classList.add('outline')
+    items.push(views)
+  }
+  return items
+}
+
+// A dim line of items with " · " between them; null when there are none
+function dotLine(items: (string | HTMLElement)[]) {
   if (items.length === 0) return null
   const line = element('span', 'link-card-line')
   items.forEach((item, i) => (i ? line.append(' · ', item) : line.append(item)))
@@ -295,7 +318,7 @@ function lineCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card link-card-line-style')
   const label = textFirst(preview) ? title : preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
   root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
-  const after = textFirst(preview) ? (preview.handle ? `@${preview.handle}` : preview.author) : preview.description
+  const after = textFirst(preview) ? (preview.handle ? `@${preview.handle}` : preview.author) : preview.kind === 'video' ? preview.author : preview.description
   if (after) root.append(element('span', 'link-card-line', `· ${after}`))
   return root
 }
@@ -306,8 +329,10 @@ function twoLineCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card')
   const text = element('span', 'link-card-text')
   text.append(element('span', 'link-card-title', title))
+  // A video: "channel · date · 👁 views" in place of the site
+  const video = preview.kind === 'video' ? dotLine(videoExtras(preview)) : null
   const line = textFirst(preview) ? byline(preview) : preview.description ? `${site} · ${preview.description}` : site
-  text.append(element('span', 'link-card-line', line))
+  text.append(video ?? element('span', 'link-card-line', line))
   root.append(picture('link-card-picture', pictureSources(preview)), text)
   return root
 }

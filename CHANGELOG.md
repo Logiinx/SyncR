@@ -9,6 +9,9 @@ All notable changes to SyncR. Newest version first.
 - **New:** Games settings: join hours played and HowLongToBeat time on Playing cards
 - **Changed:** Playing cards no longer show since when, nothing gets cut off
 
+**Notes**
+- **Fixed:** empty YouTube link cards, now with title, channel, date and views
+
 ## [0.82.0] - 2026-11-16
 
 **Video**

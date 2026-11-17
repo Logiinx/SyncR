@@ -522,6 +522,59 @@ function metaTags(html) {
   return meta
 }
 
+// YouTube videos (also Shorts, lives, youtu.be): YouTube gives a Worker an almost empty page, so
+// it's asked directly. The owner (YOUTUBE_KEY set): title, channel, picture, release date and
+// views, 1 quota unit per link. Otherwise (friend, no key, or the key failed): YouTube's public
+// oEmbed, title, channel and picture only. Other YouTube pages (playlists, channels): null.
+const YOUTUBE_ICON = 'https://www.youtube.com/favicon.ico'
+function youtubeId(url) {
+  const host = hostOf(url)
+  const [first, second] = url.pathname.split('/').filter(Boolean)
+  const id =
+    host === 'youtu.be'
+      ? first
+      : ['youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(host)
+        ? first === 'watch'
+          ? url.searchParams.get('v')
+          : ['shorts', 'live', 'embed'].includes(first)
+            ? second
+            : null
+        : null
+  return id && /^[\w-]{11}$/.test(id) ? id : null
+}
+
+async function youtubePreview(env, url, owner) {
+  const id = youtubeId(url)
+  if (!id) return null
+  const preview = { url: url.href, kind: 'video', site: 'YouTube', description: null, icon: YOUTUBE_ICON }
+  // A 16:9 picture: maxres when the video has one, else the medium one (the others have black bars)
+  const medium = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
+  if (owner && env.YOUTUBE_KEY) {
+    try {
+      const video = (await askYouTube(env, 'videos', { part: 'snippet,statistics', id })).items?.[0]
+      if (!video) return { error: 'Video not found' } // removed or private
+      const { snippet, statistics } = video
+      return {
+        ...preview,
+        title: snippet.title,
+        author: snippet.channelTitle,
+        image: snippet.thumbnails?.maxres?.url ?? medium,
+        date: Date.parse(snippet.publishedAt) || null,
+        views: statistics?.viewCount != null ? Number(statistics.viewCount) : null,
+      }
+    } catch {
+      // quota used up or a hiccup: the public lookup below
+    }
+  }
+  const response = await fetch(`https://www.youtube.com/oembed?${new URLSearchParams({ url: `https://www.youtube.com/watch?v=${id}`, format: 'json' })}`, {
+    headers: PREVIEW_HEADERS,
+  })
+  if (response.status === 429 || response.status >= 500) return { error: `YouTube answered ${response.status}`, temporary: true }
+  if (!response.ok) return { error: 'Video not found' } // removed, private, or not embeddable
+  const data = await response.json()
+  return { ...preview, title: data.title ?? null, author: data.author_name ?? null, image: medium, date: null, views: null }
+}
+
 // A page's title, description, picture and icon from its <head> (only the first 300 KB are read)
 async function pagePreview(url) {
   const response = await fetch(url.href, { headers: { ...PREVIEW_HEADERS, Accept: 'text/html' }, redirect: 'follow' })
@@ -562,7 +615,7 @@ async function pagePreview(url) {
   }
 }
 
-async function linkPreview(env, request) {
+async function linkPreview(env, request, owner) {
   let url
   try {
     url = new URL((await request.json()).url)
@@ -578,7 +631,7 @@ async function linkPreview(env, request) {
         ? await tweetPreview(url)
         : isRedditHost(host)
           ? await redditPreview(url)
-          : null
+          : await youtubePreview(env, url, owner)
   const preview = special ?? (await pagePreview(url))
   if (host === 'github.com' && !preview.error) preview.icon = GITHUB_ICON
   return preview
@@ -1165,7 +1218,7 @@ export default {
     // "no card" for a day but asks again next time it starts
     if (endpoint === 'preview') {
       try {
-        const { temporary, ...preview } = await linkPreview(env, request)
+        const { temporary, ...preview } = await linkPreview(env, request, owner)
         return reply(preview, temporary ? 502 : 200)
       } catch (error) {
         return reply({ error: String(error.message ?? error) }, 502)

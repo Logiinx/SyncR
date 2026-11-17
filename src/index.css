@@ -2834,6 +2834,12 @@ button {
   fill: currentColor;
 }
 
+/* A video's views: an open eye; 1 px of margin moves it ½ px down, beside its number (measured) */
+.link-card-count.outline svg {
+  margin-top: 1px;
+  fill: none;
+}
+
 /* B, one line: as high as the text around it */
 .link-card.link-card-line-style {
   gap: 6px;
