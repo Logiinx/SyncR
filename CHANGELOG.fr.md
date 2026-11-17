@@ -4,7 +4,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
-**Vidéo**
+**Vidéo** (PC uniquement)
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
@@ -14,12 +14,13 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** Paramètres des jeux : joindre les heures proposé seulement avec la durée HowLongToBeat
 
 **Application**
-- **Amélioré :** batterie de la souris normale dès que la souris se réveille
+- **Nouveau :** les nouveautés signalent les changements propres au PC
+- **Amélioré :** batterie de la souris normale dès que la souris se réveille (PC uniquement)
 
 ## [0.83.0] - 2026-11-17
 
 **Application**
-- **Nouveau :** Paramètres → Modules : la batterie de la souris près de l’horloge, alerte si faible
+- **Nouveau :** Paramètres → Modules : la batterie de la souris près de l’horloge, alerte si faible (PC uniquement)
 
 **Jeux**
 - **Nouveau :** les cartes En cours montrent la note du jeu, sur 2 lignes au plus
@@ -31,7 +32,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [0.82.0] - 2026-11-16
 
-**Vidéo**
+**Vidéo** (PC uniquement)
 - **Nouveau :** ⏭ dans le lecteur lit la vidéo suivante de sa liste (ou Maj+N)
 - **Nouveau :** la vidéo suivante s’affiche dans une carte 20 s avant la fin, un clic la lance
 - **Nouveau :** Paramètres vidéo : lire la vidéo suivante à la fin, aussi hors playlists
@@ -86,19 +87,19 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [0.80.1] - 2026-11-13
 
-**Vidéo**
+**Vidéo** (PC uniquement)
 - **Nouveau :** vidéos commencées aussi dans À regarder, avec son propre interrupteur (menu ⋯)
 - **Corrigé :** les vidéos commencées de À revoir listaient aussi celles de À regarder
 
 ## [0.80.0] - 2026-11-13
 
-**Vidéo**
+**Vidéo** (PC uniquement)
 - **Nouveau :** vidéos commencées dans À revoir, pour les reprendre au même endroit (menu ⋯)
 - **Corrigé :** la fenêtre vidéo rouvre là où vous l’avez laissée : même écran, même taille
 
 ## [0.79.0] - 2026-11-13
 
-**Vidéo**
+**Vidéo** (PC uniquement)
 - **Nouveau :** liste Musique pour les chaînes marquées musicales dans leur fenêtre
 - **Nouveau :** les dossiers d’une seule chaîne affichent l’image de cette chaîne
 - **Nouveau :** le bouton Musique peut n’afficher que son icône (Paramètres vidéo)

@@ -27,6 +27,15 @@ interface Release {
 
 // "**Video**": an area's name, on a line of its own
 const AREA = /^\*\*([^*]+)\*\*$/
+// " (PC only)" at the end of an area's name or a line: shown as a small dim tag (like Settings'
+// "synced"), in the changelog's own language (i18n-ok: changelog text, not shown texts)
+const PC_ONLY = / \((PC only|PC uniquement)\)$/
+
+// The line without its " (PC only)", and the tag to put after it
+function pcOnly(line: string): [string, ReactNode] {
+  const tag = line.match(PC_ONLY)
+  return tag ? [line.slice(0, tag.index), <span className="tag-dim">{tag[1]}</span>] : [line, null]
+}
 // Each area's icon, the one the app shows for it (tab, Board, sync button, Settings' App card).
 // English and French names (i18n-ok: changelog area names, not shown texts)
 const AREA_ICONS: Record<string, LucideIcon> = {
@@ -70,11 +79,15 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
     if (items.length)
       blocks.push(
         <ul key={blocks.length}>
-          {items.map((item, i) => (
-            <li key={i} className={SMALL_FIXES.test(item) ? 'whats-new-small' : undefined}>
-              {richText(item)}
-            </li>
-          ))}
+          {items.map((item, i) => {
+            const [text, tag] = pcOnly(item)
+            return (
+              <li key={i} className={SMALL_FIXES.test(item) ? 'whats-new-small' : undefined}>
+                {richText(text)}
+                {tag}
+              </li>
+            )
+          })}
         </ul>
       )
     items = []
@@ -83,13 +96,15 @@ function ReleaseNotes({ release, showVersion }: { release: Release; showVersion:
     if (line.startsWith('- ')) items.push(line.slice(2))
     else {
       flushList()
-      const heading = line.match(/^###\s+(.*)/) ?? line.match(AREA)
+      const [text, tag] = pcOnly(line)
+      const heading = text.match(/^###\s+(.*)/) ?? text.match(AREA)
       const Icon = heading && AREA_ICONS[heading[1]]
       if (heading)
         blocks.push(
           <h4 key={blocks.length} className="whats-new-area">
             {Icon && <Icon size={14} />}
             {heading[1]}
+            {tag}
           </h4>
         )
       else blocks.push(<p key={blocks.length}>{richText(line)}</p>)

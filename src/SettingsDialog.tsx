@@ -727,7 +727,7 @@ function Status({ ok, text }: { ok: boolean; text: string }) {
 
 // Shared by all devices (synced through Dropbox); everything else is for this device only
 function Synced() {
-  return <span className="settings-synced">{t('synced')}</span>
+  return <span className="tag-dim">{t('synced')}</span>
 }
 
 // Game search: the address and password of SyncR's IGDB proxy (igdb.ts), synced to all devices.

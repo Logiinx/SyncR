@@ -4,7 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Video**
+**Video** (PC only)
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Better:** progress bars in YouTube red and Twitch purple, easier to see
 - **Fixed:** started videos shown twice in To watch
@@ -14,12 +14,13 @@ All notable changes to SyncR. Newest version first.
 - **Better:** Games settings: joining hours only offered with HowLongToBeat time on
 
 **App**
-- **Better:** mouse battery back to normal as soon as the mouse wakes up
+- **New:** What's new marks changes that are only on the PC
+- **Better:** mouse battery back to normal as soon as the mouse wakes up (PC only)
 
 ## [0.83.0] - 2026-11-17
 
 **App**
-- **New:** Settings → Modules: your mouse’s battery by the clock, a pop-up when low
+- **New:** Settings → Modules: your mouse’s battery by the clock, a pop-up when low (PC only)
 
 **Games**
 - **New:** Playing cards show the game’s note, on up to 2 lines
@@ -31,7 +32,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [0.82.0] - 2026-11-16
 
-**Video**
+**Video** (PC only)
 - **New:** ⏭ in the player plays the next video of its list (or Shift+N)
 - **New:** the next video shows in a card 20 s before the end, a click plays it
 - **New:** Video settings: play the next video at the end, also outside playlists
@@ -86,19 +87,19 @@ All notable changes to SyncR. Newest version first.
 
 ## [0.80.1] - 2026-11-13
 
-**Video**
+**Video** (PC only)
 - **New:** started videos in To watch too, with its own switch (⋯ menu)
 - **Fixed:** Rewatch's started videos also listing To watch's
 
 ## [0.80.0] - 2026-11-13
 
-**Video**
+**Video** (PC only)
 - **New:** started videos in Rewatch, to resume them in one place (⋯ menu)
 - **Fixed:** video window reopens where you left it: same screen and size
 
 ## [0.79.0] - 2026-11-13
 
-**Video**
+**Video** (PC only)
 - **New:** Music list for channels marked as music in their follow window
 - **New:** folders holding one channel's videos show that channel's picture
 - **New:** Music button can show its icon alone (Video settings)

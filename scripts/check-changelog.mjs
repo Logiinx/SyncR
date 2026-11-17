@@ -11,6 +11,8 @@ const VERBS = { Added: 'Ajout', Improved: 'Amélioration', Changed: 'Changement'
 const TAGS = { New: 'Nouveau', Better: 'Amélioré', Changed: 'Changé', Removed: 'Supprimé', Fixed: 'Corrigé', 'Small fixes': 'Petites corrections' }
 const ORDER = Object.keys(TAGS)
 const MAX_LENGTH = 90 // visible characters of an English line (aim for ~70)
+// A dim tag at the end of an area's name (Mail, Video) or a line: only on the PC
+const PC_ONLY = { en: ' (PC only)', fr: ' (PC uniquement)' }
 
 const english = lines('CHANGELOG.md')
 const french = lines('CHANGELOG.fr.md')
@@ -27,6 +29,7 @@ for (let i = 0; i < Math.min(en.length, fr.length) && errors.length < 10; i++) {
   if (a.startsWith('## ')) version = a
   if (!a.startsWith('- ')) lastTag = -1
   const where = `CHANGELOG.fr.md, ${version}: "${b.slice(0, 60)}" for "${a.slice(0, 60)}"`
+  if (a.endsWith(PC_ONLY.en) !== b.endsWith(PC_ONLY.fr)) errors.push(`${where}: "${PC_ONLY.en.trim()}" = "${PC_ONLY.fr.trim()}" on both`)
   if (a.startsWith('## ') || !a.trim()) {
     if (a !== b) errors.push(where)
     continue
@@ -38,7 +41,7 @@ for (let i = 0; i < Math.min(en.length, fr.length) && errors.length < 10; i++) {
     else if (!b.startsWith(`- **${TAGS[tag[1]]} :** `)) errors.push(where)
     if (at >= 0 && at < lastTag) errors.push(`CHANGELOG.md, ${version}: "${tag[1]}" after "${ORDER[lastTag]}" (order: ${ORDER.join(', ')})`)
     lastTag = Math.max(lastTag, at)
-    const length = [...a.slice(2).replace(/\*\*/g, '')].length
+    const length = [...a.slice(2).replace(/\*\*/g, '').replace(PC_ONLY.en, '')].length
     if (length > MAX_LENGTH) errors.push(`CHANGELOG.md, ${version}: ${length} characters, max ${MAX_LENGTH}: "${a.slice(0, 60)}"`)
     continue
   }
@@ -51,8 +54,8 @@ for (let i = 0; i < Math.min(en.length, fr.length) && errors.length < 10; i++) {
       errors.push(`CHANGELOG.md, ${version}: old verb "${verb[1]}", use a tag (${ORDER.join(', ')})`)
     continue
   }
-  const area = a.match(/^\*\*(\w+)\*\*$/)
-  if (!area || b !== `**${AREAS[area[1]]}**`) errors.push(where)
+  const area = a.match(/^\*\*(\w+)\*\*( \(PC only\))?$/)
+  if (!area || b !== `**${AREAS[area[1]]}**${area[2] ? PC_ONLY.fr : ''}`) errors.push(where)
 }
 if (errors.length) {
   console.error(errors.join('\n'))

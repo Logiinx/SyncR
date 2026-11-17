@@ -4079,6 +4079,11 @@ button {
   color: var(--text-dim);
 }
 
+/* "PC only" after a line: its smaller text sat 1.3 px lower than the line's on the baseline */
+.whats-new-body li .tag-dim {
+  vertical-align: 1px;
+}
+
 .whats-new-body ul {
   margin: 0;
   padding-left: 20px;
@@ -4706,8 +4711,9 @@ button {
   }
 }
 
-/* "synced": shared by all devices (the rest is for this device only). A small dim tag. */
-.settings-synced {
+/* A small dim tag after a text: Settings' "synced" (shared by all devices, the rest is for this
+   device only), What's new's "PC only" */
+.tag-dim {
   margin-left: 4px;
   padding: 0 6px;
   border: 1px solid var(--border);
