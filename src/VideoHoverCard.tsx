@@ -72,7 +72,7 @@ export function VideoCardContent({ video, opened, from, shows }: { video: CardVi
           <span className="video-card-title">{video.title}</span>
           <span className="video-card-line">
             <VideoLogo platform={video.platform} />
-            <span>{video.channel}</span>
+            <span className="card-author">{video.channel}</span>
           </span>
           {from && (
             <span className="video-card-line">

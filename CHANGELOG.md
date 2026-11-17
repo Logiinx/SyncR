@@ -12,12 +12,14 @@ All notable changes to SyncR. Newest version first.
 - **New:** Video settings: large or compact new-video cards in the pop-up
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Better:** progress bars in YouTube red and Twitch purple, easier to see
+- **Better:** channel name in bright bold on hover cards, easier to spot
 - **Changed:** a video counts as started after about 5 s, not 30
 - **Fixed:** started videos shown twice in To watch
 
 **Notes**
 - **New:** link cards show the site's logo: YouTube, Reddit, X, Google Drive…
 - **New:** link card sites and plain links are the same on PC and phone
+- **Better:** link cards show the channel or writer in bright bold
 
 **Games**
 - **New:** Games settings: prices on the right of covers, one line shorter

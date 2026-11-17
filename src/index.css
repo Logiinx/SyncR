@@ -2862,6 +2862,13 @@ button {
   font-size: 13px;
 }
 
+/* A video's channel or a post's writer in a card's dim lines (link cards and the Video tab's
+   hover cards): bright and semi-bold, the most useful thing to spot there */
+.card-author {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Stars and likes in the extras line: a filled icon and the number, like a game's rating */
 .link-card-count {
   display: inline-flex;

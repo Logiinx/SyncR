@@ -331,14 +331,14 @@ function parts(href: string, preview: LinkPreview) {
 // The dim line of extras, "first · stars · language · likes · date", for Reddit
 // "first · u/name · votes · comments"; null when there are none.
 // Stars, likes, votes and comments: a filled icon and the number, like a game's rating.
-function extrasLine(preview: LinkPreview, first?: string) {
+function extrasLine(preview: LinkPreview, first?: string | HTMLElement) {
   const items: (string | HTMLElement)[] = first ? [first] : []
   // A YouTube video: "channel · date · 👁 views" (user's order)
   if (preview.kind === 'video') return dotLine([...items, ...videoExtras(preview)])
   if (preview.stars != null) items.push(counted('star', preview.stars, '{count} star', '{count} stars'))
   if (preview.language) items.push(preview.language)
   if (preview.likes != null) items.push(counted('heart', preview.likes, '{count} like', '{count} likes'))
-  if (preview.kind === 'reddit' && preview.author) items.push(preview.author)
+  if (preview.kind === 'reddit' && preview.author) items.push(author(preview.author))
   if (preview.score != null) items.push(counted('arrowBigUp', preview.score, '{count} vote', '{count} votes'))
   if (preview.comments != null) items.push(counted('messageSquare', preview.comments, '{count} comment', '{count} comments'))
   if (preview.date) items.push(shortDate(preview.date))
@@ -348,7 +348,7 @@ function extrasLine(preview: LinkPreview, first?: string) {
 // A video's channel, release date and views (an open eye: a filled one reads as a blob)
 function videoExtras(preview: LinkPreview) {
   const items: (string | HTMLElement)[] = []
-  if (preview.author) items.push(preview.author)
+  if (preview.author) items.push(author(preview.author))
   if (preview.date) items.push(shortDate(preview.date))
   if (preview.views != null) {
     const views = counted('eye', preview.views, '{count} view', '{count} views')
@@ -357,6 +357,9 @@ function videoExtras(preview: LinkPreview) {
   }
   return items
 }
+
+// The channel or writer in a dim line: bright and semi-bold, like the Video tab's hover cards
+const author = (name: string) => element('span', 'card-author', name)
 
 // A dim line of items with " · " between them; null when there are none
 function dotLine(items: (string | HTMLElement)[]) {
@@ -387,8 +390,13 @@ function lineCard(href: string, preview: LinkPreview) {
   const root = element('span', 'link-card link-card-line-style')
   const label = textFirst(preview) ? title : preview.kind === 'tweet' && preview.handle ? `@${preview.handle}` : title
   root.append(picture('link-card-icon', iconSources(preview)), element('span', 'link-card-title', label))
+  const byWriter = textFirst(preview) || preview.kind === 'video'
   const after = textFirst(preview) ? (preview.handle ? `@${preview.handle}` : preview.author) : preview.kind === 'video' ? preview.author : preview.description
-  if (after) root.append(element('span', 'link-card-line', `· ${after}`))
+  if (after) {
+    const line = element('span', 'link-card-line', '· ')
+    line.append(byWriter ? author(after) : after)
+    root.append(line)
+  }
   return root
 }
 
@@ -400,8 +408,9 @@ function twoLineCard(href: string, preview: LinkPreview) {
   text.append(element('span', 'link-card-title', title))
   // A video: "channel · date · 👁 views" in place of the site
   const video = preview.kind === 'video' ? dotLine(videoExtras(preview)) : null
-  const line = textFirst(preview) ? byline(preview) : preview.description ? `${site} · ${preview.description}` : site
-  const second = video ?? element('span', 'link-card-line', line)
+  const line = textFirst(preview) ? author(byline(preview)) : preview.description ? `${site} · ${preview.description}` : site
+  const second = video ?? element('span', 'link-card-line')
+  if (!video) second.append(line)
   // A known site's logo leads the second line, unless the picture already is the site's icon
   // (a tweet's icon is its writer's picture)
   const sources = pictureSources(preview)
@@ -424,7 +433,8 @@ function largeCard(href: string, preview: LinkPreview) {
   root.append(head)
   if (!first) root.append(element('span', 'link-card-title', title))
   if (preview.description) root.append(element('span', 'link-card-description', preview.description))
-  const extras = extrasLine(preview, first ? byline(preview) : undefined)
+  const writer = first && byline(preview)
+  const extras = extrasLine(preview, writer ? author(writer) : undefined)
   if (extras) root.append(extras)
   if (preview.image && preview.kind !== 'github') {
     const image = picture('link-card-image', [preview.image])
@@ -503,7 +513,9 @@ export function hoverCard(href: string, onInlineCard: boolean) {
   const { title, site } = parts(href, preview)
   const root = element('span', 'link-card link-card-small link-hover-card')
   if (textFirst(preview)) {
-    root.append(element('span', 'link-card-description', preview.description!), element('span', 'link-card-line', byline(preview)))
+    const writer = element('span', 'link-card-line')
+    writer.append(author(byline(preview)))
+    root.append(element('span', 'link-card-description', preview.description!), writer)
   } else {
     root.append(element('span', 'link-card-title', title))
     if (preview.description) root.append(element('span', 'link-card-description', preview.description))

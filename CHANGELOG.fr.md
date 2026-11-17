@@ -12,12 +12,14 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Paramètres vidéo : grandes ou petites cartes des nouvelles vidéos en pop-up
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
+- **Amélioré :** nom de la chaîne en gras clair sur les cartes au survol, plus facile à repérer
 - **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 
 **Notes**
 - **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, Google Drive…
 - **Nouveau :** les sites des cartes de liens et les liens simples sont les mêmes sur PC et téléphone
+- **Amélioré :** les cartes de liens montrent la chaîne ou l’auteur en gras clair
 
 **Jeux**
 - **Nouveau :** Paramètres des jeux : prix à droite des jaquettes, une ligne de moins
