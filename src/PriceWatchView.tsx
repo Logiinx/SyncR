@@ -7,6 +7,7 @@ import { openLink } from './links'
 import { editionLabel, gameEditions, knownEditions, steamPageName, type Edition } from './editions'
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
 import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
+import { estimateSale, saleName, useSaleGuess } from './saleGuess'
 
 // The "Price alerts" part of a To buy or Upcoming game's window (GameDialog.tsx): per row (the
 // game, its editions) a bell turns the alert on or off, then when to alert on the cheaper of Steam
@@ -231,6 +232,17 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
           </span>
         )}
         {suggested && when === 'price' && <span>{suggested}</span>}
+        {when === 'price' && prices && (
+          <SaleHint
+            prices={prices}
+            target={watch?.target ?? null}
+            onUse={(cents) => {
+              setTarget(euroText(cents))
+              setSuggested(null)
+              save({ target: cents })
+            }}
+          />
+        )}
       </div>
       {when && (
         <div className="watch-row-choices">
@@ -259,5 +271,31 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
         </div>
       )}
     </div>
+  )
+}
+
+// The next-sale guess (saleGuess.ts) under a row alerting at my price: "Steam Winter Sale guess:
+// ≈ 14,70 €", the price a link that puts it in the box. When my price is lower: "· your price is
+// unlikely by then", unless a key is already cheaper than the guess (keys can go lower than Steam).
+// Nothing without an estimate (no discount to go by, the sale is on now, not a Steam app).
+function SaleHint({ prices, target, onUse }: { prices: GamePrices; target: number | null; onUse: (cents: number) => void }) {
+  const guess = useSaleGuess(prices, true)
+  const regular = prices.steam?.initial
+  const estimate = guess && regular ? estimateSale(guess, regular) : null
+  if (!guess || !estimate) return null
+  const key = prices.deals?.keyshops ? Math.round(Number(prices.deals.keyshops) * 100) : null
+  const unlikely = target !== null && target < estimate.price && (key === null || key >= estimate.price)
+  const mark = '\u0001'
+  const text = guess.bigSale ? t('{sale} guess: {price}', { sale: saleName(guess.bigSale.name), price: mark }) : t('Next sale guess: {price}', { price: mark })
+  const [before, after] = text.split(mark)
+  return (
+    <span className="watch-sale-hint">
+      {before}
+      <button className="watch-again" title={t('Use this price')} onClick={() => onUse(estimate.price)}>
+        ≈ {formatEuros(estimate.price)}
+      </button>
+      {after}
+      {unlikely && ` · ${t('your price is unlikely by then')}`}
+    </span>
   )
 }

@@ -157,11 +157,12 @@ export interface SaleEstimate {
 
 // The price the next sale would likely give, from Steam's normal price (today's may already be a
 // sale): the game's discount around that sale a year ago, else its usual one (only when it had it
-// at least twice). null: no discount to go by, or the big sale is on now (its price shows already).
+// at least twice). Rounded up to the cent, so an alert at that price still rings if Steam rounds
+// up. null: no discount to go by, or the big sale is on now (its price shows already).
 export function estimateSale(guess: SaleGuess, regular: number): SaleEstimate | null {
   const history = guess.history
   if (!history || history.never || guess.bigSale?.now) return null
-  const priced = (cut: number, from: SaleEstimate['from']) => ({ cut, price: Math.round((regular * (100 - cut)) / 100), from })
+  const priced = (cut: number, from: SaleEstimate['from']) => ({ cut, price: Math.ceil((regular * (100 - cut)) / 100), from })
   if (history.lastYear) return priced(history.lastYear, 'lastYear')
   if (history.usual && (history.usualSeen ?? 0) >= 2) return priced(history.usual, 'usual')
   return null

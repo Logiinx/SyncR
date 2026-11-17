@@ -6,8 +6,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Jeux**
 - **Nouveau :** la prévision de promo affiche le prix auquel le jeu devrait tomber
+- **Nouveau :** les alertes de prix montrent le prix prévu aux prochains soldes, un clic pour l’utiliser
 - **Amélioré :** prochains soldes Steam présentés en petit tableau, plus lisible d’un coup d’œil
 - **Amélioré :** remises en texte vert, sur les prix et dans les prévisions de promo
+- **Petites corrections :** « Surveiller à nouveau » plus lisible
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** lecteur Twitch : un rond qui tourne sur ⚙️ tant qu’une nouvelle qualité arrive

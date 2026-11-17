@@ -7299,6 +7299,16 @@ button.history-row.selected {
   margin-left: 8px;
 }
 
+/* The next-sale guess under a row (SaleHint): may wrap, its price a link like Watch again */
+.watch-row-name > .watch-sale-hint {
+  white-space: normal;
+}
+
+.watch-row-name .watch-sale-hint .watch-again {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
 .watch-row-choices {
   display: flex;
   gap: 6px;
@@ -7338,8 +7348,10 @@ button.history-row.selected {
   border-top: 1px solid var(--border);
 }
 
+/* Text buttons in the alert rows (Watch again, the sale guess price): link blue, like the Board undo
+   (the accent is too dark to read as text) */
 .watch-again {
-  color: var(--accent);
+  color: var(--link);
 }
 
 .watch-actions {
