@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Jeux**
 - **Nouveau :** les cartes En cours montrent la note du jeu, sur 2 lignes au plus
+- **Nouveau :** Paramètres des jeux : joindre heures jouées et durée HowLongToBeat sur les cartes En cours
 - **Changé :** les cartes En cours n’affichent plus depuis quand, plus rien n’est coupé
 
 ## [0.82.0] - 2026-11-16

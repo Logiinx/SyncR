@@ -13,11 +13,30 @@ const listeners = new Set<() => void>()
 export function setShortPlaytime(value: ShortPlaytime) {
   shortPlaytime = value
   write(PLAYTIME_KEY, value)
-  for (const listener of listeners) listener()
+  changed()
 }
 
-export const useShortPlaytime = () =>
-  useSyncExternalStore((listener) => {
-    listeners.add(listener)
-    return () => listeners.delete(listener)
-  }, () => shortPlaytime)
+export const useShortPlaytime = () => useSyncExternalStore(subscribe, () => shortPlaytime)
+
+// Playing cards: "42 h / ⌛ 52 h" instead of "42 h played · ⌛ 52 h" (user: off at first)
+const JOIN_KEY = 'syncr.games.joinTimes'
+let joinTimes = read(JOIN_KEY, false)
+
+export function setJoinTimes(value: boolean) {
+  joinTimes = value
+  write(JOIN_KEY, value)
+  changed()
+}
+
+export const useJoinTimes = () => useSyncExternalStore(subscribe, () => joinTimes)
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function changed() {
+  for (const listener of listeners) listener()
+}

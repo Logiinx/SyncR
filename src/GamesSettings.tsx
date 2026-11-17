@@ -3,11 +3,12 @@ import CloseButton from './CloseButton'
 import Window from './Window'
 import { SettingRow, SettingsCard } from './SettingsCard'
 import { t } from './i18n'
-import { setShortPlaytime, useShortPlaytime, type ShortPlaytime } from './gamesOptions'
+import { setJoinTimes, setShortPlaytime, useJoinTimes, useShortPlaytime, type ShortPlaytime } from './gamesOptions'
 
 // The ⚙️ of My games: Settings' cards, like Video settings. This device only (gamesOptions.ts).
 export default function GamesSettings({ onClose }: { onClose: () => void }) {
   const playtime = useShortPlaytime()
+  const joinTimes = useJoinTimes()
   return (
     <Window className="dialog settings games-settings" label={t('Games settings')} onClose={onClose}>
       <div className="dialog-head">
@@ -23,6 +24,12 @@ export default function GamesSettings({ onClose }: { onClose: () => void }) {
               <option value="plus">{t('Main + extras')}</option>
               <option value="full">{t('Everything (100%)')}</option>
             </select>
+          </SettingRow>
+          <SettingRow
+            label={t('Join hours played and HowLongToBeat time')}
+            title={t('On Playing cards: “42 h / 52 h” instead of “42 h played · 52 h”')}
+          >
+            <input type="checkbox" checked={joinTimes} onChange={(e) => setJoinTimes(e.target.checked)} />
           </SettingRow>
         </SettingsCard>
       </div>

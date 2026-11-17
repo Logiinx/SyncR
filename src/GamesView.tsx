@@ -8,9 +8,10 @@ import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, remo
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
+import { useJoinTimes } from './gamesOptions'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
-import { isHundred, PLAYING_ON_OPEN, playedText, refreshPlaying, useSteamProfile } from './steam'
+import { isHundred, PLAYING_ON_OPEN, playedText, playedTime, refreshPlaying, useSteamProfile } from './steam'
 import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame, type SameAs } from './igdb'
 import Cover from './GameCover'
@@ -287,8 +288,18 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
   const time = useShortTime(game.id)
-  // What you played next to the HowLongToBeat time (Games settings)
-  const details = dotted([stats && playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />])
+  // What you played next to the HowLongToBeat time (Games settings): "42 h played · ⌛ 52 h", or
+  // "42 h / ⌛ 52 h" when joined (Games settings; only when both show)
+  const joined = useJoinTimes() && !!stats && time > 0
+  const details = joined
+    ? dotted([
+        <>
+          <span title={playedText(stats.minutes)}>{playedTime(stats.minutes)}</span>
+          {' / '}
+          <PlaytimeShort seconds={time} />
+        </>,
+      ])
+    : dotted([stats && playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />])
   // The note's lines joined by " · " (blank ones skipped), so 2 lines show as much as they can
   const note = game.note
     .split('\n')

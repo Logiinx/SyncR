@@ -126,6 +126,8 @@ export const games = {
   'Everything (100%) on HowLongToBeat': 'Tout (100 %) sur HowLongToBeat',
   'Games settings': 'Paramètres des jeux',
   'HowLongToBeat time': 'Durée HowLongToBeat',
+  'Join hours played and HowLongToBeat time': 'Joindre heures jouées et durée HowLongToBeat',
+  'On Playing cards: “42 h / 52 h” instead of “42 h played · 52 h”': 'Sur les cartes En cours : « 42 h / 52 h » au lieu de « 42 h de jeu · 52 h »',
   'On the tiles, list rows and Playing cards. A game’s window always shows all of them.': 'Sur les vignettes, les lignes de la liste et les cartes En cours. La fenêtre d’un jeu les montre toujours toutes.',
   'Add its link': 'Ajouter son lien',
   'Not found on HowLongToBeat': 'Introuvable sur HowLongToBeat',

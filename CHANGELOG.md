@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **New:** Playing cards show the game’s note, on up to 2 lines
+- **New:** Games settings: join hours played and HowLongToBeat time on Playing cards
 - **Changed:** Playing cards no longer show since when, nothing gets cut off
 
 ## [0.82.0] - 2026-11-16
