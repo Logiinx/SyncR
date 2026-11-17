@@ -1,7 +1,7 @@
 // The mouse battery inside the taskbar (main screen): a see-through child window of the taskbar,
 // just left of the notification area, with an outlined mouse (Windows' icon font), the percent in
-// the clock's font and a blue bolt on the mouse while charging; half strength and a yellow dot
-// when the last check got no answer.
+// the clock's font and a blue bolt on the mouse while charging; half strength and a "Zz" (the
+// taskbar's white or black) when the last check got no answer.
 // Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the
 // page). A click opens the Mouse battery window in SyncR.
 // Its own thread: once inside the taskbar it shares Windows' input with it, so it must never wait
@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
-use windows_sys::Win32::Graphics::Gdi::{AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, DT_LEFT, FW_NORMAL};
+use windows_sys::Win32::Graphics::Gdi::{AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, DT_LEFT, FW_NORMAL, FW_SEMIBOLD};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Controls::{
   InitCommonControlsEx, SetWindowTheme, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, TOOLTIPS_CLASSW, TTF_IDISHWND, TTF_SUBCLASS,
@@ -497,33 +497,32 @@ fn draw(look: &Look) -> Option<Canvas> {
   let inset = size(4) as f32;
   let corner = size(4) as f32;
   // A badge on the mouse's bottom right corner, at full strength, with a thin gap cut around it like
-  // Windows' badges: a yellow dot when there's no answer, else a blue bolt while charging (the two
-  // never meet: charging is only known from an answer)
+  // Windows' badges: "Zz" (the taskbar's white or black) when there's no answer, else a blue bolt
+  // while charging (the two never meet: charging is only known from an answer)
+  let (badge_x, badge_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
+  let scale = look.dpi as f32 / 96.0;
+  let badge_gap = 1.5 * scale;
   let badge = if look.dim {
-    Some(Badge::Dot)
+    Some(Badge::Asleep(Sleep::draw(look.dpi, badge_x, badge_y)?))
   } else if look.charging {
-    Some(Badge::Bolt)
+    Some(Badge::Bolt(bolt_points(badge_x, badge_y, size(8) as f32)))
   } else {
     None
   };
-  let badge_color = if look.dim { theme::caution(look.light) } else { theme::charging(look.light) };
-  let (badge_x, badge_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
-  // A full dot looks heavier than the thin bolt: 4.5 px across at 100%
-  let scale = look.dpi as f32 / 96.0;
-  let (dot_radius, badge_gap) = (2.25 * scale, 1.5 * scale);
-  let bolt = bolt_points(badge_x, badge_y, size(8) as f32);
+  let badge_color = if look.dim { plain } else { theme::charging(look.light) };
   let columns = canvas.width;
   for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {
     let (x, y) = ((index % columns) as i32, (index / columns) as i32);
     let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
-    // How far the pixel's center is from the badge's edge (below 0: inside)
-    let from_badge = match badge {
-      Some(Badge::Dot) => ((px - badge_x).powi(2) + (py - badge_y).powi(2)).sqrt() - dot_radius,
-      Some(Badge::Bolt) => from_shape(px, py, &bolt),
-      None => f32::MAX,
+    let (badge_cover, gap_cover) = match &badge {
+      // How far the pixel's center is from the bolt's edge (below 0: inside)
+      Some(Badge::Bolt(bolt)) => {
+        let from_badge = from_shape(px, py, bolt);
+        ((0.5 - from_badge).clamp(0.0, 1.0), (badge_gap + 0.5 - from_badge).clamp(0.0, 1.0))
+      }
+      Some(Badge::Asleep(sleep)) => (sleep.cover(x, y), sleep.near(x, y, badge_gap)),
+      None => (0.0, 0.0),
     };
-    let badge_cover = (0.5 - from_badge).clamp(0.0, 1.0);
-    let gap_cover = (badge_gap + 0.5 - from_badge).clamp(0.0, 1.0);
     let cover = pixel[2] as f32 / 255.0 * strength * (1.0 - gap_cover);
     let color = if x < text_left { plain } else { number };
     let background = if look.hover {
@@ -551,8 +550,75 @@ fn draw(look: &Look) -> Option<Canvas> {
 }
 
 enum Badge {
-  Dot,
-  Bolt,
+  Asleep(Sleep),
+  Bolt(Vec<(f32, f32)>),
+}
+
+// "Zz" (Z 9 px, z 7 px at 100%, the clock's font, semibold) drawn on a small sheet of its own, its
+// ink centered on the badge's spot; then read as how much of each strip pixel it covers
+struct Sleep {
+  cover: Vec<f32>,
+  side: i32,
+  left: i32,
+  top: i32,
+}
+
+impl Sleep {
+  fn draw(dpi: u32, x: f32, y: f32) -> Option<Sleep> {
+    let size = |px: i32| scaled(px, dpi);
+    let side = size(20);
+    let mut sheet = Canvas::new(side as usize, side as usize)?;
+    let (big, small) = (size(9), size(7));
+    let (big_width, big_height) = sheet.with_font(TEXT_FONTS, big, FW_SEMIBOLD, |canvas| canvas.measure("Z"))?;
+    let small_height = sheet.with_font(TEXT_FONTS, small, FW_SEMIBOLD, |canvas| canvas.measure("z").1)?;
+    // Both letters on one baseline: a box as tall as each font's line puts its text at the top, and
+    // the baseline sits at the same share of the line in both sizes (~80% in Segoe UI)
+    let (start, top) = (size(2), size(2));
+    let small_top = top + ((big_height - small_height) as f32 * 0.8).round() as i32;
+    sheet.with_font(TEXT_FONTS, big, FW_SEMIBOLD, |canvas| canvas.text("Z", start, top, side, top + big_height, DT_LEFT))?;
+    sheet.with_font(TEXT_FONTS, small, FW_SEMIBOLD, |canvas| {
+      canvas.text("z", start + big_width, small_top, side, small_top + small_height, DT_LEFT)
+    })?;
+    let cover: Vec<f32> = sheet.pixels().chunks_exact(4).map(|pixel| pixel[2] as f32 / 255.0).collect();
+    // The ink's box, to center it on the spot
+    let (mut low_x, mut low_y, mut high_x, mut high_y) = (side, side, 0, 0);
+    for (index, &value) in cover.iter().enumerate() {
+      if value > 0.1 {
+        let (cx, cy) = (index as i32 % side, index as i32 / side);
+        (low_x, low_y, high_x, high_y) = (low_x.min(cx), low_y.min(cy), high_x.max(cx + 1), high_y.max(cy + 1));
+      }
+    }
+    if low_x >= high_x {
+      return None;
+    }
+    let left = (x - (low_x + high_x) as f32 / 2.0).round() as i32;
+    let top = (y - (low_y + high_y) as f32 / 2.0).round() as i32;
+    Some(Sleep { cover, side, left, top })
+  }
+
+  // How much of the strip's pixel (x, y) the letters cover: 0 to 1
+  fn cover(&self, x: i32, y: i32) -> f32 {
+    let (sx, sy) = (x - self.left, y - self.top);
+    if sx < 0 || sy < 0 || sx >= self.side || sy >= self.side {
+      return 0.0;
+    }
+    self.cover[(sy * self.side + sx) as usize]
+  }
+
+  // The gap around the letters: how much of the pixel lies within `gap` of them, soft at its edge
+  fn near(&self, x: i32, y: i32, gap: f32) -> f32 {
+    let reach = (gap + 0.5).ceil() as i32;
+    let mut most: f32 = 0.0;
+    for dy in -reach..=reach {
+      for dx in -reach..=reach {
+        let falloff = (gap + 0.5 - ((dx * dx + dy * dy) as f32).sqrt()).clamp(0.0, 1.0);
+        if falloff > 0.0 {
+          most = most.max(self.cover(x + dx, y + dy) * falloff);
+        }
+      }
+    }
+    most
+  }
 }
 
 // A lightning bolt `tall` pixels high, centered on (x, y)

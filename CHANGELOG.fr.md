@@ -11,6 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** remises en texte vert, sur les prix et dans les prévisions de promo
 
 **Application**
+- **Changé :** une souris en veille affiche « Zz » près de l’horloge, et non un point jaune (PC uniquement)
 - **Changé :** le bouton des paramètres vidéo est passé dans Paramètres → Modules (PC uniquement)
 
 ## [0.84.1] - 2026-11-17

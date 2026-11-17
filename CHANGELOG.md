@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - **Better:** discounts in plain green text, on prices and in sale guesses
 
 **App**
+- **Changed:** a sleeping mouse shows “Zz” by the clock, not a yellow dot (PC only)
 - **Changed:** the Video settings button moved to Settings → Modules (PC only)
 
 ## [0.84.1] - 2026-11-17

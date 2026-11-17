@@ -594,11 +594,6 @@ mod theme {
     }
   }
 
-  // Windows' own "caution" yellow (no answer from the mouse): bright on a dark taskbar, amber on a light one
-  pub fn caution(light: bool) -> [u8; 3] {
-    if light { [157, 93, 0] } else { [252, 225, 0] }
-  }
-
   // SyncR's blue (charging): --text-blue on a dark taskbar, the darker --accent on a light one
   pub fn charging(light: bool) -> [u8; 3] {
     if light { [45, 79, 124] } else { [111, 169, 242] }
