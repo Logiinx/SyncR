@@ -508,7 +508,9 @@ fn draw(look: &Look) -> Option<Canvas> {
   };
   let badge_color = if look.dim { theme::caution(look.light) } else { theme::charging(look.light) };
   let (badge_x, badge_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
-  let (dot_radius, badge_gap) = (size(3) as f32, size(3) as f32 * 0.5);
+  // A full dot looks heavier than the thin bolt: 4.5 px across at 100%
+  let scale = look.dpi as f32 / 96.0;
+  let (dot_radius, badge_gap) = (2.25 * scale, 1.5 * scale);
   let bolt = bolt_points(badge_x, badge_y, size(8) as f32);
   let columns = canvas.width;
   for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {

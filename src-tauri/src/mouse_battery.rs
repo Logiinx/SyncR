@@ -16,6 +16,9 @@ use tauri::{AppHandle, Emitter};
 mod strip;
 
 const CHECK_EVERY: Duration = Duration::from_secs(60);
+// After a plug-in or wake-up with no answer: the mouse may still be finding its receiver (a few
+// seconds after leaving its cable), so ask again sooner, then every minute as usual
+const RETRIES: [u64; 5] = [3, 5, 10, 15, 30];
 
 // What the page sends (mouseBattery.ts)
 #[derive(Clone, serde::Deserialize)]
@@ -126,6 +129,7 @@ pub fn mouse_battery_tip(text: String) {
 }
 
 fn run(app: AppHandle, receiver: Receiver<()>) {
+  let mut retries: &[u64] = &[];
   loop {
     let reading = hid::read_battery();
     let now = {
@@ -136,11 +140,23 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
       }
       status.clone()
     };
+    let answering = now.answering;
     let _ = app.emit("mouse-battery", now);
     strip::refresh();
+    let wait = match retries.split_first() {
+      Some((&first, rest)) if !answering => {
+        retries = rest;
+        Duration::from_secs(first)
+      }
+      _ => {
+        retries = &[];
+        CHECK_EVERY
+      }
+    };
     // A message: check now (plug-in, wake-up); closed: the module was turned off
-    match receiver.recv_timeout(CHECK_EVERY) {
-      Ok(()) | Err(RecvTimeoutError::Timeout) => {}
+    match receiver.recv_timeout(wait) {
+      Ok(()) => retries = &RETRIES,
+      Err(RecvTimeoutError::Timeout) => {}
       Err(RecvTimeoutError::Disconnected) => return,
     }
   }
