@@ -13,13 +13,18 @@ import { gameEditions, type Edition } from './editions'
 
 const cents = (price: string | null | undefined) => (price == null ? null : Math.round(Number(price) * 100))
 
-// The cheaper of Steam and the cheapest key now, in cents, and where (equal: Steam, the safer
-// buy, like the price lines). null: neither is sold. ignoredKeys: a key at one of these prices
-// doesn't count (a watch's "Wrong key" prices).
+// The cheapest key now, in cents; null: none, or at one of ignoredKeys (a watch's "Wrong key"
+// prices)
+export function keyPrice(prices: GamePrices, ignoredKeys?: number[]) {
+  const key = cents(prices.deals?.keyshops)
+  return key !== null && ignoredKeys?.includes(key) ? null : key
+}
+
+// The cheaper of Steam and the cheapest key now (keyPrice), in cents, and where (equal: Steam,
+// the safer buy, like the price lines). null: neither is sold.
 export function currentPrice(prices: GamePrices, ignoredKeys?: number[]): { price: number; store: 'steam' | 'key' } | null {
   const steam = prices.steam?.final ?? null
-  let key = cents(prices.deals?.keyshops)
-  if (key !== null && ignoredKeys?.includes(key)) key = null
+  const key = keyPrice(prices, ignoredKeys)
   if (steam !== null && (key === null || steam <= key)) return { price: steam, store: 'steam' }
   return key !== null ? { price: key, store: 'key' } : null
 }

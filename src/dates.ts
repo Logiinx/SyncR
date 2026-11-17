@@ -57,6 +57,17 @@ export function ageText(time: number) {
   return plural(Math.floor(days / 365), '{n} year ago', '{n} years ago')
 }
 
+// How long until a day: "today", "tomorrow", "in 34 days", "in 5 months" (a release, a sale).
+// Null once it's past. Counts calendar days, not 24h blocks.
+export function untilText(time: number) {
+  const days = Math.round((new Date(time).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000)
+  if (days < 0) return null
+  if (days === 0) return t('today')
+  if (days === 1) return t('tomorrow')
+  if (days < 60) return t('in {n} days', { n: days })
+  return t('in {n} months', { n: Math.round(days / 30.4) })
+}
+
 // "Today", "Tomorrow" or "Yesterday", else null. Counts calendar days (setDate, not "minus 24
 // hours": days with a clock change are 23 or 25 hours long).
 export function nearDay(time: number): string | null {

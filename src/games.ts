@@ -10,7 +10,7 @@ import { loadListEditions } from './editions'
 import { startWatchChecks } from './priceWatch'
 import { followSteam, refreshPlaying, refreshSteamStats } from './steam'
 import { refreshPlaytimes } from './playtimes'
-import { shortDate } from './dates'
+import { shortDate, untilText } from './dates'
 import { read, write } from './localState'
 import { refreshEvents, removeReleaseEvent, saveReleaseEvent } from './calendarEvents'
 import { isConnected as googleConnected } from './google'
@@ -183,17 +183,10 @@ export function shortPlatforms(platforms: string[]) {
 }
 
 // How long until a release: "today", "tomorrow", "in 34 days", "in 5 months", or "out now" once
-// it's past (a game stays in Waiting until it's moved). Counts calendar days, not 24h blocks.
-const DAY = 24 * 60 * 60 * 1000
+// it's past (a game stays in Waiting until it's moved)
 export function releaseCountdown(time?: number) {
   if (!time) return ''
-  const midnight = (t: number) => new Date(t).setHours(0, 0, 0, 0)
-  const days = Math.round((midnight(time) - midnight(Date.now())) / DAY)
-  if (days < 0) return t('out now')
-  if (days === 0) return t('today')
-  if (days === 1) return t('tomorrow')
-  if (days < 60) return t('in {n} days', { n: days })
-  return t('in {n} months', { n: Math.round(days / 30.4) })
+  return untilText(time) ?? t('out now')
 }
 
 // "12 Mar 2027", a vague date ("Q1 2027"), or "TBA" when there's no date yet
@@ -383,7 +376,27 @@ export function startGameChecks() {
       console.warn('Release day check failed', e)
     }
   }
+  // One refresh at a time: a sync finishing while one runs (quick syncs) asks for one more after it,
+  // instead of a second running alongside (both would save the same games, and add the same
+  // release events twice)
+  let refreshing = false
+  let again = false
   const refresh = async () => {
+    if (refreshing) {
+      again = true
+      return
+    }
+    refreshing = true
+    try {
+      do {
+        again = false
+        await refreshOnce()
+      } while (again)
+    } finally {
+      refreshing = false
+    }
+  }
+  const refreshOnce = async () => {
     try {
       await upgradeOldStatuses()
       await matchGamePriorities()

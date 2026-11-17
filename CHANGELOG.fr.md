@@ -10,6 +10,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** les alertes de prix pouvaient cesser de vérifier après la sortie de veille du PC
 - **Corrigé :** un jeu ajouté à nouveau ne ramène plus son ancienne alerte de prix, précommande ou priorité
 - **Corrigé :** un jeu déjà sorti ne peut plus aller dans « À venir » (grisé), il en ressortait aussitôt
+- **Corrigé :** le tableau des prochaines soldes reste quand l’historique de prix est illisible
+- **Corrigé :** « en général −40 % » n’apparaît qu’après deux promos à cette remise
+- **Corrigé :** le prix d’une alerte suit un changement fait sur l’autre appareil
+- **Petites corrections :** prix d’alerte enregistré une fois tapé, « peu probable » sans les mauvaises clés, « −40 % »
 
 ## [0.85.0] - 2026-11-18
 

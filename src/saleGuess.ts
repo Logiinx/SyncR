@@ -5,7 +5,7 @@
 // price (PriceWatchView), they don't act on it.
 import { useEffect, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
-import { dayMonth, shortDate } from './dates'
+import { dayMonth, shortDate, untilText } from './dates'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import type { GamePrices } from './prices'
 
@@ -23,7 +23,8 @@ interface PriceChange {
 }
 interface SalesAnswer {
   bigSales: BigSale[]
-  history: PriceChange[] | null // null: not on IsThereAnyDeal (or no key in the proxy)
+  history: PriceChange[] | null // null: not on IsThereAnyDeal (or no key in the proxy, or it failed)
+  historyFailed?: true // IsThereAnyDeal failed: asked again later
 }
 
 const DAY = 24 * 60 * 60 * 1000
@@ -40,8 +41,7 @@ export interface SaleGuess {
     never: boolean // no discount in the last 2 years
     lastYear?: number // the best discount around this big sale's dates a year ago (0 = none);
     //                   undefined: no big sale announced, or the game's history doesn't go that far
-    usual?: number // its most common discount (from 2 sales)
-    usualSeen?: number // how many of its sales had that discount
+    usual?: number // its most common discount, when it had it at least twice
     last?: { at: number; cut: number } // its last sale that has ended
   }
 }
@@ -82,12 +82,13 @@ export function makeGuess(answer: SalesAnswer, now = Date.now()): SaleGuess {
   if (!answer.history) return guess
   const sales = salesOf(answer.history)
   if (sales.length === 0) return { ...guess, history: { never: true } }
-  // Most common discount (from 2 sales: with one, "last on sale" says it already); a tie goes to
-  // the most recent
+  // Most common discount, only when the game had it at least twice (once is no habit, and "last
+  // sale" says it already); a tie goes to the most recent
   const counts = new Map<number, number>()
   for (const sale of sales) counts.set(sale.cut, (counts.get(sale.cut) ?? 0) + 1)
   let usual = sales.at(-1)!.cut
   for (const sale of [...sales].reverse()) if (counts.get(sale.cut)! > counts.get(usual)!) usual = sale.cut
+  const usualSeen = counts.get(usual)! >= 2
   const ended = sales.filter((sale) => sale.end !== null).at(-1)
   let lastYear: number | undefined
   const known = answer.history[0].at
@@ -98,31 +99,37 @@ export function makeGuess(answer: SalesAnswer, now = Date.now()): SaleGuess {
   }
   return {
     ...guess,
-    history: { never: false, lastYear, usual: sales.length > 1 ? usual : undefined, usualSeen: counts.get(usual), last: ended && { at: ended.start, cut: ended.cut } },
+    history: { never: false, lastYear, usual: usualSeen ? usual : undefined, last: ended && { at: ended.start, cut: ended.cut } },
   }
 }
 
 // ---------- Asking the proxy ----------
 
-const answers = new Map<number, Promise<SalesAnswer | null>>() // by Steam app id, this session
+// By Steam app id, this session. retryAt: a failed ask (offline, IsThereAnyDeal busy) is asked
+// again from then on, not on every hover.
+const answers = new Map<number, { answer: Promise<SalesAnswer | null>; retryAt?: number }>()
+const RETRY_AFTER = 5 * 60 * 1000
 
 // The Steam app of the prices (packages and bundles have no history on IsThereAnyDeal here)
 export const steamAppOf = (prices: GamePrices) => Number(prices.steamUrl.match(/\/app\/(\d+)\//)?.[1] ?? 0) || null
 
 function loadSales(appId: number) {
-  let answer = answers.get(appId)
-  if (!answer) {
-    answer = (async () => {
-      if (!isComplete(await loadConnection())) return null
-      const response = await igdbProxyFetch('sales', JSON.stringify({ steamId: appId }), 20_000)
-      if (!response.ok) throw new Error(`Proxy answered ${response.status}`) // i18n-ok: never shown
-      return (await response.json()) as SalesAnswer
-    })()
-    // A failed ask (offline, IsThereAnyDeal busy) is asked again next time
-    answer.catch(() => answers.delete(appId))
-    answers.set(appId, answer)
-  }
-  return answer.catch(() => null)
+  const kept = answers.get(appId)
+  if (kept && !(kept.retryAt && Date.now() >= kept.retryAt)) return kept.answer
+  const asked: { answer: Promise<SalesAnswer | null>; retryAt?: number } = { answer: Promise.resolve(null) }
+  asked.answer = (async () => {
+    if (!isComplete(await loadConnection())) return null
+    const response = await igdbProxyFetch('sales', JSON.stringify({ steamId: appId }), 20_000)
+    if (!response.ok) throw new Error(`Proxy answered ${response.status}`) // i18n-ok: never shown
+    const answer = (await response.json()) as SalesAnswer
+    if (answer.historyFailed) asked.retryAt = Date.now() + RETRY_AFTER
+    return answer
+  })().catch(() => {
+    asked.retryAt = Date.now() + RETRY_AFTER
+    return null
+  })
+  answers.set(appId, asked)
+  return asked.answer
 }
 
 // The guess for a game's prices, asked once active (hovered, or shown in the game window):
@@ -156,15 +163,14 @@ export interface SaleEstimate {
 }
 
 // The price the next sale would likely give, from Steam's normal price (today's may already be a
-// sale): the game's discount around that sale a year ago, else its usual one (only when it had it
-// at least twice). Rounded up to the cent, so an alert at that price still rings if Steam rounds
+// sale): the game's discount around that sale a year ago, else its usual one. Rounded up to the cent, so an alert at that price still rings if Steam rounds
 // up. null: no discount to go by, or the big sale is on now (its price shows already).
 export function estimateSale(guess: SaleGuess, regular: number): SaleEstimate | null {
   const history = guess.history
   if (!history || history.never || guess.bigSale?.now) return null
   const priced = (cut: number, from: SaleEstimate['from']) => ({ cut, price: Math.ceil((regular * (100 - cut)) / 100), from })
   if (history.lastYear) return priced(history.lastYear, 'lastYear')
-  if (history.usual && (history.usualSeen ?? 0) >= 2) return priced(history.usual, 'usual')
+  if (history.usual) return priced(history.usual, 'usual')
   return null
 }
 
@@ -196,11 +202,6 @@ export function saleName(name: string) {
   return names[name]?.() ?? `Steam ${name}` // i18n-ok: Valve's own name
 }
 
-// "in 33 days" / "tomorrow"
-function whenText(start: number, now: number) {
-  const days = Math.round((start - new Date(now).setHours(0, 0, 0, 0)) / DAY)
-  return days <= 1 ? t('tomorrow') : t('in {n} days', { n: days })
-}
 // "17 Dec – 4 Jan", or "26–30 Nov" within one month (no years: it's the coming one)
 function datesText(sale: { start: number; end: number }) {
   const [start, end] = [new Date(sale.start), new Date(sale.end)]
@@ -232,13 +233,14 @@ export interface SaleTable {
   }
 }
 
-export function saleTable(guess: SaleGuess, regular: number | null, now = Date.now()): SaleTable {
+export function saleTable(guess: SaleGuess, regular: number | null): SaleTable {
   const sales: SaleRow[] = []
   for (const [sale, name, notSteam] of [
     [guess.deals, t('Black Friday'), true],
     [guess.bigSale, guess.bigSale && saleName(guess.bigSale.name), false],
   ] as const) {
-    if (sale && name) sales.push({ name, dates: datesText(sale), when: sale.now ? t('on now') : whenText(sale.start, now), now: sale.now, notSteam })
+    // "in 33 days" (a sale that hasn't started is still to come, so never null here)
+    if (sale && name) sales.push({ name, dates: datesText(sale), when: sale.now ? t('on now') : untilText(sale.start) ?? t('on now'), now: sale.now, notSteam })
   }
   const table: SaleTable = { sales, noBigSale: !guess.bigSale }
   const history = guess.history

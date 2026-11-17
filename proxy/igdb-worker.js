@@ -210,7 +210,8 @@ async function gameEditions(request) {
 // Answer: { bigSales: [{ name, start, end, official? }] (Steam's announced seasonal sales, days
 // as "YYYY-MM-DD", end included; Black Friday with official: false), history: [{ at, price, regular, cut }] (the game's Steam price
 // changes in France over the last 2 years, oldest first: ms, cents, cents, %) or null (no
-// ITAD_KEY, or the game isn't on IsThereAnyDeal) }. The app makes the guess from these.
+// ITAD_KEY, the game isn't on IsThereAnyDeal, or it failed: historyFailed: true) }. The app makes
+// the guess from these.
 
 const SALES_PAGE = 'https://partner.steamgames.com/doc/marketing/upcoming_events?l=english'
 const ITAD = 'https://api.isthereanydeal.com'
@@ -284,8 +285,16 @@ async function steamHistory(env, steamId) {
 async function sales(env, request) {
   const { steamId } = await request.json()
   if (!Number.isInteger(steamId) || steamId <= 0) throw new Error('Send steamId')
-  const [big, history] = await Promise.all([bigSales(), steamHistory(env, steamId)])
-  return { bigSales: big, history }
+  // IsThereAnyDeal failing (busy, down) still sends Steam's big sales; historyFailed: true tells
+  // the app to ask again a bit later
+  const [big, history] = await Promise.all([
+    bigSales(),
+    steamHistory(env, steamId).catch((error) => {
+      console.warn('IsThereAnyDeal history failed', error)
+      return undefined
+    }),
+  ])
+  return history === undefined ? { bigSales: big, history: null, historyFailed: true } : { bigSales: big, history }
 }
 
 // ---------- Steam (owner only) ----------

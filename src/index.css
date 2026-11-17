@@ -7791,6 +7791,7 @@ button.history-row.selected {
 .price-badge {
   margin-left: 2px;
   color: var(--text-green);
+  white-space: nowrap; /* "−40 %" in French never splits */
 }
 
 .price-was {

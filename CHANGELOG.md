@@ -10,6 +10,10 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** price alerts could stop checking after the PC woke from sleep
 - **Fixed:** a game added back no longer brings its old price alert, pre-order or priority
 - **Fixed:** a game already out can’t be moved to Upcoming anymore (grayed), it jumped back
+- **Fixed:** the next sales table stays when a game’s price history can’t be read
+- **Fixed:** “usually −40%” only shows once a game had that discount twice
+- **Fixed:** an alert’s price box shows a price changed on the other device
+- **Small fixes:** alert price saved once typed, “unlikely” ignores wrong keys, “−40 %”
 
 ## [0.85.0] - 2026-11-18
 

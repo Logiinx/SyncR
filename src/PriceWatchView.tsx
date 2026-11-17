@@ -6,7 +6,7 @@ import { shortDate } from './dates'
 import { openLink } from './links'
 import { editionLabel, gameEditions, knownEditions, steamPageName, type Edition } from './editions'
 import { formatEuros, useKnownPrice, type GamePrices } from './prices'
-import { alertPrice, currentPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
+import { alertPrice, currentPrice, keyPrice, parseEuros, setEditionWatch, setWatch, stopWatching, suggestedTarget } from './priceWatch'
 import { estimateSale, saleName, useSaleGuess } from './saleGuess'
 
 // The "Price alerts" part of a To buy or Upcoming game's window (GameDialog.tsx): per row (the
@@ -179,8 +179,35 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
     }
   }, [focusPrice, watch])
   const when = !watch ? null : watch.when === 'price' || noHistory ? 'price' : 'low' // an old 'record' watch: 'low'
+  // The price in the box, saved with every change (so a price still being typed isn't lost)
+  const typed = parseEuros(target)
   const save = (change: Partial<WatchFields>) =>
-    onSave({ when: when ?? 'price', target: watch?.target, ...change })
+    onSave({ when: when ?? 'price', target: typed ?? watch?.target, ...change })
+
+  // The alert's price changed elsewhere (the other device, a suggestion): the box shows it, unless
+  // it holds a price typed here and not saved yet. Off (no price), the box keeps its text, for
+  // turning it on again.
+  const [shownTarget, setShownTarget] = useState(watch?.target)
+  if (watch?.target !== shownTarget) {
+    setShownTarget(watch?.target)
+    const wasShown = shownTarget === undefined || typed === shownTarget
+    if (watch?.target !== undefined && wasShown && typed !== watch.target) setTarget(euroText(watch.target))
+  }
+  // A typed price is saved after a short pause, when leaving the box or pressing Enter, and when
+  // the window closes: saving on every key started a new alert (and a sync) each time
+  const unsaved = when === 'price' && typed !== null && typed !== watch?.target
+  useEffect(() => {
+    if (!unsaved) return
+    const timer = window.setTimeout(() => save({}), 800)
+    return () => window.clearTimeout(timer)
+    // save follows these
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unsaved, target, watch])
+  const saveOnClose = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    saveOnClose.current = unsaved ? () => save({}) : null
+  })
+  useEffect(() => () => saveOnClose.current?.(), [])
   const now = prices ? currentPrice(prices, watch?.ignoredKeys) : null
   const limit = watch && alertPrice(watch, prices)
   // Where the suggested price came from, shown until the price is changed
@@ -188,7 +215,6 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
   const toggle = () => {
     if (watch) return onSave(null)
     setFocusPrice(true)
-    const typed = parseEuros(target)
     const suggestion = typed === null && prices ? suggestedTarget(prices) : null
     if (suggestion) {
       if (suggestion.target !== null) setTarget(euroText(suggestion.target))
@@ -236,6 +262,7 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
           <SaleHint
             prices={prices}
             target={watch?.target ?? null}
+            ignoredKeys={watch?.ignoredKeys}
             onUse={(cents) => {
               setTarget(euroText(cents))
               setSuggested(null)
@@ -263,9 +290,9 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
               onChange={(e) => {
                 setTarget(e.target.value)
                 setSuggested(null)
-                const cents = parseEuros(e.target.value)
-                if (cents !== null) save({ target: cents })
               }}
+              onBlur={() => unsaved && save({})}
+              onKeyDown={(e) => e.key === 'Enter' && unsaved && save({})}
             />
           )}
         </div>
@@ -278,12 +305,12 @@ function WatchRow({ name, note, title, watch, prices, noHistory, whenRef, onSave
 // ≈ 14,70 €", the price a link that puts it in the box. When my price is lower: "· your price is
 // unlikely by then", unless a key is already cheaper than the guess (keys can go lower than Steam).
 // Nothing without an estimate (no discount to go by, the sale is on now, not a Steam app).
-function SaleHint({ prices, target, onUse }: { prices: GamePrices; target: number | null; onUse: (cents: number) => void }) {
+function SaleHint({ prices, target, ignoredKeys, onUse }: { prices: GamePrices; target: number | null; ignoredKeys?: number[]; onUse: (cents: number) => void }) {
   const guess = useSaleGuess(prices, true)
   const regular = prices.steam?.initial
   const estimate = guess && regular ? estimateSale(guess, regular) : null
   if (!guess || !estimate) return null
-  const key = prices.deals?.keyshops ? Math.round(Number(prices.deals.keyshops) * 100) : null
+  const key = keyPrice(prices, ignoredKeys) // "Wrong key" prices don't count, like in the alert
   const unlikely = target !== null && target < estimate.price && (key === null || key >= estimate.price)
   const mark = '\u0001'
   const text = guess.bigSale ? t('{sale} guess: {price}', { sale: saleName(guess.bigSale.name), price: mark }) : t('Next sale guess: {price}', { price: mark })

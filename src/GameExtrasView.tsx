@@ -86,7 +86,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
         </button>
         {steam && steam.discount > 0 && (
           <>
-            <span className="price-badge">−{steam.discount}%</span>
+            <span className="price-badge">{discountText(steam.discount)}</span>
             <s className="price-was">{formatEuros(steam.initial)}</s>
           </>
         )}
@@ -257,7 +257,7 @@ export function GamePriceLine({ igdbId }: { igdbId: number }) {
       {steam && (
         <HoverTip className={deals?.keyshops && !steamWins ? 'price-dearer' : undefined} tip={() => <SaleGuessTip prices={prices} />}>
           <SteamIcon cheapest={steamWins} /> {formatEuros(steam.final)}
-          {steam.discount > 0 && <span className="price-badge">−{steam.discount}%</span>}
+          {steam.discount > 0 && <span className="price-badge">{discountText(steam.discount)}</span>}
           {steamAtLowest(prices) && <LowestEver />}
         </HoverTip>
       )}
