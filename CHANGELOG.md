@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.84.0] - 2026-11-17
+
 **Video** (PC only)
 - **New:** a Queue in place of Started: started videos join on their own
 - **New:** add to the Queue by right-click, and sort it by dragging
