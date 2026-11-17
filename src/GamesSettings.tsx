@@ -3,12 +3,13 @@ import CloseButton from './CloseButton'
 import Window from './Window'
 import { SettingRow, SettingsCard } from './SettingsCard'
 import { t } from './i18n'
-import { setJoinTimes, setShortPlaytime, useJoinTimes, useShortPlaytime, type ShortPlaytime } from './gamesOptions'
+import { setJoinTimes, setPricesRight, setShortPlaytime, useJoinTimes, usePricesRight, useShortPlaytime, type ShortPlaytime } from './gamesOptions'
 
 // The ⚙️ of My games: Settings' cards, like Video settings. This device only (gamesOptions.ts).
 export default function GamesSettings({ onClose }: { onClose: () => void }) {
   const playtime = useShortPlaytime()
   const joinTimes = useJoinTimes()
+  const pricesRight = usePricesRight()
   return (
     <Window className="dialog settings games-settings" label={t('Games settings')} onClose={onClose}>
       <div className="dialog-head">
@@ -34,6 +35,12 @@ export default function GamesSettings({ onClose }: { onClose: () => void }) {
               <input type="checkbox" checked={joinTimes} onChange={(e) => setJoinTimes(e.target.checked)} />
             </SettingRow>
           )}
+          <SettingRow
+            label={t('Prices on the right of covers')}
+            title={t('Covers with prices: Steam and key prices stacked on the right, the HowLongToBeat time under the year. Tiles too narrow for it keep the usual layout.')}
+          >
+            <input type="checkbox" checked={pricesRight} onChange={(e) => setPricesRight(e.target.checked)} />
+          </SettingRow>
         </SettingsCard>
       </div>
     </Window>

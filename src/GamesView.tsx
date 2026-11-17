@@ -8,7 +8,7 @@ import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, remo
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
-import { useJoinTimes } from './gamesOptions'
+import { useJoinTimes, usePricesRight } from './gamesOptions'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
 import { isHundred, PLAYING_ON_OPEN, playedText, playedTime, refreshPlaying, useSteamProfile } from './steam'
@@ -425,6 +425,15 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
   const time = useShortTime(game.id)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
+  const prices = hasPriceLine(game)
+  const pricesRight = usePricesRight() && prices
+  // The year, countdown or rating, and the HowLongToBeat time at the right
+  const line = (
+    <div className="game-tile-line">
+      {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
+      {time > 0 && <PlaytimeShort seconds={time} />}
+    </div>
+  )
   return (
     <div
       ref={ref}
@@ -443,12 +452,57 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
         {game.preordered && <PreorderBadge />}
       </div>
       <div className="game-tile-name">{game.name}</div>
-      {/* The year, countdown or rating, and the HowLongToBeat time at the right */}
-      <div className="game-tile-line">
-        {showsRated(game) ? <GameRated game={game} /> : <div className="game-details">{when}</div>}
-        {time > 0 && <PlaytimeShort seconds={time} />}
-      </div>
-      {hasPriceLine(game) && <GamePriceLine igdbId={game.igdbId} />}
+      {pricesRight ? (
+        <PricesRight>
+          {line}
+          <GamePriceLine igdbId={game.igdbId} />
+        </PricesRight>
+      ) : (
+        <>
+          {line}
+          {prices && <GamePriceLine igdbId={game.igdbId} />}
+        </>
+      )}
+    </div>
+  )
+}
+
+// "Prices on the right of covers" (Games settings): the tile's line and its prices as two columns,
+// the time under the year and the key under Steam. Where they don't fit side by side (narrow tile,
+// long countdown, sale tag) or there are no prices, the usual layout. Checked again whenever a part changes size: the
+// window's width, prices or times arriving.
+function PricesRight({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [fits, setFits] = useState(true)
+  useLayoutEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const check = () => {
+      // Try the columns, see whether they stick out, then keep whichever layout fits. No prices
+      // (none known): the usual single line, shorter.
+      box.classList.add('stacked')
+      const ok = !!box.querySelector('.game-price-line') && box.scrollWidth <= box.clientWidth
+      box.classList.toggle('stacked', ok)
+      setFits(ok)
+    }
+    check()
+    const watch = new ResizeObserver(check)
+    watch.observe(box)
+    for (const part of box.children) watch.observe(part)
+    // A part that shows later (prices still loading) is watched too
+    const parts = new MutationObserver(() => {
+      for (const part of box.children) watch.observe(part)
+      check()
+    })
+    parts.observe(box, { childList: true, subtree: true, characterData: true })
+    return () => {
+      watch.disconnect()
+      parts.disconnect()
+    }
+  }, [])
+  return (
+    <div ref={ref} className={fits ? 'game-tile-prices stacked' : 'game-tile-prices'}>
+      {children}
     </div>
   )
 }

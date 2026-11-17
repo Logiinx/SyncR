@@ -30,6 +30,19 @@ export function setJoinTimes(value: boolean) {
 
 export const useJoinTimes = () => useSyncExternalStore(subscribe, () => joinTimes)
 
+// Covers tiles with prices: Steam over key price on the right, the HowLongToBeat time under the
+// year (off at first). A tile where that doesn't fit keeps the usual layout (GamesView's GameTile).
+const PRICES_RIGHT_KEY = 'syncr.games.pricesRight'
+let pricesRight = read(PRICES_RIGHT_KEY, false)
+
+export function setPricesRight(value: boolean) {
+  pricesRight = value
+  write(PRICES_RIGHT_KEY, value)
+  changed()
+}
+
+export const usePricesRight = () => useSyncExternalStore(subscribe, () => pricesRight)
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

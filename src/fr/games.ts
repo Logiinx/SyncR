@@ -127,6 +127,9 @@ export const games = {
   'Games settings': 'Paramètres des jeux',
   'HowLongToBeat time': 'Durée HowLongToBeat',
   'Join hours played and HowLongToBeat time': 'Joindre heures jouées et durée HowLongToBeat',
+  'Prices on the right of covers': 'Prix à droite des jaquettes',
+  'Covers with prices: Steam and key prices stacked on the right, the HowLongToBeat time under the year. Tiles too narrow for it keep the usual layout.':
+    'Jaquettes avec prix : prix Steam et clé l’un sous l’autre à droite, la durée HowLongToBeat sous l’année. Les tuiles trop étroites gardent la disposition habituelle.',
   'On Playing cards: “42 h / 52 h” instead of “42 h played · 52 h”': 'Sur les cartes En cours : « 42 h / 52 h » au lieu de « 42 h de jeu · 52 h »',
   'On the tiles, list rows and Playing cards. A game’s window always shows all of them.': 'Sur les vignettes, les lignes de la liste et les cartes En cours. La fenêtre d’un jeu les montre toujours toutes.',
   'Add its link': 'Ajouter son lien',

@@ -14,6 +14,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, Google Drive…
 
 **Jeux**
+- **Nouveau :** Paramètres des jeux : prix à droite des jaquettes, une ligne de moins
 - **Amélioré :** Mes jeux, Calendrier et les onglets de statut restent en haut pendant le défilement
 - **Amélioré :** Paramètres des jeux : joindre les heures proposé seulement avec la durée HowLongToBeat
 

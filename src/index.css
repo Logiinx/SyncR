@@ -5845,6 +5845,36 @@ h3.games-group-title {
   min-width: 0;
 }
 
+/* "Prices on the right of covers" (Games settings): year over time on the left, Steam over key on
+   the right. Without .stacked (they don't fit), the usual layout. */
+.game-tile-prices.stacked {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  column-gap: 8px;
+}
+
+.game-tile-prices.stacked > .game-tile-line,
+.game-tile-prices.stacked > .game-price-line {
+  flex: none;
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.game-tile-prices.stacked > .game-tile-line {
+  align-items: flex-start;
+}
+
+.game-tile-prices.stacked > .game-price-line {
+  align-items: flex-end;
+  margin-top: 2px;
+  padding-top: 0;
+}
+
+.game-tile-prices.stacked > .game-price-line > span {
+  flex-wrap: nowrap;
+}
+
 /* ---------- Calendar month grid (GameCalendar.tsx) ---------- */
 .games.wide {
   max-width: 1200px;

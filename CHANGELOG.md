@@ -14,6 +14,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** link cards show the site's logo: YouTube, Reddit, X, Google Drive…
 
 **Games**
+- **New:** Games settings: prices on the right of covers, one line shorter
 - **Better:** My games, Calendar and the status tabs stay at the top while scrolling
 - **Better:** Games settings: joining hours only offered with HowLongToBeat time on
 
