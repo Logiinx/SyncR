@@ -165,4 +165,31 @@ export const settings = {
   'Change PIN…': 'Changer le PIN…',
   'by Logiinx': 'par Logiinx',
   synced: 'synchro',
+  // Modules: Mouse battery (MouseBatterySettings.tsx, mouseBattery.ts)
+  Modules: 'Modules',
+  'Mouse battery': 'Batterie de la souris',
+  'About the mouse battery': 'À propos de la batterie de la souris',
+  'Shows the battery of a Teevolution Terra Pro mouse (8K receiver) next to the clock.':
+    'Affiche la batterie d’une souris Teevolution Terra Pro (récepteur 8K) près de l’horloge.',
+  'The battery only shows while SyncR runs': 'La batterie ne s’affiche que pendant que SyncR tourne',
+  '✕ quits SyncR, and the battery goes with it. To keep it, turn on “✕ hides SyncR in the tray” in Window and privacy.':
+    '✕ quitte SyncR, et la batterie disparaît avec. Pour la garder, activez « ✕ masque SyncR dans la zone de notification » dans Fenêtre et confidentialité.',
+  'Mouse battery: {percent}%': 'Batterie de la souris : {percent} %',
+  'Mouse battery: no answer yet': 'Batterie de la souris : pas encore de réponse',
+  'Teevolution Terra Pro': 'Teevolution Terra Pro',
+  Battery: 'Batterie',
+  'About the battery check': 'À propos de la lecture de la batterie',
+  'Asked every minute, through the mouse’s 8K receiver. While the mouse sleeps, the last answer stays.':
+    'Demandée chaque minute, par le récepteur 8K de la souris. Pendant que la souris dort, la dernière réponse reste.',
+  'No answer yet': 'Pas encore de réponse',
+  '{percent}%': '{percent} %',
+  '{percent}%, charging': '{percent} %, en charge',
+  'Last answer': 'Dernière réponse',
+  '{time}, asleep or out of reach': '{time}, en veille ou hors de portée',
+  'Tray icon': 'Icône dans la zone de notification',
+  'About the tray icon': 'À propos de l’icône',
+  'Its own icon next to the clock, with the number in it.': 'Une icône à part près de l’horloge, avec le nombre dedans.',
+  'Low battery': 'Batterie faible',
+  'About low battery': 'À propos de la batterie faible',
+  'At or below this level, the number turns red.': 'À ce niveau ou en dessous, le nombre passe en rouge.',
 }

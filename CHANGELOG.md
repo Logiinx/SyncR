@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **New:** Settings → Modules: your mouse’s battery as a number by the clock
+
 **Games**
 - **New:** Playing cards show the game’s note, on up to 2 lines
 - **New:** Games settings: join hours played and HowLongToBeat time on Playing cards

@@ -25,6 +25,8 @@ fn main() {
     "video_extension_settings",
     "video_extensions_done",
     "start_link_shortcut",
+    "mouse_battery_config",
+    "mouse_battery_status",
   ])))
   .expect("failed to build");
 }

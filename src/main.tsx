@@ -15,6 +15,7 @@ import KeyMissing from './KeyMissing'
 import LockScreen from './LockScreen'
 import { followLanguageChoice, startTrayTexts } from './language'
 import { followTabColors } from './tabColors'
+import { startMouseBattery } from './mouseBattery'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -28,6 +29,7 @@ setUpBoardTab()
 // Not in the pop-up: it sizes its window from its cards, a closing one would still count
 if (!isPopup) startClosingAnimations()
 if (!isPopup) startTrayTexts()
+if (!isPopup) startMouseBattery()
 // The sign-ins are decrypted first, both windows read them. On the PC that can take a moment
 // at start (Windows), so the side panels' second without animation counts from the first draw.
 // Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).

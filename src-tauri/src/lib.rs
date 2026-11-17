@@ -1,6 +1,7 @@
 use tauri::Manager;
 
 mod link_shortcut;
+mod mouse_battery;
 mod video_extensions;
 mod video_window;
 
@@ -331,7 +332,9 @@ pub fn run() {
       video_extensions::video_extension_enable,
       video_extensions::video_extension_settings,
       video_extensions::video_extensions_done,
-      link_shortcut::start_link_shortcut
+      link_shortcut::start_link_shortcut,
+      mouse_battery::mouse_battery_config,
+      mouse_battery::mouse_battery_status
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

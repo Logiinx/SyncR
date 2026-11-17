@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, Blocks, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { SettingRow, SettingsCard } from './SettingsCard'
@@ -33,6 +33,9 @@ import {
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { useVideoEnabled } from './video'
 import VideoSettings from './VideoSettings'
+import MouseBatterySettings from './MouseBatterySettings'
+import Dialog from './Dialog'
+import { saveMouseBattery, useMouseBattery } from './mouseBattery'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -144,6 +147,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
+  const [showBattery, setShowBattery] = useState(false)
+  const mouseBattery = useMouseBattery()
+  const [quitWarning, setQuitWarning] = useState(false) // Modules: "✕ quits SyncR" (modulesCard)
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
   useEffect(() => {
@@ -207,6 +213,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
+  if (showBattery) return <MouseBatterySettings onClose={() => setShowBattery(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
@@ -602,11 +609,39 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
       </SettingRow>
     </SettingsCard>
   )
+  // Modules (PC): extras apart from notes, each with its own settings window. Turning one on that
+  // only shows while SyncR runs warns once when ✕ quits SyncR.
+  function toggleMouseBattery(on: boolean) {
+    const warn = on && !mouseBattery.warned && !background.closeToTray
+    saveMouseBattery(warn ? { on, warned: true } : { on })
+    if (warn) setQuitWarning(true)
+  }
+  const modulesCard = isTauri() && (
+    <SettingsCard key="modules" icon={Blocks} title={t('Modules')}>
+      <SettingRow
+        label={
+          <>
+            {t('Mouse battery')}
+            <InfoTip label={t('About the mouse battery')}>
+              {t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) next to the clock.')}
+            </InfoTip>
+          </>
+        }
+      >
+        {mouseBattery.on && (
+          <button className="setting-button" onClick={() => setShowBattery(true)}>
+            {t('Open…')}
+          </button>
+        )}
+        <input type="checkbox" checked={mouseBattery.on} onChange={(e) => toggleMouseBattery(e.target.checked)} />
+      </SettingRow>
+    </SettingsCard>
+  )
   // 3 columns on a wide window, 2 with the same cards in another order, 1 on a phone
   const columnCards =
-    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, videoCard]]
-    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, videoCard]]
-    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, videoCard]]
+    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, videoCard, modulesCard]]
+    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, videoCard, modulesCard]]
+    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, videoCard, modulesCard]]
 
   const cards = (
     <div className="settings-cards" style={{ '--settings-columns': columns } as React.CSSProperties}>
@@ -626,32 +661,46 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   )
 
   return (
-    <Window className={`dialog settings${columns === 3 && !manage ? ' wide' : ''}`} label={t('Settings')} onClose={onClose} ref={dialogRef}>
-      <div className="dialog-head">
-        {manage ? (
-          <button className="settings-back" onClick={() => showManage(false)}>
-            <ChevronLeft size={18} /> {t('Accounts')}
-          </button>
-        ) : (
-          <h2>{t('Settings')}</h2>
-        )}
-        <CloseButton onClick={onClose} />
-      </div>
-      {manage ? (
-        <div className="settings-manage">
-          <div>
-            <GamesSettings />
-          </div>
-          <div>
-            <GoogleSettings />
-            {mail && <GmailSettings />}
-            {mail && <SafeSenders />}
-          </div>
+    <>
+      <Window className={`dialog settings${columns === 3 && !manage ? ' wide' : ''}`} label={t('Settings')} onClose={onClose} ref={dialogRef}>
+        <div className="dialog-head">
+          {manage ? (
+            <button className="settings-back" onClick={() => showManage(false)}>
+              <ChevronLeft size={18} /> {t('Accounts')}
+            </button>
+          ) : (
+            <h2>{t('Settings')}</h2>
+          )}
+          <CloseButton onClick={onClose} />
         </div>
-      ) : (
-        cards
+        {manage ? (
+          <div className="settings-manage">
+            <div>
+              <GamesSettings />
+            </div>
+            <div>
+              <GoogleSettings />
+              {mail && <GmailSettings />}
+              {mail && <SafeSenders />}
+            </div>
+          </div>
+        ) : (
+          cards
+        )}
+      </Window>
+      {quitWarning && (
+        <Dialog
+          request={{
+            title: t('The battery only shows while SyncR runs'),
+            message: t('✕ quits SyncR, and the battery goes with it. To keep it, turn on “✕ hides SyncR in the tray” in Window and privacy.'),
+            confirmLabel: 'OK',
+            noCancel: true,
+            onConfirm: () => {},
+          }}
+          onClose={() => setQuitWarning(false)}
+        />
       )}
-    </Window>
+    </>
   )
 }
 

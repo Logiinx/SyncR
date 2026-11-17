@@ -7984,14 +7984,16 @@ button.history-row.selected {
   margin-top: 12px;
 }
 
-/* The Video and Games settings windows: Settings' cards, in one narrower column (also on the PC) */
+/* The Video, Games and modules' settings windows: Settings' cards, in one narrower column (also on the PC) */
 .dialog.settings.video-settings,
-.dialog.settings.games-settings {
+.dialog.settings.games-settings,
+.dialog.settings.module-settings {
   width: min(560px, 100%);
 }
 
 .video-settings .settings-cards,
-.games-settings .settings-cards {
+.games-settings .settings-cards,
+.module-settings .settings-cards {
   grid-template-columns: minmax(0, 1fr);
 }
 
