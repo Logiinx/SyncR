@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Eye, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, ThumbsUp, Trash2, Undo2, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
-import { clockTime, fullDate, lastWatchedText, nearDay, shortDate } from './dates'
+import { lastWatchedText, nearDay, shortDate } from './dates'
 import Dialog from './Dialog'
-import { compactNumber, plural, t, type TextKey } from './i18n'
+import { plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { useListScroll } from './videoScroll'
 import { TipBox, useHoverTip } from './InfoTip'
-import { useVideoStats } from './videoStats'
 import { LIST_PIECES, useCardPieces, VIDEO_PIECES, type CardPiece } from './videoCards'
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
@@ -23,9 +22,10 @@ import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
-import { resumePosition, useResumePosition, videoClock, type VideoPosition } from './videoPositions'
+import { resumePosition, useResumePosition } from './videoPositions'
 import { addToQueue, leaveQueue, useQueue } from './videoQueue'
 import { playtimeText } from './playtimes'
+import { VideoCardContent, VideoThumb } from './VideoHoverCard'
 
 type List = 'towatch' | 'rewatch' | 'watched' | 'music'
 
@@ -332,91 +332,10 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
       )}
       {withCard && hover.open && (
         <TipBox at={rowRef} className="video-card">
-          <VideoCard video={video} opened={opened} from={from} shows={shows} />
+          <VideoCardContent video={video} opened={opened} from={from} shows={shows} />
         </TipBox>
       )}
     </li>
-  )
-}
-
-// A video's picture with its length, and how far it was watched when it was stopped partway (on
-// the row: the time shows it on hover; on its card: always)
-function VideoThumb({ video, opened }: { video: FeedVideo; opened: VideoPosition | null }) {
-  return (
-    <span className="video-thumb">
-      {video.thumbnail && !video.gone && (
-        <img
-          src={video.thumbnail}
-          alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
-        />
-      )}
-      {!video.gone && video.duration > 0 && (
-        <span className="video-duration">
-          {opened ? (
-            <>
-              <span className="video-length">{videoClock(video.duration)}</span>
-              <span className="video-spot">{`${videoClock(opened.t, video.duration >= 3600)} / ${videoClock(video.duration)}`}</span>
-            </>
-          ) : (
-            videoClock(video.duration)
-          )}
-        </span>
-      )}
-      {opened && (
-        <span className={`video-progress ${video.platform}`}><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
-      )}
-    </span>
-  )
-}
-
-// "1.2K" after its icon, like link cards' counts; the whole count in words for screen readers
-function StatCount({ icon: Icon, n, one, other }: { icon: LucideIcon; n: number; one: TextKey; other: TextKey }) {
-  const text = compactNumber(n)
-  return (
-    <span className="video-card-count" aria-label={plural(n, one, other, { count: text })}>
-      <Icon size={13} aria-hidden />
-      {text}
-    </span>
-  )
-}
-
-// A video row's card, shown after resting the mouse on it: a bigger picture, the whole title, its
-// channel (and playlist), the day and time it came out, and its views and likes now (asked on the
-// first hover: "…" meanwhile; nothing when gone or the ask failed)
-function VideoCard({ video, opened, from, shows }: { video: FeedVideo; opened: VideoPosition | null; from?: string; shows: (piece: CardPiece) => boolean }) {
-  const stats = useVideoStats(video, shows('videoStats'))
-  const counts = stats && [
-    stats.views !== null && <StatCount key="views" icon={Eye} n={stats.views} one="{count} view" other="{count} views" />,
-    stats.likes !== null && <StatCount key="likes" icon={ThumbsUp} n={stats.likes} one="{count} like" other="{count} likes" />,
-  ].filter(Boolean)
-  return (
-    <>
-      {shows('videoPicture') && video.thumbnail && !video.gone && <VideoThumb video={video} opened={opened} />}
-      {shows('videoDetails') && (
-        <>
-          <span className="video-card-title">{video.title}</span>
-          <span className="video-card-line">
-            <VideoLogo platform={video.platform} />
-            <span>{video.channel}</span>
-          </span>
-          {from && (
-            <span className="video-card-line">
-              <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} />
-              <span>{from}</span>
-            </span>
-          )}
-          <span className="video-card-line">{`${fullDate(video.published)}, ${clockTime(video.published)}`}</span>
-        </>
-      )}
-      {shows('videoStats') && stats === undefined ? (
-        <span className="video-card-line">…</span>
-      ) : (
-        !!counts?.length && <span className="video-card-line">{counts.flatMap((count, i) => (i ? [' · ', count] : [count]))}</span>
-      )}
-    </>
   )
 }
 

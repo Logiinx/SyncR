@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** ajout à la file d’attente par clic droit, et tri en la faisant glisser
 - **Nouveau :** une vidéo de playlist regardée laisse sa place à la suivante dans la file
 - **Nouveau :** une cloche dans Chaînes suivies : les nouvelles vidéos de la chaîne en pop-up
+- **Nouveau :** Paramètres vidéo : grandes ou petites cartes des nouvelles vidéos en pop-up
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
 - **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30

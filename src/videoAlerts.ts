@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { read, write } from './localState'
 
 // New videos for the pop-up (PC): those of follows with the bell (Follows window) that a check
@@ -48,4 +48,30 @@ export function useVideoAlerts() {
     }
   }, [])
   return alerts
+}
+
+// The cards' size (Video settings window, this PC): Large = the Video tab's hover card, Compact =
+// a small picture beside the title. Followed in both windows.
+export type PopupCardSize = 'large' | 'compact'
+const SIZE_KEY = 'syncr.video.popupCards'
+const sizeListeners = new Set<() => void>()
+let size = read<PopupCardSize>(SIZE_KEY, 'large')
+
+export function setPopupCardSize(next: PopupCardSize) {
+  size = next
+  write(SIZE_KEY, next)
+  sizeListeners.forEach((listener) => listener())
+}
+
+window.addEventListener('storage', (e) => {
+  if (e.key !== SIZE_KEY) return
+  size = read<PopupCardSize>(SIZE_KEY, 'large')
+  sizeListeners.forEach((listener) => listener())
+})
+
+export function usePopupCardSize() {
+  return useSyncExternalStore((listener) => {
+    sizeListeners.add(listener)
+    return () => sizeListeners.delete(listener)
+  }, () => size)
 }

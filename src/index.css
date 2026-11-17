@@ -1855,6 +1855,13 @@ button {
   min-width: 0;
 }
 
+/* Large (Video settings): the Video tab's hover card (VideoHoverCard.tsx), with its sizes */
+.reminder-alert-body.video-alert-large {
+  gap: 4px;
+  font-size: 0.85em;
+  line-height: 1.45;
+}
+
 /* ✕: a square at the right end of its buttons, like an email's trash but not red */
 .reminder-alert-buttons .video-alert-close {
   flex: 0 0 32px;

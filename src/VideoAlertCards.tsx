@@ -1,18 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X } from 'lucide-react'
+import { useCardPieces, VIDEO_PIECES } from './videoCards'
+import { VideoCardContent } from './VideoHoverCard'
 import { db, type VideoRow } from './db'
 import { plural, t } from './i18n'
 import { formatDue } from './reminders'
-import type { VideoAlert } from './videoAlerts'
+import { usePopupCardSize, type VideoAlert } from './videoAlerts'
 import VideoLogo from './VideoLogo'
 import { videoClock } from './videoPositions'
 
 // New videos of bell channels in the desktop pop-up (videoAlerts.ts), below the emails. The same
-// card as an email's: a strip in the site's color, the site's logo + when it was found + the
-// channel, the thumbnail beside the title and length. A click on it plays it (SyncR's player);
-// Watch (big) · Add to queue · ✕ (the card goes, the video stays in To watch). From FOLD_FROM on,
-// one "N new videos" card opens the Video tab. They can fade like emails (ReminderPopup.tsx).
-const FOLD_FROM = 4
+// card as an email's, with a strip in the site's color, in one of two sizes (Video settings):
+// Large = the Video tab's hover card (VideoHoverCard.tsx: big picture, whole title, channel, day,
+// views and likes, as its checkboxes say); Compact = the site's logo + when it was found + the
+// channel, then a small picture beside the title and length. A click on it plays it (SyncR's
+// player); Watch (big) · Add to queue · ✕ (the card goes, the video stays in To watch). From
+// FOLD_FROM on, one "N new videos" card opens the Video tab. They fade like emails (ReminderPopup.tsx).
+const FOLD_FROM = { large: 3, compact: 4 } // Large ones are about 3 times taller
 
 // A card's key among the pop-up's fading cards (ReminderPopup.tsx)
 export const videoFadeKey = (id: string) => `video:${id}` // i18n-ok
@@ -38,25 +42,33 @@ export function useShownVideoAlerts(alerts: VideoAlert[]) {
   }, [alerts])
 }
 
-function VideoCard({ shown: { alert, video, channel }, fading, onAction }: {
+function VideoCard({ shown: { alert, video, channel }, large, fading, onAction }: {
   shown: Shown
+  large: boolean
   fading: boolean
   onAction: (action: VideoAlertAction) => void
 }) {
+  const shows = useCardPieces()
   return (
     <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: `var(--${video.platform})` }}>
-      <button className="reminder-alert-body" onClick={() => onAction('video-play')} title={t('Watch')}>
-        <span className="reminder-alert-due">
-          <VideoLogo platform={video.platform} /> {formatDue(alert.at)} · <span className="mail-alert-account">{channel}</span>
-        </span>
-        <span className="video-alert-main">
-          {video.thumbnail && <img className="video-alert-thumb" src={video.thumbnail} alt="" />}
-          <span className="video-alert-text">
-            <span className="reminder-alert-text">{video.title}</span>
-            {video.duration > 0 && <span className="reminder-alert-note">{videoClock(video.duration)}</span>}
+      {large ? (
+        <button className="reminder-alert-body video-card video-alert-large" onClick={() => onAction('video-play')} title={t('Watch')}>
+          <VideoCardContent video={{ ...video, channel }} opened={null} shows={shows} />
+        </button>
+      ) : (
+        <button className="reminder-alert-body" onClick={() => onAction('video-play')} title={t('Watch')}>
+          <span className="reminder-alert-due">
+            <VideoLogo platform={video.platform} /> {formatDue(alert.at)} · <span className="mail-alert-account">{channel}</span>
           </span>
-        </span>
-      </button>
+          <span className="video-alert-main">
+            {video.thumbnail && <img className="video-alert-thumb" src={video.thumbnail} alt="" />}
+            <span className="video-alert-text">
+              <span className="reminder-alert-text">{video.title}</span>
+              {video.duration > 0 && <span className="reminder-alert-note">{videoClock(video.duration)}</span>}
+            </span>
+          </span>
+        </button>
+      )}
       <div className="reminder-alert-buttons">
         <button className="primary" onClick={() => onAction('video-play')}>{t('Watch')}</button>
         <button onClick={() => onAction('video-queue')}>{t('Add to queue')}</button>
@@ -73,8 +85,12 @@ export function VideoCards({ shown, fading, onAction }: {
   fading: Set<string> // keys of cards fading out by themselves (videoFadeKey)
   onAction: (alert: VideoAlert, action: VideoAlertAction) => void
 }) {
+  const size = usePopupCardSize()
+  const shows = useCardPieces()
+  // Large with every hover card piece off would be empty: Compact then
+  const large = size === 'large' && VIDEO_PIECES.some(shows)
   if (!shown.length) return null
-  if (shown.length >= FOLD_FROM) {
+  if (shown.length >= FOLD_FROM[large ? 'large' : 'compact']) {
     const channels = [...new Set(shown.map((item) => item.channel))]
     const platforms = new Set(shown.map((item) => item.video.platform))
     const all = (action: VideoAlertAction) => shown.forEach((item) => onAction(item.alert, action))
@@ -102,7 +118,7 @@ export function VideoCards({ shown, fading, onAction }: {
   return (
     <>
       {shown.map((item) => (
-        <VideoCard key={item.alert.id} shown={item} fading={fading.has(videoFadeKey(item.alert.id))} onAction={(action) => onAction(item.alert, action)} />
+        <VideoCard key={item.alert.id} shown={item} large={large} fading={fading.has(videoFadeKey(item.alert.id))} onAction={(action) => onAction(item.alert, action)} />
       ))}
     </>
   )

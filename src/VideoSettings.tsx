@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { ListVideo, Play, Puzzle, RefreshCw, Settings, SquareMousePointer, Trash2 } from 'lucide-react'
+import { Bell, ListVideo, Play, Puzzle, RefreshCw, Settings, SquareMousePointer, Trash2 } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import Window from './Window'
@@ -10,6 +10,7 @@ import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUA
 import { t } from './i18n'
 import { setAutoRewatch, setMusicName, setRewatchSection, useAutoRewatch, useMusicName, useRewatchSection } from './videoFolders'
 import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
+import { setPopupCardSize, usePopupCardSize, type PopupCardSize } from './videoAlerts'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -39,6 +40,7 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const musicName = useMusicName()
   const autoRewatch = useAutoRewatch()
   const shows = useCardPieces()
+  const popupCards = usePopupCardSize()
   // One checkbox per piece of the hover cards (videoCards.ts)
   const pieceRow = (piece: CardPiece, label: string) => (
     <SettingRow key={piece} label={label}>
@@ -121,6 +123,14 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             {pieceRow('listCounts', t('Number of videos'))}
             {pieceRow('listTime', t('Time left'))}
             {pieceRow('listLatest', t('Latest video'))}
+          </SettingsCard>
+          <SettingsCard icon={Bell} title={t('Pop-up')}>
+            <SettingRow label={t('New video cards')} title={t('For channels with the bell (Follows). Large: like the hover cards.')}>
+              <select value={popupCards} onChange={(e) => setPopupCardSize(e.target.value as PopupCardSize)}>
+                <option value="large">{t('Large cards')}</option>
+                <option value="compact">{t('Compact cards')}</option>
+              </select>
+            </SettingRow>
           </SettingsCard>
           <SettingsCard icon={Play} title={t('Player')}>
             <SettingRow label={t('Mark as watched closes the video player')}>

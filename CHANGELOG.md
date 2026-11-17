@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** add to the Queue by right-click, and sort it by dragging
 - **New:** a watched playlist video in the Queue makes way for the next one
 - **New:** a bell in Follows: that channel's new videos show in the pop-up
+- **New:** Video settings: large or compact new-video cards in the pop-up
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Better:** progress bars in YouTube red and Twitch purple, easier to see
 - **Changed:** a video counts as started after about 5 s, not 30

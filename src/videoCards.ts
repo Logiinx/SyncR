@@ -11,6 +11,13 @@ const KEY = 'syncr.video.cardPiecesOff'
 let off: readonly CardPiece[] = read<CardPiece[]>(KEY, [])
 const listeners = new Set<() => void>()
 
+// Changed in the other window (the pop-up's Large cards follow them too)
+window.addEventListener('storage', (e) => {
+  if (e.key !== KEY) return
+  off = read<CardPiece[]>(KEY, [])
+  for (const listener of listeners) listener()
+})
+
 export function setCardPiece(piece: CardPiece, on: boolean) {
   off = on ? off.filter((other) => other !== piece) : [...off.filter((other) => other !== piece), piece]
   write(KEY, off)
