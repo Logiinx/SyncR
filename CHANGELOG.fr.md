@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Changé :** les cartes En cours n’affichent plus depuis quand, plus rien n’est coupé
+
 ## [0.82.0] - 2026-11-16
 
 **Vidéo**

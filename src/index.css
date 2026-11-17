@@ -5607,6 +5607,7 @@ h3.games-group-title {
 }
 
 .playing-achievements {
+  position: relative; /* for the invisible full text */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -5619,6 +5620,21 @@ h3.games-group-title {
 .playing-achievements .gd-bar {
   flex: 1;
   margin-top: 0;
+}
+
+/* The full "12 / 40 achievements", kept invisible to be measured while "12 / 40" shows */
+.playing-achievements-measure {
+  position: absolute;
+  visibility: hidden;
+}
+
+/* The card's details wrap between their pieces instead of being cut off (user) */
+.playing-card .game-details {
+  white-space: normal;
+}
+
+.game-details-part {
+  white-space: nowrap;
 }
 
 @container (max-width: 600px) {

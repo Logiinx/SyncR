@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, Settings, X } from 'lucide-react'
@@ -11,7 +11,6 @@ import { PlaytimesContext, usePlaytimes } from './playtimes'
 import { hasPriceLine, loadListPrices, usePricesVersion } from './prices'
 import { PreorderBadge, WatchBell } from './PriceWatchView'
 import { isHundred, PLAYING_ON_OPEN, playedText, refreshPlaying, useSteamProfile } from './steam'
-import { shortDate } from './dates'
 import SteamImport from './SteamImport'
 import { isComplete, searchGames, useConnection, type FoundGame, type SameAs } from './igdb'
 import Cover from './GameCover'
@@ -280,18 +279,15 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   )
 }
 
-// A game being played (To play's top part, both layouts): cover, name, "42 h played · since
-// 21 Oct 2026" (hours only for Steam games; since = when it moved to Playing), "★ 4.5" once
-// rated, and the Steam achievements bar (gold at 100%, like the game window). Wide cards side by
-// side on the PC, slim full-width rows on the phone (CSS).
+// A game being played (To play's top part, both layouts): cover, name, "42 h played · ⌛ 52 h"
+// (hours only for Steam games), "★ 4.5" once rated, and the Steam achievements bar (gold at 100%,
+// like the game window). A line too long wraps between its pieces (user: nothing cut off). Wide
+// cards side by side on the PC, slim full-width rows on the phone (CSS).
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
-  const since = t('since {date}', { date: shortDate(game.statusAt) })
   const time = useShortTime(game.id)
-  // "42 h played · ⌛ 52 h · since 21 Oct 2026": what you played next to the HowLongToBeat time (Games settings)
-  const details = stats
-    ? dotted([playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />, since])
-    : dotted([since[0].toUpperCase() + since.slice(1), time > 0 && <PlaytimeShort seconds={time} />])
+  // What you played next to the HowLongToBeat time (Games settings)
+  const details = dotted([stats && playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />])
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -313,26 +309,53 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
           <div className="game-name" title={game.name}>{game.name}</div>
           {showsRated(game) && <GameRated game={game} />}
         </div>
-        <div className="game-details">{details}</div>
-        {!!stats?.total && (
-          <div className={isHundred(stats) ? 'playing-achievements hundred' : 'playing-achievements'}>
-            <AchievementBar stats={stats} />
-            <span>
-              {t('{done} / {total} achievements', { done: stats.done ?? 0, total: stats.total })}
-            </span>
-          </div>
-        )}
+        {details.length > 0 && <div className="game-details">{details}</div>}
+        {!!stats?.total && <PlayingAchievements stats={stats} />}
       </div>
     </div>
   )
 }
 
-// Parts of a details line with " · " between those that show
+// A Playing card's achievements: the bar, then "12 / 40 achievements", or just "12 / 40" when the
+// card is too narrow to leave the bar some room (user: shorten only when needed). The full text
+// stays in the row, invisible, to be measured.
+const MIN_BAR = 60
+function PlayingAchievements({ stats }: { stats: NonNullable<Game['steamStats']> }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const fullRef = useRef<HTMLSpanElement>(null)
+  const [short, setShort] = useState(false)
+  const done = stats.done ?? 0
+  const total = stats.total ?? 0
+  const full = t('{done} / {total} achievements', { done, total })
+  useLayoutEffect(() => {
+    const row = ref.current
+    const label = fullRef.current
+    if (!row || !label) return
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0
+    const check = () => setShort(label.offsetWidth + gap + MIN_BAR > row.clientWidth)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [full])
+  return (
+    <div ref={ref} className={isHundred(stats) ? 'playing-achievements hundred' : 'playing-achievements'} title={short ? full : undefined}>
+      <AchievementBar stats={stats} />
+      <span ref={fullRef} className={short ? 'playing-achievements-measure' : undefined} aria-hidden={short || undefined}>
+        {full}
+      </span>
+      {short && <span>{`${done} / ${total}`}</span>}
+    </div>
+  )
+}
+
+// Parts of a details line with " · " between those that show. Each part stays whole; a line that
+// wraps breaks after a dot, never before it (no line starts with "·").
 function dotted(parts: ReactNode[]) {
   return parts.filter(Boolean).map((part, index) => (
     <Fragment key={index}>
-      {index > 0 && ' · '}
-      {part}
+      {index > 0 && ' · '}
+      <span className="game-details-part">{part}</span>
     </Fragment>
   ))
 }

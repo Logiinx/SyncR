@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Changed:** Playing cards no longer show since when, nothing gets cut off
+
 ## [0.82.0] - 2026-11-16
 
 **Video**

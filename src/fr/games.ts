@@ -19,7 +19,6 @@ export const games = {
   'No games in {place}': 'Aucun jeu dans « {place} »',
   'Nothing being played right now': 'Aucun jeu en cours pour l’instant',
   "Games you own and haven't started yet": 'Les jeux que vous possédez sans les avoir commencés',
-  'since {date}': 'depuis le {date}',
   '{done} / {total} achievements': '{done} / {total} succès',
   Released: 'Sorti',
   'Owned on Steam': 'Possédé sur Steam',
