@@ -147,16 +147,17 @@ export function useSaleGuess(prices: GamePrices | null | undefined, active: bool
 // ---------- Its words ----------
 
 // A piece of a line, kept on one line; its values (dates, days, discounts) show bright, the words
-// around them dim, like the HowLongToBeat times
-export type SalePiece = { text: string; value?: boolean }[]
+// around them dim, like the HowLongToBeat times; discounts green, like the price's sale badge
+export type SalePiece = { text: string; value?: boolean; discount?: boolean }[]
 
 const MARK = '\u0001'
-// The text of a key with its values as bright segments (words: values shown dim, e.g. a name)
-function piece(key: TextKey, values: Record<string, string> = {}, words: Record<string, string> = {}): SalePiece {
+// The text of a key with its values as bright segments (words: values shown dim, e.g. a name;
+// discounts: names of values that are a discount)
+function piece(key: TextKey, values: Record<string, string> = {}, words: Record<string, string> = {}, discounts: string[] = []): SalePiece {
   const marks = Object.fromEntries(Object.keys(values).map((name) => [name, `${MARK}${name}${MARK}`]))
   return t(key, { ...words, ...marks })
     .split(MARK)
-    .map((text, i) => (i % 2 ? { text: values[text], value: true } : { text }))
+    .map((text, i) => (i % 2 ? { text: values[text], value: true, discount: discounts.includes(text) } : { text }))
     .filter((segment) => segment.text)
 }
 const bright = (text: string): SalePiece => [{ text, value: true }]
@@ -210,9 +211,9 @@ export function saleLines(guess: SaleGuess, now = Date.now()): SalePiece[][] {
   else if (history) {
     const game = [
       history.lastYear !== undefined &&
-        piece(textKey('Last year: {cut}'), { cut: history.lastYear > 0 ? discount(history.lastYear) : t('no discount') }),
-      history.usual && piece(textKey('usually {cut}'), { cut: discount(history.usual) }),
-      history.last && piece(textKey('last sale {date} ({cut})'), { date: shortDate(history.last.at), cut: discount(history.last.cut) }),
+        piece(textKey('Last year: {cut}'), { cut: history.lastYear > 0 ? discount(history.lastYear) : t('no discount') }, {}, history.lastYear > 0 ? ['cut'] : []),
+      history.usual && piece(textKey('usually {cut}'), { cut: discount(history.usual) }, {}, ['cut']),
+      history.last && piece(textKey('last sale {date} ({cut})'), { date: shortDate(history.last.at), cut: discount(history.last.cut) }, {}, ['cut']),
     ].filter(Boolean) as SalePiece[]
     if (game.length > 0) {
       game[0] = game[0].map((segment, i) => (i === 0 ? { ...segment, text: capitalize(segment.text) } : segment))

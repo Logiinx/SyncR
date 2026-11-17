@@ -7605,6 +7605,11 @@ button.history-row.selected {
   color: var(--text);
 }
 
+/* Discounts in them: green, like the price's sale badge */
+.sale-value.discount {
+  color: var(--text-green);
+}
+
 /* The same lines in the hover box on a list's Steam price (SaleGuessTip) */
 .sale-guess-tip {
   display: grid;

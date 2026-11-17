@@ -295,7 +295,9 @@ function SaleLine({ line }: { line: SalePiece[] }) {
     <p className="sale-parts">
       {line.map((piece, i) => (
         <span key={i}>
-          {piece.map((segment, j) => (segment.value ? <span key={j} className="sale-value">{segment.text}</span> : segment.text))}
+          {piece.map((segment, j) =>
+            segment.value ? <span key={j} className={segment.discount ? 'sale-value discount' : 'sale-value'}>{segment.text}</span> : segment.text,
+          )}
         </span>
       ))}
     </p>

@@ -7,6 +7,12 @@ All notable changes to SyncR. Newest version first.
 **Video** (PC only)
 - **New:** Twitch player: a spinner on ⚙️ while a new quality is on its way
 
+**Games**
+- **Better:** next-sale guesses show discounts in green, like the sale badge
+
+**App**
+- **Changed:** the Video settings button moved to Settings → Modules (PC only)
+
 ## [0.84.1] - 2026-11-17
 
 **Video** (PC only)

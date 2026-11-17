@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, Blocks, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, Blocks, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { SettingRow, SettingsCard } from './SettingsCard'
@@ -607,17 +607,9 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
       </SettingRow>
     </SettingsCard>
   )
-  const videoCard = isTauri() && videoOn && (
-    <SettingsCard key="video" icon={Video} title={t('Video')}>
-      <SettingRow label={t('Player and extensions')}>
-        <button className="setting-button" onClick={() => setShowVideo(true)}>
-          {t('Open…')}
-        </button>
-      </SettingRow>
-    </SettingsCard>
-  )
   // Modules (PC): extras apart from notes, each with its own settings window. Turning one on that
-  // only shows while SyncR runs warns once when ✕ quits SyncR.
+  // only shows while SyncR runs warns once when ✕ quits SyncR. Video has no checkbox: it shows
+  // when the Worker says yes.
   function toggleMouseBattery(on: boolean) {
     const warn = on && !mouseBattery.warned && !background.closeToTray
     saveMouseBattery(warn ? { on, warned: true } : { on })
@@ -625,6 +617,13 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
   }
   const modulesCard = isTauri() && (
     <SettingsCard key="modules" icon={Blocks} title={t('Modules')}>
+      {videoOn && (
+        <SettingRow label={t('Video')}>
+          <button className="setting-button" onClick={() => setShowVideo(true)}>
+            {t('Open…')}
+          </button>
+        </SettingRow>
+      )}
       <SettingRow
         label={
           <>
@@ -646,9 +645,9 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
   )
   // 3 columns on a wide window, 2 with the same cards in another order, 1 on a phone
   const columnCards =
-    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, videoCard, modulesCard]]
-    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, videoCard, modulesCard]]
-    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, videoCard, modulesCard]]
+    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, modulesCard]]
+    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, modulesCard]]
+    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, modulesCard]]
 
   const cards = (
     <div className="settings-cards" style={{ '--settings-columns': columns } as React.CSSProperties}>
