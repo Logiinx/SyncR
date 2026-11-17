@@ -5628,6 +5628,19 @@ h3.games-group-title {
   visibility: hidden;
 }
 
+/* The game's note under the rest: dim, 2 lines at most */
+.playing-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
 /* The card's details wrap between their pieces instead of being cut off (user) */
 .playing-card .game-details {
   white-space: normal;

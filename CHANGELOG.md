@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **New:** Playing cards show the game’s note, on up to 2 lines
 - **Changed:** Playing cards no longer show since when, nothing gets cut off
 
 ## [0.82.0] - 2026-11-16

@@ -281,13 +281,20 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
 
 // A game being played (To play's top part, both layouts): cover, name, "42 h played · ⌛ 52 h"
 // (hours only for Steam games), "★ 4.5" once rated, and the Steam achievements bar (gold at 100%,
-// like the game window). A line too long wraps between its pieces (user: nothing cut off). Wide
-// cards side by side on the PC, slim full-width rows on the phone (CSS).
+// like the game window), then the game's note when it has one (dim, 2 lines at most, all of it in
+// its tooltip). A line too long wraps between its pieces (user: nothing cut off). Wide cards side
+// by side on the PC, slim full-width rows on the phone (CSS).
 function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
   const stats = game.steamStats
   const time = useShortTime(game.id)
   // What you played next to the HowLongToBeat time (Games settings)
   const details = dotted([stats && playedText(stats.minutes), time > 0 && <PlaytimeShort seconds={time} />])
+  // The note's lines joined by " · " (blank ones skipped), so 2 lines show as much as they can
+  const note = game.note
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' · ')
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   return (
@@ -311,6 +318,11 @@ function PlayingCard({ game, onOpen, onMenu }: { game: Game; onOpen: () => void;
         </div>
         {details.length > 0 && <div className="game-details">{details}</div>}
         {!!stats?.total && <PlayingAchievements stats={stats} />}
+        {note && (
+          <div className="playing-note" title={game.note.trim()}>
+            {note}
+          </div>
+        )}
       </div>
     </div>
   )
