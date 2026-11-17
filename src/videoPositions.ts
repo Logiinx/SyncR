@@ -9,7 +9,9 @@ export interface VideoPosition {
 }
 const KEY = 'syncr.videoPositions'
 const KEPT = 200
-const JUST_STARTED = 30 // seconds: under this, it starts from the beginning again
+// Seconds: under this, it starts from the beginning again and isn't Started (user: 3 s, mistakes
+// are removed by hand). The player reports every 5 s, so in practice it counts after about 5 s.
+const JUST_STARTED = 3
 const NEARLY_DONE = 120 // seconds from the end, or NEARLY_DONE_SHARE of it when that's shorter
 const NEARLY_DONE_SHARE = 0.05
 

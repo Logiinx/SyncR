@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Video** (PC only)
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Better:** progress bars in YouTube red and Twitch purple, easier to see
+- **Changed:** a video counts as started after about 5 s, not 30
 - **Fixed:** started videos shown twice in To watch
 
 **Games**

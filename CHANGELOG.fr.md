@@ -7,6 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
 - **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
+- **Changé :** une vidéo compte comme commencée après 5 s environ, et non 30
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 
 **Jeux**
