@@ -9,6 +9,7 @@ import { read, useLocalState, write } from './localState'
 import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './videoFolders'
 import { checkPlaylists, nextInPlaylist, playlistFailures, playOrder } from './videoPlaylists'
 import { forgetPositions, resumePosition, savePosition } from './videoPositions'
+import { addVideoAlerts } from './videoAlerts'
 import { joinedAlone, leaveQueue, queueStarted, replaceInQueue } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
 
@@ -258,7 +259,8 @@ export function useChecking() {
 
 // Saves what can be shown: only finished videos, no older than the follow's start, and on Twitch
 // only past streams (no highlights or clips). All of them, also those the word lists leave out:
-// changing the lists then shows them at once, without asking the site again.
+// changing the lists then shows them at once, without asking the site again. Gives back the
+// videos seen for the first time that the follow's lists keep (none on its first check).
 async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck: boolean) {
   const rows: VideoRow[] = listed
     // i18n-ok
@@ -286,6 +288,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
       return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
     })
   if (changes.length) await db.videos.bulkPut(changes)
+  return firstCheck ? [] : rows.filter((row, i) => !saved[i] && videoKept(follow, row)).map((row) => row.id)
 }
 
 // These videos have been shown. One found before foundAt existed counts its week from now.
@@ -308,6 +311,7 @@ type ListMarks = Record<string, { mark: string; at: number }>
 // long ago: nothing is skipped after a long time away. An unchanged YouTube list needs nothing
 // more, but it's read in full once a day, as that also finds edited titles and pictures.
 async function checkFollow(follow: VideoFollow) {
+  let found: string[] = []
   const lastChecked = read<Record<string, number>>(CHECKED_KEY, {})[follow.id]
   const listMark = read<ListMarks>(LIST_MARKS_KEY, {})[follow.id]
   const request = lastChecked
@@ -320,7 +324,7 @@ async function checkFollow(follow: VideoFollow) {
   const answer = await response.json().catch(() => null)
   if (!response.ok || !(answer?.unchanged || Array.isArray(answer?.videos))) throw new Error(String(answer?.error ?? response.status))
   if (!answer.unchanged) {
-    await saveVideos(follow, answer.videos, !lastChecked)
+    found = await saveVideos(follow, answer.videos, !lastChecked)
     if (follow.platform === 'twitch') await addTwitchGames(follow)
     const marks = read<ListMarks>(LIST_MARKS_KEY, {})
     if (answer.mark) marks[follow.id] = { mark: answer.mark, at: Date.now() }
@@ -328,6 +332,21 @@ async function checkFollow(follow: VideoFollow) {
     write(LIST_MARKS_KEY, marks)
   }
   write(CHECKED_KEY, { ...read<Record<string, number>>(CHECKED_KEY, {}), [follow.id]: Date.now() })
+  return found
+}
+
+// The pop-up's new videos (videoAlerts.ts, PC): a bell follow's new videos, unless this is its
+// first check since SyncR started, or the first after a long gap (the PC slept). User: no cards
+// then, "I'll see them in To watch anyway". Per follow: when it was last checked fine, this run.
+const checkedThisRun = new Map<string, number>()
+const AWAY = 60 * 60 * 1000 // at least; longer when checks are further apart (YouTube's quota)
+
+function alertNewVideos(follow: VideoFollow, found: string[], every: number) {
+  const before = checkedThisRun.get(follow.id)
+  const now = Date.now()
+  checkedThisRun.set(follow.id, now)
+  if (!follow.notify || !found.length || before === undefined || now - before > Math.max(AWAY, 2 * every)) return
+  if (isTauri() || import.meta.env.DEV) addVideoAlerts(found)
 }
 
 // Once a day: which videos waiting to be watched are gone from their site. Twitch deletes old
@@ -375,9 +394,10 @@ export async function checkVideos(only?: string[]) {
     let offlineMessage: string | null = null
     let failed = false
     const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
+    const every = checkEvery(follows, read<ListMarks>(LIST_MARKS_KEY, {}))
     for (const follow of follows.filter((follow) => !only || only.includes(follow.id))) {
       try {
-        await checkFollow(follow)
+        alertNewVideos(follow, await checkFollow(follow), every)
         failures.delete(follow.id)
       } catch (e) {
         // Offline: one message, no need to try the others
