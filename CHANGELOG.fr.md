@@ -11,7 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 
 **Notes**
-- **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, GitHub…
+- **Nouveau :** les cartes de liens montrent le logo du site : YouTube, Reddit, X, Google Drive…
 
 **Jeux**
 - **Amélioré :** Mes jeux, Calendrier et les onglets de statut restent en haut pendant le défilement

@@ -11,7 +11,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** started videos shown twice in To watch
 
 **Notes**
-- **New:** link cards show the site's logo: YouTube, Reddit, X, GitHub and more
+- **New:** link cards show the site's logo: YouTube, Reddit, X, Google Drive…
 
 **Games**
 - **Better:** My games, Calendar and the status tabs stay at the top while scrolling
