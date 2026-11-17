@@ -1,6 +1,7 @@
 // The mouse battery inside the taskbar (main screen): a see-through child window of the taskbar,
 // just left of the notification area, with an outlined mouse (Windows' icon font), the percent in
-// the clock's font and a bolt while charging; half strength when the last check got no answer.
+// the clock's font and a green bolt on the mouse while charging; half strength and a yellow dot
+// when the last check got no answer.
 // Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the
 // page). A click opens the Mouse battery window in SyncR.
 // Its own thread: once inside the taskbar it shares Windows' input with it, so it must never wait
@@ -42,7 +43,6 @@ const WOKEN_WAIT: u32 = 5000; // USB needs a moment after the PC wakes up
 const CONTROLLER_CLASS: &str = "SyncRMouseBatteryControl";
 const STRIP_CLASS: &str = "SyncRMouseBatteryStrip";
 const MOUSE_GLYPH: &str = "\u{E962}"; // "Mouse" in Windows' icon fonts
-const BOLT_GLYPH: &str = "\u{E945}"; // "LightningBolt"
 const ICON_FONTS: &[&str] = &["Segoe Fluent Icons", "Segoe MDL2 Assets"]; // Windows 11, Windows 10
 const TEXT_FONTS: &[&str] = &["Segoe UI Variable Text", "Segoe UI"]; // the clock's, Windows 11 then 10
 
@@ -473,69 +473,72 @@ fn scaled(px: i32, dpi: u32) -> i32 {
   (px * dpi as i32 + 48) / 96
 }
 
-// [space][mouse][gap][93%][bolt while charging][space], as tall as the taskbar. Premultiplied
-// colors (as Windows wants them); the empty parts are nearly invisible but not fully, so the
-// whole strip takes clicks and hovering.
+// [space][mouse][gap][93%][space], as tall as the taskbar. Premultiplied colors (as Windows wants
+// them); the empty parts are nearly invisible but not fully, so the whole strip takes clicks and
+// hovering.
 fn draw(look: &Look) -> Option<Canvas> {
   let size = |px: i32| scaled(px, look.dpi);
-  let (pad, gap, icon_px, text_px, bolt_px, bolt_gap) = (size(6), size(4), size(16), size(12), size(12), size(2));
+  let (pad, gap, icon_px, text_px) = (size(6), size(4), size(16), size(12));
   let ruler = Canvas::new(1, 1)?;
   let icon_width = ruler.with_font(ICON_FONTS, icon_px, FW_NORMAL, |canvas| canvas.measure(MOUSE_GLYPH).0)?;
   let text_width = ruler.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.measure(&look.text).0)?;
-  let bolt_width = if look.charging {
-    ruler.with_font(ICON_FONTS, bolt_px, FW_NORMAL, |canvas| canvas.measure(BOLT_GLYPH).0)?
-  } else {
-    0
-  };
   drop(ruler);
   let text_left = pad + icon_width + gap;
-  let bolt_left = text_left + text_width + bolt_gap;
-  let width = if look.charging { bolt_left + bolt_width + pad } else { text_left + text_width + pad };
+  let width = text_left + text_width + pad;
   let height = look.height;
   let mut canvas = Canvas::new(width.max(1) as usize, height.max(1) as usize)?;
   canvas.with_font(ICON_FONTS, icon_px, FW_NORMAL, |canvas| canvas.text(MOUSE_GLYPH, pad, 0, pad + icon_width, height, DT_LEFT))?;
   canvas.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.text(&look.text, text_left, 0, width, height, DT_LEFT))?;
-  if look.charging {
-    canvas.with_font(ICON_FONTS, bolt_px, FW_NORMAL, |canvas| canvas.text(BOLT_GLYPH, bolt_left, 0, width, height, DT_LEFT))?;
-  }
-  // Only the number turns red when low; the mouse and the bolt keep the taskbar's color
+  // Only the number turns red when low; the mouse keeps the taskbar's color
   let (plain, number) = (theme::paint(look.light, false), theme::paint(look.light, look.low));
   let strength = if look.dim { 0.5 } else { 1.0 };
   // The hover highlight: like the taskbar's own, a little inside its height, rounded
   let (highlight, highlight_alpha) = if look.light { ([0u8, 0, 0], 0.06) } else { ([255u8, 255, 255], 0.08) };
   let inset = size(4) as f32;
   let corner = size(4) as f32;
-  // No answer: a yellow dot on the mouse's bottom right corner, at full strength, with a thin gap
-  // cut around it like Windows' badges
-  let dot = theme::caution(look.light);
-  let (dot_x, dot_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
-  let (dot_radius, dot_gap) = (size(3) as f32, size(3) as f32 * 0.5);
+  // A badge on the mouse's bottom right corner, at full strength, with a thin gap cut around it like
+  // Windows' badges: a yellow dot when there's no answer, else a green bolt while charging (the two
+  // never meet: charging is only known from an answer)
+  let badge = if look.dim {
+    Some(Badge::Dot)
+  } else if look.charging {
+    Some(Badge::Bolt)
+  } else {
+    None
+  };
+  let badge_color = if look.dim { theme::caution(look.light) } else { theme::charging(look.light) };
+  let (badge_x, badge_y) = ((pad + icon_width) as f32 - size(2) as f32, height as f32 / 2.0 + size(5) as f32);
+  let (dot_radius, badge_gap) = (size(3) as f32, size(3) as f32 * 0.5);
+  let bolt = bolt_points(badge_x, badge_y, size(8) as f32);
   let columns = canvas.width;
   for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {
     let (x, y) = ((index % columns) as i32, (index / columns) as i32);
-    let from_dot = ((x as f32 + 0.5 - dot_x).powi(2) + (y as f32 + 0.5 - dot_y).powi(2)).sqrt();
-    let (dot_cover, gap_cover) = if look.dim {
-      ((dot_radius + 0.5 - from_dot).clamp(0.0, 1.0), (dot_radius + dot_gap + 0.5 - from_dot).clamp(0.0, 1.0))
-    } else {
-      (0.0, 0.0)
+    let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+    // How far the pixel's center is from the badge's edge (below 0: inside)
+    let from_badge = match badge {
+      Some(Badge::Dot) => ((px - badge_x).powi(2) + (py - badge_y).powi(2)).sqrt() - dot_radius,
+      Some(Badge::Bolt) => from_shape(px, py, &bolt),
+      None => f32::MAX,
     };
+    let badge_cover = (0.5 - from_badge).clamp(0.0, 1.0);
+    let gap_cover = (badge_gap + 0.5 - from_badge).clamp(0.0, 1.0);
     let cover = pixel[2] as f32 / 255.0 * strength * (1.0 - gap_cover);
-    let color = if x < text_left || (look.charging && x >= bolt_left) { plain } else { number };
+    let color = if x < text_left { plain } else { number };
     let background = if look.hover {
-      highlight_alpha * rounded_box(x as f32 + 0.5, y as f32 + 0.5, 0.0, inset, width as f32, height as f32 - inset, corner)
+      highlight_alpha * rounded_box(px, py, 0.0, inset, width as f32, height as f32 - inset, corner)
     } else {
       0.0
     };
-    // Text over the highlight, then the dot over both
+    // Text over the highlight, then the badge over both
     let under = cover + background * (1.0 - cover);
-    let alpha = dot_cover + under * (1.0 - dot_cover);
+    let alpha = badge_cover + under * (1.0 - badge_cover);
     if alpha < 1.0 / 255.0 {
       pixel.copy_from_slice(&[0, 0, 0, 1]);
       continue;
     }
     let channel = |part: usize| {
       let below = color[part] as f32 * cover + highlight[part] as f32 * background * (1.0 - cover);
-      (dot[part] as f32 * dot_cover + below * (1.0 - dot_cover)).round().clamp(0.0, 255.0) as u8
+      (badge_color[part] as f32 * badge_cover + below * (1.0 - badge_cover)).round().clamp(0.0, 255.0) as u8
     };
     pixel[0] = channel(2);
     pixel[1] = channel(1);
@@ -543,6 +546,40 @@ fn draw(look: &Look) -> Option<Canvas> {
     pixel[3] = (alpha * 255.0).round().clamp(1.0, 255.0) as u8;
   }
   Some(canvas)
+}
+
+enum Badge {
+  Dot,
+  Bolt,
+}
+
+// A lightning bolt `tall` pixels high, centered on (x, y)
+fn bolt_points(x: f32, y: f32, tall: f32) -> Vec<(f32, f32)> {
+  let unit = tall / 14.0;
+  [(6.2, 0.0), (0.0, 8.2), (4.4, 8.2), (3.4, 14.0), (10.0, 5.6), (5.6, 5.6)]
+    .iter()
+    .map(|&(px, py)| (x + (px - 5.0) * unit, y + (py - 7.0) * unit))
+    .collect()
+}
+
+// How far a point is from a shape's edge, in pixels: below 0 inside, above 0 outside
+fn from_shape(x: f32, y: f32, points: &[(f32, f32)]) -> f32 {
+  let squared = |a: f32, b: f32| a * a + b * b;
+  let mut nearest = squared(x - points[0].0, y - points[0].1);
+  let mut inside = false;
+  let mut previous = points[points.len() - 1];
+  for &point in points {
+    let (edge_x, edge_y) = (previous.0 - point.0, previous.1 - point.1);
+    let (to_x, to_y) = (x - point.0, y - point.1);
+    let along = ((to_x * edge_x + to_y * edge_y) / squared(edge_x, edge_y)).clamp(0.0, 1.0);
+    nearest = nearest.min(squared(to_x - edge_x * along, to_y - edge_y * along));
+    // Even-odd rule: crossing the edges an odd number of times = inside
+    if (point.1 > y) != (previous.1 > y) && x < point.0 + (y - point.1) * edge_x / edge_y {
+      inside = !inside;
+    }
+    previous = point;
+  }
+  if inside { -nearest.sqrt() } else { nearest.sqrt() }
 }
 
 // How much of a pixel (its center) is inside a box with rounded corners: 0 to 1, soft at the edge
