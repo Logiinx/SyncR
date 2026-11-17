@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
-- **New:** a Queue in place of Started: videos you start join it
+- **New:** a Queue in place of Started: right-click to add, started ones join
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Better:** progress bars in YouTube red and Twitch purple, easier to see
 - **Changed:** a video counts as started after about 5 s, not 30

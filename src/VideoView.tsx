@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Eye, Folder, FolderInput, FolderOutput, FolderPlus, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, ThumbsUp, Trash2, Undo2, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Eye, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, ThumbsUp, Trash2, Undo2, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -24,7 +24,7 @@ import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
 import { changePlaylist, playlistAddress, removePlaylist } from './videoPlaylists'
 import { resumePosition, useResumePosition, videoClock, type VideoPosition } from './videoPositions'
-import { useQueue } from './videoQueue'
+import { addToQueue, leaveQueue, useQueue } from './videoQueue'
 import { playtimeText } from './playtimes'
 
 type List = 'towatch' | 'rewatch' | 'watched' | 'music'
@@ -443,7 +443,8 @@ function VideoView() {
   const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
-  const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number } | null>(null)
+  // A video's right-click menu (a playlist's video: only the Queue's item, it can't be moved)
+  const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number; episode?: boolean } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
@@ -720,7 +721,7 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} onOpenRow={openRow} />) : []),
+      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
     ]
   }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
@@ -805,7 +806,7 @@ function VideoView() {
               ofRewatch={ofRewatch}
               from={playlist?.name}
               after={entries.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
-              onMenu={playlist ? undefined : (x, y) => setMoving({ video, x, y })}
+              onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
               onOpenRow={openRow}
             />
           ))),
@@ -828,6 +829,13 @@ function VideoView() {
   // A folder or playlist's videos to start over: those watched or opened
   const startOverIds = (episodes: FeedVideo[]) => episodes.filter((video) => video.watched || video.opened).map((video) => video.id)
   const folderStartOver = (folder: VideoFolder) => startOverIds([...allIn(folder), ...allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes)])
+  // A video's own item: added at the bottom, or taken out (grayed for what can't go on: Music,
+  // watched, no longer available)
+  function queueVideoItem(video: FeedVideo): MenuItem {
+    if (queue.some((entry) => entry.id === video.id)) return { label: t('Remove from queue'), icon: ListX, onClick: () => leaveQueue([video.id]) }
+    const why = video.music ? t('Not for Music') : video.watched ? t('Already watched') : video.gone ? t('No longer available') : undefined
+    return { label: t('Add to queue'), icon: ListEnd, disabled: !!why, hint: why, onClick: () => addToQueue(video.id) }
+  }
   // One switch for both lists (grayed in Watched and Music)
   const queueItem = (inList: boolean): MenuItem => ({
     label: t('Queue'),
@@ -1105,8 +1113,9 @@ function VideoView() {
           y={moving.y}
           onClose={() => setMoving(null)}
           header={{ title: moving.video.title, subtitle: moving.video.channel }} // what was right-clicked, like Mail's
-          items={[
-            ...videoFolderItems(moving.video),
+          items={moving.episode ? [queueVideoItem(moving.video)] : [
+            queueVideoItem(moving.video),
+            ...videoFolderItems(moving.video).map((item, index) => (index === 0 ? { ...item, divider: true } : item)),
             { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: moving.video.music ? MUSIC : null, videoId: moving.video.id }) },
             ...(grouping && !moving.video.music
               ? [{
