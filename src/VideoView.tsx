@@ -363,7 +363,7 @@ function VideoThumb({ video, opened }: { video: FeedVideo; opened: VideoPosition
         </span>
       )}
       {opened && (
-        <span className="video-progress"><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
+        <span className={`video-progress ${video.platform}`}><span style={{ width: `${(opened.t / opened.length) * 100}%` }} /></span>
       )}
     </span>
   )

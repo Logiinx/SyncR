@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo**
 - **Amélioré :** À regarder, À revoir et Vues restent en haut pendant le défilement
+- **Amélioré :** barres de progression en rouge YouTube et violet Twitch, plus visibles
 - **Corrigé :** vidéos commencées affichées deux fois dans À regarder
 
 **Jeux**

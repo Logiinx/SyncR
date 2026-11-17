@@ -14,10 +14,10 @@ function VideoLogo({ platform, size = 15 }: { platform: 'twitch' | 'youtube'; si
     <svg className="video-logo" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={name}>
       <title>{name}</title>
       {platform === 'twitch' ? (
-        <path fill="#9146ff" d={TWITCH} />
+        <path style={{ fill: 'var(--twitch)' }} d={TWITCH} />
       ) : (
         <>
-          <path fill="#ff0033" d={YOUTUBE} />
+          <path style={{ fill: 'var(--youtube)' }} d={YOUTUBE} />
           <path fill="#fff" d={PLAY} />
         </>
       )}

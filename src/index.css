@@ -13,6 +13,9 @@
   --ok: #6cc28a; /* sync: done */
   --warn: #e0a040; /* sync: action needed (passphrase) */
   --error: #e5534b; /* sync: error */
+  /* The sites' own colors (VideoLogo.tsx, video progress bars) */
+  --youtube: #ff0033;
+  --twitch: #9146ff;
   /* Text colors and highlighter in notes (ColorPicker.tsx). Notes refer to these names. */
   --text-red: #f0716b;
   --text-orange: #f0a052;
@@ -8184,7 +8187,7 @@ button.history-row.selected {
   object-fit: cover;
 }
 
-/* Started but not finished */
+/* Started but not finished: in the site's color (user: SyncR's blue was hard to see) */
 .video-progress {
   position: absolute;
   left: 0;
@@ -8197,7 +8200,11 @@ button.history-row.selected {
 .video-progress span {
   display: block;
   height: 100%;
-  background: var(--text-blue);
+  background: var(--youtube);
+}
+
+.video-progress.twitch span {
+  background: var(--twitch);
 }
 
 .video-duration {
