@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Settings → Modules: your mouse’s battery in the taskbar, by the clock
+- **New:** Settings → Modules: your mouse’s battery by the clock, a pop-up when low
 
 **Games**
 - **New:** Playing cards show the game’s note, on up to 2 lines

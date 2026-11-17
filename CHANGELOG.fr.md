@@ -5,7 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
-- **Nouveau :** Paramètres → Modules : la batterie de la souris dans la barre des tâches
+- **Nouveau :** Paramètres → Modules : la batterie de la souris près de l’horloge, alerte si faible
 
 **Jeux**
 - **Nouveau :** les cartes En cours montrent la note du jeu, sur 2 lignes au plus

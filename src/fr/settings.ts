@@ -188,5 +188,7 @@ export const settings = {
   '{time}, asleep or out of reach': '{time}, en veille ou hors de portée',
   'Low battery': 'Batterie faible',
   'About low battery': 'À propos de la batterie faible',
-  'At or below this level, the number turns red.': 'À ce niveau ou en dessous, le nombre passe en rouge.',
+  'At or below this level, the number turns red and the pop-up warns you once, until the mouse charges above it again.':
+    'À ce niveau ou en dessous, le nombre passe en rouge et un pop-up vous prévient une fois, jusqu’à ce que la souris recharge au-dessus.',
+  'Mouse battery low: {percent}%': 'Batterie de la souris faible : {percent} %',
 }

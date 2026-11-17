@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useLanguage } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { LogicalSize } from '@tauri-apps/api/dpi'
@@ -16,16 +16,20 @@ import { ReminderCards } from './ReminderAlerts'
 import { loadAppearance } from './appearance'
 import { EASE_CLOSE, EASE_OPEN, TIMING } from './animations'
 import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWindow'
+import { LOW_ALERT_ID, useLowAlert, type LowAlert } from './mouseBattery'
+import { BatteryCard } from './BatteryCard'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
-// ?view=reminder-popup, see main.tsx). Shows the due reminders and new emails, plays a sound
+// ?view=reminder-popup, see main.tsx). Shows the due reminders, the mouse battery's low warning
+// and new emails, plays a sound
 // for new ones, sizes the window to fit them, and sends button clicks to the main window.
 function ReminderPopup() {
   useLanguage()
   const due = useDueReminders()
   const mails = useMailAlerts()
+  const battery = useLowAlert()
   useGmailAccounts() // redraws the cards when an account's color changes
-  usePopupSounds(due, mails)
+  usePopupSounds(due, mails, battery)
   const listRef = useRef<HTMLDivElement>(null)
 
   // Each new mail's text is downloaded as soon as its card shows (memory only, mailPrefetch.ts)
@@ -158,7 +162,9 @@ function ReminderPopup() {
   useEffect(() => {
     refitRef.current()
   }, [reading !== undefined])
-  const fading = useMailFade(mails, !!open)
+  // The same list until the cards change (a new one each time would restart the fade timers)
+  const fadeCards = useMemo(() => (battery ? [{ key: LOW_ALERT_ID }, ...mails] : mails), [battery, mails])
+  const fading = useFade(fadeCards, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
     <>
@@ -169,6 +175,14 @@ function ReminderPopup() {
       role="alert"
     >
       {due && <ReminderCards due={due} onAction={(item, action) => sendFromPopup({ id: item.key, action })} />}
+      {battery && (
+        <BatteryCard
+          alert={battery}
+          fading={fading.has(LOW_ALERT_ID)}
+          onOpen={() => sendFromPopup({ id: LOW_ALERT_ID, action: 'battery-open' })}
+          onDone={() => sendFromPopup({ id: LOW_ALERT_ID, action: 'battery-done' })}
+        />
+      )}
       {!reading && (
         <MailCards
           alerts={mails}
@@ -200,26 +214,27 @@ function ReminderPopup() {
 }
 
 // One sound for what's new since the last change: the reminder sound if a reminder is among
-// it (also when an email came at the same time), else the email sound
-function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[]) {
+// it (also when an email came at the same time), else the email sound (emails, low battery)
+function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null) {
   const heard = useRef(new Set<string>())
   useEffect(() => {
     if (!due) return
     const reminders = due.map((item) => `${item.key}@${item.dueAt}`)
-    const keys = [...reminders, ...mails.map((mail) => mail.key)]
+    const keys = [...reminders, ...mails.map((mail) => mail.key), ...(battery ? [LOW_ALERT_ID] : [])]
     if (reminders.some((key) => !heard.current.has(key))) playReminderSound()
     else if (keys.some((key) => !heard.current.has(key))) playEmailSound()
     heard.current = new Set(keys)
-  }, [due, mails])
+  }, [due, mails, battery])
 }
 
-// Emails fade by themselves after the delay chosen in Settings → Alerts → Emails (never by default),
-// counted from when each card appeared. Not while the mouse is over the pop-up or a mail is
-// open to read: then every card starts its delay again afterwards. Opened (read) cards don't
-// fade. A faded card goes as "missed" (mailAlerts.ts); its mail stays unread.
+// Emails and the low battery card fade by themselves after the delay chosen in Settings → Alerts →
+// Emails (never by default), counted from when each card appeared. Not while the mouse is over
+// the pop-up or a mail is open to read: then every card starts its delay again afterwards.
+// Opened (read) cards don't fade. A faded email goes as "missed" (mailAlerts.ts); its mail
+// stays unread. A faded battery card goes like Done.
 const FADE_OUT_MS = 400 // the fade itself (index.css, .reminder-alert.fading)
 
-function useMailFade(mails: MailAlert[], reading: boolean) {
+function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
   const [hovered, setHovered] = useState(false)
   const [fading, setFading] = useState<Set<string>>(new Set())
   const since = useRef(new Map<string, number>()) // when each card appeared (or the pause ended)
@@ -256,7 +271,8 @@ function useMailFade(mails: MailAlert[], reading: boolean) {
       timers.push(setTimeout(() => {
         setFading((keys) => new Set(keys).add(mail.key))
         const out = loadAppearance().animations ? FADE_OUT_MS : 0
-        timers.push(setTimeout(() => sendFromPopup({ id: mail.key, action: 'mail-fade' }), out))
+        const action = mail.key === LOW_ALERT_ID ? 'battery-done' : 'mail-fade'
+        timers.push(setTimeout(() => sendFromPopup({ id: mail.key, action }), out))
       }, Math.max(left, 0)))
     }
     return () => timers.forEach(clearTimeout)

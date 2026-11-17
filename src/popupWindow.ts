@@ -8,10 +8,11 @@ import { availableMonitors, getCurrentWindow, primaryMonitor, type Monitor } fro
 import { findPopupScreen, loadBackground, popupScreenChange, saveBackground } from './desktop'
 import { openAlertEvent, runAction, type DueItem, type ReminderAction } from './dueReminders'
 import { runMailAction, type MailAction, type MailAlert } from './mailAlerts'
+import { closeLowAlert, type LowAlert } from './mouseBattery'
 
 // The desktop reminder pop-up: a small always-on-top window in a corner of the screen (both
-// chosen in Settings), shown while reminders are due or new emails came (mailAlerts.ts), even
-// when SyncR's window is hidden in the tray.
+// chosen in Settings), shown while reminders are due, new emails came (mailAlerts.ts) or the
+// mouse battery is low (mouseBattery.ts), even when SyncR's window is hidden in the tray.
 // The main window opens and closes it; the pop-up (ReminderPopup.tsx) shows the reminders
 // itself (same database) and sends its button clicks back here, so all changes and syncing
 // happen in the main window.
@@ -23,9 +24,12 @@ const MARGIN = 12 // from the screen edges
 
 // Button clicks from the pop-up to the main window: through Tauri's events in the desktop
 // app; through a BroadcastChannel in the browser (only used to test the pop-up page in a tab)
+// The battery card: battery-open = a click on its text (the Mouse battery window), battery-done =
+// Done or faded
+export type BatteryAction = 'battery-open' | 'battery-done'
 export interface PopupMessage {
-  id: string // an event alert's key (DueItem.key) or an email's (MailAlert.key, "mail:…")
-  action: ReminderAction | MailAction
+  id: string // an event alert's key (DueItem.key), an email's (MailAlert.key, "mail:…") or LOW_ALERT_ID
+  action: ReminderAction | MailAction | BatteryAction
 }
 const EVENT = 'reminder-popup-action'
 
@@ -164,25 +168,31 @@ async function showMainWindow() {
   await win.setFocus()
 }
 
-// Used by the main window: keeps the pop-up open while reminders are due or emails are new,
-// and runs its button clicks. Returns true if the pop-up couldn't open (then the main window
-// shows the reminders' cards; emails then wait for the pop-up, PC only anyway).
-export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[]) {
+// Used by the main window: keeps the pop-up open while reminders are due, emails are new or the
+// mouse battery is low, and runs its button clicks. Returns true if the pop-up couldn't open
+// (then the main window shows the reminders' cards; emails and the battery then wait for the
+// pop-up, PC only anyway).
+export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null) {
   const [failed, setFailed] = useState(false)
 
   // Checked on every change (not just "some due / none due"), so a pop-up closed with
   // Alt+F4 comes back within a minute while reminders are still due
   useEffect(() => {
     if (!isTauri() || due === undefined || failed) return
-    wanted = due.length > 0 || mails.length > 0
+    wanted = due.length > 0 || mails.length > 0 || battery !== null
     if (wanted) openPopup(() => setFailed(true)).catch(() => setFailed(true))
     else closePopup()
-  }, [due, mails, failed])
+  }, [due, mails, battery, failed])
 
   useEffect(() => {
     if (!isTauri()) return
     return onPopupMessage(({ id, action }) => {
-      if (action.startsWith('mail-')) {
+      if (action === 'battery-open') {
+        showMainWindow()
+        emit('mouse-battery-open') // App opens Settings on the Mouse battery window
+      }
+      else if (action === 'battery-done') closeLowAlert()
+      else if (action.startsWith('mail-')) {
         runMailAction(id, action as MailAction).catch((error) => console.error(error))
       }
       else if (action === 'open') {

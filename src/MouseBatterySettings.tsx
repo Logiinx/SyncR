@@ -48,7 +48,7 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
             label={
               <>
                 {t('Low battery')}
-                <InfoTip label={t('About low battery')}>{t('At or below this level, the number turns red.')}</InfoTip>
+                <InfoTip label={t('About low battery')}>{t('At or below this level, the number turns red and the pop-up warns you once, until the mouse charges above it again.')}</InfoTip>
               </>
             }
           >

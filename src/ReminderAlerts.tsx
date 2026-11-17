@@ -7,6 +7,7 @@ import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useInstantMail } from './instantMail'
 import { startMailbox } from './mailbox'
 import { popupMonitor, useReminderPopup } from './popupWindow'
+import { useLowAlert } from './mouseBattery'
 import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
 
@@ -95,7 +96,8 @@ function ReminderAlerts() {
   }, [])
   useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
-  const popupFailed = useReminderPopup(due, mails)
+  const battery = useLowAlert() // PC: the mouse battery's low warning too
+  const popupFailed = useReminderPopup(due, mails, battery)
   const showCards = !isTauri() || popupFailed
   useChime(showCards ? due : undefined)
 
