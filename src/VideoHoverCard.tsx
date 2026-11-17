@@ -73,7 +73,7 @@ export function VideoCardContent({ video, opened, from, shows }: { video: CardVi
           <span className="video-card-title">{video.title}</span>
           <span className="video-card-line">
             <VideoLogo platform={video.platform} />
-            <span className="card-highlight">{video.channel}</span>
+            <span className="card-author">{video.channel}</span>
           </span>
           {from && (
             <span className="video-card-line">
@@ -83,7 +83,7 @@ export function VideoCardContent({ video, opened, from, shows }: { video: CardVi
           )}
           <span className="video-card-line">
             <span>
-              {age && <span className="card-highlight">{age}</span>}
+              {age && <span className="card-bright">{age}</span>}
               {`${age ? ' · ' : ''}${fullDate(video.published)}, ${clockTime(video.published)}`}
             </span>
           </span>

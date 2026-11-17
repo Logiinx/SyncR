@@ -359,7 +359,7 @@ function videoExtras(preview: LinkPreview) {
 }
 
 // The channel or writer in a dim line: bright and semi-bold, like the Video tab's hover cards
-const author = (name: string) => element('span', 'card-highlight', name)
+const author = (name: string) => element('span', 'card-author', name)
 
 // A dim line of items with " · " between them; null when there are none
 function dotLine(items: (string | HTMLElement)[]) {
