@@ -7605,7 +7605,7 @@ button.history-row.selected {
   color: var(--text);
 }
 
-/* Discounts in them: green, like the price's sale badge */
+/* Discounts in them: plain green text, like a price's discount (.price-badge) */
 .sale-value.discount {
   color: var(--text-green);
 }
@@ -7722,13 +7722,10 @@ button.history-row.selected {
   height: 1em;
 }
 
+/* The sale's discount: green text, like the discounts in the next-sale lines (.sale-value.discount) */
 .price-badge {
   margin-left: 2px;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: var(--hl-green);
   color: var(--text-green);
-  font-size: 0.9em;
 }
 
 .price-was {

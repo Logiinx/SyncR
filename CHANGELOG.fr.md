@@ -8,7 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** lecteur Twitch : un rond qui tourne sur ⚙️ tant qu’une nouvelle qualité arrive
 
 **Jeux**
-- **Amélioré :** prévisions de promo : remises en vert, comme le badge de promo
+- **Amélioré :** remises en texte vert, sur les prix et dans les prévisions de promo
 
 **Application**
 - **Changé :** le bouton des paramètres vidéo est passé dans Paramètres → Modules (PC uniquement)

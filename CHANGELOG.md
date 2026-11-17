@@ -8,7 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Twitch player: a spinner on ⚙️ while a new quality is on its way
 
 **Games**
-- **Better:** next-sale guesses show discounts in green, like the sale badge
+- **Better:** discounts in plain green text, on prices and in sale guesses
 
 **App**
 - **Changed:** the Video settings button moved to Settings → Modules (PC only)
