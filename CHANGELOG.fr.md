@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-11-17
+
 **Application**
 - **Nouveau :** Paramètres → Modules : la batterie de la souris près de l’horloge, alerte si faible
 

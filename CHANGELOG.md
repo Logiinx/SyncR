@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-11-17
+
 **App**
 - **New:** Settings → Modules: your mouse’s battery by the clock, a pop-up when low
 
