@@ -889,7 +889,7 @@ function VideoView() {
   return (
     <main className="page games-page" ref={pageRef}>
       <div className="games">
-        <div className="games-views reminders-toolbar video-toolbar">
+        <div className="games-views reminders-toolbar video-toolbar pinned-bar">
           <FillSwitch
             className="video-list-switch"
             options={[

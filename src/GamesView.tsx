@@ -48,6 +48,16 @@ const shelfLayouts = (): { value: ShelfLayout; label: React.ReactNode; title: st
 function GamesView() {
   const pageRef = useRef<HTMLElement>(null)
   usePage(pageRef)
+  // The pinned My games | Calendar row's height: the status tabs stick right under it
+  const barRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const bar = barRef.current
+    const page = pageRef.current
+    if (!bar || !page) return
+    const observer = new ResizeObserver(() => page.style.setProperty('--games-bar-height', `${bar.offsetHeight}px`))
+    observer.observe(bar)
+    return () => observer.disconnect()
+  }, [])
   const connection = useConnection() // undefined while loading
   const connected = isComplete(connection)
   const games = useLiveQuery(() => db.games.filter((game) => !game.deleted).toArray(), [])
@@ -114,7 +124,7 @@ function GamesView() {
       {/* Wide only for the month grid (not for the "set up the game search" text, which then
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
-        <div className={view === 'calendar' && connected ? 'games-views calendar-head' : 'games-views'}>
+        <div ref={barRef} className={view === 'calendar' && connected ? 'games-views calendar-head pinned-bar' : 'games-views pinned-bar'}>
           <FillSwitch className="games-views-switch" options={views()} value={view} onChange={setView} />
           {/* Only with the game search set up: otherwise they do nothing, and the taller header
               put the "set up the game search" text lower than in My games */}
@@ -166,7 +176,7 @@ function GamesView() {
               <>
                 {/* Underlined tabs, each a quarter of the row, with an icon (an empty status shows no
                     count); as wide as the cover grid. Import and the layout switch on a row below. */}
-                <div className={shelf === 'grid' ? 'games-status-tabs wide' : 'games-status-tabs'}>
+                <div className={shelf === 'grid' ? 'games-status-tabs pinned-bar wide' : 'games-status-tabs pinned-bar'}>
                   {/* Scrolls sideways when the screen is too narrow (phone, big app scale) */}
                   <div className="games-status-list" ref={statusList} onPointerLeave={lines.onRowLeave}>
                     {TABS.map(({ tab, label, icon: TabIcon }) => {

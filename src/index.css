@@ -5390,6 +5390,33 @@ h3.games-group-title {
   margin-bottom: 16px;
 }
 
+/* Top bars that stay while the page scrolls (Video's bar, Games' two rows; user: switch lists from
+   far down). 12 px of background around it (16 px at the sides, for a hovered cover's glow), drawn by ::before so the bar's own box and
+   place don't change (absolute controls inside it stay put). z-index 1: rows slide under it, a
+   lifted video row (2) goes over it. */
+.pinned-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 1;
+}
+
+.pinned-bar::before {
+  content: '';
+  position: absolute;
+  inset: -12px -16px;
+  z-index: -1;
+  background: var(--bg);
+}
+
+/* My games' status tabs: under the pinned My games | Calendar row (its height set by GamesView) */
+.games-status-tabs.pinned-bar {
+  top: calc(var(--games-bar-height, 33px) + 24px);
+}
+
+.games-status-tabs.pinned-bar::before {
+  inset: -8px -16px;
+}
+
 .games-views-switch {
   margin-inline: auto;
 }
@@ -8006,17 +8033,8 @@ button.history-row.selected {
   flex-shrink: 0;
 }
 
-/* Stays at the top while the list scrolls (user: lists can be switched from far down). Same place
-   as before: the padding is taken back by the margins; the rows slide under it (z-index 1, under a
-   lifted row's 2). */
 .video-toolbar {
   flex-wrap: wrap;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding-block: 12px;
-  margin-block: -12px 4px;
-  background: var(--bg);
 }
 
 /* Music: its own switch, a little apart from To watch | Rewatch | Watched (the bar's gap) */

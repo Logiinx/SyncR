@@ -8,6 +8,9 @@ All notable changes to SyncR. Newest version first.
 - **Better:** To watch, Rewatch and Watched stay at the top while scrolling
 - **Fixed:** started videos shown twice in To watch
 
+**Games**
+- **Better:** My games, Calendar and the status tabs stay at the top while scrolling
+
 ## [0.83.0] - 2026-11-17
 
 **App**
