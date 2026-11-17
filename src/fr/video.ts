@@ -13,6 +13,8 @@ export const video = {
   'Show “Music” next to its icon': 'Afficher « Musique » à côté de son icône',
   'Off: the music note alone, its name when hovered': 'Désactivé : la note de musique seule, son nom au survol',
   'Music channel': 'Chaîne musicale',
+  'New videos in the pop-up: on': 'Nouvelles vidéos en pop-up : activé',
+  'New videos in the pop-up: off': 'Nouvelles vidéos en pop-up : désactivé',
   'About music channels': 'À propos des chaînes musicales',
   'Its videos go to the Music list instead of To watch. Ticking one there removes it.': 'Ses vidéos vont dans la liste Musique au lieu d’À regarder. En cocher une là-bas la retire.',
   'Done: remove from Music': 'Fait : retirer de Musique',

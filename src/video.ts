@@ -177,6 +177,12 @@ export async function updateFollow(id: string, settings: FollowSettings) {
   changed()
 }
 
+// The Follows window's bell
+export async function setFollowNotify(id: string, notify: boolean) {
+  await db.videoFollows.update(id, { notify, updatedAt: Date.now() })
+  changed()
+}
+
 export async function removeFollow(id: string) {
   const follow = await db.videoFollows.get(id)
   await db.videoFollows.update(id, { deleted: true, updatedAt: Date.now() })

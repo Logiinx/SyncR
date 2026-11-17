@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { Bell, Pencil, Trash2, X } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
@@ -8,7 +8,7 @@ import VideoLogo, { ChannelPicture } from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
 import { t } from './i18n'
-import { addFollow, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
+import { addFollow, addVideo, findChannel, looksLikeYouTube, minuteCount, removeFollow, sameGame, setFollowNotify, tidyChannelLink, updateFollow, useFollows, wordList, type PastChoice } from './video'
 import { linkIn, linkTime } from './videoPaste'
 import { addPlaylist } from './videoPlaylists'
 import { channelGames, searchTwitchGames } from './videoTwitch'
@@ -410,6 +410,15 @@ export function FollowsWindow({ onClose }: { onClose: () => void }) {
                     <span className="video-follow-summary" title={summary}>{summary}</span>
                   </span>
                 </span>
+                {/* A pop-up card for each new video (PC): lit when on */}
+                <button
+                  className={follow.notify ? 'on' : undefined}
+                  onClick={() => void setFollowNotify(follow.id, !follow.notify)}
+                  title={follow.notify ? t('New videos in the pop-up: on') : t('New videos in the pop-up: off')}
+                  aria-pressed={!!follow.notify}
+                >
+                  <Bell size={15} fill={follow.notify ? 'currentColor' : 'none'} />
+                </button>
                 <button onClick={() => setEditing(follow)} title={t('Edit')}>
                   <Pencil size={15} />
                 </button>

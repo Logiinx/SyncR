@@ -8010,6 +8010,11 @@ button.history-row.selected {
   color: var(--text);
 }
 
+/* The bell, on: new videos in the pop-up */
+.video-follow-row button.on {
+  color: var(--text-yellow);
+}
+
 .video-follow-line {
   display: flex;
   align-items: center;

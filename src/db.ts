@@ -286,6 +286,7 @@ export interface VideoFollow {
   minMinutes: number // shorter videos are hidden; 0 = off
   hideShorts: boolean // YouTube only
   music?: boolean // YouTube only: its videos go to the Music list, a list of new songs (missing on older follows)
+  notify?: boolean // PC: each new video found by a check shows a card in the pop-up (Follows window's bell)
   startAt: number // ms: older videos aren't shown; 0 = all that are still available
   deleted: boolean
   updatedAt: number
