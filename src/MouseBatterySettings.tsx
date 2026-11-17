@@ -15,7 +15,7 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
   const last = status?.last
   const battery = !last
     ? status ? t('No answer yet') : '…'
-    : last.charging ? t('{percent}%, charging', { percent: last.percent }) : t('{percent}%', { percent: last.percent })
+    : last.charging && status?.answering ? t('{percent}%, charging', { percent: last.percent }) : t('{percent}%', { percent: last.percent })
 
   return (
     <Window className="dialog settings module-settings" label={t('Mouse battery')} onClose={onClose}>

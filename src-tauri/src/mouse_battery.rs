@@ -62,7 +62,8 @@ fn status() -> Status {
 }
 
 // What the strip shows: the percent (or a dash before any answer), whether it's at or below the
-// low level, charging, and no answer to the last check (dimmed)
+// low level, charging (only while it answers: an old answer's charging may be over), and no answer
+// to the last check (dimmed)
 struct Shown {
   text: String,
   low: bool,
@@ -74,7 +75,7 @@ fn shown() -> Shown {
   let (status, low) = (status(), config().map_or(0, |config| config.low));
   let dim = !status.answering;
   match status.last {
-    Some(reading) => Shown { text: format!("{}%", reading.percent), low: reading.percent <= low, charging: reading.charging, dim },
+    Some(reading) => Shown { text: format!("{}%", reading.percent), low: reading.percent <= low, charging: reading.charging && !dim, dim },
     None => Shown { text: "–".to_string(), low: false, charging: false, dim },
   }
 }

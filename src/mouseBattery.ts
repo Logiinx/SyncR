@@ -67,7 +67,7 @@ export function tipText({ last, answering }: MouseBatteryStatus) {
   const lines = [t('Teevolution Terra Pro')]
   if (last) {
     const percent = last.percent
-    lines.push(last.charging ? t('{percent}%, charging', { percent }) : t('{percent}%', { percent }))
+    lines.push(last.charging && answering ? t('{percent}%, charging', { percent }) : t('{percent}%', { percent }))
     lines.push(t('Last answer: {time}', { time: clockTime(last.at) }))
   } else lines.push(t('No answer yet'))
   if (last && !answering) lines.push(t('Asleep or out of reach'))
