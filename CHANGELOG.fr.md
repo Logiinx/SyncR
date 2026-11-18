@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Corrigé :** les streams Twitch ajoutés gardaient une image « ? » après la fin du direct
+
 ## [0.88.0] - 2026-11-18
 
 **Mail** (PC uniquement)

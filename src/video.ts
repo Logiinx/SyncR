@@ -368,8 +368,14 @@ function alertNewVideos(follow: VideoFollow, found: string[], every: number) {
 
 // Added videos still live (Twitch): their new length, title and picture, and the end of the live.
 // No follow's check sees them. updatedAt stays: every device finds this out by itself.
+// After the end too, while the picture is still Twitch's "processing" one (it shows a "?" while
+// live, and often still right after the end): until the real one comes, 3 days after the end at most.
+const PICTURE_WAIT = 3 * 24 * 3600_000
+const twitchPlaceholder = (thumbnail: string | null | undefined) => !!thumbnail?.includes('/_404/')
 async function refreshLiveAdded() {
-  for (const row of await db.addedVideos.filter((video) => !!video.live && !video.gone).toArray()) {
+  const waiting = (video: AddedVideo) =>
+    twitchPlaceholder(video.thumbnail) && Date.now() < video.published + video.duration * 1000 + PICTURE_WAIT
+  for (const row of await db.addedVideos.filter((video) => (!!video.live || waiting(video)) && !video.gone).toArray()) {
     const response = await igdbProxyFetch('video/one', JSON.stringify({ link: row.url }), 15_000)
     if (!response.ok) continue // gone: checkGone says so
     const { video } = await response.json()
