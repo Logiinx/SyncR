@@ -29,7 +29,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** un jeu tapé dans les jeux d’une chaîne suivie est gardé en enregistrant sans Entrée
 - **Corrigé :** l’onglet Vidéo revient où vous en étiez, quelle que soit l’échelle de l’application
 - **Corrigé :** « Réessayer » ne reste plus sur la vidéo suivante en plein écran
-- **Petites corrections :** file d’attente, bots du chat, pourcentages, titre suivant au survol
+- **Petites corrections :** file d’attente, bots du chat, pourcentages, titres, durées des vidéos
 
 ## [0.85.0] - 2026-11-18
 

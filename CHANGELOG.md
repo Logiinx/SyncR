@@ -29,7 +29,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** a game typed in a follow’s game box is kept when saving without Enter
 - **Fixed:** the Video tab comes back to where you were at any app scale
 - **Fixed:** “Try again” no longer stays over the next video in full screen
-- **Small fixes:** Queue replays, chat bot names, percentages, next title on hover
+- **Small fixes:** Queue replays, chat bot names, percentages, titles, video lengths
 
 ## [0.85.0] - 2026-11-18
 

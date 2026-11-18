@@ -361,7 +361,7 @@ function VideoView() {
   const [removingPlaylist, setRemovingPlaylist] = useState<VideoPlaylist | null>(null)
   // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
   // folder to rename
-  const [naming, setNaming] = useState<{ parentId: string | null; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
+  const [naming, setNaming] = useState<{ parentId: string | null; sub?: boolean; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
   // A video's right-click menu (a playlist's video: only the Queue's item, it can't be moved)
@@ -999,12 +999,12 @@ function VideoView() {
           items={
             folderMenu.folder.id === REWATCH
               ? [
-                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: REWATCH }) },
+                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: REWATCH, sub: true }) },
                   { ...queueItem(true), divider: true },
                   startOverItem(folderStartOver(folderMenu.folder)),
                 ]
               : [
-                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id }) },
+                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id, sub: true }) },
                   { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
                   // Only a folder at the top or right in Rewatch: a sub-folder stays with its parent
                   ...(!folderMenu.folder.parentId && !folderMenu.folder.channel
@@ -1024,7 +1024,7 @@ function VideoView() {
           y={channelMenu.y}
           onClose={() => setChannelMenu(null)}
           items={[
-            { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: null, channel: channelMenu.key, openId: channelMenu.openId }) },
+            { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: null, sub: true, channel: channelMenu.key, openId: channelMenu.openId }) },
           ]}
         />
       )}
@@ -1056,7 +1056,8 @@ function VideoView() {
       {naming && (
         <Dialog
           request={{
-            title: 'folder' in naming ? t('Rename') : naming.parentId || naming.channel ? t('New sub-folder') : t('New folder'),
+            // The same word as the menu line that opened it (New folder in Rewatch or Music isn't a sub-folder)
+            title: 'folder' in naming ? t('Rename') : naming.sub ? t('New sub-folder') : t('New folder'),
             input: { initial: 'folder' in naming ? naming.folder.name : '', placeholder: t('Folder name') },
             confirmLabel: 'folder' in naming ? t('Rename') : t('Create'),
             onConfirm: (typed) => {
