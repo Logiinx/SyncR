@@ -7687,7 +7687,7 @@ button.history-row.selected {
   color: var(--text);
 }
 
-/* Discounts in them: plain green text, like a price's discount (.price-badge) */
+/* Discounts in them: plain green text (guesses; a sale on now is a pill, .price-badge) */
 .sale-value.discount {
   color: var(--text-green);
 }
@@ -7808,10 +7808,15 @@ button.history-row.selected {
   height: 1em;
 }
 
-/* The sale's discount: green text, like the discounts in the next-sale lines (.sale-value.discount) */
+/* A sale on now: a soft green pill, like Steam's (the next-sale guesses stay plain green text,
+   .sale-value.discount, so a guess never looks like a sale on now). No margin and a slim padding:
+   no wider than plain text, so a tile's price line wraps the same (measured 80-150 %). */
 .price-badge {
-  margin-left: 2px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--hl-green);
   color: var(--text-green);
+  font-size: 0.9em;
   white-space: nowrap; /* "−40 %" in French never splits */
 }
 

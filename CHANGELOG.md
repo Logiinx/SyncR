@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **Better:** a sale’s discount is back in a small green tag, easier to spot
 - **Better:** prices, hours and times keep their digits lined up
 - **Fixed:** a price alert changed during a price check no longer comes back as before
 - **Fixed:** price alerts stayed silent when an edition’s price couldn’t be looked up

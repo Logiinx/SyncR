@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
+- **Amélioré :** la remise d’une promo revient dans une petite étiquette verte, plus visible
 - **Amélioré :** prix, heures et durées gardent leurs chiffres alignés
 - **Corrigé :** une alerte de prix modifiée pendant une vérification ne revient plus comme avant
 - **Corrigé :** les alertes de prix restaient muettes quand le prix d’une édition était introuvable
