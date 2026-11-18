@@ -367,6 +367,8 @@ function VideoView() {
   const [showQueue, setShowQueue] = useLocalState('syncr.video.showQueue', true)
   const [queueRewatch, setQueueRewatch] = useLocalState('syncr.video.queueRewatch', true)
   const [queueFolded, setQueueFolded] = useLocalState('syncr.video.queueFolded', false)
+  const [partFolded, setPartFolded] = useLocalState('syncr.video.partFolded', false) // what's under the Queue
+
   const queue = useQueue()
   const follows = feed?.follows
   // The filter's follows: music ones in Music, the others elsewhere
@@ -665,78 +667,90 @@ function VideoView() {
   // channel's sub-folders: these only exist in the channel's row.
   const mainVideos = (videos ?? []).filter((video) => shownChannel !== 'all' || list === 'watched' || !inOwnFolder(video))
   const channelFolders = (key: string) => folders.filter((folder) => folder.channel === key)
-  // The Queue's videos in one list, in its order; folders and playlists also keep theirs (loose ones
-  // in To watch only show here). Rewatch: its videos, folders and playlists. To watch: its own (the
-  // chosen follow's, its playlists only with All follows), plus Rewatch's with All follows unless
-  // switched off (user: one place to go on with anything; tagged rewatch), and Music's with All
-  // follows (user, 2026-11-18: they only show here while queued; tagged with the music note).
-  function queueIn(inRewatch: boolean) {
-    if (!feed || !showQueue) return []
+  // One shared Queue at the top of To watch and of Rewatch (user, 2026-11-18: not one per list), in
+  // its order; folders and playlists also keep theirs (loose ones in To watch only show here). Holds
+  // To watch's videos (the chosen follow's, its playlists only with All follows), Music's (user,
+  // 2026-11-18: they only show here while queued; tagged with the music note) and Rewatch's (tagged
+  // rewatch). In To watch, Rewatch's only with All follows and unless switched off (More menu).
+  function queueEntries() {
+    if (!feed || !showQueue || (list !== 'towatch' && list !== 'rewatch')) return []
     const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist; rewatch?: boolean }>()
     const allFollows = shownChannel === 'all'
-    const withRewatch = inRewatch || (allFollows && queueRewatch)
-    if (!inRewatch) for (const video of feed.toWatch) if (allFollows || video.followId === shownChannel) where.set(video.id, { video })
-    if (withRewatch) for (const video of feed.rewatch) if (!where.has(video.id)) where.set(video.id, { video, rewatch: !inRewatch })
-    if (!inRewatch && allFollows) for (const video of feed.music) if (!where.has(video.id)) where.set(video.id, { video })
+    const withRewatch = list === 'rewatch' || (allFollows && queueRewatch)
+    for (const video of feed.toWatch) if (allFollows || video.followId === shownChannel) where.set(video.id, { video })
+    if (withRewatch) for (const video of feed.rewatch) if (!where.has(video.id)) where.set(video.id, { video, rewatch: true })
+    if (allFollows) for (const video of feed.music) if (!where.has(video.id)) where.set(video.id, { video })
     for (const { playlist, videos: episodes } of feed.playlists) {
       const ofRewatch = !!playlist.folderId && rewatchIds.has(playlist.folderId)
-      if (inRewatch ? !ofRewatch : !allFollows || (ofRewatch && !withRewatch)) continue
-      for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist, rewatch: ofRewatch && !inRewatch })
+      if (!allFollows || (ofRewatch && !withRewatch)) continue
+      for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist, rewatch: ofRewatch })
     }
     return queue.flatMap(({ id }) => {
       const entry = where.get(id)
       return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
     })
   }
-  // Rewatch as a section: its own group hides while To watch's lists them (no copies on one screen)
-  const rewatchInToWatchQueue = asSection && list === 'towatch' && shownChannel === 'all' && queueRewatch
-  const queuedRewatch = rewatchInToWatchQueue ? [] : queueIn(true)
-  const queuedToWatch = list === 'towatch' ? queueIn(false) : []
-  // No row when it's empty
-  function queueRows(depth: number, inRewatch = true): ReactNode[] {
-    const entries = inRewatch ? queuedRewatch : queuedToWatch
-    const id = inRewatch ? 'queue' : 'queue-towatch'
-    if (!entries.length) return []
+  const queued = queueEntries()
+  // No row when it's empty; its videos at the list's left edge, like the part below
+  function queueRows(): ReactNode[] {
+    const id = 'queue'
+    if (!queued.length) return []
     return [
       <FoldRow
         key={id}
         id={id}
         icon={<span className="video-follow-icon video-folder-icon"><ListStart size={15} /></span>}
         title={t('Queue')}
-        count={entries.length}
+        count={queued.length}
         newCount={0}
         open={!queueFolded}
-        depth={depth}
         onToggle={() => setQueueFolded(!queueFolded)}
       />,
       ...(queueFolded
         ? []
-        : entries.map(({ video, playlist, rewatch: ofRewatch }, index) => (
+        : queued.map(({ video, playlist, rewatch: ofRewatch }, index) => (
             <VideoRow
               key={`${id} ${video.id}`}
               video={video}
               isNew={false}
-              depth={depth + 1}
               playlistId={playlist?.id}
               queued={id}
               ofRewatch={ofRewatch}
               from={playlist?.name}
-              after={entries.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
+              after={queued.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
               onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
               onOpenRow={openRow}
             />
           ))),
     ]
   }
+  // While the Queue shows, what's under it gets a header of its own, so it's clear where the Queue
+  // ends (user, 2026-11-18): To watch's "From your follows", or "Rewatch"; folded or not
+  function partRows(inside: ReactNode[], videosIn: FeedVideo[]): ReactNode[] {
+    if (!queued.length || !inside.length) return inside
+    const inRewatch = list === 'rewatch'
+    return [
+      <FoldRow
+        key="part"
+        id="part"
+        icon={<span className="video-follow-icon video-folder-icon">{inRewatch ? <Repeat size={15} /> : <Users size={15} />}</span>}
+        title={inRewatch ? t('Rewatch') : t('From your follows')}
+        count={videosIn.length}
+        newCount={videosIn.filter(tagNew).length}
+        open={!partFolded}
+        onToggle={() => setPartFolded(!partFolded)}
+      />,
+      ...(partFolded ? [] : inside),
+    ]
+  }
   // As a section: what's in Rewatch, folded at the bottom of To watch; no row when it's empty
-  // (menus reach it). As a list: what's in it, like an open folder's. The Queue first in both.
+  // (menus reach it). As a list: what's in it, like an open folder's.
   const rewatch = folders.find((folder) => folder.id === REWATCH)
-  const rewatchRows = asSection && list === 'towatch' && rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length || queuedRewatch.length)
-    ? (([row, ...inside]) => (openGroups.includes(REWATCH) ? [row, ...queueRows(1), ...inside] : [row]))(folderRows(rewatch, 0))
+  const rewatchRows = asSection && list === 'towatch' && rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length)
+    ? (([row, ...inside]) => (openGroups.includes(REWATCH) ? [row, ...inside] : [row]))(folderRows(rewatch, 0))
     : []
   const rewatchList = list === 'rewatch' && rewatch
     ? [
-        ...queueRows(0),
         ...foldersIn(REWATCH).flatMap((folder) => folderRows(folder, 0)),
         ...playlistsIn(REWATCH).flatMap((entry) => playlistRows(entry, 0)),
         ...videosIn(REWATCH).reverse().map((video, _, all) => videoRow(video, all)),
@@ -800,7 +814,7 @@ function VideoView() {
   // channel sub-folders (its videos only go in Music's own folders).
   // A loose video in To watch's Queue shows only there (user: not twice); in a folder or playlist it
   // stays in place too (their order matters)
-  const inQueueOnly = new Set(queuedToWatch.flatMap(({ video, playlist, rewatch: ofRewatch }) => (playlist || ofRewatch || video.folderId ? [] : [video.id])))
+  const inQueueOnly = new Set(list === 'towatch' ? queued.flatMap(({ video, playlist, rewatch: ofRewatch }) => (playlist || ofRewatch || video.folderId ? [] : [video.id])) : [])
   function videoRows() {
     const shown = mainVideos.filter((video) => !inQueueOnly.has(video.id))
     const groups = (grouping ? byChannel(shown) : shown.map((video) => [video]))
@@ -816,8 +830,7 @@ function VideoView() {
     return channelRows(followId, key, { name, icon, platform }, group, subs, list !== 'music')
   }
   const musicList = list === 'music' ? [...foldersIn(MUSIC).flatMap((folder) => folderRows(folder, 0)), ...videoRows()] : []
-  const mainRows = list === 'rewatch' ? rewatchList : list === 'music' ? musicList : [
-    ...queueRows(0, false),
+  const listRows = list === 'rewatch' ? rewatchList : list === 'music' ? musicList : [
     ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
     ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
     ...videoRows(),
@@ -829,7 +842,11 @@ function VideoView() {
       return channelRows(follow.id, key, follow, [], subs)
     }),
   ]
-  const rows = [...mainRows, ...rewatchRows]
+  // The videos counted on the part's header: Rewatch's all, To watch's those not only in the Queue
+  const partVideos = list === 'rewatch' && rewatch ? [...allIn(rewatch), ...allPlaylistsIn(rewatch).flatMap(({ videos: episodes }) => episodes)] : (videos ?? []).filter((video) => !inQueueOnly.has(video.id))
+  const rows = [...queueRows(), ...partRows([...listRows, ...rewatchRows], partVideos)]
+  // Rewatch as a section doesn't count: To watch can say it's empty above it
+  const nothingShown = !queued.length && !listRows.length
   const empty = list === 'rewatch'
     ? t('Nothing in Rewatch yet. Right-click a playlist, folder or video to move it here.')
     : list === 'music'
@@ -902,7 +919,7 @@ function VideoView() {
         {errors.map((error) => (
           <p key={error} className="games-empty error">{error}</p>
         ))}
-        {feed && !mainRows.length && checking && list === 'towatch' && follows?.length ? (
+        {feed && nothingShown && checking && list === 'towatch' && follows?.length ? (
           <ul className="video-list">
             {[0, 1, 2].map((row) => (
               <li key={row} className="video-row">
@@ -915,7 +932,7 @@ function VideoView() {
             ))}
           </ul>
         ) : (
-          feed && !mainRows.length && <p className="games-empty">{empty}</p>
+          feed && nothingShown && <p className="games-empty">{empty}</p>
         )}
         <ul className="video-list" ref={listRef}>{rows}</ul>
       </div>

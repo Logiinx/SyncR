@@ -6,7 +6,9 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Better:** bigger pictures and clearer rows in the video lists
+- **Better:** To watch in two clear parts: the Queue, then “From your follows”
 - **Changed:** a row's ↗ and ✓ buttons show when the mouse is over it
+- **Changed:** Rewatch shows the whole Queue, the same as To watch
 - **Changed:** “Twitch deletes it in …” shows only in the last week
 - **Removed:** the “Opened” tag: the bar under the picture shows it
 

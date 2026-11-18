@@ -6,7 +6,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** des images plus grandes et des lignes plus claires dans les listes de vidéos
+- **Amélioré :** À regarder en deux parties claires : la file d’attente, puis « De vos chaînes suivies »
 - **Changé :** les boutons ↗ et ✓ d’une ligne s’affichent au survol de la souris
+- **Changé :** À revoir montre toute la file d’attente, comme À regarder
 - **Changé :** « Twitch le supprime dans … » s’affiche seulement la dernière semaine
 - **Supprimé :** l’étiquette « Ouverte » : la barre sous l’image le montre
 

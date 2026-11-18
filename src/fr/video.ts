@@ -39,6 +39,7 @@ export const video = {
   'Rewatch shows everything in it': 'À revoir montre tout ce qu’il contient',
   'Only in Rewatch': 'Seulement dans À revoir',
   Queue: 'File d’attente',
+  'From your follows': 'De vos chaînes suivies',
   'Videos to go on with, at the top of the list': 'Vidéos à continuer, en haut de la liste',
   'Rewatch items in the queue': 'Éléments d’À revoir dans la file',
   'Rewatch’s videos in To watch’s queue too': 'Les vidéos d’À revoir aussi dans la file d’À regarder',
