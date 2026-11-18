@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Amélioré :** un badge rouge En direct sur l’image des streams Twitch encore en direct
 - **Corrigé :** les streams Twitch ajoutés gardaient une image « ? » après la fin du direct
 
 ## [0.88.0] - 2026-11-18

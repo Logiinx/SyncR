@@ -8682,8 +8682,7 @@ button.history-row.selected {
 }
 
 .video-opened,
-.video-new,
-.video-live {
+.video-new {
   padding: 0 5px;
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -8696,10 +8695,44 @@ button.history-row.selected {
   color: var(--text-green);
 }
 
-/* A Twitch stream still live: red, like the sites' own live tags */
+/* A Twitch stream still live: a solid red badge on the picture's top left, like the sites' own
+   (the time has the bottom right), with a dot that fades slowly (fade only, no scale) */
 .video-live {
-  border-color: color-mix(in srgb, var(--text-red) 45%, var(--bg));
-  color: var(--text-red);
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-red) 80%, black);
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.video-card .video-live {
+  font-size: 0.85em;
+}
+
+.video-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: live-dot 1.6s ease-in-out infinite;
+}
+
+/* Animations off: a still dot (1ms rounds would make it flicker) */
+.no-animations .video-live-dot {
+  animation: none !important;
+}
+
+@keyframes live-dot {
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .video-row-action {

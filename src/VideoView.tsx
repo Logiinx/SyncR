@@ -294,15 +294,13 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
               <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
             </span>
-            {(video.gone || showLastWatched || deletion || opened || isNew || video.live) && (
+            {(video.gone || showLastWatched || deletion || opened || isNew) && (
               <span className="video-extras">
                 {video.gone && <span className="video-extra">{t('No longer available')}</span>}
                 {showLastWatched && <span className="video-extra">{lastWatchedText(video.watchedAt!)}</span>}
                 {deletion && <span className="video-extra">{deletion}</span>}
-                {/* One tag at most: a stream still live says so first */}
-                {video.live && !video.gone ? (
-                  <span className="video-live">{t('Live')}</span>
-                ) : opened ? (
+                {/* One tag at most (a stream still live says so on its picture) */}
+                {opened ? (
                   <span className="video-opened">{t('Opened')}</span>
                 ) : (
                   isNew && <span className="video-new">{t('New')}</span>

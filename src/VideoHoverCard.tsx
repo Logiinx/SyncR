@@ -8,7 +8,7 @@ import { videoClock, type VideoPosition } from './videoPositions'
 import { useVideoStats } from './videoStats'
 
 // What a video's picture and card need (a list's video, or a new one in the pop-up)
-export type CardVideo = Pick<FeedVideo, 'id' | 'platform' | 'title' | 'channel' | 'thumbnail' | 'published' | 'duration' | 'gone'>
+export type CardVideo = Pick<FeedVideo, 'id' | 'platform' | 'title' | 'channel' | 'thumbnail' | 'published' | 'duration' | 'gone' | 'live'>
 
 // A video's picture with its length, and how far it was watched when it was stopped partway (on
 // the row: the time shows it on hover; on its card: always)
@@ -23,6 +23,13 @@ export function VideoThumb({ video, opened }: { video: CardVideo; opened: VideoP
           referrerPolicy="no-referrer"
           onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
         />
+      )}
+      {/* A Twitch stream still being streamed: red badge on the picture, like the sites' own */}
+      {video.live && !video.gone && (
+        <span className="video-live">
+          <span className="video-live-dot" />
+          {t('Live')}
+        </span>
       )}
       {!video.gone && video.duration > 0 && (
         <span className="video-duration">

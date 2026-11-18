@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **Better:** a red Live badge on the picture of Twitch streams still live
 - **Fixed:** added Twitch streams keeping a “?” picture once the live ended
 
 ## [0.88.0] - 2026-11-18
