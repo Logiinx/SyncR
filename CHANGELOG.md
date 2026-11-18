@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.87.0] - 2026-11-18
+
 **Video** (PC only)
 - **New:** Twitch streams still live show in your list with a red Live tag, also by link
 - **New:** a live stream plays from its start and keeps going as it’s recorded

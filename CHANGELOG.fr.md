@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.87.0] - 2026-11-18
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** les streams Twitch encore en direct s’affichent avec une étiquette rouge, aussi par lien
 - **Nouveau :** un stream en direct se lit depuis le début et continue à mesure qu’il s’enregistre
