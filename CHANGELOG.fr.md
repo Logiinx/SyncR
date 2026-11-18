@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.89.0] - 2026-11-18
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** un petit bouton ⏩ passe l’écran d’attente des rediffusions Twitch et YouTube
 - **Nouveau :** passer l’écran d’attente tout seul, par chaîne (clic droit sur la chaîne)

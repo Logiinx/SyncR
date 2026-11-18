@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.89.0] - 2026-11-18
+
 **Video** (PC only)
 - **New:** a small ⏩ button skips the waiting screen of past lives (Twitch, YouTube)
 - **New:** skip the waiting screen by itself, per channel (right-click the channel)
