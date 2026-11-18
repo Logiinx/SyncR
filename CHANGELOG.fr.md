@@ -20,7 +20,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Application**
 - **Amélioré :** « Quitter SyncR » dans le menu de l’icône envoie d’abord vos derniers changements (PC uniquement)
 - **Amélioré :** les nouvelles versions apparaissent même si SyncR reste ouvert des jours (PC uniquement)
-- **Petites corrections :** page de confidentialité sur le téléphone
+- **Amélioré :** le mot de passe du proxy de recherche de jeux s’affiche avec un œil, comme la phrase secrète
+- **Petites corrections :** page de confidentialité sur le téléphone, erreurs d’image, pourcentages, chargements, mouvements
 
 ## [0.85.0] - 2026-11-18
 

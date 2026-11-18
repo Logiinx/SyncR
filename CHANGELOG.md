@@ -20,7 +20,8 @@ All notable changes to SyncR. Newest version first.
 **App**
 - **Better:** Quit in the tray menu sends your last changes first (PC only)
 - **Better:** new versions show up while SyncR stays open in the tray (PC only)
-- **Small fixes:** privacy page opening on the phone
+- **Better:** the game search proxy’s password can be shown with an eye, like the passphrase
+- **Small fixes:** privacy page on the phone, image errors, percentages, spinners, motion
 
 ## [0.85.0] - 2026-11-18
 
