@@ -5506,6 +5506,17 @@ h3.games-group-title {
   inset: -8px -16px;
 }
 
+/* My games' Covers layout: the grid is wider than this row, so its background is as wide as the
+   grid (else covers showed past its ends). No container here (only the calendar controls need
+   one): 100cqw in --shelf-width must stay the page's width. */
+.games-views.over-grid {
+  container-type: normal;
+}
+
+.games-views.over-grid::before {
+  inset-inline: min(-16px, (100% - var(--shelf-width)) / 2 - 16px);
+}
+
 .games-views-switch {
   margin-inline: auto;
 }

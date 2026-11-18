@@ -124,7 +124,15 @@ function GamesView() {
       {/* Wide only for the month grid (not for the "set up the game search" text, which then
           sat further left than in My games) */}
       <div className={view === 'calendar' && layout === 'grid' && connected ? 'games wide' : 'games'}>
-        <div ref={barRef} className={view === 'calendar' && connected ? 'games-views calendar-head pinned-bar' : 'games-views pinned-bar'}>
+        {/* over-grid: its background as wide as the cover grid, which scrolls under it */}
+        <div
+          ref={barRef}
+          className={
+            view === 'calendar'
+              ? connected ? 'games-views calendar-head pinned-bar' : 'games-views pinned-bar'
+              : shelf === 'grid' ? 'games-views pinned-bar over-grid' : 'games-views pinned-bar'
+          }
+        >
           <FillSwitch className="games-views-switch" options={views()} value={view} onChange={setView} />
           {/* Only with the game search set up: otherwise they do nothing, and the taller header
               put the "set up the game search" text lower than in My games */}

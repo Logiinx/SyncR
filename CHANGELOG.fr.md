@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Corrigé :** des jaquettes dépassaient aux coins du haut en faisant défiler les Jaquettes
+
 ## [0.86.0] - 2026-11-18
 
 **Jeux**

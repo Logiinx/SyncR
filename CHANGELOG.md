@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Fixed:** covers peeking out at the top corners when scrolling in Covers
+
 ## [0.86.0] - 2026-11-18
 
 **Games**
