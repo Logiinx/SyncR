@@ -54,6 +54,7 @@ import {
   setStartWithWindows,
   startsWithWindows,
   type Background,
+  type MailDrag,
   type PopupCorner,
 } from './desktop'
 import { availableMonitors, primaryMonitor, type Monitor } from '@tauri-apps/api/window'
@@ -431,6 +432,21 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
                 </option>
               ))}
             </select>
+          </SettingRow>
+          <SettingRow
+            label={
+              <>
+                {t('Drag an email right')}
+                <InfoTip label={t('About dragging emails')}>
+                  {t('In the Mail tab and on email pop-ups: press an email and drag it sideways, then let go once its action shows in color.')}
+                </InfoTip>
+              </>
+            }
+          >
+            <MailDragChoice value={background.emailDragRight} onChange={(emailDragRight) => updateBackground({ emailDragRight })} />
+          </SettingRow>
+          <SettingRow label={t('Drag an email left')}>
+            <MailDragChoice value={background.emailDragLeft} onChange={(emailDragLeft) => updateBackground({ emailDragLeft })} />
           </SettingRow>
         </>
       )}
@@ -997,6 +1013,26 @@ function GoogleSettings() {
         {status}
       </p>
     </section>
+  )
+}
+
+// What dragging an email to one side does (MailDrag.tsx); Read / unread: Mark as read, or as
+// unread when it's read already
+function MailDragChoice({ value, onChange }: { value: MailDrag; onChange: (value: MailDrag) => void }) {
+  const names: Record<MailDrag, string> = {
+    read: t('Read / unread'),
+    archive: t('Archive'),
+    trash: t('Delete'),
+    none: t('Nothing'),
+  }
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value as MailDrag)}>
+      {(Object.keys(names) as MailDrag[]).map((choice) => (
+        <option key={choice} value={choice}>
+          {names[choice]}
+        </option>
+      ))}
+    </select>
   )
 }
 

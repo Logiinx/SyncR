@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail** (PC only)
+- **New:** drag an email left or right to mark it read, archive or delete it
+- **New:** choose what each side does in Settings → Alerts
+
 **Video** (PC only)
 - **New:** preview pictures on the bar of a Twitch stream still live
 

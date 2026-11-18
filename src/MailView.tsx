@@ -6,6 +6,7 @@ import ContextMenu from './ContextMenu'
 import { useGmailAccounts } from './gmail'
 import { openLink } from './links'
 import { accountColor } from './MailCards'
+import { DragRow } from './MailDrag'
 import MailReader from './MailReader'
 import { changeMail, gmailLink, useMissed, type MailAlert } from './mailAlerts'
 import { newestMails, useMailbox, type MailboxRow } from './mailbox'
@@ -24,6 +25,7 @@ type LocalChange = { what: 'read' | 'unread' | 'gone'; doneAt?: number }
 // the mail here, in the pop-up's reader (MailReader.tsx), and marks it read; ‹ Back, ✕, Done or
 // Escape return to the list. Right-click (sender and subject on top): Mark as read / unread,
 // Remove from Missed, Archive, Open in Gmail, Delete (to Gmail's Trash, without asking).
+// Dragged left or right: the actions chosen in Settings → Alerts (MailDrag.tsx).
 function MailView() {
   const pageRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -103,27 +105,35 @@ function MailView() {
   }
 
   function row(mail: MailboxRow) {
+    const unread = isUnread(mail)
     return (
-      <button
+      <DragRow
         key={mail.key}
-        data-item={mail.key}
-        className={`reminder-row mail-row${isUnread(mail) ? ' unread' : ''}`}
-        onClick={() => read(mail)}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          setMenu({ mail, x: e.clientX, y: e.clientY })
-        }}
-        title={mail.account}
+        item={mail.key}
+        unread={unread}
+        // Archive, Delete, or read in "Unread only": it goes from the list (slides out)
+        leaves={(action) => action !== 'read' || (unread && unreadOnly)}
+        onDrag={(action) => change(mail, action === 'read' ? (unread ? 'read' : 'unread') : action)}
       >
-        <span className="menu-swatch" style={{ background: accountColor(mail.account) ?? 'var(--link)' }} />
-        <span className="reminder-row-text">
-          <span className="reminder-text" title={`${mail.from} · ${mail.subject}`}>
-            {mail.from} · {mail.subject}
+        <button
+          className={`reminder-row mail-row${unread ? ' unread' : ''}`}
+          onClick={() => read(mail)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setMenu({ mail, x: e.clientX, y: e.clientY })
+          }}
+          title={mail.account}
+        >
+          <span className="menu-swatch" style={{ background: accountColor(mail.account) ?? 'var(--link)' }} />
+          <span className="reminder-row-text">
+            <span className="reminder-text" title={`${mail.from} · ${mail.subject}`}>
+              {mail.from} · {mail.subject}
+            </span>
+            {mail.snippet && <span className="reminder-row-note" title={mail.snippet}>{mail.snippet}</span>}
           </span>
-          {mail.snippet && <span className="reminder-row-note" title={mail.snippet}>{mail.snippet}</span>}
-        </span>
-        <span className="reminder-due">{formatDue(mail.date)}</span>
-      </button>
+          <span className="reminder-due">{formatDue(mail.date)}</span>
+        </button>
+      </DragRow>
     )
   }
 

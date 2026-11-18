@@ -5312,6 +5312,62 @@ button {
   opacity: 0.55;
 }
 
+/* An email dragged sideways (MailDrag.tsx): the row moves, the strip behind shows the action,
+   dim until it's far enough, then in its color. touch-action: a finger still scrolls up and down. */
+.drag-row {
+  --drag-bg: var(--bg);
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  touch-action: pan-y;
+}
+
+.drag-row.dragging,
+.drag-row.dragging * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.drag-row-over {
+  position: relative;
+}
+
+.drag-row.dragging .drag-row-over {
+  background: var(--drag-bg);
+}
+
+.drag-row-under {
+  --drag: var(--link);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 20px;
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  color: var(--text-dim);
+  font-weight: 600;
+  transition: background-color var(--close-small), color var(--close-small);
+}
+
+.drag-row-under.right {
+  justify-content: flex-start;
+}
+
+.drag-row-under.archive {
+  --drag: var(--text-gray);
+}
+
+.drag-row-under.trash {
+  --drag: var(--error);
+}
+
+.drag-row-under.far {
+  background: color-mix(in srgb, var(--drag) 28%, var(--bg));
+  color: var(--drag);
+}
+
 /* A mail read in the Mail tab: the pop-up's reader, filling the page (no card shadow) */
 .mail-view-reader {
   display: flex;

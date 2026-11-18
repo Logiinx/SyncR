@@ -13,12 +13,16 @@ export interface Background {
   reminderSoundId: SoundId // played when a reminder comes due (sounds.ts)
   emailSoundId: SoundId // played for new emails (Gmail, gmail.ts)
   emailFade: number // seconds until an email's pop-up fades by itself (0: never; reminders never fade)
+  emailDragRight: MailDrag // what dragging an email to the right does (Mail tab, pop-up cards: MailDrag.tsx)
+  emailDragLeft: MailDrag
   startHidden: boolean // started by Windows at sign-in: stay in the tray instead of showing the window
   popupScreen: string | null // the screen the pop-up shows on (its Windows name); null = the main screen
   popupScreenSpot: ScreenSpot | null // that screen's place and size, to find it if Windows renames it
   popupCorner: PopupCorner
 }
 
+// read: Mark as read, or Mark as unread when it's read already
+export type MailDrag = 'read' | 'archive' | 'trash' | 'none'
 export type PopupCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 export type ScreenSpot = { x: number; y: number; width: number; height: number }
 
@@ -28,6 +32,8 @@ const DEFAULTS: Background = {
   reminderSoundId: 'chime',
   emailSoundId: 'double',
   emailFade: 0,
+  emailDragRight: 'read',
+  emailDragLeft: 'archive',
   startHidden: false,
   popupScreen: null,
   popupScreenSpot: null,

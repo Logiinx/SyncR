@@ -62,6 +62,13 @@ export const settings = {
   'Email pop-ups fade': 'Fondu des e-mails',
   'About fading': 'À propos du fondu',
   'A faded email stays unread, as missed (Mail tab).': 'Un e-mail estompé reste non lu, compté comme manqué (onglet Mail).',
+  'Drag an email right': 'Glisser un e-mail à droite',
+  'Drag an email left': 'Glisser un e-mail à gauche',
+  'About dragging emails': 'À propos du glissement des e-mails',
+  'In the Mail tab and on email pop-ups: press an email and drag it sideways, then let go once its action shows in color.':
+    'Dans l’onglet Mail et sur les pop-ups d’e-mails : appuyez sur un e-mail et faites-le glisser sur le côté, puis lâchez-le quand son action s’affiche en couleur.',
+  'Read / unread': 'Lu / non lu',
+  Nothing: 'Rien',
   Never: 'Jamais',
   'after {time}': 'après {time}',
   Emails: 'E-mails',
