@@ -28,7 +28,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** « Essayer un autre moyen » reprend où vous en êtes, pas au temps du lien ni au début
 - **Corrigé :** un jeu tapé dans les jeux d’une chaîne suivie est gardé en enregistrant sans Entrée
 - **Corrigé :** l’onglet Vidéo revient où vous en étiez, quelle que soit l’échelle de l’application
-- **Petites corrections :** vidéos déjà vues revues gardées dans la file d’attente
+- **Corrigé :** « Réessayer » ne reste plus sur la vidéo suivante en plein écran
+- **Petites corrections :** vidéos déjà vues revues gardées dans la file d’attente, noms de bots du chat gardés tels que tapés
 
 ## [0.85.0] - 2026-11-18
 

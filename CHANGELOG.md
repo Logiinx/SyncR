@@ -28,7 +28,8 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Try another way goes on where you are, not from the link’s time or the start
 - **Fixed:** a game typed in a follow’s game box is kept when saving without Enter
 - **Fixed:** the Video tab comes back to where you were at any app scale
-- **Small fixes:** replayed watched videos kept in the Queue
+- **Fixed:** “Try again” no longer stays over the next video in full screen
+- **Small fixes:** replayed watched videos kept in the Queue, chat bot names kept as typed
 
 ## [0.85.0] - 2026-11-18
 

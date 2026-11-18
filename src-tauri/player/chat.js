@@ -530,12 +530,13 @@ function drawChatPanel({ title, row, choices, element: menu }) {
   names.placeholder = labels.chatBotNames
   names.title = labels.chatBotNames
   names.value = ownBots
-  names.addEventListener('change', () => {
+  // Kept as typed: the box can go before it's left (another row's panel takes its place on hover)
+  names.addEventListener('input', () => {
     ownBots = names.value.trim()
     localStorage.setItem('player.botNames', ownBots)
     readBotNames()
-    redrawChat()
   })
+  names.addEventListener('change', redrawChat)
   names.addEventListener('keydown', (event) => { if (event.key === 'Enter') names.blur() })
   menu.append(names)
   row(labels.chatTimes, showTimes, () => {

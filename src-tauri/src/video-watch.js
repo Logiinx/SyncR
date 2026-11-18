@@ -639,6 +639,8 @@
       if (!videoData?.errorCode) {
         host.hidden = false
         if (player.getPlayerState() !== 1 || !id) return
+        // Playing again (the next video in full screen): Try again is done with
+        if (!root.getElementById('message').hidden) stopped(false)
         if (id !== playedId) restoreRate = null
         playedId = id
         lastTime = player.getCurrentTime() || 0
