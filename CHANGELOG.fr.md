@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
+- **Amélioré :** prix, heures et durées gardent leurs chiffres alignés
 - **Corrigé :** une alerte de prix modifiée pendant une vérification ne revient plus comme avant
 - **Corrigé :** les alertes de prix restaient muettes quand le prix d’une édition était introuvable
 - **Corrigé :** les alertes de prix pouvaient cesser de vérifier après la sortie de veille du PC
@@ -13,7 +14,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** le tableau des prochaines soldes reste quand l’historique de prix est illisible
 - **Corrigé :** « en général −40 % » n’apparaît qu’après deux promos à cette remise
 - **Corrigé :** le prix d’une alerte suit un changement fait sur l’autre appareil
-- **Petites corrections :** prix d’alerte enregistré une fois tapé, « peu probable » sans les mauvaises clés, « −40 % »
+- **Petites corrections :** saisie du prix d’alerte, mauvaises clés, « −40 % », « Pas en vente », flèches et dates des nouvelles
 
 ## [0.85.0] - 2026-11-18
 
