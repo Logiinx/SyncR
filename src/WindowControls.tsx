@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { listen } from '@tauri-apps/api/event'
 import { finalSync } from './autoSync'
 import { loadBackground, startedHidden } from './desktop'
 
@@ -36,9 +37,16 @@ function WindowControls() {
       }
       return finalSync()
     })
+    // The tray menu's Quit (lib.rs): gone from the screen at once, the same last sync, then closed
+    const stopQuit = listen('tray-quit', async () => {
+      await win.hide()
+      await finalSync()
+      await win.destroy()
+    })
     return () => {
       stopResize.then((unlisten) => unlisten())
       stopClose.then((unlisten) => unlisten())
+      stopQuit.then((unlisten) => unlisten())
     }
   }, [])
 

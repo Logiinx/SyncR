@@ -16,6 +16,9 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** an alert’s price box shows a price changed on the other device
 - **Small fixes:** alert price typing, wrong keys, “−40 %”, “Not sold”, news arrows and dates
 
+**App**
+- **Better:** Quit in the tray menu sends your last changes first (PC only)
+
 ## [0.85.0] - 2026-11-18
 
 **Games**

@@ -16,6 +16,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** le prix d’une alerte suit un changement fait sur l’autre appareil
 - **Petites corrections :** saisie du prix d’alerte, mauvaises clés, « −40 % », « Pas en vente », flèches et dates des nouvelles
 
+**Application**
+- **Amélioré :** « Quitter SyncR » dans le menu de l’icône envoie d’abord vos derniers changements (PC uniquement)
+
 ## [0.85.0] - 2026-11-18
 
 **Jeux**

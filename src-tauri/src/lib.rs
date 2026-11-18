@@ -15,9 +15,22 @@ fn show_main(app: &tauri::AppHandle) {
   }
 }
 
-// True when Windows started SyncR at sign-in ("Start with Windows" adds --hidden):
-// then the window stays hidden in the tray if "Start hidden in the tray" is on
-// (WindowControls.tsx asks this and decides)
+// The tray menu's Quit: the page does the last sync first, like ✕ (WindowControls.tsx, max 5 s),
+// then closes its window, which ends the app (on_window_event). If the page doesn't answer
+// (it failed to load, or hangs), the app ends after 8 seconds anyway.
+#[cfg(desktop)]
+fn quit_after_last_sync(app: &tauri::AppHandle) {
+  use tauri::Emitter;
+  if app.emit_to("main", "tray-quit", ()).is_err() {
+    return app.exit(0);
+  }
+  let app = app.clone();
+  std::thread::spawn(move || {
+    std::thread::sleep(std::time::Duration::from_secs(8));
+    app.exit(0);
+  });
+}
+
 // The tray menu's words, in the app's language: the page sends them at start and when it changes
 #[tauri::command]
 fn set_tray_texts(app: tauri::AppHandle, open: String, quit: String) -> Result<(), String> {
@@ -34,6 +47,9 @@ fn set_tray_texts(app: tauri::AppHandle, open: String, quit: String) -> Result<(
   Ok(())
 }
 
+// True when Windows started SyncR at sign-in ("Start with Windows" adds --hidden):
+// then the window stays hidden in the tray if "Start hidden in the tray" is on
+// (WindowControls.tsx asks this and decides)
 #[tauri::command]
 fn started_hidden() -> bool {
   std::env::args().any(|arg| arg == "--hidden")
@@ -388,7 +404,7 @@ pub fn run() {
           .show_menu_on_left_click(false)
           .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main(app),
-            "quit" => app.exit(0),
+            "quit" => quit_after_last_sync(app),
             _ => {}
           })
           .on_tray_icon_event(|tray, event| {
