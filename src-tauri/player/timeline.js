@@ -167,7 +167,7 @@ const loadSheet = (address) => new Promise((done, failed) => {
   image.src = address
 })
 async function checkStart(list, folder) {
-  if (startChecked) return
+  if (startChecked || data.startSkip?.off) return
   startChecked = true
   const low = list.find((one) => one.quality === 'low') || list[0]
   if (!low?.interval || !Array.isArray(low.images)) return
@@ -184,7 +184,7 @@ async function checkStart(list, folder) {
     const spot = i % perSheet
     pictures.push({ at: i * low.interval, picture: skipPicture(sheets.get(name), (spot % low.cols) * low.width, Math.floor(spot / low.cols) * low.height, low.width, low.height) })
   }
-  const looks = data.startLooks || []
+  const looks = data.startSkip?.looks || [] // the channel's learned looks (videoPlayer.ts)
   const found = findWaiting(pictures, looks)
   if (!found || here() >= found.to) return
   const start = await refineStart(found, looks, ownSkipPicture)

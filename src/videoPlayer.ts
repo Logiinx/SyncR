@@ -206,10 +206,17 @@ function controlsData() {
   }
 }
 
+// The waiting screen's search at the start (src-tauri/player/startSkip.js): off for music videos
+// (DECISIONS.md "VOD start skip"); looks: the channel's learned waiting screen, none yet
+function startSkipData(video: PlayableVideo) {
+  return { off: Boolean(video.music), looks: [] as string[] }
+}
+
 function twitchPlayerAddress(video: PlayableVideo) {
   const shared = controlsData()
   const data = {
     ...shared,
+    startSkip: startSkipData(video),
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
@@ -267,7 +274,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
   if (way === 'own') {
     const { quality, subtitleLanguage } = loadPlayerSettings()
-    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify(controlsData()))}`
+    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify({ ...controlsData(), startSkip: startSkipData(video) }))}`
   }
   const data = {
     message: t("This video can't play in the player window"),
@@ -602,6 +609,7 @@ function goNext(from: PlayableVideo, atEnd: boolean) {
         subtitles: subtitlesOn(next),
         inPlace: way === 'own' && currentWay === 'own' && next.platform === 'youtube' && from.platform === 'youtube',
         upcoming: shownNext, // for a page that plays it in place
+        startSkip: startSkipData(next), // the same
         site: next.platform, // the taskbar button's icon
         title: next.title,
         via: viaText(way),

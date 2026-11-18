@@ -195,6 +195,10 @@
   let data = {}
   try { data = JSON.parse(wanted.get('syncr-data') || '{}') } catch {}
   let setNextShown = () => {} // what ⏭ plays, once our controls are there (syncrNextVideo)
+  // The waiting screen's search for this video (startSkip.js, below): { off: a music video, looks: the
+  // channel's learned ones } (videoPlayer.ts), and where it was opened (?start=, seconds)
+  let startSkip = data.startSkip || {}
+  let openedAt = Number(new URLSearchParams(location.search).get('start')) || 0
   let chosenQuality = null // the menu's choice for this video: a quality's name, 'auto', or none yet
   const HIDE_YOUTUBE = [
     '.ytp-chrome-top', '.ytp-chrome-bottom', '.ytp-gradient-top', '.ytp-gradient-bottom', '.ytp-pause-overlay',
@@ -386,27 +390,71 @@
       drawTimeButton()
       return true
     }
-    // "base|w#h#count#cols#rows#interval#name#sigh|…", the last kind the sharpest
+    // "base|w#h#count#cols#rows#interval#name#sigh|…", the last kind the sharpest. A kind that
+    // can't be read is null.
+    const readKinds = (spec) => {
+      const [base, ...kinds] = spec?.split('|') || []
+      return kinds.map((kind, level) => {
+        const [width, height, count, cols, rows, interval, name, sigh] = kind.split('#')
+        const numbers = [width, height, count, cols, rows].map(Number)
+        if (!base || !name || numbers.some((number) => !(number > 0))) return null
+        return { base, level, width: numbers[0], height: numbers[1], count: numbers[2], cols: numbers[3], rows: numbers[4], interval: Number(interval) / 1000, name, sigh }
+      })
+    }
+    // The sheet holding a kind's picture number `index`
+    const sheetAddress = (kind, index) => `${kind.base.replace('$L', kind.level).replace('$N', kind.name.replace('$M', Math.floor(index / (kind.cols * kind.rows))))}${kind.sigh ? `&sigh=${kind.sigh}` : ''}`
     const readPreviews = (id) => {
       const answer = player.getPlayerResponse?.()
       if (!answer || answer.videoDetails?.videoId !== id) return false
-      const [base, ...kinds] = answer.storyboards?.playerStoryboardSpecRenderer?.spec?.split('|') || []
-      const level = kinds.length - 1
-      const [width, height, count, cols, rows, interval, name, sigh] = (kinds[level] || '').split('#')
-      const numbers = [width, height, count, cols, rows].map(Number)
-      if (!base || numbers.some((number) => !(number > 0))) return true
-      previews = { base, level, width: numbers[0], height: numbers[1], count: numbers[2], cols: numbers[3], rows: numbers[4], interval: Number(interval) / 1000, name, sigh }
+      const kinds = readKinds(answer.storyboards?.playerStoryboardSpecRenderer?.spec)
+      previews = kinds[kinds.length - 1] || null
+      checkStart(id, answer, kinds).catch((error) => console.error(error))
       return true
     }
     const pictureAt = (seconds) => {
       if (!previews) return null
-      const { base, level, width, height, count, cols, rows, name, sigh } = previews
+      const { width, height, count, cols, rows } = previews
       const interval = previews.interval || (player.getDuration() || 0) / count
       if (!(interval > 0)) return null
       const index = Math.min(Math.floor(seconds / interval), count - 1)
       const spot = index % (cols * rows)
-      const address = `${base.replace('$L', level).replace('$N', name.replace('$M', Math.floor(index / (cols * rows))))}${sigh ? `&sigh=${sigh}` : ''}`
-      return { address, width, height, cols, column: spot % cols, row: Math.floor(spot / cols) }
+      return { address: sheetAddress(previews, index), width, height, cols, column: spot % cols, row: Math.floor(spot / cols) }
+    }
+
+    // ---- The waiting screen at the start (startSkip.js) ---------------------------------------------
+    // YouTube's smallest pictures with a set gap (every 10 s; 2 or 5 s on short videos): the first
+    // 30 min fit on 2 sheets, close enough without refining. Past lives get it as on Twitch; other
+    // videos only when it matches the channel's learned look, as their dark intros and long talking
+    // shots often look like one (DECISIONS.md "VOD start skip"). Once per video, nothing shown while
+    // looking (startSkip and openedAt: above, changed by syncrNextVideo).
+    const loadSheet = (address) => new Promise((done, failed) => {
+      const image = new Image()
+      image.crossOrigin = 'anonymous' // YouTube's sheets allow it: their pixels can be read
+      image.onload = () => done(image)
+      image.onerror = () => failed(new Error(`Sheet ${address} didn't load`))
+      image.src = address
+    })
+    async function checkStart(id, answer, kinds) {
+      const details = answer.videoDetails || {}
+      if (startSkip.off || details.isLive || details.isUpcoming) return
+      const here = () => Math.max(player.getCurrentTime() || 0, openedAt)
+      const kind = kinds.find((one) => one?.interval > 0)
+      if (!kind || here() >= SKIP.within) return
+      const perSheet = kind.cols * kind.rows
+      const count = Math.min(kind.count, Math.ceil((SKIP.within + SKIP.ahead) / kind.interval) + 3)
+      const sheets = new Map()
+      const pictures = []
+      for (let i = 0; i < count; i++) {
+        const address = sheetAddress(kind, i)
+        if (!sheets.has(address)) sheets.set(address, await loadSheet(address))
+        if (shownFor !== id) return // another video meanwhile
+        const spot = i % perSheet
+        pictures.push({ at: i * kind.interval, picture: skipPicture(sheets.get(address), (spot % kind.cols) * kind.width, Math.floor(spot / kind.cols) * kind.height, kind.width, kind.height) })
+      }
+      const found = findWaiting(pictures, startSkip.looks || [])
+      if (!found || (!details.isLiveContent && !found.learned)) return
+      if (shownFor !== id || !skipWorthIt(found.to, here())) return
+      controls.setStartSkip({ at: found.to, picture: pictureAt(found.to) })
     }
     const chapterAt = (seconds) => {
       let name = ''
@@ -448,6 +496,7 @@
         tries = 0
         controls.setGaps([])
         controls.setMarked([])
+        controls.setStartSkip(null)
         controls.closeParts()
         drawTimeButton()
         askSponsorBlock(id)
@@ -669,11 +718,13 @@
   // The next video of a playlist while in full screen (video_window.rs, video_player_next): this same page
   // plays it, as a new page would leave full screen. The address changes too, as extensions read
   // the video from it. Says whether it could.
-  // upcoming: what its ⏭ plays in turn (controls.js)
-  window.syncrNextVideo = (id, start, subtitles, upcoming) => {
+  // upcoming: what its ⏭ plays in turn (controls.js); skip: its waiting screen's search (startSkip above)
+  window.syncrNextVideo = (id, start, subtitles, upcoming, skip) => {
     const player = document.querySelector('#movie_player')
     if (!document.fullscreenElement || !player?.loadVideoById || !/^[\w-]{6,20}$/.test(id)) return false
     history.replaceState(history.state, '', `/embed/${id}${location.search}${location.hash}`)
+    startSkip = skip || {}
+    openedAt = start || 0
     player.loadVideoById({ videoId: id, startSeconds: start })
     setNextShown(upcoming)
     qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))

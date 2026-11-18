@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
-- **New:** a small ⏩ button skips the waiting screen at a Twitch video’s start
+- **New:** a small ⏩ button skips the waiting screen of past lives (Twitch, YouTube)
 - **New:** music videos can go in the queue too, from their right-click menu
 - **Better:** a red Live badge on the picture of Twitch streams still live
 - **Changed:** a copied video link goes in the queue; to play it, Video settings → Player

@@ -532,9 +532,9 @@ pub async fn open_video_player(
         .additional_browser_args(VIDEO_ARGS)
         .browser_extensions_enabled(true)
         .data_directory(folder)
-        // Our own controls (controls.js) come along, for YouTube's player page; wrapped so that
-        // other sites' pages don't see their names
-        .initialization_script_for_all_frames(concat!("(() => {\n", include_str!("../player/controls.js"), "\n;", include_str!("video-watch.js"), "\n})()"))
+        // Our own controls (controls.js) and the waiting screen's search (startSkip.js) come along,
+        // for YouTube's player page; wrapped so that other sites' pages don't see their names
+        .initialization_script_for_all_frames(concat!("(() => {\n", include_str!("../player/controls.js"), "\n;", include_str!("../player/startSkip.js"), "\n;", include_str!("video-watch.js"), "\n})()"))
         .on_navigation(move |url| {
           if url.host_str() == Some(VIDEO_REQUEST) {
             use tauri::Emitter;
@@ -769,9 +769,10 @@ pub fn video_player_note(app: tauri::AppHandle, via: String, note: String) -> Re
 // as this one (our own YouTube page), so the bar's "via" stays true.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-// upcoming: what the new video's ⏭ shows (controls.js), for a page that plays it in place. site:
-// the new video's, for the taskbar button's icon (a next video can be from the other site).
-pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, upcoming: serde_json::Value, site: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
+// upcoming: what the new video's ⏭ shows (controls.js) and start_skip its waiting screen's search
+// (video-watch.js), for a page that plays it in place. site: the new video's, for the taskbar
+// button's icon (a next video can be from the other site).
+pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, upcoming: serde_json::Value, start_skip: serde_json::Value, site: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
   let (Some(window), Some(page), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
     return Ok(()); // closed in the meantime
   };
@@ -785,7 +786,7 @@ pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, 
   if in_place && window.is_fullscreen().unwrap_or(false) {
     let video = serde_json::to_string(&video).map_err(|e| e.to_string())?;
     let url = serde_json::to_string(url.as_str()).map_err(|e| e.to_string())?;
-    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles}, {upcoming})) location.href = {url}")).map_err(|e| e.to_string())?;
+    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles}, {upcoming}, {start_skip})) location.href = {url}")).map_err(|e| e.to_string())?;
   } else {
     site.navigate(url).map_err(|e| e.to_string())?;
   }
