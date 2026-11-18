@@ -7728,6 +7728,22 @@ button.history-row.selected {
   text-decoration: underline;
 }
 
+/* Games' numbers that sit in columns or change in place (prices, hours, %, times, ratings):
+   fixed-width digits, so they line up and don't jiggle (also .sale-table) */
+.game-prices,
+.game-price-line,
+.watch-row-name,
+.watch-row-choices input,
+.watch-sale-hint,
+.gd-stat,
+.game-playtime,
+.game-playtime-short,
+.game-rated,
+.game-rating-number,
+.playing-text .game-details {
+  font-variant-numeric: tabular-nums;
+}
+
 .game-price-line {
   display: flex;
   flex-wrap: wrap;
