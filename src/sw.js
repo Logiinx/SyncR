@@ -49,6 +49,9 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return
 
   if (request.mode === 'navigate') {
+    // The site's other pages (the privacy page): straight to the network, not the app
+    const path = new URL(request.url).pathname
+    if (path.endsWith('.html') && !path.endsWith('/index.html')) return
     // Opening the app (also coming back from the Dropbox sign-in with ?code=…): the saved app
     const index = new URL('index.html', self.registration.scope).href
     event.respondWith(caches.match(index, { ignoreVary: true }).then((cached) => cached ?? fetch(request)))

@@ -16,6 +16,8 @@ export function checkForUpdates(): Promise<void> {
   return new Promise((done) => window.dispatchEvent(new CustomEvent('check-for-updates', { detail: done })))
 }
 
+const UPDATE_CHECK_EVERY = 6 * 60 * 60 * 1000 // ms: the PC's quiet check while it keeps running
+
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 // Shows a slim bar at the top when a new version of SyncR is available.
@@ -33,9 +35,14 @@ function UpdateBanner() {
   const [notesOpen, setNotesOpen] = useState(false)
 
   useEffect(() => {
-    findUpdate().then(setUpdate)
+    // At start, then every few hours: SyncR can stay in the tray for days (the phone looks each
+    // time it comes back, pwa.ts). One already found stays as it is (it may be installing).
+    const look = () => void findUpdate().then((found) => found && setUpdate((current) => current ?? found))
+    look()
+    const timer = isTauri() ? window.setInterval(look, UPDATE_CHECK_EVERY) : undefined
     // A function in state must be wrapped, or React would call it
     registerServiceWorker((apply) => setApplyWebUpdate(() => apply))
+    return () => window.clearInterval(timer)
   }, [])
 
   // "Check for updates"

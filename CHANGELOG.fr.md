@@ -18,6 +18,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Amélioré :** « Quitter SyncR » dans le menu de l’icône envoie d’abord vos derniers changements (PC uniquement)
+- **Amélioré :** les nouvelles versions apparaissent même si SyncR reste ouvert des jours (PC uniquement)
+- **Petites corrections :** page de confidentialité sur le téléphone
 
 ## [0.85.0] - 2026-11-18
 

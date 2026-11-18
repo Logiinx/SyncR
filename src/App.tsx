@@ -386,7 +386,6 @@ function App() {
   )
 }
 
-// The Mail tab's icon, with the missed emails' count (like the sidebar's) on its top right corner
 // A tab's icon with a count on its corner: the Mail and Video tabs
 function CountIcon({ icon, count, title }: { icon: ReactNode; count: number; title: string }) {
   return (

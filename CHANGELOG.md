@@ -18,6 +18,8 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **Better:** Quit in the tray menu sends your last changes first (PC only)
+- **Better:** new versions show up while SyncR stays open in the tray (PC only)
+- **Small fixes:** privacy page opening on the phone
 
 ## [0.85.0] - 2026-11-18
 
