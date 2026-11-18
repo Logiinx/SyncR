@@ -11,6 +11,39 @@ const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach wha
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls
 const SCROLL_STEP = 8 // px per frame
 
+// The grid (VideoView's grid / list switch): a tile follows the mouse sideways too, and the others
+// move by places in reading order (left to right, then down), from line to line when needed.
+const isGrid = (list: HTMLElement) => list.classList.contains('grid')
+
+// The mouse in the list's own pixels (offsetLeft / offsetTop: no scroll, no transforms), from the
+// lifted row measured without its transform; the mouse is in the screen's (zoom)
+function listPoint(row: HTMLElement, x: number, y: number) {
+  const box = row.getBoundingClientRect()
+  return { x: row.offsetLeft + (x - box.left) / currentZoom(), y: row.offsetTop + (y - box.top) / currentZoom() }
+}
+
+// Which tile a point comes before (-1: after them all): above its line, or on it left of its middle
+function tileBefore(tiles: HTMLElement[], at: { x: number; y: number }) {
+  return tiles.findIndex((el) => at.y < el.offsetTop || (at.y < el.offsetTop + el.offsetHeight && at.x < el.offsetLeft + el.offsetWidth / 2))
+}
+
+// Where a run of tiles' n-th place is (the first starts a line, after its header); one past the
+// last = the next column, or the start of a new line under it
+function slotOf(tiles: HTMLElement[], n: number, list: HTMLElement) {
+  if (n < tiles.length) return { x: tiles[n].offsetLeft, y: tiles[n].offsetTop }
+  const style = getComputedStyle(list)
+  const columns = style.gridTemplateColumns.split(' ')
+  const last = tiles[tiles.length - 1]
+  if (n % columns.length === 0) return { x: tiles[0].offsetLeft, y: last.offsetTop + last.offsetHeight + (parseFloat(style.rowGap) || 0) }
+  return { x: last.offsetLeft + parseFloat(columns[0]) + (parseFloat(style.columnGap) || 0), y: last.offsetTop }
+}
+
+function slideBy(el: HTMLElement, from: { x: number; y: number }, to: { x: number; y: number }) {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  el.style.transform = dx || dy ? `translate(${dx}px, ${dy}px)` : ''
+}
+
 // While a video that can join the Queue is lifted, VideoView turns its bar into a strip to drop
 // it on (the Queue's end). drops counts drops into and out of the Queue: the list then skips its
 // adding and removing animations (the rows are already where they go).
@@ -73,9 +106,12 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
 
   const index = rows.indexOf(row)
   const others = rows.filter((el) => el !== row)
+  const grid = isGrid(list)
   const startX = event.clientX
   const startY = event.clientY
   const grab = startY - row.getBoundingClientRect().top
+  const grabX = startX - row.getBoundingClientRect().left
+  let pointerX = startX
   let pointerY = startY
   let started = false
   let frame = 0
@@ -90,25 +126,32 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
     if (pointerY < box.top + EDGE) page!.scrollTop -= SCROLL_STEP
     else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
     row.style.transform = ''
-    const top = row.getBoundingClientRect().top
+    const { top, left } = row.getBoundingClientRect()
     const dy = (pointerY - grab - top) / currentZoom()
-    row.style.transform = `translateY(${dy}px)`
+    const dx = grid ? (pointerX - grabX - left) / currentZoom() : 0
+    const at = listPoint(row, pointerX, pointerY)
+    row.style.transform = `translate(${dx}px, ${dy}px)`
     const last = rows[rows.length - 1]
-    out = row.offsetTop + (pointerY - top) / currentZoom() > last.offsetTop + last.offsetHeight
+    out = at.y > last.offsetTop + last.offsetHeight
     row.classList.toggle('leaving', out)
-    // Its leading edge passing another row's middle swaps them
-    const edge = row.offsetTop + dy + (dy > 0 ? row.offsetHeight : 0)
-    place = others.findIndex((el) => edge < el.offsetTop + el.offsetHeight / 2)
+    if (grid) place = tileBefore(others, at)
+    else {
+      // Its leading edge passing another row's middle swaps them
+      const edge = row.offsetTop + dy + (dy > 0 ? row.offsetHeight : 0)
+      place = others.findIndex((el) => edge < el.offsetTop + el.offsetHeight / 2)
+    }
     if (place === -1) place = others.length
-    const shift = row.offsetHeight
+    // Each of the others to its place in the new order (out: they close up behind it)
     others.forEach((el, k) => {
-      const by = out ? (k >= index ? -shift : 0) : k >= place && k < index ? shift : k < place && k >= index ? -shift : 0
-      el.style.transform = by ? `translateY(${by}px)` : ''
+      const now = k < index ? k : k + 1
+      const next = out || k < place ? k : k + 1
+      slideBy(el, slotOf(rows, now, list!), slotOf(rows, next, list!))
     })
     frame = requestAnimationFrame(tick)
   }
 
   const move = (e: PointerEvent) => {
+    pointerX = e.clientX
     pointerY = e.clientY
     if (started || Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
     started = true
@@ -164,7 +207,7 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
 }
 
 // The row only moves up and down, like the Board's cards, and goes by the mouse's height, so leaving
-// the list sideways is fine. from = the folder it's in (null: none). queue: it can go into the Queue
+// the list sideways is fine (a grid's tile follows the mouse sideways too: isGrid). from = the folder it's in (null: none). queue: it can go into the Queue
 // too (dragVideo): over its videos they open a gap where it would go; over its folded row or the
 // bar's strip, that lights up like a folder (it goes at the end).
 function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, move: moveTo, open, queue }: {
@@ -181,9 +224,12 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   // No row it can go to on screen (or one channel chosen), and not for the Queue: nowhere to go
   if (!list || !page || (!queue && ![...list.querySelectorAll<HTMLElement>('[data-drop-channel]')].some(accepts))) return
 
+  const grid = isGrid(list)
   const startX = event.clientX
   const startY = event.clientY
   const grab = startY - row.getBoundingClientRect().top
+  const grabX = startX - row.getBoundingClientRect().left
+  let pointerX = startX
   let pointerY = startY
   let started = false
   let frame = 0
@@ -198,14 +244,16 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   // Where it would go in the Queue (its row data-queue-head, its videos data-queue-group), measured
   // in the list's own pixels: the Queue's row itself when folded, else before the video
   // whose middle is under the mouse (over the Queue's row: first; a little under the last: last)
-  function queueSpot(at: number): QueueSpot | null {
+  function queueSpot(point: { x: number; y: number }): QueueSpot | null {
+    const at = point.y
     const head = list!.querySelector<HTMLElement>('[data-queue-head]')
     if (!queue || !head) return null
     const rows = [...list!.querySelectorAll<HTMLElement>('[data-queue-group]')]
     const last = rows[rows.length - 1]
     if (head.classList.contains('folded') || !last) return at >= head.offsetTop && at < head.offsetTop + head.offsetHeight ? { head } : null
     if (at < head.offsetTop || at > last.offsetTop + last.offsetHeight + head.offsetHeight / 2) return null
-    const place = rows.findIndex((el) => at < el.offsetTop + el.offsetHeight / 2)
+    // Grid: before the tile it's over, in reading order
+    const place = grid ? tileBefore(rows, point) : rows.findIndex((el) => at < el.offsetTop + el.offsetHeight / 2)
     return { rows, place: place === -1 ? rows.length : place }
   }
 
@@ -217,11 +265,26 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     if (at === gapAt) return
     gapAt = at
     const own = items.indexOf(row)
+    if (grid) return gridGap(items, next && 'rows' in next ? next : null)
     items.forEach((el, k) => {
       if (el === row) return
       const by = at >= 0 && k >= at && (!queue!.leaves || k < own)
       el.style.transform = by ? `translateY(${row.offsetHeight}px)` : ''
     })
+  }
+
+  // Grid: the Queue's tiles from there move one place on (the last may start a new line: then
+  // everything under the Queue moves down a line). Its own place stays empty while it's lifted.
+  function gridGap(items: HTMLElement[], next: { rows: HTMLElement[]; place: number } | null) {
+    for (const el of items) if (el !== row) el.style.transform = ''
+    if (!next) return
+    const { rows, place } = next
+    rows.forEach((el, j) => j >= place && slideBy(el, slotOf(rows, j, list!), slotOf(rows, j + 1, list!)))
+    const last = rows[rows.length - 1]
+    const end = slotOf(rows, rows.length, list!)
+    if (end.y === last.offsetTop) return
+    const down = end.y - last.offsetTop
+    for (const el of items.slice(items.indexOf(last) + 1)) if (el !== row) el.style.transform = `translateY(${down}px)`
   }
 
   function setOver(el: HTMLElement | null) {
@@ -247,9 +310,11 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     if (!onStrip && pointerY < topEdge + EDGE) page!.scrollTop -= SCROLL_STEP
     else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
     row.style.transform = ''
-    const top = row.getBoundingClientRect().top
-    row.style.transform = `translateY(${(pointerY - grab - top) / currentZoom()}px)`
-    spot = onStrip ? { head: strip } : queueSpot(row.offsetTop + (pointerY - top) / currentZoom())
+    const { top, left } = row.getBoundingClientRect()
+    const at = listPoint(row, pointerX, pointerY)
+    const dx = grid ? (pointerX - grabX - left) / currentZoom() : 0
+    row.style.transform = `translate(${dx}px, ${(pointerY - grab - top) / currentZoom()}px)`
+    spot = onStrip ? { head: strip } : queueSpot(at)
     openGap(spot)
     if (spot) setOver('head' in spot ? spot.head : null)
     else {
@@ -261,6 +326,7 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   }
 
   const move = (e: PointerEvent) => {
+    pointerX = e.clientX
     pointerY = e.clientY
     if (started || Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
     started = true
