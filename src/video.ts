@@ -636,7 +636,7 @@ export async function addOrFindVideo(link: string) {
   ])
   const follow = follows.find((other) => !other.deleted && other.platform === platform && other.channelId === channel.id)
   const followId = addedFollowId(follow, platform, channel.id)
-  const playable = { id: videoId, platform, title: video.title, channelId: channel.id, url: video.url, watched: !!mark?.watched, duration: video.duration }
+  const playable = { id: videoId, platform, title: video.title, channelId: channel.id, url: video.url, watched: !!mark?.watched, duration: video.duration, live: !!video.live }
   // A playlist's videos show only in it
   const livePlaylists = new Set(playlists.filter((playlist) => !playlist.deleted).map((playlist) => playlist.id))
   const playlistId = lists.find((list) => livePlaylists.has(list.id) && list.videos.some((episode) => episode.id === videoId))?.id

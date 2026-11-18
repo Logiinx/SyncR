@@ -133,10 +133,11 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
       let _ = app.emit_to("main", "video-next", ());
       return answer(204, "text/plain", Vec::new());
     }
-    // Something the bar should say (player.js). Also open to any site in the window: only these
-    // words pass, and the app only takes them while our own Twitch player shows that video.
+    // Something the bar should say, or "finished": a live stream is over (player.js). Also open to
+    // any site in the window: only these words pass, and the app only takes them while our own
+    // Twitch player shows that video.
     "/note" => {
-      if let (Some(code @ ("subscriber" | "sound")), Some(video)) = (query_value(&uri, "code"), query_value(&uri, "video")) {
+      if let (Some(code @ ("subscriber" | "sound" | "finished")), Some(video)) = (query_value(&uri, "code"), query_value(&uri, "video")) {
         let _ = app.emit_to("main", "video-note", serde_json::json!({ "code": code, "video": video }));
       }
       return answer(204, "text/plain", Vec::new());

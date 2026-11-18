@@ -21,6 +21,7 @@ interface PlayableVideo {
   thumbnail?: string | null // shown by the player's ⏭ for the video that comes next
   watched: boolean
   duration: number // 0 when unknown
+  live?: boolean // a Twitch stream still live: its length grows
   music?: boolean // a music channel's: never marked as watched by itself (Music is cleared by hand)
 }
 
@@ -332,6 +333,9 @@ let queue = Promise.resolve()
 let stopWatching = () => {}
 let watchedNow = false // the open video's Watched mark
 let undone = false // taken out of Watched during this viewing: it stays out
+// A live stream: its end isn't the end (never Watched by itself, the window stays). Our player says
+// when it's over, as the list may say live for up to a check after.
+let liveNow = false
 let playlist: string | null = null // the playlist it plays in: its next one comes from there
 // Outside a playlist: the videos after it in the list it was opened from, as they were then
 let upNext: UpNext[] = []
@@ -402,12 +406,13 @@ function listenToBar() {
   void listen<{ t: number; length: number }>('video-position', ({ payload: { t: seconds, length } }) => {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
-    savePosition(current.id, { t: seconds, length })
+    savePosition(current.id, { t: seconds, length, ...(liveNow && { live: true }) })
     playedTo = { videoId: current.id, t: Math.floor(seconds) }
     // A watched one played again stays out: the Queue never shows watched videos, it would stay in it unseen
     if (!current.music && !watchedNow && resumePosition(current.id)) queueStarted(current.id)
     if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
+    if (liveNow) return
     if (current.duration > 0 && !current.music && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
     if (current.duration > 0 && seconds >= length) playNext()
   })
@@ -419,6 +424,10 @@ function listenToBar() {
   // signal, so it only counts for our player's current video.
   void listen<{ code: string; video: string }>('video-note', ({ payload: { code, video } }) => {
     if (!current || current.id !== `twitch-${video}` || currentWay !== 'own') return
+    if (code === 'finished') {
+      liveNow = false
+      return
+    }
     const text = code === 'subscriber' ? t('Subscriber-only video') : code === 'sound' ? t('Original sound') : '' // i18n-ok
     if (!text || playerNotes.some((one) => one.text === text)) return
     const now = Date.now()
@@ -458,6 +467,7 @@ function startWatching(video: PlayableVideo, playlistId: string | null, after: U
   upNext = playlistId ? [] : after
   watchedNow = video.watched
   undone = false
+  liveNow = !!video.live
   reportsFrom = Date.now() + REPORTS_AFTER
   currentWay = rememberedWay(video)
   newWayShown()

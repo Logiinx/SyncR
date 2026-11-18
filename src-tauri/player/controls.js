@@ -387,7 +387,8 @@ function playerControls(env, media) {
   let endCardClosed = false
   function drawEndCard() {
     const length = media.duration()
-    const show = !!next && !endCardClosed && Number.isFinite(length) && length > END_CARD_FOR * 2 && length - media.time() <= END_CARD_FOR
+    // Not while live: its end moves on (player.js)
+    const show = !!next && !endCardClosed && !media.live?.() && Number.isFinite(length) && length > END_CARD_FOR * 2 && length - media.time() <= END_CARD_FOR
     $('endcard').hidden = !show
   }
   $('endcard').onclick = playNext

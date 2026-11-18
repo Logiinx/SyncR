@@ -26,6 +26,12 @@ const stored = (name, fallback) => {
   return localStorage.getItem(name) === null || Number.isNaN(value) ? fallback : value
 }
 
+// A stream still live (user: catch up on a weeks-long one): Twitch is still recording it, so its
+// list has no end yet. hls.js asks for the list again by itself and the video's length grows with
+// it; at its end the video waits for more instead of ending (no end card, never "frozen").
+let live = false
+let liveTold = false // the app was told it's over (or never was live)
+
 // ---- Quality --------------------------------------------------------------------------------
 let hls = null
 // 'top' (the highest, until one is chosen), 'auto', or a quality's name. Remembered for all videos.
@@ -93,6 +99,7 @@ const media = {
   paused: () => video.paused || video.ended,
   time: () => video.currentTime,
   duration: () => video.duration || 0,
+  live: () => live,
   bufferedEnd() {
     let end = 0
     for (let i = 0; i < video.buffered.length; i++) {
@@ -333,13 +340,33 @@ async function withOriginal(text) {
 }
 
 // Hands hls.js the list above: this page may only read its own address
+// A live stream's list holds all of it (~1 MB after 40 hours) and hls.js asks for it every few
+// seconds. Far from its end (hours behind), once a minute is enough: the last copy is given again
+// in between, so the bar's end still grows.
+const FAR_FROM_END = 300 // seconds
+const LIST_EVERY = 60000 // ms
+const listCopies = new Map() // address → { text, at }
+
 class ListLoader extends Hls.DefaultConfig.loader {
   load(context, config, callbacks) {
-    if (context.url !== OWN_LIST) return super.load(context, config, callbacks)
+    if (context.url === OWN_LIST) return this.answer(context, callbacks, list)
+    const copy = listCopies.get(context.url)
+    if (copy && live && video.duration - video.currentTime > FAR_FROM_END && performance.now() - copy.at < LIST_EVERY) {
+      return this.answer(context, callbacks, copy.text)
+    }
+    super.load(context, config, {
+      ...callbacks,
+      onSuccess: (response, stats, loaded, details) => {
+        if (typeof response.data === 'string') listCopies.set(context.url, { text: response.data, at: performance.now() })
+        callbacks.onSuccess(response, stats, loaded, details)
+      },
+    })
+  }
+  answer(context, callbacks, text) {
     const now = performance.now()
     Object.assign(this.stats.loading, { start: now, first: now, end: now })
-    this.stats.loaded = this.stats.total = list.length
-    queueMicrotask(() => callbacks.onSuccess({ url: context.url, data: list }, this.stats, context, null))
+    this.stats.loaded = this.stats.total = text.length
+    queueMicrotask(() => callbacks.onSuccess({ url: context.url, data: text }, this.stats, context, null))
   }
 }
 
@@ -556,7 +583,15 @@ async function load() {
     drawMuted()
   })
   hls.on(Hls.Events.FRAG_PARSING_INIT_SEGMENT, measureSource)
-  hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => checkUncut(loaded.details.fragments))
+  hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => {
+    checkUncut(loaded.details.fragments)
+    live = loaded.details.live
+    // Over (or never live): the app may move it to Watched near its end and play on after it
+    if (!live && !liveTold) {
+      liveTold = true
+      tellBar('finished')
+    }
+  })
   hls.on(Hls.Events.BUFFER_CODECS, (_, tracks) => { playingCodec = tracks.video?.codec || playingCodec })
   hls.on(Hls.Events.ERROR, (_, error) => {
     if (!error.fatal) return
@@ -592,7 +627,9 @@ function watchFrozen() {
   const at = video.currentTime
   frozenTimer = setTimeout(() => {
     if (!hls || video.paused || video.currentTime !== at) return
-    if (document.hidden || navigator.onLine === false) return watchFrozen()
+    // Caught up with a live stream: waiting for Twitch to record more
+    const atLiveEnd = live && video.duration - video.currentTime < 30
+    if (document.hidden || navigator.onLine === false || atLiveEnd) return watchFrozen()
     console.error('No picture for 30 s')
     failed()
   }, FROZEN_AFTER)

@@ -6,6 +6,7 @@ import { read, write } from './localState'
 export interface VideoPosition {
   t: number // seconds
   length: number
+  live?: boolean // saved while the stream was live: more came after, so it's never "nearly done"
 }
 const KEY = 'syncr.videoPositions'
 const KEPT = 200
@@ -40,7 +41,7 @@ export function forgetPositions(videoIds: string[]) {
 export const nearlyDone = ({ t, length }: VideoPosition) => length - t <= Math.min(NEARLY_DONE, length * NEARLY_DONE_SHARE)
 
 const unfinished = (position: VideoPosition | undefined) =>
-  position && position.t >= JUST_STARTED && !nearlyDone(position) ? position : null
+  position && position.t >= JUST_STARTED && (position.live || !nearlyDone(position)) ? position : null
 
 // Where it would continue, or null when it starts from the beginning
 export const resumePosition = (videoId: string) => unfinished(positions[videoId])

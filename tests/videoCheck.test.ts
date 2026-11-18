@@ -17,14 +17,14 @@ const alerted: string[][] = []
 vi.mock('../src/videoAlerts', () => ({ addVideoAlerts: (ids: string[]) => void alerted.push(ids), removeVideoAlerts: () => {} }))
 
 // What the Worker lists for the channel now
-let listed: { id: string; title: string }[] = []
+let listed: { id: string; title: string; live?: boolean }[] = []
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 vi.mock('../src/igdb', () => ({
   isComplete: () => true,
   useConnection: () => null,
   igdbProxyFetch: async (endpoint: string, body: string) => {
     if (endpoint === 'video/list') {
-      return json({ videos: listed.map((video) => ({ ...video, kind: 'archive', url: '', thumbnail: null, published: new Date().toISOString(), duration: 3600, live: false })) })
+      return json({ videos: listed.map((video) => ({ kind: 'archive', url: '', thumbnail: null, published: new Date().toISOString(), duration: 3600, live: false, ...video })) })
     }
     if (endpoint === 'video/exists') return json({ existing: JSON.parse(body).ids })
     return new Response('{}', { status: 404 })
@@ -63,6 +63,15 @@ test('a new video of a chosen game gets its pop-up card', async () => {
   listed = [{ id: '2', title: 'New stream' }, ...listed]
   await checkVideos()
   expect(alerted).toEqual([['twitch-2']])
+})
+
+test('a stream still live is listed with its live mark, which goes once it’s over', async () => {
+  listed = [{ id: '2', title: 'Subathon', live: true }, ...listed]
+  await checkVideos()
+  expect((await db.videos.get('twitch-2'))?.live).toBe(true)
+  listed = [{ id: '2', title: 'Subathon' }, ...listed.slice(1)]
+  await checkVideos()
+  expect((await db.videos.get('twitch-2'))?.live).toBeUndefined()
 })
 
 test("Twitch's website failing leaves the games for later, not the follow failed", async () => {
