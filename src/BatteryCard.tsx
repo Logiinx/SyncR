@@ -19,7 +19,7 @@ export function BatteryCard({ alert, fading, onOpen, onDone }: {
         <span className="reminder-alert-due">
           <Mouse size={12} /> {formatDue(alert.at)} · {t('Teevolution Terra Pro')}
         </span>
-        <span className="reminder-alert-text">{t('Mouse battery low: {percent}%', { percent: alert.percent })}</span>
+        <span className="reminder-alert-text battery-percent">{t('Mouse battery low: {percent}%', { percent: alert.percent })}</span>
       </button>
       <div className="reminder-alert-buttons">
         <button className="primary" onClick={onDone}>

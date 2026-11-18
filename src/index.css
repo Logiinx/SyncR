@@ -4806,6 +4806,15 @@ button {
   color: var(--text-dim);
 }
 
+/* App numbers that change in place (a slider's value while dragging, the update download, the
+   mouse battery): fixed-width digits, so they don't jiggle (Games' own: see .game-prices) */
+.setting-value,
+.update-text,
+.module-settings .settings-status,
+.battery-percent {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Settings: the quiet "SyncR v… · by Logiinx" line under all cards */
 .settings-about {
   grid-column: 1 / -1;
