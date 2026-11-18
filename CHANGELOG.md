@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** bigger pictures and clearer rows in the video lists
+- **Changed:** a row's ↗ and ✓ buttons show when the mouse is over it
+- **Changed:** “Twitch deletes it in …” shows only in the last week
+- **Removed:** the “Opened” tag: the bar under the picture shows it
+
 ## [0.89.0] - 2026-11-18
 
 **Video** (PC only)

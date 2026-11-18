@@ -8366,15 +8366,16 @@ button.history-row.selected {
   text-align: left;
 }
 
+/* A video: its three lines start at the picture's top (folder, channel and playlist rows stay centered) */
+.video-row:not(.video-group) > .video-row-open {
+  align-items: flex-start;
+}
+
 .video-row-open:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
 }
 
-/* A channel's videos folded into one row (the toggle "By channel") */
-.video-group .video-title {
-  font-weight: 600;
-}
-
+/* A folder, playlist or channel's videos folded into one row (the toggle "By channel") */
 .video-group-chevron {
   flex-shrink: 0;
   color: var(--text-dim);
@@ -8459,8 +8460,8 @@ button.history-row.selected {
 .video-thumb {
   position: relative;
   flex-shrink: 0;
-  width: 128px;
-  height: 72px;
+  width: min(192px, 40%); /* narrow window: smaller, so the title keeps room */
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 6px;
   background: var(--bg-raised);
@@ -8515,6 +8516,8 @@ button.history-row.selected {
 
 .video-title {
   display: -webkit-box;
+  font-weight: 600;
+  line-height: 1.3;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -8543,54 +8546,22 @@ button.history-row.selected {
   flex-shrink: 1;
 }
 
-/* A video's channel line, then its tags and extras: on a line of their own under a 1-line title,
-   after the date under a 2-line one (VideoView.tsx sets data-long-title) */
-.video-meta-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+/* A video's second line: its channel, brighter than the date line under it (user: title, then
+   picture, then channel) */
+.video-by {
+  color: color-mix(in srgb, var(--text) 75%, var(--bg));
 }
 
-[data-long-title] > .video-meta-lines {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-
-.video-meta-lines > .video-meta {
-  min-width: 0;
-}
-
-.video-extras {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-dim);
-  font-size: 0.85em;
-  white-space: nowrap;
-}
-
-/* Beside "· date" (a 2-line title): in a narrow list the dim texts give way first, cut with "…";
-   the tags keep their size */
-[data-long-title] .video-extras {
-  display: contents;
-}
-
-[data-long-title] .video-extras > * {
-  flex: none;
-}
-
-[data-long-title] .video-extras > .video-extra {
+/* On the date line, in a narrow list the dim texts give way first, cut with "…"; the tag keeps its size */
+.video-meta > .video-extra {
   flex: 0 1000 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.video-extra + .video-extra::before,
-[data-long-title] .video-extra::before {
+.video-extra::before {
   content: '· ';
 }
 
@@ -8681,18 +8652,12 @@ button.history-row.selected {
   gap: 3px;
 }
 
-.video-opened,
 .video-new {
   padding: 0 5px;
-  border: 1px solid var(--accent);
+  border: 1px solid color-mix(in srgb, var(--text-green) 45%, var(--bg));
   border-radius: 4px;
-  color: var(--link);
-  font-size: 0.9em;
-}
-
-.video-new {
-  border-color: color-mix(in srgb, var(--text-green) 45%, var(--bg));
   color: var(--text-green);
+  font-size: 0.9em;
 }
 
 /* A Twitch stream still live: a solid red badge on the picture's top left, like the sites' own
@@ -8741,6 +8706,15 @@ button.history-row.selected {
   padding: 7px;
   border-radius: 6px;
   color: var(--text-dim);
+}
+
+/* A video's buttons show only while the mouse is over its row (user: a calmer list) */
+.video-row:not(.video-group) > .video-row-action {
+  opacity: 0;
+}
+
+.video-row:not(.video-group):is(:hover, :focus-within) > .video-row-action {
+  opacity: 1;
 }
 
 .video-row-action:hover {

@@ -4,6 +4,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** des images plus grandes et des lignes plus claires dans les listes de vidéos
+- **Changé :** les boutons ↗ et ✓ d’une ligne s’affichent au survol de la souris
+- **Changé :** « Twitch le supprime dans … » s’affiche seulement la dernière semaine
+- **Supprimé :** l’étiquette « Ouverte » : la barre sous l’image le montre
+
 ## [0.89.0] - 2026-11-18
 
 **Vidéo** (PC uniquement)

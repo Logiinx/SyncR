@@ -148,7 +148,6 @@ export const video = {
   'Nothing to watch': 'Rien à regarder',
   'No watched videos yet': 'Aucune vidéo vue pour le moment',
   'No longer available': 'Plus disponible',
-  Opened: 'Ouverte',
   New: 'Nouvelle',
   Live: 'En direct',
   'Back to To watch': 'Remettre dans À regarder',

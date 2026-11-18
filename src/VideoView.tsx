@@ -45,24 +45,7 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
 const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
 
 const CARD_DELAY = 600 // ms resting the mouse on a row before its card shows
-
-// A video row's tags and extras: on a line of their own under a 1-line title, after the date under a
-// 2-line one (the row stays as high as its thumbnail). Seen by the title's height (data-long-title).
-let titleSizes: ResizeObserver | undefined
-function watchTitle(title: HTMLElement | null) {
-  if (!title) return
-  titleSizes ??= new ResizeObserver((entries) => {
-    for (const { target } of entries) {
-      const text = target.parentElement
-      const meta = text?.querySelector<HTMLElement>('.video-meta')
-      // Both in the same pixels (any app scale): one title line is a little taller than the meta line
-      if (text && meta) text.toggleAttribute('data-long-title', (target as HTMLElement).offsetHeight > meta.offsetHeight * 1.5)
-    }
-  })
-  const sizes = titleSizes
-  sizes.observe(title)
-  return () => sizes.unobserve(title)
-}
+const DELETION_SOON = 7 * 86_400_000 // "Twitch deletes it in …" only in its last week
 
 // What the playlist row's order button does when clicked
 function orderButtonTitle(playlist: VideoPlaylist) {
@@ -228,7 +211,8 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // until it's ticked. A video that's gone can't be opened, only removed from the list. In a playlist
 // (playlistId): the next one follows at its end and it can't be moved to a folder. In a playlist or
 // in Rewatch (kept), it stays there grayed once watched. In Rewatch: when it was last watched.
-// Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both. In the
+// Three lines beside the picture: title (2 lines), channel, then date and extras; the row is as
+// high as its picture. Tag: "New" (green), not once started (its bar shows it). In the
 // Queue group (queued: that group's id): a second copy of the row, dragged only to change its place
 // in the Queue; a playlist's video shows its playlist (from) instead of its channel; one of
 // Rewatch's in To watch's group (ofRewatch) gets a ↻ icon, Music's a music note. after: the videos after it in its list, for ⏭.
@@ -247,12 +231,14 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   onOpenRow: (id: string) => void
 }) {
   const position = useResumePosition(video.id)
-  // Stopped partway: tagged Opened, with its progress on the thumbnail
+  // Stopped partway: its progress on the thumbnail
   const opened = position && !video.watched && !video.gone ? position : null
   const showLastWatched = !!lastWatched && !!video.watchedAt
-  // An unwatched Twitch past stream: when Twitch deletes it (user: catching up on a long one)
+  // An unwatched Twitch past stream: when Twitch deletes it (user: catching up on a long one),
+  // only in its last week (user: always shown, it crowded the rows)
+  const deletionSoon = video.platform === 'twitch' && video.kind === 'archive' && !!video.keep && !video.watched && !video.gone && video.published + video.keep * 86_400_000 - Date.now() < DELETION_SOON
   // i18n-ok
-  const deletion = video.platform === 'twitch' && video.kind === 'archive' && video.keep && !video.watched && !video.gone ? twitchDeletionText(video.published, video.keep) : null
+  const deletion = deletionSoon ? twitchDeletionText(video.published, video.keep!) : null
   const rowRef = useRef<HTMLLIElement>(null)
   const hover = useHoverTip(CARD_DELAY)
   const shows = useCardPieces()
@@ -285,29 +271,21 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
       <button className="video-row-open" disabled={video.gone} onClick={open} {...(withCard && hover.props)}>
         <VideoThumb video={video} opened={opened} />
         <span className="video-text">
-          <span className="video-title" title={tooltips ? video.title : undefined} ref={watchTitle}>{video.title}</span>
-          <span className="video-meta-lines">
-            <span className="video-meta">
-              {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
-              {ofRewatch && <Repeat size={14} className="video-logo" aria-label={t('In Rewatch')} />}
-              {queued && video.music && <Music size={14} className="video-logo" aria-label={t('In Music')} />}
-              {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
-              <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
-              <span>· {videoDay(video)}</span>
-            </span>
-            {(video.gone || showLastWatched || deletion || opened || isNew) && (
-              <span className="video-extras">
-                {video.gone && <span className="video-extra">{t('No longer available')}</span>}
-                {showLastWatched && <span className="video-extra">{lastWatchedText(video.watchedAt!)}</span>}
-                {deletion && <span className="video-extra">{deletion}</span>}
-                {/* One tag at most (a stream still live says so on its picture) */}
-                {opened ? (
-                  <span className="video-opened">{t('Opened')}</span>
-                ) : (
-                  isNew && <span className="video-new">{t('New')}</span>
-                )}
-              </span>
-            )}
+          <span className="video-title" title={tooltips ? video.title : undefined}>{video.title}</span>
+          <span className="video-meta video-by">
+            {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
+            {ofRewatch && <Repeat size={14} className="video-logo" aria-label={t('In Rewatch')} />}
+            {queued && video.music && <Music size={14} className="video-logo" aria-label={t('In Music')} />}
+            {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
+            <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
+          </span>
+          <span className="video-meta">
+            <span>{videoDay(video)}</span>
+            {video.gone && <span className="video-extra">{t('No longer available')}</span>}
+            {showLastWatched && <span className="video-extra">{lastWatchedText(video.watchedAt!)}</span>}
+            {deletion && <span className="video-extra">{deletion}</span>}
+            {/* Started: its bar on the picture says so; a stream still live says so on its picture */}
+            {isNew && !opened && <span className="video-new">{t('New')}</span>}
           </span>
         </span>
       </button>
