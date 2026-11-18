@@ -45,6 +45,9 @@ export const locale = () => (language === 'fr' ? 'fr-FR' : 'en-GB')
 export const decimal = (n: number, digits: number) =>
   n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
+// 45 → "45%" or "45 %": every percentage shown (battery, scale, download, achievements)
+export const percentText = (n: number) => t('{percent}%', { percent: n })
+
 // 1234 → "1.2K" ("1,2 k"): counts shown small (link cards, video cards)
 export const compactNumber = (n: number) => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 

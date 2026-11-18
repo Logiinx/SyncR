@@ -76,7 +76,7 @@ import PinDialog, { type PinDialogMode } from './PinDialog'
 import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
-import { plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
+import { percentText, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
 import { richText, withIcon } from './richText'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
@@ -481,7 +481,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
           </select>
         )}
       </SettingRow>
-      <SettingRow label={t('App scaling')} value={`${scale} %`}>
+      <SettingRow label={t('App scaling')} value={percentText(scale)}>
         <RulerSlider
           min={SCALE_MIN}
           max={SCALE_MAX}

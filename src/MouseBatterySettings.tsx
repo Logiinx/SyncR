@@ -4,7 +4,7 @@ import Window from './Window'
 import InfoTip from './InfoTip'
 import { SettingRow, SettingsCard } from './SettingsCard'
 import { clockTime } from './dates'
-import { t } from './i18n'
+import { percentText, t } from './i18n'
 import { LOW_LEVELS, saveMouseBattery, useMouseBattery, useMouseBatteryStatus } from './mouseBattery'
 
 // Settings → Modules → Mouse battery → Open… (or a click on the taskbar strip): what it shows
@@ -15,7 +15,7 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
   const last = status?.last
   const battery = !last
     ? status ? t('No answer yet') : '…'
-    : last.charging && status?.answering ? t('{percent}%, charging', { percent: last.percent }) : t('{percent}%', { percent: last.percent })
+    : last.charging && status?.answering ? t('{percent}%, charging', { percent: last.percent }) : percentText(last.percent)
 
   return (
     <Window className="dialog settings module-settings" label={t('Mouse battery')} onClose={onClose}>
@@ -55,7 +55,7 @@ export default function MouseBatterySettings({ onClose }: { onClose: () => void 
             <select value={settings.low} onChange={(e) => saveMouseBattery({ low: Number(e.target.value) })}>
               {LOW_LEVELS.map((level) => (
                 <option key={level} value={level}>
-                  {t('{percent}%', { percent: level })}
+                  {percentText(level)}
                 </option>
               ))}
             </select>

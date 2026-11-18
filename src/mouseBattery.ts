@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { read, write } from './localState'
-import { subscribe as onLanguageChange, t } from './i18n'
+import { percentText, subscribe as onLanguageChange, t } from './i18n'
 import { clockTime } from './dates'
 
 // Mouse battery module (PC, Settings → Modules): its settings, kept on this device, never synced.
@@ -128,7 +128,7 @@ export function tipText({ last, answering }: MouseBatteryStatus) {
   const lines = [t('Teevolution Terra Pro')]
   if (last) {
     const percent = last.percent
-    lines.push(last.charging && answering ? t('{percent}%, charging', { percent }) : t('{percent}%', { percent }))
+    lines.push(last.charging && answering ? t('{percent}%, charging', { percent }) : percentText(percent))
     lines.push(t('Last answer: {time}', { time: clockTime(last.at) }))
   } else lines.push(t('No answer yet'))
   if (last && !answering) lines.push(t('Asleep or out of reach'))

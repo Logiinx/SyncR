@@ -9,7 +9,7 @@ const env = vi.hoisted(() => ({
   handlers: new Map<string, (event: { payload: unknown }) => void>(),
 }))
 
-vi.mock('../src/i18n', () => ({ t: (text: string) => text, subscribe: () => () => {} }))
+vi.mock('../src/i18n', () => ({ t: (text: string) => text, percentText: (n: number) => `${n}%`, subscribe: () => () => {} }))
 vi.mock('../src/dates', () => ({ clockTime: () => '' }))
 vi.mock('../src/localState', () => ({
   read: (key: string, fallback: unknown) => (env.store.has(key) ? env.store.get(key) : fallback),

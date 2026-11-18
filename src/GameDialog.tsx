@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { locale, plural, t } from './i18n'
+import { locale, percentText, plural, t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, PackageCheck, Heart, Sparkles, Star, Trash2, Trophy } from 'lucide-react'
 import CloseButton from './CloseButton'
@@ -327,7 +327,7 @@ function SteamStatsView({ stats }: { stats: SteamStats }) {
                 {stats.done ?? 0} / {stats.total}
               </strong>
               <span>{t('achievements')}</span>
-              <span className="gd-percent">{percent}%</span>
+              <span className="gd-percent">{percentText(percent)}</span>
             </div>
             <AchievementBar stats={stats} />
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { t } from './i18n'
+import { percentText, t } from './i18n'
 import { richText } from './richText'
 import { isTauri } from '@tauri-apps/api/core'
 import { Check, CircleArrowDown, TriangleAlert } from 'lucide-react'
@@ -139,7 +139,7 @@ function UpdateBanner() {
             <>
               {status}
               {typeof progress === 'number' && progress < 1 && (
-                <span className="update-dim"> {Math.round(progress * 100)}%</span>
+                <span className="update-dim"> {percentText(Math.round(progress * 100))}</span>
               )}
             </>
           ) : installError ? (
