@@ -21,6 +21,7 @@ let ownLastAt = 0
 let ownTimer
 let ownFailsInRow = 0
 let ownStopped = false // Twitch's own list came, Twitch refused, or this video can't be decoded
+let ownRefused = false // Twitch refused, or this video can't be decoded: no refining either
 let ownHovered = 0 // seconds hovered last
 let ownDecoder = null
 let ownDecoderKey = ''
@@ -118,7 +119,10 @@ function ownNext() {
   }).catch((error) => {
     console.error(error)
     // Not tried again: refused by Twitch (429, 403) stops them all; offline, the next hover tries
-    if (error.stopAll) return dropOwnPictures()
+    if (error.stopAll) {
+      ownRefused = true
+      return dropOwnPictures()
+    }
     if (navigator.onLine === false) return
     ownFailed.add(wanted.index)
     if (++ownFailsInRow >= OWN.fails) dropOwnPictures()
@@ -403,4 +407,43 @@ function closeOwnDecoder() {
   if (ownDecoder && ownDecoder.state !== 'closed') ownDecoder.close()
   ownDecoder = null
   ownDecoderKey = ''
+}
+
+// ---- For the waiting screen's refining (timeline.js, checkStart) --------------------------------
+// The first picture of the piece playing at a moment, as startSkip.js compares it, and when that
+// piece starts: { at, picture }, or null when it can't be had. Also once Twitch's own list came
+// (the tip's own pictures stop then, these don't). Same care: one download at a time, OWN.gap apart.
+const ownSleep = (ms) => new Promise((done) => setTimeout(done, ms))
+async function ownSkipPicture(seconds) {
+  if (ownRefused || typeof VideoDecoder === 'undefined') return null
+  // The pieces' list comes with the video's first load
+  for (let waited = 0; !ownPieceAt(0); waited += 500) {
+    if (waited >= 30000) return null
+    await ownSleep(500)
+  }
+  const found = ownPieceAt(seconds)
+  const level = ownLevel()
+  if (!found || !level) return null
+  while (ownBusy || performance.now() < ownLastAt + OWN.gap) await ownSleep(Math.max(ownLastAt + OWN.gap - performance.now(), 50))
+  ownBusy = true
+  ownLastAt = performance.now()
+  try {
+    const piece = ownAddress(level.address, found.piece.url)
+    const init = found.piece.initSegment?.url ? ownAddress(level.address, found.piece.initSegment.url) : null
+    const first = ownFirst(level.height || 0)
+    const { config, data } = init ? await ownFromMp4(piece, init, first) : await ownFromTs(piece, first)
+    const frame = await ownDecode(config, data)
+    try {
+      return { at: found.piece.start, picture: skipPicture(frame, 0, 0, frame.displayWidth, frame.displayHeight) }
+    } finally {
+      frame.close()
+    }
+  } catch (error) {
+    console.error(error)
+    if (error.stopAll) ownRefused = true
+    return null
+  } finally {
+    ownBusy = false
+    ownNext()
+  }
 }

@@ -189,6 +189,7 @@ function controlsData() {
       retry: t('Try again'),
       nextUp: t('Next|video'),
       noNext: t('No next video'),
+      startSkip: t('Skip the waiting screen'),
       close: t('Close'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {

@@ -242,6 +242,7 @@ export const video = {
   'Play the next video at the end': 'Lire la vidéo suivante à la fin',
   'Next|video': 'À suivre',
   'No next video': 'Aucune vidéo suivante',
+  'Skip the waiting screen': 'Passer l’écran d’attente',
   'The next one of its playlist, or of the list you opened it from': 'La suivante de sa playlist, ou de la liste d’où vous l’avez ouverte',
   'In playlists': 'Dans les playlists',
   'Always': 'Toujours',

@@ -47,6 +47,7 @@ function playerControls(env, media) {
     copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
     clock: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    skipStart: '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>', // Lucide ChevronsRight: past the waiting screen
   }
   const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`
   const html = env.html || ((text) => text)
@@ -93,6 +94,8 @@ function playerControls(env, media) {
     </div>
   </div>
   <button id="skip" hidden></button>
+  <button id="start-skip" hidden>${icon('skipStart')}<span id="start-skip-time"></span></button>
+  <div id="start-skip-card" hidden><div id="start-skip-picture"></div><div id="start-skip-label"></div></div>
   <div id="endcard" hidden><div id="endcard-picture"></div><div id="endcard-text"><div id="endcard-label"></div><div id="endcard-title"></div></div><button id="endcard-close">${icon('close')}</button></div>
   <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
   <div id="context" hidden></div>
@@ -410,6 +413,53 @@ function playerControls(env, media) {
   $('next').onclick = playNext
   $('next').onmouseenter = showUpNext
   $('next').onmouseleave = () => { $('upnext').hidden = true }
+  // ---- Past the waiting screen (startSkip.js finds it) -------------------------------------------
+  // A small button at the bottom left, outside the fading controls: until the video reaches the
+  // true start, or it's used. Hovered: the picture there. shown: { at: seconds, picture (as
+  // showPicture's), onUse() }, or null.
+  let startSkip = null
+  function setStartSkip(shown) {
+    startSkip = shown || null
+    $('start-skip').hidden = !startSkip
+    $('start-skip-card').hidden = true
+    if (!startSkip) return
+    $('start-skip-time').textContent = clock(startSkip.at)
+    $('start-skip').title = labels.startSkip
+    $('start-skip-label').textContent = labels.startSkip
+    drawStartSkip()
+  }
+  function drawStartSkip() {
+    if (startSkip && media.time() >= startSkip.at - 5) setStartSkip(null) // there already: gone for good
+  }
+  for (const kind of ['timeupdate', 'seeked']) video.addEventListener(kind, drawStartSkip)
+  $('start-skip').onclick = () => {
+    const used = startSkip
+    if (!used) return
+    setStartSkip(null)
+    jumpTo(used.at)
+    used.onUse?.()
+  }
+  $('start-skip').onmouseenter = () => {
+    const picture = startSkip?.picture
+    if (!picture || !pictureRoom()) return
+    const box = $('start-skip-picture')
+    const scale = START_CARD / picture.width
+    box.style.width = `${START_CARD}px`
+    box.style.height = `${Math.round(picture.height * scale)}px`
+    box.style.backgroundImage = 'none' // a dark box until its sheet is here
+    const image = new Image()
+    image.onload = () => {
+      if (startSkip?.picture !== picture) return
+      box.style.backgroundImage = `url("${picture.address}")`
+      box.style.backgroundSize = `${Math.round(picture.cols * picture.width * scale)}px auto`
+      box.style.backgroundPosition = `-${Math.round(picture.column * picture.width * scale)}px -${Math.round(picture.row * picture.height * scale)}px`
+    }
+    image.src = picture.address
+    $('start-skip-card').hidden = false
+  }
+  $('start-skip').onmouseleave = () => { $('start-skip-card').hidden = true }
+  const START_CARD = 176 // px: as wide as ⏭'s card
+
   // A new video in the same page (video-watch.js): its own end card again
   function setNext(shown) {
     next = shown || null
@@ -1012,7 +1062,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setStartSkip, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -1098,6 +1148,21 @@ const CONTROLS_CSS = `
   @keyframes endcard-in { from { opacity: 0; } }
   .no-animations #endcard { animation: none; }
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
+  /* Past the waiting screen: small, bottom left, as high as the end card on the right; stays when
+     the controls fade. Its card above it, like ⏭'s. */
+  #start-skip {
+    position: absolute; z-index: 5; left: 12px; bottom: 80px; height: 28px; padding: 0 10px 0 6px;
+    display: flex; align-items: center; gap: 4px; border-radius: 6px;
+    background: rgba(0, 0, 0, 0.7); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: background 0.15s;
+  }
+  #start-skip:hover { background: var(--accent, #2d4f7c); }
+  #start-skip svg { width: 16px; height: 16px; }
+  #start-skip-card {
+    position: absolute; z-index: 5; left: 12px; bottom: 114px; width: 176px; padding: 6px 8px 7px;
+    border-radius: 6px; background: rgba(0, 0, 0, 0.85); font-size: 12px; line-height: 1.35; pointer-events: none;
+  }
+  #start-skip-picture { margin: 0 0 5px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.08); background-repeat: no-repeat; }
+  #start-skip-label { color: var(--text-dim, #9a9a9a); }
 
   #bar { display: flex; align-items: center; gap: 6px; height: 46px; }
   .button {

@@ -97,6 +97,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
     "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
     "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
     "/previews.js" => return answer(200, "text/javascript", include_bytes!("../player/previews.js").to_vec()),
+    "/startSkip.js" => return answer(200, "text/javascript", include_bytes!("../player/startSkip.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     // How far the video is (video-watch.js), from any page in the player window, so a site could
     // fake it: only numbers pass, and all it can change is the current video's position and Watched mark

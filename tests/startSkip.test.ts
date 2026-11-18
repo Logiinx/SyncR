@@ -73,7 +73,7 @@ test('looks: the most different first, none twice, the oldest go', () => {
 test('refining: the first moment past the waiting screen, within 10 s', async () => {
   const found = skip.findWaiting(at(600, [cardA, cardA, content(1), content(2), content(3)]), [])
   const trueStart = 777
-  const start = await skip.refineStart(found, [], async (seconds: number) => (seconds < trueStart ? cardA : content(seconds)))
+  const start = await skip.refineStart(found, [], async (seconds: number) => ({ at: seconds, picture: seconds < trueStart ? cardA : content(seconds) }))
   expect(start).toBeGreaterThanOrEqual(trueStart)
   expect(start - trueStart).toBeLessThanOrEqual(skip.SKIP.precision)
   // No picture to be had: Twitch's own first true picture
@@ -81,9 +81,16 @@ test('refining: the first moment past the waiting screen, within 10 s', async ()
   // Two cards swapping: the second one, shown while refining, is still the waiting screen
   const swapping = skip.findWaiting(at(200, [cardA, cardB, cardA, cardB, content(1), content(2), content(3)]), [])
   const card = (seconds: number) => (Math.floor(seconds / 50) % 2 ? cardB : cardA)
-  const after = await skip.refineStart(swapping, [], async (seconds: number) => (seconds < trueStart ? card(seconds) : content(seconds)))
+  const after = await skip.refineStart(swapping, [], async (seconds: number) => ({ at: seconds, picture: seconds < trueStart ? card(seconds) : content(seconds) }))
   expect(after - trueStart).toBeGreaterThanOrEqual(0)
   expect(after - trueStart).toBeLessThanOrEqual(skip.SKIP.precision)
+  // Pictures from 10 s pieces: each one is the piece's start, before the moment asked
+  const pieces = await skip.refineStart(found, [], async (seconds: number) => {
+    const at = Math.floor(seconds / 10) * 10
+    return { at, picture: at < trueStart ? cardA : content(at) }
+  })
+  expect(pieces).toBeGreaterThanOrEqual(trueStart)
+  expect(pieces - trueStart).toBeLessThanOrEqual(skip.SKIP.precision + 10)
 })
 
 test('a button only for a waiting screen worth it, and not once past it', () => {

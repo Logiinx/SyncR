@@ -158,19 +158,20 @@ function findWaiting(pictures, lookTexts) {
 }
 
 // Narrows the true start between found.from and found.to with pictures asked for by time
-// (pictureAt(seconds) → picture, or null when none could be had). Answers seconds: the first moment
-// known to be past the waiting screen (never earlier, so no waiting screen is left at the jump).
+// (pictureAt(seconds) → { at, picture }: the picture shown at `at`, at or a bit before the moment
+// asked, as a video piece's first picture; or null when none could be had). Answers seconds: the
+// first moment known to be past the waiting screen (never earlier, so none of it is left at the jump).
 async function refineStart(found, lookTexts, pictureAt) {
   const looks = skipLooksOf(lookTexts)
   let from = found.from
   let to = found.to
   while (to - from > SKIP.precision) {
-    const middle = Math.round((from + to) / 2)
-    const picture = await pictureAt(middle)
-    if (!picture) break
-    const waiting = skipLearned(picture, looks) || found.run.some((one) => skipAlike(picture, one))
-    if (waiting) from = middle
-    else to = middle
+    const got = await pictureAt(Math.round((from + to) / 2))
+    // None, or from a piece starting where we already know (a long piece): as close as it gets
+    if (!got || got.at <= from || got.at >= to) break
+    const waiting = skipLearned(got.picture, looks) || found.run.some((one) => skipAlike(got.picture, one))
+    if (waiting) from = got.at
+    else to = got.at
   }
   return to
 }

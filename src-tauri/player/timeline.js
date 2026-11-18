@@ -152,6 +152,46 @@ async function askPreviews(url) {
   if (!usable) return
   previews = { ...best, folder }
   dropOwnPictures()
+  checkStart(list, folder).catch((error) => console.error(error))
+}
+
+// ---- The waiting screen at the start (startSkip.js) ---------------------------------------------
+// Twitch's smallest pictures of the first 30 min (its "low" list: all on one sheet), then our own
+// pictures to narrow it to ~10 s (previews.js). Once per video, when Twitch's list is there: a live
+// stream gets it only after its end (no own pictures in the background, DECISIONS "VOD start skip").
+let startChecked = false
+const loadSheet = (address) => new Promise((done, failed) => {
+  const image = new Image()
+  image.onload = () => done(image)
+  image.onerror = () => failed(new Error(`Sheet ${address} didn't load`))
+  image.src = address
+})
+async function checkStart(list, folder) {
+  if (startChecked) return
+  startChecked = true
+  const low = list.find((one) => one.quality === 'low') || list[0]
+  if (!low?.interval || !Array.isArray(low.images)) return
+  const here = () => (video.duration ? video.currentTime : position)
+  if (here() >= SKIP.within) return
+  const perSheet = low.cols * low.rows
+  const count = Math.min(low.count, Math.ceil((SKIP.within + SKIP.ahead) / low.interval) + 3)
+  const sheets = new Map()
+  const pictures = []
+  for (let i = 0; i < count; i++) {
+    const name = low.images[Math.floor(i / perSheet)]
+    if (!name) break
+    if (!sheets.has(name)) sheets.set(name, await loadSheet(`${folder}/${encodeURIComponent(name)}`))
+    const spot = i % perSheet
+    pictures.push({ at: i * low.interval, picture: skipPicture(sheets.get(name), (spot % low.cols) * low.width, Math.floor(spot / low.cols) * low.height, low.width, low.height) })
+  }
+  const looks = data.startLooks || []
+  const found = findWaiting(pictures, looks)
+  if (!found || here() >= found.to) return
+  const start = await refineStart(found, looks, ownSkipPicture)
+  if (!skipWorthIt(start, here())) return
+  // Twitch's first picture at or after it (the one before can still be the waiting screen)
+  const shown = previews ? pictureAt(Math.min(Math.ceil(start / previews.interval), previews.count - 1) * previews.interval) : null
+  controls.setStartSkip({ at: start, picture: shown })
 }
 
 // The stream is over (player.js): Twitch makes its list in the next minutes
