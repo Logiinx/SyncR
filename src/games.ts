@@ -280,8 +280,11 @@ export async function refreshGames(force = false) {
           else change.delayedFromLabel = game.releaseLabel
         }
         change.datedFrom = undefined
-      } else if (game.status === 'waiting' && after.level > before.level) {
-        change.datedFrom = game.datedFrom ?? formatRelease(game.releaseDate, game.releaseLabel)
+        change.datedFromDay = undefined
+      } else if (game.status === 'waiting' && after.level > before.level && game.datedFrom === undefined) {
+        // Saved as data, written when shown (in the app's language then), like delayedFrom
+        change.datedFrom = game.releaseLabel ?? ''
+        change.datedFromDay = game.releaseDate
       }
       // Moved back into (or before) its first date: no longer delayed
       const first = game.delayedFrom || game.delayedFromLabel ? releasePeriod(game.delayedFrom, game.delayedFromLabel) : undefined

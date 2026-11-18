@@ -556,7 +556,7 @@ const MOVED_LABELS = { released: textKey('Released'), bought: textKey('Owned on 
 
 function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
   const moved = games.filter((g) => g.movedBy)
-  const dated = games.filter((g) => g.datedFrom)
+  const dated = games.filter((g) => g.datedFrom !== undefined)
   const delayed = games.filter((g) => g.delayedFrom || g.delayedFromLabel)
   if (moved.length === 0 && dated.length === 0 && delayed.length === 0) return null
   return (
@@ -580,9 +580,9 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           kind="games-dated"
           icon={CalendarCheck}
           what={t('Date set')}
-          detail={fromTo(game.datedFrom!, formatRelease(game.releaseDate, game.releaseLabel))}
+          detail={fromTo(formatRelease(game.datedFromDay, game.datedFrom || undefined), formatRelease(game.releaseDate, game.releaseLabel))}
           onOpen={onOpen}
-          onDismiss={() => updateGame(game.id, { datedFrom: undefined })}
+          onDismiss={() => updateGame(game.id, { datedFrom: undefined, datedFromDay: undefined })}
         />
       ))}
       {delayed.map((game) => (

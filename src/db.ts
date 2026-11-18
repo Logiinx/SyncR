@@ -189,7 +189,11 @@ export interface Game {
   releaseLabel?: string // only a vague date is known, e.g. "Q1 2027"; neither = not announced (TBA)
   delayedFrom?: number // the earlier release day, when the refresh found a delay (banner until dismissed)
   delayedFromLabel?: string // the same when the earlier date was vague, e.g. "Q1 2027"
-  datedFrom?: string // the vaguer date before the refresh found a more precise one, e.g. "TBA" (banner until dismissed)
+  // The vaguer date before the refresh found a more precise one (banner until dismissed), like
+  // releaseLabel / releaseDate: IGDB's label ("Q1 2027"; '' = none, TBA) and its day. Saved before
+  // 2026-11-18: the text as shown then ("TBA"), no day.
+  datedFrom?: string
+  datedFromDay?: number
   movedBy?: 'released' | 'bought' | 'started' // SyncR moved it by itself (banner until dismissed or moved by hand)
   preordered?: boolean // Upcoming only: owned already, so no price alert; goes to Not started on release
   upNextMinutes?: number // Not started: Steam minutes played when first seen there (steam.ts followSteam); +1 h = Playing
