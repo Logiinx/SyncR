@@ -78,6 +78,7 @@ import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
 import { percentText, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
 import { richText, withIcon } from './richText'
+import SecretField from './SecretField'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
@@ -793,6 +794,7 @@ function GamesSettings() {
   const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
   const status = useProxyStatus(connection)
   const [fullStatus, setFullStatus] = useState(false) // a long message, tapped: shown in full
+  const [showPassword, setShowPassword] = useState(false)
 
   // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
   useEffect(() => {
@@ -821,12 +823,14 @@ function GamesSettings() {
       </label>
       <label className="setting">
         <span className="setting-label">{t('Proxy password')}</span>
-        <input
-          type="password"
+        <SecretField
           value={connection?.password ?? ''}
-          onChange={(e) => change({ password: e.target.value })}
+          onChange={(password) => change({ password })}
           disabled={!connection}
           autoComplete="off"
+          what={t('password')}
+          visible={showPassword}
+          onToggle={() => setShowPassword(!showPassword)}
         />
       </label>
       {/* One line (a long error would make the dialog grow on the phone): cut with …, the whole

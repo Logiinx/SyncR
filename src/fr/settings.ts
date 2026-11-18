@@ -103,6 +103,7 @@ export const settings = {
   'Manage accounts…': 'Gérer les comptes…',
   'Game search proxy address': 'Adresse du proxy de recherche de jeux',
   'Proxy password': 'Mot de passe du proxy',
+  password: 'mot de passe',
   'Needs the game search proxy (above)': 'Nécessite le proxy de recherche de jeux (ci-dessus)',
   '{name}: game details are private (Steam → Profile → Privacy)': '{name} : les détails des jeux sont privés (Steam → Profil → Confidentialité)',
   'Connected as {name} · {n} game': 'Connecté en tant que {name} · {n} jeu',

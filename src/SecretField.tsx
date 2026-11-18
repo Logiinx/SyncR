@@ -2,7 +2,8 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { t } from './i18n'
 import { Eye, EyeOff } from 'lucide-react'
 
-// A passphrase or PIN box with an eye that shows what's typed (PassphraseDialog, LockScreen).
+// A passphrase, PIN or password box with an eye that shows what's typed (PassphraseDialog,
+// LockScreen, PinDialog, the game search proxy's password in Settings).
 // The eye is handled by the parent, so one eye can show a "Repeat" box below too.
 // Edge's own reveal eye (the PC app's WebView2) is hidden here (index.css), or there'd be two.
 function SecretField({
@@ -13,14 +14,18 @@ function SecretField({
   visible,
   onToggle,
   inputRef,
+  disabled,
+  what: whatName,
 }: {
   value: string
   onChange: (value: string) => void
-  placeholder: string
+  placeholder?: string
   autoComplete: string
   visible: boolean
   onToggle: () => void
   inputRef?: RefObject<HTMLInputElement | null>
+  disabled?: boolean
+  what?: string // the eye's tooltip says "Show <what>" (default: the placeholder, lower case)
 }) {
   const ownRef = useRef<HTMLInputElement>(null)
   const ref = inputRef ?? ownRef
@@ -39,7 +44,7 @@ function SecretField({
     if (input && document.activeElement === input) cursor.current = [input.selectionStart ?? 0, input.selectionEnd ?? 0]
     onToggle()
   }
-  const what = placeholder.replace(/^[A-Z](?=[a-z])/, (letter) => letter.toLowerCase()) // "Passphrase" → "passphrase", "PIN" stays
+  const what = whatName ?? (placeholder ?? '').replace(/^[A-Z](?=[a-z])/, (letter) => letter.toLowerCase()) // "Passphrase" → "passphrase", "PIN" stays
   return (
     <div className="secret-field">
       <input
@@ -48,11 +53,11 @@ function SecretField({
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        spellCheck={false}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
       {/* mousedown prevented: typing goes on in the box. Skipped by Tab, which goes to the next box. */}
-      <button type="button" className="eye" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={toggle} title={visible ? t('Hide {what}', { what }) : t('Show {what}', { what })}>
+      <button type="button" className="eye" tabIndex={-1} disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={toggle} title={visible ? t('Hide {what}', { what }) : t('Show {what}', { what })}>
         {visible ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
       </button>
     </div>
