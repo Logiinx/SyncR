@@ -23,23 +23,17 @@ jobs:
         if: env.READY != 'true'
         run: echo "::notice::GCP_PUBSUB_KEY is not set, so no update signal was sent"
 
+      # Signs in with the key file itself (gcloud is on GitHub's machines). Not token_format:
+      # that needs the IAM Service Account Credentials API turned on in the project.
       - id: auth
         if: env.READY == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_PUBSUB_KEY }}
-          token_format: access_token
-          create_credentials_file: false
 
       - name: Send the signal
         if: env.READY == 'true'
         env:
-          TOKEN: ${{ steps.auth.outputs.access_token }}
           PROJECT: ${{ steps.auth.outputs.project_id }}
           VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'test' }}
-        run: |
-          data=$(printf '%s' "$VERSION" | base64)
-          curl --fail-with-body -sS -X POST \
-            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-            -d "{\"messages\":[{\"data\":\"$data\",\"attributes\":{\"syncr\":\"update\"}}]}" \
-            "https://pubsub.googleapis.com/v1/projects/$PROJECT/topics/syncr-gmail:publish"
+        run: gcloud pubsub topics publish syncr-gmail --project "$PROJECT" --message "$VERSION" --attribute syncr=update
