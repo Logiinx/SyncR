@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** drag a video into the Queue, or a Queue video out of it
 - **Better:** bigger pictures and clearer rows in the video lists
 - **Better:** To watch in two clear parts: the Queue, then “From your follows”
 - **Changed:** a row's ↗ and ✓ buttons show when the mouse is over it

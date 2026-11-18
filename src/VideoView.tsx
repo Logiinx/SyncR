@@ -16,7 +16,7 @@ import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, followOf, isRecent, markAllWatched, markOpened, setFollowStartSkip, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
-import { dragInQueue, dragPlaylist, dragVideo } from './videoDrag'
+import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useMusicName, useRewatchSection } from './videoFolders'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
@@ -75,6 +75,7 @@ function FoldRow(props: {
   onMenu?: (x: number, y: number) => void
   onPointerDown?: (e: React.PointerEvent<HTMLElement>) => void // dragging the row itself (a playlist)
   card?: ListCardContent // its card on hover; none: no card (Started)
+  queueHead?: boolean // the Queue's row: videos dragged onto it join the Queue (videoDrag.ts)
 }) {
   const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown, card } = props
   const rowRef = useRef<HTMLLIElement>(null)
@@ -89,7 +90,8 @@ function FoldRow(props: {
       data-item={props.id}
       data-drop-folder={drop ? drop.folder ?? '' : undefined}
       data-drop-channel={drop ? drop.channel ?? '' : undefined}
-      data-open={drop?.open}
+      data-open={drop?.open ?? (props.queueHead ? props.id : undefined)}
+      data-queue-head={props.queueHead ? '' : undefined}
       onPointerDown={onPointerDown}
       onContextMenu={
         onMenu &&
@@ -216,7 +218,8 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // Queue group (queued: that group's id): a second copy of the row, dragged only to change its place
 // in the Queue; a playlist's video shows its playlist (from) instead of its channel; one of
 // Rewatch's in To watch's group (ofRewatch) gets a ↻ icon, Music's a music note. after: the videos after it in its list, for ⏭.
-function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, onMenu, onOpenRow }: {
+// toQueue: it can be dragged into the Queue (videoDrag.ts); a playlist's video only there.
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, toQueue, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
@@ -227,6 +230,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   ofRewatch?: boolean
   from?: string
   after?: UpNext[]
+  toQueue?: { leaves: boolean }
   onMenu?: (x: number, y: number) => void
   onOpenRow: (id: string) => void
 }) {
@@ -261,7 +265,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
       data-item={`${queued ? 'queued ' : ''}${playlistId ? `${playlistId} ${video.id}` : video.id}`}
       data-queue-group={queued}
       data-queue-id={queued && video.id}
-      onPointerDown={queued ? dragInQueue : playlistId ? undefined : (e) => dragVideo(e, video, onOpenRow)}
+      onPointerDown={queued ? dragInQueue : playlistId && !toQueue ? undefined : (e) => dragVideo(e, video, { open: onOpenRow, toQueue, episode: !!playlistId })}
       onDragStart={(e) => e.preventDefault()} // the thumbnail's own dragging
       onContextMenu={(e) => {
         e.preventDefault()
@@ -392,7 +396,10 @@ function VideoView() {
   const grouping = grouped && shownChannel === 'all' && (list === 'towatch' || list === 'music')
   // The list loading counts as a change all at once too: its rows don't grow in when the tab opens
   // (which also put the remembered scroll back to the top, the page being short meanwhile)
-  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed}`)
+  // A drop into or out of the Queue too: its rows are already in place (videoDrag.ts)
+  const queueDrops = useQueueDrops()
+  const videoLifted = useVideoLifted()
+  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops}`)
   const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
@@ -403,7 +410,7 @@ function VideoView() {
     setBarMenu({ kind, x: box.right, y: box.bottom + 4 })
   }
   // Shows where it went: To watch, all follows, its group open
-  const openRow = (id: string) => setOpenGroups((now) => (now.includes(id) ? now : [...now, id]))
+  const openRow = (id: string) => (id === 'queue' ? setQueueFolded(false) : setOpenGroups((now) => (now.includes(id) ? now : [...now, id])))
   function showAdded(followId: string) {
     setList('towatch')
     setChannel('all')
@@ -449,7 +456,7 @@ function VideoView() {
     siblings.slice(siblings.indexOf(video) + 1).filter((other) => !other.gone && (list === 'watched' || !other.watched)).map((other) => ({ video: other }))
   // Outside Watched, a watched video is one of Rewatch's: it stays, grayed
   const videoRow = (video: FeedVideo, siblings: FeedVideo[], depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} toQueue={toQueue(video)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
@@ -637,7 +644,7 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
+      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} toQueue={toQueue(video, true)} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
     ]
   }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
@@ -672,9 +679,9 @@ function VideoView() {
   // To watch's videos (the chosen follow's, its playlists only with All follows), Music's (user,
   // 2026-11-18: they only show here while queued; tagged with the music note) and Rewatch's (tagged
   // rewatch). In To watch, Rewatch's only with All follows and unless switched off (More menu).
-  function queueEntries() {
-    if (!feed || !showQueue || (list !== 'towatch' && list !== 'rewatch')) return []
+  function queueCandidates() {
     const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist; rewatch?: boolean }>()
+    if (!feed || !showQueue || (list !== 'towatch' && list !== 'rewatch')) return where
     const allFollows = shownChannel === 'all'
     const withRewatch = list === 'rewatch' || (allFollows && queueRewatch)
     for (const video of feed.toWatch) if (allFollows || video.followId === shownChannel) where.set(video.id, { video })
@@ -685,16 +692,24 @@ function VideoView() {
       if (!allFollows || (ofRewatch && !withRewatch)) continue
       for (const video of episodes) if (!where.has(video.id)) where.set(video.id, { video, playlist, rewatch: ofRewatch })
     }
-    return queue.flatMap(({ id }) => {
-      const entry = where.get(id)
-      return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
-    })
+    return where
   }
-  const queued = queueEntries()
-  // No row when it's empty; its videos at the list's left edge, like the part below
+  const candidates = queueCandidates()
+  const queued = queue.flatMap(({ id }) => {
+    const entry = candidates.get(id)
+    return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
+  })
+  // A video the Queue would show, not in it yet, can be dragged into it (user, 2026-11-18). leaves:
+  // it then leaves its place, like a loose To watch video added another way (inQueueOnly).
+  function toQueue(video: FeedVideo, episode = false) {
+    if (!candidates.has(video.id) || video.watched || video.gone || queue.some((entry) => entry.id === video.id)) return undefined
+    return { leaves: list === 'towatch' && !episode && !video.folderId }
+  }
+  // No row when it's empty, except while a video that can join it is dragged (to drop into); its
+  // videos at the list's left edge, like the part below
   function queueRows(): ReactNode[] {
     const id = 'queue'
-    if (!queued.length) return []
+    if (!queued.length && !(videoLifted && candidates.size)) return []
     return [
       <FoldRow
         key={id}
@@ -705,6 +720,7 @@ function VideoView() {
         newCount={0}
         open={!queueFolded}
         onToggle={() => setQueueFolded(!queueFolded)}
+        queueHead
       />,
       ...(queueFolded
         ? []

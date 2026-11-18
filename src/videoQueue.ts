@@ -44,14 +44,14 @@ export function leaveQueue(ids: string[]) {
   if (queue.some((entry) => leaving.has(entry.id))) save(queue.filter((entry) => !leaving.has(entry.id)))
 }
 
-// Dragged (videoDrag.ts): just before `before`, or just after `after` when it went last among the
-// rows shown (the Queue can hold videos not shown right now, e.g. with one follow chosen)
-export function moveInQueue(id: string, before: string | null, after: string | null) {
-  const entry = queue.find((other) => other.id === id)
-  if (!entry) return
-  const rest = queue.filter((other) => other !== entry)
-  const at = before ? rest.findIndex((other) => other.id === before) : rest.findIndex((other) => other.id === after) + 1
-  if (at < 0) return
+// Dragged within the Queue or into it (videoDrag.ts): just before `before`, or just after `after`
+// when it went last among the rows shown (the Queue can hold videos not shown right now, e.g. with
+// one follow chosen); neither: at the end. One dragged in joins as added by hand.
+export function placeInQueue(id: string, before: string | null, after: string | null) {
+  const entry = queue.find((other) => other.id === id) ?? { id }
+  const rest = queue.filter((other) => other.id !== id)
+  const index = (other: string | null) => rest.findIndex((one) => one.id === other)
+  const at = index(before) >= 0 ? index(before) : index(after) >= 0 ? index(after) + 1 : rest.length
   save([...rest.slice(0, at), entry, ...rest.slice(at)])
 }
 

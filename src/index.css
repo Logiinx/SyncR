@@ -8408,7 +8408,7 @@ button.history-row.selected {
   pointer-events: none;
 }
 
-/* A Queue row dragged to a new place (dragInQueue): the others slide to make room; once dropped
+/* A Queue row dragged to a new place, or a video into the Queue: the others slide to make room; once dropped
    they're already in place, so no slide (settling) */
 .video-list.reordering .video-row:not(.lifted) {
   transition: transform 0.15s var(--ease-open);
@@ -8416,6 +8416,11 @@ button.history-row.selected {
 
 .video-list.settling .video-row:not(.lifted) {
   transition: none;
+}
+
+/* Dragged under the Queue: it leaves it. Its insides dim, its background stays (it's over rows). */
+.video-row.lifted.leaving > * {
+  opacity: 0.45;
 }
 
 .video-row.drop-into,
