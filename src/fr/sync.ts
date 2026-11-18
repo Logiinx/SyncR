@@ -45,7 +45,7 @@ export const sync = {
   'The passphrase you created on your other device.': 'La phrase secrète créée sur votre autre appareil.',
   'Repeat passphrase': 'Répétez la phrase secrète',
   'Not now': 'Pas maintenant',
-  'Working…': 'En cours…',
+  'Creating…': 'Création…',
   "Unlocked for now, but Windows couldn't store the sync key: SyncR will ask for the passphrase again at the next start.": 'Déverrouillé pour l’instant, mais Windows n’a pas pu enregistrer la clé de synchronisation : SyncR redemandera la phrase secrète au prochain démarrage.',
   'A passphrase was just created on another device. Close this and enter that one.': 'Une phrase secrète vient d’être créée sur un autre appareil. Fermez ceci et saisissez celle-là.',
   'No passphrase found in Dropbox': 'Aucune phrase secrète trouvée dans Dropbox',

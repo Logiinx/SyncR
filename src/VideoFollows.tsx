@@ -3,7 +3,7 @@ import { Bell, Pencil, Trash2, X } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
-import Spinner from './Spinner'
+import SubmitButton from './SubmitButton'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import Window from './Window'
 import { type VideoFollow } from './db'
@@ -274,21 +274,6 @@ function GamePicker(props: { id: string; channelId?: string; games: string[]; on
 }
 
 // What a follow keeps, in words, e.g. "Only: hotline · Under 15 min hidden"
-// The add windows' main button: "Saving…" with a spinner while it works
-function SubmitButton({ busy, disabled, label }: { busy: boolean; disabled: boolean; label: string }) {
-  return (
-    <button type="submit" className="primary" disabled={busy || disabled}>
-      {busy ? (
-        <span className="loading-line">
-          <Spinner size={13} /> {t('Saving…')}
-        </span>
-      ) : (
-        label
-      )}
-    </button>
-  )
-}
-
 function followSummary(follow: VideoFollow) {
   const rules = [
     follow.music ? t('Music channel') : '',

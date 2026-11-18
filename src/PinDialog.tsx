@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { t, textKey } from './i18n'
 import Window from './Window'
+import SubmitButton from './SubmitButton'
 import SecretField from './SecretField'
 import { changePin, checkPin, MIN_PIN_LENGTH, turnPinOff, turnPinOn } from './pinLock'
 
@@ -106,9 +107,7 @@ function PinDialog({ mode, onClose }: { mode: PinDialogMode; onClose: () => void
         <button type="button" onClick={onClose}>
           {t('Cancel')}
         </button>
-        <button type="submit" className="primary" disabled={busy}>
-          {t(busy ? TEXT[mode].busy : TEXT[mode].button)}
-        </button>
+        <SubmitButton busy={busy} label={t(TEXT[mode].button)} busyLabel={t(TEXT[mode].busy)} />
       </div>
     </Window>
   )

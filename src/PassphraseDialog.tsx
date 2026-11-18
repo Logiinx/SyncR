@@ -3,6 +3,7 @@ import { t } from './i18n'
 import { createPassphrase, hasPassphrase, MIN_PASSPHRASE_LENGTH, unlock } from './crypto'
 import Window from './Window'
 import Spinner from './Spinner'
+import SubmitButton from './SubmitButton'
 import SecretField from './SecretField'
 
 // Asks for the sync passphrase. First device: create it (typed twice). Other devices: enter it.
@@ -110,9 +111,12 @@ function PassphraseDialog({ note, onClose }: { note?: string; onClose: () => voi
         <button type="button" onClick={onClose}>
           {t('Not now')}
         </button>
-        <button type="submit" className="primary" disabled={busy || mode === 'loading'}>
-          {busy ? t('Working…') : mode === 'create' ? t('Create') : t('Unlock')}
-        </button>
+        <SubmitButton
+          busy={busy}
+          disabled={mode === 'loading'}
+          label={mode === 'create' ? t('Create') : t('Unlock')}
+          busyLabel={mode === 'create' ? t('Creating…') : t('Unlocking…')}
+        />
       </div>
     </Window>
   )

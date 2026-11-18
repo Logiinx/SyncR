@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { plural, t, useLanguage } from './i18n'
 import { KeyRound, Lock, LockOpen } from 'lucide-react'
 import WindowControls from './WindowControls'
+import SubmitButton from './SubmitButton'
 import SecretField from './SecretField'
 import BackButton from './BackButton'
 import { openWithKey } from './localDb'
@@ -143,9 +144,11 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
           {error && <p className="dialog-error">{error}</p>}
 
           <div className="dialog-buttons">
-            <button type="submit" className="primary" disabled={busy}>
-              {busy ? (step === 'new-pin' ? t('Saving…') : t('Unlocking…')) : step === 'new-pin' ? t('Save PIN') : t('Unlock')}
-            </button>
+            <SubmitButton
+              busy={busy}
+              label={step === 'new-pin' ? t('Save PIN') : t('Unlock')}
+              busyLabel={step === 'new-pin' ? t('Saving…') : t('Unlocking…')}
+            />
           </div>
 
           {step === 'pin' && (
