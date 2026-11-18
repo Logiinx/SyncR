@@ -8527,6 +8527,66 @@ button.history-row.selected {
   width: min(224px, 40%);
 }
 
+/* Grid (the bar's switch, user, 2026-11-19): videos as tiles, as many per line as fit; folder,
+   playlist, channel and Queue rows stay full rows. Tiles aren't indented (only their headers). */
+.video-list.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(192px, 100%), 1fr)); /* tiny window: one, as wide as it */
+  column-gap: 8px;
+}
+
+.video-list.grid.big-pictures {
+  grid-template-columns: repeat(auto-fill, minmax(min(224px, 100%), 1fr));
+}
+
+.video-list.grid > .video-group {
+  grid-column: 1 / -1;
+}
+
+.video-list.grid > .video-row:not(.video-group) {
+  position: relative;
+  align-items: stretch;
+  margin-left: 0 !important; /* its depth (inline) is for the list */
+  border-bottom: none;
+  border-radius: 6px; /* the picked tint */
+}
+
+.video-list.grid > .video-row:not(.video-group) > .video-row-open {
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 6px 10px;
+}
+
+.video-list.grid .video-thumb {
+  width: 100%;
+}
+
+.video-list.grid .video-text {
+  width: 100%;
+}
+
+/* ↗ and ✓ over the picture's top right (the LIVE tag has its top left), on hover like the list's */
+.video-list.grid > .video-row:not(.video-group) > .video-row-action {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px;
+  background: var(--bg);
+}
+
+/* Same order as in the list, the last one in the corner (all are buttons, so of-type counts them) */
+.video-list.grid > .video-row:not(.video-group) > .video-row-action:nth-last-of-type(2) {
+  right: 40px;
+}
+
+.video-list.grid > .video-row:not(.video-group) > .video-row-action:nth-last-of-type(3) {
+  right: 70px;
+}
+
+.video-list.grid > .video-row:not(.video-group) > .video-row-action:hover {
+  background: color-mix(in srgb, var(--text) 14%, var(--bg));
+}
+
 .video-thumb img {
   display: block;
   width: 100%;

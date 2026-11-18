@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** videos as a grid of pictures: the grid / list switch in the top bar
+
 ## [0.90.0] - 2026-11-19
 
 **Video** (PC only)

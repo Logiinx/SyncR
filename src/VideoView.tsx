@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -52,6 +52,13 @@ function orderButtonTitle(playlist: VideoPlaylist) {
   if (playlist.youtubeOrder) return playlist.newestFirst ? t('Back to YouTube’s order') : t('Reverse YouTube’s order')
   return playlist.newestFirst ? t('Show the oldest first') : t('Show the newest first')
 }
+
+// Grid or list, this PC only; a switch in the bar like Games' Covers / List (user, 2026-11-19)
+type ListLayout = 'list' | 'grid'
+const listLayouts = (): { value: ListLayout; label: ReactNode; title: string }[] => [
+  { value: 'grid', label: <LayoutGrid size={15} />, title: t('Grid') },
+  { value: 'list', label: <ListIcon size={15} />, title: t('List') },
+]
 
 const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : undefined)
 
@@ -360,7 +367,8 @@ function VideoView() {
   // Rewatch is its own list, or a section at the bottom of To watch (Video settings window)
   const asSection = useRewatchSection()
   const musicName = useMusicName()
-  const listClass = useBigPictures() ? 'video-list big-pictures' : 'video-list' // i18n-ok
+  const [layout, setLayout] = useLocalState<ListLayout>('syncr.video.layout', 'list')
+  const listClass = `video-list${useBigPictures() ? ' big-pictures' : ''}${layout === 'grid' ? ' grid' : ''}` // i18n-ok
   const list: List = asSection && pickedList === 'rewatch' ? 'towatch' : pickedList
   const [channel, setChannel] = useLocalState('syncr.video.follow', 'all') // a follow's id, or all of them
   const [adding, setAdding] = useState<string | null>(null) // Add a follow open, with the link it starts with
@@ -420,7 +428,7 @@ function VideoView() {
   // A drop into or out of the Queue too: its rows are already in place (videoDrag.ts)
   const queueDrops = useQueueDrops()
   const videoLifted = useVideoLifted()
-  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops}`)
+  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops} ${layout}`)
   const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
@@ -979,8 +987,9 @@ function VideoView() {
 
   return (
     <main className="page games-page" ref={pageRef}>
-      <div className="games">
-        <div className={`games-views reminders-toolbar video-toolbar pinned-bar${videoLifted ? ' over-list' : ''}`}>
+      {/* Grid: wider, like Reminders' month grid; the bar is that wide in both, so the switch stays put */}
+      <div className={layout === 'grid' ? 'games wide' : 'games'}>
+        <div className={`games-views reminders-toolbar video-toolbar calendar-head pinned-bar${videoLifted ? ' over-list' : ''}`}>
           <FillSwitch
             className="video-list-switch"
             options={[
@@ -1015,6 +1024,7 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
+            <FillSwitch className="calendar-layouts" options={listLayouts()} value={layout} onChange={setLayout} />
             <button className="reminders-refresh" disabled={checking || (!follows?.length && !feed?.playlists.length)} title={t('Check for new videos')} onClick={() => void checkVideosNow()}>
               {checking ? <Spinner label={t('Checking…')} /> : <RefreshCw size={15} />}
             </button>
@@ -1116,7 +1126,8 @@ function VideoView() {
         ) : (
           feed && nothingShown && <p className="games-empty">{empty}</p>
         )}
-        <ul className={listClass} ref={listRef}>{rows}</ul>
+        {/* Switching grid / list: it fades in, like Games' (a new list, so nothing else animates) */}
+        <ul key={layout} className={`${listClass} games-tab-in`} ref={listRef}>{rows}</ul>
       </div>
       {adding !== null && <FollowDialog startLink={adding} onClose={() => setAdding(null)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** les vidéos en grille d’images : le bouton grille / liste en haut
+
 ## [0.90.0] - 2026-11-19
 
 **Vidéo** (PC uniquement)
