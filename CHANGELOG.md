@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** preview pictures on the bar of a Twitch stream still live
+
 ## [0.87.0] - 2026-11-18
 
 **Video** (PC only)

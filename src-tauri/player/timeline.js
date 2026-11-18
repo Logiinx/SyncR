@@ -121,11 +121,14 @@ video.addEventListener('timeupdate', drawGamesButton)
 video.addEventListener('seeking', drawGamesButton)
 
 // ---- Preview pictures ---------------------------------------------------------------------------
-// Twitch's own list: about 200 small pictures per video, on sheets of a few rows and columns
+// Twitch's own list: about 200 small pictures per video, on sheets of a few rows and columns.
+// Twitch makes it once a stream is over: until then (or if it has none) previews.js makes its own.
 let previews = null
+let previewsKnown = false // Twitch answered (or couldn't): without its list, previews.js's own
+let previewsAddress = null
 // The picture at a moment, as controls.js shows it
 function pictureAt(seconds) {
-  if (!previews) return null
+  if (!previews) return previewsKnown ? ownPictureAt(seconds) : null
   const { interval, count, cols, rows, width, height, images, folder } = previews
   const index = Math.min(Math.floor(seconds / interval), count - 1)
   const perSheet = cols * rows
@@ -136,15 +139,35 @@ function pictureAt(seconds) {
 }
 
 async function askPreviews(url) {
+  previewsAddress = url
   const place = new URL(url)
   const folder = `/v/${place.host}${place.pathname.slice(0, place.pathname.lastIndexOf('/'))}`
   const response = await fetch(`/v/${place.host}${place.pathname}`)
+  // Not made yet (a stream still live answers 403) or none: not a hiccup to try again
+  if (response.status === 403 || response.status === 404) return
   if (!response.ok) throw new Error(`Previews answered ${response.status}`)
   const list = await response.json()
   const best = list.find((one) => one.quality === 'high') || list[0]
   const usable = best && best.interval > 0 && best.count > 0 && best.cols > 0 && best.rows > 0 && best.width > 0 && best.height > 0 && Array.isArray(best.images)
   if (!usable) return
   previews = { ...best, folder }
+  dropOwnPictures()
+}
+
+// The stream is over (player.js): Twitch makes its list in the next minutes
+const PREVIEWS_AFTER_END = [30, 120, 300, 600] // seconds after the end
+function streamOver() {
+  for (const after of PREVIEWS_AFTER_END) {
+    setTimeout(async () => {
+      if (previews) return
+      try {
+        const url = previewsAddress || (await askTwitch('query($id: ID!) { video(id: $id) { seekPreviewsURL } }'))?.seekPreviewsURL
+        if (url) await askPreviews(url)
+      } catch (error) {
+        console.error(error)
+      }
+    }, after * 1000)
+  }
 }
 
 // ---- Time of day -------------------------------------------------------------------------------
@@ -278,13 +301,15 @@ async function askDetails(tries) {
     })
     if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
     const details = (await response.json()).data?.video
-    if (!details) return
+    if (!details) return void (previewsKnown = true)
     noteStart(details.recordedAt)
     noteGames(details.moments?.edges || [], details.game)
     if (details.seekPreviewsURL) await askPreviews(details.seekPreviewsURL)
+    previewsKnown = true
   } catch (error) {
     console.error(error)
     if (tries > 1) setTimeout(() => askDetails(tries - 1), DETAILS_AGAIN)
+    else previewsKnown = true
   }
 }
 askDetails(DETAILS_TRIES)

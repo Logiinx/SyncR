@@ -319,7 +319,8 @@ pub fn run() {
     .register_asynchronous_uri_scheme_protocol("syncr-video", |context, request, responder| {
       let app = context.app_handle().clone();
       let uri = request.uri().clone();
-      tauri::async_runtime::spawn(async move { responder.respond(video_window::player_answer(app, uri).await) });
+      let range = request.headers().get("Range").and_then(|value| value.to_str().ok()).map(str::to_owned);
+      tauri::async_runtime::spawn(async move { responder.respond(video_window::player_answer(app, uri, range).await) });
     })
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser

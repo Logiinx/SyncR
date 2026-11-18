@@ -176,7 +176,7 @@ const controls = playerControls({
   },
 }, media)
 // For timeline.js and chat.js
-const { $, icon, clock, percentText, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
+const { $, icon, clock, percentText, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
 // What ⏭ plays changed while this one plays: the stream's next part was found (video_window.rs,
 // video_player_upcoming)
 window.syncrUpcoming = (shown) => controls.setNext(shown)
@@ -588,7 +588,9 @@ async function load() {
   hls.on(Hls.Events.FRAG_PARSING_INIT_SEGMENT, measureSource)
   hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => {
     checkUncut(loaded.details.fragments)
+    const wasLive = live
     live = loaded.details.live
+    if (wasLive && !live) streamOver() // timeline.js: Twitch's preview pictures come now
     // Over (or never live): the app may move it to Watched near its end and play on after it
     if (!live && !liveTold) {
       liveTold = true

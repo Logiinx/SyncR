@@ -75,7 +75,7 @@ fn query_value<'a>(uri: &'a tauri::http::Uri, name: &str) -> Option<&'a str> {
   uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value)
 }
 
-pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> tauri::http::Response<Vec<u8>> {
+pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: Option<String>) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
   use tauri::Emitter;
   let answer = |status: u16, kind: &str, body: Vec<u8>| {
@@ -83,7 +83,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     if kind == "text/html" {
       response = response.header(
         "Content-Security-Policy",
-        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://i.ytimg.com https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app 'self'; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; connect-src 'self' https://gql.twitch.tv https://api.betterttv.net https://api.frankerfacez.com https://7tv.io; media-src blob: data:; img-src https://static-cdn.jtvnw.net https://i.ytimg.com https://cdn.betterttv.net https://cdn.frankerfacez.com https://cdn.7tv.app 'self' blob:; worker-src blob:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       );
     }
     response.body(body).unwrap_or_default()
@@ -96,6 +96,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     "/player.js" => return answer(200, "text/javascript", include_bytes!("../player/player.js").to_vec()),
     "/chat.js" => return answer(200, "text/javascript", include_bytes!("../player/chat.js").to_vec()),
     "/timeline.js" => return answer(200, "text/javascript", include_bytes!("../player/timeline.js").to_vec()),
+    "/previews.js" => return answer(200, "text/javascript", include_bytes!("../player/previews.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     // How far the video is (video-watch.js), from any page in the player window, so a site could
     // fake it: only numbers pass, and all it can change is the current video's position and Watched mark
@@ -151,10 +152,20 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
     return answer(403, "text/plain", Vec::new());
   }
   let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
-  let Ok(response) = player_client().get(format!("https://{host}/{rest}{query}")).send().await else {
+  // Only the start of a piece (previews.js's own preview pictures): only "bytes=<from>-<to>" passes
+  let range = range.filter(|value| {
+    let numbers = |text: &str| !text.is_empty() && text.len() <= 12 && text.bytes().all(|byte| byte.is_ascii_digit());
+    value.strip_prefix("bytes=").and_then(|span| span.split_once('-')).is_some_and(|(from, to)| numbers(from) && numbers(to))
+  });
+  let mut ask = player_client().get(format!("https://{host}/{rest}{query}"));
+  if let Some(range) = &range {
+    ask = ask.header(reqwest::header::RANGE, range);
+  }
+  let Ok(response) = ask.send().await else {
     return answer(502, "text/plain", Vec::new());
   };
   let status = response.status().as_u16();
+  let part = response.headers().get(reqwest::header::CONTENT_RANGE).and_then(|value| value.to_str().ok()).map(str::to_owned);
   let Ok(body) = response.bytes().await else {
     return answer(502, "text/plain", Vec::new());
   };
@@ -163,7 +174,10 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri) -> taur
   }
   // Preview pictures and their list; the rest is video
   let kind = if rest.ends_with(".jpg") { "image/jpeg" } else if rest.ends_with(".json") { "application/json" } else { "video/mp2t" };
-  answer(status, kind, body.to_vec())
+  match part {
+    Some(part) if status == 206 => Response::builder().status(206).header("Content-Type", kind).header("Content-Range", part).body(body.to_vec()).unwrap_or_default(),
+    _ => answer(status, kind, body.to_vec()),
+  }
 }
 
 // All pages of the player's storage folder must start the same way (also video_extensions.rs). A

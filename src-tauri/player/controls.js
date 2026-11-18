@@ -191,10 +191,10 @@ function playerControls(env, media) {
   const PICTURE = { width: 220, needsWidth: 260, needsHeight: 220 }
   const sheets = new Map() // address: 'loading', 'ready' or 'failed'
   let wantedPicture = null
+  const pictureRoom = () => box.clientWidth >= PICTURE.needsWidth && box.clientHeight >= PICTURE.needsHeight
   function showPicture(picture) {
     const tipPicture = $('tip-picture')
-    const room = box.clientWidth >= PICTURE.needsWidth && box.clientHeight >= PICTURE.needsHeight
-    wantedPicture = room ? picture : null
+    wantedPicture = pictureRoom() ? picture : null
     if (!wantedPicture) return void (tipPicture.hidden = true)
     const { address } = picture
     if (!sheets.has(address)) {
@@ -1012,7 +1012,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
