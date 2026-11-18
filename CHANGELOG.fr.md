@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** glisser une vidéo dans la file d’attente, ou l’en sortir
+- **Nouveau :** des images encore plus grandes : Paramètres vidéo → Liste → Images plus grandes
 - **Amélioré :** des images plus grandes et des lignes plus claires dans les listes de vidéos
 - **Amélioré :** À regarder en deux parties claires : la file d’attente, puis « De vos chaînes suivies »
 - **Changé :** les boutons ↗ et ✓ d’une ligne s’affichent au survol de la souris

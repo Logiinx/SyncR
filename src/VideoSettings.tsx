@@ -8,7 +8,7 @@ import { SettingRow, SettingsCard } from './SettingsCard'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
 import { t } from './i18n'
-import { setAutoRewatch, setMusicName, setRewatchSection, useAutoRewatch, useMusicName, useRewatchSection } from './videoFolders'
+import { setAutoRewatch, setBigPictures, setMusicName, setRewatchSection, useAutoRewatch, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
 import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
 import { setPopupCardSize, usePopupCardSize, type PopupCardSize } from './videoAlerts'
 
@@ -38,6 +38,7 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const [player, setPlayer] = useState(loadPlayerSettings)
   const rewatchSection = useRewatchSection()
   const musicName = useMusicName()
+  const bigPictures = useBigPictures()
   const autoRewatch = useAutoRewatch()
   const shows = useCardPieces()
   const popupCards = usePopupCardSize()
@@ -108,6 +109,9 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
               title={t('Those that don’t check for new videos once a day, unless they’re in one of your folders. Turning this off leaves them where they are.')}
             >
               <input type="checkbox" checked={autoRewatch} onChange={(e) => void setAutoRewatch(e.target.checked)} />
+            </SettingRow>
+            <SettingRow label={t('Bigger pictures')} title={t('Easier to see, fewer videos fit on the screen')}>
+              <input type="checkbox" checked={bigPictures} onChange={(e) => setBigPictures(e.target.checked)} />
             </SettingRow>
             <SettingRow label={t('Show “Music” next to its icon')} title={t('Off: the music note alone, its name when hovered')}>
               <input type="checkbox" checked={musicName} onChange={(e) => setMusicName(e.target.checked)} />

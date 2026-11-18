@@ -8496,6 +8496,11 @@ button.history-row.selected {
   background: var(--bg-raised);
 }
 
+/* Video settings → List → Bigger pictures */
+.video-list.big-pictures .video-thumb {
+  width: min(224px, 40%);
+}
+
 .video-thumb img {
   display: block;
   width: 100%;

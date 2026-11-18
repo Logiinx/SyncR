@@ -10,6 +10,8 @@ export const video = {
   'New folder in {name}…': 'Nouveau dossier dans {name}…',
   'Move to folder': 'Déplacer vers un dossier',
   Music: 'Musique',
+  'Bigger pictures': 'Images plus grandes',
+  'Easier to see, fewer videos fit on the screen': 'Plus faciles à voir, moins de vidéos tiennent à l’écran',
   'Show “Music” next to its icon': 'Afficher « Musique » à côté de son icône',
   'Off: the music note alone, its name when hovered': 'Désactivé : la note de musique seule, son nom au survol',
   'Music channel': 'Chaîne musicale',

@@ -59,6 +59,11 @@ const musicName = localSwitch('syncr.video.musicName', true)
 export const setMusicName = musicName.set
 export const useMusicName = musicName.use
 
+// Bigger pictures in the list's video rows: 224 x 126 instead of 192 x 108 (user, 2026-11-18)
+const bigPictures = localSwitch('syncr.video.bigPictures')
+export const setBigPictures = bigPictures.set
+export const useBigPictures = bigPictures.use
+
 // Finished playlists (no daily check) go to Rewatch by themselves: when added, when their check is
 // turned off, and all at once when this is turned on. Only from the top: one in your own folder
 // stays there. Turning it off leaves them where they are; one taken out by hand stays out (until

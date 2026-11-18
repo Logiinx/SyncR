@@ -17,7 +17,7 @@ import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, follow
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
-import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useMusicName, useRewatchSection } from './videoFolders'
+import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
@@ -344,6 +344,7 @@ function VideoView() {
   // Rewatch is its own list, or a section at the bottom of To watch (Video settings window)
   const asSection = useRewatchSection()
   const musicName = useMusicName()
+  const listClass = useBigPictures() ? 'video-list big-pictures' : 'video-list' // i18n-ok
   const list: List = asSection && pickedList === 'rewatch' ? 'towatch' : pickedList
   const [channel, setChannel] = useLocalState('syncr.video.follow', 'all') // a follow's id, or all of them
   const [adding, setAdding] = useState<string | null>(null) // Add a follow open, with the link it starts with
@@ -943,7 +944,7 @@ function VideoView() {
           <p key={error} className="games-empty error">{error}</p>
         ))}
         {feed && nothingShown && checking && list === 'towatch' && follows?.length ? (
-          <ul className="video-list">
+          <ul className={listClass}>
             {[0, 1, 2].map((row) => (
               <li key={row} className="video-row">
                 <span className="video-thumb skeleton" />
@@ -957,7 +958,7 @@ function VideoView() {
         ) : (
           feed && nothingShown && <p className="games-empty">{empty}</p>
         )}
-        <ul className="video-list" ref={listRef}>{rows}</ul>
+        <ul className={listClass} ref={listRef}>{rows}</ul>
       </div>
       {adding !== null && <FollowDialog startLink={adding} onClose={() => setAdding(null)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
