@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react'
+import { currentZoom } from './appearance'
 import { read, write } from './localState'
 
 // The Video tab's scroll: one spot per list, kept on this PC, also after a restart (user,
@@ -6,9 +7,12 @@ import { read, write } from './localState'
 // arriving above it or leaving don't move you; when that row is gone, the plain distance.
 interface Spot {
   item: string // the row's data-item, '' when none
-  offset: number // px from the page's top to the row's
+  offset: number // px from the page's top to the row's (the page's own px, like scrollTop)
   top: number // the page's scrollTop
 }
+
+// Screen px between two places → the page's own px: the app's scale (a zoom) makes them bigger
+const pagePx = (screen: number) => screen / currentZoom()
 const KEY = 'syncr.video.scroll'
 const SAVE_AFTER = 300 // ms after the last scroll
 
@@ -18,7 +22,7 @@ function spotOf(page: HTMLElement): Spot {
   const pageTop = page.getBoundingClientRect().top
   for (const row of rowsIn(page)) {
     const box = row.getBoundingClientRect()
-    if (box.bottom > pageTop) return { item: row.dataset.item ?? '', offset: box.top - pageTop, top: page.scrollTop }
+    if (box.bottom > pageTop) return { item: row.dataset.item ?? '', offset: pagePx(box.top - pageTop), top: page.scrollTop }
   }
   return { item: '', offset: 0, top: page.scrollTop }
 }
@@ -81,7 +85,7 @@ export function useListScroll(pageRef: RefObject<HTMLElement | null>, list: stri
     restoring.current = false
     const spot = read<Record<string, Spot>>(KEY, {})[list]
     const row = spot?.item ? [...rowsIn(page)].find((one) => one.dataset.item === spot.item) : undefined
-    if (row) page.scrollTop += row.getBoundingClientRect().top - page.getBoundingClientRect().top - spot!.offset
+    if (row) page.scrollTop += pagePx(row.getBoundingClientRect().top - page.getBoundingClientRect().top) - spot!.offset
     else page.scrollTop = spot?.top ?? 0
   })
 }
