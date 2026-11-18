@@ -25,6 +25,8 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Fixed:** the bell now rings for Twitch channels followed for some games only
+- **Fixed:** Try another way goes on where you are, not from the link’s time or the start
+- **Small fixes:** replayed watched videos kept in the Queue
 
 ## [0.85.0] - 2026-11-18
 

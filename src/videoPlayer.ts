@@ -277,9 +277,13 @@ const viaText = (way: Way) => (OTHER_SITES.includes(way) ? t('via {site}', { sit
 
 // The time in a pasted link (?t=), for that video's opening only: it wins over where you stopped
 let linkStart: { videoId: string; t: number } | null = null
+// Where the open video is now (its reports): opened another way, it goes on from there, not from
+// the link's time or the start
+let playedTo: { videoId: string; t: number } | null = null
 
 // A video marked as Watched starts from the beginning. Seconds, or 0.
 function startAt(video: PlayableVideo) {
+  if (playedTo?.videoId === video.id) return playedTo.t
   if (linkStart?.videoId === video.id) return linkStart.t
   return video.watched ? 0 : Math.floor(resumePosition(video.id)?.t ?? 0)
 }
@@ -399,7 +403,9 @@ function listenToBar() {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length })
-    if (!current.music && resumePosition(current.id)) queueStarted(current.id)
+    playedTo = { videoId: current.id, t: Math.floor(seconds) }
+    // A watched one played again stays out: the Queue never shows watched videos, it would stay in it unseen
+    if (!current.music && !watchedNow && resumePosition(current.id)) queueStarted(current.id)
     if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
     if (current.duration > 0 && !current.music && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
@@ -445,6 +451,7 @@ function listenToBar() {
 // What goes with a video starting in the window
 function startWatching(video: PlayableVideo, playlistId: string | null, after: UpNext[]) {
   current = video
+  playedTo = null
   closedAtEnd = null
   endSeen = false
   playlist = playlistId

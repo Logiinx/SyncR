@@ -25,6 +25,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Corrigé :** la cloche sonne enfin pour les chaînes Twitch suivies pour certains jeux seulement
+- **Corrigé :** « Essayer un autre moyen » reprend où vous en êtes, pas au temps du lien ni au début
+- **Petites corrections :** vidéos déjà vues revues gardées dans la file d’attente
 
 ## [0.85.0] - 2026-11-18
 
