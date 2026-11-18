@@ -129,6 +129,21 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
       }
       return answer(204, "text/plain", Vec::new());
     }
+    // The channel's waiting screen, learned (startSkip.js): up to 8 tiny pictures as text (base64 with
+    // - and _, joined with dots: nothing to unescape). Also open
+    // to any site in the window: only that exact shape passes, and the app only keeps it for the
+    // open video's channel, if followed (a fake one could at worst make that channel's skip wrong).
+    "/looks" => {
+      let look = |text: &str| text.len() == 576 && text.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_');
+      if let (Some(looks), Some(video)) = (query_value(&uri, "looks"), query_value(&uri, "video")) {
+        let looks: Vec<&str> = looks.split('.').collect();
+        let video_ok = !video.is_empty() && video.len() <= 40 && video.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-');
+        if video_ok && (1..=8).contains(&looks.len()) && looks.iter().all(|one| look(one)) {
+          let _ = app.emit_to("main", "video-start-looks", serde_json::json!({ "video": video, "looks": looks }));
+        }
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     // The ⏭ button or Shift+N (controls.js): the app plays the next video of the list. Also open to
     // any site in the window: that's all it can do.
     "/next" => {

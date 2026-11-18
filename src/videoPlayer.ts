@@ -5,7 +5,7 @@ import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
-import { addOrFindVideo, markOpened, setWatched, watchWatched } from './video'
+import { addOrFindVideo, followOfChannel, loadFollowsNow, markOpened, setFollowStartSkip, setWatched, watchWatched } from './video'
 import { askNextPart, knownNextPart, PART_GAP } from './videoParts'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
@@ -190,6 +190,13 @@ function controlsData() {
       nextUp: t('Next|video'),
       noNext: t('No next video'),
       startSkip: t('Skip the waiting screen'),
+      startBack: t('Back to the waiting screen'),
+      rememberStart: t('Remember as waiting screen'),
+      startRemembered: t('Waiting screen remembered'),
+      rememberFollowed: t('Only for followed channels'),
+      rememberMusic: t('Not for music videos'),
+      rememberLive: t('Not while it’s live'),
+      rememberLate: t('Only in the first 30 minutes'),
       close: t('Close'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {
@@ -206,10 +213,11 @@ function controlsData() {
   }
 }
 
-// The waiting screen's search at the start (src-tauri/player/startSkip.js): off for music videos
-// (DECISIONS.md "VOD start skip"); looks: the channel's learned waiting screen, none yet
+// The waiting screen's search at the start (src-tauri/player/startSkip.js, skipShow): off for music
+// videos (DECISIONS.md "VOD start skip"); its channel's switch and learned look, if followed
 function startSkipData(video: PlayableVideo) {
-  return { off: Boolean(video.music), looks: [] as string[] }
+  const follow = followOfChannel(video)
+  return { off: Boolean(video.music || follow?.music), followed: !!follow, auto: !!follow?.autoSkip, looks: follow?.startLooks ?? [] }
 }
 
 function twitchPlayerAddress(video: PlayableVideo) {
@@ -441,6 +449,14 @@ function listenToBar() {
   })
   // Our own Twitch player found something worth saying (player.js). A site could fake this
   // signal, so it only counts for our player's current video.
+  // The channel's waiting screen, learned in the player (startSkip.js, video_window.rs /looks). A
+  // site could fake it, so it only counts for the open video's channel, and only a followed one.
+  void listen<{ video: string; looks: string[] }>('video-start-looks', ({ payload: { video, looks } }) => {
+    if (!current || (current.id !== `youtube-${video}` && current.id !== `twitch-${video}`)) return
+    const follow = followOfChannel(current)
+    // Sent with - and _ for + and / (nothing to unescape in the address)
+    if (follow) void setFollowStartSkip(follow.id, { startLooks: looks.map((look) => look.replaceAll('-', '+').replaceAll('_', '/')) })
+  })
   void listen<{ code: string; video: string }>('video-note', ({ payload: { code, video } }) => {
     if (!current || current.id !== `twitch-${video}` || currentWay !== 'own') return
     // Over (or never live): its next part may be there already, or come after a restart
@@ -640,6 +656,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string, start?: num
   listenToBar()
   queue = queue
     .then(async () => {
+      await loadFollowsNow() // the waiting screen's search needs its channel's (startSkipData)
       startWatching(video, playlistId ?? null, after)
       shownNext = await nextToShow(video, playlistId ?? null, after)
       await invoke<void>('open_video_player', {

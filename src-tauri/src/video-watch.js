@@ -434,12 +434,10 @@
       image.onerror = () => failed(new Error(`Sheet ${address} didn't load`))
       image.src = address
     })
-    async function checkStart(id, answer, kinds) {
-      const details = answer.videoDetails || {}
-      if (startSkip.off || details.isLive || details.isUpcoming) return
-      const here = () => Math.max(player.getCurrentTime() || 0, openedAt)
-      const kind = kinds.find((one) => one?.interval > 0)
-      if (!kind || here() >= SKIP.within) return
+    let startKind = null // this video's kind of pictures for it
+    let startPictures = null // a promise of its first 30 min's pictures: [{ at, picture }]
+    let startLive = false // live now, or not started
+    async function loadStartPictures(id, kind) {
       const perSheet = kind.cols * kind.rows
       const count = Math.min(kind.count, Math.ceil((SKIP.within + SKIP.ahead) / kind.interval) + 3)
       const sheets = new Map()
@@ -447,14 +445,34 @@
       for (let i = 0; i < count; i++) {
         const address = sheetAddress(kind, i)
         if (!sheets.has(address)) sheets.set(address, await loadSheet(address))
-        if (shownFor !== id) return // another video meanwhile
+        if (shownFor !== id) throw new Error('Another video meanwhile')
         const spot = i % perSheet
         pictures.push({ at: i * kind.interval, picture: skipPicture(sheets.get(address), (spot % kind.cols) * kind.width, Math.floor(spot / kind.cols) * kind.height, kind.width, kind.height) })
       }
-      const found = findWaiting(pictures, startSkip.looks || [])
+      return pictures
+    }
+    async function checkStart(id, answer, kinds) {
+      const details = answer.videoDetails || {}
+      startKind = kinds.find((one) => one?.interval > 0) || null
+      startLive = !!(details.isLive || details.isUpcoming)
+      if (startSkip.off || startLive || !startKind) return
+      const here = () => Math.max(player.getCurrentTime() || 0, openedAt)
+      if (here() >= SKIP.within) return
+      startPictures = loadStartPictures(id, startKind)
+      const found = findWaiting(await startPictures, startSkip.looks || [])
       if (!found || (!details.isLiveContent && !found.learned)) return
       if (shownFor !== id || !skipWorthIt(found.to, here())) return
-      controls.setStartSkip({ at: found.to, picture: pictureAt(found.to) })
+      skipShow(controls, id, startSkip, found, found.to, pictureAt(found.to), openedAt, here)
+    }
+    // The right-click menu's "Remember as waiting screen" (controls.js): the pictures up to here
+    const rememberStart = () => {
+      const id = shownFor
+      const pictures = () => {
+        if (!startKind) return Promise.resolve([])
+        startPictures ??= loadStartPictures(id, startKind)
+        return startPictures.catch(() => [])
+      }
+      return skipRemember(controls, id, startSkip, labels, player.getCurrentTime() || 0, startLive, pictures)
     }
     const chapterAt = (seconds) => {
       let name = ''
@@ -497,6 +515,9 @@
         controls.setGaps([])
         controls.setMarked([])
         controls.setStartSkip(null)
+        controls.setStartBack(null)
+        startKind = startPictures = null
+        startLive = false
         controls.closeParts()
         drawTimeButton()
         askSponsorBlock(id)
@@ -527,6 +548,7 @@
           controls.tipLines(chapterAt(seconds), part && { color: SPONSOR_COLORS[part.category], text: labels.sponsorParts?.[part.category] || part.category })
         },
         besideTime: (seconds) => chapterAt(seconds),
+        rememberStart: () => rememberStart(),
       },
     }, media)
     root.getElementById('chat-button').hidden = true

@@ -28,6 +28,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
   const [minutes, setMinutes] = useState(follow?.minMinutes ? String(follow.minMinutes) : '')
   const [hideShorts, setHideShorts] = useState(follow?.hideShorts ?? true)
   const [music, setMusic] = useState(!!follow?.music)
+  const [autoSkip, setAutoSkip] = useState(!!follow?.autoSkip)
   const [past, setPast] = useState<PastChoice>('today')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -42,7 +43,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
     // A game typed but not added yet counts, as with Enter: it isn't dropped without a word
     const typed = typedGame.current.trim()
     const allGames = typed && !games.some((game) => sameGame(game, typed)) ? [...games, typed] : games
-    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : allGames, minMinutes: minuteCount(minutes), hideShorts, music: youtube && music }
+    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : allGames, minMinutes: minuteCount(minutes), hideShorts, music: youtube && music, autoSkip }
     try {
       if (follow) await updateFollow(follow.id, settings)
       else await addFollow(await findChannel(link), settings, past)
@@ -117,6 +118,14 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
           <InfoTip label={t('About music channels')}>{t('Its videos go to the Music list instead of To watch. Ticking one there removes it.')}</InfoTip>
         </label>
       )}
+      {/* Music videos never get it (DECISIONS.md "VOD start skip"): grayed, the switch kept */}
+      <label className="dialog-check">
+        <input type="checkbox" checked={autoSkip} disabled={youtube && music} onChange={(e) => setAutoSkip(e.target.checked)} />
+        {t('Skip the waiting screen by itself')}
+        <InfoTip label={t('About skipping the waiting screen')}>
+          {t('Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the ⏩ button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).')}
+        </InfoTip>
+      </label>
       {!follow && (
         <label className="video-field">
           {t('Include past videos')}

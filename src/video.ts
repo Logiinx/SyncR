@@ -71,7 +71,7 @@ export interface VideoChannel {
   icon: string | null
 }
 
-export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts' | 'music'>
+export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts' | 'music' | 'autoSkip'>
 export type PastChoice = 'today' | '30' | '60' | 'all'
 
 const TWITCH_TABS = new Set(['about', 'clips', 'home', 'schedule', 'videos'])
@@ -183,6 +183,31 @@ export async function setFollowNotify(id: string, notify: boolean) {
   await db.videoFollows.update(id, { notify, updatedAt: Date.now() })
   changed()
 }
+
+// The waiting screen at a video's start (src-tauri/player/startSkip.js): its switch, and its look
+// (learned in the player, or forgotten from the channel's right-click menu)
+export async function setFollowStartSkip(id: string, changes: Pick<VideoFollow, 'autoSkip'> | Pick<VideoFollow, 'startLooks'>) {
+  await db.videoFollows.update(id, { ...changes, updatedAt: Date.now() })
+  changed()
+}
+
+// The follow of a channel (channelKey), if it's followed
+export const followOf = async (key: string) => db.videoFollows.filter((follow) => !follow.deleted && channelKey(follow) === key).first()
+
+// The same at once, for the player's address (videoPlayer.ts): the follows kept as they change
+// once loadFollowsNow was waited for (the player window's, on the PC)
+let followsNow: VideoFollow[] = []
+let followsLoaded: Promise<void> | null = null
+export function loadFollowsNow() {
+  followsLoaded ??= new Promise((done) => {
+    liveQuery(() => db.videoFollows.filter((follow) => !follow.deleted).toArray()).subscribe((list) => {
+      followsNow = list
+      done()
+    })
+  })
+  return followsLoaded
+}
+export const followOfChannel = (of: { platform: string; channelId: string }) => followsNow.find((follow) => channelKey(follow) === channelKey(of))
 
 export async function removeFollow(id: string) {
   const follow = await db.videoFollows.get(id)

@@ -23,6 +23,9 @@ vi.mock('../src/video', () => ({
   markOpened: async () => {},
   setWatched: async (id: string) => void watchedSet.push(id),
   watchWatched: () => () => {},
+  followOfChannel: () => undefined,
+  loadFollowsNow: async () => {},
+  setFollowStartSkip: async () => {},
 }))
 vi.mock('../src/videoPlaylists', () => ({ nextInPlaylist: async () => null }))
 const queued: string[] = []

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, Ellipsis, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
-import { type VideoFolder, type VideoPlaylist } from './db'
+import { type VideoFolder, type VideoFollow, type VideoPlaylist } from './db'
 import { lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
@@ -13,7 +13,7 @@ import { useListScroll } from './videoScroll'
 import { TipBox, useHoverTip } from './InfoTip'
 import { LIST_PIECES, useCardPieces, VIDEO_PIECES, type CardPiece } from './videoCards'
 import Spinner from './Spinner'
-import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, isRecent, markAllWatched, markOpened, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, followOf, isRecent, markAllWatched, markOpened, setFollowStartSkip, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragInQueue, dragPlaylist, dragVideo } from './videoDrag'
@@ -373,7 +373,7 @@ function VideoView() {
   // folder to rename
   const [naming, setNaming] = useState<{ parentId: string | null; sub?: boolean; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
-  const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number } | null>(null)
+  const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number; follow?: VideoFollow } | null>(null)
   // A video's right-click menu (a playlist's video: only the Queue's item, it can't be moved)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number; episode?: boolean } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
@@ -673,7 +673,7 @@ function VideoView() {
         open={open}
         newCount={group.filter(tagNew).length}
         onToggle={() => toggleGroup(id)}
-        onMenu={menu ? (x, y) => setChannelMenu({ key, openId: id, x, y }) : undefined}
+        onMenu={menu ? (x, y) => void followOf(key).then((follow) => setChannelMenu({ key, openId: id, x, y, follow })) : undefined}
       />,
       ...(open
         ? [
@@ -791,6 +791,26 @@ function VideoView() {
     hint: list !== 'towatch' ? t('Only in To watch') : !showQueue ? t('Queue hidden') : shownChannel !== 'all' ? t('Only with All follows') : t('Rewatch’s videos in To watch’s queue too'),
     onClick: () => setQueueRewatch(!queueRewatch),
   }
+  // A channel's waiting screen at its videos' start (the player's ⏩, DECISIONS.md "VOD start skip"):
+  // the same switch as in its follow window, and forgetting what it learned. Followed channels only.
+  const startSkipItems = (follow: VideoFollow | undefined): MenuItem[] => [
+    {
+      label: t('Skip the waiting screen by itself'),
+      icon: ChevronsRight,
+      divider: true,
+      checked: !!follow?.autoSkip,
+      disabled: !follow || !!follow.music,
+      hint: !follow ? t('Only for followed channels') : follow.music ? t('Not for music videos') : !follow.startLooks?.length ? t('Once it has learned the waiting screen: until then the ⏩ button shows') : undefined,
+      onClick: () => follow && void setFollowStartSkip(follow.id, { autoSkip: !follow.autoSkip }),
+    },
+    {
+      label: t('Forget waiting screen'),
+      icon: Eraser,
+      disabled: !follow?.startLooks?.length,
+      hint: !follow ? t('Only for followed channels') : !follow.startLooks?.length ? t('Nothing learned yet') : undefined,
+      onClick: () => follow && void setFollowStartSkip(follow.id, { startLooks: [] }),
+    },
+  ]
   const startOverItem = (ids: string[]): MenuItem => ({
     label: t('Start over'),
     icon: RotateCcw,
@@ -1042,6 +1062,7 @@ function VideoView() {
           onClose={() => setChannelMenu(null)}
           items={[
             { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: null, sub: true, channel: channelMenu.key, openId: channelMenu.openId }) },
+            ...startSkipItems(channelMenu.follow),
           ]}
         />
       )}

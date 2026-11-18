@@ -160,19 +160,16 @@ async function askPreviews(url) {
 // pictures to narrow it to ~10 s (previews.js). Once per video, when Twitch's list is there: a live
 // stream gets it only after its end (no own pictures in the background, DECISIONS "VOD start skip").
 let startChecked = false
+const startSkip = data.startSkip || {} // this video's search: see skipShow (startSkip.js)
+const startOpenedAt = Math.max(Number(params.get('t')) || 0, 0) // seconds
+let startPictures = null // a promise of Twitch's small pictures of the first 30 min: [{ at, picture }]
 const loadSheet = (address) => new Promise((done, failed) => {
   const image = new Image()
   image.onload = () => done(image)
   image.onerror = () => failed(new Error(`Sheet ${address} didn't load`))
   image.src = address
 })
-async function checkStart(list, folder) {
-  if (startChecked || data.startSkip?.off) return
-  startChecked = true
-  const low = list.find((one) => one.quality === 'low') || list[0]
-  if (!low?.interval || !Array.isArray(low.images)) return
-  const here = () => (video.duration ? video.currentTime : position)
-  if (here() >= SKIP.within) return
+async function loadStartPictures(low, folder) {
   const perSheet = low.cols * low.rows
   const count = Math.min(low.count, Math.ceil((SKIP.within + SKIP.ahead) / low.interval) + 3)
   const sheets = new Map()
@@ -184,14 +181,35 @@ async function checkStart(list, folder) {
     const spot = i % perSheet
     pictures.push({ at: i * low.interval, picture: skipPicture(sheets.get(name), (spot % low.cols) * low.width, Math.floor(spot / low.cols) * low.height, low.width, low.height) })
   }
-  const looks = data.startSkip?.looks || [] // the channel's learned looks (videoPlayer.ts)
-  const found = findWaiting(pictures, looks)
-  if (!found || here() >= found.to) return
+  return pictures
+}
+const startHere = () => (video.duration ? video.currentTime : position)
+async function checkStart(list, folder) {
+  if (startChecked || startSkip.off) return
+  startChecked = true
+  const low = list.find((one) => one.quality === 'low') || list[0]
+  if (!low?.interval || !Array.isArray(low.images)) return
+  if (startHere() >= SKIP.within) return
+  startPictures = loadStartPictures(low, folder)
+  const looks = startSkip.looks || []
+  const found = findWaiting(await startPictures, looks)
+  if (!found || startHere() >= found.to) return
   const start = await refineStart(found, looks, ownSkipPicture)
-  if (!skipWorthIt(start, here())) return
+  if (!skipWorthIt(start, startHere())) return
   // Twitch's first picture at or after it (the one before can still be the waiting screen)
   const shown = previews ? pictureAt(Math.min(Math.ceil(start / previews.interval), previews.count - 1) * previews.interval) : null
-  controls.setStartSkip({ at: start, picture: shown })
+  skipShow(controls, videoId, startSkip, found, start, shown, startOpenedAt, startHere)
+}
+// The right-click menu's "Remember as waiting screen" (player.js): Twitch's pictures up to here,
+// or without them yet, our own picture of this moment
+function rememberStart() {
+  const pictures = async () => {
+    const listed = startPictures ? await startPictures.catch(() => []) : []
+    if (listed.length) return listed
+    const own = await ownSkipPicture(startHere())
+    return own ? [own] : []
+  }
+  return skipRemember(controls, videoId, startSkip, labels, startHere(), live, pictures)
 }
 
 // The stream is over (player.js): Twitch makes its list in the next minutes

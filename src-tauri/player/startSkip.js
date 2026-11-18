@@ -1,6 +1,7 @@
 // Spots the waiting screen ("starting soon") at a video's start and where the true start is, from
 // its preview pictures. Shared by the own Twitch player (player.html) and YouTube's page
-// (video-watch.js, same way as controls.js). No page or app parts: given pictures, it answers.
+// (video-watch.js, same way as controls.js). Given pictures, it answers; the last part shows the
+// answer in a player and keeps what was learned.
 //
 // How (measured on ~30 real streams, DECISIONS.md "VOD start skip"): the waiting screen keeps its
 // layout (its colors can change, it can loop or swap between two cards), the true start looks
@@ -201,4 +202,45 @@ function learnLooks(lookTexts, run) {
     picked.push(candidates.splice(best, 1)[0])
   }
   return [...picked.map(skipLookText), ...old].slice(0, SKIP.looksKept)
+}
+
+// ---- In the players (timeline.js, video-watch.js) -----------------------------------------------
+// skip: this video's { off: a music video, followed: its channel is, auto: its switch to skip by
+// itself, looks: its learned ones } (videoPlayer.ts). The app keeps the looks only for a followed
+// channel's video that's open (video_window.rs, /looks).
+// Sent in a form the address needs no escaping for: - and _ for + and /, joined with dots
+const skipSaveLooks = (video, looks) => fetch(`https://syncr-video.localhost/looks?video=${encodeURIComponent(video)}&looks=${looks.map((look) => look.replaceAll('+', '-').replaceAll('/', '_')).join('.')}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+
+// The search is done: a skip by itself when the channel's look is learned, its switch is on and the
+// video opened at its very start (from a saved spot: the button only), then Back for a few seconds
+// (that video then gets the button); otherwise the button. Using the button teaches the look.
+// openedAt: seconds it opened at; here(): where it is now.
+function skipShow(controls, video, skip, found, start, picture, openedAt, here) {
+  const button = () => controls.setStartSkip({ at: start, picture, onUse: () => skipLearn(video, skip, found.run) })
+  if (!(found.learned && skip.auto && openedAt === 0)) return button()
+  const from = here()
+  controls.jumpTo(start)
+  controls.setStartBack({ from, onBack: button })
+}
+
+function skipLearn(video, skip, run) {
+  if (!skip.followed || !run.length) return
+  skip.looks = learnLooks(skip.looks, run)
+  skipSaveLooks(video, skip.looks)
+}
+
+// The right-click menu's "Remember as waiting screen" (controls.js): grayed, with why, when it can't
+// be. pictures(): [{ at, picture }] from the start (a promise); run then learns from those up to now.
+function skipRemember(controls, video, skip, labels, now, live, pictures) {
+  const hint = !skip.followed ? labels.rememberFollowed : skip.off ? labels.rememberMusic : live ? labels.rememberLive : now > SKIP.within ? labels.rememberLate : ''
+  return {
+    allowed: !hint,
+    hint,
+    run: async () => {
+      const run = (await pictures()).filter((one) => one.at <= now).map((one) => one.picture)
+      if (!run.length) return
+      skipLearn(video, skip, run)
+      controls.flash(labels.startRemembered, 1200)
+    },
+  }
 }

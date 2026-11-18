@@ -48,6 +48,7 @@ function playerControls(env, media) {
     clock: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
     skipStart: '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>', // Lucide ChevronsRight: past the waiting screen
+    skipBack: '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>', // Lucide ChevronsLeft: back to it
   }
   const icon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`
   const html = env.html || ((text) => text)
@@ -95,6 +96,7 @@ function playerControls(env, media) {
   </div>
   <button id="skip" hidden></button>
   <button id="start-skip" hidden>${icon('skipStart')}<span id="start-skip-time"></span></button>
+  <button id="start-back" hidden>${icon('skipBack')}<span id="start-back-text"></span></button>
   <div id="start-skip-card" hidden><div id="start-skip-picture"></div><div id="start-skip-label"></div></div>
   <div id="endcard" hidden><div id="endcard-picture"></div><div id="endcard-text"><div id="endcard-label"></div><div id="endcard-title"></div></div><button id="endcard-close">${icon('close')}</button></div>
   <div id="menus"><div id="menu-side" hidden></div><div id="menu" hidden></div></div>
@@ -459,6 +461,28 @@ function playerControls(env, media) {
   }
   $('start-skip').onmouseleave = () => { $('start-skip-card').hidden = true }
   const START_CARD = 176 // px: as wide as ⏭'s card
+  // After a skip by itself: the same small button says Back for 8 s. shown: { from: seconds,
+  // onBack() }, or null.
+  let startBack = null
+  let startBackTimer
+  const START_BACK_SHOWS = 8000 // ms
+  function setStartBack(shown) {
+    clearTimeout(startBackTimer)
+    startBack = shown || null
+    $('start-back').hidden = !startBack
+    if (!startBack) return
+    setStartSkip(null)
+    $('start-back-text').textContent = labels.menuBack
+    $('start-back').title = labels.startBack
+    startBackTimer = setTimeout(() => setStartBack(null), START_BACK_SHOWS)
+  }
+  $('start-back').onclick = () => {
+    const used = startBack
+    if (!used) return
+    setStartBack(null)
+    jumpTo(used.from)
+    used.onBack?.()
+  }
 
   // A new video in the same page (video-watch.js): its own end card again
   function setNext(shown) {
@@ -505,20 +529,24 @@ function playerControls(env, media) {
     const at = Math.floor(media.time())
     const menu = $('context')
     menu.textContent = ''
-    const line = (iconName, text, link, allowed = true) => {
+    const line = (iconName, text, action, allowed = true, hint = '') => {
       const button = document.createElement('button')
       button.className = 'menu-item'
       button.disabled = !allowed
+      if (hint) button.title = hint
       const name = document.createElement('span')
       name.className = 'menu-name'
       name.insertAdjacentHTML('beforeend', html(icon(iconName)))
       name.append(text)
       button.append(name)
-      button.onclick = () => { closeContext(); copyText(link) }
+      button.onclick = () => { closeContext(); action() }
       menu.append(button)
     }
-    line('copy', labels.copyLink, media.link())
-    line('clock', (labels.copyLinkAt || '{time}').replace('{time}', clock(at)), media.link(at), at > 0)
+    line('copy', labels.copyLink, () => copyText(media.link()))
+    line('clock', (labels.copyLinkAt || '{time}').replace('{time}', clock(at)), () => copyText(media.link(at)), at > 0)
+    // Teaches the channel its waiting screen by hand (startSkip.js): { allowed, hint, run() }, or none
+    const remember = hooks.rememberStart?.()
+    if (remember) line('skipStart', labels.rememberStart, remember.run, remember.allowed, remember.hint)
     menu.hidden = false
     // In the player's own pixels: the app's scale is a zoom on it
     const area = box.getBoundingClientRect()
@@ -1062,7 +1090,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, setStartSkip, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -1150,13 +1178,13 @@ const CONTROLS_CSS = `
   #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
   /* Past the waiting screen: small, bottom left, as high as the end card on the right; stays when
      the controls fade. Its card above it, like ⏭'s. */
-  #start-skip {
+  #start-skip, #start-back {
     position: absolute; z-index: 5; left: 12px; bottom: 80px; height: 28px; padding: 0 10px 0 6px;
     display: flex; align-items: center; gap: 4px; border-radius: 6px;
     background: rgba(0, 0, 0, 0.7); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: background 0.15s;
   }
-  #start-skip:hover { background: var(--accent, #2d4f7c); }
-  #start-skip svg { width: 16px; height: 16px; }
+  #start-skip:hover, #start-back:hover { background: var(--accent, #2d4f7c); }
+  #start-skip svg, #start-back svg { width: 16px; height: 16px; }
   #start-skip-card {
     position: absolute; z-index: 5; left: 12px; bottom: 114px; width: 176px; padding: 6px 8px 7px;
     border-radius: 6px; background: rgba(0, 0, 0, 0.85); font-size: 12px; line-height: 1.35; pointer-events: none;

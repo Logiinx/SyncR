@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** un petit bouton ⏩ passe l’écran d’attente des rediffusions Twitch et YouTube
+- **Nouveau :** passer l’écran d’attente tout seul, par chaîne (clic droit sur la chaîne)
 - **Nouveau :** les clips musicaux peuvent aussi aller dans la file, par leur clic droit
 - **Amélioré :** un badge rouge En direct sur l’image des streams Twitch encore en direct
 - **Changé :** un lien de vidéo copié va dans la file ; pour le lire, Paramètres vidéo → Lecteur

@@ -162,6 +162,7 @@ const controls = playerControls({
       timelineMenu(menu)
     },
     keys: { c: () => toggleChat() },
+    rememberStart: () => rememberStart(), // timeline.js
     keepShowing: () => !$('goto').hidden || gamesOpen(),
     beforeMenu: () => {
       closeGoTo()

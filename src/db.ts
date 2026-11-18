@@ -291,6 +291,8 @@ export interface VideoFollow {
   hideShorts: boolean // YouTube only
   music?: boolean // YouTube only: its videos go to the Music list, a list of new songs (missing on older follows)
   notify?: boolean // PC: each new video found by a check shows a card in the pop-up (Follows window's bell)
+  autoSkip?: boolean // PC: its videos skip their waiting screen by themselves, once startLooks has some
+  startLooks?: string[] // PC: its waiting screen's look, learned (src-tauri/player/startSkip.js); none = not learned
   startAt: number // ms: older videos aren't shown; 0 = all that are still available
   deleted: boolean
   updatedAt: number
