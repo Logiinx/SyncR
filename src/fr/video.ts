@@ -45,7 +45,7 @@ export const video = {
   'Queue hidden': 'File d’attente masquée',
   'Add to queue': 'Ajouter à la file',
   'Remove from queue': 'Retirer de la file',
-  'Not for Music': 'Pas pour la musique',
+  'In Music': 'Dans Musique',
   'Already watched': 'Déjà regardée',
   Watch: 'Regarder',
   'Dismiss all': 'Tout ignorer',

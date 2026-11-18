@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** music videos can go in the queue too, from their right-click menu
 - **Better:** a red Live badge on the picture of Twitch streams still live
 - **Changed:** a copied video link goes in the queue; to play it, Video settings → Player
 - **Fixed:** added Twitch streams keeping a “?” picture once the live ended

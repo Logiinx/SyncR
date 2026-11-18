@@ -9,7 +9,7 @@ import { addOrFindVideo, markOpened, setWatched, watchWatched } from './video'
 import { askNextPart, knownNextPart, PART_GAP } from './videoParts'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
-import { queueStarted } from './videoQueue'
+import { leaveQueue, queueStarted } from './videoQueue'
 
 // The video player window (desktop only; video_window.rs, open_video_player). In a browser, videos just
 // open in a new tab.
@@ -423,6 +423,8 @@ function listenToBar() {
     // Not with an unknown length: the report could be an ad's
     if (liveNow) return
     if (current.duration > 0 && !current.music && !watchedNow && !undone && loadPlayerSettings().watchedNearEnd && nearlyDone({ t: seconds, length })) void setWatched(current.id, true)
+    // Music is never watched by itself (cleared by hand): played to its end, it's done with the Queue
+    if (current.duration > 0 && current.music && nearlyDone({ t: seconds, length })) leaveQueue([current.id])
     if (current.duration > 0 && seconds >= length) playNext()
   })
   // Subtitles turned on or off by hand. The video's own id, as a site could send this too.

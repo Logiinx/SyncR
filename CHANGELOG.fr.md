@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** les clips musicaux peuvent aussi aller dans la file, par leur clic droit
 - **Amélioré :** un badge rouge En direct sur l’image des streams Twitch encore en direct
 - **Changé :** un lien de vidéo copié va dans la file ; pour le lire, Paramètres vidéo → Lecteur
 - **Corrigé :** les streams Twitch ajoutés gardaient une image « ? » après la fin du direct

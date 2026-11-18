@@ -231,7 +231,7 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // Tags: "New" (green), or "Opened" when it was stopped partway (blue), never both. In the
 // Queue group (queued: that group's id): a second copy of the row, dragged only to change its place
 // in the Queue; a playlist's video shows its playlist (from) instead of its channel; one of
-// Rewatch's in To watch's group (ofRewatch) gets a ↻ icon. after: the videos after it in its list, for ⏭.
+// Rewatch's in To watch's group (ofRewatch) gets a ↻ icon, Music's a music note. after: the videos after it in its list, for ⏭.
 function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
@@ -290,6 +290,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
             <span className="video-meta">
               {kept && video.watched && <Check size={14} className="video-seen" aria-label={t('Watched')} />}
               {ofRewatch && <Repeat size={14} className="video-logo" aria-label={t('In Rewatch')} />}
+              {queued && video.music && <Music size={14} className="video-logo" aria-label={t('In Music')} />}
               {from ? <ListVideo size={15} className="video-logo" aria-label={t('Playlist')} /> : <VideoLogo platform={video.platform} />}
               <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
@@ -689,7 +690,8 @@ function VideoView() {
   // The Queue's videos in one list, in its order; folders and playlists also keep theirs (loose ones
   // in To watch only show here). Rewatch: its videos, folders and playlists. To watch: its own (the
   // chosen follow's, its playlists only with All follows), plus Rewatch's with All follows unless
-  // switched off (user: one place to go on with anything; tagged rewatch), never Music's.
+  // switched off (user: one place to go on with anything; tagged rewatch), and Music's with All
+  // follows (user, 2026-11-18: they only show here while queued; tagged with the music note).
   function queueIn(inRewatch: boolean) {
     if (!feed || !showQueue) return []
     const where = new Map<string, { video: FeedVideo; playlist?: VideoPlaylist; rewatch?: boolean }>()
@@ -697,6 +699,7 @@ function VideoView() {
     const withRewatch = inRewatch || (allFollows && queueRewatch)
     if (!inRewatch) for (const video of feed.toWatch) if (allFollows || video.followId === shownChannel) where.set(video.id, { video })
     if (withRewatch) for (const video of feed.rewatch) if (!where.has(video.id)) where.set(video.id, { video, rewatch: !inRewatch })
+    if (!inRewatch && allFollows) for (const video of feed.music) if (!where.has(video.id)) where.set(video.id, { video })
     for (const { playlist, videos: episodes } of feed.playlists) {
       const ofRewatch = !!playlist.folderId && rewatchIds.has(playlist.folderId)
       if (inRewatch ? !ofRewatch : !allFollows || (ofRewatch && !withRewatch)) continue
@@ -764,11 +767,11 @@ function VideoView() {
   // A folder or playlist's videos to start over: those watched or opened
   const startOverIds = (episodes: FeedVideo[]) => episodes.filter((video) => video.watched || video.opened).map((video) => video.id)
   const folderStartOver = (folder: VideoFolder) => startOverIds([...allIn(folder), ...allPlaylistsIn(folder).flatMap(({ videos: episodes }) => episodes)])
-  // A video's own item: added at the bottom, or taken out (grayed for what can't go on: Music,
-  // watched, no longer available)
+  // A video's own item: added at the bottom, or taken out (grayed for what can't go on: watched,
+  // no longer available)
   function queueVideoItem(video: FeedVideo): MenuItem {
     if (queue.some((entry) => entry.id === video.id)) return { label: t('Remove from queue'), icon: ListX, onClick: () => leaveQueue([video.id]) }
-    const why = video.music ? t('Not for Music') : video.watched ? t('Already watched') : video.gone ? t('No longer available') : undefined
+    const why = video.watched ? t('Already watched') : video.gone ? t('No longer available') : undefined
     return { label: t('Add to queue'), icon: ListEnd, disabled: !!why, hint: why, onClick: () => addToQueue(video.id) }
   }
   // One switch for both lists (grayed in Watched and Music)
