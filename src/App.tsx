@@ -8,6 +8,7 @@ import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
 import Dialog, { type DialogRequest } from './Dialog'
 import { forgetScroll, useLocalState } from './localState'
 import { onFollowLink } from './noteLinks'
+import { onAppMessage } from './appMessage'
 import NoteView from './NoteView'
 import ImageViewer from './ImageViewer'
 import ReminderAlerts from './ReminderAlerts'
@@ -166,12 +167,16 @@ function App() {
     if (pinned.some((id) => !openTabs.includes(id))) setPinned(pinned.filter((id) => openTabs.includes(id)))
   }, [pinned, openTabs, setPinned])
 
-  // Clicking a link to a note (noteLinks.ts) opens it here, or says the target is gone
+  // Clicking a link to a note (noteLinks.ts) opens it here
   useEffect(() => {
-    onFollowLink(openNote, (message) =>
-      setDialog({ title: t('Link'), message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} }),
-    )
+    onFollowLink(openNote)
   })
+
+  // Short messages from code outside React (appMessage.ts: a deleted link target, image errors)
+  useEffect(
+    () => onAppMessage((title, message) => setDialog({ title, message, confirmLabel: 'OK', noCancel: true, onConfirm: () => {} })),
+    [],
+  )
 
   // The link shortcut has something to show (videoPaste.ts): the window comes up on the Video tab
   useEffect(() => {

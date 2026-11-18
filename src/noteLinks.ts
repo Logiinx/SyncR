@@ -1,5 +1,6 @@
 import { Extension, type Editor, type JSONContent } from '@tiptap/react'
 import { t } from './i18n'
+import { showAppMessage } from './appMessage'
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model'
@@ -251,19 +252,17 @@ export async function copyLinkToBlock(editor: Editor, noteId: string, title: str
 
 // App.tsx opens the note; the note's editor then jumps to the block (see jumpToBlock)
 let pendingJump: LinkTarget | null = null
-let notFoundHandler: (message: string) => void = () => {}
 let openNoteHandler: (noteId: string) => void = () => {}
 
-export function onFollowLink(openNote: (noteId: string) => void, notFound: (message: string) => void) {
+export function onFollowLink(openNote: (noteId: string) => void) {
   openNoteHandler = openNote
-  notFoundHandler = notFound
 }
 
 export async function followNoteLink(href: string) {
   const target = parseNoteLink(href)
   if (!target) return
   if (!(await db.notes.get(target.noteId))) {
-    notFoundHandler(t('Link target not found: the note was deleted.'))
+    showAppMessage(t('Link'), t('Link target not found: the note was deleted.'))
     return
   }
   pendingJump = target
@@ -287,7 +286,7 @@ export function jumpToBlock(editor: Editor, blockId: string) {
   const { view } = editor
   const pos = findBlock(view.state.doc, blockId)
   if (pos === null) {
-    notFoundHandler(t('Link target not found: that part of the note was deleted. The note is open.'))
+    showAppMessage(t('Link'), t('Link target not found: that part of the note was deleted. The note is open.'))
     return
   }
   // Closed sections around it (and the block itself, if it's a section): open them

@@ -21,6 +21,7 @@ export const app = {
   Loading: 'Chargement',
   Untitled: 'Sans titre',
   Link: 'Lien',
+  Image: 'Image',
   'New note': 'Nouvelle note',
   'Try again': 'Réessayer',
   'Update now': 'Mettre à jour',

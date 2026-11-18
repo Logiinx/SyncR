@@ -1,5 +1,6 @@
 import { Node, type Editor } from '@tiptap/react'
 import { t } from './i18n'
+import { showAppMessage } from './appMessage'
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { db } from './db'
 import { readyBlob } from './sealing'
@@ -167,7 +168,7 @@ export async function insertImages(editor: Editor, files: File[]) {
       editor.chain().focus().insertContent({ type: 'image', attrs }).command(cursorBelow).run()
     } catch (error) {
       console.error(error)
-      window.alert(t('This image could not be added. Its format may not be supported.'))
+      showAppMessage(t('Image'), t('This image could not be added. Its format may not be supported.'))
     }
   }
 }
@@ -193,6 +194,6 @@ export async function copyImage(src: string) {
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
   } catch (error) {
     console.error(error)
-    window.alert(t("This image couldn't be copied."))
+    showAppMessage(t('Image'), t("This image couldn't be copied."))
   }
 }
