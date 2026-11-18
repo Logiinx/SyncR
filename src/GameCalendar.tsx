@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { locale, t } from './i18n'
+import { t } from './i18n'
+import { monthName, monthTitle } from './dates'
 import { CalendarDays, List } from 'lucide-react'
 import { addGame, gameId, releaseText, statusLabel, tabOf } from './games'
 import { CALENDAR_MONTHS, popularUpcoming, type UpcomingGame } from './igdb'
@@ -7,7 +8,7 @@ import type { GameStatus } from './db'
 import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GamePreview from './GamePreview'
-import MonthGrid, { byDay, dayKey, monthTitle, sameMonth } from './MonthGrid'
+import MonthGrid, { byDay, dayKey, sameMonth } from './MonthGrid'
 import { useNarrow } from './useNarrow'
 
 // The Games tab's Calendar view: popular upcoming PC games for the next 6 months (Steam's top
@@ -238,7 +239,7 @@ function CalendarGrid({ games, statusOf, onShow, onMenu }: { games: UpcomingGame
       after={(first) =>
         monthOnly(first).length > 0 && (
           <div className="calendar-month-only">
-            <p>{t('Sometime in {month}', { month: first.toLocaleDateString(locale(), { month: 'long' }) })}</p>
+            <p>{t('Sometime in {month}', { month: monthName(first) })}</p>
             <CalendarRows games={monthOnly(first)} statusOf={statusOf} onShow={onShow} onMenu={onMenu} />
           </div>
         )

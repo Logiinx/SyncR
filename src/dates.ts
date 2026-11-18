@@ -15,6 +15,14 @@ export function dayMonth(time: number) {
   return currentLanguage() === 'fr' ? text.replace(/(^|\s)1 /, '$11er ') : text
 }
 
+// "November 2026": a month's title (calendars' month grids and list groups)
+export const monthTitle = (date: Date) => capitalize(date.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }))
+// Short day names, Monday first (1 January 2024 was a Monday): a month grid's head
+export const weekdayNames = () =>
+  Array.from({ length: 7 }, (_, i) => new Date(2024, 0, i + 1).toLocaleDateString(locale(), { weekday: 'short' }))
+// "November" ("novembre"), inside a sentence
+export const monthName = (date: Date) => date.toLocaleDateString(locale(), { month: 'long' })
+
 // Reminders spell the month out ("21 October 2026"): their dates are the main content there.
 export const longDate = (time: number) => dayText(time, 'long')
 
