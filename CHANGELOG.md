@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-11-18
+
 **Mail** (PC only)
 - **New:** drag an email left or right to mark it read, archive or delete it
 - **New:** choose what each side does in Settings → Alerts

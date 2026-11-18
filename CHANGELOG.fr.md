@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-11-18
+
 **Mail** (PC uniquement)
 - **Nouveau :** glissez un e-mail à gauche ou à droite pour le marquer lu, l’archiver ou le supprimer
 - **Nouveau :** choisissez l’action de chaque côté dans Paramètres → Alertes
