@@ -39,6 +39,7 @@
     "allow-video-player-note",
     "allow-video-player-next",
     "allow-video-player-watched",
+    "allow-video-player-upcoming",
     "allow-close-video-player",
     "allow-video-extensions-list",
     "allow-video-extension-add",

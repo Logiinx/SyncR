@@ -786,6 +786,21 @@ pub fn video_player_watched(app: tauri::AppHandle, watched: bool) -> Result<(), 
   }
 }
 
+// The open video's ⏭ changed while it plays (videoPlayer.ts: a Twitch stream's next part was
+// found). Only our own player's page gets it (player.js): it's our data, not a site's. Gives back
+// whether the window is still open, as a video waiting at its end sends no reports.
+#[tauri::command]
+pub fn video_player_upcoming(app: tauri::AppHandle, upcoming: serde_json::Value) -> Result<bool, String> {
+  let Some(site) = app.get_webview(VIDEO_SITE) else {
+    return Ok(false);
+  };
+  let own = site.url().map(|url| url.host_str() == Some("syncr-video.localhost")).unwrap_or(false);
+  if own {
+    site.eval(format!("window.syncrUpcoming?.({upcoming})")).map_err(|e| e.to_string())?;
+  }
+  Ok(true)
+}
+
 #[tauri::command]
 pub async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
   close_video_window(&app)

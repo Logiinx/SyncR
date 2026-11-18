@@ -177,6 +177,9 @@ const controls = playerControls({
 }, media)
 // For timeline.js and chat.js
 const { $, icon, clock, percentText, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
+// What ⏭ plays changed while this one plays: the stream's next part was found (video_window.rs,
+// video_player_upcoming)
+window.syncrUpcoming = (shown) => controls.setNext(shown)
 
 // ---- The window takes the video's shape (video_window.rs) ------------------------------------------------
 let shapeSent = ''

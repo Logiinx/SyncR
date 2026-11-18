@@ -5,7 +5,8 @@ import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
-import { markOpened, setWatched, watchWatched } from './video'
+import { addOrFindVideo, markOpened, setWatched, watchWatched } from './video'
+import { askNextPart, knownNextPart, PART_GAP } from './videoParts'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
 import { queueStarted } from './videoQueue'
@@ -343,6 +344,11 @@ let endSeen = false // its end was handled: more reports of it can come
 // What the player's ⏭ shows for the open video: the one after it (title and picture), or null
 type ShownNext = { title: string; thumbnail: string | null } | null
 let shownNext: ShownNext = null
+// A Twitch stream's next part (videoParts.ts), once found: ⏭ and its end play it, whatever the
+// setting (user). The search runs once per viewing; lastLength: the page's, which grows while live.
+let partNext: PlayableVideo | null = null
+let partSearch: Promise<'found' | 'none' | 'closed'> | null = null
+let lastLength = 0
 // Not from the page of a video that was just replaced
 let reportsFrom = 0
 const REPORTS_AFTER = 3000 // ms
@@ -407,6 +413,7 @@ function listenToBar() {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length, ...(liveNow && { live: true }) })
+    lastLength = length
     playedTo = { videoId: current.id, t: Math.floor(seconds) }
     // A watched one played again stays out: the Queue never shows watched videos, it would stay in it unseen
     if (!current.music && !watchedNow && resumePosition(current.id)) queueStarted(current.id)
@@ -424,8 +431,10 @@ function listenToBar() {
   // signal, so it only counts for our player's current video.
   void listen<{ code: string; video: string }>('video-note', ({ payload: { code, video } }) => {
     if (!current || current.id !== `twitch-${video}` || currentWay !== 'own') return
+    // Over (or never live): its next part may be there already, or come after a restart
     if (code === 'finished') {
       liveNow = false
+      void searchPart(current)
       return
     }
     const text = code === 'subscriber' ? t('Subscriber-only video') : code === 'sound' ? t('Original sound') : '' // i18n-ok
@@ -468,6 +477,9 @@ function startWatching(video: PlayableVideo, playlistId: string | null, after: U
   watchedNow = video.watched
   undone = false
   liveNow = !!video.live
+  partNext = null
+  partSearch = null
+  lastLength = 0
   reportsFrom = Date.now() + REPORTS_AFTER
   currentWay = rememberedWay(video)
   newWayShown()
@@ -485,14 +497,55 @@ function followWatched(video: PlayableVideo) {
 
 // The open video reached its end. Once, as more reports of its end can come. The next one plays in
 // the same window when the setting says so (by default only in a playlist); otherwise, or with none
-// after it, the window closes (a setting, on by default).
+// after it, the window closes (a setting, on by default). A Twitch stream's next part always plays
+// on; one that can still come (a restart) is waited for, up to 10 min (user).
+const PART_WAIT = 10 * 60_000
 function playNext() {
   const ended = current
   if (!ended || endSeen) return
   endSeen = true
-  const { autoNext } = loadPlayerSettings()
-  if (autoNext === 'always' || (autoNext === 'playlists' && playlist)) goNext(ended, true)
-  else closeAtEnd(ended)
+  void (async () => {
+    const part = ended.platform === 'twitch' ? await waitForPart(ended) : 'none'
+    if (current !== ended || part === 'closed') return
+    // It sat at its end a while: the window may have been closed since (no report says so)
+    if (ended.platform === 'twitch' && !(await invoke<boolean>('video_player_upcoming', { upcoming: shownNext }).catch(() => false))) return
+    if (current !== ended) return
+    const { autoNext } = loadPlayerSettings()
+    if (part === 'found' || autoNext === 'always' || (autoNext === 'playlists' && playlist)) goNext(ended, true)
+    else closeAtEnd(ended)
+  })()
+}
+
+function waitForPart(video: PlayableVideo): Promise<'found' | 'none' | 'closed'> {
+  if (partNext) return Promise.resolve('found')
+  return Promise.race([searchPart(video), new Promise<'none'>((done) => setTimeout(() => done('none'), PART_WAIT))])
+}
+
+// Looks for the open video's next part: on this device first, then asks Twitch, again each minute
+// while one can still come (a restart: up to PART_GAP after its end). Found: ⏭ shows it at once.
+const PART_CHECK_EVERY = 60_000
+const PART_CHECKS = 40 // a Worker that keeps failing: not forever
+function searchPart(video: PlayableVideo) {
+  if (video.platform !== 'twitch') return Promise.resolve('none' as const)
+  partSearch ??= (async () => {
+    for (let check = 0; check < PART_CHECKS; check++) {
+      if (check > 0) await new Promise((done) => setTimeout(done, PART_CHECK_EVERY))
+      if (current !== video) return 'none'
+      const known = await knownNextPart(video, lastLength).catch(() => null)
+      const answer = known ? { part: known, end: 0 } : await askNextPart(video, lastLength).catch((error) => console.warn('Next part failed', error))
+      if (current !== video) return 'none'
+      if (answer?.part) {
+        partNext = answer.part
+        shownNext = { title: answer.part.title, thumbnail: answer.part.thumbnail }
+        const open = await invoke<boolean>('video_player_upcoming', { upcoming: shownNext }).catch(() => true)
+        return open ? 'found' : 'closed'
+      }
+      // Twitch no longer has it, or too long after its end for a restart (a failed ask: tried again)
+      if (answer && (answer.end === null || Date.now() > answer.end + PART_GAP)) return 'none'
+    }
+    return 'none'
+  })()
+  return partSearch
 }
 
 // The ⏭ button: the next video now (the one left keeps its spot, like closing the window)
@@ -500,8 +553,11 @@ export function playNextNow() {
   if (current) goNext(current, false)
 }
 
-// What plays after the open video: its playlist's next, or the first of the list's videos after it
-async function findNext(video: PlayableVideo, playlistId = playlist, list = upNext): Promise<{ next: UpNext; after: UpNext[] } | null> {
+// What plays after the open video: a Twitch stream's next part, its playlist's next, or the first
+// of the list's videos after it. After a part, the list goes on.
+async function findNext(video: PlayableVideo, playlistId = playlist, list = upNext): Promise<{ next: UpNext; after: UpNext[]; part?: boolean } | null> {
+  const part = (video === current && partNext) || (await knownNextPart(video, video === current ? lastLength : 0).catch(() => null))
+  if (part) return { next: { video: part }, after: playlistId ? [] : list, part: true }
   if (playlistId) {
     const next = await nextInPlaylist(playlistId, video.id)
     return next ? { next: { video: next, playlistId }, after: [] } : null
@@ -525,7 +581,10 @@ function goNext(from: PlayableVideo, atEnd: boolean) {
         if (atEnd) closeAtEnd(from)
         return
       }
-      const { next: { video: next, playlistId }, after } = found
+      const { next: { video: listed, playlistId }, after } = found
+      // A part goes in To watch, like a pasted link (its channel's words may not match it), with its real marks
+      const next = found.part ? await addOrFindVideo(listed.url).then(({ video }) => ({ ...video, thumbnail: listed.thumbnail }), () => listed) : listed
+      if (current !== from) return
       const way = rememberedWay(next)
       shownNext = await nextToShow(next, playlistId ?? null, after)
       // Not the new page's reports for the old video. It becomes the current one once the window

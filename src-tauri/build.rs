@@ -20,6 +20,7 @@ fn main() {
     "video_player_note",
     "video_player_next",
     "video_player_watched",
+    "video_player_upcoming",
     "close_video_player",
     "video_extensions_list",
     "video_extension_add",

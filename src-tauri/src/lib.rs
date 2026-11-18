@@ -340,6 +340,7 @@ pub fn run() {
       video_window::video_player_note,
       video_window::video_player_next,
       video_window::video_player_watched,
+      video_window::video_player_upcoming,
       video_window::close_video_player,
       video_extensions::video_menu,
       video_extensions::video_extensions_list,

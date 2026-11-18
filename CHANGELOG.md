@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Video** (PC only)
 - **New:** Twitch streams still live show in your list with a red Live tag, also by link
 - **New:** a live stream plays from its start and keeps going as it’s recorded
+- **New:** a long Twitch stream split in parts plays on to its next part, shown on ⏭
 
 **Games**
 - **Fixed:** covers peeking out at the top corners when scrolling in Covers
