@@ -12,6 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Nouveau :** choisir à quelle fréquence SyncR vérifie les mises à jour, dans Fenêtre et confidentialité (PC uniquement)
+- **Nouveau :** avec l’e-mail instantané, les nouvelles versions s’affichent en quelques secondes (PC uniquement)
 
 ## [0.88.0] - 2026-11-18
 

@@ -40,6 +40,7 @@ import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGma
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
 import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
+import { signalsWork } from './updateSignal'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
 import { SpecialIcon, type SpecialTab } from './tabIcons'
@@ -605,6 +606,8 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
             {t('Look for updates')}
             <InfoTip label={t('About looking for updates')}>
               {t('Always when SyncR starts. To look now: the button next to Settings, at the bottom of the sidebar.')}
+              {/* instant (useInstantStatus above) re-renders this when the signals start or stop */}
+              {instant.ok && signalsWork() && ` ${t('Instant updates are on: a new version shows within seconds, so this check runs at most every 6 hours, as a safety net.')}`}
             </InfoTip>
           </>
         }

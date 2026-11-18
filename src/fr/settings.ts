@@ -168,6 +168,8 @@ export const settings = {
   'Look for updates': 'Vérifier les mises à jour',
   'About looking for updates': 'À propos de la vérification des mises à jour',
   'Always when SyncR starts. To look now: the button next to Settings, at the bottom of the sidebar.': 'Toujours au démarrage de SyncR. Pour rechercher maintenant : le bouton à côté de Paramètres, en bas de la barre latérale.',
+  'Instant updates are on: a new version shows within seconds, so this check runs at most every 6 hours, as a safety net.':
+    'Les mises à jour instantanées sont activées : une nouvelle version s’affiche en quelques secondes, donc cette vérification n’a lieu qu’au plus toutes les 6 heures, par sécurité.',
   'Every minute': 'Toutes les minutes',
   'Every 15 minutes': 'Toutes les 15 minutes',
   'Every hour': 'Toutes les heures',

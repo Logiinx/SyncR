@@ -1,0 +1,45 @@
+# Tells running SyncR apps (PC) within seconds that a new version is out: drops a small note in
+# the Pub/Sub queue instant mail already listens to (src/instantMail.ts). The note only means
+# "look now": the update itself is still checked against the signing key.
+# - Called by build-desktop.yml once a release is published.
+# - "Run workflow" button -> a test note (the app looks, and finds nothing new).
+# Needs the secret GCP_PUBSUB_KEY: a Google service account's JSON key, allowed only to publish to
+# the topic syncr-gmail. Without it, this does nothing.
+name: Update signal
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    env:
+      READY: ${{ secrets.GCP_PUBSUB_KEY != '' }}
+    steps:
+      - name: No key set up
+        if: env.READY != 'true'
+        run: echo "::notice::GCP_PUBSUB_KEY is not set, so no update signal was sent"
+
+      - id: auth
+        if: env.READY == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_PUBSUB_KEY }}
+          token_format: access_token
+          create_credentials_file: false
+
+      - name: Send the signal
+        if: env.READY == 'true'
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+          PROJECT: ${{ steps.auth.outputs.project_id }}
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'test' }}
+        run: |
+          data=$(printf '%s' "$VERSION" | base64)
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"messages\":[{\"data\":\"$data\",\"attributes\":{\"syncr\":\"update\"}}]}" \
+            "https://pubsub.googleapis.com/v1/projects/$PROJECT/topics/syncr-gmail:publish"

@@ -40,6 +40,9 @@ function setStatus(next: InstantStatus) {
   window.dispatchEvent(new Event('instant-mail-status'))
 }
 
+// Signals are coming in right now (also used for instant updates: updateSignal.ts)
+export const instantOn = () => status.ok
+
 export function useInstantStatus() {
   const [current, setCurrent] = useState(status)
   useEffect(() => {
@@ -104,6 +107,29 @@ function pause(ms: number) {
   })
 }
 
+type Received = { ackId: string; message?: { data?: string; attributes?: Record<string, string> } }
+
+// The queue also gets "a new version is out" notes from the release (update-signal.yml, with
+// the attribute syncr=update and the version as data): those go to UpdateBanner.tsx, not to
+// the mail check.
+export function sortSignals(received: Received[]) {
+  let mail = false
+  const versions: string[] = []
+  for (const { message } of received) {
+    if (message?.attributes?.syncr !== 'update') mail = true
+    else versions.push(readVersion(message.data))
+  }
+  return { mail, versions }
+}
+
+function readVersion(data: string | undefined) {
+  try {
+    return data ? atob(data).trim() : ''
+  } catch {
+    return '' // not base64: still a signal, just without its version
+  }
+}
+
 // One round: renew the watches if due, ask the queue, check the mail if a signal came.
 // Returns how long to wait before the next round.
 async function round(): Promise<number> {
@@ -128,10 +154,13 @@ async function round(): Promise<number> {
   )
   const notFor = failing.length ? t(' · not for {emails} (checked every minute)', { emails: failing.join(', ') }) : ''
   setStatus({ ok: true, text: t('Instant mail: on (via {email})', { email: collector.email }) + notFor })
-  const ackIds: string[] = (answer?.receivedMessages ?? []).map((m: { ackId: string }) => m.ackId)
+  const received: Received[] = answer?.receivedMessages ?? []
+  const ackIds = received.map((m) => m.ackId)
   if (ackIds.length > 0) {
+    const { mail, versions } = sortSignals(received)
+    for (const version of versions) window.dispatchEvent(new CustomEvent('update-signal', { detail: version }))
     // Which account changed doesn't matter: the check asks every account what changed (cheap)
-    await checkMail()
+    if (mail) await checkMail()
     await googleApi(
       collector.email,
       `${subscription}:acknowledge`, // i18n-ok

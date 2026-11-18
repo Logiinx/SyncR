@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **New:** choose how often SyncR looks for updates, in Window and privacy (PC only)
+- **New:** with instant mail set up, new versions show within seconds (PC only)
 
 ## [0.88.0] - 2026-11-18
 

@@ -6,6 +6,7 @@ import { Check, CircleArrowDown, TriangleAlert } from 'lucide-react'
 import type { Update } from '@tauri-apps/plugin-updater'
 import { finalSync } from './autoSync'
 import { loadBackground } from './desktop'
+import { checkEvery, noteFound, noteSignal } from './updateSignal'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
 import Spinner from './Spinner'
@@ -18,14 +19,17 @@ export function checkForUpdates(): Promise<void> {
 }
 
 // The PC's quiet check while it keeps running: every minute, is the chosen time (Settings →
-// Window and privacy) up since the last look? Read each time, so a new choice counts at once,
-// and a PC waking from sleep looks right away.
+// Window and privacy; 6 hours while instant updates work, updateSignal.ts) up since the last
+// look? Read each time, so a new choice counts at once, and a PC waking from sleep looks right away.
 const TICK_MS = 60_000
 const EARLY_MS = 5_000 // a timer can fire a little early: don't wait a whole extra minute for it
+const MIN_GAP_MS = 60_000 // at most one look a minute, whatever the notes
+// After a note: look now, then again in case GitHub's "latest" file wasn't updated yet
+const AFTER_SIGNAL_MS = [0, 60_000, 180_000]
 let lastLook = 0
 
 function lookDue() {
-  const every = loadBackground().updateCheck * 60_000
+  const every = checkEvery(loadBackground().updateCheck) * 60_000
   return every > 0 && Date.now() - lastLook >= every - EARLY_MS
 }
 
@@ -48,15 +52,35 @@ function UpdateBanner() {
   useEffect(() => {
     // At start, then as often as chosen: SyncR can stay in the tray for days (the phone looks each
     // time it comes back, pwa.ts). One already found stays as it is (it may be installing).
-    const look = () => {
+    let foundOne = false
+    const look = (atStart = false) => {
       lastLook = Date.now()
-      void findUpdate().then((found) => found && setUpdate((current) => current ?? found))
+      void findUpdate().then((found) => {
+        if (!found) return
+        foundOne = true
+        if (!atStart) noteFound(found.version)
+        setUpdate((current) => current ?? found)
+      })
     }
-    look()
+    look(true)
     const timer = isTauri() ? window.setInterval(() => lookDue() && look(), TICK_MS) : undefined
+    // Instant updates: a note from the release (instantMail.ts)
+    let signalTimers: number[] = []
+    const onSignal = (event: Event) => {
+      noteSignal((event as CustomEvent<string>).detail)
+      signalTimers.forEach((id) => window.clearTimeout(id))
+      // The first try waits for the minute since the last look (a flood of notes can't do more)
+      const first = Math.max(0, lastLook + MIN_GAP_MS - Date.now())
+      signalTimers = AFTER_SIGNAL_MS.map((after) => window.setTimeout(() => !foundOne && look(), first + after))
+    }
+    window.addEventListener('update-signal', onSignal)
     // A function in state must be wrapped, or React would call it
     registerServiceWorker((apply) => setApplyWebUpdate(() => apply))
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      signalTimers.forEach((id) => window.clearTimeout(id))
+      window.removeEventListener('update-signal', onSignal)
+    }
   }, [])
 
   // "Check for updates"
