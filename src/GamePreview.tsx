@@ -3,7 +3,7 @@ import { t } from './i18n'
 import { ChevronDown, Plus } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
-import { ADD_PLACES, addGame, allPlatforms, isReleased, statusLabel } from './games'
+import { ADD_PLACES, addGame, allPlatforms, isReleased, releaseAndPlatforms, statusLabel } from './games'
 import type { FoundGame } from './igdb'
 import { WindowCover } from './GameCover'
 import type { GameStatus } from './db'
@@ -65,10 +65,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
             <CloseButton onClick={onClose} />
           </div>
           {/* One line, like the game window: "12 Mar 2027 · in 4 months · PC, Android" */}
-          <p className="calendar-popup-info">
-            {release}
-            {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
-          </p>
+          <p className="calendar-popup-info">{releaseAndPlatforms(release, game.platforms)}</p>
           {label && <p className="calendar-popup-info">{t('In {place}', { place: label })}</p>}
           <GameExtrasInfo igdbId={game.igdbId} />
           <GamePricesInfo igdbId={game.igdbId} name={game.name} />

@@ -175,6 +175,8 @@ const sortPlatforms = (platforms: string[]) => [
   ...platforms.filter((p) => !MY_PLATFORMS.includes(p)),
 ]
 export const allPlatforms = (platforms: string[]) => sortPlatforms(platforms).join(', ')
+// A window's line (game window, preview): "12 Mar 2027 · in 4 months · PC, Android"
+export const releaseAndPlatforms = (release: string, platforms: string[]) => [release, allPlatforms(platforms)].filter(Boolean).join(' · ')
 export function shortPlatforms(platforms: string[]) {
   const sorted = sortPlatforms(platforms)
   const shown = sorted.slice(0, SHOWN_PLATFORMS).join(', ')

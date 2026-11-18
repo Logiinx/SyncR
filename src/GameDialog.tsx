@@ -5,7 +5,7 @@ import { ChevronDown, CircleCheck, CirclePause, CircleX, Clock, ExternalLink, Pa
 import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, setGameStatus, setPreordered, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
-import { allPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
+import { allPlatforms, releaseAndPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
 import { endingHeader, endingMenuItems, ENDINGS, upcomingClosed } from './gameMenu'
 import ContextMenu from './ContextMenu'
 import { openLink } from './links'
@@ -109,10 +109,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
         <div className="gd-head">
           <div className="gd-title">
             <h2>{game.name}</h2>
-            <p>
-              {releaseText(game, 'full')}
-              {game.platforms.length > 0 && ` · ${allPlatforms(game.platforms)}`}
-            </p>
+            <p>{releaseAndPlatforms(releaseText(game, 'full'), game.platforms)}</p>
             {releaseEvent && releaseEvent.alerts.length > 0 && (
               <p>{t('Alert: {when}', { when: formatDue(releaseEvent.start - releaseEvent.alerts[0] * 60 * 1000) })}</p>
             )}
