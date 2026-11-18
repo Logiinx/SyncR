@@ -511,7 +511,7 @@ button {
   transition:
     background 0.15s,
     color 0.15s,
-    padding 0.15s;
+    padding 0.15s var(--ease-open);
 }
 
 .tab:hover {
@@ -658,7 +658,7 @@ button {
 }
 
 .tab-row.dragging .tab {
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .tab-row.dragging .tab.drag-source {
@@ -727,8 +727,8 @@ button {
 
   .tab-close {
     transition:
-      width 0.15s,
-      margin 0.15s,
+      width 0.15s var(--ease-open),
+      margin 0.15s var(--ease-open),
       opacity 0.15s;
   }
 }
@@ -1069,7 +1069,7 @@ button {
   top: calc(8px + 0.75em - 7px);
   margin-top: 2px;
   color: var(--text-dim);
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .card-title:hover .card-fold {
@@ -1192,7 +1192,7 @@ button {
 .card-group-chevron {
   flex-shrink: 0;
   color: var(--text-dim);
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .card-group.folded .card-group-chevron {
@@ -1437,7 +1437,7 @@ button {
 .card-group-head,
 .card-group-cards > .card,
 .card-group-cards > .board-separator {
-  transition: transform 0.15s ease;
+  transition: transform 0.15s var(--ease-open);
 }
 
 /* A card dragged into an open group: its line turns blue. Over a folded group: the pile lights up. */
@@ -2760,7 +2760,7 @@ button {
 
 .link-group-summary svg {
   flex: none;
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .link-group-summary.open svg {
@@ -3294,7 +3294,7 @@ button {
   height: 22px;
   padding: 0;
   color: var(--text-dim);
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .tiptap .code-toggle:hover {
@@ -3427,7 +3427,7 @@ button {
 
 /* The arrow turns, not the button (its 2px shift would turn sideways) */
 .tiptap [data-type='details'] > button svg {
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .tiptap [data-type='details'].is-open > button svg {
@@ -5211,7 +5211,7 @@ button {
   bottom: -1px;
   height: 2px;
   background: var(--link);
-  transition: width 0.2s;
+  transition: width 0.2s var(--ease-open);
 }
 
 /* "Checking…", "Up to date", "Couldn't check": a small gray line, gone after a few seconds */
@@ -7984,7 +7984,7 @@ button.history-row.selected {
 /* The arrow only on a phone: it points to the panel below (up when open) */
 .trailer-toggle .trailer-arrow {
   display: none;
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 @media (max-width: 699px) {
@@ -8305,7 +8305,7 @@ button.history-row.selected {
 .video-group-chevron {
   flex-shrink: 0;
   color: var(--text-dim);
-  transition: transform 0.15s;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .video-group.folded .video-group-chevron {
@@ -8337,7 +8337,7 @@ button.history-row.selected {
 /* A Queue row dragged to a new place (dragInQueue): the others slide to make room; once dropped
    they're already in place, so no slide (settling) */
 .video-list.reordering .video-row:not(.lifted) {
-  transition: transform 0.15s ease;
+  transition: transform 0.15s var(--ease-open);
 }
 
 .video-list.settling .video-row:not(.lifted) {
