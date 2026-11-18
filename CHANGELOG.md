@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Better:** a red Live badge on the picture of Twitch streams still live
+- **Changed:** a copied video link goes in the queue; to play it, Video settings → Player
 - **Fixed:** added Twitch streams keeping a “?” picture once the live ended
 
 ## [0.88.0] - 2026-11-18

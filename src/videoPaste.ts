@@ -2,16 +2,21 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { alertMarkId, db } from './db'
 import { t } from './i18n'
-import { addOrFindVideo, markOpened } from './video'
+import { saveQueuedNote } from './queuedNote'
+import { addOrFindVideo, markOpened, setWatched } from './video'
 import { addPlaylist } from './videoPlaylists'
-import { playVideo } from './videoPlayer'
+import { loadPlayerSettings, playVideo, type PlayableVideo } from './videoPlayer'
+import { resumePosition, savePosition } from './videoPositions'
+import { addToQueue, inQueue } from './videoQueue'
 
-// A link pasted in the Video tab (Ctrl+V) or copied before the global shortcut: a video plays at
-// once and goes in To watch, a playlist is added, a channel opens Add a follow filled in.
+// A link pasted in the Video tab (Ctrl+V) or copied before the global shortcut: a video goes in
+// To watch and joins the end of the Queue (or plays at once: Video settings → Player), a playlist
+// is added, a channel opens Add a follow filled in.
 
 // What happened, for the Video tab to show it
 export type PastedLink =
   | { kind: 'video'; followId: string; added: boolean }
+  | { kind: 'queued'; video: PlayableVideo; playlistId?: string; channel: string; already: boolean }
   | { kind: 'playlist'; playlistId: string }
   | { kind: 'channel'; link: string }
 
@@ -50,10 +55,19 @@ export async function openPastedLink(url: URL): Promise<PastedLink> {
     return { kind: 'playlist', playlistId: await addPlaylist(url.href, true) }
   }
   try {
-    const { followId, video, already, playlistId } = await addOrFindVideo(url.href)
-    playVideo(video, playlistId, linkTime(url))
-    void markOpened(video.id)
-    return { kind: 'video', followId, added: !already }
+    const { followId, video, already, playlistId, channel } = await addOrFindVideo(url.href)
+    const start = linkTime(url)
+    if (loadPlayerSettings().copiedLink === 'play') {
+      playVideo(video, playlistId, start)
+      void markOpened(video.id)
+      return { kind: 'video', followId, added: !already }
+    }
+    const wasQueued = inQueue(video.id)
+    // Copied again: wanted again, so back to To watch (the Queue never shows watched ones)
+    if (already === 'watched') await setWatched(video.id, false)
+    keepLinkTime(video, start)
+    addToQueue(video.id)
+    return { kind: 'queued', video: { ...video, watched: false }, playlistId, channel, already: wasQueued }
   } catch (e) {
     // i18n-ok: the Worker's answer, not shown
     if ((e as { code?: string }).code === 'channel-link') return { kind: 'channel', link: url.href }
@@ -61,13 +75,20 @@ export async function openPastedLink(url: URL): Promise<PastedLink> {
   }
 }
 
+// A link's time (?t=) becomes where it continues, unless it got further already
+function keepLinkTime(video: PlayableVideo, start: number) {
+  if (start <= 0 || (!video.live && start >= video.duration)) return
+  if ((resumePosition(video.id)?.t ?? 0) >= start) return
+  savePosition(video.id, { t: Math.floor(start), length: Math.max(video.duration, start), ...(video.live && { live: true }) })
+}
+
 // ---------- What the Video tab shows ----------
 
 // A line under the tab's bar while a link is read or what went wrong, and what to do in the tab
-// next (Add a follow filled in, or show where a video or playlist went). Kept here, so the
+// next (Add a follow filled in, show where a video or playlist went, or To watch's Queue). Kept here, so the
 // shortcut can set them while the tab isn't open; the tab shows them when it is.
-export type PasteLine = { busy: boolean; message: string } | null
-export type PasteAction = { kind: 'follow'; link: string } | { kind: 'show'; id: string }
+export type PasteLine = { busy: boolean; message: string; done?: boolean } | null // done: it worked (not an error)
+export type PasteAction = { kind: 'follow'; link: string } | { kind: 'show'; id: string } | { kind: 'queue' }
 let line: PasteLine = null
 let action: PasteAction | null = null
 let pasteAt = 0 // the latest paste: an older one finishing late changes nothing
@@ -80,6 +101,13 @@ export function subscribePaste(listener: () => void) {
 }
 export const pasteLine = () => line
 export const pasteAction = () => action
+// The pop-up's "Added to queue" card was clicked: the window comes up on To watch's Queue
+export function showQueueInTab() {
+  action = { kind: 'queue' }
+  notify()
+  window.dispatchEvent(new CustomEvent('show-video-tab'))
+}
+
 // The tab did it
 export function pasteActionDone() {
   action = null
@@ -129,10 +157,16 @@ export async function pasteLink(url: URL | null, fromShortcut: boolean) {
     if (at !== pasteAt) return
     if (result.kind === 'channel') action = { kind: 'follow', link: result.link }
     else if (result.kind === 'playlist') action = { kind: 'show', id: result.playlistId }
-    // From the shortcut, a video doesn't move the tab you may not be looking at
+    // From the shortcut, a video doesn't move the tab you may not be looking at: the pop-up says it
+    else if (result.kind === 'queued' && fromShortcut) {
+      const { video, playlistId, channel, already } = result
+      saveQueuedNote({ video, playlistId, channel, already, at: Date.now() })
+    }
+    else if (result.kind === 'queued') action = { kind: 'queue' }
     else if (result.added && !fromShortcut) action = { kind: 'show', id: result.followId }
-    showLine(null, at)
-    if (result.kind !== 'video') bringUp()
+    const queuedHere = result.kind === 'queued' && !fromShortcut
+    showLine(queuedHere ? { busy: false, done: true, message: result.already ? t('Already in the queue') : t('Added to queue') } : null, at)
+    if (result.kind !== 'video' && result.kind !== 'queued') bringUp()
   } catch (e) {
     if (at !== pasteAt) return
     showLine({ busy: false, message: e instanceof Error ? e.message : String(e) }, at)

@@ -15,6 +15,8 @@ import { removeVideoAlerts } from './videoAlerts'
 import type { VideoAlertAction } from './VideoAlertCards'
 import { playVideo } from './videoPlayer'
 import { addToQueue } from './videoQueue'
+import { closeQueuedNote, loadQueuedNote } from './queuedNote'
+import { showQueueInTab } from './videoPaste'
 
 // The desktop reminder pop-up: a small always-on-top window in a corner of the screen (both
 // chosen in Settings), shown while reminders are due, new emails came (mailAlerts.ts) or the
@@ -33,9 +35,12 @@ const MARGIN = 12 // from the screen edges
 // The battery card: battery-open = a click on its text (the Mouse battery window), battery-done =
 // Done or faded
 export type BatteryAction = 'battery-open' | 'battery-done'
+// The "Added to queue" card (queuedNote.ts): open = a click on its text (the Queue in the Video
+// tab), watch = Watch, done = ✕ or faded
+export type QueuedAction = 'queued-open' | 'queued-watch' | 'queued-done'
 export interface PopupMessage {
-  id: string // an event alert's key (DueItem.key), an email's (MailAlert.key, "mail:…"), LOW_ALERT_ID or a video's id
-  action: ReminderAction | MailAction | BatteryAction | VideoAlertAction
+  id: string // an event alert's key (DueItem.key), an email's (MailAlert.key, "mail:…"), LOW_ALERT_ID, a video's id or the queued card's time
+  action: ReminderAction | MailAction | BatteryAction | VideoAlertAction | QueuedAction
 }
 const EVENT = 'reminder-popup-action'
 
@@ -178,7 +183,7 @@ async function showMainWindow() {
 // mouse battery is low, and runs its button clicks. Returns true if the pop-up couldn't open
 // (then the main window shows the reminders' cards; emails and the battery then wait for the
 // pop-up, PC only anyway).
-// videos: how many new-video cards there are (VideoAlertCards.tsx)
+// videos: how many new-video cards there are (VideoAlertCards.tsx), + 1 for an "Added to queue" card
 export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[], battery: LowAlert | null, videos: number) {
   const [failed, setFailed] = useState(false)
 
@@ -199,6 +204,7 @@ export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[],
         emit('mouse-battery-open') // App opens Settings on the Mouse battery window
       }
       else if (action === 'battery-done') closeLowAlert()
+      else if (action.startsWith('queued-')) runQueuedAction(Number(id), action as QueuedAction)
       else if (action.startsWith('video-')) {
         runVideoAlertAction(id, action as VideoAlertAction).catch((error) => console.error(error))
       }
@@ -214,6 +220,18 @@ export function useReminderPopup(due: DueItem[] | undefined, mails: MailAlert[],
   }, [])
 
   return failed
+}
+
+// The "Added to queue" card's clicks; at: which card (a newer one may show by now)
+function runQueuedAction(at: number, action: QueuedAction) {
+  const note = loadQueuedNote()
+  closeQueuedNote(at)
+  if (note?.at !== at) return
+  if (action === 'queued-open') showQueueInTab() // brings the window up too (App.tsx)
+  if (action === 'queued-watch') {
+    playVideo(note.video, note.playlistId) // from the link's time, if it had one (videoPaste.ts)
+    void markOpened(note.video.id)
+  }
 }
 
 // A new-video card's button (VideoAlertCards.tsx). The card goes in every case; the video stays in To

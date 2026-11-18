@@ -436,6 +436,11 @@ function VideoView() {
     if (!nextAction) return
     pasteActionDone()
     if (nextAction.kind === 'follow') setAdding(nextAction.link)
+    else if (nextAction.kind === 'queue') {
+      setList('towatch')
+      setChannel('all')
+      setQueueFolded(false)
+    }
     else showAdded(nextAction.id)
   })
   useEffect(() => {
@@ -883,7 +888,7 @@ function VideoView() {
           </div>
         </div>
         {pasted && (
-          <p className={`games-empty${pasted.busy ? '' : ' error'}`}>
+          <p className={`games-empty${pasted.busy || pasted.done ? '' : ' error'}`}>
             {pasted.busy ? (
               <span className="loading-line">
                 <Spinner size={13} /> {pasted.message}

@@ -10,6 +10,7 @@ import { useInstantMail } from './instantMail'
 import { startMailbox } from './mailbox'
 import { popupMonitor, useReminderPopup } from './popupWindow'
 import { useLowAlert } from './mouseBattery'
+import { useQueuedNote } from './queuedNote'
 import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
 
@@ -100,7 +101,8 @@ function ReminderAlerts() {
   const mails = useMailAlerts()
   const battery = useLowAlert() // PC: the mouse battery's low warning too
   const videos = useShownVideoAlerts(useVideoAlerts()) // PC: new videos of bell channels
-  const popupFailed = useReminderPopup(due, mails, battery, videos?.length ?? 0)
+  const queued = useQueuedNote() // PC: "Added to queue" (the link shortcut, videoPaste.ts)
+  const popupFailed = useReminderPopup(due, mails, battery, (videos?.length ?? 0) + (queued ? 1 : 0))
   const showCards = !isTauri() || popupFailed
   useChime(showCards ? due : undefined)
 

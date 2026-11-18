@@ -133,6 +133,12 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             </SettingRow>
           </SettingsCard>
           <SettingsCard icon={Play} title={t('Player')}>
+            <SettingRow label={t('A copied video link')} title={t('Ctrl+V in the Video tab, or Ctrl+Alt+Shift+V anywhere in Windows')}>
+              <select value={player.copiedLink} onChange={(e) => updatePlayer({ copiedLink: e.target.value as PlayerSettings['copiedLink'] })}>
+                <option value="queue">{t('Goes in the queue')}</option>
+                <option value="play">{t('Plays at once')}</option>
+              </select>
+            </SettingRow>
             <SettingRow label={t('Mark as watched closes the video player')}>
               <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />
             </SettingRow>

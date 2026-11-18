@@ -5,6 +5,7 @@ import { VideoCardContent } from './VideoHoverCard'
 import { db, type VideoRow } from './db'
 import { plural, t } from './i18n'
 import { formatDue } from './reminders'
+import type { QueuedNote } from './queuedNote'
 import { usePopupCardSize, type VideoAlert } from './videoAlerts'
 import VideoLogo from './VideoLogo'
 import { videoClock } from './videoPositions'
@@ -121,5 +122,40 @@ export function VideoCards({ shown, fading, onAction }: {
         <VideoCard key={item.alert.id} shown={item} large={large} fading={fading.has(videoFadeKey(item.alert.id))} onAction={(action) => onAction(item.alert, action)} />
       ))}
     </>
+  )
+}
+
+// "Added to queue" (queuedNote.ts): a copied video the link shortcut sent to the Queue, in the
+// Compact card's look with "Added to queue" where the time is. A click on it shows the Queue;
+// Watch plays it now; ✕ or after a few seconds it goes (ReminderPopup.tsx).
+export function QueuedCard({ note, fading, onOpen, onWatch, onClose }: {
+  note: QueuedNote
+  fading: boolean
+  onOpen: () => void
+  onWatch: () => void
+  onClose: () => void
+}) {
+  const { video } = note
+  return (
+    <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: `var(--${video.platform})` }}>
+      <button className="reminder-alert-body" onClick={onOpen} title={t('Show the queue')}>
+        <span className="reminder-alert-due">
+          <VideoLogo platform={video.platform} /> {note.already ? t('Already in the queue') : t('Added to queue')} · <span className="mail-alert-account">{note.channel}</span>
+        </span>
+        <span className="video-alert-main">
+          {video.thumbnail && <img className="video-alert-thumb" src={video.thumbnail} alt="" />}
+          <span className="video-alert-text">
+            <span className="reminder-alert-text">{video.title}</span>
+            {video.duration > 0 && <span className="reminder-alert-note">{videoClock(video.duration)}</span>}
+          </span>
+        </span>
+      </button>
+      <div className="reminder-alert-buttons">
+        <button className="primary" onClick={onWatch}>{t('Watch')}</button>
+        <button className="video-alert-close" onClick={onClose} title={t('Dismiss')} aria-label={t('Dismiss')}>
+          <X size={15} />
+        </button>
+      </div>
+    </div>
   )
 }

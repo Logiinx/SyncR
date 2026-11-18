@@ -644,13 +644,14 @@ export async function addOrFindVideo(link: string) {
   ])
   const follow = follows.find((other) => !other.deleted && other.platform === platform && other.channelId === channel.id)
   const followId = addedFollowId(follow, platform, channel.id)
-  const playable = { id: videoId, platform, title: video.title, channelId: channel.id, url: video.url, watched: !!mark?.watched, duration: video.duration, live: !!video.live }
+  const playable = { id: videoId, platform, title: video.title, channelId: channel.id, url: video.url, thumbnail: video.thumbnail as string | null, watched: !!mark?.watched, duration: video.duration, live: !!video.live }
+  const channelName: string = channel.name
   // A playlist's videos show only in it
   const livePlaylists = new Set(playlists.filter((playlist) => !playlist.deleted).map((playlist) => playlist.id))
   const playlistId = lists.find((list) => livePlaylists.has(list.id) && list.videos.some((episode) => episode.id === videoId))?.id
-  if (playlistId) return { followId, video: playable, already: 'playlist' as const, playlistId }
+  if (playlistId) return { followId, channel: channelName, video: playable, already: 'playlist' as const, playlistId }
   if (!mark?.cleared && (added || (row && follow && videoKept(follow, row)))) {
-    return { followId, video: playable, already: mark?.watched ? ('watched' as const) : ('towatch' as const) }
+    return { followId, channel: channelName, video: playable, already: mark?.watched ? ('watched' as const) : ('towatch' as const) }
   }
   const fields: AddedVideo = {
     ...added,
@@ -676,7 +677,7 @@ export async function addOrFindVideo(link: string) {
   // Seen before: it goes back to To watch, also if it was cleared
   if (mark) await saveMarks([videoId], { cleared: false, watched: false })
   changed()
-  return { followId, video: { ...playable, watched: false }, already: null }
+  return { followId, channel: channelName, video: { ...playable, watched: false }, already: null }
 }
 
 // The Add a video window: refuses what's there already. Gives back the followId it's listed under.

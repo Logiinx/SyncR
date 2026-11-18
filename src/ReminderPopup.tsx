@@ -19,7 +19,8 @@ import { POPUP_WIDTH, popupPlacer, READER_WIDTH, sendFromPopup } from './popupWi
 import { LOW_ALERT_ID, useLowAlert, type LowAlert } from './mouseBattery'
 import { BatteryCard } from './BatteryCard'
 import { useVideoAlerts } from './videoAlerts'
-import { useShownVideoAlerts, VideoCards, videoFadeKey } from './VideoAlertCards'
+import { QueuedCard, useShownVideoAlerts, VideoCards, videoFadeKey } from './VideoAlertCards'
+import { QUEUED_FADE_SECONDS, queuedAtOf, queuedFadeKey, useQueuedNote } from './queuedNote'
 
 // The page inside the desktop reminder pop-up window (opened by popupWindow.ts with
 // ?view=reminder-popup, see main.tsx). Shows the due reminders, the mouse battery's low warning,
@@ -30,6 +31,7 @@ function ReminderPopup() {
   const due = useDueReminders()
   const mails = useMailAlerts()
   const battery = useLowAlert()
+  const queued = useQueuedNote()
   const videos = useShownVideoAlerts(useVideoAlerts()) ?? []
   useGmailAccounts() // redraws the cards when an account's color changes
   usePopupSounds(due, mails, battery, videos.map(({ alert }) => alert.id))
@@ -167,9 +169,15 @@ function ReminderPopup() {
   }, [reading !== undefined])
   // The same list until the cards change (a new one each time would restart the fade timers)
   const videoKeys = videos.map(({ alert }) => videoFadeKey(alert.id)).join(' ')
+  const queuedKey = queued && queuedFadeKey(queued.at)
   const fadeCards = useMemo(
-    () => [...(battery ? [{ key: LOW_ALERT_ID }] : []), ...mails, ...(videoKeys ? videoKeys.split(' ').map((key) => ({ key })) : [])],
-    [battery, mails, videoKeys],
+    () => [
+      ...(battery ? [{ key: LOW_ALERT_ID }] : []),
+      ...mails,
+      ...(videoKeys ? videoKeys.split(' ').map((key) => ({ key })) : []),
+      ...(queuedKey ? [{ key: queuedKey, fadeAfter: QUEUED_FADE_SECONDS }] : []),
+    ],
+    [battery, mails, videoKeys, queuedKey],
   )
   const fading = useFade(fadeCards, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
@@ -200,6 +208,15 @@ function ReminderPopup() {
         />
       )}
       {!reading && <VideoCards shown={videos} fading={fading} onAction={(alert, action) => sendFromPopup({ id: alert.id, action })} />}
+      {!reading && queued && (
+        <QueuedCard
+          note={queued}
+          fading={fading.has(queuedFadeKey(queued.at))}
+          onOpen={() => sendFromPopup({ id: String(queued.at), action: 'queued-open' })}
+          onWatch={() => sendFromPopup({ id: String(queued.at), action: 'queued-watch' })}
+          onClose={() => sendFromPopup({ id: String(queued.at), action: 'queued-done' })}
+        />
+      )}
       {/* The same reader while prepared (unseen, at its size) and read: kept in one place, so
           the mail isn't loaded again when it shows */}
       {open && (
@@ -239,10 +256,11 @@ function usePopupSounds(due: DueItem[] | undefined, mails: MailAlert[], battery:
 // Emails (never by default), counted from when each card appeared. Not while the mouse is over
 // the pop-up or a mail is open to read: then every card starts its delay again afterwards.
 // Opened (read) cards don't fade. A faded email goes as "missed" (mailAlerts.ts); its mail
-// stays unread. A faded battery card goes like Done, a faded video card like ✕.
+// stays unread. A faded battery card goes like Done, a faded video card like ✕. The "Added to
+// queue" card has its own few seconds (fadeAfter), whatever the setting.
 const FADE_OUT_MS = 400 // the fade itself (index.css, .reminder-alert.fading)
 
-function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
+function useFade(mails: { key: string; opened?: boolean; fadeAfter?: number }[], reading: boolean) {
   const [hovered, setHovered] = useState(false)
   const [fading, setFading] = useState<Set<string>>(new Set())
   const since = useRef(new Map<string, number>()) // when each card appeared (or the pause ended)
@@ -266,7 +284,7 @@ function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
     for (const key of since.current.keys()) {
       if (!mails.some((mail) => mail.key === key)) since.current.delete(key) // gone
     }
-    if (paused || !seconds) {
+    if (paused) {
       since.current.clear() // the delay starts again once the pause ends
       setFading(new Set())
       return
@@ -274,12 +292,15 @@ function useFade(mails: { key: string; opened?: boolean }[], reading: boolean) {
     // Also the timers that end a fade: a mouse arriving during it brings the card back
     const timers: ReturnType<typeof setTimeout>[] = []
     for (const mail of mails.filter((m) => !m.opened)) {
+      const wait = mail.fadeAfter ?? seconds
+      if (!wait) continue
       if (!since.current.has(mail.key)) since.current.set(mail.key, now)
-      const left = since.current.get(mail.key)! + seconds * 1000 - now
+      const left = since.current.get(mail.key)! + wait * 1000 - now
       timers.push(setTimeout(() => {
         setFading((keys) => new Set(keys).add(mail.key))
         const out = loadAppearance().animations ? FADE_OUT_MS : 0
         const message = mail.key === LOW_ALERT_ID ? { id: mail.key, action: 'battery-done' as const }
+          : queuedAtOf(mail.key) ? { id: queuedAtOf(mail.key)!, action: 'queued-done' as const }
           : mail.key.startsWith(videoFadeKey('')) ? { id: mail.key.slice(videoFadeKey('').length), action: 'video-close' as const }
           : { id: mail.key, action: 'mail-fade' as const }
         timers.push(setTimeout(() => sendFromPopup(message), out))

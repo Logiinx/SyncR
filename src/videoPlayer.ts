@@ -13,7 +13,7 @@ import { queueStarted } from './videoQueue'
 
 // The video player window (desktop only; video_window.rs, open_video_player). In a browser, videos just
 // open in a new tab.
-interface PlayableVideo {
+export interface PlayableVideo {
   id: string
   platform: 'youtube' | 'twitch'
   title: string
@@ -66,6 +66,7 @@ export interface PlayerSettings {
   watchedNearEnd: boolean // near its end, a video moves to Watched by itself
   quality: (typeof YOUTUBE_QUALITIES)[number][0]
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
+  copiedLink: 'queue' | 'play' // a copied video (Ctrl+V in the tab, the global shortcut): added to the Queue or played at once
 }
 const KEY = 'syncr.videoPlayer'
 export const loadPlayerSettings = (): PlayerSettings => ({
@@ -74,6 +75,7 @@ export const loadPlayerSettings = (): PlayerSettings => ({
   endCloses: true,
   autoNext: 'playlists',
   watchedNearEnd: true,
+  copiedLink: 'queue',
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
   ...read<Partial<PlayerSettings>>(KEY, {}),
