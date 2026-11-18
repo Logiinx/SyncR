@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-11-19
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** choisir plusieurs vidéos (Ctrl+clic, Maj+clic), agir sur toutes en haut
 - **Nouveau :** glisser une vidéo dans la file d’attente, ou l’en sortir

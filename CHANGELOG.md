@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-11-19
+
 **Video** (PC only)
 - **New:** pick several videos (Ctrl+click, Shift+click), act on all from the top bar
 - **New:** drag a video into the Queue, or a Queue video out of it
