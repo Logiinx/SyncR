@@ -23,6 +23,9 @@ All notable changes to SyncR. Newest version first.
 - **Better:** the game search proxy’s password can be shown with an eye, like the passphrase
 - **Small fixes:** privacy page on the phone, image errors, percentages, spinners, motion
 
+**Video** (PC only)
+- **Fixed:** the bell now rings for Twitch channels followed for some games only
+
 ## [0.85.0] - 2026-11-18
 
 **Games**

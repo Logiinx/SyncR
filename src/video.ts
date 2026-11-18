@@ -264,7 +264,7 @@ export function useChecking() {
 // Saves what can be shown: only finished videos, no older than the follow's start, and on Twitch
 // only past streams (no highlights or clips). All of them, also those the word lists leave out:
 // changing the lists then shows them at once, without asking the site again. Gives back the
-// videos seen for the first time that the follow's lists keep (none on its first check).
+// videos seen for the first time (none on its first check).
 async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck: boolean) {
   const rows: VideoRow[] = listed
     // i18n-ok
@@ -292,7 +292,14 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
       return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
     })
   if (changes.length) await db.videos.bulkPut(changes)
-  return firstCheck ? [] : rows.filter((row, i) => !saved[i] && videoKept(follow, row)).map((row) => row.id)
+  return firstCheck ? [] : rows.filter((_, i) => !saved[i]).map((row) => row.id)
+}
+
+// The new videos the follow's rules keep. Read again from the database: a Twitch video's games
+// come after it's saved (addTwitchGames), and "only these games" needs them.
+async function keptNewVideos(follow: VideoFollow, ids: string[]) {
+  const rows = await db.videos.bulkGet(ids)
+  return rows.flatMap((row) => (row && videoKept(follow, row) ? [row.id] : []))
 }
 
 // These videos have been shown. One found before foundAt existed counts its week from now.
@@ -328,8 +335,10 @@ async function checkFollow(follow: VideoFollow) {
   const answer = await response.json().catch(() => null)
   if (!response.ok || !(answer?.unchanged || Array.isArray(answer?.videos))) throw new Error(String(answer?.error ?? response.status))
   if (!answer.unchanged) {
-    found = await saveVideos(follow, answer.videos, !lastChecked)
-    if (follow.platform === 'twitch') await addTwitchGames(follow)
+    const fresh = await saveVideos(follow, answer.videos, !lastChecked)
+    // Twitch's website failing only leaves the games for the next check: the list itself was read
+    if (follow.platform === 'twitch') await addTwitchGames(follow).catch((e) => console.warn('Twitch games failed', e))
+    found = await keptNewVideos(follow, fresh)
     const marks = read<ListMarks>(LIST_MARKS_KEY, {})
     if (answer.mark) marks[follow.id] = { mark: answer.mark, at: Date.now() }
     else delete marks[follow.id]

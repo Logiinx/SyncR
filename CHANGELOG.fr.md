@@ -23,6 +23,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** le mot de passe du proxy de recherche de jeux s’affiche avec un œil, comme la phrase secrète
 - **Petites corrections :** page de confidentialité sur le téléphone, erreurs d’image, pourcentages, chargements, mouvements
 
+**Vidéo** (PC uniquement)
+- **Corrigé :** la cloche sonne enfin pour les chaînes Twitch suivies pour certains jeux seulement
+
 ## [0.85.0] - 2026-11-18
 
 **Jeux**
