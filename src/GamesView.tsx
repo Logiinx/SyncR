@@ -580,7 +580,7 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           kind="games-dated"
           icon={CalendarCheck}
           what={t('Date set')}
-          detail={`${game.datedFrom} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
+          detail={fromTo(game.datedFrom!, formatRelease(game.releaseDate, game.releaseLabel))}
           onOpen={onOpen}
           onDismiss={() => updateGame(game.id, { datedFrom: undefined })}
         />
@@ -592,7 +592,7 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
           kind=""
           icon={CalendarClock}
           what={t('Delayed')}
-          detail={`${formatRelease(game.delayedFrom, game.delayedFromLabel)} → ${formatRelease(game.releaseDate, game.releaseLabel)}`}
+          detail={fromTo(formatRelease(game.delayedFrom, game.delayedFromLabel), formatRelease(game.releaseDate, game.releaseLabel))}
           onOpen={onOpen}
           onDismiss={() => updateGame(game.id, { delayedFrom: undefined, delayedFromLabel: undefined })}
         />
@@ -601,12 +601,21 @@ function DelayBanner({ games, onOpen }: { games: Game[]; onOpen: (id: string) =>
   )
 }
 
+// "TBA → 2028" with the dim arrow icon of the sale table (never a typed arrow)
+const fromTo = (from: string, to: string) => (
+  <>
+    {from}
+    <ArrowRight className="sale-arrow" aria-hidden />
+    {to}
+  </>
+)
+
 function NewsLine({ game, kind, icon: Icon, what, detail, onOpen, onDismiss }: {
   game: Game
   kind: string // its color: games-moved (blue), games-dated (green), none (yellow)
   icon: typeof ArrowRight
   what: string
-  detail: string
+  detail: ReactNode
   onOpen: (id: string) => void
   onDismiss: () => void
 }) {

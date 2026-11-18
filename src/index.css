@@ -5441,6 +5441,11 @@ h3.games-group-title {
   color: var(--text-blue);
 }
 
+/* The "old → new" arrow stays dim, like the sale table's (only the first icon is colored) */
+.games-delay .games-delay-what svg.sale-arrow {
+  color: inherit;
+}
+
 .games-delay button {
   display: flex;
   padding: 4px;
