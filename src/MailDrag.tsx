@@ -23,8 +23,9 @@ export const dragActionName = (action: MailDrag, unread: boolean) =>
   : action === 'trash' ? t('Delete')
   : t('Nothing')
 
-export function DragRow({ item, unread, leaves, onDrag, children }: {
+export function DragRow({ item, className = '', unread, leaves, onDrag, children }: {
   item?: string // data-item, for the list's animations
+  className?: string // drag-card: a pop-up card (its closing animation: animations.ts)
   unread: boolean // for read: which way it goes
   leaves: (action: DragAction) => boolean // the mail goes from this list after the action
   onDrag: (action: DragAction) => void
@@ -121,7 +122,7 @@ export function DragRow({ item, unread, leaves, onDrag, children }: {
     <div
       ref={rowRef}
       data-item={item}
-      className="drag-row"
+      className={`drag-row ${className}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

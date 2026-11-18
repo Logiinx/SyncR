@@ -3,6 +3,7 @@ import { plural, t } from './i18n'
 import { Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
+import { DragRow } from './MailDrag'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
@@ -10,7 +11,8 @@ import Spinner from './Spinner'
 // the account's color, when + which account, sender, subject, start of the text. A click on
 // the text opens the mail to read in the pop-up (MailReader.tsx). Mark as read (big) and Keep
 // unread (the card goes, the mail stays unread). A spinner after the account while a clicked
-// mail is still loading.
+// mail is still loading. Dragged left or right: the actions chosen in Settings → Alerts
+// (MailDrag.tsx); each one takes the card away, like its buttons.
 const FOLD_FROM = 4 // this many or more: one "N new emails" card until unfolded
 
 function MailCard({ alert, fading, loading, onAction, onRead }: {
@@ -21,15 +23,24 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
   onRead: () => void
 }) {
   return (
-    <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
-      <button className="reminder-alert-body" onClick={onRead} title={t('Read')}>
-        <MailWhen alert={alert}>{loading && <Spinner size={12} />}</MailWhen>
-        <span className="reminder-alert-text">{alert.from}</span>
-        <span className="mail-alert-subject">{alert.subject}</span>
-        {alert.snippet && <span className="reminder-alert-note">{alert.snippet}</span>}
-      </button>
-      <MailButtons opened={alert.opened} onAction={onAction} />
-    </div>
+    <DragRow
+      className="drag-card"
+      unread={!alert.opened}
+      leaves={() => true}
+      onDrag={(action) =>
+        onAction(action === 'archive' ? 'mail-archive' : action === 'trash' ? 'mail-delete' : alert.opened ? 'mail-unread' : 'mail-read')
+      }
+    >
+      <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
+        <button className="reminder-alert-body" onClick={onRead} title={t('Read')}>
+          <MailWhen alert={alert}>{loading && <Spinner size={12} />}</MailWhen>
+          <span className="reminder-alert-text">{alert.from}</span>
+          <span className="mail-alert-subject">{alert.subject}</span>
+          {alert.snippet && <span className="reminder-alert-note">{alert.snippet}</span>}
+        </button>
+        <MailButtons opened={alert.opened} onAction={onAction} />
+      </div>
+    </DragRow>
   )
 }
 

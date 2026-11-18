@@ -28,10 +28,10 @@ export interface MailAlert {
 }
 
 // mail-read: Mark as read · mail-close: the card goes, the mail stays as it is (Done after
-// reading) · mail-delete: to Gmail's Trash · mail-opened: opened to read (marks it read) ·
-// mail-unread: Mark as unread (the card goes, missed) · mail-keep: Keep unread (the card goes,
-// missed) · mail-fade: faded by itself (missed)
-export type MailAction = 'mail-read' | 'mail-close' | 'mail-delete' | 'mail-opened' | 'mail-unread' | 'mail-keep' | 'mail-fade'
+// reading) · mail-delete: to Gmail's Trash · mail-archive: out of the inbox (only by dragging) ·
+// mail-opened: opened to read (marks it read) · mail-unread: Mark as unread (the card goes,
+// missed) · mail-keep: Keep unread (the card goes, missed) · mail-fade: faded by itself (missed)
+export type MailAction = 'mail-read' | 'mail-close' | 'mail-delete' | 'mail-archive' | 'mail-opened' | 'mail-unread' | 'mail-keep' | 'mail-fade'
 
 const ALERTS_KEY = 'syncr.gmail.alerts'
 const SEEN_KEY = 'syncr.gmail.seen' // per account: message ids already known (never shown again)
@@ -303,6 +303,7 @@ export async function runMailAction(key: string, action: MailAction) {
     markMissed()
   }
   if (action === 'mail-delete') await changeMail(key, 'trash')
+  if (action === 'mail-archive') await changeMail(key, 'archive')
 }
 
 const setUnread = (alert: MailAlert, unread: boolean) => changeMail(alert.key, unread ? 'unread' : 'read')

@@ -2194,10 +2194,16 @@ button {
   border-left: 4px solid var(--link);
 }
 
-.reminder-popup .reminder-alert + .reminder-alert,
-.reminder-popup .reminder-alerts-head + .reminder-alert,
-.reminder-popup .reminder-alert + .reminder-alerts-head {
+/* An email card sits in a .drag-card (MailDrag.tsx): the line goes on it */
+.reminder-popup :is(.reminder-alert, .drag-card) + :is(.reminder-alert, .drag-card),
+.reminder-popup .reminder-alerts-head + :is(.reminder-alert, .drag-card),
+.reminder-popup :is(.reminder-alert, .drag-card) + .reminder-alerts-head {
   border-top: 1px solid var(--border);
+}
+
+.reminder-popup .drag-card {
+  --drag-bg: var(--bg-raised);
+  border-radius: 0;
 }
 
 /* Small phone icon after the time: also in Google Calendar */
