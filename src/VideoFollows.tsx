@@ -24,6 +24,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
   const [only, setOnly] = useState(follow?.onlyWords.join(', ') ?? '')
   const [except, setExcept] = useState(follow?.exceptWords.join(', ') ?? '')
   const [games, setGames] = useState(follow?.onlyGames ?? [])
+  const typedGame = useRef('') // in the games box, not added with Enter yet
   const [minutes, setMinutes] = useState(follow?.minMinutes ? String(follow.minMinutes) : '')
   const [hideShorts, setHideShorts] = useState(follow?.hideShorts ?? true)
   const [music, setMusic] = useState(!!follow?.music)
@@ -38,7 +39,10 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
     if (busy || (!follow && !link.trim())) return
     setBusy(true)
     setError('')
-    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : games, minMinutes: minuteCount(minutes), hideShorts, music: youtube && music }
+    // A game typed but not added yet counts, as with Enter: it isn't dropped without a word
+    const typed = typedGame.current.trim()
+    const allGames = typed && !games.some((game) => sameGame(game, typed)) ? [...games, typed] : games
+    const settings = { onlyWords: wordList(only), exceptWords: wordList(except), onlyGames: youtube ? [] : allGames, minMinutes: minuteCount(minutes), hideShorts, music: youtube && music }
     try {
       if (follow) await updateFollow(follow.id, settings)
       else await addFollow(await findChannel(link), settings, past)
@@ -89,7 +93,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
         </span>
         <input id={`${fieldId}-except`} value={except} placeholder={t('trailer, best of')} onChange={(e) => setExcept(e.target.value)} />
       </label>
-      {!youtube && <GamePicker id={`${fieldId}-games`} channelId={follow?.channelId} games={games} onChange={setGames} />}
+      {!youtube && <GamePicker id={`${fieldId}-games`} channelId={follow?.channelId} games={games} onChange={setGames} onTyped={(text) => (typedGame.current = text)} />}
       <label className="video-field" htmlFor={`${fieldId}-minutes`}>
         <span className="video-field-name">
           {t('Hide videos shorter than (minutes)')}
@@ -139,9 +143,14 @@ const SEARCH_DELAY = 250 // ms after the last key before asking Twitch
 // Twitch follows: the games that keep a stream, as removable tags, and a box to add one. While
 // typing, suggestions: the games this channel played (newest first), then Twitch's matches.
 // ↑ ↓ choose, Enter adds (the text as typed when nothing is chosen), Esc closes the list.
-function GamePicker(props: { id: string; channelId?: string; games: string[]; onChange: (games: string[]) => void }) {
-  const { id, channelId, games, onChange } = props
-  const [text, setText] = useState('')
+// onTyped: what the box holds, which the window's Add or Save adds too.
+function GamePicker(props: { id: string; channelId?: string; games: string[]; onChange: (games: string[]) => void; onTyped: (text: string) => void }) {
+  const { id, channelId, games, onChange, onTyped } = props
+  const [text, setTypedText] = useState('')
+  const setText = (value: string) => {
+    setTypedText(value)
+    onTyped(value)
+  }
   const [open, setOpen] = useState(false)
   const [played, setPlayed] = useState<string[]>([])
   const [found, setFound] = useState<string[]>([])
