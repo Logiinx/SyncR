@@ -705,11 +705,11 @@ function VideoView() {
     if (!candidates.has(video.id) || video.watched || video.gone || queue.some((entry) => entry.id === video.id)) return undefined
     return { leaves: list === 'towatch' && !episode && !video.folderId }
   }
-  // No row when it's empty, except while a video that can join it is dragged (to drop into); its
-  // videos at the list's left edge, like the part below
+  // No row when it's empty (a dragged video goes in by the bar's strip then); its videos at the
+  // list's left edge, like the part below
   function queueRows(): ReactNode[] {
     const id = 'queue'
-    if (!queued.length && !(videoLifted && candidates.size)) return []
+    if (!queued.length) return []
     return [
       <FoldRow
         key={id}
@@ -872,7 +872,7 @@ function VideoView() {
   return (
     <main className="page games-page" ref={pageRef}>
       <div className="games">
-        <div className="games-views reminders-toolbar video-toolbar pinned-bar">
+        <div className={`games-views reminders-toolbar video-toolbar pinned-bar${videoLifted ? ' over-list' : ''}`}>
           <FillSwitch
             className="video-list-switch"
             options={[
@@ -920,6 +920,13 @@ function VideoView() {
               <Settings size={15} />
             </button>
           </div>
+          {/* While a video that can join the Queue is dragged, the bar is a place to drop it: at the
+              Queue's end, from anywhere in the list (user, 2026-11-18; videoDrag.ts) */}
+          {videoLifted && (
+            <div className="video-queue-strip" data-queue-head="">
+              <ListEnd size={15} /> {t('Drop here to add to the Queue')}
+            </div>
+          )}
         </div>
         {pasted && (
           <p className={`games-empty${pasted.busy || pasted.done ? '' : ' error'}`}>

@@ -11,8 +11,8 @@ const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach wha
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls
 const SCROLL_STEP = 8 // px per frame
 
-// While a video that can join the Queue is lifted, VideoView shows the Queue's row even when it's
-// empty, to drop into. drops counts drops into and out of the Queue: the list then skips its
+// While a video that can join the Queue is lifted, VideoView turns its bar into a strip to drop
+// it on (the Queue's end). drops counts drops into and out of the Queue: the list then skips its
 // adding and removing animations (the rows are already where they go).
 let lifted = false
 let drops = 0
@@ -165,8 +165,8 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
 
 // The row only moves up and down, like the Board's cards, and goes by the mouse's height, so leaving
 // the list sideways is fine. from = the folder it's in (null: none). queue: it can go into the Queue
-// too (dragVideo): over its videos they open a gap where it would go, over its folded or empty row
-// that row lights up like a folder (it goes at the end).
+// too (dragVideo): over its videos they open a gap where it would go; over its folded row or the
+// bar's strip, that lights up like a folder (it goes at the end).
 function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, move: moveTo, open, queue }: {
   from: string | null
   accepts: (row: HTMLElement) => boolean
@@ -196,7 +196,7 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   const changesPlace = (el: HTMLElement) => el.dataset.queueHead !== undefined || folderOf(el) !== from
 
   // Where it would go in the Queue (its row data-queue-head, its videos data-queue-group), measured
-  // in the list's own pixels: the Queue's row itself when folded or empty, else before the video
+  // in the list's own pixels: the Queue's row itself when folded, else before the video
   // whose middle is under the mouse (over the Queue's row: first; a little under the last: last)
   function queueSpot(at: number): QueueSpot | null {
     const head = list!.querySelector<HTMLElement>('[data-queue-head]')
@@ -238,13 +238,18 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   // Each frame, as the page can scroll and rows can open under a mouse that doesn't move
   function tick() {
     if (!row.isConnected) return end()
+    // The bar's strip (VideoView) takes it to the Queue's end: no scrolling over it, the page
+    // scrolls up just under it instead
+    const strip = queue ? page!.querySelector<HTMLElement>('.video-queue-strip') : null
+    const onStrip = !!strip && pointerY < strip.getBoundingClientRect().bottom
     const box = page!.getBoundingClientRect()
-    if (pointerY < box.top + EDGE) page!.scrollTop -= SCROLL_STEP
+    const topEdge = strip ? strip.getBoundingClientRect().bottom : box.top
+    if (!onStrip && pointerY < topEdge + EDGE) page!.scrollTop -= SCROLL_STEP
     else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
     row.style.transform = ''
     const top = row.getBoundingClientRect().top
     row.style.transform = `translateY(${(pointerY - grab - top) / currentZoom()}px)`
-    spot = queueSpot(row.offsetTop + (pointerY - top) / currentZoom())
+    spot = onStrip ? { head: strip } : queueSpot(row.offsetTop + (pointerY - top) / currentZoom())
     openGap(spot)
     if (spot) setOver('head' in spot ? spot.head : null)
     else {
@@ -261,7 +266,7 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     started = true
     row.classList.add('lifted')
     list!.classList.add('dragging', 'reordering')
-    // The Queue's row shows at once, even empty, to be measured
+    // The bar's strip shows at once, to be measured
     if (queue) flushSync(() => changed({ lifted: true }))
     tick()
   }

@@ -45,6 +45,7 @@ export const video = {
   'Rewatch’s videos in To watch’s queue too': 'Les vidéos d’À revoir aussi dans la file d’À regarder',
   'Queue hidden': 'File d’attente masquée',
   'Add to queue': 'Ajouter à la file',
+  'Drop here to add to the Queue': 'Déposer ici pour l’ajouter à la file d’attente',
   'Remove from queue': 'Retirer de la file',
   'In Music': 'Dans Musique',
   'Already watched': 'Déjà regardée',

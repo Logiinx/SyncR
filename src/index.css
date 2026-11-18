@@ -8428,6 +8428,30 @@ button.history-row.selected {
   background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));
 }
 
+/* While a video that can join the Queue is dragged, the bar is a strip to drop it on (videoDrag.ts):
+   over the list, so the lifted row slides under it; dim like Mail's swipe strip, blue once over it */
+.video-toolbar.over-list {
+  z-index: 3;
+}
+
+.video-queue-strip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px; /* the bar's switch */
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  color: var(--text-dim);
+  cursor: grabbing;
+}
+
+.video-queue-strip.drop-into {
+  background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));
+  color: var(--text);
+}
+
 .video-folder-icon {
   display: flex;
   align-items: center;
