@@ -754,8 +754,11 @@ function seconds(text) {
 
 // One video as the app gets it. live = still being streamed (or, on YouTube, announced): the app
 // waits until a YouTube one is finished, and shows a Twitch one with a Live tag. Twitch lists a stream in progress as a video too; only its stream's
-// id tells them apart.
-const twitchVideo = (video, liveStream) => ({
+// id tells them apart. keep: the days Twitch keeps a past stream (from its start), from its channel's level:
+// 60 for partners, 14 for affiliates, 7 for others. A Prime or Turbo streamer's are kept 60 days too,
+// but Twitch doesn't say who is one, so it can say less (warns early, never late).
+const keepDays = (user) => (user?.broadcaster_type === 'partner' ? 60 : user?.broadcaster_type === 'affiliate' ? 14 : 7)
+const twitchVideo = (video, liveStream, keep) => ({
   id: video.id,
   kind: video.type, // archive (past stream), highlight or upload
   title: video.title,
@@ -764,6 +767,7 @@ const twitchVideo = (video, liveStream) => ({
   published: video.published_at,
   duration: seconds(video.duration),
   live: !!liveStream && video.stream_id === liveStream,
+  ...(video.type === 'archive' && { keep }),
 })
 
 const youtubeVideo = (video, kind) => ({
@@ -778,13 +782,15 @@ const youtubeVideo = (video, kind) => ({
 })
 
 async function twitchVideos(env, id, reach) {
-  const liveStream = (await askTwitch(env, `streams?user_id=${id}&first=1`)).data?.[0]?.id
+  const [streams, users] = await Promise.all([askTwitch(env, `streams?user_id=${id}&first=1`), askTwitch(env, `users?id=${id}`)])
+  const liveStream = streams.data?.[0]?.id
+  const keep = keepDays(users.data?.[0])
   const videos = []
   let cursor = ''
   for (let page = 0; page < VIDEO_PAGES; page++) {
     const answer = await askTwitch(env, `videos?user_id=${id}&first=100&type=all${cursor ? `&after=${encodeURIComponent(cursor)}` : ''}`)
     const items = answer.data ?? []
-    videos.push(...items.map((video) => twitchVideo(video, liveStream)))
+    videos.push(...items.map((video) => twitchVideo(video, liveStream, keep)))
     cursor = answer.pagination?.cursor
     if (!reach || !cursor || !items.length || Date.parse(items[items.length - 1].published_at) < reach) break
   }
@@ -920,7 +926,7 @@ async function oneTwitchVideo(env, id) {
   return {
     platform: 'twitch',
     channel: { id: video.user_id, name: user?.display_name ?? video.user_name, icon: user?.profile_image_url || null },
-    video: twitchVideo(video, liveStream),
+    video: twitchVideo(video, liveStream, keepDays(user)),
   }
 }
 

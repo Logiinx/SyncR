@@ -235,6 +235,7 @@ export interface ListedVideo {
   published: string
   duration: number
   live: boolean
+  keep?: number // Twitch past streams: the days Twitch keeps it (VideoRow)
 }
 
 let checking = false
@@ -283,6 +284,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
       duration: video.duration,
       gone: false,
       ...(video.live && { live: true }),
+      ...(video.keep && { keep: video.keep }),
     }))
   const saved = await db.videos.bulkGet(rows.map((row) => row.id))
   // Only what's new or different: every save redraws the list
@@ -291,7 +293,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
     .map((row, i) => ({ ...row, games: saved[i]?.games, fresh: saved[i] ? saved[i].fresh : !firstCheck, foundAt: saved[i] ? saved[i].foundAt : firstCheck ? undefined : Date.now() }))
     .filter((row, i) => {
       const old = saved[i]
-      return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration || !!old.live !== !!row.live
+      return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration || !!old.live !== !!row.live || old.keep !== row.keep
     })
   if (changes.length) await db.videos.bulkPut(changes)
   return firstCheck ? [] : rows.filter((_, i) => !saved[i]).map((row) => row.id)
@@ -372,7 +374,7 @@ async function refreshLiveAdded() {
     if (!response.ok) continue // gone: checkGone says so
     const { video } = await response.json()
     if (!video) continue
-    await db.addedVideos.update(row.id, { title: video.title, thumbnail: video.thumbnail, duration: video.duration, live: video.live ? true : undefined })
+    await db.addedVideos.update(row.id, { title: video.title, thumbnail: video.thumbnail, duration: video.duration, live: video.live ? true : undefined, keep: video.keep })
   }
 }
 
@@ -660,6 +662,7 @@ export async function addOrFindVideo(link: string) {
     duration: video.duration,
     gone: false,
     live: true,
+    ...(video.keep && { keep: video.keep }),
     updatedAt: Date.now(),
   }
   if (!video.live) delete fields.live

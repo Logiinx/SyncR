@@ -8510,6 +8510,23 @@ button.history-row.selected {
   white-space: nowrap;
 }
 
+/* Beside "· date" (a 2-line title): in a narrow list the dim texts give way first, cut with "…";
+   the tags keep their size */
+[data-long-title] .video-extras {
+  display: contents;
+}
+
+[data-long-title] .video-extras > * {
+  flex: none;
+}
+
+[data-long-title] .video-extras > .video-extra {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .video-extra + .video-extra::before,
 [data-long-title] .video-extra::before {
   content: '· ';

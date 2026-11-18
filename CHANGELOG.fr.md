@@ -8,6 +8,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** les streams Twitch encore en direct s’affichent avec une étiquette rouge, aussi par lien
 - **Nouveau :** un stream en direct se lit depuis le début et continue à mesure qu’il s’enregistre
 - **Nouveau :** un long stream Twitch coupé en parties enchaîne sur la suivante, montrée sur ⏭
+- **Nouveau :** les streams Twitch passés non vus indiquent quand Twitch les supprime
+- **Petites corrections :** lignes grises par-dessus la date sous les titres longs
 
 **Jeux**
 - **Corrigé :** des jaquettes dépassaient aux coins du haut en faisant défiler les Jaquettes

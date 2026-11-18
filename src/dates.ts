@@ -48,6 +48,16 @@ export function lastWatchedText(time: number) {
   return plural(Math.floor(days / 365), 'Last watched {n} year ago', 'Last watched {n} years ago')
 }
 
+// "Twitch deletes it in 12 days", then "... in 5 hours", "... in less than an hour": when a Twitch
+// past stream will be gone (its start + the days Twitch keeps it). Rounded down: it warns early,
+// never late.
+export function twitchDeletionText(start: number, keepDays: number) {
+  const hours = Math.floor((start + keepDays * 86_400_000 - Date.now()) / 3_600_000)
+  if (hours >= 24) return plural(Math.floor(hours / 24), 'Twitch deletes it in {n} day', 'Twitch deletes it in {n} days')
+  if (hours >= 1) return plural(hours, 'Twitch deletes it in {n} hour', 'Twitch deletes it in {n} hours')
+  return t('Twitch deletes it in less than an hour')
+}
+
 // How old something is, starting a line: "Just now", "25 min ago", "3 h ago", then in calendar
 // days "Yesterday", "3 days ago", "2 weeks ago", "5 months ago", "2 years ago". Null when it's
 // still to come (a scheduled video).

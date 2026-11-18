@@ -4,7 +4,7 @@ import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoPlaylist } from './db'
-import { lastWatchedText, nearDay, shortDate } from './dates'
+import { lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
@@ -250,6 +250,9 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   // Stopped partway: tagged Opened, with its progress on the thumbnail
   const opened = position && !video.watched && !video.gone ? position : null
   const showLastWatched = !!lastWatched && !!video.watchedAt
+  // An unwatched Twitch past stream: when Twitch deletes it (user: catching up on a long one)
+  // i18n-ok
+  const deletion = video.platform === 'twitch' && video.kind === 'archive' && video.keep && !video.watched && !video.gone ? twitchDeletionText(video.published, video.keep) : null
   const rowRef = useRef<HTMLLIElement>(null)
   const hover = useHoverTip(CARD_DELAY)
   const shows = useCardPieces()
@@ -291,10 +294,11 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
               <span className="video-channel" title={tooltips ? from ?? video.channel : undefined}>{from ?? video.channel}</span>
               <span>· {videoDay(video)}</span>
             </span>
-            {(video.gone || showLastWatched || opened || isNew || video.live) && (
+            {(video.gone || showLastWatched || deletion || opened || isNew || video.live) && (
               <span className="video-extras">
                 {video.gone && <span className="video-extra">{t('No longer available')}</span>}
                 {showLastWatched && <span className="video-extra">{lastWatchedText(video.watchedAt!)}</span>}
+                {deletion && <span className="video-extra">{deletion}</span>}
                 {/* One tag at most: a stream still live says so first */}
                 {video.live && !video.gone ? (
                   <span className="video-live">{t('Live')}</span>
