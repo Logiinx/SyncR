@@ -753,7 +753,7 @@ function seconds(text) {
 }
 
 // One video as the app gets it. live = still being streamed (or, on YouTube, announced): the app
-// waits until it's finished. Twitch lists a stream in progress as a video too; only its stream's
+// waits until a YouTube one is finished, and shows a Twitch one with a Live tag. Twitch lists a stream in progress as a video too; only its stream's
 // id tells them apart.
 const twitchVideo = (video, liveStream) => ({
   id: video.id,
@@ -942,7 +942,9 @@ async function oneVideo(env, link) {
   const found = videoLink(link)
   if (!found) throw videoError(channelLink(link) && !/\/clip\//i.test(String(link)) ? 'channel-link' : 'not-a-video')
   const answer = await (found.platform === 'twitch' ? oneTwitchVideo(env, found.id) : oneYouTubeVideo(env, found.id))
-  if (answer.video.live) throw videoError('video-live')
+  // A Twitch stream still live can be watched from its start (the app follows its growing length);
+  // a YouTube live video waits until it's finished
+  if (answer.video.live && answer.platform === 'youtube') throw videoError('video-live')
   return answer
 }
 

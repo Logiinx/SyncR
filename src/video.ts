@@ -261,14 +261,15 @@ export function useChecking() {
   )
 }
 
-// Saves what can be shown: only finished videos, no older than the follow's start, and on Twitch
-// only past streams (no highlights or clips). All of them, also those the word lists leave out:
-// changing the lists then shows them at once, without asking the site again. Gives back the
-// videos seen for the first time (none on its first check).
+// Saves what can be shown: no older than the follow's start; on YouTube only finished videos, on
+// Twitch only streams (no highlights or clips), also those still live (user: catch up on a weeks-long
+// stream; each check gives its new length, the one after its end takes the live mark off). All of
+// them, also those the word lists leave out: changing the lists then shows them at once, without
+// asking the site again. Gives back the videos seen for the first time (none on its first check).
 async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck: boolean) {
   const rows: VideoRow[] = listed
     // i18n-ok
-    .filter((video) => !video.live && (follow.platform === 'youtube' || video.kind === 'archive'))
+    .filter((video) => (follow.platform === 'youtube' ? !video.live : video.kind === 'archive'))
     .filter((video) => Date.parse(video.published) >= follow.startAt)
     .map((video) => ({
       id: `${follow.platform}-${video.id}`,
@@ -281,6 +282,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
       published: Date.parse(video.published),
       duration: video.duration,
       gone: false,
+      ...(video.live && { live: true }),
     }))
   const saved = await db.videos.bulkGet(rows.map((row) => row.id))
   // Only what's new or different: every save redraws the list
@@ -289,7 +291,7 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
     .map((row, i) => ({ ...row, games: saved[i]?.games, fresh: saved[i] ? saved[i].fresh : !firstCheck, foundAt: saved[i] ? saved[i].foundAt : firstCheck ? undefined : Date.now() }))
     .filter((row, i) => {
       const old = saved[i]
-      return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration
+      return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration || !!old.live !== !!row.live
     })
   if (changes.length) await db.videos.bulkPut(changes)
   return firstCheck ? [] : rows.filter((_, i) => !saved[i]).map((row) => row.id)
@@ -360,6 +362,18 @@ function alertNewVideos(follow: VideoFollow, found: string[], every: number) {
   checkedThisRun.set(follow.id, now)
   if (!follow.notify || !found.length || before === undefined || now - before > Math.max(AWAY, 2 * every)) return
   if (isTauri() || import.meta.env.DEV) addVideoAlerts(found)
+}
+
+// Added videos still live (Twitch): their new length, title and picture, and the end of the live.
+// No follow's check sees them. updatedAt stays: every device finds this out by itself.
+async function refreshLiveAdded() {
+  for (const row of await db.addedVideos.filter((video) => !!video.live && !video.gone).toArray()) {
+    const response = await igdbProxyFetch('video/one', JSON.stringify({ link: row.url }), 15_000)
+    if (!response.ok) continue // gone: checkGone says so
+    const { video } = await response.json()
+    if (!video) continue
+    await db.addedVideos.update(row.id, { title: video.title, thumbnail: video.thumbnail, duration: video.duration, live: video.live ? true : undefined })
+  }
 }
 
 // Once a day: which videos waiting to be watched are gone from their site. Twitch deletes old
@@ -434,6 +448,7 @@ export async function checkVideos(only?: string[]) {
       offlineMessage = await checkPlaylists(force)
     }
     if (offlineMessage) stoppedOffline = true
+    if (!stoppedOffline && !only) await refreshLiveAdded().catch((e) => console.warn('Video check failed', e))
     if (!failed && !stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
     // Also what failed earlier and is waiting for its retry
     const playlists = await db.videoPlaylists.filter((playlist) => !playlist.deleted).toArray()
@@ -644,8 +659,10 @@ export async function addOrFindVideo(link: string) {
     published: Date.parse(video.published),
     duration: video.duration,
     gone: false,
+    live: true,
     updatedAt: Date.now(),
   }
+  if (!video.live) delete fields.live
   await db.addedVideos.put(fields)
   // Seen before: it goes back to To watch, also if it was cleared
   if (mark) await saveMarks([videoId], { cleared: false, watched: false })

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** les streams Twitch encore en direct s’affichent avec une étiquette rouge, aussi par lien
+
 **Jeux**
 - **Corrigé :** des jaquettes dépassaient aux coins du haut en faisant défiler les Jaquettes
 

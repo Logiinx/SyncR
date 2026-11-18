@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** Twitch streams still live show in your list with a red Live tag, also by link
+
 **Games**
 - **Fixed:** covers peeking out at the top corners when scrolling in Covers
 

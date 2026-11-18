@@ -142,6 +142,7 @@ export const video = {
   'No longer available': 'Plus disponible',
   Opened: 'Ouverte',
   New: 'Nouvelle',
+  Live: 'En direct',
   'Back to To watch': 'Remettre dans À regarder',
   'Mark as watched': 'Marquer comme vue',
   'Open in browser': 'Ouvrir dans le navigateur',

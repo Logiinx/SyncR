@@ -310,6 +310,7 @@ export interface VideoRow {
   published: number
   duration: number // seconds
   gone: boolean // the site no longer has it
+  live?: boolean // Twitch: still being streamed, its length grows (missing once it's over)
   games?: VideoGame[] // Twitch: every game played in it (video.ts); not asked yet = undefined
   fresh?: boolean // found by a check and not shown yet: tagged "New" when the Video tab shows it
   foundAt?: number // when a check found it: "New" for a week, until it's opened (none: a follow's first videos)

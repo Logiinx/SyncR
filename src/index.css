@@ -8603,7 +8603,8 @@ button.history-row.selected {
 }
 
 .video-opened,
-.video-new {
+.video-new,
+.video-live {
   padding: 0 5px;
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -8614,6 +8615,12 @@ button.history-row.selected {
 .video-new {
   border-color: color-mix(in srgb, var(--text-green) 45%, var(--bg));
   color: var(--text-green);
+}
+
+/* A Twitch stream still live: red, like the sites' own live tags */
+.video-live {
+  border-color: color-mix(in srgb, var(--text-red) 45%, var(--bg));
+  color: var(--text-red);
 }
 
 .video-row-action {
