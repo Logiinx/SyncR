@@ -602,6 +602,24 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
       <SettingRow
         label={
           <>
+            {t('Look for updates')}
+            <InfoTip label={t('About looking for updates')}>
+              {t('Always when SyncR starts. To look now: the button next to Settings, at the bottom of the sidebar.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <select value={background.updateCheck} onChange={(e) => updateBackground({ updateCheck: Number(e.target.value) })}>
+          {updateChoices().map(({ minutes, name }) => (
+            <option key={minutes} value={minutes}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
             {t('PIN lock')}
             <InfoTip label={t('About the PIN lock')}>
               {!pinOn && syncReady === false && `${t('Needs sync set up.')} `}
@@ -1035,6 +1053,15 @@ function MailDragChoice({ value, onChange }: { value: MailDrag; onChange: (value
     </select>
   )
 }
+
+// How often the PC looks for a new version while it runs (UpdateBanner.tsx; 0: only at start-up)
+const updateChoices = () => [
+  { minutes: 1, name: t('Every minute') },
+  { minutes: 15, name: t('Every 15 minutes') },
+  { minutes: 60, name: t('Every hour') },
+  { minutes: 360, name: t('Every 6 hours') },
+  { minutes: 0, name: t('Only at start-up') },
+]
 
 // Email pop-ups fade by themselves after… (0: they stay until closed)
 const FADE_CHOICES = [

@@ -5,6 +5,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { Check, CircleArrowDown, TriangleAlert } from 'lucide-react'
 import type { Update } from '@tauri-apps/plugin-updater'
 import { finalSync } from './autoSync'
+import { loadBackground } from './desktop'
 import { checkWebUpdate, registerServiceWorker } from './pwa'
 import { checkDesktopUpdate, findUpdate, installUpdate } from './updater'
 import Spinner from './Spinner'
@@ -16,7 +17,17 @@ export function checkForUpdates(): Promise<void> {
   return new Promise((done) => window.dispatchEvent(new CustomEvent('check-for-updates', { detail: done })))
 }
 
-const UPDATE_CHECK_EVERY = 6 * 60 * 60 * 1000 // ms: the PC's quiet check while it keeps running
+// The PC's quiet check while it keeps running: every minute, is the chosen time (Settings →
+// Window and privacy) up since the last look? Read each time, so a new choice counts at once,
+// and a PC waking from sleep looks right away.
+const TICK_MS = 60_000
+const EARLY_MS = 5_000 // a timer can fire a little early: don't wait a whole extra minute for it
+let lastLook = 0
+
+function lookDue() {
+  const every = loadBackground().updateCheck * 60_000
+  return every > 0 && Date.now() - lastLook >= every - EARLY_MS
+}
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
@@ -35,11 +46,14 @@ function UpdateBanner() {
   const [notesOpen, setNotesOpen] = useState(false)
 
   useEffect(() => {
-    // At start, then every few hours: SyncR can stay in the tray for days (the phone looks each
+    // At start, then as often as chosen: SyncR can stay in the tray for days (the phone looks each
     // time it comes back, pwa.ts). One already found stays as it is (it may be installing).
-    const look = () => void findUpdate().then((found) => found && setUpdate((current) => current ?? found))
+    const look = () => {
+      lastLook = Date.now()
+      void findUpdate().then((found) => found && setUpdate((current) => current ?? found))
+    }
     look()
-    const timer = isTauri() ? window.setInterval(look, UPDATE_CHECK_EVERY) : undefined
+    const timer = isTauri() ? window.setInterval(() => lookDue() && look(), TICK_MS) : undefined
     // A function in state must be wrapped, or React would call it
     registerServiceWorker((apply) => setApplyWebUpdate(() => apply))
     return () => window.clearInterval(timer)
@@ -52,6 +66,7 @@ function UpdateBanner() {
       setNotice(t('Checking for updates…'))
       try {
         if (isTauri()) {
+          lastLook = Date.now() // the quiet check counts from here too
           const found = await checkDesktopUpdate()
           if (found) {
             setUpdate(found)

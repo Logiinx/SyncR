@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** a copied video link goes in the queue; to play it, Video settings → Player
 - **Fixed:** added Twitch streams keeping a “?” picture once the live ended
 
+**App**
+- **New:** choose how often SyncR looks for updates, in Window and privacy (PC only)
+
 ## [0.88.0] - 2026-11-18
 
 **Mail** (PC only)

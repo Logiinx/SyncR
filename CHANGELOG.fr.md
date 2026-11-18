@@ -10,6 +10,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** un lien de vidéo copié va dans la file ; pour le lire, Paramètres vidéo → Lecteur
 - **Corrigé :** les streams Twitch ajoutés gardaient une image « ? » après la fin du direct
 
+**Application**
+- **Nouveau :** choisir à quelle fréquence SyncR vérifie les mises à jour, dans Fenêtre et confidentialité (PC uniquement)
+
 ## [0.88.0] - 2026-11-18
 
 **Mail** (PC uniquement)

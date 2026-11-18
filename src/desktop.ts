@@ -5,7 +5,7 @@ import { read, write } from './localState'
 import type { SoundId } from './sounds'
 
 // Running in the background on the PC: what ✕ does, start with Windows, reminder sound,
-// where the pop-up shows.
+// where the pop-up shows, how often to look for updates.
 // Stored per device, never synced (Settings dialog).
 
 export interface Background {
@@ -19,6 +19,7 @@ export interface Background {
   popupScreen: string | null // the screen the pop-up shows on (its Windows name); null = the main screen
   popupScreenSpot: ScreenSpot | null // that screen's place and size, to find it if Windows renames it
   popupCorner: PopupCorner
+  updateCheck: number // minutes between quiet looks for a new version (0: only at start-up, UpdateBanner.tsx)
 }
 
 // read: Mark as read, or Mark as unread when it's read already
@@ -38,6 +39,7 @@ const DEFAULTS: Background = {
   popupScreen: null,
   popupScreenSpot: null,
   popupCorner: 'bottom-right',
+  updateCheck: 60,
 }
 
 export function loadBackground(): Background {
