@@ -57,6 +57,9 @@ function playerControls(env, media) {
   const box = env.box
   const video = media.element
   const numbers = new Intl.NumberFormat(env.locale || undefined, { maximumFractionDigits: 2 })
+  // Every percentage the players show (French "45 %"), from a part (0.45)
+  const percent = new Intl.NumberFormat(env.locale || undefined, { style: 'percent' })
+  const percentText = (part) => percent.format(part)
 
   box.insertAdjacentHTML('beforeend', html(`
   <div id="ui">
@@ -356,6 +359,8 @@ function playerControls(env, media) {
     for (const card of ['upnext', 'endcard']) {
       $(`${card}-label`).textContent = labels.nextUp || ''
       $(`${card}-title`).textContent = next?.title || ''
+      // Cut at 2 lines: the whole title on hover (the card over ⏭ lets the mouse through)
+      if (card === 'endcard') $(`${card}-title`).title = next?.title || ''
       const picture = $(`${card}-picture`)
       picture.replaceChildren()
       picture.hidden = !next?.thumbnail
@@ -495,7 +500,7 @@ function playerControls(env, media) {
     $('mute').title = silent ? labels.unmute : labels.mute
     $('level').value = silent ? 0 : media.volume()
     $('level').title = labels.volume
-    $('level-text').textContent = `${Math.round((silent ? 0 : media.volume()) * 100)}%`
+    $('level-text').textContent = percentText(Math.round((silent ? 0 : media.volume()) * 100) / 100)
   }
   video.addEventListener('volumechange', drawVolume)
   $('mute').onclick = () => {
@@ -525,7 +530,6 @@ function playerControls(env, media) {
   // Grayed when the video has none. On or off is kept per channel by the player itself.
   const subtitles = media.subtitles
   const SIZES = { smallest: 0.5, biggest: 2, step: 0.1 }
-  const percent = new Intl.NumberFormat(env.locale || undefined, { style: 'percent' })
   function drawSubtitles() {
     if (!subtitles) return
     const button = $('subtitles')
@@ -768,7 +772,7 @@ function playerControls(env, media) {
     name.textContent = labels.subtitleSize
     const shown = document.createElement('span')
     shown.className = 'menu-size-value'
-    shown.textContent = percent.format(size)
+    shown.textContent = percentText(size)
     const change = (iconName, text, by, allowed) => {
       const button = document.createElement('button')
       button.innerHTML = html(icon(iconName))
@@ -915,7 +919,7 @@ function playerControls(env, media) {
     media.setMuted(false)
     const level = Math.round(Math.min(Math.max(media.volume() + by, 0), 1) * 20) / 20
     media.setVolume(level)
-    flash(`${Math.round(level * 100)}%`)
+    flash(percentText(level))
   }
   const jumpBack = () => { jumpTo(target() - JUMP, true); flash(`−${JUMP} s`) }
   const jumpForward = () => { jumpTo(target() + JUMP, true); flash(`+${JUMP} s`) }
@@ -1007,7 +1011,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, $, icon, clock, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -1114,7 +1118,7 @@ const CONTROLS_CSS = `
   }
   #volume:hover #level { width: 84px; margin-right: 6px; opacity: 1; }
   #level-text { width: 0; overflow: hidden; opacity: 0; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: width 0.2s, opacity 0.2s, margin 0.2s; }
-  #volume:hover #level-text { width: 32px; margin-right: 6px; opacity: 1; }
+  #volume:hover #level-text { width: 38px; margin-right: 6px; opacity: 1; }
   #time { flex: 0 1 auto; width: auto; min-width: 0; gap: 4px; padding: 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #time-now { flex: none; }
   #time-beside { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

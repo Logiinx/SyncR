@@ -513,7 +513,7 @@ function chatMenu({ panel }) {
 }
 function drawChatPanel({ title, row, choices, element: menu }) {
   title(labels.chatSize)
-  choices(CHAT_SIZES.map((size) => ({ value: size, text: `${Math.round(size * 100)}%` })), chatSize, (size) => {
+  choices(CHAT_SIZES.map((size) => ({ value: size, text: percentText(size) })), chatSize, (size) => {
     chatSize = size
     localStorage.setItem('player.chatSize', size)
     drawChatSize()
@@ -559,10 +559,10 @@ function drawChatPanel({ title, row, choices, element: menu }) {
   const [name, slider, value] = background.children
   name.textContent = labels.chatBackground
   slider.value = chatBg
-  value.textContent = `${chatBg}%`
+  value.textContent = percentText(chatBg / 100)
   slider.addEventListener('input', () => {
     chatBg = Number(slider.value)
-    value.textContent = `${chatBg}%`
+    value.textContent = percentText(chatBg / 100)
     chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
   })
   slider.addEventListener('change', () => localStorage.setItem('player.chatBackground', chatBg))
