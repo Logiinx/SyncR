@@ -8447,6 +8447,32 @@ button.history-row.selected {
   cursor: grabbing;
 }
 
+/* Videos picked (Ctrl/Shift+click): the bar is their actions, over the list switch like the strip;
+   picked rows in the same soft blue (user, 2026-11-18, from mockups) */
+.video-pick-bar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-radius: 8px; /* the bar's switch */
+  background: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
+}
+
+.video-pick-count {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-row.picked,
+.video-row.picked .video-row-open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
+}
+
 .video-queue-strip.drop-into {
   background: color-mix(in srgb, var(--text-blue) 28%, var(--bg));
   color: var(--text);

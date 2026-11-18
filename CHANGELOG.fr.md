@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** choisir plusieurs vidéos (Ctrl+clic, Maj+clic), agir sur toutes en haut
 - **Nouveau :** glisser une vidéo dans la file d’attente, ou l’en sortir
 - **Nouveau :** des images encore plus grandes : Paramètres vidéo → Liste → Images plus grandes
 - **Amélioré :** des images plus grandes et des lignes plus claires dans les listes de vidéos

@@ -219,7 +219,12 @@ function VideoGroup({ id, channelKey: key, name, icon, platform, videos, open, n
 // in the Queue; a playlist's video shows its playlist (from) instead of its channel; one of
 // Rewatch's in To watch's group (ofRewatch) gets a ↻ icon, Music's a music note. after: the videos after it in its list, for ⏭.
 // toQueue: it can be dragged into the Queue (videoDrag.ts); a playlist's video only there.
-function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, toQueue, onMenu, onOpenRow }: {
+// Picking several videos (Ctrl+click, Shift+click a range; user, 2026-11-18): a row's part of it.
+// Its key is the row's data-item, so a video shown twice (Queue and below) is two rows.
+type RowPick = { on: boolean; many: boolean; click: (e: React.MouseEvent, key: string) => void; drop: () => void }
+const rowKey = (videoId: string, playlistId?: string, queued?: string) => `${queued ? 'queued ' : ''}${playlistId ? `${playlistId} ${videoId}` : videoId}` // i18n-ok
+
+function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, lastWatched, queued, ofRewatch, from, after, toQueue, pick, onMenu, onOpenRow }: {
   video: FeedVideo
   isNew: boolean
   depth?: number
@@ -231,6 +236,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   from?: string
   after?: UpNext[]
   toQueue?: { leaves: boolean }
+  pick?: RowPick // none: this list can't pick (Watched), or the video is gone
   onMenu?: (x: number, y: number) => void
   onOpenRow: (id: string) => void
 }) {
@@ -249,7 +255,13 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   const withCard = VIDEO_PIECES.some(shows)
   // The card shows the whole title and channel: no browser tooltip then
   const tooltips = !withCard || !shows('videoDetails')
-  function open() {
+  const key = rowKey(video.id, playlistId, queued)
+  function open(e: React.MouseEvent) {
+    if (pick && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+      pick.click(e, key)
+      return
+    }
+    pick?.drop()
     playVideo(video, playlistId, undefined, after)
     void markOpened(video.id)
   }
@@ -260,15 +272,19 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   return (
     <li
       ref={rowRef}
-      className={`video-row${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}`}
+      className={`video-row${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}${pick?.on ? ' picked' : ''}`}
       style={depthStyle(depth)}
-      data-item={`${queued ? 'queued ' : ''}${playlistId ? `${playlistId} ${video.id}` : video.id}`}
+      data-item={key}
+      data-pick={pick ? key : undefined}
       data-queue-group={queued}
       data-queue-id={queued && video.id}
-      onPointerDown={queued ? dragInQueue : playlistId && !toQueue ? undefined : (e) => dragVideo(e, video, { open: onOpenRow, toQueue, episode: !!playlistId })}
+      // No dragging while several are picked (user): which ones would move isn't clear
+      onPointerDown={pick?.many ? undefined : queued ? dragInQueue : playlistId && !toQueue ? undefined : (e) => dragVideo(e, video, { open: onOpenRow, toQueue, episode: !!playlistId })}
       onDragStart={(e) => e.preventDefault()} // the thumbnail's own dragging
+      // The usual one-video menu; the picks drop, so it's clear it's for this one (user)
       onContextMenu={(e) => {
         e.preventDefault()
+        pick?.drop()
         onMenu?.(e.clientX, e.clientY)
       }}
     >
@@ -354,12 +370,16 @@ function VideoView() {
   const [removingPlaylist, setRemovingPlaylist] = useState<VideoPlaylist | null>(null)
   // A new folder (with where it goes, the row to open to show it, the video to move into it), or a
   // folder to rename
-  const [naming, setNaming] = useState<{ parentId: string | null; sub?: boolean; channel?: string; openId?: string; videoId?: string; playlistId?: string } | { folder: VideoFolder } | null>(null)
+  const [naming, setNaming] = useState<{ parentId: string | null; sub?: boolean; channel?: string; openId?: string; videoIds?: string[]; playlistId?: string } | { folder: VideoFolder } | null>(null)
   const [barMenu, setBarMenu] = useState<{ kind: 'add' | 'more'; x: number; y: number } | null>(null)
   const [channelMenu, setChannelMenu] = useState<{ key: string; openId: string; x: number; y: number; follow?: VideoFollow } | null>(null)
   // A video's right-click menu (a playlist's video: only the Queue's item, it can't be moved)
   const [moving, setMoving] = useState<{ video: FeedVideo; x: number; y: number; episode?: boolean } | null>(null)
   const [folderMenu, setFolderMenu] = useState<{ folder: VideoFolder; x: number; y: number } | null>(null)
+  // The picked rows (RowPick), the row a Shift+click range starts from, and the bar's folder list
+  const [picks, setPicks] = useState<ReadonlySet<string>>(() => new Set())
+  const pickStart = useRef<string | null>(null)
+  const [pickFolders, setPickFolders] = useState<{ x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false) // the Video settings window
@@ -444,6 +464,35 @@ function VideoView() {
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)
   }, [])
+  // The picks drop on another list or follow, on Escape (a menu or window open closes first), and
+  // on a click on empty space in the tab (a scroll bar's isn't a click)
+  useEffect(() => {
+    pickStart.current = null
+    setPicks(new Set())
+  }, [list, shownChannel])
+  const anyPicked = picks.size > 0
+  useEffect(() => {
+    if (!anyPicked) return
+    const drop = () => {
+      pickStart.current = null
+      setPicks(new Set())
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('.context-menu, .dialog') && drop()
+    // Pressed and let go on empty space: a press on a row let go elsewhere (trying to drag) keeps them
+    const outside = (e: Event) => !(e.target as Element).closest('[data-pick], .video-pick-bar')
+    let pressedOutside = false
+    const onDown = (e: PointerEvent) => (pressedOutside = outside(e))
+    const onClick = (e: MouseEvent) => pressedOutside && outside(e) && drop()
+    const page = pageRef.current
+    window.addEventListener('keydown', onKey)
+    page?.addEventListener('pointerdown', onDown)
+    page?.addEventListener('click', onClick)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      page?.removeEventListener('pointerdown', onDown)
+      page?.removeEventListener('click', onClick)
+    }
+  }, [anyPicked])
   const allFolders = feed?.folders ?? []
   const folders = shownChannel === 'all' && list !== 'watched' ? allFolders : []
   // Rewatch is at the bottom, not among the folders by name; Music is a list of its own
@@ -455,9 +504,41 @@ function VideoView() {
   // nor a watched one (as in playlists), except in Watched where they all are
   const upNextOf = (video: FeedVideo, siblings: FeedVideo[]): UpNext[] =>
     siblings.slice(siblings.indexOf(video) + 1).filter((other) => !other.gone && (list === 'watched' || !other.watched)).map((other) => ({ video: other }))
+  // The rows shown in this render that can be picked: a pick whose row went (folded, watched...)
+  // no longer counts. Not in Watched (user).
+  const pickRows = new Map<string, { video: FeedVideo; episode: boolean }>()
+  const dropPicks = () => {
+    pickStart.current = null
+    setPicks((now) => (now.size ? new Set() : now))
+  }
+  // Ctrl+click: one more or one less · Shift+click: from the last clicked row to this one, in the
+  // order shown (Ctrl+Shift adds that range to the others), like Windows' file lists
+  function clickPick(e: React.MouseEvent, key: string) {
+    const order = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-pick]') ?? [])].map((row) => row.dataset.pick!)
+    const from = pickStart.current && order.includes(pickStart.current) ? order.indexOf(pickStart.current) : -1
+    if (e.shiftKey && from >= 0) {
+      const to = order.indexOf(key)
+      const range = order.slice(Math.min(from, to), Math.max(from, to) + 1)
+      setPicks((now) => new Set([...(e.ctrlKey || e.metaKey ? now : []), ...range]))
+      return
+    }
+    pickStart.current = key
+    setPicks((now) => {
+      const next = new Set(now)
+      if (!e.shiftKey && next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+  function pickOf(video: FeedVideo, playlistId?: string, queued?: string): RowPick | undefined {
+    if (list === 'watched' || video.gone) return undefined
+    const key = rowKey(video.id, playlistId, queued)
+    pickRows.set(key, { video, episode: !!playlistId })
+    return { on: picks.has(key), many: picks.size > 1, click: clickPick, drop: dropPicks }
+  }
   // Outside Watched, a watched video is one of Rewatch's: it stays, grayed
   const videoRow = (video: FeedVideo, siblings: FeedVideo[], depth = 0) => (
-    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} toQueue={toQueue(video)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
+    <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} toQueue={toQueue(video)} pick={pickOf(video)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
   // Every folder to choose from, each under its parent, with its whole path
@@ -501,17 +582,24 @@ function VideoView() {
     ]
   }
 
-  function videoFolderItems(video: FeedVideo): MenuItem[] {
+  // One video's folders (its menu), or the picked ones' (the bar: their channel's only when they
+  // all share it). All music or none (pickedFolders).
+  function videoFolderItems(moved: FeedVideo[], onDone?: () => void): MenuItem[] {
+    const [video] = moved
     // A music video: Music's folders only
     const own = video.music ? folderChoices(allFolders.filter((folder) => folder.parentId === MUSIC), '') : ownFolderChoices()
-    const theirs = video.music ? [] : allFolders.filter((folder) => !folder.parentId && folder.channel === channelKey(video))
+    const oneChannel = moved.every((other) => channelKey(other) === channelKey(video))
+    const theirs = video.music || !oneChannel ? [] : allFolders.filter((folder) => !folder.parentId && folder.channel === channelKey(video))
     const titled = own.length > 0 && theirs.length > 0
     const items = (choices: { folder: VideoFolder; path: string }[], section?: string) => choices.map(({ folder, path }, index): MenuItem => ({
       label: path,
       icon: folderIcon(folder),
       section: index === 0 ? section : undefined,
-      checked: folder.id === video.folderId,
-      onClick: () => void moveToFolder(video.id, folder.id),
+      checked: moved.every((other) => other.folderId === folder.id),
+      onClick: () => {
+        for (const other of moved) void moveToFolder(other.id, folder.id)
+        onDone?.()
+      },
     }))
     return [
       ...items(own, titled ? t('Your folders') : undefined),
@@ -645,7 +733,7 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} toQueue={toQueue(video, true)} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
+      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} toQueue={toQueue(video, true)} pick={pickOf(video, playlist.id)} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
     ]
   }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
@@ -735,6 +823,7 @@ function VideoView() {
               ofRewatch={ofRewatch}
               from={playlist?.name}
               after={queued.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
+              pick={pickOf(video, playlist?.id, id)}
               onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
               onOpenRow={openRow}
             />
@@ -862,6 +951,24 @@ function VideoView() {
   // The videos counted on the part's header: Rewatch's all, To watch's those not only in the Queue
   const partVideos = list === 'rewatch' && rewatch ? [...allIn(rewatch), ...allPlaylistsIn(rewatch).flatMap(({ videos: episodes }) => episodes)] : (videos ?? []).filter((video) => !inQueueOnly.has(video.id))
   const rows = [...queueRows(), ...partRows([...listRows, ...rewatchRows], partVideos)]
+  // The picked videos still shown, each once (in the Queue and below: once), in the order shown
+  const picked = [...new Map([...pickRows].filter(([key]) => picks.has(key)).map(([, row]) => [row.video.id, row])).values()]
+  const pickedVideos = picked.map(({ video }) => video)
+  const pickedIds = (some: FeedVideo[]) => some.map((video) => video.id)
+  const queuedIds = new Set(queue.map((entry) => entry.id))
+  const pickedToQueue = pickedVideos.filter((video) => !queuedIds.has(video.id) && !video.watched)
+  const pickedInQueue = pickedVideos.filter((video) => queuedIds.has(video.id))
+  const pickedUnwatched = pickedVideos.filter((video) => !video.watched)
+  const pickedFolders = picked.some(({ episode }) => episode)
+    ? t('A playlist’s videos stay in it')
+    : pickedVideos.some((video) => video.music) && pickedVideos.some((video) => !video.music)
+      ? t('Songs and other videos have different folders')
+      : undefined
+  // A bar button: the action on the picked videos, then they drop
+  const pickAction = (action: () => unknown) => () => {
+    void action()
+    dropPicks()
+  }
   // Rewatch as a section doesn't count: To watch can say it's empty above it
   const nothingShown = !queued.length && !listRows.length
   const empty = list === 'rewatch'
@@ -926,6 +1033,57 @@ function VideoView() {
           {videoLifted && (
             <div className="video-queue-strip" data-queue-head="">
               <ListEnd size={15} /> {t('Drop here to add to the Queue')}
+            </div>
+          )}
+          {/* Videos picked: the bar is their actions, icons only (user, 2026-11-18, from mockups) */}
+          {picked.length > 0 && !videoLifted && (
+            <div className="video-pick-bar">
+              <span className="video-pick-count">{plural(picked.length, '{n} video selected', '{n} videos selected')}</span>
+              <div className="reminders-tools">
+                <button
+                  className="reminders-refresh"
+                  disabled={!pickedUnwatched.length}
+                  title={pickedUnwatched.length ? (list === 'music' ? t('Done: remove from Music') : t('Mark as watched')) : t('Already watched')}
+                  onClick={pickAction(() => {
+                    const songs = pickedUnwatched.filter((video) => video.music)
+                    if (songs.length) void clearWatched(pickedIds(songs))
+                    const others = pickedUnwatched.filter((video) => !video.music)
+                    if (others.length) void markAllWatched(pickedIds(others))
+                  })}
+                >
+                  <Check size={15} />
+                </button>
+                <button
+                  className="reminders-refresh"
+                  disabled={!pickedToQueue.length}
+                  title={pickedToQueue.length ? t('Add to queue') : t('Already in the queue, or watched')}
+                  onClick={pickAction(() => pickedToQueue.forEach((video) => addToQueue(video.id)))}
+                >
+                  <ListEnd size={15} />
+                </button>
+                <button
+                  className="reminders-refresh"
+                  disabled={!pickedInQueue.length}
+                  title={pickedInQueue.length ? t('Remove from queue') : t('None of them is in the queue')}
+                  onClick={pickAction(() => leaveQueue(pickedIds(pickedInQueue)))}
+                >
+                  <ListX size={15} />
+                </button>
+                <button
+                  className="reminders-refresh"
+                  disabled={!!pickedFolders}
+                  title={pickedFolders ?? t('Move to folder')}
+                  onClick={(e) => {
+                    const box = e.currentTarget.getBoundingClientRect()
+                    setPickFolders({ x: box.right, y: box.bottom + 4 })
+                  }}
+                >
+                  <FolderInput size={15} />
+                </button>
+                <button className="reminders-refresh" title={t('Deselect all')} onClick={dropPicks}>
+                  <X size={15} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1093,13 +1251,13 @@ function VideoView() {
           header={{ title: moving.video.title, subtitle: moving.video.channel }} // what was right-clicked, like Mail's
           items={moving.episode ? [queueVideoItem(moving.video)] : [
             queueVideoItem(moving.video),
-            ...videoFolderItems(moving.video).map((item, index) => (index === 0 ? { ...item, divider: true } : item)),
-            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: moving.video.music ? MUSIC : null, videoId: moving.video.id }) },
+            ...videoFolderItems([moving.video]).map((item, index) => (index === 0 ? { ...item, divider: true } : item)),
+            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: moving.video.music ? MUSIC : null, videoIds: [moving.video.id] }) },
             ...(grouping && !moving.video.music
               ? [{
                   label: t('New folder in {name}…', { name: moving.video.channel }),
                   icon: FolderPlus,
-                  onClick: () => setNaming({ parentId: null, channel: channelKey(moving.video), openId: moving.video.followId, videoId: moving.video.id }),
+                  onClick: () => setNaming({ parentId: null, channel: channelKey(moving.video), openId: moving.video.followId, videoIds: [moving.video.id] }),
                 }]
               : []),
             ...(moving.video.folderId
@@ -1107,6 +1265,30 @@ function VideoView() {
               : []),
             // Gone for good, on every device, like Clear (adding it again by link brings it back)
             { label: t('Delete'), icon: Trash2, danger: true, onClick: () => void clearWatched([moving.video.id]) },
+          ]}
+        />
+      )}
+      {pickFolders && picked.length > 0 && (
+        <ContextMenu
+          x={pickFolders.x}
+          y={pickFolders.y}
+          alignRight
+          onClose={() => setPickFolders(null)}
+          header={{ title: plural(picked.length, '{n} video', '{n} videos') }}
+          items={[
+            ...videoFolderItems(pickedVideos, dropPicks),
+            {
+              label: t('New folder…'),
+              icon: FolderPlus,
+              divider: true,
+              onClick: () => {
+                setNaming({ parentId: pickedVideos[0].music ? MUSIC : null, videoIds: pickedIds(pickedVideos) })
+                dropPicks()
+              },
+            },
+            ...(pickedVideos.some((video) => video.folderId)
+              ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: pickAction(() => pickedVideos.filter((video) => video.folderId).forEach((video) => void moveToFolder(video.id, null))) }]
+              : []),
           ]}
         />
       )}
@@ -1122,10 +1304,11 @@ function VideoView() {
               if (!name) return
               if ('folder' in naming) void renameFolder(naming.folder.id, name)
               else {
-                const { parentId, channel: inChannel, videoId, playlistId } = naming
-                void createFolder(name, parentId, inChannel).then((id) =>
-                  videoId ? moveToFolder(videoId, id) : playlistId ? changePlaylist(playlistId, { folderId: id }) : undefined,
-                )
+                const { parentId, channel: inChannel, videoIds, playlistId } = naming
+                void createFolder(name, parentId, inChannel).then((id) => {
+                  if (videoIds) for (const videoId of videoIds) void moveToFolder(videoId, id)
+                  else if (playlistId) void changePlaylist(playlistId, { folderId: id })
+                })
                 // Unfolded to show it
                 const openId = naming.openId ?? parentId
                 if (openId) openRow(openId)

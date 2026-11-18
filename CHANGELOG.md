@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** pick several videos (Ctrl+click, Shift+click), act on all from the top bar
 - **New:** drag a video into the Queue, or a Queue video out of it
 - **New:** even bigger pictures: Video settings → List → Bigger pictures
 - **Better:** bigger pictures and clearer rows in the video lists
