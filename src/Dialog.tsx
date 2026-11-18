@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { t } from './i18n'
 import Window from './Window'
 
 export interface DialogRequest {
   title: string
-  message?: string
+  message?: ReactNode // a sentence; withIcon() / richText() for icons or bold words in it
   input?: { initial: string; placeholder: string } // shows a text field (for rename)
   checkbox?: string // shows a checkbox with this label, unticked (e.g. "Delete its cards too")
   confirmLabel: string

@@ -77,7 +77,7 @@ import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
 import { plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
-import { richText } from './richText'
+import { richText, withIcon } from './richText'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
 // Settings: four cards, all open at once (two columns on the PC, one on the phone), each
@@ -698,7 +698,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
         <Dialog
           request={{
             title: t('The battery only shows while SyncR runs'),
-            message: t('✕ quits SyncR, and the battery goes with it. To keep it, turn on “✕ hides SyncR in the tray” in Window and privacy.'),
+            message: withIcon(t('{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window and privacy.'), 'close', <X size={13} aria-label={t('Close')} />),
             confirmLabel: 'OK',
             noCancel: true,
             onConfirm: () => {},

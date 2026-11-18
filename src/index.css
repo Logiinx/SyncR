@@ -4421,6 +4421,11 @@ button {
   color: var(--text-dim);
 }
 
+/* An icon inside a sentence (withIcon, richText.tsx), sitting like the letters around it */
+.inline-icon svg {
+  vertical-align: -2px;
+}
+
 .dialog input {
   box-sizing: border-box;
   width: 100%;
