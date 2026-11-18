@@ -8429,6 +8429,7 @@ button.history-row.selected {
   background: var(--bg);
   color: var(--text);
   font-size: 0.75em;
+  font-variant-numeric: tabular-nums; /* "36:15 / 1:00:00" on hover: digits keep their width */
 }
 
 .video-text {
