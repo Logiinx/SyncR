@@ -82,7 +82,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
     <div className="game-prices">
       <div>
         <button className={keyWins ? 'price-link price-dearer' : 'price-link'} onClick={() => openLink(prices.steamUrl)}>
-          <SteamIcon cheapest={steamWins} /> {steam ? formatEuros(steam.final) : t('No price')}
+          <SteamIcon cheapest={steamWins} /> {steam ? formatEuros(steam.final) : t('Not sold')}
         </button>
         {steam && steam.discount > 0 && (
           <>
@@ -95,7 +95,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
       {deals && (
         <div>
           <button className={steamWins ? 'price-link price-dearer' : 'price-link'} onClick={() => openLink(deals.url)}>
-            <KeyRound className="price-icon" aria-label={t('Key')} /> {deals.keyshops ? formatEuros(deals.keyshops) : t('None')}
+            <KeyRound className="price-icon" aria-label={t('Key')} /> {deals.keyshops ? formatEuros(deals.keyshops) : t('Not sold')}
           </button>
           {keyAtLowest(prices) && <LowestEver />}
         </div>

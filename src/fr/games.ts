@@ -112,7 +112,7 @@ export const games = {
   store: 'boutique',
   key: 'clé',
   Key: 'Clé',
-  'No price': 'Pas de prix',
+  'Not sold': 'Pas en vente',
   'Prices for: {name}': 'Prix pour : {name}',
   'Prices from {name}': 'Prix de {name}',
   'Lowest ever: {prices}': 'Le plus bas : {prices}',
