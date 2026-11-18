@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-11-18
+
 **Jeux**
 - **Amélioré :** la remise d’une promo revient dans une petite étiquette verte, plus visible
 - **Amélioré :** prix, heures et durées gardent leurs chiffres alignés

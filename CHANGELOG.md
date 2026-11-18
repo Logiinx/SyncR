@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-11-18
+
 **Games**
 - **Better:** a sale’s discount is back in a small green tag, easier to spot
 - **Better:** prices, hours and times keep their digits lined up
