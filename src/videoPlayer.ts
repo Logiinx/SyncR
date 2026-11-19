@@ -281,6 +281,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       chatTopLeft: t('Top left corner'),
       chatBottomRight: t('Bottom right corner'),
       chatBottomLeft: t('Bottom left corner'),
+      chatCustom: t("Custom: drag the chat's top or edges"),
     },
   }
   const id = encodeURIComponent(video.id.slice('twitch-'.length))

@@ -260,6 +260,7 @@ export const video = {
   'Top left corner': 'Coin en haut à gauche',
   'Bottom right corner': 'Coin en bas à droite',
   'Bottom left corner': 'Coin en bas à gauche',
+  "Custom: drag the chat's top or edges": 'Personnalisé : glissez le haut du chat ou ses bords',
   "This video can't play in the player window": 'Cette vidéo ne peut pas être lue dans le lecteur',
   'A copied video link': 'Un lien de vidéo copié',
   'Ctrl+V in the Video tab, or Ctrl+Alt+Shift+V anywhere in Windows': 'Ctrl+V dans l’onglet Vidéo, ou Ctrl+Alt+Maj+V partout dans Windows',

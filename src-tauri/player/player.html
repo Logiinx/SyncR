@@ -73,6 +73,23 @@
   #chat.over:is(.top-right, .top-left) { bottom: auto; height: 45%; }
   #chat.over:is(.bottom-right, .bottom-left) { top: auto; height: 45%; }
   #chat.over #chat-edge { display: none; }
+  /* Its own spot (chat.js, placeCustom): dragged by the strip at its top (its bar shows while the
+     mouse is over the chat), resized from its edges and corners. Over the video only. */
+  #chat-grip, .chat-resize { display: none; touch-action: none; }
+  #chat.over #chat-grip { display: flex; flex: none; height: 14px; align-items: center; justify-content: center; cursor: grab; }
+  #chat-grip::after { content: ''; width: 36px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.5); opacity: 0; transition: opacity 0.15s; }
+  #chat.over:hover #chat-grip::after, html.chat-moving #chat-grip::after { opacity: 1; }
+  #chat.over .chat-resize { display: block; position: absolute; z-index: 3; }
+  .chat-resize:is(.n, .s) { left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+  .chat-resize:is(.e, .w) { top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+  .chat-resize:is(.nw, .ne, .sw, .se) { width: 10px; height: 10px; }
+  .chat-resize:is(.n, .nw, .ne) { top: 0; }
+  .chat-resize:is(.s, .sw, .se) { bottom: 0; }
+  .chat-resize:is(.w, .nw, .sw) { left: 0; }
+  .chat-resize:is(.e, .ne, .se) { right: 0; }
+  .chat-resize:is(.nw, .se) { cursor: nwse-resize; }
+  .chat-resize:is(.ne, .sw) { cursor: nesw-resize; }
+  html.chat-moving, html.chat-moving * { cursor: var(--chat-cursor) !important; user-select: none !important; }
   /* Full height on the right or left: the controls and the rest keep to the picture's part
      (chat-right / chat-left: chat.js). The corners leave them the whole width. */
   #stage.chat-right :is(#ui, #spinner, #message) { right: var(--chat-over); }
@@ -92,8 +109,8 @@
   /* Where the chat goes, in its menu (spotPicker in chat.js): small screens, the chosen part blue
      like the menu's switches */
   .spot-picker { padding: 4px 12px 6px; }
-  .spot-screens { display: flex; gap: 12px; }
-  .spot-screen { display: grid; width: 96px; height: 58px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 5px; overflow: hidden; }
+  .spot-screens { display: flex; gap: 10px; }
+  .spot-screen { display: grid; width: 88px; height: 54px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 5px; overflow: hidden; }
   .spot-screen.strips { grid-template-columns: 24px 1fr 24px; }
   .spot-screen.corners { grid-template: 1fr 1fr / 1fr 1fr; }
   .spot-screen button { border-radius: 0; transition: background 0.15s; }
@@ -102,6 +119,13 @@
   .strips button:first-child, .corners button:nth-child(odd) { border-right: 1px solid rgba(255, 255, 255, 0.45); }
   .strips button:last-child { border-left: 1px solid rgba(255, 255, 255, 0.45); }
   .corners button:nth-child(-n + 2) { border-bottom: 1px solid rgba(255, 255, 255, 0.45); }
+  /* Its own spot: the whole screen is the button, the chat drawn where it is (none before a drag) */
+  .spot-screen.custom button { position: relative; }
+  .spot-screen.custom button:hover, .spot-screen.custom button.on { background: none; }
+  .spot-screen.custom i { position: absolute; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.45); transition: background 0.15s; }
+  .spot-screen.custom button:hover i { background: color-mix(in srgb, var(--accent, #2d4f7c) 35%, transparent); }
+  .spot-screen.custom button.on i { background: var(--accent, #2d4f7c); }
+  .spot-screen.custom button.none { cursor: default; }
   .spot-name { margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
   #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
   #chat.side.left #chat-edge { left: auto; right: -4px; }

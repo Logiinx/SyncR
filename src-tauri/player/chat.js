@@ -22,7 +22,8 @@ const LINES = 200 // lines kept in the page
 const LINES_HELD = 1000 // the same while the user reads further up
 const KEEP = 3000 // messages kept in memory
 const EMOTES_WAIT = 2000 // ms the first messages wait for the emote services at most
-const SPOTS = ['right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'] // where it sits in full screen
+const SPOTS = ['right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'] // where it sits over the video
+const SNAP = 16 // a moved or resized chat this close to the area's edge sticks to it
 // Names in lower case. More can be added in the menu.
 const KNOWN_BOTS = ['nightbot', 'streamelements', 'streamlabs', 'moobot', 'fossabot', 'wizebot', 'botisimo', 'coebot', 'phantombot', 'deepbot', 'ankhbot', 'sery_bot', 'soundalerts', 'pretzelrocks', 'blerp', 'kofistreambot', 'stay_hydrated_bot', 'streamstickers', 'tangiabot', 'lumiastream', 'creatisbot', 'songlistbot', 'own3d', 'playwithviewersbot', 'frostytoolsdotcom']
 // Twitch's colors for people who didn't pick one
@@ -503,12 +504,23 @@ let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
 // The top corners were called corner-right / corner-left before the bottom ones came
 const oldSpots = { 'corner-right': 'top-right', 'corner-left': 'top-left' }
 const savedSpot = localStorage.getItem('player.chatSpot')
-let chatSpot = SPOTS.includes(oldSpots[savedSpot] || savedSpot) ? oldSpots[savedSpot] || savedSpot : SPOTS[0]
+// Its own spot and size, once dragged: shares of the area (0 to 1), so it fits any screen or window
+let chatCustom = readCustom()
+let chatSpot = SPOTS.includes(oldSpots[savedSpot] || savedSpot) ? oldSpots[savedSpot] || savedSpot
+  : savedSpot === 'custom' && chatCustom ? 'custom' : SPOTS[0]
 // In the window: beside the video (left or right), or over it like in full screen (same spot)
 let chatSide = localStorage.getItem('player.chatSide') === 'left' ? 'left' : 'right'
 let chatOver = localStorage.getItem('player.chatOver') === '1'
 const CHAT_OVER = 340 // its width over the video; in a small window at most 45 % of it
 const CHAT_OVER_MIN = 220
+const CHAT_OVER_MIN_HEIGHT = 160 // its own size: never smaller than this (or the area)
+function readCustom() {
+  try {
+    const box = JSON.parse(localStorage.getItem('player.chatCustom'))
+    if ([box.x, box.y, box.w, box.h].every(Number.isFinite)) return box
+  } catch {}
+  return null
+}
 
 function placeChat() {
   const room = $('stage').clientWidth
@@ -519,12 +531,17 @@ function placeChat() {
   const was = chatShowing()
   chatPanel.hidden = !showing
   chatPanel.className = over ? `over ${chatSpot}` : `side ${chatSide}`
-  $('stage').style.setProperty('--chat-over', `${Math.round(Math.min(CHAT_OVER, Math.max(CHAT_OVER_MIN, room * 0.45)))}px`)
+  const own = over && chatSpot === 'custom'
+  const at = own ? placeCustom() : chatSpot // which preset's room rules apply (null: none)
+  if (!own) {
+    chatPanel.style.left = chatPanel.style.top = chatPanel.style.height = ''
+    $('stage').style.setProperty('--chat-over', `${Math.round(Math.min(CHAT_OVER, Math.max(CHAT_OVER_MIN, room * 0.45)))}px`)
+  }
   // What makes room for it (player.html): full height, the controls keep to the picture's part;
   // a top corner, the header stops before it; a bottom corner, the bar and what's above it
-  for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, over && showing && chatSpot === spot)
+  for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, over && showing && at === spot)
   setGlass(over && showing)
-  chatPanel.style.width = over ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
+  if (!own) chatPanel.style.width = over ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
   button.classList.toggle('off', !fits)
@@ -574,6 +591,107 @@ const endResize = () => {
 }
 edge.addEventListener('pointerup', endResize)
 edge.addEventListener('pointercancel', endResize)
+
+// ---- Its own spot and size over the video: moved by the strip at its top, resized from its edges --
+// Kept inside the area and at least CHAT_OVER_MIN x CHAT_OVER_MIN_HEIGHT. Touching the area's edges,
+// it gets the room rules of the preset it looks like (full height on a side, a corner); elsewhere
+// it floats over the controls.
+function customBox() {
+  const width = $('stage').clientWidth
+  const height = $('stage').clientHeight
+  const w = Math.min(Math.max(chatCustom.w * width, Math.min(CHAT_OVER_MIN, width)), width)
+  const h = Math.min(Math.max(chatCustom.h * height, Math.min(CHAT_OVER_MIN_HEIGHT, height)), height)
+  const x = Math.min(Math.max(chatCustom.x * width, 0), width - w)
+  const y = Math.min(Math.max(chatCustom.y * height, 0), height - h)
+  return { x, y, w, h, width, height }
+}
+function placeCustom() {
+  const { x, y, w, h, width, height } = customBox()
+  Object.assign(chatPanel.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` })
+  $('stage').style.setProperty('--chat-over', `${w}px`)
+  const side = x + w > width - 1 ? 'right' : x < 1 ? 'left' : null
+  const top = y < 1
+  const bottom = y + h > height - 1
+  if (!side) return null
+  return top && bottom ? side : top ? `top-${side}` : bottom ? `bottom-${side}` : null
+}
+const grip = document.createElement('div')
+grip.id = 'chat-grip'
+grip.dataset.drag = 'move'
+chatList.before(grip)
+const handles = [grip]
+for (const way of ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se']) {
+  const handle = document.createElement('div')
+  handle.className = `chat-resize ${way}`
+  handle.dataset.drag = way
+  chatPanel.append(handle)
+  handles.push(handle)
+}
+const CURSORS = { move: 'grabbing', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' }
+const clamp = (value, low, high) => Math.min(Math.max(value, low), high)
+let moving = null // the drag going on: how, where the pointer started, the chat's box then
+for (const handle of handles) {
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !chatPanel.classList.contains('over')) return
+    event.preventDefault()
+    handle.setPointerCapture(event.pointerId)
+    // The page's scale changes the numbers: the area's own width converts them
+    const scale = $('stage').clientWidth / $('stage').getBoundingClientRect().width
+    const from = { x: chatPanel.offsetLeft, y: chatPanel.offsetTop, w: chatPanel.offsetWidth, h: chatPanel.offsetHeight }
+    moving = { how: handle.dataset.drag, x: event.clientX, y: event.clientY, scale, from }
+    document.documentElement.style.setProperty('--chat-cursor', CURSORS[moving.how])
+    document.documentElement.classList.add('chat-moving')
+  })
+  handle.addEventListener('pointermove', (event) => {
+    if (!moving || !handle.hasPointerCapture(event.pointerId)) return
+    const dx = (event.clientX - moving.x) * moving.scale
+    const dy = (event.clientY - moving.y) * moving.scale
+    if (!moving.started && Math.hypot(dx, dy) < 3) return // a click, or a hand's tremble: stays a preset
+    moving.started = true
+    const width = $('stage').clientWidth
+    const height = $('stage').clientHeight
+    const { how, from } = moving
+    let left = from.x
+    let top = from.y
+    let right = from.x + from.w
+    let bottom = from.y + from.h
+    if (how === 'move') {
+      left = clamp(from.x + dx, 0, width - from.w)
+      top = clamp(from.y + dy, 0, height - from.h)
+      if (left < SNAP) left = 0
+      if (width - from.w - left < SNAP) left = width - from.w
+      if (top < SNAP) top = 0
+      if (height - from.h - top < SNAP) top = height - from.h
+      right = left + from.w
+      bottom = top + from.h
+    } else {
+      const minW = Math.min(CHAT_OVER_MIN, width)
+      const minH = Math.min(CHAT_OVER_MIN_HEIGHT, height)
+      if (how.includes('e')) right = clamp(right + dx, left + minW, width)
+      if (how.includes('w')) left = clamp(left + dx, 0, right - minW)
+      if (how.includes('s')) bottom = clamp(bottom + dy, top + minH, height)
+      if (how.includes('n')) top = clamp(top + dy, 0, bottom - minH)
+      // Only the edges being dragged stick (the others stay where they are)
+      if (how.includes('e') && width - right < SNAP) right = width
+      if (how.includes('w') && left < SNAP) left = 0
+      if (how.includes('s') && height - bottom < SNAP) bottom = height
+      if (how.includes('n') && top < SNAP) top = 0
+    }
+    chatCustom = { x: left / width, y: top / height, w: (right - left) / width, h: (bottom - top) / height }
+    chatSpot = 'custom'
+    placeChat()
+  })
+  const end = () => {
+    if (!moving) return
+    moving = null
+    document.documentElement.classList.remove('chat-moving')
+    if (chatSpot !== 'custom') return // only clicked
+    localStorage.setItem('player.chatCustom', JSON.stringify(chatCustom))
+    localStorage.setItem('player.chatSpot', 'custom')
+  }
+  handle.addEventListener('pointerup', end)
+  handle.addEventListener('pointercancel', end)
+}
 
 // ---- Frosted glass behind the chat in full screen -----------------------------------------------
 // A small blurred copy of the picture under the chat, redrawn at each new frame. Not CSS's
@@ -736,7 +854,8 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     right: labels.chatRight, left: labels.chatLeft, 'top-right': labels.chatTopRight, 'top-left': labels.chatTopLeft,
     'bottom-right': labels.chatBottomRight, 'bottom-left': labels.chatBottomLeft,
   }
-  spotPicker(menu, [STRIPS, CORNERS], spotNames, chatSpot, (spot) => {
+  spotNames.custom = labels.chatCustom
+  spotPicker(menu, [STRIPS, CORNERS, CUSTOM], spotNames, chatSpot, (spot) => {
     chatSpot = spot
     localStorage.setItem('player.chatSpot', spot)
     placeChat()
@@ -748,6 +867,7 @@ function drawChatPanel({ title, row, choices, element: menu }) {
 // place (no menu redraw), so the mouse's part stays lit.
 const STRIPS = ['left', null, 'right'] // null: the picture between them
 const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+const CUSTOM = ['custom'] // its own spot, drawn where it is; can't be picked before the chat is dragged
 function spotPicker(menu, screens, names, current, choose) {
   const box = document.createElement('div')
   box.className = 'spot-picker'
@@ -759,7 +879,7 @@ function spotPicker(menu, screens, names, current, choose) {
   const parts = []
   for (const spots of screens) {
     const screen = document.createElement('div')
-    screen.className = `spot-screen ${spots === CORNERS ? 'corners' : 'strips'}`
+    screen.className = `spot-screen ${spots === CORNERS ? 'corners' : spots === CUSTOM ? 'custom' : 'strips'}`
     for (const spot of spots) {
       if (!spot) {
         screen.append(document.createElement('span'))
@@ -770,7 +890,14 @@ function spotPicker(menu, screens, names, current, choose) {
       part.setAttribute('aria-label', names[spot])
       part.onpointerenter = () => show(spot)
       part.onpointerleave = () => show(current)
+      if (spot === 'custom') {
+        const own = document.createElement('i')
+        if (chatCustom) Object.assign(own.style, { left: `${chatCustom.x * 100}%`, top: `${chatCustom.y * 100}%`, width: `${chatCustom.w * 100}%`, height: `${chatCustom.h * 100}%` })
+        else part.classList.add('none')
+        part.append(own)
+      }
       part.onclick = () => {
+        if (part.classList.contains('none')) return
         current = spot
         parts.forEach((other) => other.classList.toggle('on', other === part))
         show(spot)
