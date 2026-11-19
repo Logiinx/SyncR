@@ -15,7 +15,7 @@ import { REMINDERS_TAB } from './reminders'
 import { GAMES_TAB } from './games'
 import { checkForUpdates } from './UpdateBanner'
 import { searchNotes, type Snippet } from './noteSearch'
-import { clockTime, nearDay, shortDate } from './dates'
+import { dayTime } from './dates'
 
 interface Props {
   activeId: string | null
@@ -33,12 +33,8 @@ interface Props {
   onSearchFocused: () => void
 }
 
-// "Today, 14:32", "Yesterday, 09:10", otherwise "14 Oct 2026". A last edit is never ahead,
-// except from a device whose clock runs fast: then its date, not "Tomorrow"
-function formatDate(time: number) {
-  const near = nearDay(time)
-  return near && near !== t('Tomorrow') ? `${near}, ${clockTime(time)}` : shortDate(time)
-}
+// A last edit is never ahead, except from a device whose clock runs fast: then its date, not "Tomorrow"
+const formatDate = (time: number) => dayTime(time, true)
 
 // A search snippet with the matched words in bold
 function SnippetText({ parts }: { parts: Snippet }) {

@@ -98,3 +98,10 @@ export function nearDay(time: number): string | null {
   if (day === fromToday(-1)) return t('Yesterday')
   return null
 }
+
+// "Today, 14:32", "Tomorrow, 09:00", "Yesterday, 09:10", otherwise "14 Oct 2026" (the notes list,
+// video rows). noTomorrow: a past moment from a device whose clock runs fast gets its date instead.
+export function dayTime(time: number, noTomorrow = false) {
+  const near = nearDay(time)
+  return near && !(noTomorrow && near === t('Tomorrow')) ? `${near}, ${clockTime(time)}` : shortDate(time)
+}

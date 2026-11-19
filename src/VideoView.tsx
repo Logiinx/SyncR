@@ -4,7 +4,7 @@ import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
 import { type VideoFolder, type VideoFollow, type VideoPlaylist } from './db'
-import { lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
+import { dayTime, lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
 import Dialog from './Dialog'
 import { plural, t } from './i18n'
 import { openLink } from './links'
@@ -42,7 +42,10 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   return newIds
 }
 
-const videoDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
+// With its time when near (user: which of several "Today" came out first). A group's row: the day
+// only (with its counts it would no longer fit on a phone)
+const videoDay = (video: FeedVideo) => dayTime(video.published)
+const groupDay = (video: FeedVideo) => nearDay(video.published) ?? shortDate(video.published)
 
 const CARD_DELAY = 600 // ms resting the mouse on a row before its card shows
 const DELETION_SOON = 7 * 86_400_000 // "Twitch deletes it in …" only in its last week
@@ -116,7 +119,7 @@ function FoldRow(props: {
           <span className="video-meta">
             {logo}
             <span>{countText ?? plural(count, '{n} video', '{n} videos')}</span>
-            {newest && <span>· {videoDay(newest)}</span>}
+            {newest && <span>· {groupDay(newest)}</span>}
             {newCount > 0 && <span className="video-new">{plural(newCount, '{n} new video', '{n} new videos')}</span>}
           </span>
         </span>
