@@ -549,13 +549,11 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     redrawChat()
   })
   title(labels.chatWindowTitle)
-  for (const side of ['right', 'left']) {
-    row(side === 'right' ? labels.chatSideRight : labels.chatSideLeft, side === chatSide, () => {
-      chatSide = side
-      localStorage.setItem('player.chatSide', side)
-      placeChat()
-    })
-  }
+  choices([{ value: 'left', text: labels.chatSideLeft }, { value: 'right', text: labels.chatSideRight }], chatSide, (side) => {
+    chatSide = side
+    localStorage.setItem('player.chatSide', side)
+    placeChat()
+  })
   title(labels.chatFullTitle)
   const spotNames = { right: labels.chatRight, left: labels.chatLeft, 'corner-right': labels.chatCornerRight, 'corner-left': labels.chatCornerLeft }
   for (const spot of SPOTS) {

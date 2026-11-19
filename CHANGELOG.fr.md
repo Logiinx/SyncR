@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** menu ⚙️ plus net : Gauche / Droite côte à côte dans Chat, lignes entre les groupes
+
 ## [0.91.2] - 2026-11-19
 
 **Vidéo** (PC uniquement)

@@ -666,6 +666,13 @@ function playerControls(env, media) {
   // What fills the list or a panel: titles, rows, a sliding switch
   function builder(target) {
     const title = (text) => {
+      // A new group under another one: a thin line between them (none under "‹ Back")
+      const before = target.lastElementChild
+      if (before && !before.classList.contains('menu-back')) {
+        const separator = document.createElement('div')
+        separator.className = 'menu-separator'
+        target.append(separator)
+      }
       const line = document.createElement('div')
       line.className = 'menu-title'
       line.textContent = text
@@ -737,7 +744,6 @@ function playerControls(env, media) {
     const valueText = document.createElement('span')
     valueText.textContent = value || ''
     shown.append(valueText)
-    shown.insertAdjacentHTML('beforeend', html(icon('chevronLeft')))
     button.append(name, shown)
     button.onpointerenter = () => {
       clearTimeout(hoverTimer)
@@ -1276,6 +1282,7 @@ const CONTROLS_CSS = `
   .menu-name svg { flex-shrink: 0; color: var(--text-dim, #9a9a9a); }
   .menu-item.menu-back { justify-content: flex-start; gap: 6px; padding-left: 8px; }
   .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
+  .menu-separator { height: 1px; margin: 4px 2px; background: var(--border, #2a2a2a); } /* like the app's menus */
   /* What's playing: wraps within the menu's width instead of widening it */
   #menu-info { width: 0; min-width: calc(100% - 24px); padding: 6px 12px 4px; color: var(--text-dim, #9a9a9a); font-size: 11px; line-height: 15px; font-variant-numeric: tabular-nums; user-select: text; }
   #menu-info:empty { display: none; }
