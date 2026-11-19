@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.91.2] - 2026-11-19
+
 **Video** (PC only)
 - **New:** Twitch chat on the left of the video: ⚙️ → Chat → In the window
 
