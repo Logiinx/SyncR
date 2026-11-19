@@ -1,5 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { Window } from '@tauri-apps/api/window'
 import { animationsOn } from './animations'
 import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
@@ -559,11 +560,17 @@ function waitForPart(video: PlayableVideo): Promise<'found' | 'none' | 'closed'>
 // while one can still come (a restart: up to PART_GAP after its end). Found: ⏭ shows it at once.
 const PART_CHECK_EVERY = 60_000
 const PART_CHECKS = 40 // a Worker that keeps failing: not forever
+// Closing the video window sends nothing back: asked before each new check (in doubt: open)
+const VIDEO_WINDOW = 'video-player' // i18n-ok (video_window.rs)
+const windowOpen = () => Window.getByLabel(VIDEO_WINDOW).then(Boolean, () => true)
 function searchPart(video: PlayableVideo) {
   if (video.platform !== 'twitch') return Promise.resolve('none' as const)
   partSearch ??= (async () => {
     for (let check = 0; check < PART_CHECKS; check++) {
-      if (check > 0) await new Promise((done) => setTimeout(done, PART_CHECK_EVERY))
+      if (check > 0) {
+        await new Promise((done) => setTimeout(done, PART_CHECK_EVERY))
+        if (!(await windowOpen())) return 'closed'
+      }
       if (current !== video) return 'none'
       const known = await knownNextPart(video, lastLength).catch(() => null)
       const answer = known ? { part: known, end: 0 } : await askNextPart(video, lastLength).catch((error) => console.warn('Next part failed', error))
