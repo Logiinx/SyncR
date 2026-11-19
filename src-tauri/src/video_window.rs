@@ -100,10 +100,14 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
     "/startSkip.js" => return answer(200, "text/javascript", include_bytes!("../player/startSkip.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
     // How far the video is (video-watch.js), from any page in the player window, so a site could
-    // fake it: only numbers pass, and all it can change is the current video's position and Watched mark
+    // fake it: only numbers pass, and all it can change is the current video's position and Watched mark.
+    // The video it's for, when the page knows (letters, digits, - and _ only; else none).
     "/position" => {
       if let (Some(t), Some(length)) = (number("t"), number("length")) {
-        let _ = app.emit_to("main", "video-position", serde_json::json!({ "t": t, "length": length }));
+        let video = query_value(&uri, "video")
+          .filter(|id| id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+          .unwrap_or("");
+        let _ = app.emit_to("main", "video-position", serde_json::json!({ "t": t, "length": length, "video": video }));
       }
       return answer(204, "text/plain", Vec::new());
     }

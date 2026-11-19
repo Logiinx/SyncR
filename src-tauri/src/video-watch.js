@@ -6,8 +6,24 @@
 // It also tells the app how far the video is, for resuming later (videoPositions.ts): a plain
 // request, as those visits make the page think it's being left.
 (() => {
+  // Which video a report is for, when the page can tell, so a late report from the last video
+  // (sent while the next one loads) can't move the next one's spot. YouTube's player knows what
+  // it plays; our own Twitch player and Twitch's page have it in their address. Elsewhere none:
+  // the app takes the report as it comes.
+  const videoOf = () => {
+    try {
+      const id = document.querySelector('#movie_player')?.getVideoData?.()?.video_id
+      if (id) return `youtube-${id}`
+    } catch {}
+    if (location.hostname === 'syncr-video.localhost') {
+      const id = new URLSearchParams(location.search).get('video')
+      return id ? `twitch-${id}` : ''
+    }
+    const twitch = location.hostname === 'www.twitch.tv' && location.pathname.match(/^\/videos\/(\d+)/)
+    return twitch ? `twitch-${twitch[1]}` : ''
+  }
   const report = (t, length) => {
-    fetch(`https://syncr-video.localhost/position?t=${Math.floor(t)}&length=${Math.floor(length)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+    fetch(`https://syncr-video.localhost/position?t=${Math.floor(t)}&length=${Math.floor(length)}&video=${encodeURIComponent(videoOf())}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
   }
   // Its end at once, as the next video of a playlist follows. Caught on the way down: this event
   // doesn't bubble up.

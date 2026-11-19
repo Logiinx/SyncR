@@ -430,8 +430,11 @@ function listenToBar() {
     }
   })
   // How far the page's video is (video-watch.js). A report much shorter than the video is an ad.
-  void listen<{ t: number; length: number }>('video-position', ({ payload: { t: seconds, length } }) => {
+  // One that names another video is a late one from the last video: dropped. No name (a page that
+  // can't tell, or an older video window script) counts for the open video, as before.
+  void listen<{ t: number; length: number; video?: string }>('video-position', ({ payload: { t: seconds, length, video } }) => {
     if (!current || Date.now() < reportsFrom || seconds < 0 || seconds > length) return
+    if (video && video !== current.id) return
     if (current.duration > 0 && length < current.duration * 0.9) return
     savePosition(current.id, { t: seconds, length, ...(liveNow && { live: true }) })
     lastLength = length

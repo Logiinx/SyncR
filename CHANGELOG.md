@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **Video** (PC only)
 - **New:** Twitch chat emotes and badges show their name at once on hover
 - **Changed:** Twitch chat pauses while the mouse is over it
+- **Small fixes:** saved spot after a slow switch to the next video
 
 ## [0.91.3] - 2026-11-19
 

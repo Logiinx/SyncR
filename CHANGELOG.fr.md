@@ -7,6 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Nouveau :** les emotes et badges du chat Twitch montrent leur nom dès le survol
 - **Changé :** le chat Twitch se met en pause quand la souris est dessus
+- **Petites corrections :** position gardée après un passage lent à la vidéo suivante
 
 ## [0.91.3] - 2026-11-19
 
