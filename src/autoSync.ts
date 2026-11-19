@@ -6,7 +6,8 @@ import { endAllSessions } from './noteHistory'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
-// Syncs: when started (app open + unlocked), ~1.5 s after the user stops editing, when the
+// Syncs: when started (app open + unlocked), ~1.5 s after the user stops editing, right away
+// when the user leaves a note or card editor (then a buzz on a phone: vibrateDone), when the
 // window gets focus again, when the connection comes back, when the PC wakes from sleep, when
 // the app goes to the background with changes waiting, and when Dropbox reports a change
 // (longpoll). At those moments (and on a click) a sync stuck on a dead connection starts over.
@@ -37,6 +38,7 @@ let enabled = false
 let running = false
 let changedDuringSync = false
 let urgentAfterSync = false // syncSoon() was called during a sync: go again right away
+let buzzWanted = false // the user left the editor: buzz once everything is sent (vibrateDone)
 let quickRetries = 0
 let failing = false // the last sync ended with an error (already reported)
 let lastUnreadable = 0 // unreadable files found by the last sync (sync.ts readFile)
@@ -99,7 +101,7 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     quickRetries = 0
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
-    if (!changedDuringSync) vibrateDone()
+    if (!changedDuringSync && (buzzWanted || manual)) vibrateDone()
     if (!manual && result.conflicts) {
       notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
     }
@@ -128,9 +130,11 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     } else if (e instanceof TypeError || !navigator.onLine) {
       // fetch() throws TypeError when there's no connection
       if (manual) notify(t("You're offline. Changes will sync when you're back online."))
+      buzzWanted = false // no buzz much later, when it's back
       setStatus('offline')
       schedule(RETRY_LATER_MS)
     } else {
+      buzzWanted = false
       if (manual || !failing) notify(message)
       failing = true
       quickRetries = 0
@@ -144,9 +148,12 @@ async function run(manual = false): Promise<SyncResult | undefined> {
   }
 }
 
-// A short buzz on a phone the moment the cloud turns green: everything is sent, the app can be
-// closed. Each sync gives its own buzz (a few while typing with pauses is fine, user's choice).
+// A short buzz on a phone once the user left the editor (keyboard closed, tapped outside) and
+// everything is sent: the app can be closed. Not after the syncs that run during pauses in
+// typing (user: a pause mid-sentence buzzed); those still sync as before. A click on the cloud
+// buzzes too.
 function vibrateDone() {
+  buzzWanted = false
   // Android ignores this until the page was touched once since it opened
   if (deviceName() === 'phone' && document.visibilityState === 'visible') navigator.vibrate?.(VIBRATION_MS)
 }
@@ -163,14 +170,18 @@ function syncAfter(delay: number) {
 }
 
 // The user is done editing for now (left the editor or the app): sync waiting changes
-// right away instead of after the usual delay.
+// right away instead of after the usual delay, then buzz. Already sent: buzz now.
 export function syncSoon() {
   if (!enabled) return
   if (running) {
+    buzzWanted = true
     if (changedDuringSync) urgentAfterSync = true
     return
   }
-  if (status === 'pending') syncAfter(0)
+  if (status === 'pending') {
+    buzzWanted = true
+    syncAfter(0)
+  } else if (status === 'synced') vibrateDone()
 }
 
 // The user clicked the cloud. Returns undefined if it failed or a sync was already running.
@@ -234,6 +245,7 @@ async function poll() {
 // ---------- Events ----------
 
 function onLocalChange() {
+  buzzWanted = false // editing again: no buzz until the editor is left again (syncSoon)
   if (!running) setStatus('pending')
   else changedDuringSync = true
   syncAfter(EDIT_DELAY_MS)

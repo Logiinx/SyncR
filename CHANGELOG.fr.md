@@ -15,6 +15,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** des vidéos Twitch muettes alors que le son d'origine existait encore
 - **Corrigé :** la courbe « Moments les plus revus » de YouTube trop pâle pour se voir
 
+**Synchronisation**
+- **Changé :** le téléphone vibre quand vous fermez le clavier, plus à chaque pause
+
 ## [0.93.0] - 2026-11-19
 
 **Vidéo** (PC uniquement)

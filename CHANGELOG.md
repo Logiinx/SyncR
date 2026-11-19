@@ -15,6 +15,9 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** Twitch videos playing muted where the original sound was still there
 - **Fixed:** YouTube's "most replayed" curve too faint to see
 
+**Sync**
+- **Changed:** the phone buzzes once you close the keyboard, not at each pause in typing
+
 ## [0.93.0] - 2026-11-19
 
 **Video** (PC only)

@@ -20,6 +20,7 @@ import ColorPicker, { currentTextColor, pickTextColor } from './ColorPicker'
 import { useFoldAnimation, useListItem } from './animations'
 import { currentZoom } from './appearance'
 import { linkMenu } from './linkPreviews'
+import { syncSoon } from './autoSync'
 
 const SAVE_DELAY_MS = 500
 // A link card and a folded link group's line (linkPreviews.ts): a click opens them, no drag or editing
@@ -124,20 +125,21 @@ function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
         save(editor)
       }, SAVE_DELAY_MS)
     },
-    // Clicking out of the card: editing ends; save now, or remove the card if it's empty
+    // Clicking out of the card (or closing the phone's keyboard): editing ends; save now, or
+    // remove the card if it's empty, then sync right away (like a note: autoSync.ts)
     onBlur: ({ editor }) => {
       setEditing(false)
       editor.setEditable(false, false)
       if (editor.isEmpty && !hasTitle.current) {
         window.clearTimeout(saveTimer.current)
         saveTimer.current = undefined
-        setCardDeleted(card.id, true)
+        void setCardDeleted(card.id, true).then(syncSoon)
         return
       }
-      if (saveTimer.current === undefined) return
+      if (saveTimer.current === undefined) return syncSoon()
       window.clearTimeout(saveTimer.current)
       saveTimer.current = undefined
-      save(editor)
+      void save(editor).then(syncSoon)
     },
   })
 
