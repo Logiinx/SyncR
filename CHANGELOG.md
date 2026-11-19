@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** channel, game and title at the top of the player in full screen
 - **New:** switch for YouTube's "most replayed" curve in ⚙️ → Miscellaneous
 - **Better:** Twitch videos start about half a second sooner
 - **Changed:** full-screen chat runs full height on frosted glass, beside the bar

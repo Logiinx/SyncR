@@ -515,6 +515,9 @@ function placeChat() {
   // Full height on a side: the controls keep to the picture's part (player.html)
   $('stage').classList.toggle('chat-right', full && showing && chatSpot === 'right')
   $('stage').classList.toggle('chat-left', full && showing && chatSpot === 'left')
+  // In a top corner: the header leaves it room (player.html)
+  $('stage').classList.toggle('chat-corner-right', full && showing && chatSpot === 'corner-right')
+  $('stage').classList.toggle('chat-corner-left', full && showing && chatSpot === 'corner-left')
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)

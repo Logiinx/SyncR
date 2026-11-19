@@ -78,6 +78,9 @@
   #stage.chat-left :is(#ui, #spinner, #message) { left: var(--chat-over); }
   #stage.chat-left #parts-box { left: calc(var(--chat-over) + 12px); }
   #stage.chat-left #flash { left: calc(50% + var(--chat-over) / 2); }
+  /* In a top corner the chat covers the header's end: the header stops before it */
+  #stage.chat-corner-right #header { padding-right: calc(var(--chat-over) + 20px); }
+  #stage.chat-corner-left #header { padding-left: calc(var(--chat-over) + 20px); }
   #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
   #chat.side.left #chat-edge { left: auto; right: -4px; }
   #chat.over #chat-list { scrollbar-width: none; }

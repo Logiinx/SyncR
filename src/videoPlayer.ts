@@ -21,6 +21,8 @@ export interface PlayableVideo {
   channelId: string
   url: string
   thumbnail?: string | null // shown by the player's ⏭ for the video that comes next
+  channel?: string // its channel's name and picture, when the list knows them (the full-screen header)
+  channelIcon?: string | null
   watched: boolean
   duration: number // 0 when unknown
   live?: boolean // a Twitch stream still live: its length grows
@@ -226,11 +228,19 @@ function startSkipData(video: PlayableVideo) {
   return { off: Boolean(video.music || follow?.music), followed: !!follow, auto: !!follow?.autoSkip, looks: follow?.startLooks ?? [] }
 }
 
+// The players' header in full screen (controls.js): the follow's name and picture, or what the
+// list knows. The Twitch player asks Twitch for what's missing, YouTube's page uses its own.
+function headerData(video: PlayableVideo) {
+  const follow = followOfChannel(video)
+  return { channel: follow?.name ?? video.channel ?? '', picture: follow?.icon ?? video.channelIcon ?? null, title: video.title }
+}
+
 function twitchPlayerAddress(video: PlayableVideo) {
   const shared = controlsData()
   const data = {
     ...shared,
     startSkip: startSkipData(video),
+    header: headerData(video),
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
@@ -289,7 +299,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
   if (way === 'own') {
     const { quality, subtitleLanguage } = loadPlayerSettings()
-    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify({ ...controlsData(), startSkip: startSkipData(video) }))}`
+    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify({ ...controlsData(), startSkip: startSkipData(video), header: headerData(video) }))}`
   }
   const data = {
     message: t("This video can't play in the player window"),

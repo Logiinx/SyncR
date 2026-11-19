@@ -1,7 +1,11 @@
 // What the progress bar shows besides the time (uses player.js's video, labels, stored, jumpTo).
 // Muted parts come from the playlist, previews, game changes and the start time from Twitch's
 // answer about the video. If one of them can't be had, only that extra is missing: the video isn't affected.
-const DETAILS_QUERY = 'query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL game { displayName boxArtURL(width: 54, height: 72) } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName boxArtURL(width: 54, height: 72) } } } } } } } }'
+// The title, game and game changes: also asked again while the stream is still live (LIVE_QUERY)
+const GAMES_PART = 'title game { displayName boxArtURL(width: 54, height: 72) } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName boxArtURL(width: 54, height: 72) } } } } } }'
+const DETAILS_QUERY = `query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL owner { displayName profileImageURL(width: 70) } ${GAMES_PART} } }`
+const LIVE_QUERY = `query($id: ID!) { video(id: $id) { ${GAMES_PART} } }`
+const LIVE_AGAIN = 120000 // ms: a stream still live, for its title and new games (the header, the bar)
 const DETAILS_TRIES = 3
 const DETAILS_AGAIN = 20000 // ms after a failed answer
 const MUTED_GAP = 1 // seconds: parts closer than this count as one
@@ -100,8 +104,13 @@ function gamePicture(game) {
 }
 function drawGamesButton() {
   gamesButton.hidden = !games.length
-  if (!games.length) return closeGames()
+  if (!games.length) {
+    setHeader({ game: '' })
+    return closeGames()
+  }
   const index = gameIndexAt(video.currentTime)
+  // The full-screen header's game, at this moment (also with one game, and with the bar's game changes off)
+  setHeader({ game: games[index].name })
   if (index === gameShown) return
   gameShown = index
   gamesButton.textContent = ''
@@ -364,6 +373,8 @@ async function askDetails(tries) {
     if (!details) return void (previewsKnown = true)
     noteStart(details.recordedAt)
     noteGames(details.moments?.edges || [], details.game)
+    noteHeader(details)
+    setTimeout(askLiveDetails, LIVE_AGAIN)
     if (details.seekPreviewsURL) await askPreviews(details.seekPreviewsURL)
     previewsKnown = true
   } catch (error) {
@@ -373,3 +384,28 @@ async function askDetails(tries) {
   }
 }
 askDetails(DETAILS_TRIES)
+
+// The header (controls.js): Twitch's title (a stream still live can change it), and its channel
+// when the app didn't know it (a pasted link of a channel not followed)
+function noteHeader(details) {
+  const owner = details.owner
+  setHeader({
+    ...(details.title && { title: details.title }),
+    ...(!data.header?.channel && owner?.displayName && { channel: owner.displayName }),
+    ...(!data.header?.picture && owner?.profileImageURL && { picture: owner.profileImageURL }),
+  })
+}
+// Every 2 minutes while still live; a failed answer just waits for the next time
+async function askLiveDetails() {
+  if (!live) return
+  try {
+    const details = await askTwitch(LIVE_QUERY)
+    if (details) {
+      noteGames(details.moments?.edges || [], details.game)
+      noteHeader(details)
+    }
+  } catch (error) {
+    console.error(error)
+  }
+  setTimeout(askLiveDetails, LIVE_AGAIN)
+}

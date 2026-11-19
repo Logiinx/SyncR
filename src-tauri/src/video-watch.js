@@ -239,7 +239,8 @@
       html.syncr-stopped .ytp-error { display: none !important; }
       ${data.animations === false ? '' : 'html:not(.syncr-moving-subtitles) .caption-window { transition: translate 0.2s ease; }'}
       html.syncr-controls-shown:not(.syncr-moving-subtitles) .caption-window { translate: 0 calc(-1 * var(--syncr-lift, 0px)); }
-      @font-face { font-family: 'SyncR UI'; font-weight: 400; src: local('Segoe UI'), local('SegoeUI'); ascent-override: 101%; descent-override: 32.5%; line-gap-override: 0%; }`
+      @font-face { font-family: 'SyncR UI'; font-weight: 400; src: local('Segoe UI'), local('SegoeUI'); ascent-override: 101%; descent-override: 32.5%; line-gap-override: 0%; }
+      @font-face { font-family: 'SyncR UI'; font-weight: 500 600; src: local('Segoe UI Semibold'), local('SegoeUI-Semibold'); ascent-override: 101%; descent-override: 32.5%; line-gap-override: 0%; }`
     document.head.append(pageStyle)
 
     const host = document.createElement('div')
@@ -563,6 +564,16 @@
       const id = player.getVideoData?.()?.video_id
       if (!id) return
       if (id !== shownFor) {
+        // The full-screen header (controls.js): what the app sent, or YouTube's own channel and title
+        // when it sent none (a trailer) or another video plays now (its picture then only for the same channel)
+        const { author, title } = player.getVideoData()
+        const sent = data.header || {}
+        const first = shownFor === null
+        controls.setHeader({
+          channel: (first && sent.channel) || author || '',
+          title: (first && sent.title) || title || '',
+          picture: first || author === sent.channel ? sent.picture || null : null,
+        })
         shownFor = id
         chapters = []
         previews = null
@@ -594,6 +605,7 @@
       surface,
       html: (text) => policy.createHTML(text),
       next: data.next,
+      header: data.header,
       labels: data.labels,
       locale: data.locale,
       stopKeys: true,

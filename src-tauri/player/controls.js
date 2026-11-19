@@ -68,6 +68,7 @@ function playerControls(env, media) {
   box.insertAdjacentHTML('beforeend', html(`
   <div id="ui">
     <div id="shade"></div>
+    <div id="header" hidden><img id="header-picture" alt="" referrerpolicy="no-referrer" hidden><div id="header-text"><div id="header-channel"></div><div id="header-line"></div></div></div>
     <button id="big">${icon('play')}</button>
     <div id="bottom">
       <div id="progress">
@@ -628,6 +629,33 @@ function playerControls(env, media) {
     const full = !!document.fullscreenElement
     setIcon($('full'), full ? 'minimize' : 'maximize')
     $('full').title = full ? labels.exitFullscreen : labels.fullscreen
+    drawHeader()
+  }
+
+  // ---- The header at the top, in full screen only (the window's bar shows the title otherwise) ----
+  // The channel's picture and name, then "game · title" on up to 2 lines. It fades with the rest.
+  // header: { channel, picture, title } from the app (videoPlayer.ts); the Twitch player adds the
+  // game at the current moment, and both fill in what the app didn't know (setHeader).
+  const header = { channel: '', picture: null, game: '', title: '', ...env.header }
+  function drawHeader() {
+    const picture = $('header-picture')
+    if (header.picture && picture.getAttribute('src') !== header.picture) picture.src = header.picture
+    picture.hidden = !header.picture
+    $('header-channel').textContent = header.channel || ''
+    $('header-line').textContent = [header.game, header.title].filter(Boolean).join(' · ')
+    $('header').hidden = !document.fullscreenElement || !(header.channel || header.title)
+  }
+  function setHeader(change) {
+    const before = JSON.stringify(header)
+    Object.assign(header, change)
+    if (JSON.stringify(header) !== before) drawHeader()
+  }
+  // A picture that doesn't load: just the name
+  $('header-picture').onerror = () => { header.picture = null; drawHeader() }
+  // The whole line in a tooltip, only when it's cut
+  $('header-line').onmouseenter = () => {
+    const line = $('header-line')
+    line.title = line.scrollHeight > line.clientHeight + 1 ? line.textContent : ''
   }
   document.addEventListener('fullscreenchange', drawFull)
   $('full').onclick = toggleFull
@@ -1136,7 +1164,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setHeader, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -1166,6 +1194,21 @@ const CONTROLS_CSS = `
   #big svg { width: 30px; height: 30px; fill: currentColor; }
   #big:hover { background: var(--accent, #2d4f7c); }
   #player.paused:not(.loading) #big { display: flex; }
+
+  /* The full-screen header (drawHeader), on a shade from the top like the bar's from the bottom.
+     Only the text takes the mouse, for the cut line's tooltip: a click there does nothing. */
+  #header {
+    position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 12px;
+    padding: 18px 20px 56px; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  #header-picture { width: 44px; height: 44px; flex: none; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.08); }
+  #header-text { min-width: 0; max-width: min(760px, 70%); pointer-events: auto; }
+  #header-channel { font-size: 15px; font-weight: 600; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #header-line {
+    margin-top: 2px; font-size: 13px; line-height: 18px; color: rgba(255, 255, 255, 0.85); overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
 
   /* Above the chat in full screen, for the tip's picture */
   #bottom { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; pointer-events: auto; }

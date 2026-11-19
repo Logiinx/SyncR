@@ -151,6 +151,7 @@ const controls = playerControls({
   box: player,
   surface: video,
   next: data.next,
+  header: data.header,
   labels,
   locale: data.locale,
   hooks: {
@@ -177,7 +178,7 @@ const controls = playerControls({
   },
 }, media)
 // For timeline.js and chat.js
-const { $, icon, clock, percentText, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
+const { $, icon, clock, setHeader, percentText, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, openParts, closeParts, partsOpen, drawPartsList } = controls
 // What ⏭ plays changed while this one plays: the stream's next part was found (video_window.rs,
 // video_player_upcoming)
 window.syncrUpcoming = (shown) => controls.setNext(shown)

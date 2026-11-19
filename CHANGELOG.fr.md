@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** chaîne, jeu et titre en haut du lecteur en plein écran
 - **Nouveau :** interrupteur pour la courbe « Moments les plus revus » dans ⚙️ → Divers
 - **Amélioré :** les vidéos Twitch démarrent environ une demi-seconde plus tôt
 - **Changé :** le chat en plein écran prend toute la hauteur, sur verre dépoli, à côté de la barre
