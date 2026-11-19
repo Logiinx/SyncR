@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.93.0] - 2026-11-19
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** les liens vidéo des notes s’ouvrent dans le lecteur (clic droit : Ouvrir dans le navigateur)
 - **Nouveau :** recherche dans les listes Vidéo par titre ou chaîne : 🔍 ou Ctrl+F

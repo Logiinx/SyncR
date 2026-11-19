@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.93.0] - 2026-11-19
+
 **Video** (PC only)
 - **New:** video links in notes play in the player (right-click: Open in browser)
 - **New:** search in the Video lists by title or channel: 🔍 or Ctrl+F
