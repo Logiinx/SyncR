@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.91.1] - 2026-11-19
+
 **Video** (PC only)
 - **Changed:** full screen Twitch chat at 100% background sits beside the video
 
