@@ -252,7 +252,17 @@ let chatHeld = false
 function toLatest() {
   chatList.scrollTop = chatList.scrollHeight
 }
+// Lines removed at the top: the browser keeps the ones in view in place by scrolling itself, which
+// isn't the user reading further up (it fires a scroll event within a frame)
+let trimScroll = false
+let trimTimer
+function trimming() {
+  trimScroll = true
+  clearTimeout(trimTimer)
+  trimTimer = setTimeout(() => { trimScroll = false }, 100)
+}
 chatList.addEventListener('scroll', () => {
+  if (trimScroll) return void (trimScroll = false)
   chatHeld = chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight > 40
   chatLatest.hidden = !chatHeld
 })
@@ -279,10 +289,13 @@ function addLines(all) {
   const messages = all.filter(chatVisible)
   if (!messages.length) return
   chatList.append(...messages.map(chatLine))
-  // Removing lines at the top would move the paused ones away
+  // More kept while paused or read further up: they're removed only from far above
   const limit = chatHeld || chatHovered ? LINES_HELD : LINES
+  if (chatList.childElementCount > limit && !chatHeld) trimming()
   while (chatList.childElementCount > limit) chatList.firstElementChild.remove()
   follow()
+  // Paused by the mouse: Back to latest says new lines wait below (scrolling there hides it again)
+  if (chatHovered && !chatHeld && chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight > 40) chatLatest.hidden = false
   showNote('')
 }
 
