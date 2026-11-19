@@ -230,6 +230,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
+      miscTitle: t('Miscellaneous'),
       barTitle: t('Progress bar'),
       gameChanges: t('Game changes'),
       games: t('Games'),

@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** recherche dans les listes Vidéo par titre ou chaîne : 🔍 ou Ctrl+F
 - **Nouveau :** la courbe « Les plus revus » de YouTube juste au-dessus de la barre du lecteur
 - **Amélioré :** le chat Twitch en pause montre « Revenir aux derniers messages »
+- **Changé :** l’option Changements de jeu de Twitch est dans ⚙️ → Divers
 - **Petites corrections :** chat resté en pause après un long survol, « Lien copié » en cas d’échec
 
 **Jeux**

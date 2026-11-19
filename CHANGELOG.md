@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** search in the Video lists by title or channel: 🔍 or Ctrl+F
 - **New:** YouTube's "most replayed" curve just above the player's bar
 - **Better:** paused Twitch chat shows Back to latest when new lines wait
+- **Changed:** Twitch's Game changes switch moved to ⚙️ → Miscellaneous
 - **Small fixes:** chat staying paused after a long hover, "Link copied" when it failed
 
 **Games**

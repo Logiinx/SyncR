@@ -339,14 +339,16 @@ function fillTip(seconds) {
   tipLines(gameAt(seconds), null)
 }
 
-// ---- Its part of the player's menu (player.js, drawMenu) -----------------------------------------
-function timelineMenu({ row, title }) {
-  title(labels.barTitle)
-  row(labels.gameChanges, showGames, () => {
-    showGames = !showGames
-    localStorage.setItem('player.gameChanges', showGames ? 1 : 0)
-    drawMarks()
-  })
+// ---- Its part of the player's menu (player.js, drawMenu): a Miscellaneous row under Chat --------
+function timelineMenu({ panel }) {
+  panel('misc', labels.miscTitle, '', ({ row, title }) => {
+    title(labels.barTitle)
+    row(labels.gameChanges, showGames, () => {
+      showGames = !showGames
+      localStorage.setItem('player.gameChanges', showGames ? 1 : 0)
+      drawMarks()
+    })
+  }, 'misc')
 }
 
 // ---- Asking Twitch -------------------------------------------------------------------------------
