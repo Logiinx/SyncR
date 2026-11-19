@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.91.3] - 2026-11-19
+
 **Video** (PC only)
 - **Better:** tidier ⚙️ menu: Chat's Left / Right side by side, lines between groups
 
