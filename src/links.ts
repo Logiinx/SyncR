@@ -6,6 +6,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { followNoteLink, linkTargetTitle, parseNoteLink } from './noteLinks'
 import { hoverCard } from './linkPreviews'
 import { currentZoom } from './appearance'
+import { openLinkOrPlay } from './videoLinks'
 
 // Only web and e-mail links are opened (not e.g. "javascript:" or local files)
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:']
@@ -142,7 +143,7 @@ export const OpenLinksOnClick = Extension.create({
             // Pressed elsewhere (e.g. beside a card, then the address showed under the mouse): no opening
             if (href !== pressedOn) return true
             if (parseNoteLink(href)) followNoteLink(href)
-            else openLink(href)
+            else openLinkOrPlay(href)
             return true
           },
         },

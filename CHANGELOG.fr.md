@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** les liens vidéo des notes s’ouvrent dans le lecteur (clic droit : Ouvrir dans le navigateur)
 - **Nouveau :** recherche dans les listes Vidéo par titre ou chaîne : 🔍 ou Ctrl+F
 - **Nouveau :** la courbe « Les plus revus » de YouTube juste au-dessus de la barre du lecteur
 - **Amélioré :** le chat Twitch en pause montre « Revenir aux derniers messages »

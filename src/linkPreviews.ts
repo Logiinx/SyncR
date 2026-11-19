@@ -1,6 +1,6 @@
 import { Extension, type Editor } from '@tiptap/react'
 import { compactNumber, plural, t, textKey, type TextKey } from './i18n'
-import { Copy, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
+import { Copy, ExternalLink, Link2Off, Pencil, RectangleHorizontal } from 'lucide-react'
 import type { MenuItem } from './ContextMenu'
 import { Plugin, PluginKey, Selection, TextSelection, type EditorState } from '@tiptap/pm/state'
 import { liveQuery } from 'dexie'
@@ -10,6 +10,7 @@ import { deviceName } from './device'
 import { previewKey } from './sealing'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
 import { openLink, simplify } from './links'
+import { openLinkOrPlay, playsHere } from './videoLinks'
 import { read, write } from './localState'
 import { shortDate } from './dates'
 import { svgIcon, type SvgIconName } from './svgIcons'
@@ -467,7 +468,7 @@ function card(href: string, preview: LinkPreview, style: Builder) {
   root.addEventListener('click', (event) => {
     event.preventDefault()
     event.stopPropagation()
-    if (event.detail <= 1) openLink(href) // a double-click opens it once
+    if (event.detail <= 1) openLinkOrPlay(href) // a double-click opens it once
   })
   return root
 }
@@ -528,7 +529,8 @@ export function hoverCard(href: string, onInlineCard: boolean) {
 // ---------- Right-click menu ----------
 
 // The link's own items for a right-click (long press) on a link card or on a link shown plain by
-// "Show as plain link"; null elsewhere (the normal menu stays). canEdit: the text can be edited
+// "Show as plain link", or on any video link that plays in SyncR's player; null elsewhere (the
+// normal menu stays). canEdit: the text can be edited
 // now (a Board card only while editing it). header: the card's title and address.
 export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) {
   const card = target.closest<HTMLElement>('.link-card')
@@ -536,8 +538,13 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
   const href = card?.dataset.href ?? link?.getAttribute('href')
   if (!href || !editor.view.dom.contains(card ?? link)) return null
   const settings = loadLinkPreviewSettings()
-  if (!card && !settings.plain.includes(href)) return null
+  // A video link's click plays it in SyncR's player: the browser stays one right-click away, also
+  // on a plain link in the text (which otherwise keeps the normal menu)
+  const plays = playsHere(href)
+  const shownPlain = !card && settings.plain.includes(href)
+  if (!card && !shownPlain && !plays) return null
   const items: MenuItem[] = [{ label: t('Copy link'), icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
+  if (plays) items.unshift({ label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(href) })
   if (card) {
     const end = editor.view.posAtDOM(card, 0) // the card sits at its link's end
     items.push({
@@ -548,7 +555,7 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
       onClick: () => editLink(editor, end, href),
     })
   }
-  items.push(
+  if (card || shownPlain) items.push(
     card
       ? { label: t('Show as plain link'), icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }
       : { label: t('Show as card'), icon: RectangleHorizontal, divider: true, onClick: () => saveLinkPreviewSettings({ plain: settings.plain.filter((h) => h !== href) }) },

@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** video links in notes play in the player (right-click: Open in browser)
 - **New:** search in the Video lists by title or channel: 🔍 or Ctrl+F
 - **New:** YouTube's "most replayed" curve just above the player's bar
 - **Better:** paused Twitch chat shows Back to latest when new lines wait

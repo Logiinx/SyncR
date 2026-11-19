@@ -658,7 +658,14 @@ const addedFollowId = (follow: VideoFollow | undefined, platform: string, channe
 // the followId it's listed under and the video to play. Already in a list: nothing changes, and
 // already says which (playlistId: the playlist it's in). Throws what to tell the user if it can't,
 // with the Worker's answer as its code.
-export async function addOrFindVideo(link: string) {
+// A video's link looked up, without saving anything (a note's link plays it as it is): what the
+// player needs, and the playlist it's in, if any. Throws like addOrFindVideo.
+export async function findVideo(link: string) {
+  const { video, playlistId } = await addOrFindVideo(link, false)
+  return { video, playlistId }
+}
+
+export async function addOrFindVideo(link: string, add = true) {
   const response = await igdbProxyFetch('video/one', JSON.stringify({ link: link.trim() }), 15_000)
   const answer = await response.json().catch(() => null)
   if (!response.ok || !answer?.video) {
@@ -688,6 +695,7 @@ export async function addOrFindVideo(link: string) {
   if (!mark?.cleared && (added || (row && follow && videoKept(follow, row)))) {
     return { followId, channel: channelName, video: playable, already: mark?.watched ? ('watched' as const) : ('towatch' as const) }
   }
+  if (!add) return { followId, channel: channelName, video: playable, already: null }
   const fields: AddedVideo = {
     ...added,
     id,
