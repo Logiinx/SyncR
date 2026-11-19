@@ -22,7 +22,7 @@ const LINES = 200 // lines kept in the page
 const LINES_HELD = 1000 // the same while the user reads further up
 const KEEP = 3000 // messages kept in memory
 const EMOTES_WAIT = 2000 // ms the first messages wait for the emote services at most
-const SPOTS = ['right', 'left', 'corner-right', 'corner-left'] // where it sits in full screen
+const SPOTS = ['right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'] // where it sits in full screen
 // Names in lower case. More can be added in the menu.
 const KNOWN_BOTS = ['nightbot', 'streamelements', 'streamlabs', 'moobot', 'fossabot', 'wizebot', 'botisimo', 'coebot', 'phantombot', 'deepbot', 'ankhbot', 'sery_bot', 'soundalerts', 'pretzelrocks', 'blerp', 'kofistreambot', 'stay_hydrated_bot', 'streamstickers', 'tangiabot', 'lumiastream', 'creatisbot', 'songlistbot', 'own3d', 'playwithviewersbot', 'frostytoolsdotcom']
 // Twitch's colors for people who didn't pick one
@@ -500,7 +500,10 @@ video.addEventListener('loadedmetadata', chatJump)
 let chatWanted = stored('player.chat', 1) === 1
 let chatWantedFull = stored('player.chatFull', 1) === 1
 let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
-let chatSpot = SPOTS.includes(localStorage.getItem('player.chatSpot')) ? localStorage.getItem('player.chatSpot') : SPOTS[0]
+// The top corners were called corner-right / corner-left before the bottom ones came
+const oldSpots = { 'corner-right': 'top-right', 'corner-left': 'top-left' }
+const savedSpot = localStorage.getItem('player.chatSpot')
+let chatSpot = SPOTS.includes(oldSpots[savedSpot] || savedSpot) ? oldSpots[savedSpot] || savedSpot : SPOTS[0]
 // Its side in the window (full screen has its own spots)
 let chatSide = localStorage.getItem('player.chatSide') === 'left' ? 'left' : 'right'
 
@@ -512,12 +515,9 @@ function placeChat() {
   const was = chatShowing()
   chatPanel.hidden = !showing
   chatPanel.className = full ? `over ${chatSpot}` : `side ${chatSide}`
-  // Full height on a side: the controls keep to the picture's part (player.html)
-  $('stage').classList.toggle('chat-right', full && showing && chatSpot === 'right')
-  $('stage').classList.toggle('chat-left', full && showing && chatSpot === 'left')
-  // In a top corner: the header leaves it room (player.html)
-  $('stage').classList.toggle('chat-corner-right', full && showing && chatSpot === 'corner-right')
-  $('stage').classList.toggle('chat-corner-left', full && showing && chatSpot === 'corner-left')
+  // What makes room for it (player.html): full height, the controls keep to the picture's part;
+  // a top corner, the header stops before it; a bottom corner, the bar and what's above it
+  for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, full && showing && chatSpot === spot)
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
@@ -615,20 +615,64 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     redrawChat()
   })
   title(labels.chatWindowTitle)
-  choices([{ value: 'left', text: labels.chatSideLeft }, { value: 'right', text: labels.chatSideRight }], chatSide, (side) => {
+  spotPicker(menu, [STRIPS], { left: labels.chatSideLeft, right: labels.chatSideRight }, chatSide, (side) => {
     chatSide = side
     localStorage.setItem('player.chatSide', side)
     placeChat()
   })
   title(labels.chatFullTitle)
-  const spotNames = { right: labels.chatRight, left: labels.chatLeft, 'corner-right': labels.chatCornerRight, 'corner-left': labels.chatCornerLeft }
-  for (const spot of SPOTS) {
-    row(spotNames[spot], spot === chatSpot, () => {
-      chatSpot = spot
-      localStorage.setItem('player.chatSpot', spot)
-      placeChat()
-    })
+  const spotNames = {
+    right: labels.chatRight, left: labels.chatLeft, 'top-right': labels.chatTopRight, 'top-left': labels.chatTopLeft,
+    'bottom-right': labels.chatBottomRight, 'bottom-left': labels.chatBottomLeft,
   }
+  spotPicker(menu, [STRIPS, CORNERS], spotNames, chatSpot, (spot) => {
+    chatSpot = spot
+    localStorage.setItem('player.chatSpot', spot)
+    placeChat()
+  })
+}
+
+// Small screens to click where the chat goes: a strip on each side (full height) or one of four
+// corners. The chosen part blue, the one under the mouse lighter, its name below. Changed in
+// place (no menu redraw), so the mouse's part stays lit.
+const STRIPS = ['left', null, 'right'] // null: the picture between them
+const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+function spotPicker(menu, screens, names, current, choose) {
+  const box = document.createElement('div')
+  box.className = 'spot-picker'
+  const line = document.createElement('div')
+  line.className = 'spot-screens'
+  const name = document.createElement('div')
+  name.className = 'spot-name'
+  const show = (spot) => { name.textContent = names[spot] }
+  const parts = []
+  for (const spots of screens) {
+    const screen = document.createElement('div')
+    screen.className = `spot-screen ${spots === CORNERS ? 'corners' : 'strips'}`
+    for (const spot of spots) {
+      if (!spot) {
+        screen.append(document.createElement('span'))
+        continue
+      }
+      const part = document.createElement('button')
+      part.classList.toggle('on', spot === current)
+      part.setAttribute('aria-label', names[spot])
+      part.onpointerenter = () => show(spot)
+      part.onpointerleave = () => show(current)
+      part.onclick = () => {
+        current = spot
+        parts.forEach((other) => other.classList.toggle('on', other === part))
+        show(spot)
+        choose(spot)
+      }
+      parts.push(part)
+      screen.append(part)
+    }
+    line.append(screen)
+  }
+  show(current)
+  box.append(line, name)
+  menu.append(box)
 }
 
 drawChatSize()

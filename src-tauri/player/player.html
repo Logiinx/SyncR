@@ -66,9 +66,10 @@
     background: color-mix(in srgb, var(--bg, #161616) 55%, transparent); backdrop-filter: blur(20px);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   }
-  #chat.over.right, #chat.over.corner-right { right: 0; }
-  #chat.over.left, #chat.over.corner-left { left: 0; }
-  #chat.over.corner-right, #chat.over.corner-left { bottom: auto; height: 45%; }
+  #chat.over:is(.right, .top-right, .bottom-right) { right: 0; }
+  #chat.over:is(.left, .top-left, .bottom-left) { left: 0; }
+  #chat.over:is(.top-right, .top-left) { bottom: auto; height: 45%; }
+  #chat.over:is(.bottom-right, .bottom-left) { top: auto; height: 45%; }
   #chat.over #chat-edge { display: none; }
   /* Full height on the right or left: the controls and the rest keep to the picture's part
      (chat-right / chat-left: chat.js). The corners leave them the whole width. */
@@ -79,8 +80,27 @@
   #stage.chat-left #parts-box { left: calc(var(--chat-over) + 12px); }
   #stage.chat-left #flash { left: calc(50% + var(--chat-over) / 2); }
   /* In a top corner the chat covers the header's end: the header stops before it */
-  #stage.chat-corner-right #header { padding-right: calc(var(--chat-over) + 20px); }
-  #stage.chat-corner-left #header { padding-left: calc(var(--chat-over) + 20px); }
+  #stage.chat-top-right #header { padding-right: calc(var(--chat-over) + 20px); }
+  #stage.chat-top-left #header { padding-left: calc(var(--chat-over) + 20px); }
+  /* In a bottom corner: the bar gets shorter, and what sits above its end moves beside the chat */
+  #stage.chat-bottom-right #bottom { right: var(--chat-over); }
+  #stage.chat-bottom-right :is(#menus, #endcard) { right: calc(var(--chat-over) + 12px); }
+  #stage.chat-bottom-left #bottom { left: var(--chat-over); }
+  #stage.chat-bottom-left :is(#parts-box, #start-skip, #start-back, #start-skip-card) { left: calc(var(--chat-over) + 12px); }
+  /* Where the chat goes, in its menu (spotPicker in chat.js): small screens, the chosen part blue
+     like the menu's switches */
+  .spot-picker { padding: 4px 12px 6px; }
+  .spot-screens { display: flex; gap: 12px; }
+  .spot-screen { display: grid; width: 96px; height: 58px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 5px; overflow: hidden; }
+  .spot-screen.strips { grid-template-columns: 24px 1fr 24px; }
+  .spot-screen.corners { grid-template: 1fr 1fr / 1fr 1fr; }
+  .spot-screen button { border-radius: 0; transition: background 0.15s; }
+  .spot-screen button:hover { background: color-mix(in srgb, var(--accent, #2d4f7c) 35%, transparent); }
+  .spot-screen button.on { background: var(--accent, #2d4f7c); }
+  .strips button:first-child, .corners button:nth-child(odd) { border-right: 1px solid rgba(255, 255, 255, 0.45); }
+  .strips button:last-child { border-left: 1px solid rgba(255, 255, 255, 0.45); }
+  .corners button:nth-child(-n + 2) { border-bottom: 1px solid rgba(255, 255, 255, 0.45); }
+  .spot-name { margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
   #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
   #chat.side.left #chat-edge { left: auto; right: -4px; }
   #chat.over #chat-list { scrollbar-width: none; }
