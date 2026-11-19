@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** search in the Video lists by title or channel: 🔍 or Ctrl+F
 - **Better:** paused Twitch chat shows Back to latest when new lines wait
 - **Small fixes:** chat staying paused after a long hover, "Link copied" when it failed
 

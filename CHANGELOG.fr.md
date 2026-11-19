@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** recherche dans les listes Vidéo par titre ou chaîne : 🔍 ou Ctrl+F
 - **Amélioré :** le chat Twitch en pause montre « Revenir aux derniers messages »
 - **Petites corrections :** chat resté en pause après un long survol, « Lien copié » en cas d’échec
 

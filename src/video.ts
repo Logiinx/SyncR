@@ -140,6 +140,14 @@ function titleKey(text: string) {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 }
 
+// The Video tab's search: every word typed is in one of these texts (any order; capitals and
+// accents ignored). Nothing typed: everything matches.
+export function searchMatches(query: string, texts: (string | null | undefined)[]) {
+  const words = titleKey(query).split(/\s+/).filter(Boolean)
+  const keys = texts.flatMap((text) => (text ? [titleKey(text)] : []))
+  return words.every((word) => keys.some((key) => key.includes(word)))
+}
+
 // Whether a follow's word lists keep this title
 export function titleKept(follow: Pick<VideoFollow, 'onlyWords' | 'exceptWords'>, title: string) {
   const key = titleKey(title)

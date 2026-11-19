@@ -8331,6 +8331,31 @@ button.history-row.selected {
   align-self: stretch;
 }
 
+/* 🔍 while the search row is open: blue, like a playlist's order button when on */
+.video-toolbar .reminders-refresh.on,
+.video-toolbar .reminders-refresh.on:hover {
+  color: var(--text-blue);
+}
+
+/* The search row (Games' search box look): a line of its own under the bar's controls (user,
+   2026-11-19). A fixed height, so the pick bar and the drop strip stop above it (its height + the
+   bar's 12 px gap). */
+.video-search {
+  flex-basis: 100%;
+  box-sizing: border-box;
+  height: 36px;
+}
+
+.video-search input {
+  align-self: stretch;
+  padding: 0;
+}
+
+.video-toolbar:has(> .video-search) > .video-pick-bar,
+.video-toolbar:has(> .video-search) > .video-queue-strip {
+  bottom: 48px;
+}
+
 /* Showing Watched instead of To watch: says so, and ✕ goes back */
 .video-channel-filter {
   max-width: 200px;

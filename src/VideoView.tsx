@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -13,7 +13,7 @@ import { useListScroll } from './videoScroll'
 import { TipBox, useHoverTip } from './InfoTip'
 import { LIST_PIECES, useCardPieces, VIDEO_PIECES, type CardPiece } from './videoCards'
 import Spinner from './Spinner'
-import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, followOf, isRecent, markAllWatched, markOpened, setFollowStartSkip, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
+import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, followOf, isRecent, markAllWatched, markOpened, searchMatches, setFollowStartSkip, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
 import VideoSettings from './VideoSettings'
 import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
@@ -401,6 +401,23 @@ function VideoView() {
   const [queueRewatch, setQueueRewatch] = useLocalState('syncr.video.queueRewatch', true)
   const [queueFolded, setQueueFolded] = useLocalState('syncr.video.queueFolded', false)
   const [partFolded, setPartFolded] = useLocalState('syncr.video.partFolded', false) // what's under the Queue
+  // The search row (null: closed; 🔍 or Ctrl+F opens it). While searching, every group with a match
+  // shows open; a click folds one for this search only (searchFolded), what's remembered stays.
+  const [search, setSearch] = useState<string | null>(null)
+  const query = search?.trim() ?? ''
+  const searching = !!query
+  const searchRef = useRef<HTMLInputElement>(null)
+  const [searchFolded, setSearchFolded] = useState<{ query: string; ids: ReadonlySet<string> }>({ query: '', ids: new Set() })
+  const foldedNow = (id: string) => searchFolded.query === query && searchFolded.ids.has(id)
+  function foldForSearch(id: string) {
+    const ids = new Set(searchFolded.query === query ? searchFolded.ids : [])
+    if (ids.has(id)) ids.delete(id)
+    else ids.add(id)
+    setSearchFolded({ query, ids })
+  }
+  const isOpen = (id: string) => (searching ? !foldedNow(id) : openGroups.includes(id))
+  const queueOpen = searching ? !foldedNow('queue') : !queueFolded
+  const partOpen = searching ? !foldedNow('part') : !partFolded
 
   const queue = useQueue()
   const follows = feed?.follows
@@ -428,9 +445,9 @@ function VideoView() {
   // A drop into or out of the Queue too: its rows are already in place (videoDrag.ts)
   const queueDrops = useQueueDrops()
   const videoLifted = useVideoLifted()
-  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops} ${layout}`)
+  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops} ${layout} ${query}`) // a search shows its rows at once
   const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
-  const toggleGroup = (id: string) => setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id]))
+  const toggleGroup = (id: string) => (searching ? foldForSearch(id) : setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id])))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
   const anyFollowsOrVideos = !!follows?.length || anyVideos
   // Under its button, ending at its right edge
@@ -471,6 +488,18 @@ function VideoView() {
     }
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)
+  }, [])
+  // Ctrl+F: the search row with the cursor in it (its text selected when already open), unless a
+  // window is open
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'f' || document.querySelector('.dialog')) return
+      e.preventDefault()
+      setSearch((now) => now ?? '')
+      searchRef.current?.select() // a new row gets the cursor by itself (autoFocus)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
   // The picks drop on another list or follow, on Escape (a menu or window open closes first), and
   // on a click on empty space in the tab (a scroll bar's isn't a click)
@@ -549,6 +578,19 @@ function VideoView() {
     <VideoRow key={video.id} video={video} isNew={tagNew(video)} depth={depth} kept={list !== 'watched'} lastWatched={!!video.folderId && rewatchIds.has(video.folderId)} after={upNextOf(video, siblings)} toQueue={toQueue(video)} pick={pickOf(video)} onMenu={(x, y) => setMoving({ video, x, y })} onOpenRow={openRow} />
   )
   const folderName = (folder: VideoFolder) => (folder.id === REWATCH ? t('Rewatch') : folder.name)
+  // The rows of the videos the search keeps; ⏭ still goes on through all of them
+  const foundRows = (all: FeedVideo[], depth: number) => all.filter((video) => found(video)).map((video) => videoRow(video, all, depth))
+  // The search: a video shows when its title (DeArrow's or YouTube's) or channel matches, or the name
+  // of its playlist or of a folder it's in (a name that matches shows all of it)
+  const nameHit = (name: string) => searchMatches(query, [name])
+  function folderHit(folderId: string | null | undefined) {
+    for (let folder = allFolders.find((other) => other.id === folderId); folder; folder = allFolders.find((other) => other.id === folder!.parentId)) {
+      if (nameHit(folderName(folder))) return true
+    }
+    return false
+  }
+  const found = (video: FeedVideo, playlist?: VideoPlaylist) =>
+    !searching || searchMatches(query, [video.title, video.originalTitle, video.channel]) || (playlist ? nameHit(playlist.name) || folderHit(placeOf(playlist)) : folderHit(video.folderId))
   // Every folder to choose from, each under its parent, with its whole path
   function folderChoices(level: VideoFolder[], path: string): { folder: VideoFolder; path: string }[] {
     return level.flatMap((folder) => {
@@ -624,6 +666,10 @@ function VideoView() {
   }
   const playlistsIn = (folderId: string | null) => playlists.filter(({ playlist }) => placeOf(playlist) === folderId)
   const allPlaylistsIn = (folder: VideoFolder): typeof playlists => [...playlistsIn(folder.id), ...foldersIn(folder.id).flatMap(allPlaylistsIn)]
+  // What the search keeps: each playlist with its matching videos, none left = it doesn't show
+  const foundLists = (some: typeof playlists) => some
+    .map(({ playlist, videos: episodes }) => ({ playlist, videos: episodes.filter((video) => found(video, playlist)) }))
+    .filter(({ playlist, videos: episodes }) => !searching || episodes.length || nameHit(playlist.name))
   // A folder, then what's in it when it's open: its sub-folders, its playlists, then its videos,
   // oldest on top like a playlist. Only in To watch, empty ones too, or a new folder couldn't be
   // reached. Its count is its own videos and playlists ("3 videos · 1 playlist", "1 playlist"); its
@@ -640,14 +686,16 @@ function VideoView() {
   }
 
   function folderRows(folder: VideoFolder, depth: number): ReactNode[] {
-    const inside = allIn(folder)
-    const lists = allPlaylistsIn(folder)
+    const inside = allIn(folder).filter((video) => found(video))
+    const lists = foundLists(allPlaylistsIn(folder))
+    // Searching: only a folder with a match, or whose name matches
+    if (searching && !inside.length && !lists.length && !folderHit(folder.id)) return []
     const picture = folderPicture(folder, inside, lists)
     const newInPlaylists = lists.flatMap(({ videos: episodes }) => episodes).filter(tagNew).length
     const countText = lists.length
       ? [inside.length ? plural(inside.length, '{n} video', '{n} videos') : '', plural(lists.length, '{n} playlist', '{n} playlists')].filter(Boolean).join(' · ')
       : undefined
-    const open = openGroups.includes(folder.id)
+    const open = isOpen(folder.id)
     return [
       <FoldRow
         key={folder.id}
@@ -678,7 +726,7 @@ function VideoView() {
         ? [
             ...foldersIn(folder.id).flatMap((sub) => folderRows(sub, depth + 1)),
             ...playlistsIn(folder.id).flatMap((entry) => playlistRows(entry, depth + 1)),
-            ...videosIn(folder.id).reverse().map((video, _, all) => videoRow(video, all, depth + 1)),
+            ...foundRows(videosIn(folder.id).reverse(), depth + 1),
           ]
         : []),
     ]
@@ -686,7 +734,10 @@ function VideoView() {
   // A playlist's row, then its videos in the chosen order when it's open (its watched videos stay in
   // it). Dragged by its row into your own folders.
   function playlistRows({ playlist, videos: episodes }: (typeof playlists)[number], depth: number): ReactNode[] {
-    const open = openGroups.includes(playlist.id)
+    // Searching: its matching videos (all when its name or folder matches); its counts stay whole
+    const shownEpisodes = episodes.filter((video) => found(video, playlist))
+    if (searching && !shownEpisodes.length && !nameHit(playlist.name) && !folderHit(placeOf(playlist))) return []
+    const open = isOpen(playlist.id)
     const nextUp = episodes.find((video) => !video.watched)
     // In Rewatch: when one of its videos was last watched
     const inRewatch = !!playlist.folderId && rewatchIds.has(playlist.folderId)
@@ -741,28 +792,31 @@ function VideoView() {
           </>
         }
       />,
-      ...(open ? episodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} toQueue={toQueue(video, true)} pick={pickOf(video, playlist.id)} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
+      ...(open ? shownEpisodes.map((video) => <VideoRow key={`${playlist.id} ${video.id}`} video={video} isNew={tagNew(video)} depth={depth + 1} playlistId={playlist.id} lastWatched={inRewatch} toQueue={toQueue(video, true)} pick={pickOf(video, playlist.id)} onMenu={(x, y) => setMoving({ video, x, y, episode: true })} onOpenRow={openRow} />) : []),
     ]
   }
   // A channel's row, then what's in it when it's open: its sub-folders, then the rest of its videos
   function channelRows(id: string, key: string, shown: { name: string; icon: string | null; platform: FeedVideo['platform'] }, group: FeedVideo[], subs: VideoFolder[], menu = true) {
-    const open = openGroups.includes(id)
+    // Searching: only with a match, counting the matches (a sub-folder's are in group too)
+    const matches = group.filter((video) => found(video))
+    if (searching && !matches.length && !subs.some((sub) => folderRows(sub, 1).length)) return []
+    const open = isOpen(id)
     return [
       <VideoGroup
         key={`group-${id}`}
         id={id}
         channelKey={key}
         {...shown}
-        videos={group}
+        videos={matches}
         open={open}
-        newCount={group.filter(tagNew).length}
+        newCount={matches.filter(tagNew).length}
         onToggle={() => toggleGroup(id)}
         onMenu={menu ? (x, y) => void followOf(key).then((follow) => setChannelMenu({ key, openId: id, x, y, follow })) : undefined}
       />,
       ...(open
         ? [
             ...subs.flatMap((sub) => folderRows(sub, 1)),
-            ...group.filter((video) => !video.folderId).reverse().map((video, _, all) => videoRow(video, all, 1)),
+            ...foundRows(group.filter((video) => !video.folderId).reverse(), 1),
           ]
         : []),
     ]
@@ -796,6 +850,8 @@ function VideoView() {
     const entry = candidates.get(id)
     return entry && !entry.video.watched && !entry.video.gone ? [entry] : []
   })
+  // The Queue's videos the search keeps (⏭ still goes through the whole Queue)
+  const queuedShown = queued.filter(({ video, playlist }) => found(video, playlist))
   // A video the Queue would show, not in it yet, can be dragged into it (user, 2026-11-18). leaves:
   // it then leaves its place, like a loose To watch video added another way (inQueueOnly).
   function toQueue(video: FeedVideo, episode = false) {
@@ -806,22 +862,22 @@ function VideoView() {
   // list's left edge, like the part below
   function queueRows(): ReactNode[] {
     const id = 'queue'
-    if (!queued.length) return []
+    if (!queuedShown.length) return []
     return [
       <FoldRow
         key={id}
         id={id}
         icon={<span className="video-follow-icon video-folder-icon"><ListStart size={15} /></span>}
         title={t('Queue')}
-        count={queued.length}
+        count={queuedShown.length}
         newCount={0}
-        open={!queueFolded}
-        onToggle={() => setQueueFolded(!queueFolded)}
+        open={queueOpen}
+        onToggle={() => (searching ? foldForSearch(id) : setQueueFolded(!queueFolded))}
         queueHead
       />,
-      ...(queueFolded
+      ...(!queueOpen
         ? []
-        : queued.map(({ video, playlist, rewatch: ofRewatch }, index) => (
+        : queuedShown.map((entry) => ({ ...entry, index: queued.indexOf(entry) })).map(({ video, playlist, rewatch: ofRewatch, index }) => (
             <VideoRow
               key={`${id} ${video.id}`}
               video={video}
@@ -841,7 +897,7 @@ function VideoView() {
   // While the Queue shows, what's under it gets a header of its own, so it's clear where the Queue
   // ends (user, 2026-11-18): To watch's "From your follows", or "Rewatch"; folded or not
   function partRows(inside: ReactNode[], videosIn: FeedVideo[]): ReactNode[] {
-    if (!queued.length || !inside.length) return inside
+    if (!queuedShown.length || !inside.length) return inside
     const inRewatch = list === 'rewatch'
     return [
       <FoldRow
@@ -851,23 +907,23 @@ function VideoView() {
         title={inRewatch ? t('Rewatch') : t('From your follows')}
         count={videosIn.length}
         newCount={videosIn.filter(tagNew).length}
-        open={!partFolded}
-        onToggle={() => setPartFolded(!partFolded)}
+        open={partOpen}
+        onToggle={() => (searching ? foldForSearch('part') : setPartFolded(!partFolded))}
       />,
-      ...(partFolded ? [] : inside),
+      ...(partOpen ? inside : []),
     ]
   }
   // As a section: what's in Rewatch, folded at the bottom of To watch; no row when it's empty
   // (menus reach it). As a list: what's in it, like an open folder's.
   const rewatch = folders.find((folder) => folder.id === REWATCH)
   const rewatchRows = asSection && list === 'towatch' && rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length)
-    ? (([row, ...inside]) => (openGroups.includes(REWATCH) ? [row, ...inside] : [row]))(folderRows(rewatch, 0))
+    ? folderRows(rewatch, 0) // its videos only when open (none: searching found nothing in it)
     : []
   const rewatchList = list === 'rewatch' && rewatch
     ? [
         ...foldersIn(REWATCH).flatMap((folder) => folderRows(folder, 0)),
         ...playlistsIn(REWATCH).flatMap((entry) => playlistRows(entry, 0)),
-        ...videosIn(REWATCH).reverse().map((video, _, all) => videoRow(video, all)),
+        ...foundRows(videosIn(REWATCH).reverse(), 0),
       ]
     : []
   // A folder or playlist's videos to start over: those watched or opened
@@ -939,7 +995,7 @@ function VideoView() {
   }
   function videoGroupRows(group: FeedVideo[], subs: VideoFolder[], loose: FeedVideo[]) {
     const key = channelKey(group[0])
-    if (group.length === 1 && !subs.length) return [videoRow(group[0], loose)]
+    if (group.length === 1 && !subs.length) return found(group[0]) ? [videoRow(group[0], loose)] : []
     const { followId, channel: name, channelIcon: icon, platform } = group[0]
     return channelRows(followId, key, { name, icon, platform }, group, subs, list !== 'music')
   }
@@ -957,7 +1013,10 @@ function VideoView() {
     }),
   ]
   // The videos counted on the part's header: Rewatch's all, To watch's those not only in the Queue
-  const partVideos = list === 'rewatch' && rewatch ? [...allIn(rewatch), ...allPlaylistsIn(rewatch).flatMap(({ videos: episodes }) => episodes)] : (videos ?? []).filter((video) => !inQueueOnly.has(video.id))
+  // (searching: the matches)
+  const partVideos = list === 'rewatch' && rewatch
+    ? [...allIn(rewatch).filter((video) => found(video)), ...foundLists(allPlaylistsIn(rewatch)).flatMap(({ videos: episodes }) => episodes)]
+    : (videos ?? []).filter((video) => !inQueueOnly.has(video.id) && found(video))
   const rows = [...queueRows(), ...partRows([...listRows, ...rewatchRows], partVideos)]
   // The picked videos still shown, each once (in the Queue and below: once), in the order shown
   const picked = [...new Map([...pickRows].filter(([key]) => picks.has(key)).map(([, row]) => [row.video.id, row])).values()]
@@ -977,9 +1036,11 @@ function VideoView() {
     void action()
     dropPicks()
   }
-  // Rewatch as a section doesn't count: To watch can say it's empty above it
-  const nothingShown = !queued.length && !listRows.length
-  const empty = list === 'rewatch'
+  // Rewatch as a section doesn't count: To watch can say it's empty above it (searching, it does)
+  const nothingShown = !queuedShown.length && !listRows.length && !(searching && rewatchRows.length)
+  const empty = searching
+    ? t('No videos match')
+    : list === 'rewatch'
     ? t('Nothing in Rewatch yet. Right-click a playlist, folder or video to move it here.')
     : list === 'music'
       ? t('No new songs. New videos of music channels show here.')
@@ -1025,6 +1086,9 @@ function VideoView() {
           )}
           <div className="reminders-tools">
             <FillSwitch className="calendar-layouts" options={listLayouts()} value={layout} onChange={setLayout} />
+            <button className={`reminders-refresh${search !== null ? ' on' : ''}`} aria-pressed={search !== null} title={t('Search (Ctrl+F)')} onClick={() => setSearch(search === null ? '' : null)}>
+              <Search size={15} />
+            </button>
             <button className="reminders-refresh" disabled={checking || (!follows?.length && !feed?.playlists.length)} title={t('Check for new videos')} onClick={() => void checkVideosNow()}>
               {checking ? <Spinner label={t('Checking…')} /> : <RefreshCw size={15} />}
             </button>
@@ -1038,6 +1102,29 @@ function VideoView() {
               <Settings size={15} />
             </button>
           </div>
+          {/* The search row, a line of its own in the pinned bar (user, 2026-11-19, from mockups): only
+              the list shown; Escape or ✕ clears and closes it */}
+          {search !== null && (
+            <div className="game-search-bar video-search">
+              <Search size={15} />
+              <input
+                ref={searchRef}
+                value={search}
+                autoFocus
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Escape') return
+                  e.stopPropagation() // the picks stay
+                  setSearch(null)
+                }}
+                placeholder={list === 'rewatch' ? t('Search Rewatch…') : list === 'watched' ? t('Search Watched…') : list === 'music' ? t('Search Music…') : t('Search To watch…')}
+                spellCheck={false}
+              />
+              <button className="game-search-clear" onClick={() => setSearch(null)} title={t('Close search')}>
+                <X size={15} />
+              </button>
+            </div>
+          )}
           {/* While a video that can join the Queue is dragged, the bar is a place to drop it: at the
               Queue's end, from anywhere in the list (user, 2026-11-18; videoDrag.ts) */}
           {videoLifted && (
