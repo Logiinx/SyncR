@@ -271,16 +271,10 @@ chatLatest.onclick = () => {
   chatLatest.hidden = true
   toLatest()
 }
-// The mouse over the chat pauses it like Twitch: new lines wait below, out of sight, and it
-// catches up once the mouse leaves
-let chatHovered = false
-const follow = () => { if (!chatHeld && !chatHovered) toLatest() }
-chatList.addEventListener('pointerenter', () => { chatHovered = true })
-chatList.addEventListener('pointerleave', () => {
-  chatHovered = false
-  hideTip()
-  follow()
-})
+// The chat keeps following over the mouse; only an emote's or badge's hover card pauses it (new
+// lines wait below, out of sight), and it catches up once the card goes (hideTip)
+const follow = () => { if (!chatHeld && !tipOn) toLatest() }
+chatList.addEventListener('pointerleave', () => hideTip())
 // Pictures arriving and a new width make the lines taller
 chatList.addEventListener('load', follow, true)
 new ResizeObserver(follow).observe(chatList)
@@ -290,12 +284,10 @@ function addLines(all) {
   if (!messages.length) return
   chatList.append(...messages.map(chatLine))
   // More kept while paused or read further up: they're removed only from far above
-  const limit = chatHeld || chatHovered ? LINES_HELD : LINES
+  const limit = chatHeld || tipOn ? LINES_HELD : LINES
   if (chatList.childElementCount > limit && !chatHeld) trimming()
   while (chatList.childElementCount > limit) chatList.firstElementChild.remove()
   follow()
-  // Paused by the mouse: Back to latest says new lines wait below (scrolling there hides it again)
-  if (chatHovered && !chatHeld && chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight > 40) chatLatest.hidden = false
   showNote('')
 }
 
@@ -331,8 +323,10 @@ function showTip(image) {
   placeTip()
 }
 function hideTip() {
+  if (!tipOn) return
   tipOn = null
   tip.hidden = true
+  follow() // the card paused the chat
 }
 tipPicture.addEventListener('load', placeTip) // its width is only known then
 chatList.addEventListener('pointerover', (event) => {

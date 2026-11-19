@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** switch for YouTube's "most replayed" curve in ⚙️ → Miscellaneous
+- **Changed:** Twitch chat keeps scrolling under the mouse, pauses only over emotes
+- **Fixed:** YouTube's "most replayed" curve too faint to see
+
 ## [0.93.0] - 2026-11-19
 
 **Video** (PC only)

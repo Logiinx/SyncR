@@ -530,7 +530,18 @@
       }
       return null
     }
+    // Its switch in ⚙️ → Miscellaneous (on by default); off = not even asked
+    const HEAT_KEY = 'syncr-most-replayed'
+    let heatOn = true
+    try { heatOn = localStorage.getItem(HEAT_KEY) !== '0' } catch {}
+    const toggleHeat = () => {
+      heatOn = !heatOn
+      try { localStorage.setItem(HEAT_KEY, heatOn ? '1' : '0') } catch {}
+      if (heatOn) askHeat(shownFor)
+      else controls.setHeat([])
+    }
     const askHeat = async (id) => {
+      if (!heatOn) return
       try {
         const answer = await fetch('/youtubei/v1/next?prettyPrint=false', {
           method: 'POST',
@@ -540,7 +551,7 @@
         })
         if (!answer.ok) return
         const markers = findHeat(await answer.json(), id) || []
-        if (shownFor !== id) return
+        if (shownFor !== id || !heatOn) return
         controls.setHeat(markers
           .map((one) => ({ start: Number(one.startMillis) / 1000, end: (Number(one.startMillis) + Number(one.durationMillis)) / 1000, value: Number(one.intensityScoreNormalized) }))
           .filter((one) => one.end > one.start && Number.isFinite(one.value)))
@@ -597,6 +608,11 @@
         },
         besideTime: (seconds) => chapterAt(seconds),
         rememberStart: () => rememberStart(),
+        // Like the Twitch player's Miscellaneous panel (timeline.js)
+        menu: ({ panel }) => panel('misc', labels.miscTitle, '', ({ row, title }) => {
+          title(labels.barTitle)
+          row(labels.mostReplayed, heatOn, toggleHeat)
+        }, 'misc'),
       },
     }, media)
     root.getElementById('chat-button').hidden = true

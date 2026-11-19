@@ -71,7 +71,7 @@ function playerControls(env, media) {
     <button id="big">${icon('play')}</button>
     <div id="bottom">
       <div id="progress">
-        <svg id="heat" viewBox="0 0 1000 100" preserveAspectRatio="none" hidden><path></path></svg>
+        <svg id="heat" viewBox="0 0 1000 100" preserveAspectRatio="none" hidden><path></path><path vector-effect="non-scaling-stroke"></path></svg>
         <div id="track"><div id="buffer"></div><div id="played"></div><div id="marked"></div><div id="marked-played"></div></div>
         <div id="knob"></div>
         <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div></div>
@@ -202,7 +202,9 @@ function playerControls(env, media) {
     const points = heat.map((part) => `${x((part.start + part.end) / 2)},${y(part.value)}`)
     const first = heat[0]
     const last = heat[heat.length - 1]
-    $('heat').firstChild.setAttribute('d', `M0,100 L0,${y(first.value)} L${points.join(' L')} L1000,${y(last.value)} L1000,100 Z`)
+    const line = `M0,${y(first.value)} L${points.join(' L')} L1000,${y(last.value)}`
+    $('heat').firstChild.setAttribute('d', `${line} L1000,100 L0,100 Z`)
+    $('heat').lastChild.setAttribute('d', line)
   }
   const setHeat = (list) => { heat = list || []; drawHeat() }
   video.addEventListener('durationchange', drawHeat)
@@ -1169,9 +1171,11 @@ const CONTROLS_CSS = `
   #progress { position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
   #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; mask-image: var(--gaps, none); }
   #progress:hover #track, #player.dragging #track { height: 6px; }
-  /* "Most replayed" (YouTube): a soft area just over the bar, dim like the marked parts ahead */
-  #heat { position: absolute; left: 0; right: 0; bottom: 12px; width: 100%; height: 16px; pointer-events: none; }
-  #heat path { fill: rgba(255, 255, 255, 0.18); }
+  /* "Most replayed" (YouTube): a soft area just over the bar with a light top edge, so it still
+     shows over a bright picture where most of it is low */
+  #heat { position: absolute; left: 0; right: 0; bottom: 12px; width: 100%; height: 28px; pointer-events: none; }
+  #heat path:first-child { fill: rgba(255, 255, 255, 0.28); }
+  #heat path:last-child { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-width: 1.5px; stroke-linejoin: round; }
   #buffer, #played { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
   #buffer { background: rgba(255, 255, 255, 0.35); }
   #played { background: var(--text-blue, #6ea8fe); }

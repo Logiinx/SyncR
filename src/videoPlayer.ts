@@ -200,6 +200,10 @@ function controlsData() {
       rememberLive: t('Not while it’s live'),
       rememberLate: t('Only in the first 30 minutes'),
       close: t('Close'),
+      // ⚙️ → Miscellaneous: Twitch's Game changes (timeline.js), YouTube's Most replayed (video-watch.js)
+      miscTitle: t('Miscellaneous'),
+      barTitle: t('Progress bar'),
+      mostReplayed: t('Most replayed'),
       // SponsorBlock's categories, named in the tip over the bar
       sponsorParts: {
         sponsor: t('Sponsor'),
@@ -230,8 +234,6 @@ function twitchPlayerAddress(video: PlayableVideo) {
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
-      miscTitle: t('Miscellaneous'),
-      barTitle: t('Progress bar'),
       gameChanges: t('Game changes'),
       games: t('Games'),
       goTo: t('Go to a time'),

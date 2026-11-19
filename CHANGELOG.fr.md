@@ -4,6 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** interrupteur pour la courbe « Moments les plus revus » dans ⚙️ → Divers
+- **Changé :** le chat Twitch défile sous la souris, pause seulement sur les emotes
+- **Corrigé :** la courbe « Moments les plus revus » de YouTube trop pâle pour se voir
+
 ## [0.93.0] - 2026-11-19
 
 **Vidéo** (PC uniquement)
