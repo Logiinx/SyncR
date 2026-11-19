@@ -504,22 +504,27 @@ let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
 const oldSpots = { 'corner-right': 'top-right', 'corner-left': 'top-left' }
 const savedSpot = localStorage.getItem('player.chatSpot')
 let chatSpot = SPOTS.includes(oldSpots[savedSpot] || savedSpot) ? oldSpots[savedSpot] || savedSpot : SPOTS[0]
-// Its side in the window (full screen has its own spots)
+// In the window: beside the video (left or right), or over it like in full screen (same spot)
 let chatSide = localStorage.getItem('player.chatSide') === 'left' ? 'left' : 'right'
+let chatOver = localStorage.getItem('player.chatOver') === '1'
+const CHAT_OVER = 340 // its width over the video; in a small window at most 45 % of it
+const CHAT_OVER_MIN = 220
 
 function placeChat() {
   const room = $('stage').clientWidth
   const full = !!document.fullscreenElement
-  const fits = full || room >= CHAT_NEEDS // in full screen it goes over the video
+  const over = full || chatOver
+  const fits = over || room >= CHAT_NEEDS // over the video it always fits
   const showing = (full ? chatWantedFull : chatWanted) && fits
   const was = chatShowing()
   chatPanel.hidden = !showing
-  chatPanel.className = full ? `over ${chatSpot}` : `side ${chatSide}`
+  chatPanel.className = over ? `over ${chatSpot}` : `side ${chatSide}`
+  $('stage').style.setProperty('--chat-over', `${Math.round(Math.min(CHAT_OVER, Math.max(CHAT_OVER_MIN, room * 0.45)))}px`)
   // What makes room for it (player.html): full height, the controls keep to the picture's part;
   // a top corner, the header stops before it; a bottom corner, the bar and what's above it
-  for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, full && showing && chatSpot === spot)
-  setGlass(full && showing)
-  chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
+  for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, over && showing && chatSpot === spot)
+  setGlass(over && showing)
+  chatPanel.style.width = over ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
   button.classList.toggle('off', !fits)
@@ -711,12 +716,22 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     redrawChat()
   })
   title(labels.chatWindowTitle)
-  spotPicker(menu, [STRIPS], { left: labels.chatSideLeft, right: labels.chatSideRight }, chatSide, (side) => {
+  choices([{ value: false, text: labels.chatBeside }, { value: true, text: labels.chatOver }], chatOver, (on) => {
+    chatOver = on
+    localStorage.setItem('player.chatOver', on ? 1 : 0)
+    sides.hidden = on
+    overTitle.textContent = on ? labels.chatFullWindowTitle : labels.chatFullTitle
+    placeChat()
+  })
+  const sides = spotPicker(menu, [STRIPS], { left: labels.chatSideLeft, right: labels.chatSideRight }, chatSide, (side) => {
     chatSide = side
     localStorage.setItem('player.chatSide', side)
     placeChat()
   })
-  title(labels.chatFullTitle)
+  sides.hidden = chatOver
+  // Over the video: full screen, and the window when chosen above (changed in place, no redraw)
+  title(chatOver ? labels.chatFullWindowTitle : labels.chatFullTitle)
+  const overTitle = menu.lastElementChild
   const spotNames = {
     right: labels.chatRight, left: labels.chatLeft, 'top-right': labels.chatTopRight, 'top-left': labels.chatTopLeft,
     'bottom-right': labels.chatBottomRight, 'bottom-left': labels.chatBottomLeft,
@@ -769,6 +784,7 @@ function spotPicker(menu, screens, names, current, choose) {
   show(current)
   box.append(line, name)
   menu.append(box)
+  return box
 }
 
 drawChatSize()
