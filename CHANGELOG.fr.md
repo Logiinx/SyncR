@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** « Retenir comme écran d’attente » grisé avec la raison sur un direct YouTube récent
+
 ## [0.94.0] - 2026-11-19
 
 **Vidéo** (PC uniquement)

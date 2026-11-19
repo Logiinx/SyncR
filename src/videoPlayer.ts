@@ -201,6 +201,7 @@ function controlsData() {
       rememberMusic: t('Not for music videos'),
       rememberLive: t('Not while it’s live'),
       rememberLate: t('Only in the first 30 minutes'),
+      rememberNoPictures: t('No preview pictures from YouTube yet'), // a past live, for some hours (video-watch.js)
       close: t('Close'),
       // ⚙️ → Miscellaneous: Twitch's Game changes (timeline.js), YouTube's Most replayed (video-watch.js)
       miscTitle: t('Miscellaneous'),

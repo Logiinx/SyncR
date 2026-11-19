@@ -274,6 +274,7 @@ export const video = {
   'Not for music videos': 'Pas pour les vidéos de musique',
   'Not while it’s live': 'Pas pendant le direct',
   'Only in the first 30 minutes': 'Seulement dans les 30 premières minutes',
+  'No preview pictures from YouTube yet': 'Pas encore d’images d’aperçu de YouTube',
   'Skip the waiting screen by itself': 'Passer l’écran d’attente tout seul',
   'About skipping the waiting screen': 'À propos du passage de l’écran d’attente',
   'Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the ⏩ button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).': 'Saute l’écran « ça commence bientôt » au début de ses vidéos, une fois qu’il a appris celui de cette chaîne : en attendant, le bouton ⏩ s’affiche, et l’utiliser une fois le lui apprend (tout comme « Retenir comme écran d’attente », dans le menu du clic droit sur la vidéo).',

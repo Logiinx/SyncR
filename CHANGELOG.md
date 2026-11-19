@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** "Remember as waiting screen" grayed with why on fresh YouTube lives
+
 ## [0.94.0] - 2026-11-19
 
 **Video** (PC only)

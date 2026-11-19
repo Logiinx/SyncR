@@ -489,7 +489,11 @@
         startPictures ??= loadStartPictures(id, startKind)
         return startPictures.catch(() => [])
       }
-      return skipRemember(controls, id, startSkip, labels, player.getCurrentTime() || 0, startLive, pictures)
+      const remember = skipRemember(controls, id, startSkip, labels, player.getCurrentTime() || 0, startLive, pictures)
+      // YouTube makes a past live's preview pictures some hours after it ends: nothing to learn from
+      // yet (grayed, not a click that does nothing)
+      if (remember.allowed && previewsRead && !startKind) return { allowed: false, hint: labels.rememberNoPictures, run: () => {} }
+      return remember
     }
     const chapterAt = (seconds) => {
       let name = ''
