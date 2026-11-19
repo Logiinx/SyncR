@@ -395,8 +395,8 @@ function measureSource(_, parsed) {
 // ---- Muted parts with their sound ---------------------------------------------------------------
 // For a while after a stream, Twitch still has a muted piece's uncut file: "N.ts" in older videos,
 // "N-unmuted.mp4" in newer ones. It deletes them bit by bit, oldest hours first, and each quality on
-// its own: so every muted piece is checked by itself (its first byte), nearest to where you are
-// first. Those with their sound load uncut and aren't shown as muted on the bar.
+// its own: so every muted piece is checked by itself, nearest to where you are first. Those with
+// their sound load uncut and aren't shown as muted on the bar.
 const MUTED_PIECE = /^(.*\/)(\d+)-muted\.(ts|mp4)$/ // video_window.rs names them all "-muted"
 const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind) => `${folder}${number}${kind === 'ts' ? '.ts' : '-unmuted.mp4'}`)
 const CHECKS_AT_ONCE = 6
@@ -406,10 +406,13 @@ let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
-// A piece whose check didn't get an answer (network) counts as muted, and is asked again when it plays
+// Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
+// parts of pieces only its delivery network still keeps, which play fine whole. A piece whose check
+// didn't get an answer (network) counts as muted, and is asked again when it plays.
+const checkAddress = (url) => uncutAddress(url).replace('/v/', '/has/')
 function checkPiece(url) {
   if (!pieceChecks.has(url)) {
-    pieceChecks.set(url, fetch(uncutAddress(url), { headers: { Range: 'bytes=0-0' } }).then((response) => {
+    pieceChecks.set(url, fetch(checkAddress(url), { cache: 'no-store' }).then((response) => {
       if (response.ok) uncutPieces.add(url)
     }, () => { pieceChecks.delete(url) }))
   }

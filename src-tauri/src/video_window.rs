@@ -256,13 +256,21 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     }
     _ => {}
   }
-  let Some((host, rest)) = path.strip_prefix("/v/").and_then(|rest| rest.split_once('/')) else {
+  // "/has/<host>/<path>": only whether that video address is there, from its headers (player.js: a
+  // muted piece's original sound). Not from a part of it: Twitch refuses parts once only its delivery
+  // network still keeps the piece, which still plays whole.
+  let only_check = path.starts_with("/has/");
+  let Some((host, rest)) = path.strip_prefix("/v/").or_else(|| path.strip_prefix("/has/")).and_then(|rest| rest.split_once('/')) else {
     return answer(404, "text/plain", Vec::new());
   };
   if !twitch_host(host) {
     return answer(403, "text/plain", Vec::new());
   }
   let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
+  if only_check {
+    let status = player_client().head(format!("https://{host}/{rest}{query}")).send().await.map_or(502, |response| response.status().as_u16());
+    return answer(status, "text/plain", Vec::new());
+  }
   // Only the start of a piece (previews.js's own preview pictures): only "bytes=<from>-<to>" passes
   let range = range.filter(|value| {
     let numbers = |text: &str| !text.is_empty() && text.len() <= 12 && text.bytes().all(|byte| byte.is_ascii_digit());
