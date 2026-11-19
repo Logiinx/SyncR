@@ -69,6 +69,7 @@ function playerControls(env, media) {
     <button id="big">${icon('play')}</button>
     <div id="bottom">
       <div id="progress">
+        <svg id="heat" viewBox="0 0 1000 100" preserveAspectRatio="none" hidden><path></path></svg>
         <div id="track"><div id="buffer"></div><div id="played"></div><div id="marked"></div><div id="marked-played"></div></div>
         <div id="knob"></div>
         <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div></div>
@@ -186,6 +187,23 @@ function playerControls(env, media) {
     }
     $('track').style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
   }
+  // YouTube's "most replayed" curve over the bar (video-watch.js): [{ start, end, value 0-1 }] in
+  // seconds, or none. A soft area, each part's value at its middle.
+  let heat = []
+  function drawHeat() {
+    const length = media.duration()
+    const shown = length > 0 && heat.length > 1
+    $('heat').toggleAttribute('hidden', !shown) // an SVG has no .hidden
+    if (!shown) return
+    const x = (seconds) => Math.min(Math.max((seconds / length) * 1000, 0), 1000).toFixed(1)
+    const y = (value) => (100 - Math.min(Math.max(value, 0), 1) * 100).toFixed(1)
+    const points = heat.map((part) => `${x((part.start + part.end) / 2)},${y(part.value)}`)
+    const first = heat[0]
+    const last = heat[heat.length - 1]
+    $('heat').firstChild.setAttribute('d', `M0,100 L0,${y(first.value)} L${points.join(' L')} L1000,${y(last.value)} L1000,100 Z`)
+  }
+  const setHeat = (list) => { heat = list || []; drawHeat() }
+  video.addEventListener('durationchange', drawHeat)
   const setGaps = (list) => { gaps = list; drawParts() }
   const setMarked = (list) => { marked = list; drawParts() }
   video.addEventListener('durationchange', drawParts)
@@ -1113,7 +1131,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each
@@ -1149,6 +1167,9 @@ const CONTROLS_CSS = `
   #progress { position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
   #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; mask-image: var(--gaps, none); }
   #progress:hover #track, #player.dragging #track { height: 6px; }
+  /* "Most replayed" (YouTube): a soft area just over the bar, dim like the marked parts ahead */
+  #heat { position: absolute; left: 0; right: 0; bottom: 12px; width: 100%; height: 16px; pointer-events: none; }
+  #heat path { fill: rgba(255, 255, 255, 0.18); }
   #buffer, #played { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
   #buffer { background: rgba(255, 255, 255, 0.35); }
   #played { background: var(--text-blue, #6ea8fe); }

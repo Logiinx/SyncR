@@ -516,6 +516,36 @@
         controls.setMarked(sponsorParts.map((part) => ({ ...part, color: SPONSOR_COLORS[part.category] })))
       } catch {}
     }
+    // YouTube's "most replayed" curve: the player-only page's answers leave it out, so it's asked
+    // once per video from YouTube's own "next" service, as its website's client (the player-only
+    // one gets none), without cookies. Any change on YouTube's side: no curve, nothing else.
+    const HEAT_CLIENT = { clientName: 'WEB', clientVersion: '2.20261118.01.00' }
+    const findHeat = (value, id, depth = 0) => {
+      if (!value || typeof value !== 'object' || depth > 30) return null
+      const list = value.macroMarkersListEntity
+      if (list?.markersList?.markerType === 'MARKER_TYPE_HEATMAP' && (!list.externalVideoId || list.externalVideoId === id)) return list.markersList.markers
+      for (const key in value) {
+        const found = findHeat(value[key], id, depth + 1)
+        if (found) return found
+      }
+      return null
+    }
+    const askHeat = async (id) => {
+      try {
+        const answer = await fetch('/youtubei/v1/next?prettyPrint=false', {
+          method: 'POST',
+          credentials: 'omit',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoId: id, context: { client: { ...HEAT_CLIENT, hl: 'en' } } }),
+        })
+        if (!answer.ok) return
+        const markers = findHeat(await answer.json(), id) || []
+        if (shownFor !== id) return
+        controls.setHeat(markers
+          .map((one) => ({ start: Number(one.startMillis) / 1000, end: (Number(one.startMillis) + Number(one.durationMillis)) / 1000, value: Number(one.intensityScoreNormalized) }))
+          .filter((one) => one.end > one.start && Number.isFinite(one.value)))
+      } catch {}
+    }
     let chaptersRead = false
     let previewsRead = false
     setInterval(() => {
@@ -530,6 +560,7 @@
         tries = 0
         controls.setGaps([])
         controls.setMarked([])
+        controls.setHeat([])
         controls.setStartSkip(null)
         controls.setStartBack(null)
         startKind = startPictures = null
@@ -537,6 +568,7 @@
         controls.closeParts()
         drawTimeButton()
         askSponsorBlock(id)
+        askHeat(id)
       }
       // YouTube's answers can come a little after the video
       if ((chaptersRead && previewsRead) || ++tries > 30) return
