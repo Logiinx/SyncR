@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.94.0] - 2026-11-19
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** chaîne, jeu et titre en haut du lecteur en plein écran
 - **Nouveau :** interrupteur pour la courbe « Moments les plus revus » dans ⚙️ → Divers

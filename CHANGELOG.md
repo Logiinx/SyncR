@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.94.0] - 2026-11-19
+
 **Video** (PC only)
 - **New:** channel, game and title at the top of the player in full screen
 - **New:** switch for YouTube's "most replayed" curve in ⚙️ → Miscellaneous
