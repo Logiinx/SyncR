@@ -599,6 +599,8 @@ function setGlass(on) {
     video.requestVideoFrameCallback(glassFrame)
   }
 }
+// A jump while paused shows a new frame that the frame callback doesn't always report
+video.addEventListener('seeked', () => { if (glassOn) drawGlass() })
 // Once per new frame shown (none while paused), until the glass is off
 function glassFrame() {
   glassWaiting = false
@@ -610,6 +612,9 @@ function glassFrame() {
 
 // Everything in screen boxes (getBoundingClientRect), turned into copy pixels with `k`
 function drawGlass() {
+  // No frame to copy (while a jump loads, before the first one): keep the last copy, like the
+  // video keeps its last picture. Drawing then gave a black flash at each ±5 s.
+  if (video.readyState < 2 || video.seeking) return
   const box = chatPanel.getBoundingClientRect()
   if (!box.width || !box.height) return
   const width = Math.max(1, Math.round(chatPanel.offsetWidth * GLASS_SCALE))
@@ -629,7 +634,7 @@ function drawGlass() {
   // Black around the picture (the stage's), then the picture where object-fit: contain shows it
   sourcePen.fillStyle = '#000'
   sourcePen.fillRect(0, 0, sourceWidth, sourceHeight)
-  if (video.videoWidth && video.readyState >= 2) {
+  if (video.videoWidth) {
     const shown = video.getBoundingClientRect()
     const fit = Math.min(shown.width / video.videoWidth, shown.height / video.videoHeight)
     const pictureWidth = video.videoWidth * fit
