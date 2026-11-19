@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **New:** switch for YouTube's "most replayed" curve in ⚙️ → Miscellaneous
+- **Better:** Twitch videos start about half a second sooner
 - **Changed:** Twitch chat keeps scrolling under the mouse, pauses only over emotes
 - **Fixed:** YouTube's "most replayed" curve too faint to see
 

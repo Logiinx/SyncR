@@ -70,6 +70,59 @@ fn player_client() -> &'static reqwest::Client {
   })
 }
 
+// A Twitch video's list of qualities, asked while its player window opens (Twitch's access pass,
+// then the list), so the page finds it ready (player.js, twitchList): ~0.4 s sooner. Only the
+// latest video's, taken once. None: something failed, the page asks itself.
+type EarlyList = tauri::async_runtime::JoinHandle<Option<(u16, Vec<u8>)>>;
+static EARLY_LIST: std::sync::Mutex<Option<(String, EarlyList)>> = std::sync::Mutex::new(None);
+
+fn start_early_list(address: &str) {
+  let video = address
+    .strip_prefix("https://syncr-video.localhost/player.html?")
+    .and_then(|query| query.split('&').find_map(|pair| pair.strip_prefix("video=")))
+    .filter(|id| !id.is_empty() && id.len() <= 20 && id.bytes().all(|byte| byte.is_ascii_digit()))
+    .map(str::to_owned);
+  // On a thread of its own: a plain spawn would wait until open_video_player lets go of its
+  // thread, once the window is built (~0.4 s later, measured)
+  let start = |video: String| tauri::async_runtime::spawn_blocking(move || tauri::async_runtime::block_on(early_list(video)));
+  *EARLY_LIST.lock().unwrap() = video.map(|video| (video.clone(), start(video)));
+}
+
+// The same questions as player.js's load. 200: the list · 403: Twitch says no (deleted, private,
+// subscribers only), the page rebuilds it from the video's folders
+async fn early_list(video: String) -> Option<(u16, Vec<u8>)> {
+  const CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // the one Twitch's own website uses (as player.js)
+  let query = r#"query($id: ID!) { video: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }"#;
+  let body = serde_json::json!({ "query": query, "variables": { "id": video } }).to_string();
+  let response = player_client().post("https://gql.twitch.tv/gql").header("Client-ID", CLIENT_ID).header("Content-Type", "application/json").body(body).send().await.ok()?;
+  if !response.status().is_success() {
+    return None;
+  }
+  let answer: serde_json::Value = serde_json::from_slice(&response.bytes().await.ok()?).ok()?;
+  let token = &answer["data"]["video"];
+  if token.is_null() {
+    // An error instead of an answer is a hiccup on Twitch's side, not a missing video
+    let hiccup = answer["errors"].as_array().is_some_and(|errors| !errors.is_empty());
+    return if hiccup { None } else { Some((403, Vec::new())) };
+  }
+  let (value, signature) = (token["value"].as_str()?, token["signature"].as_str()?);
+  let url = reqwest::Url::parse_with_params(
+    &format!("https://usher.ttvnw.net/vod/{video}.m3u8"),
+    &[("nauth", value), ("nauthsig", signature), ("allow_source", "true"), ("allow_audio_only", "false")],
+  )
+  .ok()?;
+  let response = player_client().get(url).send().await.ok()?;
+  let status = response.status().as_u16();
+  if (400..500).contains(&status) && status != 429 {
+    return Some((403, Vec::new()));
+  }
+  if status != 200 {
+    return None;
+  }
+  let list = response.bytes().await.ok()?;
+  Some((200, local_playlist(&String::from_utf8_lossy(&list)).into_bytes()))
+}
+
 // One value of an address's ?a=1&b=2 part, as it is (not decoded)
 fn query_value<'a>(uri: &'a tauri::http::Uri, name: &str) -> Option<&'a str> {
   uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value)
@@ -115,6 +168,20 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     "/previews.js" => return answer(200, "text/javascript", include_bytes!("../player/previews.js").to_vec()),
     "/startSkip.js" => return answer(200, "text/javascript", include_bytes!("../player/startSkip.js").to_vec()),
     "/hls.min.js" => return answer(200, "text/javascript", include_bytes!("../player/hls.min.js").to_vec()),
+    // The list asked while the window opened (start_early_list); 204: none, the page asks itself
+    "/early" => {
+      let video = query_value(&uri, "video").unwrap_or("");
+      let task = {
+        let mut early = EARLY_LIST.lock().unwrap();
+        if early.as_ref().is_some_and(|(id, _)| id == video) { early.take() } else { None }
+      };
+      if let Some((_, task)) = task {
+        if let Ok(Some((status, body))) = task.await {
+          return answer(status, "application/vnd.apple.mpegurl", body);
+        }
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     // How far the video is (video-watch.js), from any page in the player window, so a site could
     // fake it: only numbers pass, and all it can change is the current video's position and Watched mark.
     // The video it's for, when the page knows (letters, digits, - and _ only; else none).
@@ -558,6 +625,7 @@ pub async fn open_video_player(
   use tauri::webview::WebviewBuilder;
   use tauri::window::WindowBuilder;
   use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WindowEvent};
+  start_early_list(&address);
   let url = if is_video_page(&address) {
     WebviewUrl::App(address.into())
   } else {

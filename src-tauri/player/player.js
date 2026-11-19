@@ -281,10 +281,13 @@ async function rebuild() {
 }
 
 // The original's size and picture format, from its first file. Older videos (.ts) have none.
-async function sourceInfo(source) {
+// asked: that file already being downloaded ({ url, setup }), used if it's the right one.
+async function sourceInfo(source, asked) {
   const first = source.text.match(/#EXT-X-MAP:URI="([^"]+)"/)?.[1]
   if (!first) return { height: 0, codec: '' }
-  const bytes = new Uint8Array(await (await fetch(new URL(first, source.url))).arrayBuffer())
+  const address = new URL(first, source.url).href
+  const early = address === asked?.url ? await asked.setup : null
+  const bytes = new Uint8Array(await (early?.ok ? early : await fetch(address)).arrayBuffer())
   const view = new DataView(bytes.buffer)
   // Where a box's content starts, after its size and name
   const find = (name, from = 4) => {
@@ -328,9 +331,12 @@ async function withOriginal(text) {
     const parts = addresses[0].split('/') // /v/<host>/<video's folder>/<quality>/<list>
     const name = parts.at(-1).startsWith('highlight-') ? `highlight-${encodeURIComponent(videoId)}.m3u8` : 'index-dvr.m3u8'
     const url = `${location.origin}${parts.slice(0, -2).join('/')}/chunked/${name}`
+    // Its setup file is asked at the same time (~0.3 s sooner): it's always named init-0.mp4 so far
+    const guessed = new URL('init-0.mp4', url).href
+    const setup = fetch(guessed).catch(() => null)
     const answer = await fetch(url)
     if (!answer.ok) return text
-    const { height, codec } = await sourceInfo({ url, text: await answer.text() })
+    const { height, codec } = await sourceInfo({ url, text: await answer.text() }, { url: guessed, setup })
     const top = Math.max(0, ...lines.map((line) => Number(line.match(/RESOLUTION=\d+x(\d+)/)?.[1] ?? 0)))
     if (height <= top || !playable(codec)) return text
     const smooth = lines.some((line) => Number(line.match(/FRAME-RATE=([\d.]+)/)?.[1]) >= 50)
@@ -403,7 +409,8 @@ let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't
 // On the first muted piece hls.js asks for, or when its list loads (whichever comes first)
 function startCheck(url) {
   const folder = folderOf(url)
-  uncutChecks[folder] ??= fetch(uncutAddress(url)).then((response) => {
+  // Only its first bytes: whether it's there, not the whole piece (~9 MB)
+  uncutChecks[folder] ??= fetch(uncutAddress(url), { headers: { Range: 'bytes=0-0' } }).then((response) => {
     if (response.ok) uncutFolders.add(folder)
   }, () => {})
   return uncutChecks[folder]
@@ -534,18 +541,26 @@ const loadPolicy = (timeouts, errors) => ({
   },
 })
 
+// Twitch's list of qualities, or null when Twitch has no access pass for it (deleted or private).
+// The first time, the app has asked for it already while the window opened (video_window.rs,
+// early_list): 204 = it couldn't, asked here then.
+let earlyAsked = false
+async function twitchList() {
+  if (!earlyAsked) {
+    earlyAsked = true
+    const early = await fetch(`/early?video=${encodeURIComponent(videoId)}`).catch(() => null)
+    if (early?.status === 200 || early?.status === 403) return early
+  }
+  const token = await askTwitch(TOKEN_QUERY)
+  if (!token) return null
+  return fetch(`/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`)
+}
+
 async function load() {
   if (!refused) {
-    let token
     try {
-      token = await askTwitch(TOKEN_QUERY)
-    } catch (error) {
-      console.error(error)
-      return failed()
-    }
-    if (!token) return playRebuilt() // deleted or private: retrying won't help
-    try {
-      const answer = await fetch(`/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`)
+      const answer = await twitchList()
+      if (!answer) return playRebuilt() // deleted or private: retrying won't help
       // Twitch says no (subscribers only): only the first time, later it's an old token
       if (!everPlayed && answer.status >= 400 && answer.status < 500) return playRebuilt()
       if (!answer.ok) throw new Error(`Twitch answered ${answer.status}`)
