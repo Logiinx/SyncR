@@ -510,6 +510,7 @@ function playerControls(env, media) {
   let skipClick = false
   const closeContext = () => { $('context').hidden = true }
   async function copyText(text) {
+    let copied = true
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -519,10 +520,10 @@ function playerControls(env, media) {
       field.style.cssText = 'position: fixed; top: 0; left: 0; opacity: 0'
       document.body.append(field)
       field.select()
-      document.execCommand('copy')
+      copied = document.execCommand('copy')
       field.remove()
     }
-    flash(labels.linkCopied, 1200)
+    flash(copied ? labels.linkCopied : labels.linkNotCopied, 1200)
   }
   env.surface.addEventListener('contextmenu', (event) => {
     if (!media.link) return

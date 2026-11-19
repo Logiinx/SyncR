@@ -6,7 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** le chat Twitch en pause montre « Revenir aux derniers messages »
-- **Petites corrections :** chat resté en pause après un long survol
+- **Petites corrections :** chat resté en pause après un long survol, « Lien copié » en cas d’échec
 
 ## [0.92.0] - 2026-11-19
 

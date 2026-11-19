@@ -6,7 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Better:** paused Twitch chat shows Back to latest when new lines wait
-- **Small fixes:** chat staying paused after a long hover
+- **Small fixes:** chat staying paused after a long hover, "Link copied" when it failed
 
 ## [0.92.0] - 2026-11-19
 

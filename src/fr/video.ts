@@ -199,6 +199,7 @@ export const video = {
   'Chapters': 'Chapitres',
   'Copy link at {time}': 'Copier le lien à {time}',
   'Link copied': 'Lien copié',
+  "Couldn't copy the link": 'Impossible de copier le lien',
   'Drag the subtitles to move them': 'Faites glisser les sous-titres pour les déplacer',
   Sponsor: 'Sponsor',
   'Self-promotion': 'Autopromotion',

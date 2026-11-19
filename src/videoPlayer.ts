@@ -185,6 +185,7 @@ function controlsData() {
       copyLink: t('Copy link'),
       copyLinkAt: t('Copy link at {time}'),
       linkCopied: t('Link copied'),
+      linkNotCopied: t("Couldn't copy the link"),
       dragSubtitles: t('Drag the subtitles to move them'),
       stoppedLoading: t('The video stopped loading'),
       retry: t('Try again'),
