@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** la molette de la souris sur la vidéo règle le volume
 - **Nouveau :** les emotes et badges du chat Twitch montrent leur nom dès le survol
 - **Changé :** le chat Twitch se met en pause quand la souris est dessus
+- **Corrigé :** le pointeur restait parfois sur la vidéo après la disparition des contrôles
 - **Petites corrections :** position gardée après un passage lent à la vidéo suivante
 
 ## [0.91.3] - 2026-11-19

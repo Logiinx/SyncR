@@ -154,6 +154,14 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
       let _ = app.emit_to("main", "video-next", ());
       return answer(204, "text/plain", Vec::new());
     }
+    // The controls faded (controls.js): the pointer goes with them. The page's "cursor: none" alone
+    // is sometimes only applied once the mouse moves (user, 2026-11-19, in the window). Also open to
+    // any site in the window: all it can do is hide the pointer over the video until the mouse moves.
+    "/hide-pointer" => {
+      #[cfg(windows)]
+      hide_pointer(&app);
+      return answer(204, "text/plain", Vec::new());
+    }
     // Something the bar should say, or "finished": a live stream is over (player.js). Also open to
     // any site in the window: only these words pass, and the app only takes them while our own
     // Twitch player shows that video.
@@ -203,6 +211,37 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
 // All pages of the player's storage folder must start the same way (also video_extensions.rs). A
 // video opened by a click should play: without this switch the browser refuses to start it.
 pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+
+// Hides the pointer while it rests on the video (not the bar, not another window over it). Moving
+// the mouse brings it back by itself: the page sets its own pointer again. Done on the main thread,
+// whose input is shared with the video's page (a child window).
+#[cfg(windows)]
+fn hide_pointer(app: &tauri::AppHandle) {
+  use tauri::Manager;
+  use windows_sys::Win32::{
+    Foundation::POINT,
+    UI::WindowsAndMessaging::{GetAncestor, GetCursorPos, SetCursor, WindowFromPoint, GA_ROOT},
+  };
+  let Some(window) = app.get_window(VIDEO_WINDOW) else { return };
+  let Some(site) = window.get_webview(VIDEO_SITE) else { return };
+  let (Ok(hwnd), Ok(client), Ok(spot), Ok(size)) = (window.hwnd(), window.inner_position(), site.position(), site.size()) else {
+    return;
+  };
+  let (left, top) = (client.x + spot.x, client.y + spot.y);
+  let (right, bottom) = (left + size.width as i32, top + size.height as i32);
+  // As a number: a window handle can't be sent to another thread
+  let raw = hwnd.0 as isize;
+  let _ = app.run_on_main_thread(move || unsafe {
+    let mut point = POINT { x: 0, y: 0 };
+    if GetCursorPos(&mut point) == 0 || point.x < left || point.x >= right || point.y < top || point.y >= bottom {
+      return;
+    }
+    if GetAncestor(WindowFromPoint(point), GA_ROOT) as isize != raw {
+      return;
+    }
+    SetCursor(std::ptr::null_mut());
+  });
+}
 
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.

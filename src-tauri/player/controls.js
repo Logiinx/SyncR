@@ -285,8 +285,11 @@ function playerControls(env, media) {
     box.classList.remove('quiet')
     clearTimeout(quietTimer)
     quietTimer = setTimeout(() => {
-      if (keepShowing()) wake()
-      else box.classList.add('quiet')
+      if (keepShowing()) return wake()
+      box.classList.add('quiet')
+      // The pointer hides with them (cursor: none), but the window sometimes only shows that once
+      // the mouse moves: the app hides it too (video_window.rs), when it rests on the video
+      fetch('https://syncr-video.localhost/hide-pointer', { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
     }, QUIET_AFTER)
   }
   box.addEventListener('pointermove', wake)
