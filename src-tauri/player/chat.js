@@ -122,14 +122,14 @@ function addSeven(emotes, list) {
   for (const emote of emotes || []) {
     if (!emote?.id || !emote.name) continue
     const address = `https://cdn.7tv.app/emote/${encodeURIComponent(emote.id)}/`
-    list.set(emote.name, { small: `${address}1x.webp`, big: `${address}2x.webp` })
+    list.set(emote.name, { small: `${address}1x.webp`, big: `${address}2x.webp`, tip: `${address}3x.webp`, source: '7TV' })
   }
 }
 function addBttv(emotes, list) {
   for (const emote of emotes || []) {
     if (!emote?.id || !emote.code) continue
     const address = `https://cdn.betterttv.net/emote/${encodeURIComponent(emote.id)}/`
-    list.set(emote.code, { small: `${address}1x`, big: `${address}2x` })
+    list.set(emote.code, { small: `${address}1x`, big: `${address}2x`, tip: `${address}3x`, source: 'BTTV' })
   }
 }
 const FFZ_IMAGES = 'https://cdn.frankerfacez.com/'
@@ -138,8 +138,8 @@ function addFfz(sets, list) {
     for (const emote of set?.emoticons || []) {
       const small = emote?.urls?.['1']
       if (!emote?.name || !small?.startsWith(FFZ_IMAGES)) continue
-      const big = emote.urls['2']
-      list.set(emote.name, { small, big: big?.startsWith(FFZ_IMAGES) ? big : small })
+      const [big, tip] = [emote.urls['2'], emote.urls['4']].map((address) => address?.startsWith(FFZ_IMAGES) ? address : null)
+      list.set(emote.name, { small, big: big || small, tip: tip || big || small, source: 'FFZ' })
     }
   }
 }
@@ -191,13 +191,15 @@ function chatVisible(message) {
 // ---- Drawing the messages -----------------------------------------------------------------------
 let badgeList = new Map()
 
-function picture(className, source, double, text) {
+// tip: its bigger picture in the hover card; from: where an emote comes from (none on badges)
+function picture(className, source, double, text, tip, from) {
   const image = document.createElement('img')
   image.className = className
   image.src = source
   image.srcset = `${source} 1x, ${double} 2x`
   image.alt = text
-  image.title = text
+  image.dataset.tip = tip
+  if (from) image.dataset.from = from
   image.draggable = false
   return image
 }
@@ -213,7 +215,7 @@ function addText(line, text) {
     }
     if (plain) line.append(document.createTextNode(plain))
     plain = ''
-    line.append(picture('chat-emote', emote.small, emote.big, word))
+    line.append(picture('chat-emote', emote.small, emote.big, word, emote.tip, emote.source))
   }
   if (plain) line.append(document.createTextNode(plain))
 }
@@ -229,7 +231,7 @@ function chatLine(message) {
   }
   for (const seen of message.badges) {
     const badge = badgeList.get(`${seen.setID}/${seen.version}`)
-    if (badge) line.append(picture('chat-badge', badge.imageURL, badge.imageURL.replace(/\/1$/, '/2'), badge.title || ''))
+    if (badge) line.append(picture('chat-badge', badge.imageURL, badge.imageURL.replace(/\/1$/, '/2'), badge.title || '', badge.imageURL.replace(/\/1$/, '/3')))
   }
   const name = document.createElement('span')
   name.className = 'chat-name'
@@ -239,7 +241,7 @@ function chatLine(message) {
   for (const part of message.parts) {
     if (part.emote) {
       const address = `${IMAGES}emoticons/v2/${encodeURIComponent(part.emote)}/default/dark/`
-      line.append(picture('chat-emote', `${address}1.0`, `${address}2.0`, part.text))
+      line.append(picture('chat-emote', `${address}1.0`, `${address}2.0`, part.text, `${address}3.0`, 'Twitch'))
     } else addText(line, part.text)
   }
   return line
@@ -259,19 +261,74 @@ chatLatest.onclick = () => {
   chatLatest.hidden = true
   toLatest()
 }
+// The mouse over the chat pauses it like Twitch: new lines wait below, out of sight, and it
+// catches up once the mouse leaves
+let chatHovered = false
+const follow = () => { if (!chatHeld && !chatHovered) toLatest() }
+chatList.addEventListener('pointerenter', () => { chatHovered = true })
+chatList.addEventListener('pointerleave', () => {
+  chatHovered = false
+  hideTip()
+  follow()
+})
 // Pictures arriving and a new width make the lines taller
-chatList.addEventListener('load', () => { if (!chatHeld) toLatest() }, true)
-new ResizeObserver(() => { if (!chatHeld) toLatest() }).observe(chatList)
+chatList.addEventListener('load', follow, true)
+new ResizeObserver(follow).observe(chatList)
 
 function addLines(all) {
   const messages = all.filter(chatVisible)
   if (!messages.length) return
   chatList.append(...messages.map(chatLine))
-  const limit = chatHeld ? LINES_HELD : LINES
+  // Removing lines at the top would move the paused ones away
+  const limit = chatHeld || chatHovered ? LINES_HELD : LINES
   while (chatList.childElementCount > limit) chatList.firstElementChild.remove()
-  if (!chatHeld) toLatest()
+  follow()
   showNote('')
 }
+
+// ---- Hover card on emotes and badges: at once, unlike the browser's tooltip -----------------------
+const tip = document.createElement('div')
+tip.id = 'chat-tip'
+tip.hidden = true
+tip.innerHTML = '<img alt=""><div></div><div></div>'
+const [tipPicture, tipName, tipFrom] = tip.children
+chatPanel.append(tip)
+let tipOn = null // the picture it's for
+function placeTip() {
+  if (!tipOn?.isConnected) return hideTip()
+  // In the chat's own pixels: the app's scale is a zoom on the page, Chat size one on the lines
+  const panel = chatPanel.getBoundingClientRect()
+  const scale = panel.width / chatPanel.offsetWidth || 1
+  const spot = tipOn.getBoundingClientRect()
+  const center = (spot.left + spot.width / 2 - panel.left) / scale - chatPanel.clientLeft // its border on the video's side
+  const left = Math.max(4, Math.min(center - tip.offsetWidth / 2, chatPanel.clientWidth - tip.offsetWidth - 4))
+  let top = (spot.top - panel.top) / scale - tip.offsetHeight - 6
+  if (top < 4) top = (spot.bottom - panel.top) / scale + 6 // no room above: below
+  tip.style.left = `${left}px`
+  tip.style.top = `${top}px`
+}
+function showTip(image) {
+  tipOn = image
+  tipPicture.className = image.className === 'chat-badge' ? 'badge' : ''
+  tipPicture.src = image.dataset.tip || image.src
+  tipName.textContent = image.alt
+  tipFrom.textContent = image.dataset.from || '' // i18n-ok (service names)
+  tipFrom.hidden = !image.dataset.from
+  tip.hidden = false
+  placeTip()
+}
+function hideTip() {
+  tipOn = null
+  tip.hidden = true
+}
+tipPicture.addEventListener('load', placeTip) // its width is only known then
+chatList.addEventListener('pointerover', (event) => {
+  if (event.target.matches?.('.chat-emote, .chat-badge')) showTip(event.target)
+})
+chatList.addEventListener('pointerout', (event) => {
+  if (event.target === tipOn && event.relatedTarget !== tipOn) hideTip()
+})
+chatList.addEventListener('scroll', () => { if (tipOn) placeTip() })
 
 function showNote(text) {
   chatNote.textContent = text
@@ -324,9 +381,11 @@ function drawFromKnown() {
   shown = known.findIndex((message) => message.at > now)
   if (shown < 0) shown = known.length
   chatList.textContent = ''
+  hideTip()
   chatHeld = false
   chatLatest.hidden = true
   addLines(known.slice(0, shown).filter(chatVisible).slice(-FILL))
+  toLatest() // also under the mouse: these lines replace the others
   if (!chatList.childElementCount) showNote(labels.chatEmpty)
 }
 
@@ -418,6 +477,7 @@ function chatJump() {
   askTurn++
   asking = true // until the question goes out
   chatList.textContent = ''
+  hideTip()
   chatHeld = false
   chatLatest.hidden = true
   showNote(labels.chatLoading)
