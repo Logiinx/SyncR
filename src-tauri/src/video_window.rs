@@ -91,9 +91,12 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
   };
   let number = |name: &str| query_value(&uri, name)?.parse::<f64>().ok().filter(|value| value.is_finite());
   let path = uri.path();
-  // A game's trailer (trailer_player.rs) only hides the pointer and goes back: its position,
-  // subtitles, shape or ⏭ would land on the video window's video
+  // A game's trailer (trailer_player.rs) only hides the pointer, goes back and gives its shape (to
+  // its own box): its position, subtitles or ⏭ would land on the video window's video
   if from == super::trailer_player::TRAILER {
+    if let (Some(ratio), "/fit") = (number("ratio"), path) {
+      super::trailer_player::shape(&app, ratio);
+    }
     #[cfg(windows)]
     if path == "/hide-pointer" {
       hide_pointer(&app, "main", super::trailer_player::TRAILER);

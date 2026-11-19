@@ -185,6 +185,14 @@ pub fn follow_window(window: &tauri::Window, event: &tauri::WindowEvent) {
   }
 }
 
+// The video's shape (video-watch.js's /fit, from player_answer): the view's box takes it, so a
+// trailer wider than 16:9 has no black bars. Only sensible numbers pass.
+pub fn shape(app: &tauri::AppHandle, ratio: f64) {
+  if app.get_webview(TRAILER).is_some() && (0.2..=5.0).contains(&ratio) {
+    let _ = app.emit_to("main", "trailer-shape", ratio);
+  }
+}
+
 // Escape on the page (BACK_ON_ESCAPE), from player_answer
 pub fn back(app: &tauri::AppHandle) {
   if app.get_webview(TRAILER).is_some() {

@@ -71,6 +71,12 @@ export default function TrailerPlayer({ youtubeId, onBack }: { youtubeId: string
     const changes = new MutationObserver(later)
     const unlisten = [
       listen('trailer-back', () => back.current()),
+      // The video's real shape: the box (and the view's width) take it instead of 16:9. Not
+      // narrower than 4:3, so the header keeps its room (a tall video gets bars on its sides).
+      listen<number>('trailer-shape', ({ payload }) => {
+        const view = box.closest<HTMLElement>('.trailer-theater')
+        if (view && payload > 0 && payload <= 5) view.style.setProperty('--trailer-ratio', String(Math.max(payload, 4 / 3)))
+      }),
       listen('trailer-refused', () => {
         opened = false // nothing more to place or show
         setRefused(true)

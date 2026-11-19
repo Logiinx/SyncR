@@ -7945,8 +7945,10 @@ button.history-row.selected {
   border-radius: 8px;
 }
 
-/* SyncR's own player lies over this box (TrailerPlayer.tsx): black until it comes, or a message */
+/* SyncR's own player lies over this box (TrailerPlayer.tsx): black until it comes, or a message.
+   It gives the video's real shape (no black bars on a trailer wider than 16:9). */
 .trailer-own {
+  aspect-ratio: var(--trailer-ratio, 16 / 9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7978,7 +7980,7 @@ button.history-row.selected {
   display: flex;
   flex-direction: column;
   /* 100vh / --zoom: the window's height in the zoomed page (Settings → scale, appearance.ts) */
-  width: min(100%, calc((100vh / var(--zoom, 1) - 34px - var(--theater-bar)) * 16 / 9));
+  width: min(100%, calc((100vh / var(--zoom, 1) - 34px - var(--theater-bar)) * var(--trailer-ratio, 16 / 9)));
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
