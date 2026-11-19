@@ -436,6 +436,8 @@ let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
 // How see-through the chat is over the video in full screen: 0 (clear) to 100 (solid), steps of 5
 let chatBg = Math.min(Math.max(Math.round(stored('player.chatBackground', 55) / 5) * 5, 0), 100)
 let chatSpot = SPOTS.includes(localStorage.getItem('player.chatSpot')) ? localStorage.getItem('player.chatSpot') : SPOTS[0]
+// Its side in the window (full screen has its own spots)
+let chatSide = localStorage.getItem('player.chatSide') === 'left' ? 'left' : 'right'
 
 function placeChat() {
   const room = $('stage').clientWidth
@@ -446,7 +448,7 @@ function placeChat() {
   chatPanel.hidden = !showing
   // Solid (100%) on the right or left: beside the video, which gets smaller. The corners stay over it.
   const beside = full && chatBg === 100 && (chatSpot === 'right' || chatSpot === 'left')
-  chatPanel.className = !full ? '' : beside ? `beside ${chatSpot}` : `over ${chatSpot}`
+  chatPanel.className = !full ? `side ${chatSide}` : beside ? `beside ${chatSpot}` : `over ${chatSpot}`
   chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
@@ -478,7 +480,7 @@ chatPanel.addEventListener('pointermove', () => { if (chatPanel.classList.contai
 document.addEventListener('fullscreenchange', placeChat)
 new ResizeObserver(placeChat).observe($('stage'))
 
-// Dragging the left edge. The page's scale changes the numbers: its own width converts them.
+// Dragging the edge next to the video. The page's scale changes the numbers: its own width converts them.
 const edge = $('chat-edge')
 edge.addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return
@@ -489,7 +491,7 @@ edge.addEventListener('pointerdown', (event) => {
 edge.addEventListener('pointermove', (event) => {
   if (!edge.hasPointerCapture(event.pointerId)) return
   const box = $('stage').getBoundingClientRect()
-  chatWidth = (box.right - event.clientX) * ($('stage').clientWidth / box.width)
+  chatWidth = (chatSide === 'left' ? event.clientX - box.left : box.right - event.clientX) * ($('stage').clientWidth / box.width)
   chatWidth = Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max($('stage').clientWidth - VIDEO_MIN, CHAT_MIN))
   placeChat()
 })
@@ -546,6 +548,14 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     localStorage.setItem('player.chatTimes', showTimes ? 1 : 0)
     redrawChat()
   })
+  title(labels.chatWindowTitle)
+  for (const side of ['right', 'left']) {
+    row(side === 'right' ? labels.chatSideRight : labels.chatSideLeft, side === chatSide, () => {
+      chatSide = side
+      localStorage.setItem('player.chatSide', side)
+      placeChat()
+    })
+  }
   title(labels.chatFullTitle)
   const spotNames = { right: labels.chatRight, left: labels.chatLeft, 'corner-right': labels.chatCornerRight, 'corner-left': labels.chatCornerLeft }
   for (const spot of SPOTS) {

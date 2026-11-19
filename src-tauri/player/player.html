@@ -67,7 +67,8 @@
   #chat.over #chat-edge { display: none; }
   /* In full screen at 100% (right or left): beside the video like in a window, same width as over it */
   #chat.beside { width: 340px; }
-  #chat.beside.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+  #chat.beside.left, #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+  #chat.side.left #chat-edge { left: auto; right: -4px; }
   #chat.beside #chat-edge { display: none; }
   #chat.over #chat-list { scrollbar-width: none; }
   #chat-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 20px; text-align: center; color: var(--text-dim, #9a9a9a); pointer-events: none; }
