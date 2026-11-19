@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.92.0] - 2026-11-19
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** titres YouTube plus clairs avec DeArrow, le vrai dans la carte au survol
 - **Nouveau :** la molette de la souris sur la vidéo règle le volume

@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.92.0] - 2026-11-19
+
 **Video** (PC only)
 - **New:** clearer YouTube titles from DeArrow, the real one in the hover card
 - **New:** mouse wheel over the video changes the volume
