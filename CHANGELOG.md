@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** mouse wheel over the video changes the volume
 - **New:** Twitch chat emotes and badges show their name at once on hover
 - **Changed:** Twitch chat pauses while the mouse is over it
 - **Small fixes:** saved spot after a slow switch to the next video

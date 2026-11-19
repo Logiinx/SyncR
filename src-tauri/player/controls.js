@@ -1006,6 +1006,19 @@ function playerControls(env, media) {
     media.setVolume(level)
     flash(percentText(level))
   }
+  // The mouse wheel anywhere over the video: 5% a notch, like the arrows. A list that scrolls
+  // (an open menu) keeps the wheel for itself. A touchpad's small moves add up to a notch.
+  let wheeled = 0
+  box.addEventListener('wheel', (event) => {
+    for (let at = event.target; at && at !== box; at = at.parentElement) {
+      if (at.scrollHeight > at.clientHeight && /auto|scroll/.test(getComputedStyle(at).overflowY)) return
+    }
+    event.preventDefault()
+    wheeled += event.deltaMode === 1 ? event.deltaY * 40 : event.deltaY
+    if (Math.abs(wheeled) < 50) return
+    changeVolume(wheeled < 0 ? 0.05 : -0.05)
+    wheeled = 0
+  }, { passive: false })
   const jumpBack = () => { jumpTo(target() - JUMP, true); flash(`−${JUMP} s`) }
   const jumpForward = () => { jumpTo(target() + JUMP, true); flash(`+${JUMP} s`) }
   const KEYS = {
