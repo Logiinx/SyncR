@@ -8,6 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** le chat Twitch en plein écran peut aussi aller dans les coins du bas
 - **Amélioré :** place du chat choisie en cliquant sur un petit écran dans le menu du chat
 - **Amélioré :** « Retenir comme écran d’attente » grisé avec la raison sur un direct YouTube récent
+- **Corrigé :** l’amélioration vidéo NVIDIA qui se coupait sous le chat en plein écran
 
 ## [0.94.0] - 2026-11-19
 

@@ -518,6 +518,7 @@ function placeChat() {
   // What makes room for it (player.html): full height, the controls keep to the picture's part;
   // a top corner, the header stops before it; a bottom corner, the bar and what's above it
   for (const spot of SPOTS) $('stage').classList.toggle(`chat-${spot}`, full && showing && chatSpot === spot)
+  setGlass(full && showing)
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
@@ -568,6 +569,96 @@ const endResize = () => {
 }
 edge.addEventListener('pointerup', endResize)
 edge.addEventListener('pointercancel', endResize)
+
+// ---- Frosted glass behind the chat in full screen -----------------------------------------------
+// A small blurred copy of the picture under the chat, redrawn at each new frame. Not CSS's
+// backdrop blur: to blur the video behind it, the browser has to draw the video itself, which
+// takes it off the graphics card's own path and turns off NVIDIA's upscaling (RTX Video Super
+// Resolution). Here the video stays untouched; only its copy is blurred. The copy is 1/8 of the
+// chat's size and reused, so the work per frame is tiny and the same after hours.
+const GLASS_SCALE = 1 / 8
+const GLASS_BLUR = 20 // CSS px, like the backdrop blur it replaces
+const GLASS_TINT = 0.55 // --bg over the copy
+const GLASS_MARGIN = Math.ceil(3 * GLASS_BLUR * GLASS_SCALE) // the picture around it that blurs in, copy px
+const glass = document.createElement('canvas')
+glass.id = 'chat-glass'
+chatPanel.prepend(glass)
+const glassPen = glass.getContext('2d', { alpha: false })
+const glassSource = document.createElement('canvas') // the copy before blurring, with the margin
+const sourcePen = glassSource.getContext('2d', { alpha: false })
+let glassOn = false
+let glassWaiting = false // a frame callback is asked for
+let glassTint // --bg, read once (the page's colors don't change)
+
+function setGlass(on) {
+  glassOn = on
+  if (!on) return
+  drawGlass() // at once: paused, a new spot or size doesn't wait for a frame
+  if (!glassWaiting) {
+    glassWaiting = true
+    video.requestVideoFrameCallback(glassFrame)
+  }
+}
+// Once per new frame shown (none while paused), until the glass is off
+function glassFrame() {
+  glassWaiting = false
+  if (!glassOn) return
+  drawGlass()
+  glassWaiting = true
+  video.requestVideoFrameCallback(glassFrame)
+}
+
+// Everything in screen boxes (getBoundingClientRect), turned into copy pixels with `k`
+function drawGlass() {
+  const box = chatPanel.getBoundingClientRect()
+  if (!box.width || !box.height) return
+  const width = Math.max(1, Math.round(chatPanel.offsetWidth * GLASS_SCALE))
+  const height = Math.max(1, Math.round(chatPanel.offsetHeight * GLASS_SCALE))
+  const sourceWidth = width + 2 * GLASS_MARGIN
+  const sourceHeight = height + 2 * GLASS_MARGIN
+  // Setting a canvas's size clears it: only when it changes
+  if (glass.width !== width || glass.height !== height) {
+    glass.width = width
+    glass.height = height
+    glassSource.width = sourceWidth
+    glassSource.height = sourceHeight
+  }
+  const k = width / box.width
+  const left = box.left - GLASS_MARGIN / k
+  const top = box.top - GLASS_MARGIN / k
+  // Black around the picture (the stage's), then the picture where object-fit: contain shows it
+  sourcePen.fillStyle = '#000'
+  sourcePen.fillRect(0, 0, sourceWidth, sourceHeight)
+  if (video.videoWidth && video.readyState >= 2) {
+    const shown = video.getBoundingClientRect()
+    const fit = Math.min(shown.width / video.videoWidth, shown.height / video.videoHeight)
+    const pictureWidth = video.videoWidth * fit
+    const pictureHeight = video.videoHeight * fit
+    const x = shown.left + (shown.width - pictureWidth) / 2
+    const y = shown.top + (shown.height - pictureHeight) / 2
+    sourcePen.drawImage(video, (x - left) * k, (y - top) * k, pictureWidth * k, pictureHeight * k)
+  }
+  // Past the screen's edges there's nothing to blur in: stretch the last line, like the backdrop
+  // blur's edges (otherwise black would seep in along a chat touching the edge)
+  const stage = $('stage').getBoundingClientRect()
+  const gapLeft = Math.min(sourceWidth - 1, Math.max(0, Math.round((stage.left - left) * k)))
+  const gapRight = Math.min(sourceWidth - 1, Math.max(0, Math.round((left - stage.right) * k + sourceWidth)))
+  const gapTop = Math.min(sourceHeight - 1, Math.max(0, Math.round((stage.top - top) * k)))
+  const gapBottom = Math.min(sourceHeight - 1, Math.max(0, Math.round((top - stage.bottom) * k + sourceHeight)))
+  if (gapLeft) sourcePen.drawImage(glassSource, gapLeft, 0, 1, sourceHeight, 0, 0, gapLeft, sourceHeight)
+  if (gapRight) sourcePen.drawImage(glassSource, sourceWidth - gapRight - 1, 0, 1, sourceHeight, sourceWidth - gapRight, 0, gapRight, sourceHeight)
+  if (gapTop) sourcePen.drawImage(glassSource, 0, gapTop, sourceWidth, 1, 0, 0, sourceWidth, gapTop)
+  if (gapBottom) sourcePen.drawImage(glassSource, 0, sourceHeight - gapBottom - 1, sourceWidth, 1, 0, sourceHeight - gapBottom, sourceWidth, gapBottom)
+  // Blurred into the glass (the margin falls outside), then darkened with --bg
+  glassPen.filter = `blur(${GLASS_BLUR * GLASS_SCALE}px)`
+  glassPen.drawImage(glassSource, -GLASS_MARGIN, -GLASS_MARGIN)
+  glassPen.filter = 'none'
+  glassPen.globalAlpha = GLASS_TINT
+  glassTint ??= getComputedStyle(chatPanel).getPropertyValue('--bg').trim() || '#161616'
+  glassPen.fillStyle = glassTint
+  glassPen.fillRect(0, 0, width, height)
+  glassPen.globalAlpha = 1
+}
 
 // ---- Its part of the player's menu (player.js, drawMenu) -----------------------------------------
 function redrawChat() {
