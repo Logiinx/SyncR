@@ -444,7 +444,9 @@ function placeChat() {
   const showing = (full ? chatWantedFull : chatWanted) && fits
   const was = chatShowing()
   chatPanel.hidden = !showing
-  chatPanel.className = full ? `over ${chatSpot}` : ''
+  // Solid (100%) on the right or left: beside the video, which gets smaller. The corners stay over it.
+  const beside = full && chatBg === 100 && (chatSpot === 'right' || chatSpot === 'left')
+  chatPanel.className = !full ? '' : beside ? `beside ${chatSpot}` : `over ${chatSpot}`
   chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
@@ -563,7 +565,7 @@ function drawChatPanel({ title, row, choices, element: menu }) {
   slider.addEventListener('input', () => {
     chatBg = Number(slider.value)
     value.textContent = percentText(chatBg / 100)
-    chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
+    placeChat() // 100% puts it beside the video
   })
   slider.addEventListener('change', () => localStorage.setItem('player.chatBackground', chatBg))
   menu.append(background)
