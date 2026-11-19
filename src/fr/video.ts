@@ -251,7 +251,6 @@ export const video = {
   'Right|chat side': 'À droite',
   'Left|chat side': 'À gauche',
   'In full screen': 'En plein écran',
-  'Background|chat': 'Fond',
   'Full height, right': 'Toute la hauteur, à droite',
   'Full height, left': 'Toute la hauteur, à gauche',
   'Corner, right': 'Dans le coin, à droite',

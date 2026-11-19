@@ -37,10 +37,6 @@
 
   #bot-names { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
   #bot-names::placeholder { color: var(--text-dim, #9a9a9a); }
-  /* The chat's background in full screen: name, slider, value (white like the volume) */
-  #chat-bg { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 12px; }
-  #chat-bg input { flex: 1; min-width: 0; margin: 0; accent-color: #fff; cursor: pointer; }
-  #chat-bg output { width: 40px; text-align: right; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
 
   /* The games button (right of the time) and the box art in its list (the list: controls.js) */
   .game-art { width: 22px; height: 29px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 3px; }
@@ -63,18 +59,27 @@
   #chat-tip img { display: block; height: 56px; max-width: 200px; margin: 0 auto 4px; object-fit: contain; }
   #chat-tip img.badge { height: 36px; }
   #chat-tip div:last-child { color: var(--text-dim, #9a9a9a); }
-  /* In full screen, over the video. While the controls show it leaves them free. */
-  #chat.over { position: absolute; z-index: 4; width: 340px; top: 0; bottom: 0; border: 0; background: color-mix(in srgb, var(--bg, #161616) var(--chat-bg, 55%), transparent); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
-  #player:not(.quiet) ~ #chat.over { bottom: 72px; }
+  /* In full screen, over the video, full height, on frosted glass (the picture blurred behind it) */
+  #stage { --chat-over: 340px; }
+  #chat.over {
+    position: absolute; z-index: 4; width: var(--chat-over); top: 0; bottom: 0; border: 0;
+    background: color-mix(in srgb, var(--bg, #161616) 55%, transparent); backdrop-filter: blur(20px);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  }
   #chat.over.right, #chat.over.corner-right { right: 0; }
   #chat.over.left, #chat.over.corner-left { left: 0; }
-  #chat.over.corner-right, #chat.over.corner-left, #player:not(.quiet) ~ #chat.over.corner-right, #player:not(.quiet) ~ #chat.over.corner-left { bottom: auto; height: 45%; }
+  #chat.over.corner-right, #chat.over.corner-left { bottom: auto; height: 45%; }
   #chat.over #chat-edge { display: none; }
-  /* In full screen at 100% (right or left): beside the video like in a window, same width as over it */
-  #chat.beside { width: 340px; }
-  #chat.beside.left, #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+  /* Full height on the right or left: the controls and the rest keep to the picture's part
+     (chat-right / chat-left: chat.js). The corners leave them the whole width. */
+  #stage.chat-right :is(#ui, #spinner, #message) { right: var(--chat-over); }
+  #stage.chat-right :is(#menus, #endcard) { right: calc(var(--chat-over) + 12px); }
+  #stage.chat-right #flash { left: calc(50% - var(--chat-over) / 2); }
+  #stage.chat-left :is(#ui, #spinner, #message) { left: var(--chat-over); }
+  #stage.chat-left #parts-box { left: calc(var(--chat-over) + 12px); }
+  #stage.chat-left #flash { left: calc(50% + var(--chat-over) / 2); }
+  #chat.side.left { order: -1; border-left: 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
   #chat.side.left #chat-edge { left: auto; right: -4px; }
-  #chat.beside #chat-edge { display: none; }
   #chat.over #chat-list { scrollbar-width: none; }
   #chat-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 20px; text-align: center; color: var(--text-dim, #9a9a9a); pointer-events: none; }
   #chat-latest { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); height: 28px; padding: 0 12px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; font-size: 12px; white-space: nowrap; }

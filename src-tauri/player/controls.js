@@ -310,8 +310,9 @@ function playerControls(env, media) {
       if (keepShowing()) return wake()
       box.classList.add('quiet')
       // The pointer hides with them (cursor: none), but the window sometimes only shows that once
-      // the mouse moves: the app hides it too (video_window.rs), when it rests on the video
-      fetch('https://syncr-video.localhost/hide-pointer', { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+      // the mouse moves: the app hides it too (video_window.rs), when it rests on the video (not on
+      // the chat over it in full screen)
+      if (box.matches(':hover')) fetch('https://syncr-video.localhost/hide-pointer', { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
     }, QUIET_AFTER)
   }
   box.addEventListener('pointermove', wake)

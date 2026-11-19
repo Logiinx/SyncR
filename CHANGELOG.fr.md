@@ -7,7 +7,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Nouveau :** interrupteur pour la courbe « Moments les plus revus » dans ⚙️ → Divers
 - **Amélioré :** les vidéos Twitch démarrent environ une demi-seconde plus tôt
+- **Changé :** le chat en plein écran prend toute la hauteur, sur verre dépoli, à côté de la barre
 - **Changé :** le chat Twitch défile sous la souris, pause seulement sur les emotes
+- **Supprimé :** curseur du fond du chat en plein écran
 - **Corrigé :** la courbe « Moments les plus revus » de YouTube trop pâle pour se voir
 
 ## [0.93.0] - 2026-11-19

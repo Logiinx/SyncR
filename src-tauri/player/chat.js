@@ -500,8 +500,6 @@ video.addEventListener('loadedmetadata', chatJump)
 let chatWanted = stored('player.chat', 1) === 1
 let chatWantedFull = stored('player.chatFull', 1) === 1
 let chatWidth = stored('player.chatWidth', CHAT_WIDTH)
-// How see-through the chat is over the video in full screen: 0 (clear) to 100 (solid), steps of 5
-let chatBg = Math.min(Math.max(Math.round(stored('player.chatBackground', 55) / 5) * 5, 0), 100)
 let chatSpot = SPOTS.includes(localStorage.getItem('player.chatSpot')) ? localStorage.getItem('player.chatSpot') : SPOTS[0]
 // Its side in the window (full screen has its own spots)
 let chatSide = localStorage.getItem('player.chatSide') === 'left' ? 'left' : 'right'
@@ -513,10 +511,10 @@ function placeChat() {
   const showing = (full ? chatWantedFull : chatWanted) && fits
   const was = chatShowing()
   chatPanel.hidden = !showing
-  // Solid (100%) on the right or left: beside the video, which gets smaller. The corners stay over it.
-  const beside = full && chatBg === 100 && (chatSpot === 'right' || chatSpot === 'left')
-  chatPanel.className = !full ? `side ${chatSide}` : beside ? `beside ${chatSpot}` : `over ${chatSpot}`
-  chatPanel.style.setProperty('--chat-bg', `${chatBg}%`)
+  chatPanel.className = full ? `over ${chatSpot}` : `side ${chatSide}`
+  // Full height on a side: the controls keep to the picture's part (player.html)
+  $('stage').classList.toggle('chat-right', full && showing && chatSpot === 'right')
+  $('stage').classList.toggle('chat-left', full && showing && chatSpot === 'left')
   chatPanel.style.width = full ? '' : `${Math.round(Math.min(Math.max(chatWidth, CHAT_MIN), CHAT_MAX, Math.max(room - VIDEO_MIN, CHAT_MIN)))}px`
   const button = $('chat-button')
   button.classList.toggle('on', showing)
@@ -542,8 +540,6 @@ $('chat-button').innerHTML = icon('chat')
 $('chat-button').onclick = toggleChat
 chatLatest.textContent = labels.chatLatest
 chatPanel.addEventListener('pointerdown', closeMenu)
-// Over the video in full screen it covers the controls' place: moving on it brings them back
-chatPanel.addEventListener('pointermove', () => { if (chatPanel.classList.contains('over')) wake() })
 document.addEventListener('fullscreenchange', placeChat)
 new ResizeObserver(placeChat).observe($('stage'))
 
@@ -630,20 +626,6 @@ function drawChatPanel({ title, row, choices, element: menu }) {
       placeChat()
     })
   }
-  const background = document.createElement('label')
-  background.id = 'chat-bg'
-  background.innerHTML = '<span></span><input type="range" min="0" max="100" step="5"><output></output>'
-  const [name, slider, value] = background.children
-  name.textContent = labels.chatBackground
-  slider.value = chatBg
-  value.textContent = percentText(chatBg / 100)
-  slider.addEventListener('input', () => {
-    chatBg = Number(slider.value)
-    value.textContent = percentText(chatBg / 100)
-    placeChat() // 100% puts it beside the video
-  })
-  slider.addEventListener('change', () => localStorage.setItem('player.chatBackground', chatBg))
-  menu.append(background)
 }
 
 drawChatSize()
