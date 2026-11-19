@@ -393,43 +393,64 @@ function measureSource(_, parsed) {
 }
 
 // ---- Muted parts with their sound ---------------------------------------------------------------
-// For a while after a stream, Twitch still has a muted piece's uncut file: "N.ts" in older videos
-// (often gone within a day), "N-unmuted.mp4" in newer ones. It can be gone in one quality and not in
-// another, so each quality is checked once, on its first muted piece. Its muted pieces then load
-// uncut (muted if one is refused), and the bar shows no muted parts for it.
+// For a while after a stream, Twitch still has a muted piece's uncut file: "N.ts" in older videos,
+// "N-unmuted.mp4" in newer ones. It deletes them bit by bit, oldest hours first, and each quality on
+// its own: so every muted piece is checked by itself (its first byte), nearest to where you are
+// first. Those with their sound load uncut and aren't shown as muted on the bar.
 const MUTED_PIECE = /^(.*\/)(\d+)-muted\.(ts|mp4)$/ // video_window.rs names them all "-muted"
 const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind) => `${folder}${number}${kind === 'ts' ? '.ts' : '-unmuted.mp4'}`)
-const folderOf = (url) => url.slice(0, url.lastIndexOf('/') + 1)
-const uncutChecks = {} // quality folder → its check
-const uncutFolders = new Set() // the folders that have it
+const CHECKS_AT_ONCE = 6
+const pieceChecks = new Map() // muted piece's address → its check
+const uncutPieces = new Set() // the muted pieces whose sound is still there
 let soundTold = false
-let mutedSound = '' // the quality playing has muted parts: 'uncut' (original sound) or 'muted'
+let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
-// On the first muted piece hls.js asks for, or when its list loads (whichever comes first)
-function startCheck(url) {
-  const folder = folderOf(url)
-  // Only its first bytes: whether it's there, not the whole piece (~9 MB)
-  uncutChecks[folder] ??= fetch(uncutAddress(url), { headers: { Range: 'bytes=0-0' } }).then((response) => {
-    if (response.ok) uncutFolders.add(folder)
-  }, () => {})
-  return uncutChecks[folder]
+// A piece whose check didn't get an answer (network) counts as muted, and is asked again when it plays
+function checkPiece(url) {
+  if (!pieceChecks.has(url)) {
+    pieceChecks.set(url, fetch(uncutAddress(url), { headers: { Range: 'bytes=0-0' } }).then((response) => {
+      if (response.ok) uncutPieces.add(url)
+    }, () => { pieceChecks.delete(url) }))
+  }
+  return pieceChecks.get(url)
 }
 
-async function checkUncut(pieces) {
-  const piece = pieces.find((one) => MUTED_PIECE.test(one.url))
-  if (piece) await startCheck(piece.url)
+// When a quality's list loads or it starts playing: all its muted pieces not asked yet, a few at a
+// time, the bar redrawn as answers come. Only the quality playing (hls.js reads others' lists too).
+let mutedTimer = null
+const drawMutedSoon = () => { mutedTimer ??= setTimeout(() => { mutedTimer = null; drawMuted() }, 300) }
+function checkUncut(pieces) {
+  const queue = pieces.filter((one) => MUTED_PIECE.test(one.url) && !pieceChecks.has(one.url))
   drawMuted()
+  if (!queue.length) return
+  const now = video.currentTime
+  const distance = (one) => (one.start + one.duration < now ? now - one.start - one.duration : Math.max(one.start - now, 0))
+  queue.sort((a, b) => distance(a) - distance(b))
+  const next = async () => {
+    for (let piece = queue.shift(); piece; piece = queue.shift()) {
+      if (pieceChecks.has(piece.url) || !piece.url.startsWith(playingFolder())) continue // asked meanwhile, or another quality
+      await checkPiece(piece.url)
+      drawMutedSoon()
+    }
+  }
+  for (let i = 0; i < CHECKS_AT_ONCE; i++) next()
 }
 
-// The muted parts of the quality playing (or about to)
+// The quality playing (or about to)
+const playingLevel = () => hls?.levels[hls.currentLevel] ?? hls?.levels[hls.loadLevel]
+function playingFolder() {
+  const list = playingLevel()?.url[0] ?? ''
+  return list.slice(0, list.lastIndexOf('/') + 1)
+}
+
+// Its muted parts
 function drawMuted() {
-  const level = hls?.levels[hls.currentLevel] ?? hls?.levels[hls.loadLevel]
-  const pieces = level?.details?.fragments ?? []
-  const uncut = pieces.some((one) => MUTED_PIECE.test(one.url) && uncutFolders.has(folderOf(one.url)))
-  mutedSound = !pieces.some((one) => MUTED_PIECE.test(one.url)) ? '' : uncut ? 'uncut' : 'muted'
-  noteMutedParts(uncut ? [] : pieces)
-  if (uncut && !soundTold) {
+  const muted = (playingLevel()?.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
+  const silent = muted.filter((one) => !uncutPieces.has(one.url))
+  mutedSound = !muted.length ? '' : silent.length ? 'muted' : 'uncut'
+  noteMutedParts(silent)
+  if (silent.length < muted.length && !soundTold) {
     soundTold = true
     tellBar('sound')
   }
@@ -440,21 +461,24 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     super(config)
     this.hlsConfig = config
   }
-  // A muted piece waits for its quality's check
+  // A muted piece waits for its own check
   load(context, config, callbacks) {
     if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
     this.stopped = false
-    startCheck(context.url).then(() => {
+    checkPiece(context.url).then(() => {
       if (this.stopped) return
-      if (uncutFolders.has(folderOf(context.url))) this.loadUncut(context, config, callbacks)
+      if (uncutPieces.has(context.url)) this.loadUncut(context, config, callbacks)
       else super.load(context, config, callbacks)
     })
   }
   loadUncut(context, config, callbacks) {
     const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
+    // Refused after all: muted, and shown so
     const muted = () => {
       inner.destroy()
       this.inner = null
+      uncutPieces.delete(context.url)
+      drawMutedSoon()
       super.load(context, config, callbacks)
     }
     inner.load({ ...context, url: uncutAddress(context.url) }, config, {
@@ -599,7 +623,7 @@ async function load() {
   hls.on(Hls.Events.BUFFER_FLUSHED, switchChecked)
   hls.on(Hls.Events.LEVEL_SWITCHED, () => {
     drawSettings()
-    drawMuted()
+    checkUncut(playingLevel()?.details?.fragments ?? [])
   })
   hls.on(Hls.Events.FRAG_PARSING_INIT_SEGMENT, measureSource)
   hls.on(Hls.Events.LEVEL_LOADED, (_, loaded) => {

@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** full-screen chat runs full height on frosted glass, beside the bar
 - **Changed:** Twitch chat keeps scrolling under the mouse, pauses only over emotes
 - **Removed:** chat background slider in full screen
+- **Fixed:** Twitch videos playing muted where the original sound was still there
 - **Fixed:** YouTube's "most replayed" curve too faint to see
 
 ## [0.93.0] - 2026-11-19
