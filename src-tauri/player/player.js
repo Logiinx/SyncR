@@ -402,18 +402,19 @@ const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind)
 const CHECKS_AT_ONCE = 6
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
+const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
 let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
 // Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
-// parts of pieces only its delivery network still keeps, which play fine whole. A piece whose check
-// didn't get an answer (network) counts as muted, and is asked again when it plays.
+// parts of pieces only its delivery network still keeps, which play fine whole. Only for the bar:
+// playing tries the sound anyway. A piece whose check got no answer (network) shows as muted.
 const checkAddress = (url) => uncutAddress(url).replace('/v/', '/has/')
 function checkPiece(url) {
   if (!pieceChecks.has(url)) {
     pieceChecks.set(url, fetch(checkAddress(url), { cache: 'no-store' }).then((response) => {
-      if (response.ok) uncutPieces.add(url)
+      if (response.ok && !playedPieces.has(url)) uncutPieces.add(url)
     }, () => { pieceChecks.delete(url) }))
   }
   return pieceChecks.get(url)
@@ -464,29 +465,34 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     super(config)
     this.hlsConfig = config
   }
-  // A muted piece waits for its own check
+  // A muted piece always tries its original sound first, whatever its check said: only the download
+  // itself is sure (Twitch can delete it while you watch). Its answer corrects the bar.
   load(context, config, callbacks) {
     if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
     this.stopped = false
-    checkPiece(context.url).then(() => {
-      if (this.stopped) return
-      if (uncutPieces.has(context.url)) this.loadUncut(context, config, callbacks)
-      else super.load(context, config, callbacks)
-    })
+    this.loadUncut(context, config, callbacks)
   }
   loadUncut(context, config, callbacks) {
     const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
-    // Refused after all: muted, and shown so
+    const heard = (sound) => {
+      playedPieces.add(context.url)
+      pieceChecks.set(context.url, Promise.resolve()) // no check needed any more
+      if (sound === uncutPieces.has(context.url)) return
+      if (sound) uncutPieces.add(context.url)
+      else uncutPieces.delete(context.url)
+      drawMutedSoon()
+    }
+    // Refused: muted, and shown so
     const muted = () => {
       inner.destroy()
       this.inner = null
-      uncutPieces.delete(context.url)
-      drawMutedSoon()
+      heard(false)
       super.load(context, config, callbacks)
     }
     inner.load({ ...context, url: uncutAddress(context.url) }, config, {
       ...callbacks,
       onSuccess: (response, stats, _, details) => {
+        heard(true)
         Object.assign(this.stats, stats)
         callbacks.onSuccess(response, this.stats, context, details)
       },
