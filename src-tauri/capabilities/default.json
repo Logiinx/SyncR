@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
+  "description": "enables the default permissions, for SyncR's own page only (\"main\"): not for the other pages in its window (a game's trailer, trailer_player.rs)",
+  "webviews": [
     "main"
   ],
   "permissions": [
@@ -41,6 +41,10 @@
     "allow-video-player-watched",
     "allow-video-player-upcoming",
     "allow-close-video-player",
+    "allow-open-trailer-player",
+    "allow-place-trailer-player",
+    "allow-show-trailer-player",
+    "allow-close-trailer-player",
     "allow-video-extensions-list",
     "allow-video-extension-add",
     "allow-video-extension-remove",

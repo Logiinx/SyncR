@@ -75,7 +75,8 @@ fn query_value<'a>(uri: &'a tauri::http::Uri, name: &str) -> Option<&'a str> {
   uri.query()?.split('&').find_map(|pair| pair.split_once('=').filter(|(key, _)| *key == name)).map(|(_, value)| value)
 }
 
-pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: Option<String>) -> tauri::http::Response<Vec<u8>> {
+// from: the label of the page asking
+pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http::Uri, range: Option<String>) -> tauri::http::Response<Vec<u8>> {
   use tauri::http::Response;
   use tauri::Emitter;
   let answer = |status: u16, kind: &str, body: Vec<u8>| {
@@ -90,6 +91,18 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
   };
   let number = |name: &str| query_value(&uri, name)?.parse::<f64>().ok().filter(|value| value.is_finite());
   let path = uri.path();
+  // A game's trailer (trailer_player.rs) only hides the pointer and goes back: its position,
+  // subtitles, shape or ⏭ would land on the video window's video
+  if from == super::trailer_player::TRAILER {
+    #[cfg(windows)]
+    if path == "/hide-pointer" {
+      hide_pointer(&app, "main", super::trailer_player::TRAILER);
+    }
+    if path == "/trailer-back" {
+      super::trailer_player::back(&app);
+    }
+    return answer(204, "text/plain", Vec::new());
+  }
   match path {
     "/player.html" => return answer(200, "text/html", include_bytes!("../player/player.html").to_vec()),
     "/controls.js" => return answer(200, "text/javascript", include_bytes!("../player/controls.js").to_vec()),
@@ -159,7 +172,7 @@ pub async fn player_answer(app: tauri::AppHandle, uri: tauri::http::Uri, range: 
     // any site in the window: all it can do is hide the pointer over the video until the mouse moves.
     "/hide-pointer" => {
       #[cfg(windows)]
-      hide_pointer(&app);
+      hide_pointer(&app, VIDEO_WINDOW, VIDEO_SITE);
       return answer(204, "text/plain", Vec::new());
     }
     // Something the bar should say, or "finished": a live stream is over (player.js). Also open to
@@ -216,14 +229,14 @@ pub const VIDEO_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScre
 // the mouse brings it back by itself: the page sets its own pointer again. Done on the main thread,
 // whose input is shared with the video's page (a child window).
 #[cfg(windows)]
-fn hide_pointer(app: &tauri::AppHandle) {
+fn hide_pointer(app: &tauri::AppHandle, window: &str, page: &str) {
   use tauri::Manager;
   use windows_sys::Win32::{
     Foundation::POINT,
     UI::WindowsAndMessaging::{GetAncestor, GetCursorPos, SetCursor, WindowFromPoint, GA_ROOT},
   };
-  let Some(window) = app.get_window(VIDEO_WINDOW) else { return };
-  let Some(site) = window.get_webview(VIDEO_SITE) else { return };
+  let Some(window) = app.get_window(window) else { return };
+  let Some(site) = window.get_webview(page) else { return };
   let (Ok(hwnd), Ok(client), Ok(spot), Ok(size)) = (window.hwnd(), window.inner_position(), site.position(), site.size()) else {
     return;
   };

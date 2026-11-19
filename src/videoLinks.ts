@@ -29,8 +29,9 @@ export function isVideoLink(href: string) {
   return false
 }
 
-// The same key as useVideoEnabled (video.ts) remembers
-const playerHere = () => isTauri() && read('syncr.videoFeed', false)
+// SyncR's player can be used here: the desktop app, where the Video tab shows (the key
+// useVideoEnabled in video.ts remembers; reading it asks the Worker nothing)
+export const playerHere = () => isTauri() && read('syncr.videoFeed', false)
 
 // A click on it plays it in the player (then its right-click menu offers the browser)
 export const playsHere = (href: string) => playerHere() && isVideoLink(href)

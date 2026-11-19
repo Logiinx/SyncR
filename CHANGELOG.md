@@ -11,6 +11,9 @@ All notable changes to SyncR. Newest version first.
 - **Better:** paused Twitch chat shows Back to latest when new lines wait
 - **Small fixes:** chat staying paused after a long hover, "Link copied" when it failed
 
+**Games**
+- **Better:** game trailers play in SyncR's own player, full screen too (PC only)
+
 ## [0.92.0] - 2026-11-19
 
 **Video** (PC only)

@@ -10,6 +10,8 @@ import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
 import Spinner from './Spinner'
+import TrailerPlayer from './TrailerPlayer'
+import { playerHere } from './videoLinks'
 import { HoverTip } from './InfoTip'
 import { discountText, saleTable, useSaleGuess, type SaleGuess, type SalePiece } from './saleGuess'
 import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
@@ -382,7 +384,8 @@ export function TrailerButton(props: { igdbId: number; open: boolean; onToggle: 
 // PC: the trailer view (opened by TrailerButton, in place of the game window). A header bar
 // with the game's info (title; release, platforms, modes; developer, publisher) and the
 // buttons, then the player as big as the window allows, keeping its 16:9 shape. Back, Escape
-// or a click outside go back to the game window; ✕ closes both. The player loads only now.
+// or a click outside go back to the game window; ✕ closes both. The player loads only now:
+// SyncR's own where the Video tab shows (TrailerPlayer), else YouTube's.
 export function TrailerTheater(props: {
   igdbId: number
   title: string
@@ -392,6 +395,7 @@ export function TrailerTheater(props: {
   onClose: () => void
 }) {
   const extras = useGameExtras(props.igdbId)
+  const ownPlayer = playerHere() // our player where the Video tab shows (TrailerPlayer)
   const theaterRef = useRef<HTMLDivElement>(null)
   useEffect(() => theaterRef.current?.focus({ preventScroll: true }), []) // so Escape works
   const trailer = extras?.trailer
@@ -416,13 +420,17 @@ export function TrailerTheater(props: {
         </button>
         <CloseButton onClick={props.onClose} />
       </header>
-      <iframe
-        src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&rel=0`}
-        title={trailer.name}
-        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-        allowFullScreen
-        referrerPolicy="strict-origin-when-cross-origin"
-      />
+      {ownPlayer ? (
+        <TrailerPlayer youtubeId={trailer.id} onBack={props.onBack} />
+      ) : (
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&rel=0`}
+          title={trailer.name}
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      )}
     </Window>
   )
 }

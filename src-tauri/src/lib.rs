@@ -2,6 +2,7 @@ use tauri::Manager;
 
 mod link_shortcut;
 mod mouse_battery;
+mod trailer_player;
 mod video_extensions;
 mod video_window;
 
@@ -318,9 +319,10 @@ pub fn run() {
     // The own Twitch player's page and video
     .register_asynchronous_uri_scheme_protocol("syncr-video", |context, request, responder| {
       let app = context.app_handle().clone();
+      let from = context.webview_label().to_string();
       let uri = request.uri().clone();
       let range = request.headers().get("Range").and_then(|value| value.to_str().ok()).map(str::to_owned);
-      tauri::async_runtime::spawn(async move { responder.respond(video_window::player_answer(app, uri, range).await) });
+      tauri::async_runtime::spawn(async move { responder.respond(video_window::player_answer(app, from, uri, range).await) });
     })
     .plugin(tauri_plugin_process::init())
     // Opens links from notes in the normal web browser
@@ -343,6 +345,10 @@ pub fn run() {
       video_window::video_player_watched,
       video_window::video_player_upcoming,
       video_window::close_video_player,
+      trailer_player::open_trailer_player,
+      trailer_player::place_trailer_player,
+      trailer_player::show_trailer_player,
+      trailer_player::close_trailer_player,
       video_extensions::video_menu,
       video_extensions::video_extensions_list,
       video_extensions::video_extension_add,
@@ -437,6 +443,9 @@ pub fn run() {
     // When the main window closes for good (Quit), end the app, so an open reminder
     // pop-up can't keep it running invisibly
     .on_window_event(|window, event| {
+      if window.label() == "main" {
+        trailer_player::follow_window(window, event);
+      }
       if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
         window.app_handle().exit(0);
       }

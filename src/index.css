@@ -7933,7 +7933,8 @@ button.history-row.selected {
 }
 
 .trailer-panel iframe,
-.trailer-theater iframe {
+.trailer-theater iframe,
+.trailer-own {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -7942,6 +7943,15 @@ button.history-row.selected {
 
 .trailer-panel iframe {
   border-radius: 8px;
+}
+
+/* SyncR's own player lies over this box (TrailerPlayer.tsx): black until it comes, or a message */
+.trailer-own {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: var(--text-dim);
 }
 
 .trailer-panel-foot {

@@ -298,6 +298,14 @@ function playerAddress(video: PlayableVideo, way: Way) {
   return `video-stopped.html?data=${encodeURIComponent(JSON.stringify(data))}`
 }
 
+// A game's trailer in our player (TrailerPlayer.tsx): the same page, from the start, no ⏭, no
+// waiting screen, subtitles off (they're one click away)
+export function trailerAddress(youtubeId: string) {
+  const { quality, subtitleLanguage } = loadPlayerSettings()
+  const data = { ...controlsData(), next: null, startSkip: { off: true, followed: false, auto: false, looks: [] } }
+  return `video-forward.html?v=${encodeURIComponent(youtubeId)}&quality=${quality}&subtitles=0&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify(data))}`
+}
+
 const viaText = (way: Way) => (OTHER_SITES.includes(way) ? t('via {site}', { site: way }) : '')
 
 // The time in a pasted link (?t=), for that video's opening only: it wins over where you stopped

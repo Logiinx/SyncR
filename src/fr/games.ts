@@ -105,6 +105,7 @@ export const games = {
   'Trailer unavailable': 'Bande-annonce indisponible',
   'Back to the game': 'Retour au jeu',
   'Open on YouTube': 'Ouvrir sur YouTube',
+  "This trailer can't play here": 'Cette bande-annonce ne peut pas être lue ici',
 
   // Prices
   Free: 'Gratuit',

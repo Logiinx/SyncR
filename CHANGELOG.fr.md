@@ -11,6 +11,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** le chat Twitch en pause montre « Revenir aux derniers messages »
 - **Petites corrections :** chat resté en pause après un long survol, « Lien copié » en cas d’échec
 
+**Jeux**
+- **Amélioré :** les bandes-annonces se lisent dans le lecteur de SyncR, plein écran aussi (PC uniquement)
+
 ## [0.92.0] - 2026-11-19
 
 **Vidéo** (PC uniquement)
