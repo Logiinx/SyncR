@@ -31,7 +31,7 @@ export const MUSIC = 'music' // i18n-ok
 export const musicFolder = (): VideoFolder => ({ id: MUSIC, name: '', parentId: null, channel: null, deleted: false, updatedAt: 0 })
 
 // An on/off setting of this PC (Video settings window) that the Video tab follows live
-function localSwitch(key: string, start = false) {
+export function localSwitch(key: string, start = false) {
   let on = read(key, start)
   const listeners = new Set<() => void>()
   return {

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X } from 'lucide-react'
 import { useCardPieces, VIDEO_PIECES } from './videoCards'
@@ -9,6 +10,7 @@ import type { QueuedNote } from './queuedNote'
 import { usePopupCardSize, type VideoAlert } from './videoAlerts'
 import VideoLogo from './VideoLogo'
 import { videoClock } from './videoPositions'
+import { betterTitles, checkTitles, useDeArrow, withBetterTitle } from './videoTitles'
 
 // New videos of bell channels in the desktop pop-up (videoAlerts.ts), below the emails. The same
 // card as an email's, with a strip in the site's color, in one of two sizes (Video settings):
@@ -27,20 +29,26 @@ export type VideoAlertAction = 'video-play' | 'video-queue' | 'video-close' | 'v
 
 interface Shown {
   alert: VideoAlert
-  video: VideoRow
+  video: VideoRow & { originalTitle?: string }
   channel: string
 }
 
 // The cards' videos, read from the database (the alerts only hold ids); one that's gone isn't shown
+// (with DeArrow's better title, asked here too: a new video may have one already)
 export function useShownVideoAlerts(alerts: VideoAlert[]) {
-  return useLiveQuery(async () => {
-    const [videos, follows] = await Promise.all([db.videos.bulkGet(alerts.map((alert) => alert.id)), db.videoFollows.toArray()])
+  const deArrow = useDeArrow()
+  const shown = useLiveQuery(async () => {
+    const [videos, follows, better] = await Promise.all([db.videos.bulkGet(alerts.map((alert) => alert.id)), db.videoFollows.toArray(), betterTitles()])
     return alerts.flatMap((alert, i): Shown[] => {
       const video = videos[i]
       const follow = video && follows.find((other) => !other.deleted && other.platform === video.platform && other.channelId === video.channelId)
-      return video && follow ? [{ alert, video, channel: follow.name }] : []
+      return video && follow ? [{ alert, video: withBetterTitle(video, better), channel: follow.name }] : []
     })
-  }, [alerts])
+  }, [alerts, deArrow])
+  useEffect(() => {
+    if (shown?.length && deArrow) void checkTitles(shown.map(({ video }) => ({ ...video, title: video.originalTitle ?? video.title })))
+  }, [shown, deArrow])
+  return shown
 }
 
 function VideoCard({ shown: { alert, video, channel }, large, fading, onAction }: {

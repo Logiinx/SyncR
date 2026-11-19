@@ -393,6 +393,14 @@ export interface Playtime {
   checkedAt: number
 }
 
+// A YouTube video's better title from DeArrow (videoTitles.ts). Only on this device: a cache that
+// can be asked again. Kept apart from the video so the feed's own checks can't overwrite it.
+export interface VideoTitle {
+  id: string // the video's id ("youtube-…")
+  title?: string // none: DeArrow has nothing better than the original
+  checkedAt: number
+}
+
 // Which folder a video is in. Apart from its mark, so a move here and "opened" on another device
 // can't overwrite each other.
 export interface VideoPlace {
@@ -463,6 +471,7 @@ export const db = new Dexie(sealedDb ? 'syncr-local' : 'syncr') as Dexie & {
   syncListing: EntityTable<SyncListing, 'name'>
   unusedImages: EntityTable<UnusedImage, 'id'>
   playtimes: EntityTable<Playtime, 'id'>
+  videoTitles: EntityTable<VideoTitle, 'id'>
 }
 
 // The tables and their lookup fields, version by version. Also used by the move to the sealed
@@ -570,6 +579,10 @@ export function defineSchema(d: Dexie) {
 
   d.version(23).stores({
     playtimes: 'id',
+  })
+
+  d.version(24).stores({
+    videoTitles: 'id',
   })
 }
 

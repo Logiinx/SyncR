@@ -12,6 +12,7 @@ import { forgetPositions, resumePosition, savePosition } from './videoPositions'
 import { addVideoAlerts, removeVideoAlerts } from './videoAlerts'
 import { joinedAlone, leaveQueue, queueStarted, replaceInQueue } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
+import { betterTitles, checkTitles, useDeArrow, withBetterTitle } from './videoTitles'
 
 // The Video tab: a feed of new videos from followed YouTube and Twitch channels. For the owner's
 // own use for now: it only exists when their Worker says so (their password + YOUTUBE_KEY, see
@@ -613,6 +614,7 @@ export interface FeedVideo extends VideoRow {
   folderId: string | null // the folder it shows in; null = the main list
   watchedAt?: number // last marked as watched
   music: boolean // of a follow marked as music: in the Music list only
+  originalTitle?: string // YouTube's title, when DeArrow's better one is shown (videoTitles.ts)
 }
 
 // Older marks don't have watchedAt: their last change was the tick
@@ -732,8 +734,9 @@ export function byChannel(videos: FeedVideo[]) {
 
 // What the Video tab shows, newest first. undefined while loading.
 export function useVideoFeed() {
-  return useLiveQuery(async () => {
-    const [allFollows, rows, added, marks, allFolders, places, allPlaylists, playlistLists] = await Promise.all([
+  const deArrow = useDeArrow()
+  const feed = useLiveQuery(async () => {
+    const [allFollows, rows, added, marks, allFolders, places, allPlaylists, playlistLists, better] = await Promise.all([
       db.videoFollows.toArray(),
       db.videos.toArray(),
       db.addedVideos.toArray(),
@@ -742,6 +745,7 @@ export function useVideoFeed() {
       db.videoPlaces.toArray(),
       db.videoPlaylists.toArray(),
       db.playlistVideos.toArray(),
+      betterTitles(),
     ])
     const follows = allFollows.filter((follow) => !follow.deleted).sort((a, b) => a.name.localeCompare(b.name))
     const followOf = new Map(follows.map((follow) => [channelKey(follow), follow]))
@@ -761,14 +765,13 @@ export function useVideoFeed() {
       ...rows.flatMap((video) => {
         const follow = followOf.get(channelKey(video))
         if (!follow || addedIds.has(video.id) || !videoKept(follow, video)) return []
-        return [{ ...video, followId: follow.id, channel: follow.name, channelIcon: follow.icon, sortAt: video.published }]
+        return [{ ...withBetterTitle(video, better), followId: follow.id, channel: follow.name, channelIcon: follow.icon, sortAt: video.published }]
       }),
       // By the day it was added, or an old video would sink to the bottom unseen
       ...added.map(({ videoId, updatedAt, syncedRev: _r, syncedUpdatedAt: _u, ...video }) => {
         const follow = followOf.get(channelKey(video))
         return {
-          ...video,
-          id: videoId,
+          ...withBetterTitle({ ...video, id: videoId }, better),
           followId: addedFollowId(follow, video.platform, video.channelId),
           channel: follow?.name ?? video.channel,
           channelIcon: follow ? follow.icon : video.channelIcon,
@@ -816,10 +819,18 @@ export function useVideoFeed() {
         playlist,
         videos: playOrder(listOf.get(playlist.id) ?? [], playlist).map(({ later: _later, ...video }): FeedVideo => {
           const mark = markOf.get(videoMarkId(video.id))
-          return { ...video, gone: false, followId: playlist.id, channelIcon: null, music: false, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
+          return { ...withBetterTitle(video, better), gone: false, followId: playlist.id, channelIcon: null, music: false, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
         }),
       })),
       newCount: [...toWatch, ...music].filter((video) => !video.opened && !video.gone).length + newInPlaylists.size,
     }
-  }, [])
+  }, [deArrow])
+  // DeArrow's titles: what's left to watch first, Watched last. Each answer saved redraws the list,
+  // which runs this again: only what's still missing or old is asked.
+  useEffect(() => {
+    if (!feed || !deArrow) return
+    const original = (video: FeedVideo) => ({ id: video.id, title: video.originalTitle ?? video.title, published: video.published })
+    void checkTitles([...feed.toWatch, ...feed.music, ...feed.rewatch, ...feed.playlists.flatMap((list) => list.videos), ...feed.watched].map(original))
+  }, [feed, deArrow])
+  return feed
 }

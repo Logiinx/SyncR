@@ -8731,6 +8731,12 @@ button.history-row.selected {
   font-size: 1.1em;
 }
 
+/* YouTube's own title under DeArrow's (videoTitles.ts) */
+.video-card-original {
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+}
+
 .video-card-line {
   display: flex;
   align-items: center;

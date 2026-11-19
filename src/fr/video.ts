@@ -18,6 +18,8 @@ export const video = {
   'Move to folder': 'Déplacer vers un dossier',
   Music: 'Musique',
   'Bigger pictures': 'Images plus grandes',
+  'Clearer YouTube titles (DeArrow)': 'Titres YouTube plus clairs (DeArrow)',
+  'Less clickbaity titles chosen by DeArrow’s users. The hover card shows YouTube’s own title under it.': 'Des titres moins racoleurs, choisis par les utilisateurs de DeArrow. La carte au survol montre le titre de YouTube en dessous.',
   'Easier to see, fewer videos fit on the screen': 'Plus faciles à voir, moins de vidéos tiennent à l’écran',
   'Show “Music” next to its icon': 'Afficher « Musique » à côté de son icône',
   'Off: the music note alone, its name when hovered': 'Désactivé : la note de musique seule, son nom au survol',

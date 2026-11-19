@@ -10,6 +10,7 @@ import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUA
 import { t } from './i18n'
 import { setAutoRewatch, setBigPictures, setMusicName, setRewatchSection, useAutoRewatch, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
 import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
+import { setDeArrow, useDeArrow } from './videoTitles'
 import { setPopupCardSize, usePopupCardSize, type PopupCardSize } from './videoAlerts'
 
 // As video_extensions.rs sends them
@@ -39,6 +40,7 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
   const rewatchSection = useRewatchSection()
   const musicName = useMusicName()
   const bigPictures = useBigPictures()
+  const deArrow = useDeArrow()
   const autoRewatch = useAutoRewatch()
   const shows = useCardPieces()
   const popupCards = usePopupCardSize()
@@ -115,6 +117,12 @@ export default function VideoSettings({ onClose }: { onClose: () => void }) {
             </SettingRow>
             <SettingRow label={t('Show “Music” next to its icon')} title={t('Off: the music note alone, its name when hovered')}>
               <input type="checkbox" checked={musicName} onChange={(e) => setMusicName(e.target.checked)} />
+            </SettingRow>
+            <SettingRow
+              label={t('Clearer YouTube titles (DeArrow)')}
+              title={t('Less clickbaity titles chosen by DeArrow’s users. The hover card shows YouTube’s own title under it.')}
+            >
+              <input type="checkbox" checked={deArrow} onChange={(e) => setDeArrow(e.target.checked)} />
             </SettingRow>
           </SettingsCard>
           <SettingsCard icon={SquareMousePointer} title={t('Hover cards')}>

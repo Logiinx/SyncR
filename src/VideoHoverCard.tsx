@@ -8,7 +8,7 @@ import { videoClock, type VideoPosition } from './videoPositions'
 import { useVideoStats } from './videoStats'
 
 // What a video's picture and card need (a list's video, or a new one in the pop-up)
-export type CardVideo = Pick<FeedVideo, 'id' | 'platform' | 'title' | 'channel' | 'thumbnail' | 'published' | 'duration' | 'gone' | 'live'>
+export type CardVideo = Pick<FeedVideo, 'id' | 'platform' | 'title' | 'channel' | 'thumbnail' | 'published' | 'duration' | 'gone' | 'live' | 'originalTitle'>
 
 // A video's picture with its length, and how far it was watched when it was stopped partway (on
 // the row: the time shows it on hover; on its card: always)
@@ -78,6 +78,8 @@ export function VideoCardContent({ video, opened, from, shows }: { video: CardVi
       {shows('videoDetails') && (
         <>
           <span className="video-card-title">{video.title}</span>
+          {/* DeArrow's title above (videoTitles.ts): YouTube's own under it, dim */}
+          {video.originalTitle && <span className="video-card-original">{video.originalTitle}</span>}
           <span className="video-card-line">
             <VideoLogo platform={video.platform} />
             <span className="card-author">{video.channel}</span>
