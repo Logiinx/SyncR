@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Petites corrections :** scintillement des réglages Matériel, température processeur après arrêt et relance (PC uniquement)
+
 ## [0.96.0] - 2026-11-20
 
 **Application**
