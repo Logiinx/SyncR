@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Twitch chat over the video can be dragged anywhere and resized
 - **New:** Twitch chat over the video in the window too, frosted like in full screen
 - **New:** Twitch chat in full screen can sit in the bottom corners too
+- **New:** Twitch chat timing per channel, to match the picture (chat menu)
 - **Better:** chat spot picked by clicking a small screen in the chat menu
 - **Better:** "Remember as waiting screen" grayed with why on fresh YouTube lives
 - **Fixed:** NVIDIA video upscaling turning off under the full-screen chat

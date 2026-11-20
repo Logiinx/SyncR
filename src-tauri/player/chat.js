@@ -357,6 +357,47 @@ let failures = 0 // failed answers in a row
 let askTurn = 0 // a jump makes earlier answers useless
 let jumpTimer
 
+// Timing: the chat moved earlier (+) or later (−) by the user, per channel. Twitch stamps a message
+// when it was sent, so viewers watching live a bit late, and above all a streamer's own stream
+// delay, put the chat behind the picture (DECISIONS.md "Twitch chat timing").
+const SHIFT_MAX = 900 // s: 15 min, Twitch's longest stream delay
+let chatShift = 0
+const chatNow = () => Math.max(0, video.currentTime + chatShift)
+function readShifts() {
+  try {
+    return JSON.parse(localStorage.getItem('player.chatShift')) || {}
+  } catch {
+    return {}
+  }
+}
+const shiftTag = document.createElement('div')
+shiftTag.id = 'chat-shift'
+shiftTag.hidden = true
+chatPanel.append(shiftTag)
+function showShift() {
+  shiftTag.hidden = !chatShift
+  shiftTag.textContent = (chatShift > 0 ? labels.chatEarlier : labels.chatLater).replace('{n}', Math.abs(chatShift))
+}
+function setChatShift(seconds) {
+  chatShift = Math.max(-SHIFT_MAX, Math.min(SHIFT_MAX, seconds))
+  if (channelId) {
+    const shifts = readShifts()
+    if (chatShift) shifts[channelId] = chatShift
+    else delete shifts[channelId]
+    localStorage.setItem('player.chatShift', JSON.stringify(shifts))
+  }
+  showShift()
+  chatJump()
+}
+// The channel is known once Twitch answers: a first question asked before then is asked again
+badgesReady.then(() => {
+  const saved = Number(readShifts()[channelId]) || 0
+  if (!channelId || !saved) return
+  chatShift = Math.max(-SHIFT_MAX, Math.min(SHIFT_MAX, saved))
+  showShift()
+  chatJump()
+})
+
 function readMessage(edge) {
   const node = edge.node
   const login = node.commenter?.login || ''
@@ -385,7 +426,7 @@ const haveMoment = (moment) => knownTo >= 0 && moment >= knownFrom && (moment <=
 
 // Everything up to now, the last FILL lines of it
 function drawFromKnown() {
-  const now = video.currentTime
+  const now = chatNow()
   shown = known.findIndex((message) => message.at > now)
   if (shown < 0) shown = known.length
   chatList.textContent = ''
@@ -398,7 +439,7 @@ function drawFromKnown() {
 }
 
 function keepNewLines() {
-  const now = video.currentTime
+  const now = chatNow()
   const from = shown
   while (shown < known.length && known[shown].at <= now) shown++
   addLines(known.slice(from, shown))
@@ -432,7 +473,7 @@ async function askAt(position, fresh) {
   const comments = answer.data?.video?.comments
   const edges = comments?.edges || []
   // New ones from where it got to, and ones an earlier answer left out that are still ahead
-  const now = video.currentTime
+  const now = chatNow()
   const messages = edges.map(readMessage).filter((message) => !knownIds.has(message.id) && (message.at >= knownTo || message.at > now))
   messages.sort((a, b) => a.at - b.at)
   for (const message of messages) knownIds.add(message.id)
@@ -454,14 +495,14 @@ async function askAt(position, fresh) {
 function askFresh() {
   forgetChat()
   askTurn++
-  askAt(Math.floor(video.currentTime), true)
+  askAt(Math.floor(chatNow()), true)
 }
 
 const chatShowing = () => !chatPanel.hidden
 
 function followVideo() {
   if (!chatShowing() || !video.duration) return
-  const now = video.currentTime
+  const now = chatNow()
   if (haveMoment(now)) keepNewLines()
   if (asking || Date.now() < askAfter) return
   if (knownTo < 0 || now < knownFrom || now > knownTo + ASK_AHEAD && !chatEnded) return askFresh()
@@ -481,7 +522,7 @@ function chatJump() {
     jumpTimer = null
     asking = false
   }
-  if (haveMoment(video.currentTime)) return drawFromKnown()
+  if (haveMoment(chatNow())) return drawFromKnown()
   askTurn++
   asking = true // until the question goes out
   chatList.textContent = ''
@@ -833,6 +874,7 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     localStorage.setItem('player.chatTimes', showTimes ? 1 : 0)
     redrawChat()
   })
+  drawTiming(title, menu)
   title(labels.chatWindowTitle)
   choices([{ value: false, text: labels.chatBeside }, { value: true, text: labels.chatOver }], chatOver, (on) => {
     chatOver = on
@@ -860,6 +902,35 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     localStorage.setItem('player.chatSpot', spot)
     placeChat()
   })
+}
+
+// Timing: −5 −1 value +1 +5 (the look of YouTube's subtitle size, controls.js), changed in place
+function drawTiming(title, menu) {
+  title(labels.chatTiming)
+  const line = document.createElement('div')
+  line.className = 'menu-size chat-steps'
+  const value = document.createElement('span')
+  value.className = 'menu-size-value'
+  const draw = () => {
+    const sign = chatShift > 0 ? '+' : chatShift < 0 ? '−' : '' // i18n-ok
+    value.textContent = sign + labels.chatSeconds.replace('{n}', Math.abs(chatShift))
+    buttons.forEach((button, index) => { button.disabled = index < 2 ? chatShift <= -SHIFT_MAX : chatShift >= SHIFT_MAX })
+  }
+  const buttons = [-5, -1, 1, 5].map((by) => {
+    const button = document.createElement('button')
+    button.textContent = by < 0 ? `−${-by}` : `+${by}` // i18n-ok
+    button.onclick = () => {
+      setChatShift(chatShift + by)
+      draw()
+    }
+    return button
+  })
+  draw()
+  line.append(buttons[0], buttons[1], value, buttons[2], buttons[3])
+  const hint = document.createElement('div')
+  hint.className = 'menu-note'
+  hint.textContent = labels.chatTimingHint
+  menu.append(line, hint)
 }
 
 // Small screens to click where the chat goes: a strip on each side (full height) or one of four

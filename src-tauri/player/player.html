@@ -131,6 +131,13 @@
   #chat.side.left #chat-edge { left: auto; right: -4px; }
   #chat.over #chat-list { scrollbar-width: none; }
   #chat-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 20px; text-align: center; color: var(--text-dim, #9a9a9a); pointer-events: none; }
+  /* Timing in the menu: the buttons centered, no name before them (its title is above) */
+  .menu-size.chat-steps { justify-content: center; padding: 0 12px; }
+  .menu-size.chat-steps button { font-size: 13px; font-variant-numeric: tabular-nums; }
+  /* A timing set: said at the top right while the mouse is over the chat (below the grip over the video) */
+  #chat-shift { position: absolute; z-index: 2; top: 6px; right: 8px; height: 22px; padding: 0 8px; display: flex; align-items: center; border-radius: 6px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text-dim, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; }
+  #chat.over #chat-shift { top: 18px; }
+  #chat:hover #chat-shift { opacity: 1; }
   #chat-latest { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); height: 28px; padding: 0 12px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; font-size: 12px; white-space: nowrap; }
 
 </style>
