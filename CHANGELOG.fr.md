@@ -5,7 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
-- **Petites corrections :** widget Matériel clignotant après un choix du menu, sauts de charge CPU (PC uniquement)
+- **Petites corrections :** Matériel : widget clignotant, sauts de charge CPU, lignes de mémoire GPU masquées (PC uniquement)
 
 ## [0.97.0] - 2026-11-20
 

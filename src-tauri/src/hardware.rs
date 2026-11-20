@@ -50,6 +50,9 @@ pub struct Readings {
   ram_used: Option<f64>,    // bytes
   ram_total: Option<f64>,   // bytes
   at: u64,                  // when it was read, ms since 1970
+  // The sensors this reading was asked for: a reading under an older config can still arrive after
+  // the page asked for more, and must not count as "this PC can't give it"
+  sensors: Vec<String>,
 }
 
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
@@ -107,7 +110,7 @@ fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
     let current = || RUN.load(Ordering::SeqCst) == id;
     let Some(config) = lock(&CONFIG).clone().filter(|_| current()) else { return };
     let wants = |name: &str| config.sensors.iter().any(|sensor| sensor == name);
-    let mut readings = Readings { cpu_name: cpu_name.clone(), at: now_ms(), ..Default::default() };
+    let mut readings = Readings { cpu_name: cpu_name.clone(), at: now_ms(), sensors: config.sensors.clone(), ..Default::default() };
 
     let gpu = ["gpuTemp", "gpuMemTemp", "gpuLoad", "gpuClock", "gpuMemClock", "gpuFan"].iter().any(|name| wants(name));
     if gpu {

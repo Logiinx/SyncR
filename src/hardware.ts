@@ -92,7 +92,6 @@ let windowOpen = false // the settings window shows every sensor, so all are rea
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
 let preview: Partial<HardwareSettings> | null = null // a look, theme, frame, size or background under the mouse in the widget's menu
 const heat: Partial<Record<HotSensor, number>> = {} // each temperature's color now: 0 none, 1 orange, 2 red
-let asked: string[] = [] // the sensors Rust was last asked for
 // Whether this GPU has a memory temperature (null: not asked yet since SyncR started). Once seen it
 // stays, so one failed reading doesn't hide its rows.
 let memTemp: boolean | null = null
@@ -135,7 +134,6 @@ function send() {
   const key = JSON.stringify(config)
   if (key === sent) return
   sent = key
-  asked = sensors
   invoke('hardware_config', { config }).catch((error) => {
     sent = '' // sent again next time
     console.error(error)
@@ -149,7 +147,8 @@ export function startHardware() {
   void listen<HardwareReadings>('hardware', (event) => {
     last = event.payload
     if (last.gpuMemTemp !== null) memTemp = true
-    else if (memTemp === null && asked.includes('gpuMemTemp')) memTemp = false
+    // Only a reading that was asked for it says the GPU has none (one under an older config can come late)
+    else if (memTemp === null && last.sensors.includes('gpuMemTemp')) memTemp = false
     updateHeat(last)
     sendWidget(last)
   })
@@ -240,6 +239,7 @@ export interface HardwareReadings {
   ramUsed: number | null
   ramTotal: number | null
   at: number
+  sensors: string[] // what this reading was asked for
 }
 
 // The latest readings, for the settings window, which asks for every sensor while it's open
