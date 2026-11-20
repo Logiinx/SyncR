@@ -228,7 +228,8 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
 const HEAT_CLASS = ['', ' warm', ' hot']
 
 // A temperature's two limits (orange, red), in the unit chosen; saved in °C when the field is left
-// or Enter is pressed (saving each key would flash the widget red while typing "85")
+// or Enter is pressed (saving each key would flash the widget red while typing "85"). Orange must
+// stay under red: a limit that would cross the other one isn't saved.
 function LimitsRow({ sensor, label, settings }: { sensor: HotSensor; label: string; settings: HardwareSettingsType }) {
   const limits = settings.limits[sensor]
   const shown = (celsius: number) => String(Math.round(settings.fahrenheit ? (celsius * 9) / 5 + 32 : celsius))
@@ -244,7 +245,9 @@ function LimitsRow({ sensor, label, settings }: { sensor: HotSensor; label: stri
         const celsius = settings.fahrenheit ? ((n - 32) * 5) / 9 : n
         const next: [number, number] = [...limits]
         next[index] = Math.round(celsius * 10) / 10
+        if (next[0] >= next[1]) return false
         saveHardware({ limits: { ...settings.limits, [sensor]: next } })
+        return true
       }}
     />
   )
@@ -256,19 +259,20 @@ function LimitsRow({ sensor, label, settings }: { sensor: HotSensor; label: stri
   )
 }
 
-function LimitField(props: { saved: string; className: string; label: string; unit: string; disabled: boolean; onSave: (n: number) => void }) {
+function LimitField(props: { saved: string; className: string; label: string; unit: string; disabled: boolean; onSave: (n: number) => boolean }) {
   const [text, setText] = useState(props.saved)
   const [before, setBefore] = useState(props.saved)
   if (before !== props.saved) {
     setBefore(props.saved)
     setText(props.saved)
   }
-  // Only whole degrees from 0 to 250 (any unit); anything else goes back to the saved limit
+  // Only whole degrees from 0 to 250 (any unit), that onSave accepts; anything else goes back to
+  // the saved limit
   const save = () => {
     const n = Number(text.trim())
-    if (text.trim() !== '' && Number.isInteger(n) && n >= 0 && n <= 250) {
-      if (String(n) !== props.saved) props.onSave(n)
-    } else setText(props.saved)
+    const ok = text.trim() !== '' && Number.isInteger(n) && n >= 0 && n <= 250
+    if (ok && String(n) !== props.saved && props.onSave(n)) return
+    setText(props.saved)
   }
   return (
     <span className={`settings-limit ${props.className}`} title={props.label}>

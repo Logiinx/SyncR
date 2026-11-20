@@ -7,7 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Application**
 - **Corrigé :** température du CPU parfois absente jusqu'à la prochaine connexion (PC uniquement)
 - **Corrigé :** menu du widget Matériel qui parfois ne s'ouvrait plus (PC uniquement)
-- **Petites corrections :** Matériel : widget clignotant, sauts de charge CPU, lignes de mémoire GPU masquées (PC uniquement)
+- **Petites corrections :** Matériel : widget clignotant, sauts de charge CPU, lignes mémoire GPU, ordre des limites (PC uniquement)
 
 ## [0.97.0] - 2026-11-20
 

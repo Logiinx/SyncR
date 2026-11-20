@@ -7,7 +7,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - **Fixed:** CPU temperature sometimes gone until the next sign-in (PC only)
 - **Fixed:** Hardware widget's menu sometimes no longer opening (PC only)
-- **Small fixes:** Hardware: widget flash, CPU load jumps, GPU memory rows hiding (PC only)
+- **Small fixes:** Hardware: widget flash, CPU load jumps, GPU memory rows, limits order (PC only)
 
 ## [0.97.0] - 2026-11-20
 
