@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.97.0] - 2026-11-20
+
 **Application**
 - **Nouveau :** apparences du widget Matériel : Lignes avec barres, Tuiles, Une ligne (PC uniquement)
 - **Amélioré :** l'assistant Matériel s'affiche « SyncR Hardware » avec l'icône de SyncR dans le Gestionnaire des tâches (PC uniquement)
