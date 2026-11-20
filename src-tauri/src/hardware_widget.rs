@@ -88,14 +88,15 @@ fn colors(theme: &str, frame: &str) -> Colors {
   let blue = theme == "blue";
   let frame = match frame {
     "none" => None,
-    "gray" if blue => Some(0x4c6990), // white at 15 % over the blue
+    "gray" if blue => Some(0x40536e), // white at 15 % over the blue
     "gray" => Some(0x2a2a2a),         // --border
     _ if blue => Some(0x7aa7e0),      // --link
     _ => Some(0x2d4f7c),              // --accent
   };
   if blue {
-    // --accent, white text, labels white at 70 %, white icons
-    Colors { bg: 0x2d4f7c, text: 0xffffff, dim: 0xc0cad8, icon: "#ffffff", frame }
+    // A deep SyncR blue (user's pick of 6 shades: --accent was too bright), white text, labels
+    // white at 70 %, white icons
+    Colors { bg: 0x1e3554, text: 0xffffff, dim: 0xbcc2cc, icon: "#ffffff", frame }
   } else {
     // --bg, --text, --text-dim, --link (the settings cards' icons)
     Colors { bg: 0x161616, text: 0xe4e4e4, dim: 0x808080, icon: "#7aa7e0", frame }

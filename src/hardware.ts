@@ -21,7 +21,7 @@ export interface HardwareSettings {
   onTop: boolean // above other windows (else on the desktop, under them)
   locked: boolean // can't be dragged
   fahrenheit: boolean // temperatures in °F (else °C)
-  theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or SyncR's blue (--accent) with white text
+  theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or a deep SyncR blue with white text
   frame: 'none' | 'gray' | 'blue' // the line around its box
 }
 

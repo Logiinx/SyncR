@@ -30,9 +30,9 @@
     --w-bg: var(--bg); --w-text: var(--text); --w-dim: var(--text-dim); --w-icon: var(--link);
     --w-bar: var(--text-blue); --w-track: var(--hover); --w-frame: #2d4f7c;
   }
-  body.blue { --w-bg: #2d4f7c; --w-text: #ffffff; --w-dim: #c0cad8; --w-icon: #ffffff; --w-bar: #ffffff; --w-track: rgb(255 255 255 / 18%); --w-frame: var(--link); }
+  body.blue { --w-bg: #1e3554; --w-text: #ffffff; --w-dim: #bcc2cc; --w-icon: #ffffff; --w-bar: #ffffff; --w-track: rgb(255 255 255 / 18%); --w-frame: var(--link); }
   body.frame-grey { --w-frame: var(--border); }
-  body.blue.frame-grey { --w-frame: #4c6990; }
+  body.blue.frame-grey { --w-frame: #40536e; }
   body.frame-none { --w-frame: transparent; }
   body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font: 14px 'SyncR UI', sans-serif; }
   h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
@@ -41,6 +41,16 @@
   .walls .label { color: var(--text-dim); width: 80px; }
   .walls button { font: inherit; color: var(--text-dim); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .walls button.on { color: var(--text); background: var(--hover); }
+  /* SyncR blue: shades to compare (look A each), set by the script from SHADES */
+  .shades { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .shade .desk { padding: 16px; }
+  .shade .box { background: var(--s-bg); border-color: var(--s-frame-blue); }
+  body.frame-grey .shade .box { border-color: var(--s-frame-gray); }
+  body.frame-none .shade .box { border-color: transparent; }
+  .shade .w { color: #ffffff; }
+  .shade .w .dim { color: var(--s-dim); }
+  .shade .icon { color: #ffffff; }
+  h3 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
   .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
   .look { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
   .look h2 { font-size: 14px; font-weight: 600; margin: 0; padding: 10px 12px 2px; }
@@ -118,6 +128,10 @@
   <button data-frame="grey">Grey</button>
   <button data-frame="blue" class="on">Blue</button>
 </div>
+
+<h3>SyncR blue: shades</h3>
+<p class="intro">Look A in each blue, white text and icons, labels white at 70 %. The Frame buttons above apply here too.</p>
+<div class="shades" id="shades"></div>
 
 <div class="looks">
   <section class="look">
@@ -212,6 +226,27 @@
   for (const spot of document.querySelectorAll('[data-icon]')) {
     spot.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SHAPES[spot.dataset.icon]}</svg>`
   }
+  // The shades: background, and its name
+  const SHADES = [
+    ['#2d4f7c', '1 · Today (--accent)'],
+    ['#284670', '2'],
+    ['#233d62', '3'],
+    ['#1e3554', '4 · Picked (2026-11-20)'],
+    ['#1a2d47', '5'],
+    ['#1f2b3b', '6 · Grayish blue'],
+  ]
+  // White at a strength over the background, as one solid color (what the widget draws)
+  const over = (hex, white) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - white) + 255 * white).toString(16).padStart(2, '0')).join('')
+  const lookA = document.querySelector('.look .w.box.a')
+  for (const [bg, name] of SHADES) {
+    const card = document.createElement('section')
+    card.className = 'look shade'
+    card.style.cssText = `--s-bg: ${bg}; --s-dim: ${over(bg, 0.7)}; --s-frame-gray: ${over(bg, 0.15)}; --s-frame-blue: #7aa7e0`
+    card.innerHTML = `<h2>${name}</h2><p>${bg}</p><div class="desk"></div>`
+    card.querySelector('.desk').append(lookA.cloneNode(true))
+    document.getElementById('shades').append(card)
+  }
+
   // Wallpaper, theme and frame: one button on in each row, the body's classes follow
   const picked = { wall: 'dark', theme: '', frame: 'blue' }
   for (const kind of Object.keys(picked)) {
