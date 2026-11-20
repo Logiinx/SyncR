@@ -23,6 +23,8 @@ export interface HardwareSettings {
   fahrenheit: boolean // temperatures in °F (else °C)
   theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or a deep SyncR blue with white text
   frame: 'none' | 'gray' | 'blue' // the line around its box
+  size: number // its size in %, on top of Windows' scaling of its monitor (SIZES)
+  background: number // how solid its box is, in % (BACKGROUNDS): 0 = no box, only the text and frame
 }
 
 const KEY = 'syncr.hardware'
@@ -36,8 +38,12 @@ const DEFAULTS: HardwareSettings = {
   fahrenheit: false,
   theme: 'dark',
   frame: 'blue',
+  size: 100,
+  background: 100,
 }
 export const SPEEDS = [500, 1000, 2000, 5000]
+export const SIZES = [80, 90, 100, 110, 125, 150]
+export const BACKGROUNDS = [100, 75, 50, 25, 0]
 // The widget's themes and frame lines, with their names (the menu and the settings window)
 export const THEMES: [HardwareSettings['theme'], () => string][] = [
   ['dark', () => t('Dark')],
@@ -53,7 +59,7 @@ let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
 let windowOpen = false // the settings window shows every sensor, so all are read while it's open
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
-let preview: Partial<HardwareSettings> | null = null // a theme or frame under the mouse in the widget's menu
+let preview: Partial<HardwareSettings> | null = null // a theme, frame, size or background under the mouse in the widget's menu
 
 export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
@@ -104,11 +110,23 @@ export function startHardware() {
     if (payload.change) saveHardware(payload.change)
     if (payload.hide) toggleHardware(false)
   })
+  // Ctrl + mouse wheel over the widget: one size up or down per notch (Rust ignores it when locked)
+  void listen<number>('hardware-widget-zoom', ({ payload: step }) => {
+    const size = nextSize(current.size, step)
+    if (size !== current.size) saveHardware({ size })
+  })
   void listen<[number, number]>('hardware-widget-moved', (event) => {
     current = { ...current, place: event.payload }
     write(KEY, current)
   })
   if (current.on) send()
+}
+
+// One size up (step > 0) or down from this one, staying inside the list (a size not in it goes to
+// its neighbour that way)
+export function nextSize(size: number, step: number) {
+  if (step > 0) return SIZES.find((s) => s > size) ?? SIZES[SIZES.length - 1]
+  return SIZES.findLast((s) => s < size) ?? SIZES[0]
 }
 
 export interface MenuChoice {
@@ -293,7 +311,7 @@ function sendWidget(r: HardwareReadings | null) {
           return value === null ? [] : [[sensorLabel(sensor, true), value]]
         }),
       })).filter((group) => group.rows.length > 0)
-  const { place, onTop, locked, theme, frame } = { ...current, ...preview }
-  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame } : null
+  const { place, onTop, locked, theme, frame, size, background } = { ...current, ...preview }
+  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame, size, background } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

@@ -6,7 +6,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Nouveau :** module Matériel dans Paramètres → Modules : températures processeur et carte graphique, charges et plus (PC uniquement)
-- **Nouveau :** clic droit sur le widget Matériel : premier plan, verrouillage, °F, thème bleu SyncR (PC uniquement)
+- **Nouveau :** clic droit sur le widget Matériel : taille, transparence, thème et plus (PC uniquement)
+- **Nouveau :** Ctrl + molette sur le widget Matériel change sa taille (PC uniquement)
 - **Amélioré :** les Paramètres tiennent sans défiler sur un écran 1080p, même marge en haut et en bas
 
 **Vidéo** (PC uniquement)

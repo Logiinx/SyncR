@@ -48,10 +48,11 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
   GetParent, GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
   TranslateMessage, UpdateLayeredWindow, HTCAPTION, HTCLIENT, HWND_TOP, HWND_TOPMOST, IDC_ARROW, MA_NOACTIVATE, MSG,
   SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY,
-  WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE, WM_NCHITTEST, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_RBUTTONDOWN,
+  WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE, WM_MOUSEWHEEL, WM_NCHITTEST, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_RBUTTONDOWN,
   WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
-  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP, WHEEL_DELTA,
 };
+use windows_sys::Win32::System::SystemServices::MK_CONTROL;
 
 const WM_REFRESH: u32 = WM_APP + 1;
 const CHECK_TIMER: usize = 1;
@@ -78,14 +79,17 @@ const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
 // mockups in design/hardware-looks.html
 struct Colors {
   bg: u32,
+  bg_alpha: f32, // how solid the box is (the see-through background); text, icons and frame stay solid
   text: u32,
   dim: u32, // the labels
   icon: &'static str,
   frame: Option<u32>,
 }
 
-fn colors(theme: &str, frame: &str) -> Colors {
+fn colors(theme: &str, frame: &str, background: u32) -> Colors {
   let blue = theme == "blue";
+  // Never quite 0: Windows lets clicks through fully clear pixels, and the box must stay draggable
+  let bg_alpha = (background.min(100) as f32 / 100.0).max(1.0 / 255.0);
   let frame = match frame {
     "none" => None,
     "gray" if blue => Some(0x40536e), // white at 15 % over the blue
@@ -96,10 +100,10 @@ fn colors(theme: &str, frame: &str) -> Colors {
   if blue {
     // A deep SyncR blue (user's pick of 6 shades: --accent was too bright), white text, labels
     // white at 70 %, white icons
-    Colors { bg: 0x1e3554, text: 0xffffff, dim: 0xbcc2cc, icon: "#ffffff", frame }
+    Colors { bg: 0x1e3554, bg_alpha, text: 0xffffff, dim: 0xbcc2cc, icon: "#ffffff", frame }
   } else {
     // --bg, --text, --text-dim, --link (the settings cards' icons)
-    Colors { bg: 0x161616, text: 0xe4e4e4, dim: 0x808080, icon: "#7aa7e0", frame }
+    Colors { bg: 0x161616, bg_alpha, text: 0xe4e4e4, dim: 0x808080, icon: "#7aa7e0", frame }
   }
 }
 
@@ -152,6 +156,14 @@ pub struct Content {
   theme: String, // "dark" (or anything else) · "blue"
   #[serde(default)]
   frame: String, // "none" · "gray" · "blue" (or anything else)
+  #[serde(default = "full")]
+  size: u32, // %, on top of Windows' scaling of its monitor
+  #[serde(default = "full")]
+  background: u32, // how solid the box is, in %
+}
+
+fn full() -> u32 {
+  100
 }
 
 static CONTENT: Mutex<Option<Content>> = Mutex::new(None);
@@ -194,8 +206,8 @@ fn stop() {
 // What's on screen now, so an unchanged reading isn't drawn again
 struct Drawn {
   groups: Vec<Group>,
-  style: (String, String), // theme, frame
-  dpi: u32,
+  style: (String, String, u32), // theme, frame, background
+  scale: f32,
   width: i32,
   height: i32,
 }
@@ -319,6 +331,14 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
     // Anywhere on it counts as its title bar: dragging it moves it (Windows does the moving).
     // Locked: a plain window part, which doesn't move
     WM_NCHITTEST => (if LOCKED.load(Ordering::SeqCst) { HTCLIENT } else { HTCAPTION }) as LRESULT,
+    // Ctrl + mouse wheel: one size up or down per notch, chosen by the page (hardware.ts), which
+    // saves it. Never passed on: Ctrl + wheel on the desktop would resize its icons.
+    WM_MOUSEWHEEL => {
+      if (wparam & MK_CONTROL as usize) != 0 && !LOCKED.load(Ordering::SeqCst) {
+        zoom(((wparam >> 16) & 0xffff) as u16 as i16 as i32);
+      }
+      0
+    }
     // Right-click (on the "title bar", or anywhere when locked): its menu, where the mouse is.
     // Windows' own title bar menu never shows.
     WM_NCRBUTTONUP | WM_RBUTTONUP => {
@@ -343,6 +363,19 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
       0
     }
     _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+  }
+}
+
+// Notches add up (a smooth wheel sends small steps): each full one is a size step
+fn zoom(delta: i32) {
+  thread_local! { static WHEEL: std::cell::Cell<i32> = const { std::cell::Cell::new(0) }; }
+  let total = WHEEL.with(|wheel| wheel.get()) + delta;
+  let steps = total / WHEEL_DELTA as i32;
+  WHEEL.with(|wheel| wheel.set(total - steps * WHEEL_DELTA as i32));
+  if steps != 0 {
+    if let Some(app) = lock(&APP).clone() {
+      let _ = app.emit_to("main", "hardware-widget-zoom", steps.signum());
+    }
   }
 }
 
@@ -501,7 +534,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   // Where it goes (screen pixels): where it is, else the saved place, else the first-time corner
   let here = if local.widget.is_null() { None } else { window_place(local.widget) };
   let place = here.or(content.place.filter(|&(x, y)| on_a_monitor(x, y))).unwrap_or_else(first_place);
-  let dpi = dpi_at(place.0, place.1);
+  let scale = dpi_at(place.0, place.1) as f32 / 96.0 * content.size.clamp(50, 200) as f32 / 100.0;
   if local.painter.is_none() {
     local.painter = Painter::new();
   }
@@ -515,12 +548,12 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   if local.widest.0 != labels {
     local.widest = (labels, 0.0);
   }
-  let style = (content.theme.clone(), content.frame.clone());
-  let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.style == style && drawn.dpi == dpi);
+  let style = (content.theme.clone(), content.frame.clone(), content.background);
+  let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.style == style && drawn.scale == scale);
   let picture = if same {
     None
   } else {
-    let Some((picture, width)) = painter.draw(&content.groups, &colors(&style.0, &style.1), dpi, local.widest.1) else { return false };
+    let Some((picture, width)) = painter.draw(&content.groups, &colors(&style.0, &style.1, style.2), scale, local.widest.1) else { return false };
     local.widest.1 = width;
     Some(picture)
   };
@@ -582,7 +615,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
       SetWindowPos(local.widget, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
   }
-  local.drawn = Some(Drawn { groups: content.groups.clone(), style, dpi, width, height });
+  local.drawn = Some(Drawn { groups: content.groups.clone(), style, scale, width, height });
   true
 }
 
@@ -734,9 +767,9 @@ impl Painter {
     }
   }
 
-  // The widget as a see-through picture at this scale, at least `least` DIPs wide; and its width
-  // in DIPs. None if Windows' drawing failed.
-  fn draw(&self, groups: &[Group], colors: &Colors, dpi: u32, least: f32) -> Option<(Canvas, f32)> {
+  // The widget as a see-through picture at this scale (Windows' scaling × the widget's size), at
+  // least `least` DIPs wide; and its width in DIPs. None if Windows' drawing failed.
+  fn draw(&self, groups: &[Group], colors: &Colors, scale: f32, least: f32) -> Option<(Canvas, f32)> {
     struct Line<'a> {
       top: f32,
       icon: &'a str,
@@ -763,7 +796,6 @@ impl Painter {
         top += ROW;
       }
     }
-    let scale = dpi as f32 / 96.0;
     let pixels_wide = (width * scale).ceil() as usize;
     let pixels_high = ((top + PAD_BOTTOM) * scale).ceil() as usize;
     let (full_width, full_height) = (pixels_wide as f32 / scale, pixels_high as f32 / scale);
@@ -786,16 +818,17 @@ impl Painter {
       let properties = D2D1_RENDER_TARGET_PROPERTIES {
         r#type: D2D1_RENDER_TARGET_TYPE_SOFTWARE,
         pixelFormat: D2D1_PIXEL_FORMAT { format: DXGI_FORMAT_B8G8R8A8_UNORM, alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED },
-        dpiX: dpi as f32,
-        dpiY: dpi as f32,
+        dpiX: 96.0 * scale,
+        dpiY: 96.0 * scale,
         usage: D2D1_RENDER_TARGET_USAGE_NONE,
         minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
       };
       let target = self.d2d.CreateDCRenderTarget(&properties).ok()?;
       let area = windows::Win32::Foundation::RECT { left: 0, top: 0, right: pixels_wide as i32, bottom: pixels_high as i32 };
       target.BindDC(windows::Win32::Graphics::Gdi::HDC(canvas.dc), &area).ok()?;
-      let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb), None);
-      let (bg, text, dim) = (brush(colors.bg).ok()?, brush(colors.text).ok()?, brush(colors.dim).ok()?);
+      let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb, 1.0), None);
+      let bg = target.CreateSolidColorBrush(&color(colors.bg, colors.bg_alpha), None).ok()?;
+      let (text, dim) = (brush(colors.text).ok()?, brush(colors.dim).ok()?);
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
@@ -845,7 +878,7 @@ impl Painter {
   }
 }
 
-fn color(rgb: u32) -> D2D1_COLOR_F {
+fn color(rgb: u32, alpha: f32) -> D2D1_COLOR_F {
   let channel = |shift: u32| ((rgb >> shift) & 0xff) as f32 / 255.0;
-  D2D1_COLOR_F { r: channel(16), g: channel(8), b: channel(0), a: 1.0 }
+  D2D1_COLOR_F { r: channel(16), g: channel(8), b: channel(0), a: alpha }
 }

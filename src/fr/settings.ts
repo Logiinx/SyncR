@@ -247,6 +247,8 @@ export const settings = {
   Dark: 'Sombre',
   'SyncR blue': 'Bleu SyncR',
   Frame: 'Cadre',
+  Background: 'Fond',
+  Size: 'Taille',
   '{percent}% · {rpm} RPM': '{percent} % · {rpm} tr/min',
   '{used} / {total} GB': '{used} / {total} Go',
   'Admin helper': 'Assistant administrateur',

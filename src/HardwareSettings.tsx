@@ -4,12 +4,14 @@ import CloseButton from './CloseButton'
 import Window from './Window'
 import InfoTip from './InfoTip'
 import { SettingRow, SettingsCard } from './SettingsCard'
-import { decimal, t } from './i18n'
+import { decimal, percentText, t } from './i18n'
 import {
+  BACKGROUNDS,
   FRAMES,
   type HardwareSettings as HardwareSettingsType,
   type HelperState,
   type Sensor,
+  SIZES,
   SPEEDS,
   THEMES,
   removeHelper,
@@ -117,6 +119,20 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
             <select value={settings.frame} onChange={(e) => saveHardware({ frame: e.target.value as HardwareSettingsType['frame'] })}>
               {FRAMES.map(([frame, label]) => (
                 <option key={frame} value={frame}>{label()}</option>
+              ))}
+            </select>
+          </SettingRow>
+          <SettingRow label={t('Background')}>
+            <select value={settings.background} onChange={(e) => saveHardware({ background: Number(e.target.value) })}>
+              {BACKGROUNDS.map((background) => (
+                <option key={background} value={background}>{percentText(background)}</option>
+              ))}
+            </select>
+          </SettingRow>
+          <SettingRow label={t('Size')}>
+            <select value={settings.size} onChange={(e) => saveHardware({ size: Number(e.target.value) })}>
+              {SIZES.map((size) => (
+                <option key={size} value={size}>{percentText(size)}</option>
               ))}
             </select>
           </SettingRow>

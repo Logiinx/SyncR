@@ -1,13 +1,13 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { EyeOff, ListChecks, Lock, Palette, Pin, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, ListChecks, Lock, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
-import { decimal, t, useLanguage } from './i18n'
-import { FRAMES, type HardwareSettings, type MenuChoice, SPEEDS, THEMES, WIDGET_GROUPS, sensorLabel, storedHardware } from './hardware'
+import { decimal, percentText, t, useLanguage } from './i18n'
+import { BACKGROUNDS, FRAMES, type HardwareSettings, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor, made when the widget is right-clicked and removed when the menu closes
@@ -66,7 +66,7 @@ function HardwareMenu() {
     setSettings((now) => ({ ...now, ...part }))
     void send('choice', { change: part })
   }
-  // A theme or frame under the mouse shows on the widget at once. Leaving waits a moment, so
+  // A theme, frame, background or size under the mouse shows on the widget at once. Leaving waits a moment, so
   // going from one to the next doesn't flash the saved one in between.
   const back = useRef<number | undefined>(undefined)
   const preview = (part: Partial<HardwareSettings>) => (on: boolean) => {
@@ -138,6 +138,32 @@ function HardwareMenu() {
           checked: settings.frame === frame,
           onPreview: preview({ frame }),
           onClick: () => change({ frame }),
+        })),
+      },
+    },
+    {
+      label: t('Background'),
+      icon: Blend,
+      submenu: {
+        title: t('Background'),
+        items: BACKGROUNDS.map((background) => ({
+          label: percentText(background),
+          checked: settings.background === background,
+          onPreview: preview({ background }),
+          onClick: () => change({ background }),
+        })),
+      },
+    },
+    {
+      label: t('Size'),
+      icon: Scaling,
+      submenu: {
+        title: t('Size'),
+        items: SIZES.map((size) => ({
+          label: percentText(size),
+          checked: settings.size === size,
+          onPreview: preview({ size }),
+          onClick: () => change({ size }),
         })),
       },
     },
