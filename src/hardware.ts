@@ -82,10 +82,6 @@ let windowOpen = false // the settings window shows every sensor, so all are rea
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
 let preview: Partial<HardwareSettings> | null = null // a theme, frame, size or background under the mouse in the widget's menu
 const heat: Partial<Record<HotSensor, number>> = {} // each temperature's color now: 0 none, 1 orange, 2 red
-let asked: string[] = [] // the sensors Rust was last asked for
-// Whether this GPU has a memory temperature (null: not asked yet since SyncR started). Once seen it
-// stays, so one failed reading doesn't hide its rows.
-let memTemp: boolean | null = null
 
 export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
@@ -117,7 +113,6 @@ function send() {
   if (!isTauri()) return
   const { on, everyMs } = current
   const sensors = windowOpen ? [...SENSORS] : current.shown
-  asked = sensors
   invoke('hardware_config', { config: { on, everyMs, sensors } }).catch(console.error)
 }
 
@@ -127,8 +122,6 @@ export function startHardware() {
   if (!isTauri()) return
   void listen<HardwareReadings>('hardware', (event) => {
     last = event.payload
-    if (last.gpuMemTemp !== null) memTemp = true
-    else if (memTemp === null && asked.includes('gpuMemTemp')) memTemp = false
     updateHeat(last)
     sendWidget(last)
   })
@@ -237,13 +230,6 @@ export function useHardwareReadings(on: boolean) {
     }
   }, [on])
   return readings
-}
-
-// The settings window's GPU memory rows: shown until a reading that asked for it says this GPU has
-// none (it re-renders on each reading), so they don't show up late on cards with it. Cards without
-// it see them only until the first such reading after SyncR starts.
-export function hasMemTemp() {
-  return memTemp ?? true
 }
 
 // "AMD Ryzen 7 5700X3D 8-Core Processor" → "Ryzen 7 5700X3D",

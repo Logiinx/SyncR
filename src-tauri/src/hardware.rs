@@ -9,7 +9,6 @@
 // for, and closed when the module is turned off (the thread ends).
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
@@ -55,9 +54,6 @@ pub struct Readings {
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static LAST: Mutex<Option<Readings>> = Mutex::new(None);
 static WORKER: Mutex<Option<Sender<()>>> = Mutex::new(None);
-// Which reading thread is the current one: a thread stopped while reading (module off, maybe on
-// again) ends without sending its last readings
-static RUN: AtomicU64 = AtomicU64::new(0);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
   mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -68,7 +64,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 pub fn hardware_config(app: AppHandle, config: Config) {
   let mut worker = lock(&WORKER);
   if !config.on {
-    RUN.fetch_add(1, Ordering::SeqCst);
     *lock(&CONFIG) = None;
     *lock(&LAST) = None;
     worker.take(); // dropping the channel ends the thread, which closes the libraries
@@ -80,8 +75,7 @@ pub fn hardware_config(app: AppHandle, config: Config) {
     return;
   }
   let (sender, receiver) = mpsc::channel();
-  let id = RUN.fetch_add(1, Ordering::SeqCst) + 1;
-  std::thread::spawn(move || run(app, receiver, id));
+  std::thread::spawn(move || run(app, receiver));
   *worker = Some(sender);
 }
 
@@ -97,15 +91,14 @@ fn read_now() {
   }
 }
 
-fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
+fn run(app: AppHandle, receiver: Receiver<()>) {
   let mut nvml: Option<Option<nvml::Nvml>> = None; // None: not tried yet; Some(None): no NVIDIA GPU
   let mut nvapi: Option<Option<nvapi::NvApi>> = None; // the same
   let mut counters: Option<Option<counters::Counters>> = None;
   let mut helper: Option<helper::Reader> = None; // dropped when not asked for, so the helper rests
   let cpu_name = registry::cpu_name();
   loop {
-    let current = || RUN.load(Ordering::SeqCst) == id;
-    let Some(config) = lock(&CONFIG).clone().filter(|_| current()) else { return };
+    let Some(config) = lock(&CONFIG).clone() else { return };
     let wants = |name: &str| config.sensors.iter().any(|sensor| sensor == name);
     let mut readings = Readings { cpu_name: cpu_name.clone(), at: now_ms(), ..Default::default() };
 
@@ -161,14 +154,7 @@ fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
       }
     }
 
-    {
-      // Checked and saved under one lock, so turning off (which empties it) can't come in between
-      let mut last = lock(&LAST);
-      if !current() {
-        return;
-      }
-      *last = Some(readings.clone());
-    }
+    *lock(&LAST) = Some(readings.clone());
     let _ = app.emit("hardware", readings);
     let wait = Duration::from_millis(config.every_ms.clamp(500, 10_000));
     match receiver.recv_timeout(wait) {
@@ -580,8 +566,8 @@ mod nvapi {
       // gpu is valid while the library is started; sensors is the struct the function fills
       let ok = unsafe { (self.sensors)(self.gpu, &mut sensors) } == OK;
       let celsius = sensors.temperatures[MEMORY_SLOT] as f64 / 256.0;
-      // 255 (raw, or in degrees): no sensor in that slot; anything outside 1–150 °C isn't a real reading
-      (ok && (1.0..150.0).contains(&celsius)).then_some(celsius)
+      // 255: no sensor in that slot; anything outside 1–150 °C isn't a real reading
+      (ok && celsius > 0.0 && celsius < 150.0).then_some(celsius)
     }
   }
 
