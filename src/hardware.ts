@@ -5,7 +5,7 @@ import { decimal, percentText, t } from './i18n'
 import { read, write } from './localState'
 
 // Hardware module (PC, Settings → Modules): temperatures, loads, clocks, fan and RAM, read by Rust
-// (hardware.rs) and shown in a small widget on the desktop (later step). Its settings are kept on
+// (hardware.rs) and shown in a small widget on the desktop (hardware_widget.rs). Its settings are kept on
 // this device, never synced. This sends Rust the settings, at start and on every change. Off: Rust
 // runs nothing and opens no library.
 
@@ -18,22 +18,39 @@ export interface HardwareSettings {
   everyMs: number // how often the sensors are read
   shown: Sensor[] // what the widget shows
   place: [number, number] | null // the widget's top left on screen (pixels), once it was placed or moved
+  onTop: boolean // above other windows (else on the desktop, under them)
+  locked: boolean // can't be dragged
+  fahrenheit: boolean // temperatures in °F (else °C)
 }
 
 const KEY = 'syncr.hardware'
-const DEFAULTS: HardwareSettings = { on: false, everyMs: 1000, shown: ['cpuTemp', 'gpuTemp'], place: null }
+const DEFAULTS: HardwareSettings = {
+  on: false,
+  everyMs: 1000,
+  shown: ['cpuTemp', 'gpuTemp'],
+  place: null,
+  onTop: false,
+  locked: false,
+  fahrenheit: false,
+}
 export const SPEEDS = [500, 1000, 2000, 5000]
 
-let current: HardwareSettings = { ...DEFAULTS, ...read<Partial<HardwareSettings>>(KEY, {}) }
+let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
 let windowOpen = false // the settings window shows every sensor, so all are read while it's open
+let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
 
 export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
   write(KEY, current)
   listeners.forEach((listener) => listener())
   send()
-  if (!current.on) sendWidget(null) // no more readings come: closed now
+  sendWidget(current.on ? last : null) // no more readings come when off: closed now
+}
+
+// The settings as saved on this device, for the widget's menu (its own page, hardwareMenu.tsx)
+export function storedHardware(): HardwareSettings {
+  return { ...DEFAULTS, ...read<Partial<HardwareSettings>>(KEY, {}) }
 }
 
 function subscribe(listener: () => void) {
@@ -58,12 +75,33 @@ function send() {
 // speed reads again at once, so the widget follows); where the user drags it is saved here.
 export function startHardware() {
   if (!isTauri()) return
-  void listen<HardwareReadings>('hardware', (event) => sendWidget(event.payload))
+  void listen<HardwareReadings>('hardware', (event) => {
+    last = event.payload
+    sendWidget(last)
+  })
+  // The widget's right-click menu (hardware_menu in hardware_widget.rs): a changed option, or
+  // "Hide widget" (the module off). "Hardware settings…" is App's (listenHardwareOpen).
+  void listen<MenuChoice>('hardware-menu', ({ payload }) => {
+    if (payload.change) saveHardware(payload.change)
+    if (payload.hide) toggleHardware(false)
+  })
   void listen<[number, number]>('hardware-widget-moved', (event) => {
     current = { ...current, place: event.payload }
     write(KEY, current)
   })
   if (current.on) send()
+}
+
+export interface MenuChoice {
+  change?: Partial<HardwareSettings>
+  hide?: boolean
+}
+
+// "Hardware settings…" in the widget's menu: App opens Settings on the Hardware window
+export function listenHardwareOpen(open: () => void) {
+  if (!isTauri()) return () => {}
+  const stop = listen('hardware-open', open)
+  return () => void stop.then((unlisten) => unlisten())
 }
 
 // Settings → Modules. Turning it on sets up the admin helper for the CPU temperature (one admin
@@ -177,7 +215,10 @@ export function sensorLabel(sensor: Sensor, short = false) {
 
 // A reading as text, the same in the settings window and the widget; null when this PC can't give it
 export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
-  const temperature = (n: number | null) => (n === null ? null : t('{n} °C', { n: decimal(n, 1) }))
+  const temperature = (n: number | null) => {
+    if (n === null) return null
+    return current.fahrenheit ? t('{n} °F', { n: decimal((n * 9) / 5 + 32, 1) }) : t('{n} °C', { n: decimal(n, 1) })
+  }
   const mhz = (n: number | null) => (n === null ? null : t('{n} MHz', { n: decimal(n, 0) }))
   const percent = (n: number | null) => (n === null ? null : percentText(Math.round(n)))
   switch (sensor) {
@@ -207,7 +248,7 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
 }
 
 // The widget's hardware, in order, with their readings in the settings window's order
-const WIDGET_GROUPS = [
+export const WIDGET_GROUPS = [
   { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuClock'] },
   { icon: 'gpu', sensors: ['gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan'] },
   { icon: 'memory', sensors: ['ram'] },
@@ -232,6 +273,7 @@ function sendWidget(r: HardwareReadings | null) {
           return value === null ? [] : [[sensorLabel(sensor, true), value]]
         }),
       })).filter((group) => group.rows.length > 0)
-  const content = groups.length > 0 ? { groups, place: current.place } : null
+  const { place, onTop, locked } = current
+  const content = groups.length > 0 ? { groups, place, onTop, locked } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

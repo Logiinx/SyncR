@@ -4,8 +4,9 @@
 // sends them with hardware_widget; this only draws them, with Direct2D + DirectWrite (Windows'
 // modern drawing, the same text engine as WebView2), into a see-through picture.
 // It lives inside the desktop: a child of the desktop's icon view (Explorer's), so it sits under
-// every window, never comes to the front, and stays on Win+D. Dragged anywhere to move it; where
-// it's left goes back to the page, which saves it. First time: top left of the 2nd monitor (the
+// every window, never comes to the front, and stays on Win+D. "Always on top": a window of its own
+// instead, above the others. Dragged anywhere to move it (not when locked); where it's left goes
+// back to the page, which saves it. Right-click: its menu (open_menu). First time: top left of the 2nd monitor (the
 // main one if there's only one); a saved place on no monitor any more: top left of the main one.
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
@@ -15,9 +16,9 @@ use super::lock;
 use crate::mouse_battery::gdi::Canvas;
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct2D::Common::{
   D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F, D2D_SIZE_F,
@@ -43,12 +44,13 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetMessageW, GetParent,
-  GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
-  TranslateMessage, UpdateLayeredWindow, HTCAPTION, HWND_TOP, IDC_ARROW, MA_NOACTIVATE, MSG, SWP_NOACTIVATE, SWP_NOSIZE,
-  SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_DESTROY, WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE,
-  WM_NCHITTEST, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
-  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_POPUP,
+  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetCursorPos, GetMessageW,
+  GetParent, GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
+  TranslateMessage, UpdateLayeredWindow, HTCAPTION, HTCLIENT, HWND_TOP, HWND_TOPMOST, IDC_ARROW, MA_NOACTIVATE, MSG,
+  SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY,
+  WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE, WM_NCHITTEST, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_RBUTTONDOWN,
+  WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
@@ -103,8 +105,8 @@ fn icon_svg(icon: &str) -> Option<String> {
   ))
 }
 
-// What the page sends: per hardware its name, icon and rows (label, value), in order; and the
-// saved place (screen pixels, top left), used when the widget appears
+// What the page sends: per hardware its name, icon and rows (label, value), in order; the saved
+// place (screen pixels, top left), used when the widget appears; and the menu's options
 #[derive(Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
@@ -118,12 +120,19 @@ pub struct Group {
 pub struct Content {
   groups: Vec<Group>,
   place: Option<(i32, i32)>,
+  #[serde(default)]
+  on_top: bool, // above other windows, put back on top every second; else on the desktop
+  #[serde(default)]
+  locked: bool, // can't be dragged
 }
 
 static CONTENT: Mutex<Option<Content>> = Mutex::new(None);
 static CONTROLLER: Mutex<isize> = Mutex::new(0); // the running thread's hidden window (0: none)
 static STARTS: AtomicU64 = AtomicU64::new(0); // an older thread that comes up late closes itself
 static APP: Mutex<Option<AppHandle>> = Mutex::new(None);
+static LOCKED: AtomicBool = AtomicBool::new(false);
+static MENU_OPEN: AtomicBool = AtomicBool::new(false); // "on top" then leaves the menu above it
+pub const MENU: &str = "hardware-menu";
 
 // After every reading, and when the settings change. None or nothing to show: no widget.
 #[tauri::command]
@@ -134,6 +143,7 @@ pub fn hardware_widget(app: AppHandle, content: Option<Content>) {
     stop();
     return;
   };
+  LOCKED.store(content.locked, Ordering::SeqCst);
   *lock(&CONTENT) = Some(content);
   let controller = *lock(&CONTROLLER);
   if controller != 0 {
@@ -277,8 +287,16 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
 
 unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
   match message {
-    // Anywhere on it counts as its title bar: dragging it moves it (Windows does the moving)
-    WM_NCHITTEST => HTCAPTION as LRESULT,
+    // Anywhere on it counts as its title bar: dragging it moves it (Windows does the moving).
+    // Locked: a plain window part, which doesn't move
+    WM_NCHITTEST => (if LOCKED.load(Ordering::SeqCst) { HTCLIENT } else { HTCAPTION }) as LRESULT,
+    // Right-click (on the "title bar", or anywhere when locked): its menu, where the mouse is.
+    // Windows' own title bar menu never shows.
+    WM_NCRBUTTONUP | WM_RBUTTONUP => {
+      open_menu();
+      0
+    }
+    WM_NCRBUTTONDOWN | WM_RBUTTONDOWN | WM_CONTEXTMENU => 0,
     // A click never takes the focus from the app in front
     WM_MOUSEACTIVATE => MA_NOACTIVATE as LRESULT,
     // Let go after a drag: the page saves the new place; another monitor may need another scale
@@ -296,6 +314,92 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
       0
     }
     _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+  }
+}
+
+// The right-click menu: a page of its own (hardware-menu.html), made now and removed when it
+// closes, so nothing stays loaded while unused. It covers the whole monitor, see-through, so the
+// menu and its side lists can open anywhere on it, and a click elsewhere lands on it and closes
+// the menu, like the app's own menus. Shown once its page has drawn the menu (hardware_menu).
+fn open_menu() {
+  let Some(app) = lock(&APP).clone() else { return };
+  if MENU_OPEN.swap(true, Ordering::SeqCst) {
+    return;
+  }
+  let mut mouse = POINT { x: 0, y: 0 };
+  let mut info = MONITORINFO {
+    cbSize: size_of::<MONITORINFO>() as u32,
+    rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+    rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+    dwFlags: 0,
+  };
+  // info has its size set, as Windows asks
+  let found = unsafe { GetCursorPos(&mut mouse) != 0 && GetMonitorInfoW(MonitorFromPoint(mouse, MONITOR_DEFAULTTONEAREST), &mut info) != 0 };
+  if !found {
+    MENU_OPEN.store(false, Ordering::SeqCst);
+    return;
+  }
+  let area = info.rcMonitor;
+  let (width, height) = ((area.right - area.left).max(1), (area.bottom - area.top).max(1));
+  // Making a window waits for the app's main thread: not on this one, which draws the widget.
+  // The page gets the mouse and its own size in screen pixels: it draws the menu once the window
+  // has that size (placing it first: on another monitor's scale, Windows resizes it).
+  std::thread::spawn(move || {
+    let url = format!("hardware-menu.html?x={}&y={}&w={width}&h={height}", mouse.x - area.left, mouse.y - area.top);
+    let built = WebviewWindowBuilder::new(&app, MENU, WebviewUrl::App(url.into()))
+      .title("SyncR")
+      .decorations(false)
+      .transparent(true)
+      .shadow(false)
+      .always_on_top(true)
+      .skip_taskbar(true)
+      .resizable(false)
+      .maximizable(false)
+      .minimizable(false)
+      .visible(false)
+      // Same origin as the main window, so it reads the same saved settings and language
+      .use_https_scheme(true)
+      .on_navigation(|url| url.path() == "/hardware-menu.html")
+      .build();
+    let Ok(menu) = built else {
+      MENU_OPEN.store(false, Ordering::SeqCst);
+      return;
+    };
+    menu.on_window_event(|event| {
+      if matches!(event, tauri::WindowEvent::Destroyed) {
+        MENU_OPEN.store(false, Ordering::SeqCst);
+      }
+    });
+    let _ = menu.set_position(tauri::PhysicalPosition::new(area.left, area.top));
+    let _ = menu.set_size(tauri::PhysicalSize::new(width as u32, height as u32));
+  });
+}
+
+// From the menu's page: "ready" (drawn: show it), "choice" (a changed option or Hide widget, for
+// the main window: hardware.ts), "settings" (Hardware settings…), "close"
+#[tauri::command]
+pub fn hardware_menu(app: AppHandle, action: String, choice: Option<serde_json::Value>) {
+  let menu = app.get_webview_window(MENU);
+  match action.as_str() {
+    "ready" => {
+      if let Some(menu) = menu {
+        let _ = menu.show();
+        let _ = menu.set_focus();
+      }
+    }
+    "choice" => {
+      let _ = app.emit_to("main", "hardware-menu", choice);
+    }
+    "settings" => {
+      let _ = app.emit_to("main", "hardware-open", ());
+      crate::show_main(&app);
+    }
+    "close" => {
+      if let Some(menu) = menu {
+        let _ = menu.destroy();
+      }
+    }
+    _ => {}
   }
 }
 
@@ -351,12 +455,13 @@ fn desktop() -> HWND {
 
 // false: it couldn't be drawn or put on the desktop
 fn draw_and_place(local: &mut Local, content: &Content) -> bool {
-  let parent = desktop();
-  if parent.is_null() {
+  // "Always on top": a window of its own (no parent); else inside the desktop
+  let parent = if content.on_top { null_mut() } else { desktop() };
+  if parent.is_null() && !content.on_top {
     return false;
   }
   unsafe {
-    // Gone with an Explorer restart, or inside an old desktop: a new one
+    // Gone with an Explorer restart, inside an old desktop, or "on top" just switched: a new one
     if !local.widget.is_null() && (IsWindow(local.widget) == 0 || GetParent(local.widget) != parent) {
       hide(local);
     }
@@ -393,15 +498,19 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   };
 
   unsafe {
-    let mut corner = POINT { x: place.0, y: place.1 };
-    ScreenToClient(parent, &mut corner);
+    let corner = to_parent(parent, place);
     if local.widget.is_null() {
       let class = wide(WIDGET_CLASS);
+      let (extra, style) = if parent.is_null() {
+        (WS_EX_TOOLWINDOW | WS_EX_TOPMOST, WS_POPUP) // no taskbar button, above other windows
+      } else {
+        (WS_EX_NOPARENTNOTIFY, WS_CHILD | WS_CLIPSIBLINGS)
+      };
       let widget = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_NOPARENTNOTIFY,
+        WS_EX_LAYERED | WS_EX_NOACTIVATE | extra,
         class.as_ptr(),
         null(),
-        WS_CHILD | WS_CLIPSIBLINGS,
+        style,
         corner.x,
         corner.y,
         width,
@@ -434,6 +543,11 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
     if local.drawn.is_none() || here.is_none() {
       SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
+    // On top: Windows keeps all "on top" windows in one layer, where the latest shown wins, so it
+    // goes back to the top of that layer every second. Not while its menu is open over it.
+    if parent.is_null() && !MENU_OPEN.load(Ordering::SeqCst) {
+      SetWindowPos(local.widget, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
   }
   local.drawn = Some(Drawn { groups: content.groups.clone(), dpi, width, height });
   true
@@ -449,15 +563,23 @@ fn rescue(local: &mut Local) {
     return;
   }
   let (x, y) = corner_of(main_monitor());
-  let mut corner = POINT { x, y };
+  let corner = to_parent(local.parent, (x, y));
   unsafe {
-    ScreenToClient(local.parent, &mut corner);
     SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
   }
   local.drawn = None;
   if let Some(app) = lock(&APP).clone() {
     let _ = app.emit("hardware-widget-moved", (x, y));
   }
+}
+
+// Screen pixels → inside the desktop (no parent: the screen's own)
+fn to_parent(parent: HWND, (x, y): (i32, i32)) -> POINT {
+  let mut point = POINT { x, y };
+  if !parent.is_null() {
+    unsafe { ScreenToClient(parent, &mut point) };
+  }
+  point
 }
 
 fn window_place(window: HWND) -> Option<(i32, i32)> {

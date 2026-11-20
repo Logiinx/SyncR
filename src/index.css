@@ -2170,6 +2170,14 @@ button {
   background: transparent;
 }
 
+/* The Hardware widget's menu (hardware-menu.html): a see-through window over a whole monitor */
+.hardware-menu-page,
+.hardware-menu-page body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
 .popup-page body {
   overflow-y: auto;
   user-select: none;

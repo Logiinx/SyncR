@@ -365,7 +365,8 @@ pub fn run() {
       hardware::hardware_readings,
       hardware::helper::hardware_helper_setup,
       hardware::helper::hardware_helper_remove,
-      hardware::widget::hardware_widget
+      hardware::widget::hardware_widget,
+      hardware::widget::hardware_menu
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
@@ -375,14 +376,15 @@ pub fn run() {
   // Visibility isn't managed by it: the window starts hidden (tauri.conf.json) and the page
   // shows it once it has drawn its first screen (WindowControls.tsx), so it appears in place.
   // The reminder pop-up places itself (ReminderPopup.tsx), so it's left out, and so does the video
-  // window (video_window.rs: this plugin only writes to disk when the app quits cleanly).
+  // window (video_window.rs: this plugin only writes to disk when the app quits cleanly), and the
+  // Hardware widget's menu (hardware_widget.rs).
   #[cfg(desktop)]
   let builder = {
     use tauri_plugin_window_state::StateFlags;
     builder.plugin(
       tauri_plugin_window_state::Builder::default()
         .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
-        .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP, video_window::VIDEO_WINDOW])
+        .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP, video_window::VIDEO_WINDOW, hardware::widget::MENU])
         .build(),
     )
   };

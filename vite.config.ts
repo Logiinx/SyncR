@@ -42,4 +42,10 @@ export default defineConfig({
   server: {
     watch: { usePolling: true, interval: 300 },
   },
+  // Two pages: the app, and the Hardware widget's menu (PC only, a window of its own: hardwareMenu.tsx)
+  build: {
+    rolldownOptions: {
+      input: { main: 'index.html', hardwareMenu: 'hardware-menu.html' },
+    },
+  },
 })

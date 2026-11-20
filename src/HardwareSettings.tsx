@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cpu, Gauge, Gpu, MemoryStick } from 'lucide-react'
+import { AppWindow, Cpu, Gauge, Gpu, MemoryStick } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import InfoTip from './InfoTip'
@@ -87,6 +87,20 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
                   {t('{n} s', { n: decimal(ms / 1000, ms < 1000 ? 1 : 0) })}
                 </option>
               ))}
+            </select>
+          </SettingRow>
+        </SettingsCard>
+        <SettingsCard icon={AppWindow} title={t('Widget')}>
+          <SettingRow label={t('Always on top')}>
+            <input type="checkbox" checked={settings.onTop} onChange={(e) => saveHardware({ onTop: e.target.checked })} />
+          </SettingRow>
+          <SettingRow label={t('Lock position and size')}>
+            <input type="checkbox" checked={settings.locked} onChange={(e) => saveHardware({ locked: e.target.checked })} />
+          </SettingRow>
+          <SettingRow label={t('Temperatures in')}>
+            <select value={settings.fahrenheit ? 'f' : 'c'} onChange={(e) => saveHardware({ fahrenheit: e.target.value === 'f' })}>
+              <option value="c">{t('Celsius (°C)')}</option>
+              <option value="f">{t('Fahrenheit (°F)')}</option>
             </select>
           </SettingRow>
         </SettingsCard>

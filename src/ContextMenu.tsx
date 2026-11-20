@@ -13,6 +13,7 @@ export interface MenuItem {
   disabled?: boolean // grayed, can't be pressed
   hint?: string // tooltip
   keepFocus?: boolean // pressing it leaves the cursor where it is (e.g. in the text being edited)
+  stayOpen?: boolean // pressing it leaves the menu open (ticks often changed several in a row)
   onClick?: () => void
   // A list of its own (e.g. Move to folder), with a › after the label: with a mouse it opens beside
   // the menu on hover (or a click); on a touch screen a tap shows it in the menu's place, under its title
@@ -91,7 +92,7 @@ function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
       else setInPlace(item.submenu)
       return
     }
-    onClose()
+    if (!item.stayOpen) onClose()
     item.onClick?.()
   }
 

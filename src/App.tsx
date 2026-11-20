@@ -16,7 +16,7 @@ import Sidebar from './Sidebar'
 import Board from './Board'
 import { usePanelSwipe } from './edgeSwipe'
 import { setPendingSearch } from './noteSearch'
-import SettingsDialog from './SettingsDialog'
+import SettingsDialog, { type SettingsPage } from './SettingsDialog'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
 import RemindersView from './RemindersView'
@@ -28,6 +28,7 @@ import VideoView from './VideoView'
 import { startLinkShortcut } from './videoPaste'
 import { isTauri } from '@tauri-apps/api/core'
 import { listenMouseBatteryOpen } from './mouseBattery'
+import { listenHardwareOpen } from './hardware'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
@@ -114,17 +115,18 @@ function App() {
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number; tab?: boolean } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // A click on the mouse battery's taskbar strip opens Settings straight on its window (a new key
-  // starts it there again when Settings was already open)
-  const [settingsStart, setSettingsStart] = useState<{ page?: 'mouse-battery'; key: number }>({ key: 0 })
-  useEffect(
-    () =>
-      listenMouseBatteryOpen(() => {
-        setSettingsStart((start) => ({ page: 'mouse-battery', key: start.key + 1 }))
-        setSettingsOpen(true)
-      }),
-    [],
-  )
+  // A click on the mouse battery's taskbar strip, or "Hardware settings…" in the Hardware widget's
+  // menu, opens Settings straight on that module's window (a new key starts it there again when
+  // Settings was already open)
+  const [settingsStart, setSettingsStart] = useState<{ page?: SettingsPage; key: number }>({ key: 0 })
+  useEffect(() => {
+    const openOn = (page: SettingsPage) => () => {
+      setSettingsStart((start) => ({ page, key: start.key + 1 }))
+      setSettingsOpen(true)
+    }
+    const stops = [listenMouseBatteryOpen(openOn('mouse-battery')), listenHardwareOpen(openOn('hardware'))]
+    return () => stops.forEach((stop) => stop())
+  }, [])
 
   // `ids` lets us check the result matches the current tabs (it can lag one render behind)
   const tabsResult = useLiveQuery(
