@@ -18,11 +18,12 @@ use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
+use windows::core::Interface;
 use windows::Win32::Graphics::Direct2D::Common::{
-  D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F,
+  D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F, D2D_SIZE_F,
 };
 use windows::Win32::Graphics::Direct2D::{
-  D2D1CreateFactory, ID2D1Factory, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_FACTORY_TYPE_SINGLE_THREADED, D2D1_FEATURE_LEVEL_DEFAULT,
+  D2D1CreateFactory, ID2D1DeviceContext5, ID2D1Factory, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_FACTORY_TYPE_SINGLE_THREADED, D2D1_FEATURE_LEVEL_DEFAULT,
   D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE, D2D1_ROUNDED_RECT,
   D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 };
@@ -32,6 +33,8 @@ use windows::Win32::Graphics::DirectWrite::{
   DWRITE_LINE_METRICS, DWRITE_TEXT_METRICS,
 };
 use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
+use windows::Win32::UI::Shell::SHCreateMemStream;
+use windows_numerics::Matrix3x2;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
   EnumDisplayMonitors, GetMonitorInfoW, MonitorFromPoint, ScreenToClient, AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, HDC,
@@ -63,7 +66,8 @@ const PAD_TOP: f32 = 8.0;
 const PAD_SIDE: f32 = 12.0;
 const PAD_BOTTOM: f32 = 10.0;
 const GROUP_GAP: f32 = 6.0; // above every hardware but the first
-const INDENT: f32 = 21.0; // the icon (15) and its gap (6): the names and rows start there
+const ICON: f32 = 15.0; // as in the settings window's cards
+const INDENT: f32 = 21.0; // the icon and its gap (6): the names and rows start there
 const VALUE_GAP: f32 = 16.0; // least room between a label and its value
 const RADIUS: f32 = 8.0;
 const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
@@ -71,6 +75,33 @@ const BG: u32 = 0x161616; // --bg
 const BORDER: u32 = 0x2a2a2a; // --border
 const TEXT: u32 = 0xe4e4e4; // --text
 const DIM: u32 = 0x808080; // --text-dim
+const LINK: &str = "#7aa7e0"; // --link: the color of the settings cards' icons
+
+// Each hardware's icon: Lucide's own shapes (lucide-react 1.57: Cpu, Gpu, MemoryStick, ISC license)
+// with Lucide's usual strokes, drawn by Direct2D's SVG support
+fn icon_svg(icon: &str) -> Option<String> {
+  let shapes = match icon {
+    "cpu" => concat!(
+      r#"<path d="M12 20v2"/><path d="M12 2v2"/><path d="M17 20v2"/><path d="M17 2v2"/><path d="M2 12h2"/>"#,
+      r#"<path d="M2 17h2"/><path d="M2 7h2"/><path d="M20 12h2"/><path d="M20 17h2"/><path d="M20 7h2"/>"#,
+      r#"<path d="M7 20v2"/><path d="M7 2v2"/><rect x="4" y="4" width="16" height="16" rx="2"/>"#,
+      r#"<rect x="8" y="8" width="8" height="8" rx="1"/>"#,
+    ),
+    "gpu" => concat!(
+      r#"<path d="M2 17h18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H2"/><path d="M2 21V3"/>"#,
+      r#"<path d="M7 17v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3"/><circle cx="16" cy="11" r="2"/><circle cx="8" cy="11" r="2"/>"#,
+    ),
+    "memory" => concat!(
+      r#"<path d="M12 12v-2"/><path d="M12 18v-2"/><path d="M16 12v-2"/><path d="M16 18v-2"/><path d="M2 11h1.5"/>"#,
+      r#"<path d="M20 18v-2"/><path d="M20.5 11H22"/><path d="M4 18v-2"/><path d="M8 12v-2"/><path d="M8 18v-2"/>"#,
+      r#"<rect x="2" y="6" width="20" height="10" rx="2"/>"#,
+    ),
+    _ => return None,
+  };
+  Some(format!(
+    r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{LINK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{shapes}</svg>"#
+  ))
+}
 
 // What the page sends: per hardware its name, icon and rows (label, value), in order; and the
 // saved place (screen pixels, top left), used when the widget appears
@@ -78,7 +109,7 @@ const DIM: u32 = 0x808080; // --text-dim
 #[serde(rename_all = "camelCase")]
 pub struct Group {
   title: String,
-  icon: String, // "cpu", "gpu", "memory" (drawn in a later step)
+  icon: String, // "cpu", "gpu", "memory" (icon_svg)
   rows: Vec<(String, String)>,
 }
 
@@ -551,8 +582,9 @@ impl Painter {
   // The widget as a see-through picture at this scale, at least `least` DIPs wide; and its width
   // in DIPs. None if Windows' drawing failed.
   fn draw(&self, groups: &[Group], dpi: u32, least: f32) -> Option<(Canvas, f32)> {
-    struct Line {
+    struct Line<'a> {
       top: f32,
+      icon: &'a str,
       title: Option<Text>,
       label: Option<Text>,
       value: Option<Text>,
@@ -566,13 +598,13 @@ impl Painter {
       }
       let title = self.text(&group.title, &self.semibold)?;
       width = width.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
-      lines.push(Line { top, title: Some(title), label: None, value: None });
+      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None });
       top += ROW;
       for (label, value) in &group.rows {
         let label = self.text(label, &self.regular)?;
         let value = self.text(value, &self.regular)?;
         width = width.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
-        lines.push(Line { top, title: None, label: Some(label), value: Some(value) });
+        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value) });
         top += ROW;
       }
     }
@@ -616,9 +648,22 @@ impl Painter {
         let origin = windows_numerics::Vector2 { X: snap(x), Y: snap(top + baseline) - line.baseline };
         target.DrawTextLayout(origin, &line.layout, brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
       };
+      // Icons need Direct2D's newer drawing (Windows 10 1703 and later); without it, none
+      let svg: Option<ID2D1DeviceContext5> = target.cast().ok();
       for line in &lines {
         if let Some(title) = &line.title {
           put(title, PAD_SIDE + INDENT, line.top, &text);
+          // Centered on the line, as the card's title row centers it (on whole pixels)
+          if let (Some(svg), Some(icon)) = (&svg, icon_svg(line.icon)) {
+            let stream = SHCreateMemStream(Some(icon.as_bytes()));
+            let size = D2D_SIZE_F { width: ICON, height: ICON };
+            if let Some(document) = stream.and_then(|stream| svg.CreateSvgDocument(&stream, size).ok()) {
+              let corner = Matrix3x2::translation(snap(PAD_SIDE), snap(line.top + (ROW - ICON) / 2.0));
+              svg.SetTransform(&corner);
+              svg.DrawSvgDocument(&document);
+              svg.SetTransform(&Matrix3x2::identity());
+            }
+          }
         }
         if let (Some(label), Some(value)) = (&line.label, &line.value) {
           put(label, PAD_SIDE + INDENT, line.top, &dim);
