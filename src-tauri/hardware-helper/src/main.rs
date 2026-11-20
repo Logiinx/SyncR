@@ -229,6 +229,10 @@ fn run(syncr: &OsStr) -> i32 {
   let Some(pipe) = Pipe::create() else { return 8 }; // already running
   loop {
     if !pipe.connect() {
+      // SyncR opened and closed the pipe before this waited for it (module off and on quickly):
+      // Windows then refuses every wait until the old connection is let go, so it would never
+      // answer again until the next sign-in
+      pipe.disconnect();
       pause(200);
       continue;
     }

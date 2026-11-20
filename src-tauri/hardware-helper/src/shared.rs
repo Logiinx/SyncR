@@ -2,7 +2,7 @@
 
 // Raise it on every change to the helper: SyncR then offers to update the installed one (one admin
 // prompt). The same number means the same helper, so an unchanged helper never asks again.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 // The local pipe SyncR asks through: one byte asks for one reading, the answer is one line
 // "<VERSION> ok <°C>" or "<VERSION> <problem>" (problems below).
