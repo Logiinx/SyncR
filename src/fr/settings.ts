@@ -244,6 +244,14 @@ export const settings = {
   'Clicks go to what’s under the widget. Hold Ctrl over it to click it: move it, open its menu. “Left clicks only”: a right-click still opens its menu.':
     'Les clics vont à ce qui est sous le widget. Maintenez Ctrl dessus pour le cliquer : le déplacer, ouvrir son menu. « Clics gauches seulement » : un clic droit ouvre toujours son menu.',
   'Temperatures in': 'Températures en',
+  'Hot colors': 'Couleurs d’alerte',
+  'Show hot colors': 'Afficher les couleurs d’alerte',
+  'About hot colors': 'À propos des couleurs d’alerte',
+  'A temperature turns orange from its first limit and red from its second. Its color goes away once it’s {n} under that limit, so it doesn’t blink.':
+    'Une température passe en orange à partir de sa première limite et en rouge à partir de la seconde. Sa couleur s’en va une fois {n} sous cette limite, pour ne pas clignoter.',
+  'GPU memory': 'Mémoire graphique',
+  'Orange from': 'Orange à partir de',
+  'Red from': 'Rouge à partir de',
   'Celsius (°C)': 'Celsius (°C)',
   'Fahrenheit (°F)': 'Fahrenheit (°F)',
   'What to show': 'Mesures affichées',

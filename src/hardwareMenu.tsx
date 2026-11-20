@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Blend, EyeOff, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, Flame, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
@@ -127,6 +127,7 @@ function HardwareMenu() {
         ],
       },
     },
+    { label: t('Hot colors'), icon: Flame, checked: settings.hot, onClick: () => change({ hot: !settings.hot }) },
     {
       label: t('Theme'),
       icon: Palette,

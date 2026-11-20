@@ -85,6 +85,8 @@ struct Colors {
   bg_alpha: f32, // how solid the box is (the see-through background); text, icons and frame stay solid
   text: u32,
   dim: u32, // the labels
+  warm: u32, // a temperature past its first limit (hot colors, hardware.ts)
+  hot: u32,  // past its second
   icon: &'static str,
   frame: Option<u32>,
 }
@@ -102,11 +104,12 @@ fn colors(theme: &str, frame: &str, background: u32) -> Colors {
   };
   if blue {
     // A deep SyncR blue (user's pick of 6 shades: --accent was too bright), white text, labels
-    // white at 70 %, white icons
-    Colors { bg: 0x1e3554, bg_alpha, text: 0xffffff, dim: 0xbcc2cc, icon: "#ffffff", frame }
+    // white at 70 %, white icons; --text-orange as on Dark, --text-red a little lighter to read as
+    // well on the blue
+    Colors { bg: 0x1e3554, bg_alpha, text: 0xffffff, dim: 0xbcc2cc, warm: 0xf0a052, hot: 0xff8a85, icon: "#ffffff", frame }
   } else {
-    // --bg, --text, --text-dim, --link (the settings cards' icons)
-    Colors { bg: 0x161616, bg_alpha, text: 0xe4e4e4, dim: 0x808080, icon: "#7aa7e0", frame }
+    // --bg, --text, --text-dim, --text-orange, --text-red, --link (the settings cards' icons)
+    Colors { bg: 0x161616, bg_alpha, text: 0xe4e4e4, dim: 0x808080, warm: 0xf0a052, hot: 0xf0716b, icon: "#7aa7e0", frame }
   }
 }
 
@@ -136,14 +139,15 @@ fn icon_svg(icon: &str, color: &str) -> Option<String> {
   ))
 }
 
-// What the page sends: per hardware its name, icon and rows (label, value), in order; the saved
+// What the page sends: per hardware its name, icon and rows (label, value, its hot color: 0 none,
+// 1 warm, 2 hot), in order; the saved
 // place (screen pixels, top left), used when the widget appears; and the menu's options
 #[derive(Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
   title: String,
   icon: String, // "cpu", "gpu", "memory" (icon_svg)
-  rows: Vec<(String, String)>,
+  rows: Vec<(String, String, u8)>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize)]
@@ -746,7 +750,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   let labels: Vec<String> = content
     .groups
     .iter()
-    .flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, _)| label.clone())))
+    .flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, _, _)| label.clone())))
     .collect();
   if local.widest.0 != labels {
     local.widest = (labels, 0.0);
@@ -980,6 +984,7 @@ impl Painter {
       title: Option<Text>,
       label: Option<Text>,
       value: Option<Text>,
+      heat: u8,
     }
     let mut lines = Vec::new();
     let mut top = PAD_TOP;
@@ -990,13 +995,13 @@ impl Painter {
       }
       let title = self.text(&group.title, &self.semibold)?;
       width = width.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
-      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None });
+      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None, heat: 0 });
       top += ROW;
-      for (label, value) in &group.rows {
+      for (label, value, heat) in &group.rows {
         let label = self.text(label, &self.regular)?;
         let value = self.text(value, &self.regular)?;
         width = width.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
-        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value) });
+        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value), heat: *heat });
         top += ROW;
       }
     }
@@ -1033,6 +1038,7 @@ impl Painter {
       let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb, 1.0), None);
       let bg = target.CreateSolidColorBrush(&color(colors.bg, colors.bg_alpha), None).ok()?;
       let (text, dim) = (brush(colors.text).ok()?, brush(colors.dim).ok()?);
+      let (warm, hot) = (brush(colors.warm).ok()?, brush(colors.hot).ok()?);
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
@@ -1073,7 +1079,12 @@ impl Painter {
         if let (Some(label), Some(value)) = (&line.label, &line.value) {
           let y = at(line.top, row_offset);
           put(label, PAD_SIDE + INDENT, y, &dim);
-          put(value, full_width - PAD_SIDE - value.width, y, &text);
+          let ink = match line.heat {
+            2 => &hot,
+            1 => &warm,
+            _ => &text,
+          };
+          put(value, full_width - PAD_SIDE - value.width, y, ink);
         }
       }
       target.EndDraw(None, None).ok()?;

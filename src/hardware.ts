@@ -29,7 +29,14 @@ export interface HardwareSettings {
   // Clicks go to what's under it: none (off), all, or left ones only (a right-click opens its menu).
   // Ctrl held over it makes it clickable again.
   clickThrough: 'off' | 'all' | 'left'
+  hot: boolean // temperatures turn orange, then red, past their limits
+  limits: Record<HotSensor, [number, number]> // °C: orange from the first, red from the second
 }
+
+// The readings that get hot colors: only temperatures (a 100 % load is normal in games)
+export const HOT_SENSORS = ['cpuTemp', 'gpuTemp', 'gpuMemTemp'] as const
+export type HotSensor = (typeof HOT_SENSORS)[number]
+export const HOT_MARGIN = 2 // °C: a color goes away only this far under its limit, so it doesn't blink at the edge
 
 const KEY = 'syncr.hardware'
 const DEFAULTS: HardwareSettings = {
@@ -45,6 +52,8 @@ const DEFAULTS: HardwareSettings = {
   size: 100,
   background: 100,
   clickThrough: 'off',
+  hot: true,
+  limits: { cpuTemp: [75, 85], gpuTemp: [75, 83], gpuMemTemp: [85, 95] },
 }
 export const SPEEDS = [500, 1000, 2000, 5000]
 export const SIZES = [80, 90, 100, 110, 125, 150]
@@ -72,10 +81,12 @@ const listeners = new Set<() => void>()
 let windowOpen = false // the settings window shows every sensor, so all are read while it's open
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
 let preview: Partial<HardwareSettings> | null = null // a theme, frame, size or background under the mouse in the widget's menu
+const heat: Partial<Record<HotSensor, number>> = {} // each temperature's color now: 0 none, 1 orange, 2 red
 
 export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
   write(KEY, current)
+  updateHeat(last) // new limits, or turned on or off: the colors follow at once
   listeners.forEach((listener) => listener())
   send()
   sendWidget(current.on ? last : null) // no more readings come when off: closed now
@@ -83,7 +94,8 @@ export function saveHardware(change: Partial<HardwareSettings>) {
 
 // The settings as saved on this device, for the widget's menu (its own page, hardwareMenu.tsx)
 export function storedHardware(): HardwareSettings {
-  return { ...DEFAULTS, ...read<Partial<HardwareSettings>>(KEY, {}) }
+  const stored = read<Partial<HardwareSettings>>(KEY, {})
+  return { ...DEFAULTS, ...stored, limits: { ...DEFAULTS.limits, ...stored.limits } }
 }
 
 function subscribe(listener: () => void) {
@@ -110,6 +122,7 @@ export function startHardware() {
   if (!isTauri()) return
   void listen<HardwareReadings>('hardware', (event) => {
     last = event.payload
+    updateHeat(last)
     sendWidget(last)
   })
   // The widget's right-click menu (hardware_menu in hardware_widget.rs): a changed option, or
@@ -297,6 +310,29 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
   }
 }
 
+// A temperature's color after this reading (0 none, 1 orange, 2 red), from its color before: it goes
+// up as soon as a limit is reached, and back down only HOT_MARGIN under that limit
+export function nextHeat(before: number, celsius: number, [warm, hot]: [number, number]) {
+  const reached = celsius >= hot ? 2 : celsius >= warm ? 1 : 0
+  let level = Math.max(before, reached)
+  while (level > reached && celsius <= (level === 2 ? hot : warm) - HOT_MARGIN) level--
+  return level
+}
+
+// Main window: every reading (and a changed limit) updates the three temperatures' colors. Not
+// read, or hot colors off: none.
+function updateHeat(r: HardwareReadings | null) {
+  for (const sensor of HOT_SENSORS) {
+    const celsius = r?.[sensor] ?? null
+    heat[sensor] = celsius === null || !current.hot ? 0 : nextHeat(heat[sensor] ?? 0, celsius, current.limits[sensor])
+  }
+}
+
+// A reading's color now, the same in the widget and the settings window
+export function heatLevel(sensor: Sensor) {
+  return (heat as Partial<Record<Sensor, number>>)[sensor] ?? 0
+}
+
 // The widget's hardware, in order, with their readings in the settings window's order
 export const WIDGET_GROUPS = [
   { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuClock'] },
@@ -320,7 +356,7 @@ function sendWidget(r: HardwareReadings | null) {
         icon,
         rows: sensors.flatMap((sensor) => {
           const value = current.shown.includes(sensor) ? valueText(sensor, r) : null
-          return value === null ? [] : [[sensorLabel(sensor, true), value]]
+          return value === null ? [] : [[sensorLabel(sensor, true), value, heatLevel(sensor)]]
         }),
       })).filter((group) => group.rows.length > 0)
   const { place, onTop, locked, theme, frame, size, background, clickThrough } = { ...current, ...preview }

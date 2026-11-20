@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AppWindow, Cpu, Gauge, Gpu, MemoryStick } from 'lucide-react'
+import { AppWindow, Cpu, Flame, Gauge, Gpu, MemoryStick } from 'lucide-react'
 import CloseButton from './CloseButton'
 import Window from './Window'
 import InfoTip from './InfoTip'
@@ -9,13 +9,16 @@ import {
   BACKGROUNDS,
   CLICK_THROUGH,
   FRAMES,
+  HOT_MARGIN,
   type HardwareSettings as HardwareSettingsType,
   type HelperState,
+  type HotSensor,
   type Sensor,
   SIZES,
   SPEEDS,
   THEMES,
   clickThroughAbout,
+  heatLevel,
   removeHelper,
   saveHardware,
   setUpHelper,
@@ -56,7 +59,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           {setUp}
         </button>
       ) : (
-        <span className="settings-status">{readings ? (valueText(sensor, readings) ?? '—') : '…'}</span>
+        <span className={`settings-status${HEAT_CLASS[heatLevel(sensor)] ?? ''}`}>{readings ? (valueText(sensor, readings) ?? '—') : '…'}</span>
       )}
       <input
         type="checkbox"
@@ -156,6 +159,25 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
             </select>
           </SettingRow>
         </SettingsCard>
+        <SettingsCard icon={Flame} title={t('Hot colors')}>
+          <SettingRow
+            label={
+              <>
+                {t('Show hot colors')}
+                <InfoTip label={t('About hot colors')}>
+                  {t('A temperature turns orange from its first limit and red from its second. Its color goes away once it’s {n} under that limit, so it doesn’t blink.', {
+                    n: settings.fahrenheit ? t('{n} °F', { n: decimal((HOT_MARGIN * 9) / 5, 0) }) : t('{n} °C', { n: decimal(HOT_MARGIN, 0) }),
+                  })}
+                </InfoTip>
+              </>
+            }
+          >
+            <input type="checkbox" checked={settings.hot} onChange={(e) => saveHardware({ hot: e.target.checked })} />
+          </SettingRow>
+          <LimitsRow sensor="cpuTemp" label={t('CPU')} settings={settings} />
+          <LimitsRow sensor="gpuTemp" label={t('GPU')} settings={settings} />
+          {readings?.gpuMemTemp !== null && <LimitsRow sensor="gpuMemTemp" label={t('GPU memory')} settings={settings} />}
+        </SettingsCard>
         <SettingsCard icon={Cpu} title={readings?.cpuName ? shortCpuName(readings.cpuName) : t('CPU')}>
           {helper !== 'unsupported' && row('cpuTemp')}
           {row('cpuLoad')}
@@ -190,6 +212,75 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
         </SettingsCard>
       </div>
     </Window>
+  )
+}
+
+const HEAT_CLASS = ['', ' warm', ' hot']
+
+// A temperature's two limits (orange, red), in the unit chosen; saved in °C when the field is left
+// or Enter is pressed (saving each key would flash the widget red while typing "85")
+function LimitsRow({ sensor, label, settings }: { sensor: HotSensor; label: string; settings: HardwareSettingsType }) {
+  const limits = settings.limits[sensor]
+  const shown = (celsius: number) => String(Math.round(settings.fahrenheit ? (celsius * 9) / 5 + 32 : celsius))
+  const field = (index: 0 | 1) => (
+    <LimitField
+      key={`${index}-${settings.fahrenheit}`}
+      saved={shown(limits[index])}
+      className={index === 0 ? 'warm' : 'hot'}
+      label={index === 0 ? t('Orange from') : t('Red from')}
+      unit={settings.fahrenheit ? '°F' : '°C'} // i18n-ok
+      disabled={!settings.hot}
+      onSave={(n) => {
+        const celsius = settings.fahrenheit ? ((n - 32) * 5) / 9 : n
+        const next: [number, number] = [...limits]
+        next[index] = Math.round(celsius * 10) / 10
+        saveHardware({ limits: { ...settings.limits, [sensor]: next } })
+      }}
+    />
+  )
+  return (
+    <SettingRow label={label}>
+      {field(0)}
+      {field(1)}
+    </SettingRow>
+  )
+}
+
+function LimitField(props: { saved: string; className: string; label: string; unit: string; disabled: boolean; onSave: (n: number) => void }) {
+  const [text, setText] = useState(props.saved)
+  const [before, setBefore] = useState(props.saved)
+  if (before !== props.saved) {
+    setBefore(props.saved)
+    setText(props.saved)
+  }
+  // Only whole degrees from 0 to 250 (any unit); anything else goes back to the saved limit
+  const save = () => {
+    const n = Number(text.trim())
+    if (text.trim() !== '' && Number.isInteger(n) && n >= 0 && n <= 250) {
+      if (String(n) !== props.saved) props.onSave(n)
+    } else setText(props.saved)
+  }
+  return (
+    <span className={`settings-limit ${props.className}`} title={props.label}>
+      {/* No min, max or step: the browser would add its own arrows and bubbles; save() checks it */}
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={`${props.label} (${props.unit})`}
+        value={text}
+        disabled={props.disabled}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape' && text !== props.saved) {
+            e.stopPropagation() // only undoes the typing, the window stays
+            setText(props.saved)
+          }
+        }}
+      />
+      <span className="settings-limit-unit">{props.unit}</span>
+    </span>
   )
 }
 

@@ -4681,6 +4681,56 @@ button {
   color: var(--text-green); /* like the details' status lines */
 }
 
+/* Hardware: a temperature past its limits (hot colors), as the widget shows it */
+.settings-status.warm,
+.settings-limit.warm input {
+  color: var(--text-orange);
+}
+
+.settings-status.hot,
+.settings-limit.hot input {
+  color: var(--text-red);
+}
+
+/* Hardware → Hot colors: a temperature's two limits side by side, together one control wide. A
+   box like the dropdowns, the number in its color, then the unit dim */
+.settings-limit {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 4px;
+  width: calc((var(--settings-control) - 6px) / 2);
+  padding: 4px 6px; /* as tall as the dropdowns (their arrow box adds a pixel each way) */
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.95em;
+}
+
+.settings-limit:focus-within {
+  outline: 1px solid var(--accent);
+}
+
+.settings-limit:has(input:disabled) {
+  opacity: 0.5;
+}
+
+.dialog .settings-limit input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 1em;
+  text-align: right; /* next to its unit: "75 °C" */
+  outline: none;
+}
+
+.settings-limit-unit {
+  color: var(--text-dim);
+}
+
 /* A small dim heading over a few rows of a card (Video settings → Hover cards: Videos, Playlists…) */
 .settings-card-sub {
   margin: 8px 0 2px;
