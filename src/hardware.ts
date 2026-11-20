@@ -123,12 +123,23 @@ export function useHardware() {
   return useSyncExternalStore(subscribe, () => current)
 }
 
+// Only when what's read changes: Rust reads again at once on each config, and a look, size or
+// limit changed (or Ctrl + wheel) would read again a few ms after the last reading, which made
+// the CPU load jump (it's measured over the time between two readings)
+let sent = '' // the config Rust has
 function send() {
   if (!isTauri()) return
   const { on, everyMs } = current
   const sensors = windowOpen ? [...SENSORS] : current.shown
+  const config = { on, everyMs, sensors }
+  const key = JSON.stringify(config)
+  if (key === sent) return
+  sent = key
   asked = sensors
-  invoke('hardware_config', { config: { on, everyMs, sensors } }).catch(console.error)
+  invoke('hardware_config', { config }).catch((error) => {
+    sent = '' // sent again next time
+    console.error(error)
+  })
 }
 
 // Main window only (main.tsx), once at start. Every reading updates the widget (a changed tick or
