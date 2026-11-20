@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Small fixes:** Hardware menu leaving resources behind (PC only)
+
 ## [0.96.2] - 2026-11-20
 
 **Video** (PC only)

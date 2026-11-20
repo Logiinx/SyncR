@@ -698,6 +698,9 @@ fn make_menu(area: RECT, open_at: Option<POINT>) {
       // Same origin as the main window, so it reads the same saved settings and language
       .use_https_scheme(true)
       .on_navigation(|url| url.path() == "/hardware-menu.html")
+      // Its file-drop listener is let go only after the window is gone, which Windows refuses:
+      // each menu then kept 2 handles (shared memory) until SyncR closed. The menu takes no files.
+      .disable_drag_drop_handler()
       .build();
     let Ok(menu) = built else {
       lock(&MENU_STATE).stage = Stage::None;
