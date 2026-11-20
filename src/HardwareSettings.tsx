@@ -19,6 +19,7 @@ import {
   THEMES,
   clickThroughAbout,
   heatLevel,
+  hasMemTemp,
   removeHelper,
   saveHardware,
   setUpHelper,
@@ -38,6 +39,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
   const [asking, setAsking] = useState(false) // an admin prompt is open
   const [failed, setFailed] = useState(false) // the last set-up didn't work (a failed removal: Remove stays)
   const helper = readings?.cpuTempState ?? null
+  const memTemp = hasMemTemp()
 
   // One admin prompt; the readings then show the new state
   const askAdmin = (setUp: boolean) => {
@@ -176,7 +178,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           </SettingRow>
           <LimitsRow sensor="cpuTemp" label={t('CPU')} settings={settings} />
           <LimitsRow sensor="gpuTemp" label={t('GPU')} settings={settings} />
-          {readings?.gpuMemTemp !== null && <LimitsRow sensor="gpuMemTemp" label={t('GPU memory')} settings={settings} />}
+          {memTemp && <LimitsRow sensor="gpuMemTemp" label={t('GPU memory')} settings={settings} />}
         </SettingsCard>
         <SettingsCard icon={Cpu} title={readings?.cpuName ? shortCpuName(readings.cpuName) : t('CPU')}>
           {helper !== 'unsupported' && row('cpuTemp')}
@@ -201,7 +203,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
         </SettingsCard>
         <SettingsCard icon={Gpu} title={readings?.gpuName ? shortGpuName(readings.gpuName) : t('GPU')}>
           {row('gpuTemp')}
-          {readings?.gpuMemTemp !== null && row('gpuMemTemp')}
+          {memTemp && row('gpuMemTemp')}
           {row('gpuLoad')}
           {row('gpuClock')}
           {row('gpuMemClock')}

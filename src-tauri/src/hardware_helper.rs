@@ -8,6 +8,8 @@ use super::{registry, wide};
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::ptr::{null, null_mut};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
 
 #[allow(dead_code)] // the helper uses some of these that SyncR doesn't
@@ -30,11 +32,17 @@ pub const FAILED: &str = "failed"; // this reading failed
 pub struct Reader {
   supported: bool,
   client: Option<Client>,
+  missing: Option<(Instant, &'static str)>, // no helper to ask: since when, and why
 }
+
+// A missing helper is looked for again only this often (not on every reading), or at once after
+// a set-up or removal (RETRY_NOW)
+const RETRY: Duration = Duration::from_secs(5);
+static RETRY_NOW: AtomicBool = AtomicBool::new(false);
 
 impl Reader {
   pub fn new() -> Reader {
-    Reader { supported: ryzen(), client: None }
+    Reader { supported: ryzen(), client: None, missing: None }
   }
 
   // (°C, why not)
@@ -43,13 +51,29 @@ impl Reader {
       return (None, UNSUPPORTED);
     }
     if self.client.is_none() {
-      if !pawnio_installed() {
-        return (None, NO_PAWNIO);
+      if let Some((since, state)) = self.missing {
+        if since.elapsed() < RETRY && !RETRY_NOW.swap(false, Ordering::SeqCst) {
+          return (None, state);
+        }
       }
-      self.client = Client::connect();
-      if self.client.is_none() {
-        return (None, if installed() { NOT_RUNNING } else { NO_HELPER });
+      RETRY_NOW.store(false, Ordering::SeqCst);
+      let state = if !pawnio_installed() {
+        NO_PAWNIO
+      } else {
+        self.client = Client::connect();
+        if self.client.is_some() {
+          OK
+        } else if installed() {
+          NOT_RUNNING
+        } else {
+          NO_HELPER
+        }
+      };
+      if state != OK {
+        self.missing = Some((Instant::now(), state));
+        return (None, state);
       }
+      self.missing = None;
     }
     let answer = self.client.as_ref().and_then(Client::ask);
     let Some(answer) = answer else {
@@ -103,8 +127,36 @@ fn pawnio_installed() -> bool {
   program_files().is_some_and(|folder| folder.join(r"PawnIO\PawnIOLib.dll").is_file())
 }
 
+fn installed_exe() -> Option<PathBuf> {
+  Some(program_files()?.join(shared::FOLDER).join(shared::EXE))
+}
+
 fn installed() -> bool {
-  program_files().is_some_and(|folder| folder.join(shared::FOLDER).join(shared::EXE).is_file())
+  installed_exe().is_some_and(|exe| exe.is_file())
+}
+
+// The program at the other end of the pipe is the helper set up in Program Files (only admins
+// can put a program there), not another one that took the pipe's name first
+fn genuine(pipe: HANDLE) -> bool {
+  use windows_sys::Win32::System::Pipes::GetNamedPipeServerProcessId;
+  use windows_sys::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+  let Some(wanted) = installed_exe() else { return false };
+  let mut id = 0u32;
+  // pipe is the open pipe; id receives its server's process id
+  if unsafe { GetNamedPipeServerProcessId(pipe, &mut id) } == 0 {
+    return false;
+  }
+  // A handle that may only ask for the program's name, closed below
+  let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, id) };
+  if process.is_null() {
+    return false;
+  }
+  let mut path = [0u16; 1024];
+  let mut size = path.len() as u32;
+  // path has room for size characters
+  let named = unsafe { QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, path.as_mut_ptr(), &mut size) } != 0;
+  unsafe { CloseHandle(process) };
+  named && String::from_utf16_lossy(&path[..size as usize]).to_lowercase() == wanted.to_string_lossy().to_lowercase()
 }
 
 // The pipe, with a time limit on each question: a stuck helper must not stop the other readings
@@ -120,13 +172,27 @@ const WAIT_MS: u32 = 1000;
 
 impl Client {
   fn connect() -> Option<Client> {
-    use windows_sys::Win32::Foundation::GENERIC_READ;
+    use windows_sys::Win32::Foundation::{GetLastError, ERROR_PIPE_BUSY, GENERIC_READ};
     use windows_sys::Win32::Storage::FileSystem::{CreateFileW, FILE_FLAG_OVERLAPPED, FILE_WRITE_DATA, OPEN_EXISTING};
+    use windows_sys::Win32::System::Pipes::WaitNamedPipeW;
     use windows_sys::Win32::System::Threading::CreateEventW;
     let name = wide(shared::PIPE);
     // name ends in 0. Read, and write data (the question): exactly what the helper allows.
-    let pipe = unsafe { CreateFileW(name.as_ptr(), GENERIC_READ | FILE_WRITE_DATA, 0, null(), OPEN_EXISTING, FILE_FLAG_OVERLAPPED, null_mut()) };
+    let open = || unsafe { CreateFileW(name.as_ptr(), GENERIC_READ | FILE_WRITE_DATA, 0, null(), OPEN_EXISTING, FILE_FLAG_OVERLAPPED, null_mut()) };
+    let mut pipe = open();
+    // Busy: the helper answers one at a time, and a reading thread that was just stopped (module
+    // turned off and on) may still be finishing its question. It lets go within a second.
+    if pipe == INVALID_HANDLE_VALUE && unsafe { GetLastError() } == ERROR_PIPE_BUSY {
+      // name ends in 0
+      if unsafe { WaitNamedPipeW(name.as_ptr(), 1500) } != 0 {
+        pipe = open();
+      }
+    }
     if pipe == INVALID_HANDLE_VALUE {
+      return None;
+    }
+    if !genuine(pipe) {
+      unsafe { CloseHandle(pipe) };
       return None;
     }
     // A manual-reset event for the overlapped reads and writes
@@ -220,6 +286,7 @@ pub async fn hardware_helper_setup(window: tauri::WebviewWindow, if_missing: boo
     run_as_admin(owner, &arguments)
   })
   .await;
+  RETRY_NOW.store(true, Ordering::SeqCst);
   super::read_now();
   result.unwrap_or("failed").to_string()
 }
@@ -228,6 +295,7 @@ pub async fn hardware_helper_setup(window: tauri::WebviewWindow, if_missing: boo
 pub async fn hardware_helper_remove(window: tauri::WebviewWindow) -> String {
   let owner = owner(&window);
   let result = tauri::async_runtime::spawn_blocking(move || run_as_admin(owner, OsStr::new("--uninstall"))).await;
+  RETRY_NOW.store(true, Ordering::SeqCst);
   super::read_now();
   result.unwrap_or("failed").to_string()
 }
@@ -252,6 +320,19 @@ fn run_as_admin(owner: isize, arguments: &OsStr) -> &'static str {
   let exe = folder.join(shared::EXE);
   let result = (|| {
     std::fs::write(&exe, HELPER).ok()?;
+    // Kept open until the helper is done, so no other program can change, replace or delete it
+    // before the admin prompt runs it (Windows can still read it to run it); read back through
+    // that handle, so what runs is surely ours
+    let mut kept = {
+      use std::os::windows::fs::OpenOptionsExt;
+      use windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ;
+      std::fs::OpenOptions::new().read(true).share_mode(FILE_SHARE_READ).open(&exe).ok()?
+    };
+    let mut written = Vec::with_capacity(HELPER.len());
+    std::io::Read::read_to_end(&mut kept, &mut written).ok()?;
+    if written != HELPER {
+      return None;
+    }
     let (verb, file, parameters) = (wide("runas"), wide(exe.as_os_str()), wide(arguments));
     let mut info = SHELLEXECUTEINFOW {
       cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
@@ -274,6 +355,7 @@ fn run_as_admin(owner: isize, arguments: &OsStr) -> &'static str {
       GetExitCodeProcess(info.hProcess, &mut code);
       CloseHandle(info.hProcess);
     }
+    drop(kept);
     Some(if code == 0 { OK } else { "failed" })
   })();
   // The helper may still hold its file for a moment

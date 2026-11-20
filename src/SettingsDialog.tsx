@@ -228,8 +228,8 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
-  if (showBattery) return <MouseBatterySettings onClose={() => (page ? onClose() : setShowBattery(false))} />
-  if (showHardware) return <HardwareSettings onClose={() => setShowHardware(false)} />
+  if (showBattery) return <MouseBatterySettings onClose={() => (page === 'mouse-battery' ? onClose() : setShowBattery(false))} />
+  if (showHardware) return <HardwareSettings onClose={() => (page === 'hardware' ? onClose() : setShowHardware(false))} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 

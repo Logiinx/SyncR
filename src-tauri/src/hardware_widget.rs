@@ -837,9 +837,12 @@ fn show() {
 
 fn hide(local: &mut Local) {
   let widget = std::mem::replace(&mut local.widget, null_mut());
-  WIDGET.store(0, Ordering::SeqCst);
-  menu_away(null_mut()); // a waiting menu goes with it
-  PASSING.store(false, Ordering::SeqCst);
+  // Only if the shared state is still this widget's: a thread being closed (widget off, then on
+  // again at once) may get here after the new widget is up
+  if WIDGET.compare_exchange(widget as isize, 0, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
+    menu_away(null_mut()); // a waiting menu goes with it
+    PASSING.store(false, Ordering::SeqCst);
+  }
   unhook(local);
   local.parent = null_mut();
   local.drawn = None;
