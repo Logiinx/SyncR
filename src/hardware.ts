@@ -144,12 +144,16 @@ export function startHardware() {
   })
   // The widget's right-click menu (hardware_menu in hardware_widget.rs): a changed option, or
   // "Hide widget" (the module off). "Hardware settings…" is App's (listenHardwareOpen).
+  // A choice draws the widget once, with it (saveHardware): not first with the saved setting, which
+  // flashed it between the preview and the choice
   void listen<MenuChoice>('hardware-menu', ({ payload }) => {
-    if (payload.preview !== undefined || payload.change) {
-      preview = payload.change ? null : (payload.preview ?? null)
+    if (payload.change) {
+      preview = null
+      saveHardware(payload.change)
+    } else if (payload.preview !== undefined) {
+      preview = payload.preview ?? null
       sendWidget(current.on ? last : null)
     }
-    if (payload.change) saveHardware(payload.change)
     if (payload.hide) toggleHardware(false)
   })
   // Ctrl + mouse wheel over the widget: one size up or down per notch (Rust ignores it when locked)

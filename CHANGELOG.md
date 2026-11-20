@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Small fixes:** Hardware widget flashing its old look after a menu choice (PC only)
+
 ## [0.97.0] - 2026-11-20
 
 **App**
