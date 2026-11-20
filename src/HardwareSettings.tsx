@@ -7,6 +7,7 @@ import { SettingRow, SettingsCard } from './SettingsCard'
 import { decimal, percentText, t } from './i18n'
 import {
   BACKGROUNDS,
+  CLICK_THROUGH,
   FRAMES,
   type HardwareSettings as HardwareSettingsType,
   type HelperState,
@@ -14,6 +15,7 @@ import {
   SIZES,
   SPEEDS,
   THEMES,
+  clickThroughAbout,
   removeHelper,
   saveHardware,
   setUpHelper,
@@ -101,6 +103,23 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           </SettingRow>
           <SettingRow label={t('Lock position and size')}>
             <input type="checkbox" checked={settings.locked} onChange={(e) => saveHardware({ locked: e.target.checked })} />
+          </SettingRow>
+          <SettingRow
+            label={
+              <>
+                {t('Click-through')}
+                <InfoTip label={t('About click-through')}>{clickThroughAbout()}</InfoTip>
+              </>
+            }
+          >
+            <select
+              value={settings.clickThrough}
+              onChange={(e) => saveHardware({ clickThrough: e.target.value as HardwareSettingsType['clickThrough'] })}
+            >
+              {CLICK_THROUGH.map(([clickThrough, label]) => (
+                <option key={clickThrough} value={clickThrough}>{label()}</option>
+              ))}
+            </select>
           </SettingRow>
           <SettingRow label={t('Temperatures in')}>
             <select value={settings.fahrenheit ? 'f' : 'c'} onChange={(e) => saveHardware({ fahrenheit: e.target.value === 'f' })}>

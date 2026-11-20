@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { animationsOn } from './animations'
 import { decimal, percentText, t } from './i18n'
 import { read, write } from './localState'
 
@@ -25,6 +26,9 @@ export interface HardwareSettings {
   frame: 'none' | 'gray' | 'blue' // the line around its box
   size: number // its size in %, on top of Windows' scaling of its monitor (SIZES)
   background: number // how solid its box is, in % (BACKGROUNDS): 0 = no box, only the text and frame
+  // Clicks go to what's under it: none (off), all, or left ones only (a right-click opens its menu).
+  // Ctrl held over it makes it clickable again.
+  clickThrough: 'off' | 'all' | 'left'
 }
 
 const KEY = 'syncr.hardware'
@@ -40,6 +44,7 @@ const DEFAULTS: HardwareSettings = {
   frame: 'blue',
   size: 100,
   background: 100,
+  clickThrough: 'off',
 }
 export const SPEEDS = [500, 1000, 2000, 5000]
 export const SIZES = [80, 90, 100, 110, 125, 150]
@@ -54,6 +59,13 @@ export const FRAMES: [HardwareSettings['frame'], () => string][] = [
   ['gray', () => t('Gray')],
   ['blue', () => t('Blue')],
 ]
+export const CLICK_THROUGH: [HardwareSettings['clickThrough'], () => string][] = [
+  ['off', () => t('Off')],
+  ['all', () => t('All clicks')],
+  ['left', () => t('Left clicks only')],
+]
+export const clickThroughAbout = () =>
+  t('Clicks go to what’s under the widget. Hold Ctrl over it to click it: move it, open its menu. “Left clicks only”: a right-click still opens its menu.')
 
 let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
@@ -311,7 +323,8 @@ function sendWidget(r: HardwareReadings | null) {
           return value === null ? [] : [[sensorLabel(sensor, true), value]]
         }),
       })).filter((group) => group.rows.length > 0)
-  const { place, onTop, locked, theme, frame, size, background } = { ...current, ...preview }
-  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame, size, background } : null
+  const { place, onTop, locked, theme, frame, size, background, clickThrough } = { ...current, ...preview }
+  const animations = animationsOn() // its fade under the mouse while clicks go through
+  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame, size, background, clickThrough, animations } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Hardware module in Settings → Modules: CPU and GPU temperatures, loads and more (PC only)
 - **New:** right-click the Hardware widget: size, see-through, theme and more (PC only)
 - **New:** Ctrl + mouse wheel over the Hardware widget changes its size (PC only)
+- **New:** clicks can go through the Hardware widget; hold Ctrl to click it (PC only)
 - **Better:** Settings fit without scrolling on a 1080p screen, same gap above and below
 
 **Video** (PC only)

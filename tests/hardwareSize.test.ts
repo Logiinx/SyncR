@@ -6,6 +6,7 @@ vi.mock('../src/localState', () => ({ read: (_key: string, fallback: unknown) =>
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false, invoke: async () => {} }))
 vi.mock('@tauri-apps/api/event', () => ({ listen: async () => () => {} }))
 vi.mock('../src/i18n', () => ({ t: (text: string) => text, decimal: String, percentText: (n: number) => `${n}%` })) // the real one needs a page
+vi.mock('../src/animations', () => ({ animationsOn: () => true })) // needs a page too
 
 const { nextSize } = await import('../src/hardware')
 

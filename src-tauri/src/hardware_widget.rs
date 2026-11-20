@@ -16,7 +16,7 @@ use super::lock;
 use crate::mouse_battery::gdi::Canvas;
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicU8, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use windows::core::Interface;
@@ -43,19 +43,22 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetCursorPos, GetMessageW,
-  GetParent, GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
-  TranslateMessage, UpdateLayeredWindow, HTCAPTION, HTCLIENT, HWND_TOP, HWND_TOPMOST, IDC_ARROW, MA_NOACTIVATE, MSG,
-  SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY,
-  WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE, WM_MOUSEWHEEL, WM_NCHITTEST, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_RBUTTONDOWN,
+  CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetAncestor,
+  GetCursorPos, GetMessageW, GetParent, GetWindow, GetWindowLongPtrW, GetWindowRect, IsWindow, KillTimer, LoadCursorW, PostMessageW, PostQuitMessage,
+  RegisterClassExW, SetTimer, SetWindowLongPtrW, SetWindowPos, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
+  UpdateLayeredWindow, WindowFromPoint, GA_ROOT, GWL_EXSTYLE, GW_HWNDPREV, HC_ACTION, HHOOK, MSLLHOOKSTRUCT, HTCAPTION,
+  HTCLIENT, HWND_TOP, HWND_TOPMOST, IDC_ARROW, MA_NOACTIVATE, MSG, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY,
+  WM_DISPLAYCHANGE, WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE, WM_MOUSEWHEEL, WM_NCHITTEST, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_RBUTTONDOWN,
   WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
-  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP, WHEEL_DELTA,
+  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP, WH_MOUSE_LL, WHEEL_DELTA,
 };
 use windows_sys::Win32::System::SystemServices::MK_CONTROL;
 
 const WM_REFRESH: u32 = WM_APP + 1;
 const CHECK_TIMER: usize = 1;
+const WATCH_TIMER: usize = 2; // click-through: the mouse and Ctrl (follow_mouse)
 const CONTROLLER_CLASS: &str = "SyncRHardwareControl";
 const WIDGET_CLASS: &str = "SyncRHardwareWidget";
 
@@ -160,6 +163,10 @@ pub struct Content {
   size: u32, // %, on top of Windows' scaling of its monitor
   #[serde(default = "full")]
   background: u32, // how solid the box is, in %
+  #[serde(default)]
+  click_through: String, // "off" (or anything else) · "all" · "left" (right-clicks still open its menu)
+  #[serde(default)]
+  animations: bool, // the app's Animations setting: its fade under the mouse
 }
 
 fn full() -> u32 {
@@ -173,6 +180,20 @@ static APP: Mutex<Option<AppHandle>> = Mutex::new(None);
 static LOCKED: AtomicBool = AtomicBool::new(false);
 static MENU_OPEN: AtomicBool = AtomicBool::new(false); // "on top" then leaves the menu above it
 pub const MENU: &str = "hardware-menu";
+// Click-through (follow_mouse): which clicks go through, the app's Animations setting, the widget
+// (for the mouse hook), whether clicks go through it right now, and whether it's being dragged
+const THROUGH_OFF: u8 = 0;
+const THROUGH_ALL: u8 = 1;
+const THROUGH_LEFT: u8 = 2;
+static THROUGH: AtomicU8 = AtomicU8::new(THROUGH_OFF);
+static ANIMATIONS: AtomicBool = AtomicBool::new(true);
+static WIDGET: AtomicIsize = AtomicIsize::new(0);
+static PASSING: AtomicBool = AtomicBool::new(false);
+static DRAGGING: AtomicBool = AtomicBool::new(false);
+const FADED: u8 = 51; // ~20 %: under the mouse while clicks go through, to see what's under it
+const FADE_MS: u32 = 120;
+const FADE_EVERY: u32 = 15; // ms between fade steps
+const WATCH_EVERY: u32 = 50; // ms between looks at the mouse and Ctrl, only while click-through is on
 
 // After every reading, and when the settings change. None or nothing to show: no widget.
 #[tauri::command]
@@ -184,6 +205,13 @@ pub fn hardware_widget(app: AppHandle, content: Option<Content>) {
     return;
   };
   LOCKED.store(content.locked, Ordering::SeqCst);
+  let through = match content.click_through.as_str() {
+    "all" => THROUGH_ALL,
+    "left" => THROUGH_LEFT,
+    _ => THROUGH_OFF,
+  };
+  THROUGH.store(through, Ordering::SeqCst);
+  ANIMATIONS.store(content.animations, Ordering::SeqCst);
   *lock(&CONTENT) = Some(content);
   let controller = *lock(&CONTROLLER);
   if controller != 0 {
@@ -221,12 +249,26 @@ struct Local {
   // The widest it has been for these labels (DIPs): it grows with a longer value but doesn't
   // shrink back each second; new labels start over
   widest: (Vec<String>, f32),
+  opacity: u8,      // the whole widget's (255: solid), lower under the mouse while clicks go through
+  watch_every: u32, // the mouse-watching timer's ms (0: off)
+  hook: HHOOK,      // the system-wide mouse hook, only for "left clicks only" (null: none)
 }
 
 thread_local! {
   static LOCAL: RefCell<Local> = const {
-    RefCell::new(Local { widget: null_mut(), parent: null_mut(), painter: None, drawn: None, widest: (Vec::new(), 0.0) })
+    RefCell::new(Local {
+      widget: null_mut(),
+      parent: null_mut(),
+      painter: None,
+      drawn: None,
+      widest: (Vec::new(), 0.0),
+      opacity: 255,
+      watch_every: 0,
+      hook: null_mut(),
+    })
   };
+  // A right-click caught by the hook over the widget: its release opens the menu
+  static RIGHT_PRESSED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 fn run(start: u64) {
@@ -294,8 +336,13 @@ unsafe fn register(instance: windows_sys::Win32::Foundation::HMODULE, class: &[u
 
 unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
   match message {
+    WM_TIMER if wparam == WATCH_TIMER => {
+      follow(window);
+      0
+    }
     WM_TIMER | WM_REFRESH => {
       show();
+      follow(window);
       0
     }
     // A monitor came or went: a widget left on no monitor goes to the main one
@@ -348,8 +395,14 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
     WM_NCRBUTTONDOWN | WM_RBUTTONDOWN | WM_CONTEXTMENU => 0,
     // A click never takes the focus from the app in front
     WM_MOUSEACTIVATE => MA_NOACTIVATE as LRESULT,
+    // Click-through: a drag started with Ctrl held goes on after Ctrl is let go (follow_mouse)
+    WM_ENTERSIZEMOVE => {
+      DRAGGING.store(true, Ordering::SeqCst);
+      0
+    }
     // Let go after a drag: the page saves the new place; another monitor may need another scale
     WM_EXITSIZEMOVE => {
+      DRAGGING.store(false, Ordering::SeqCst);
       let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
       if unsafe { GetWindowRect(window, &mut rect) } != 0 {
         if let Some(app) = lock(&APP).clone() {
@@ -377,6 +430,152 @@ fn zoom(delta: i32) {
       let _ = app.emit_to("main", "hardware-widget-zoom", steps.signum());
     }
   }
+}
+
+// Click-through: clicks go to what's under the widget (Windows lets them through a window marked
+// "transparent"). It looks at the mouse and Ctrl every 50 ms, only while click-through is on:
+// under the mouse it fades to ~20 % to show what's under it; Ctrl held over it makes it a normal
+// widget again (solid, dragged, right-clicked, Ctrl + wheel). "Left clicks only": Windows lets
+// clicks through all or nothing, so a system-wide mouse hook (only then) catches right-clicks over
+// it and opens its menu. After a reading, a change, or a timer tick.
+fn follow(controller: HWND) {
+  LOCAL.with(|local| {
+    let Ok(mut local) = local.try_borrow_mut() else { return };
+    let every = follow_mouse(&mut local);
+    if every != local.watch_every {
+      unsafe {
+        if every == 0 {
+          KillTimer(controller, WATCH_TIMER);
+        } else {
+          SetTimer(controller, WATCH_TIMER, every, None);
+        }
+      }
+      local.watch_every = every;
+    }
+  });
+}
+
+// The next look's ms (0: no need)
+fn follow_mouse(local: &mut Local) -> u32 {
+  let through = THROUGH.load(Ordering::SeqCst);
+  if local.widget.is_null() {
+    unhook(local);
+    return 0;
+  }
+  if through == THROUGH_LEFT && local.hook.is_null() {
+    // Runs on this thread (its message loop); 0: every program's mouse
+    local.hook = unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), GetModuleHandleW(null()), 0) };
+  } else if through != THROUGH_LEFT {
+    unhook(local);
+  }
+  let mut mouse = POINT { x: 0, y: 0 };
+  let over = through != THROUGH_OFF && unsafe { GetCursorPos(&mut mouse) } != 0 && mouse_over(local.widget, mouse);
+  let ctrl = unsafe { GetAsyncKeyState(VK_CONTROL as i32) } < 0;
+  let dragging = DRAGGING.load(Ordering::SeqCst);
+  set_passing(local.widget, through != THROUGH_OFF && !(over && ctrl) && !dragging);
+
+  let target = if over && !ctrl && !dragging { FADED } else { 255 };
+  if local.opacity != target {
+    let step = ((255 - FADED as u32) * FADE_EVERY / FADE_MS) as u8;
+    local.opacity = if !ANIMATIONS.load(Ordering::SeqCst) {
+      target
+    } else if local.opacity < target {
+      local.opacity.saturating_add(step).min(target)
+    } else {
+      local.opacity.saturating_sub(step).max(target)
+    };
+    let blend = BLENDFUNCTION {
+      BlendOp: AC_SRC_OVER as u8,
+      BlendFlags: 0,
+      SourceConstantAlpha: local.opacity,
+      AlphaFormat: AC_SRC_ALPHA as u8,
+    };
+    // Only the opacity changes: the picture stays
+    unsafe { UpdateLayeredWindow(local.widget, null_mut(), null(), null(), null_mut(), null(), 0, &blend, ULW_ALPHA) };
+  }
+  if local.opacity != target {
+    FADE_EVERY
+  } else if through != THROUGH_OFF {
+    WATCH_EVERY
+  } else {
+    0
+  }
+}
+
+// The mouse is on the widget, and no window covers it there. Windows skips the widget while clicks
+// go through it, so what's under the mouse is then what's under the widget: on the desktop, the
+// desktop itself (not a window over it); "on top", any window not above the widget.
+fn mouse_over(widget: HWND, mouse: POINT) -> bool {
+  let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+  unsafe {
+    if GetWindowRect(widget, &mut rect) == 0
+      || mouse.x < rect.left
+      || mouse.x >= rect.right
+      || mouse.y < rect.top
+      || mouse.y >= rect.bottom
+    {
+      return false;
+    }
+    let under = WindowFromPoint(mouse);
+    if under.is_null() {
+      return false;
+    }
+    let root = GetAncestor(under, GA_ROOT);
+    let parent = GetParent(widget);
+    if !parent.is_null() {
+      return root == GetAncestor(parent, GA_ROOT);
+    }
+    let mut above = GetWindow(widget, GW_HWNDPREV);
+    while !above.is_null() {
+      if above == root {
+        return false;
+      }
+      above = GetWindow(above, GW_HWNDPREV);
+    }
+    true
+  }
+}
+
+fn set_passing(widget: HWND, on: bool) {
+  if PASSING.swap(on, Ordering::SeqCst) == on {
+    return;
+  }
+  unsafe {
+    let style = GetWindowLongPtrW(widget, GWL_EXSTYLE);
+    let transparent = WS_EX_TRANSPARENT as isize;
+    SetWindowLongPtrW(widget, GWL_EXSTYLE, if on { style | transparent } else { style & !transparent });
+  }
+}
+
+fn unhook(local: &mut Local) {
+  let hook = std::mem::replace(&mut local.hook, null_mut());
+  if !hook.is_null() {
+    unsafe { UnhookWindowsHookEx(hook) };
+  }
+  RIGHT_PRESSED.with(|pressed| pressed.set(false));
+}
+
+// Every mouse event on the PC goes through here while "left clicks only" is on, so it only looks
+// at right-clicks and answers at once. One on the widget (while clicks go through it) is kept from
+// what's under it; letting go opens the widget's menu.
+unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+  if code == HC_ACTION as i32 && lparam != 0 {
+    let message = wparam as u32;
+    if message == WM_RBUTTONDOWN {
+      let widget = WIDGET.load(Ordering::SeqCst) as HWND;
+      // lparam is the event, as Windows sends it for this hook
+      let mouse = unsafe { (*(lparam as *const MSLLHOOKSTRUCT)).pt };
+      let ours = !widget.is_null() && PASSING.load(Ordering::SeqCst) && !MENU_OPEN.load(Ordering::SeqCst) && mouse_over(widget, mouse);
+      RIGHT_PRESSED.with(|pressed| pressed.set(ours));
+      if ours {
+        return 1;
+      }
+    } else if message == WM_RBUTTONUP && RIGHT_PRESSED.with(|pressed| pressed.replace(false)) {
+      open_menu();
+      return 1;
+    }
+  }
+  unsafe { CallNextHookEx(null_mut(), code, wparam, lparam) }
 }
 
 // The right-click menu: a page of its own (hardware-menu.html), made now and removed when it
@@ -482,8 +681,12 @@ fn show() {
 
 fn hide(local: &mut Local) {
   let widget = std::mem::replace(&mut local.widget, null_mut());
+  WIDGET.store(0, Ordering::SeqCst);
+  PASSING.store(false, Ordering::SeqCst);
+  unhook(local);
   local.parent = null_mut();
   local.drawn = None;
+  local.opacity = 255;
   unsafe {
     if !widget.is_null() && IsWindow(widget) != 0 {
       DestroyWindow(widget);
@@ -591,6 +794,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
       }
       local.widget = widget;
       local.parent = parent;
+      WIDGET.store(widget as isize, Ordering::SeqCst);
     }
     if let Some(picture) = &picture {
       let size = SIZE { cx: width, cy: height };
@@ -598,7 +802,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
       let blend = BLENDFUNCTION {
         BlendOp: AC_SRC_OVER as u8,
         BlendFlags: 0,
-        SourceConstantAlpha: 255,
+        SourceConstantAlpha: local.opacity,
         AlphaFormat: AC_SRC_ALPHA as u8,
       };
       if UpdateLayeredWindow(local.widget, null_mut(), null(), &size, picture.dc, &source, 0, &blend, ULW_ALPHA) == 0 {

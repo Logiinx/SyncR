@@ -237,6 +237,12 @@ export const settings = {
   '{n} °F': '{n} °F',
   Widget: 'Widget',
   'Lock position and size': 'Verrouiller la position et la taille',
+  'Click-through': 'Clics au travers',
+  'About click-through': 'À propos des clics au travers',
+  'All clicks': 'Tous les clics',
+  'Left clicks only': 'Clics gauches seulement',
+  'Clicks go to what’s under the widget. Hold Ctrl over it to click it: move it, open its menu. “Left clicks only”: a right-click still opens its menu.':
+    'Les clics vont à ce qui est sous le widget. Maintenez Ctrl dessus pour le cliquer : le déplacer, ouvrir son menu. « Clics gauches seulement » : un clic droit ouvre toujours son menu.',
   'Temperatures in': 'Températures en',
   'Celsius (°C)': 'Celsius (°C)',
   'Fahrenheit (°F)': 'Fahrenheit (°F)',

@@ -1,13 +1,13 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Blend, EyeOff, ListChecks, Lock, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
 import { decimal, percentText, t, useLanguage } from './i18n'
-import { BACKGROUNDS, FRAMES, type HardwareSettings, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, sensorLabel, storedHardware } from './hardware'
+import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor, made when the widget is right-clicked and removed when the menu closes
@@ -90,6 +90,19 @@ function HardwareMenu() {
   const items: MenuItem[] = [
     { label: t('Always on top'), icon: Pin, checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
     { label: t('Lock position and size'), icon: Lock, checked: settings.locked, onClick: () => change({ locked: !settings.locked }) },
+    {
+      label: t('Click-through'),
+      icon: MousePointerClick,
+      submenu: {
+        title: t('Click-through'),
+        items: CLICK_THROUGH.map(([clickThrough, label]) => ({
+          label: label(),
+          hint: clickThrough === 'off' ? undefined : clickThroughAbout(),
+          checked: settings.clickThrough === clickThrough,
+          onClick: () => change({ clickThrough }),
+        })),
+      },
+    },
     { label: t('What to show'), icon: ListChecks, divider: true, submenu: { title: t('What to show'), items: shown } },
     {
       label: t('Update every'),
