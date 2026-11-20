@@ -454,6 +454,7 @@
     let startKind = null // this video's kind of pictures for it
     let startPictures = null // a promise of its first 30 min's pictures: [{ at, picture }]
     let startLive = false // live now, or not started
+    let startPastLive = false // a live that has ended
     async function loadStartPictures(id, kind) {
       const perSheet = kind.cols * kind.rows
       const count = Math.min(kind.count, Math.ceil((SKIP.within + SKIP.ahead) / kind.interval) + 3)
@@ -472,6 +473,7 @@
       const details = answer.videoDetails || {}
       startKind = kinds.find((one) => one?.interval > 0) || null
       startLive = !!(details.isLive || details.isUpcoming)
+      startPastLive = !startLive && !!details.isLiveContent
       if (startSkip.off || startLive || !startKind) return
       const here = () => Math.max(player.getCurrentTime() || 0, openedAt)
       if (here() >= SKIP.within) return
@@ -490,9 +492,11 @@
         return startPictures.catch(() => [])
       }
       const remember = skipRemember(controls, id, startSkip, labels, player.getCurrentTime() || 0, startLive, pictures)
-      // YouTube makes a past live's preview pictures some hours after it ends: nothing to learn from
-      // yet (grayed, not a click that does nothing)
-      if (remember.allowed && previewsRead && !startKind) return { allowed: false, hint: labels.rememberNoPictures, run: () => {} }
+      // No preview pictures: nothing to learn from (grayed, not a click that does nothing). YouTube
+      // makes a past live's some hours after it ends ("yet"); other videos rarely have none.
+      if (remember.allowed && previewsRead && !startKind) {
+        return { allowed: false, hint: startPastLive ? labels.rememberNoPicturesYet : labels.rememberNoPictures, run: () => {} }
+      }
       return remember
     }
     const chapterAt = (seconds) => {
@@ -590,7 +594,7 @@
         controls.setStartSkip(null)
         controls.setStartBack(null)
         startKind = startPictures = null
-        startLive = false
+        startLive = startPastLive = false
         controls.closeParts()
         drawTimeButton()
         askSponsorBlock(id)

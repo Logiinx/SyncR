@@ -9,6 +9,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** menu du widget Matériel qui parfois ne s'ouvrait plus (PC uniquement)
 - **Petites corrections :** Matériel : widget clignotant, sauts de charge CPU, lignes mémoire GPU, ordre des limites (PC uniquement)
 
+**Vidéo** (PC uniquement)
+- **Petites corrections :** message des vidéos sans images d’aperçu
+
 ## [0.97.0] - 2026-11-20
 
 **Application**

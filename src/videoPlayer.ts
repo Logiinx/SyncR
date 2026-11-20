@@ -201,7 +201,8 @@ function controlsData() {
       rememberMusic: t('Not for music videos'),
       rememberLive: t('Not while it’s live'),
       rememberLate: t('Only in the first 30 minutes'),
-      rememberNoPictures: t('No preview pictures from YouTube yet'), // a past live, for some hours (video-watch.js)
+      rememberNoPicturesYet: t('No preview pictures from YouTube yet'), // a past live, for some hours (video-watch.js)
+      rememberNoPictures: t('No preview pictures for this video'),
       close: t('Close'),
       // ⚙️ → Keyboard shortcuts (controls.js)
       shortcuts: t('Keyboard shortcuts'),
