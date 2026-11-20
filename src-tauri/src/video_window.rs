@@ -267,8 +267,14 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     return answer(403, "text/plain", Vec::new());
   }
   let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
+  // A video piece is asked for as a browser does, saying it takes compressed answers: Twitch's
+  // delivery network keeps one copy per way of asking, and after Twitch deletes a muted piece's
+  // original sound, the copy browsers ask for can still be there while the other is refused
+  // (found 2026-11-20). Pieces are never sent compressed (only text is), so nothing to unpack.
+  let piece = rest.ends_with(".ts") || rest.ends_with(".mp4");
+  let like_browser = |ask: reqwest::RequestBuilder| if piece { ask.header(reqwest::header::ACCEPT_ENCODING, "gzip, deflate, br, zstd") } else { ask };
   if only_check {
-    let status = player_client().head(format!("https://{host}/{rest}{query}")).send().await.map_or(502, |response| response.status().as_u16());
+    let status = like_browser(player_client().head(format!("https://{host}/{rest}{query}"))).send().await.map_or(502, |response| response.status().as_u16());
     return answer(status, "text/plain", Vec::new());
   }
   // Only the start of a piece (previews.js's own preview pictures): only "bytes=<from>-<to>" passes
@@ -276,7 +282,7 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     let numbers = |text: &str| !text.is_empty() && text.len() <= 12 && text.bytes().all(|byte| byte.is_ascii_digit());
     value.strip_prefix("bytes=").and_then(|span| span.split_once('-')).is_some_and(|(from, to)| numbers(from) && numbers(to))
   });
-  let mut ask = player_client().get(format!("https://{host}/{rest}{query}"));
+  let mut ask = like_browser(player_client().get(format!("https://{host}/{rest}{query}")));
   if let Some(range) = &range {
     ask = ask.header(reqwest::header::RANGE, range);
   }
@@ -284,6 +290,10 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     return answer(502, "text/plain", Vec::new());
   };
   let status = response.status().as_u16();
+  // Compressed after all: not passed on as video (the player tries again, or plays the muted copy)
+  if piece && response.headers().get(reqwest::header::CONTENT_ENCODING).is_some_and(|encoding| encoding != "identity") {
+    return answer(502, "text/plain", Vec::new());
+  }
   let part = response.headers().get(reqwest::header::CONTENT_RANGE).and_then(|value| value.to_str().ok()).map(str::to_owned);
   let Ok(body) = response.bytes().await else {
     return answer(502, "text/plain", Vec::new());

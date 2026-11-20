@@ -413,15 +413,28 @@ let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't
 
 // Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
 // parts of pieces only its delivery network still keeps, which play fine whole. Only for the bar:
-// playing tries the sound anyway. A piece whose check got no answer (network) shows as muted.
+// playing tries the sound anyway. Only a refusal (4xx) means gone; no real answer (network: 502,
+// Twitch busy: 5xx, 429) is asked again a little later, and shows as muted meanwhile.
 const checkAddress = (url) => uncutAddress(url).replace('/v/', '/has/')
-function checkPiece(url) {
+const CHECK_RETRIES = 2
+const CHECK_AGAIN_AFTER = 10000 // ms
+function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
+    const again = () => recheckPiece(url, tries)
     pieceChecks.set(url, fetch(checkAddress(url), { cache: 'no-store' }).then((response) => {
       if (response.ok && !playedPieces.has(url)) uncutPieces.add(url)
-    }, () => { pieceChecks.delete(url) }))
+      else if (response.status >= 500 || response.status === 429) again()
+    }, again))
   }
   return pieceChecks.get(url)
+}
+function recheckPiece(url, tries) {
+  if (tries >= CHECK_RETRIES) return
+  setTimeout(() => {
+    if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
+    pieceChecks.delete(url)
+    checkPiece(url, tries + 1).then(drawMutedSoon)
+  }, CHECK_AGAIN_AFTER)
 }
 
 // When a quality's list loads or it starts playing: all its muted pieces not asked yet, a few at a
