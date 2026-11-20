@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.96.1] - 2026-11-20
+
 **App**
 - **Small fixes:** Hardware settings flicker, CPU temperature after off and on (PC only)
 
