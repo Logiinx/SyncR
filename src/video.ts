@@ -819,6 +819,10 @@ export function useVideoFeed() {
       const mark = markOf.get(videoMarkId(video.id))
       return video.later && !mark?.opened && !mark?.watched
     }).map((video) => video.id))
+    // The list buttons' counts; the Video tab's is their sum (user, 2026-11-20)
+    const unopened = (list: FeedVideo[]) => list.filter((video) => !video.opened && !video.gone).length
+    const newToWatch = unopened(toWatch) + newInPlaylists.size
+    const newMusic = unopened(music)
     return {
       follows,
       folders,
@@ -838,7 +842,9 @@ export function useVideoFeed() {
           return { ...withBetterTitle(video, better), gone: false, followId: playlist.id, channelIcon: null, music: false, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
         }),
       })),
-      newCount: [...toWatch, ...music].filter((video) => !video.opened && !video.gone).length + newInPlaylists.size,
+      newToWatch,
+      newMusic,
+      newCount: newToWatch + newMusic,
     }
   }, [deArrow])
   // DeArrow's titles: what's left to watch first, Watched last. Each answer saved redraws the list,

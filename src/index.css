@@ -8383,8 +8383,16 @@ button.history-row.selected {
 }
 
 /* Music: its own switch, a little apart from To watch | Rewatch | Watched (the bar's gap) */
+.video-list-switch.fill-switch > button,
 .video-music-switch.fill-switch > button {
   gap: 6px;
+}
+
+/* New videos on To watch and Music, like the sidebar's count */
+.video-list-count {
+  color: var(--link);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .video-toolbar .reminders-tools {

@@ -9,6 +9,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** l'assistant Matériel s'affiche « SyncR Hardware » avec l'icône de SyncR dans le Gestionnaire des tâches (PC uniquement)
 - **Petites corrections :** menu Matériel laissant des ressources derrière lui (PC uniquement)
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** nombre de nouvelles vidéos sur les boutons À regarder et Musique
+
 ## [0.96.2] - 2026-11-20
 
 **Vidéo** (PC uniquement)

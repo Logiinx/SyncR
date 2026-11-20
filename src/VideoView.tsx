@@ -42,6 +42,11 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   return newIds
 }
 
+// A list button's new videos, the sidebar count's look (the Video tab's count is the sum of both)
+function ListCount({ count }: { count: number }) {
+  return count > 0 ? <span className="video-list-count" title={t('New videos')}>{count}</span> : null
+}
+
 // With its time when near (user: which of several "Today" came out first). A group's row: the day
 // only (with its counts it would no longer fit on a phone)
 const videoDay = (video: FeedVideo) => dayTime(video.published)
@@ -1057,7 +1062,7 @@ function VideoView() {
           <FillSwitch
             className="video-list-switch"
             options={[
-              { value: 'towatch', label: t('To watch') },
+              { value: 'towatch', label: <>{t('To watch')}<ListCount count={feed?.newToWatch ?? 0} /></> },
               ...(asSection ? [] : [{ value: 'rewatch' as const, label: t('Rewatch') }]),
               { value: 'watched', label: t('Watched|list') },
             ]}
@@ -1068,7 +1073,7 @@ function VideoView() {
           {(anyMusic || list === 'music') && (
             <FillSwitch
               className="video-music-switch"
-              options={[{ value: 'music' as const, label: musicName ? <><Music size={14} /> {t('Music')}</> : <Music size={14} />, title: musicName ? undefined : t('Music') }]}
+              options={[{ value: 'music' as const, label: <><Music size={14} />{musicName && t('Music')}<ListCount count={feed?.newMusic ?? 0} /></>, title: musicName ? undefined : t('Music') }]}
               value={list}
               onChange={setList}
             />

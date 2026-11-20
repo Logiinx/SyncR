@@ -9,6 +9,9 @@ All notable changes to SyncR. Newest version first.
 - **Better:** Hardware helper shows as "SyncR Hardware" with SyncR's icon in Task Manager (PC only)
 - **Small fixes:** Hardware menu leaving resources behind (PC only)
 
+**Video** (PC only)
+- **New:** counts of new videos on the To watch and Music buttons
+
 ## [0.96.2] - 2026-11-20
 
 **Video** (PC only)
