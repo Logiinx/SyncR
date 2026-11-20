@@ -696,7 +696,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           <>
             {t('Hardware')}
             <InfoTip label={t('About the hardware module')}>
-              {t('Shows your CPU and GPU temperatures, loads, clocks, fan and RAM in a small widget on your desktop.')}
+              {t('Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.')}
             </InfoTip>
           </>
         }

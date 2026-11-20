@@ -43,8 +43,11 @@ pub struct Readings {
   gpu_temp: Option<f64>,    // °C
   gpu_mem_temp: Option<f64>, // °C, video memory, from nvapi (None on cards without that sensor)
   gpu_load: Option<f64>,    // %
+  gpu_power: Option<f64>,   // W, the whole card (NVIDIA's board power)
   gpu_clock: Option<f64>,   // MHz, graphics clock
   gpu_mem_clock: Option<f64>, // MHz, video memory clock
+  gpu_mem_used: Option<f64>, // bytes of video memory in use
+  gpu_mem_total: Option<f64>, // bytes
   gpu_fan: Option<f64>,     // % of full speed (0 while the fans stand still)
   gpu_fan_rpm: Option<f64>, // turns per minute, when the driver gives it
   ram_used: Option<f64>,    // bytes
@@ -112,7 +115,7 @@ fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
     let wants = |name: &str| config.sensors.iter().any(|sensor| sensor == name);
     let mut readings = Readings { cpu_name: cpu_name.clone(), at: now_ms(), sensors: config.sensors.clone(), ..Default::default() };
 
-    let gpu = ["gpuTemp", "gpuMemTemp", "gpuLoad", "gpuClock", "gpuMemClock", "gpuFan"].iter().any(|name| wants(name));
+    let gpu = ["gpuTemp", "gpuMemTemp", "gpuLoad", "gpuPower", "gpuClock", "gpuMemClock", "gpuMemUsed", "gpuFan"].iter().any(|name| wants(name));
     if gpu {
       if let Some(gpu) = nvml.get_or_insert_with(nvml::Nvml::open) {
         readings.gpu_name = gpu.name.clone();
@@ -122,11 +125,20 @@ fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
         if wants("gpuLoad") {
           readings.gpu_load = gpu.load();
         }
+        if wants("gpuPower") {
+          readings.gpu_power = gpu.power();
+        }
         if wants("gpuClock") {
           readings.gpu_clock = gpu.clock(nvml::CLOCK_GRAPHICS);
         }
         if wants("gpuMemClock") {
           readings.gpu_mem_clock = gpu.clock(nvml::CLOCK_MEMORY);
+        }
+        if wants("gpuMemUsed") {
+          if let Some((used, total)) = gpu.memory() {
+            readings.gpu_mem_used = Some(used);
+            readings.gpu_mem_total = Some(total);
+          }
         }
         if wants("gpuFan") {
           readings.gpu_fan = gpu.fan();
@@ -341,12 +353,26 @@ mod nvml {
   type ClockInfo = unsafe extern "C" fn(Device, u32, *mut u32) -> i32;
   type FanSpeed = unsafe extern "C" fn(Device, *mut u32) -> i32;
   type FanSpeedRpm = unsafe extern "C" fn(Device, *mut [u32; 3]) -> i32; // version, fan, speed
+  type PowerUsage = unsafe extern "C" fn(Device, *mut u32) -> i32; // milliwatts
+  type MemoryInfo = unsafe extern "C" fn(Device, *mut MemoryV2) -> i32;
+  type MemoryInfoV1 = unsafe extern "C" fn(Device, *mut [u64; 3]) -> i32; // total, free, used
+
+  // nvmlMemory_v2_t: used here leaves out what the driver keeps for itself (in v1's used)
+  #[repr(C)]
+  pub struct MemoryV2 {
+    version: u32,
+    total: u64,
+    reserved: u64,
+    free: u64,
+    used: u64,
+  }
 
   pub const CLOCK_GRAPHICS: u32 = 0;
   pub const CLOCK_MEMORY: u32 = 2;
   const SUCCESS: i32 = 0;
   const TEMPERATURE_GPU: u32 = 0;
   const FAN_SPEED_INFO_V1: u32 = 12 | (1 << 24); // the struct's size | version 1 << 24
+  const MEMORY_V2: u32 = size_of::<MemoryV2>() as u32 | (2 << 24); // the same, version 2
 
   pub struct Nvml {
     library: HMODULE,
@@ -357,6 +383,9 @@ mod nvml {
     clock_info: Option<ClockInfo>,
     fan_speed: Option<FanSpeed>,
     fan_speed_rpm: Option<FanSpeedRpm>,
+    power_usage: Option<PowerUsage>,
+    memory_info: Option<MemoryInfo>,
+    memory_info_v1: Option<MemoryInfoV1>,
     pub name: Option<String>,
   }
 
@@ -421,6 +450,9 @@ mod nvml {
           clock_info: function(library, "nvmlDeviceGetClockInfo"),
           fan_speed: function(library, "nvmlDeviceGetFanSpeed"),
           fan_speed_rpm: function(library, "nvmlDeviceGetFanSpeedRPM"),
+          power_usage: function(library, "nvmlDeviceGetPowerUsage"),
+          memory_info: function(library, "nvmlDeviceGetMemoryInfo_v2"),
+          memory_info_v1: function(library, "nvmlDeviceGetMemoryInfo"),
           name,
         })
       }
@@ -460,6 +492,28 @@ mod nvml {
       // as above; info is nvmlFanSpeedInfo_v1_t (version, fan index, speed)
       let ok = self.fan_speed_rpm.is_some_and(|get| unsafe { get(self.device, &mut info) } == SUCCESS);
       ok.then_some(info[2] as f64)
+    }
+
+    // The whole card's power draw, in watts
+    pub fn power(&self) -> Option<f64> {
+      let mut milliwatts = 0u32;
+      // as above
+      let ok = self.power_usage.is_some_and(|get| unsafe { get(self.device, &mut milliwatts) } == SUCCESS);
+      ok.then_some(milliwatts as f64 / 1000.0)
+    }
+
+    // Video memory (used, total) in bytes. Version 2 where the driver has it (used without the
+    // driver's own share), else version 1.
+    pub fn memory(&self) -> Option<(f64, f64)> {
+      let mut info = MemoryV2 { version: MEMORY_V2, total: 0, reserved: 0, free: 0, used: 0 };
+      // as above; info is nvmlMemory_v2_t with its version set
+      if self.memory_info.is_some_and(|get| unsafe { get(self.device, &mut info) } == SUCCESS) && info.total > 0 {
+        return Some((info.used as f64, info.total as f64));
+      }
+      let mut v1 = [0u64; 3];
+      // as above; v1 is nvmlMemory_t (total, free, used)
+      let ok = self.memory_info_v1.is_some_and(|get| unsafe { get(self.device, &mut v1) } == SUCCESS) && v1[0] > 0;
+      ok.then_some((v1[2] as f64, v1[0] as f64))
     }
   }
 

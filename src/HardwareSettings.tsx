@@ -212,8 +212,10 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           {row('gpuTemp')}
           {memTemp && row('gpuMemTemp')}
           {row('gpuLoad')}
+          {row('gpuPower')}
           {row('gpuClock')}
           {row('gpuMemClock')}
+          {row('gpuMemUsed')}
           {row('gpuFan')}
         </SettingsCard>
         <SettingsCard icon={MemoryStick} title={groupName('memory')}>

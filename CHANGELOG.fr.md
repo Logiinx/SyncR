@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Nouveau :** Matériel : consommation et mémoire utilisée du GPU (PC uniquement)
+
 ## [0.97.1] - 2026-11-20
 
 **Application**

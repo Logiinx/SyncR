@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **New:** Hardware: GPU power and GPU memory used (PC only)
+
 ## [0.97.1] - 2026-11-20
 
 **App**

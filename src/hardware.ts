@@ -5,13 +5,13 @@ import { animationsOn } from './animations'
 import { decimal, percentText, t } from './i18n'
 import { read, write } from './localState'
 
-// Hardware module (PC, Settings → Modules): temperatures, loads, clocks, fan and RAM, read by Rust
+// Hardware module (PC, Settings → Modules): temperatures, loads, power, clocks, memory and fan, read by Rust
 // (hardware.rs) and shown in a small widget on the desktop (hardware_widget.rs). Its settings are kept on
 // this device, never synced. This sends Rust the settings, at start and on every change. Off: Rust
 // runs nothing and opens no library.
 
 // The sensors, in the order the settings window lists them. Rust reads only the ones asked for.
-export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan', 'ram'] as const
+export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan', 'ram'] as const
 export type Sensor = (typeof SENSORS)[number]
 
 export interface HardwareSettings {
@@ -232,8 +232,11 @@ export interface HardwareReadings {
   gpuTemp: number | null
   gpuMemTemp: number | null // null also on cards without that sensor
   gpuLoad: number | null
+  gpuPower: number | null // W
   gpuClock: number | null
   gpuMemClock: number | null
+  gpuMemUsed: number | null // bytes
+  gpuMemTotal: number | null
   gpuFan: number | null
   gpuFanRpm: number | null
   ramUsed: number | null
@@ -316,6 +319,10 @@ export function sensorLabel(sensor: Sensor, short = false) {
       return t('Clock')
     case 'gpuMemClock':
       return t('Memory clock')
+    case 'gpuMemUsed':
+      return t('Memory used')
+    case 'gpuPower':
+      return t('Power')
     case 'gpuFan':
       return t('Fan')
     case 'ram':
@@ -348,17 +355,31 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
       return mhz(r.gpuClock)
     case 'gpuMemClock':
       return mhz(r.gpuMemClock)
+    case 'gpuPower':
+      return r.gpuPower === null ? null : t('{n} W', { n: decimal(r.gpuPower, 0) })
+    case 'gpuMemUsed':
+      return gigabytes(r.gpuMemUsed, r.gpuMemTotal)
     case 'gpuFan':
       if (r.gpuFan === null) return null
       return r.gpuFanRpm === null ? percent(r.gpuFan) : t('{percent} · {rpm} RPM', { percent: percentText(Math.round(r.gpuFan)), rpm: decimal(r.gpuFanRpm, 0) })
     case 'ram':
-      if (r.ramUsed === null || r.ramTotal === null) return null
-      return t('{used} / {total} GB', { used: decimal(r.ramUsed / GB, 1), total: decimal(r.ramTotal / GB, 1) })
+      return gigabytes(r.ramUsed, r.ramTotal)
   }
 }
 
+// "6.2 / 16.0 GB" (RAM and video memory)
+function gigabytes(used: number | null, total: number | null) {
+  if (used === null || total === null) return null
+  return t('{used} / {total} GB', { used: decimal(used / GB, 1), total: decimal(total / GB, 1) })
+}
+
+// How full a used / total reading is (0–1)
+function share(used: number | null, total: number | null) {
+  return used === null || !total ? null : Math.min(used / total, 1)
+}
+
 // How full a reading's bar is in look D (0–1): temperatures out of 100 °C, loads, the fan and RAM
-// out of their whole; null for readings without a top (clocks)
+// out of their whole; null for readings without a top (clocks, power)
 function barFull(sensor: Sensor, r: HardwareReadings): number | null {
   const of100 = (n: number | null) => (n === null ? null : Math.min(Math.max(n / 100, 0), 1))
   switch (sensor) {
@@ -370,7 +391,9 @@ function barFull(sensor: Sensor, r: HardwareReadings): number | null {
     case 'gpuFan':
       return of100(r[sensor])
     case 'ram':
-      return r.ramUsed === null || !r.ramTotal ? null : Math.min(r.ramUsed / r.ramTotal, 1)
+      return share(r.ramUsed, r.ramTotal)
+    case 'gpuMemUsed':
+      return share(r.gpuMemUsed, r.gpuMemTotal)
     default:
       return null
   }
@@ -402,7 +425,7 @@ export function heatLevel(sensor: Sensor) {
 // The widget's hardware, in order, with their readings in the settings window's order
 export const WIDGET_GROUPS = [
   { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuClock'] },
-  { icon: 'gpu', sensors: ['gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan'] },
+  { icon: 'gpu', sensors: ['gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan'] },
   { icon: 'memory', sensors: ['ram'] },
 ] as const
 

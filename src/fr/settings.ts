@@ -212,8 +212,8 @@ export const settings = {
   // Modules: Hardware (HardwareSettings.tsx, hardware.ts)
   Hardware: 'Matériel',
   'About the hardware module': 'À propos du module Matériel',
-  'Shows your CPU and GPU temperatures, loads, clocks, fan and RAM in a small widget on your desktop.':
-    'Affiche les températures, charges et fréquences du processeur et de la carte graphique, le ventilateur et la RAM dans un petit widget sur votre bureau.',
+  'Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.':
+    'Affiche les températures, charges, consommations et fréquences du processeur et de la carte graphique, le ventilateur et la mémoire dans un petit widget sur votre bureau.',
   Readings: 'Mesures',
   'Update every': 'Mise à jour toutes les',
   'About the readings': 'À propos des mesures',
@@ -229,6 +229,9 @@ export const settings = {
   'Memory temperature': 'Température mémoire',
   'Memory temp.': 'Temp. mémoire',
   'Memory clock': 'Fréquence mémoire',
+  'Memory used': 'Mémoire utilisée',
+  Power: 'Consommation',
+  '{n} W': '{n} W',
   Fan: 'Ventilateur',
   Memory: 'Mémoire',
   'RAM used': 'RAM utilisée',
