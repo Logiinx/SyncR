@@ -673,10 +673,20 @@ struct MenuState {
   area: RECT,             // the monitor it covers (screen pixels)
   open_at: Option<POINT>, // right-clicked while it was being made: opened there once its page is in
   away: u32,              // seconds the mouse has been off the widget while it waits
+  making: u32,            // seconds it has been loading
+  made: u64,              // which menu (each one made gets the next number): a late one knows it's not wanted
 }
 const NO_AREA: RECT = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-static MENU_STATE: Mutex<MenuState> = Mutex::new(MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0 });
+static MENU_STATE: Mutex<MenuState> = Mutex::new(MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0, making: 0, made: 0 });
 const MENU_KEPT: u32 = 5; // seconds a waiting menu stays after the mouse leaves the widget
+// A page that hasn't said "loaded" by then never will (it failed): the menu goes, and the next
+// time the mouse comes it's made again (else no right-click would open it until SyncR restarts)
+const MENU_LOAD_LIMIT: u32 = 10;
+
+// No menu any more: the next mouse over the widget makes one again
+fn menu_gone(state: &mut MenuState) {
+  *state = MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0, making: 0, made: state.made };
+}
 
 // "On top" then leaves the menu above the widget, and a right-click on it isn't the widget's
 fn menu_open() -> bool {
@@ -734,15 +744,17 @@ fn open_menu() {
 
 fn make_menu(area: RECT, open_at: Option<POINT>) {
   let Some(app) = lock(&APP).clone() else { return };
-  {
+  let made = {
     let mut state = lock(&MENU_STATE);
     if state.stage != Stage::None {
       return;
     }
-    *state = MenuState { stage: Stage::Making, area, open_at, away: 0 };
-  }
+    *state = MenuState { stage: Stage::Making, area, open_at, away: 0, making: 0, made: state.made + 1 };
+    state.made
+  };
   // Making a window waits for the app's main thread: not on this one, which draws the widget
   std::thread::spawn(move || {
+    let mine = move |state: &MenuState| state.made == made;
     let built = WebviewWindowBuilder::new(&app, MENU, WebviewUrl::App("hardware-menu.html".into()))
       .title("SyncR")
       .decorations(false)
@@ -763,14 +775,30 @@ fn make_menu(area: RECT, open_at: Option<POINT>) {
       .disable_drag_drop_handler()
       .build();
     let Ok(menu) = built else {
-      lock(&MENU_STATE).stage = Stage::None;
+      let mut state = lock(&MENU_STATE);
+      if mine(&state) {
+        menu_gone(&mut state);
+      }
       return;
     };
+    // Given up on while it was being made (it took too long): not wanted any more
+    {
+      let state = lock(&MENU_STATE);
+      if !mine(&state) || state.stage != Stage::Making {
+        drop(state);
+        let _ = menu.destroy();
+        return;
+      }
+    }
     // Gone in any way: a look shown from it goes back to the saved one
     let handle = app.clone();
     menu.on_window_event(move |event| {
       if matches!(event, tauri::WindowEvent::Destroyed) {
-        *lock(&MENU_STATE) = MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0 };
+        let mut state = lock(&MENU_STATE);
+        if mine(&state) {
+          menu_gone(&mut state);
+        }
+        drop(state);
         let _ = handle.emit_to("main", "hardware-menu", serde_json::json!({ "preview": null }));
       }
     });
@@ -808,9 +836,18 @@ fn show_menu(mouse: POINT, area: RECT, made_for: RECT) {
 }
 
 // Every second: a waiting menu goes once the mouse has been off the widget for MENU_KEPT seconds
-// (no widget: at once)
+// (no widget: at once); one still loading after MENU_LOAD_LIMIT seconds goes too
 fn menu_away(widget: HWND) {
   let mut state = lock(&MENU_STATE);
+  if state.stage == Stage::Making {
+    state.making += 1;
+    if state.making >= MENU_LOAD_LIMIT {
+      state.stage = Stage::Closing;
+      drop(state);
+      close_menu();
+    }
+    return;
+  }
   if state.stage != Stage::Waiting {
     return;
   }
@@ -828,12 +865,24 @@ fn menu_away(widget: HWND) {
   }
 }
 
+// Its window goes, and with it (Destroyed, make_menu) the stage. No window (already gone, or not
+// built yet: make_menu then drops it when it comes): back to no menu here, else it would stay
+// "closing" and no right-click would open it again.
 fn close_menu() {
-  let Some(app) = lock(&APP).clone() else { return };
-  std::thread::spawn(move || {
-    if let Some(menu) = app.get_webview_window(MENU) {
-      let _ = menu.destroy();
+  let gone = || {
+    let mut state = lock(&MENU_STATE);
+    if state.stage == Stage::Closing {
+      menu_gone(&mut state);
     }
+  };
+  let Some(app) = lock(&APP).clone() else { return gone() };
+  std::thread::spawn(move || match app.get_webview_window(MENU) {
+    Some(menu) => {
+      if menu.destroy().is_err() {
+        gone();
+      }
+    }
+    None => gone(),
   });
 }
 

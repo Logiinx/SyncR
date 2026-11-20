@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
+- **Fixed:** Hardware widget's menu sometimes no longer opening (PC only)
 - **Small fixes:** Hardware: widget flash, CPU load jumps, GPU memory rows hiding (PC only)
 
 ## [0.97.0] - 2026-11-20
