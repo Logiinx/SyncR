@@ -209,4 +209,29 @@ export const settings = {
   'At or below this level, the number turns red and the pop-up warns you once, until the mouse charges above it again.':
     'À ce niveau ou en dessous, le nombre passe en rouge et un pop-up vous prévient une fois, jusqu’à ce que la souris recharge au-dessus.',
   'Mouse battery low: {percent}%': 'Batterie de la souris faible : {percent} %',
+  // Modules: Hardware (HardwareSettings.tsx, hardware.ts)
+  Hardware: 'Matériel',
+  'About the hardware module': 'À propos du module Matériel',
+  'Shows your CPU and GPU temperatures, loads, clocks, fan and RAM in a small widget on your desktop.':
+    'Affiche les températures, charges et fréquences du processeur et de la carte graphique, le ventilateur et la RAM dans un petit widget sur votre bureau.',
+  Readings: 'Mesures',
+  'Update every': 'Mise à jour toutes les',
+  'About the readings': 'À propos des mesures',
+  'Only the readings ticked below are read, except while this window is open: it shows them all.':
+    'Seules les mesures cochées ci-dessous sont lues, sauf pendant que cette fenêtre est ouverte : elle les affiche toutes.',
+  '{n} s': '{n} s',
+  'Show in the widget': 'Afficher dans le widget',
+  CPU: 'Processeur',
+  GPU: 'Carte graphique',
+  Load: 'Charge',
+  Clock: 'Fréquence',
+  Temperature: 'Température',
+  'Memory clock': 'Fréquence mémoire',
+  Fan: 'Ventilateur',
+  Memory: 'Mémoire',
+  'RAM used': 'RAM utilisée',
+  '{n} MHz': '{n} MHz',
+  '{n} °C': '{n} °C',
+  '{percent}% · {rpm} RPM': '{percent} % · {rpm} tr/min',
+  '{used} / {total} GB': '{used} / {total} Go',
 }

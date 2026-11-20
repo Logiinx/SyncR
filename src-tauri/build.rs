@@ -36,6 +36,8 @@ fn main() {
     "mouse_battery_config",
     "mouse_battery_status",
     "mouse_battery_tip",
+    "hardware_config",
+    "hardware_readings",
   ])))
   .expect("failed to build");
 }

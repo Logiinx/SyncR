@@ -34,8 +34,10 @@ import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } 
 import { useVideoEnabled } from './video'
 import VideoSettings from './VideoSettings'
 import MouseBatterySettings from './MouseBatterySettings'
+import HardwareSettings from './HardwareSettings'
 import Dialog from './Dialog'
 import { saveMouseBattery, useMouseBattery } from './mouseBattery'
+import { saveHardware, useHardware } from './hardware'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -153,6 +155,8 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
   const [showVideo, setShowVideo] = useState(false)
   const [showBattery, setShowBattery] = useState(page === 'mouse-battery')
   const mouseBattery = useMouseBattery()
+  const [showHardware, setShowHardware] = useState(false)
+  const hardware = useHardware()
   const [quitWarning, setQuitWarning] = useState(false) // Modules: "✕ quits SyncR" (modulesCard)
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
@@ -218,6 +222,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
   if (showBattery) return <MouseBatterySettings onClose={() => (page ? onClose() : setShowBattery(false))} />
+  if (showHardware) return <HardwareSettings onClose={() => setShowHardware(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
@@ -678,6 +683,23 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
           </button>
         )}
         <input type="checkbox" checked={mouseBattery.on} onChange={(e) => toggleMouseBattery(e.target.checked)} />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('Hardware')}
+            <InfoTip label={t('About the hardware module')}>
+              {t('Shows your CPU and GPU temperatures, loads, clocks, fan and RAM in a small widget on your desktop.')}
+            </InfoTip>
+          </>
+        }
+      >
+        {hardware.on && (
+          <button className="setting-button" onClick={() => setShowHardware(true)}>
+            {t('Open…')}
+          </button>
+        )}
+        <input type="checkbox" checked={hardware.on} onChange={(e) => saveHardware({ on: e.target.checked })} />
       </SettingRow>
     </SettingsCard>
   )

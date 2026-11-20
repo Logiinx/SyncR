@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod hardware;
 mod link_shortcut;
 mod mouse_battery;
 mod trailer_player;
@@ -359,7 +360,9 @@ pub fn run() {
       link_shortcut::start_link_shortcut,
       mouse_battery::mouse_battery_config,
       mouse_battery::mouse_battery_status,
-      mouse_battery::mouse_battery_tip
+      mouse_battery::mouse_battery_tip,
+      hardware::hardware_config,
+      hardware::hardware_readings
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

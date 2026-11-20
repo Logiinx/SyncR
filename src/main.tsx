@@ -17,6 +17,7 @@ import { followLanguageChoice, startTrayTexts } from './language'
 import { followTabColors } from './tabColors'
 import { followLinkSites } from './linkPreviews'
 import { startMouseBattery } from './mouseBattery'
+import { startHardware } from './hardware'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -31,6 +32,7 @@ setUpBoardTab()
 if (!isPopup) startClosingAnimations()
 if (!isPopup) startTrayTexts()
 if (!isPopup) startMouseBattery()
+if (!isPopup) startHardware()
 // The sign-ins are decrypted first, both windows read them. On the PC that can take a moment
 // at start (Windows), so the side panels' second without animation counts from the first draw.
 // Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).
