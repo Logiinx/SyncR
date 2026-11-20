@@ -41,6 +41,7 @@ fn main() {
     "hardware_readings",
     "hardware_helper_setup",
     "hardware_helper_remove",
+    "hardware_widget",
   ])))
   .expect("failed to build");
 }

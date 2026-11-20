@@ -364,7 +364,8 @@ pub fn run() {
       hardware::hardware_config,
       hardware::hardware_readings,
       hardware::helper::hardware_helper_setup,
-      hardware::helper::hardware_helper_remove
+      hardware::helper::hardware_helper_remove,
+      hardware::widget::hardware_widget
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

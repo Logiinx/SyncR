@@ -447,7 +447,7 @@ mod hid {
 
 // A small drawing surface for Windows' own text drawing (GDI): white on black, so each pixel's
 // brightness is how much of it the text covers; the strip colors it itself.
-mod gdi {
+pub(crate) mod gdi {
   use super::wide;
   use std::ptr::null_mut;
   use windows_sys::Win32::Foundation::{RECT, SIZE};

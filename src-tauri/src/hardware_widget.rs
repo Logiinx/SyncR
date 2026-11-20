@@ -1,0 +1,637 @@
+// The Hardware widget (PC): a small box on the desktop with the readings the user ticked (look A:
+// per hardware its name, then a row per reading, label left, value right).
+// The page builds its words and numbers (hardware.ts, the same text as the settings window) and
+// sends them with hardware_widget; this only draws them, with Direct2D + DirectWrite (Windows'
+// modern drawing, the same text engine as WebView2), into a see-through picture.
+// It lives inside the desktop: a child of the desktop's icon view (Explorer's), so it sits under
+// every window, never comes to the front, and stays on Win+D. Dragged anywhere to move it; where
+// it's left goes back to the page, which saves it. First time: top left of the 2nd monitor (the
+// main one if there's only one); a saved place on no monitor any more: top left of the main one.
+// Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
+// desktop and its children along) and moves it when monitors change.
+// Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
+
+use super::lock;
+use crate::mouse_battery::gdi::Canvas;
+use std::cell::RefCell;
+use std::ptr::{null, null_mut};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+use tauri::{AppHandle, Emitter};
+use windows::Win32::Graphics::Direct2D::Common::{
+  D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F,
+};
+use windows::Win32::Graphics::Direct2D::{
+  D2D1CreateFactory, ID2D1Factory, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_FACTORY_TYPE_SINGLE_THREADED, D2D1_FEATURE_LEVEL_DEFAULT,
+  D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE, D2D1_ROUNDED_RECT,
+  D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+};
+use windows::Win32::Graphics::DirectWrite::{
+  DWriteCreateFactory, IDWriteFactory, IDWriteTextFormat, IDWriteTextLayout, DWRITE_FACTORY_TYPE_SHARED,
+  DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_WEIGHT_SEMI_BOLD,
+  DWRITE_LINE_METRICS, DWRITE_TEXT_METRICS,
+};
+use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
+use windows_sys::Win32::Graphics::Gdi::{
+  EnumDisplayMonitors, GetMonitorInfoW, MonitorFromPoint, ScreenToClient, AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, HDC,
+  HMONITOR, MONITORINFO, MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL, MONITOR_DEFAULTTOPRIMARY,
+};
+use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetMessageW, GetParent,
+  GetWindowRect, IsWindow, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos,
+  TranslateMessage, UpdateLayeredWindow, HTCAPTION, HWND_TOP, IDC_ARROW, MA_NOACTIVATE, MSG, SWP_NOACTIVATE, SWP_NOSIZE,
+  SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_DESTROY, WM_DISPLAYCHANGE, WM_EXITSIZEMOVE, WM_MOUSEACTIVATE,
+  WM_NCHITTEST, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_POPUP,
+};
+
+const WM_REFRESH: u32 = WM_APP + 1;
+const CHECK_TIMER: usize = 1;
+const CONTROLLER_CLASS: &str = "SyncRHardwareControl";
+const WIDGET_CLASS: &str = "SyncRHardwareWidget";
+
+// Look A, in CSS pixels (DIPs), with SyncR's colors (index.css)
+const FONT: &str = "Segoe UI";
+const FONT_SIZE: f32 = 13.0;
+const ASCENT: f32 = 1.01; // 'SyncR UI' (index.css): Segoe UI's letters moved up, by its ascent
+const DESCENT: f32 = 0.325; // and descent overrides
+const ROW: f32 = 20.0; // each line's height
+const PAD_TOP: f32 = 8.0;
+const PAD_SIDE: f32 = 12.0;
+const PAD_BOTTOM: f32 = 10.0;
+const GROUP_GAP: f32 = 6.0; // above every hardware but the first
+const INDENT: f32 = 21.0; // the icon (15) and its gap (6): the names and rows start there
+const VALUE_GAP: f32 = 16.0; // least room between a label and its value
+const RADIUS: f32 = 8.0;
+const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
+const BG: u32 = 0x161616; // --bg
+const BORDER: u32 = 0x2a2a2a; // --border
+const TEXT: u32 = 0xe4e4e4; // --text
+const DIM: u32 = 0x808080; // --text-dim
+
+// What the page sends: per hardware its name, icon and rows (label, value), in order; and the
+// saved place (screen pixels, top left), used when the widget appears
+#[derive(Clone, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Group {
+  title: String,
+  icon: String, // "cpu", "gpu", "memory" (drawn in a later step)
+  rows: Vec<(String, String)>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content {
+  groups: Vec<Group>,
+  place: Option<(i32, i32)>,
+}
+
+static CONTENT: Mutex<Option<Content>> = Mutex::new(None);
+static CONTROLLER: Mutex<isize> = Mutex::new(0); // the running thread's hidden window (0: none)
+static STARTS: AtomicU64 = AtomicU64::new(0); // an older thread that comes up late closes itself
+static APP: Mutex<Option<AppHandle>> = Mutex::new(None);
+
+// After every reading, and when the settings change. None or nothing to show: no widget.
+#[tauri::command]
+pub fn hardware_widget(app: AppHandle, content: Option<Content>) {
+  let content = content.filter(|content| content.groups.iter().any(|group| !group.rows.is_empty()));
+  let Some(content) = content else {
+    *lock(&CONTENT) = None;
+    stop();
+    return;
+  };
+  *lock(&CONTENT) = Some(content);
+  let controller = *lock(&CONTROLLER);
+  if controller != 0 {
+    unsafe { PostMessageW(controller as HWND, WM_REFRESH, 0, 0) };
+    return;
+  }
+  *lock(&APP) = Some(app);
+  let start = STARTS.fetch_add(1, Ordering::SeqCst) + 1;
+  std::thread::spawn(move || run(start));
+}
+
+fn stop() {
+  STARTS.fetch_add(1, Ordering::SeqCst);
+  let controller = std::mem::take(&mut *lock(&CONTROLLER));
+  if controller != 0 {
+    unsafe { PostMessageW(controller as HWND, WM_CLOSE, 0, 0) };
+  }
+}
+
+// What's on screen now, so an unchanged reading isn't drawn again
+struct Drawn {
+  groups: Vec<Group>,
+  dpi: u32,
+  width: i32,
+  height: i32,
+}
+
+// This thread's own state (only the widget thread touches it)
+struct Local {
+  widget: HWND,
+  parent: HWND,
+  painter: Option<Painter>,
+  drawn: Option<Drawn>,
+  // The widest it has been for these labels (DIPs): it grows with a longer value but doesn't
+  // shrink back each second; new labels start over
+  widest: (Vec<String>, f32),
+}
+
+thread_local! {
+  static LOCAL: RefCell<Local> = const {
+    RefCell::new(Local { widget: null_mut(), parent: null_mut(), painter: None, drawn: None, widest: (Vec::new(), 0.0) })
+  };
+}
+
+fn run(start: u64) {
+  unsafe {
+    let instance = GetModuleHandleW(null());
+    let controller_class = wide(CONTROLLER_CLASS);
+    let widget_class = wide(WIDGET_CLASS);
+    register(instance, &controller_class, Some(controller_proc));
+    register(instance, &widget_class, Some(widget_proc));
+    // Hidden and never shown: a top-level window, so it hears monitors change
+    let controller = CreateWindowExW(
+      WS_EX_TOOLWINDOW,
+      controller_class.as_ptr(),
+      null(),
+      WS_POPUP,
+      0,
+      0,
+      0,
+      0,
+      null_mut(),
+      null_mut(),
+      instance,
+      null(),
+    );
+    if controller.is_null() {
+      return;
+    }
+    {
+      let mut registered = lock(&CONTROLLER);
+      if STARTS.load(Ordering::SeqCst) != start {
+        drop(registered);
+        DestroyWindow(controller);
+        return;
+      }
+      *registered = controller as isize;
+    }
+    SetTimer(controller, CHECK_TIMER, 1000, None);
+    show();
+    let mut message: MSG = std::mem::zeroed();
+    while GetMessageW(&mut message, null_mut(), 0, 0) > 0 {
+      TranslateMessage(&message);
+      DispatchMessageW(&message);
+    }
+  }
+}
+
+// Fails harmlessly when an earlier start already registered it
+unsafe fn register(instance: windows_sys::Win32::Foundation::HMODULE, class: &[u16], procedure: WNDPROC) {
+  let info = WNDCLASSEXW {
+    cbSize: size_of::<WNDCLASSEXW>() as u32,
+    style: 0,
+    lpfnWndProc: procedure,
+    cbClsExtra: 0,
+    cbWndExtra: 0,
+    hInstance: instance,
+    hIcon: null_mut(),
+    hCursor: unsafe { LoadCursorW(null_mut(), IDC_ARROW) },
+    hbrBackground: null_mut(),
+    lpszMenuName: null(),
+    lpszClassName: class.as_ptr(),
+    hIconSm: null_mut(),
+  };
+  unsafe { RegisterClassExW(&info) };
+}
+
+unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+  match message {
+    WM_TIMER | WM_REFRESH => {
+      show();
+      0
+    }
+    // A monitor came or went: a widget left on no monitor goes to the main one
+    WM_DISPLAYCHANGE => {
+      LOCAL.with(|local| {
+        if let Ok(mut local) = local.try_borrow_mut() {
+          rescue(&mut local);
+        }
+      });
+      show();
+      0
+    }
+    WM_CLOSE => {
+      LOCAL.with(|local| {
+        if let Ok(mut local) = local.try_borrow_mut() {
+          hide(&mut local);
+          local.painter = None;
+        }
+      });
+      unsafe { DestroyWindow(window) };
+      0
+    }
+    WM_DESTROY => {
+      unsafe { PostQuitMessage(0) };
+      0
+    }
+    _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+  }
+}
+
+unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+  match message {
+    // Anywhere on it counts as its title bar: dragging it moves it (Windows does the moving)
+    WM_NCHITTEST => HTCAPTION as LRESULT,
+    // A click never takes the focus from the app in front
+    WM_MOUSEACTIVATE => MA_NOACTIVATE as LRESULT,
+    // Let go after a drag: the page saves the new place; another monitor may need another scale
+    WM_EXITSIZEMOVE => {
+      let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+      if unsafe { GetWindowRect(window, &mut rect) } != 0 {
+        if let Some(app) = lock(&APP).clone() {
+          let _ = app.emit("hardware-widget-moved", (rect.left, rect.top));
+        }
+      }
+      let controller = *lock(&CONTROLLER);
+      if controller != 0 {
+        unsafe { PostMessageW(controller as HWND, WM_REFRESH, 0, 0) };
+      }
+      0
+    }
+    _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+  }
+}
+
+fn show() {
+  LOCAL.with(|local| {
+    // Busy already (Windows can call in while the widget is being moved): the next second does it
+    let Ok(mut local) = local.try_borrow_mut() else { return };
+    let content = lock(&CONTENT).clone();
+    let shown = content.is_some_and(|content| draw_and_place(&mut local, &content));
+    if !shown {
+      hide(&mut local);
+    }
+  });
+}
+
+fn hide(local: &mut Local) {
+  let widget = std::mem::replace(&mut local.widget, null_mut());
+  local.parent = null_mut();
+  local.drawn = None;
+  unsafe {
+    if !widget.is_null() && IsWindow(widget) != 0 {
+      DestroyWindow(widget);
+    }
+  }
+}
+
+// The desktop's icon view, which the widget lives in: inside "Progman", or on older Windows (after
+// a wallpaper change) inside one of the "WorkerW" windows
+fn desktop() -> HWND {
+  unsafe {
+    let view_class = wide("SHELLDLL_DefView");
+    let progman = FindWindowW(wide("Progman").as_ptr(), null());
+    if !progman.is_null() {
+      let view = FindWindowExW(progman, null_mut(), view_class.as_ptr(), null());
+      if !view.is_null() {
+        return view;
+      }
+    }
+    let worker_class = wide("WorkerW");
+    let mut worker: HWND = null_mut();
+    loop {
+      worker = FindWindowExW(null_mut(), worker, worker_class.as_ptr(), null());
+      if worker.is_null() {
+        return null_mut();
+      }
+      let view = FindWindowExW(worker, null_mut(), view_class.as_ptr(), null());
+      if !view.is_null() {
+        return view;
+      }
+    }
+  }
+}
+
+// false: it couldn't be drawn or put on the desktop
+fn draw_and_place(local: &mut Local, content: &Content) -> bool {
+  let parent = desktop();
+  if parent.is_null() {
+    return false;
+  }
+  unsafe {
+    // Gone with an Explorer restart, or inside an old desktop: a new one
+    if !local.widget.is_null() && (IsWindow(local.widget) == 0 || GetParent(local.widget) != parent) {
+      hide(local);
+    }
+  }
+  // Where it goes (screen pixels): where it is, else the saved place, else the first-time corner
+  let here = if local.widget.is_null() { None } else { window_place(local.widget) };
+  let place = here.or(content.place.filter(|&(x, y)| on_a_monitor(x, y))).unwrap_or_else(first_place);
+  let dpi = dpi_at(place.0, place.1);
+  if local.painter.is_none() {
+    local.painter = Painter::new();
+  }
+  let Some(painter) = local.painter.as_ref() else { return false };
+
+  let labels: Vec<String> = content
+    .groups
+    .iter()
+    .flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, _)| label.clone())))
+    .collect();
+  if local.widest.0 != labels {
+    local.widest = (labels, 0.0);
+  }
+  let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.dpi == dpi);
+  let picture = if same {
+    None
+  } else {
+    let Some((picture, width)) = painter.draw(&content.groups, dpi, local.widest.1) else { return false };
+    local.widest.1 = width;
+    Some(picture)
+  };
+  let (width, height) = match (&picture, &local.drawn) {
+    (Some(picture), _) => (picture.width as i32, picture.height as i32),
+    (None, Some(drawn)) => (drawn.width, drawn.height),
+    (None, None) => return false,
+  };
+
+  unsafe {
+    let mut corner = POINT { x: place.0, y: place.1 };
+    ScreenToClient(parent, &mut corner);
+    if local.widget.is_null() {
+      let class = wide(WIDGET_CLASS);
+      let widget = CreateWindowExW(
+        WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_NOPARENTNOTIFY,
+        class.as_ptr(),
+        null(),
+        WS_CHILD | WS_CLIPSIBLINGS,
+        corner.x,
+        corner.y,
+        width,
+        height,
+        parent,
+        null_mut(),
+        GetModuleHandleW(null()),
+        null(),
+      );
+      if widget.is_null() {
+        return false;
+      }
+      local.widget = widget;
+      local.parent = parent;
+    }
+    if let Some(picture) = &picture {
+      let size = SIZE { cx: width, cy: height };
+      let source = POINT { x: 0, y: 0 };
+      let blend = BLENDFUNCTION {
+        BlendOp: AC_SRC_OVER as u8,
+        BlendFlags: 0,
+        SourceConstantAlpha: 255,
+        AlphaFormat: AC_SRC_ALPHA as u8,
+      };
+      if UpdateLayeredWindow(local.widget, null_mut(), null(), &size, picture.dc, &source, 0, &blend, ULW_ALPHA) == 0 {
+        return false;
+      }
+    }
+    // Above the desktop's icons; placed only when new or moved by a monitor change (rescue)
+    if local.drawn.is_none() || here.is_none() {
+      SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    }
+  }
+  local.drawn = Some(Drawn { groups: content.groups.clone(), dpi, width, height });
+  true
+}
+
+// Its monitor is gone: to the main monitor's corner (drawn again there, at its scale)
+fn rescue(local: &mut Local) {
+  if local.widget.is_null() {
+    return;
+  }
+  let Some((x, y)) = window_place(local.widget) else { return };
+  if on_a_monitor(x, y) {
+    return;
+  }
+  let (x, y) = corner_of(main_monitor());
+  let mut corner = POINT { x, y };
+  unsafe {
+    ScreenToClient(local.parent, &mut corner);
+    SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+  }
+  local.drawn = None;
+  if let Some(app) = lock(&APP).clone() {
+    let _ = app.emit("hardware-widget-moved", (x, y));
+  }
+}
+
+fn window_place(window: HWND) -> Option<(i32, i32)> {
+  let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+  (unsafe { GetWindowRect(window, &mut rect) } != 0).then_some((rect.left, rect.top))
+}
+
+// A point just inside the widget's corner is on a monitor (a few pixels, so a widget pushed to an
+// edge still counts)
+fn on_a_monitor(x: i32, y: i32) -> bool {
+  !unsafe { MonitorFromPoint(POINT { x: x + 8, y: y + 8 }, MONITOR_DEFAULTTONULL) }.is_null()
+}
+
+// The first time: the 2nd monitor's corner, or the main one's if there's only one
+fn first_place() -> (i32, i32) {
+  let mut monitors: Vec<HMONITOR> = Vec::new();
+  unsafe extern "system" fn add(monitor: HMONITOR, _: HDC, _: *mut RECT, list: LPARAM) -> i32 {
+    // list is the Vec below, alive for the whole EnumDisplayMonitors call
+    unsafe { (*(list as *mut Vec<HMONITOR>)).push(monitor) };
+    1
+  }
+  // monitors outlives the call, which calls add once per monitor
+  unsafe { EnumDisplayMonitors(null_mut(), null(), Some(add), &mut monitors as *mut _ as LPARAM) };
+  let main = main_monitor();
+  let second = monitors.into_iter().find(|&monitor| monitor != main);
+  corner_of(second.unwrap_or(main))
+}
+
+fn main_monitor() -> HMONITOR {
+  unsafe { MonitorFromPoint(POINT { x: 0, y: 0 }, MONITOR_DEFAULTTOPRIMARY) }
+}
+
+// A monitor's top left, inside its work area (not under a taskbar), MARGIN in from the edges
+fn corner_of(monitor: HMONITOR) -> (i32, i32) {
+  let mut info = MONITORINFO {
+    cbSize: size_of::<MONITORINFO>() as u32,
+    rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+    rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+    dwFlags: 0,
+  };
+  // info has its size set, as Windows asks
+  if unsafe { GetMonitorInfoW(monitor, &mut info) } == 0 {
+    return (0, 0);
+  }
+  let margin = (MARGIN * monitor_dpi(monitor) as f32 / 96.0).round() as i32;
+  (info.rcWork.left + margin, info.rcWork.top + margin)
+}
+
+fn dpi_at(x: i32, y: i32) -> u32 {
+  monitor_dpi(unsafe { MonitorFromPoint(POINT { x: x + 8, y: y + 8 }, MONITOR_DEFAULTTONEAREST) })
+}
+
+fn monitor_dpi(monitor: HMONITOR) -> u32 {
+  let (mut x, mut y) = (0u32, 0u32);
+  // monitor comes from MonitorFrom…, which never gives an invalid one with these flags
+  let ok = unsafe { GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut x, &mut y) } == 0;
+  if ok && x > 0 {
+    x
+  } else {
+    96
+  }
+}
+
+fn wide(text: &str) -> Vec<u16> {
+  text.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+// Direct2D and DirectWrite, made once per widget thread
+struct Painter {
+  d2d: ID2D1Factory,
+  write: IDWriteFactory,
+  regular: IDWriteTextFormat,
+  semibold: IDWriteTextFormat,
+}
+
+// A line of text, laid out: its width and where its baseline sits from its top (DIPs)
+struct Text {
+  layout: IDWriteTextLayout,
+  width: f32,
+  baseline: f32,
+}
+
+impl Painter {
+  fn new() -> Option<Painter> {
+    unsafe {
+      let d2d: ID2D1Factory = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, None).ok()?;
+      let write: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).ok()?;
+      let font = wide(FONT);
+      let locale = wide("en-us");
+      let format = |weight| {
+        write.CreateTextFormat(
+          windows::core::PCWSTR(font.as_ptr()),
+          None,
+          weight,
+          DWRITE_FONT_STYLE_NORMAL,
+          DWRITE_FONT_STRETCH_NORMAL,
+          FONT_SIZE,
+          windows::core::PCWSTR(locale.as_ptr()),
+        )
+      };
+      let regular = format(DWRITE_FONT_WEIGHT_NORMAL).ok()?;
+      let semibold = format(DWRITE_FONT_WEIGHT_SEMI_BOLD).ok()?;
+      Some(Painter { d2d, write, regular, semibold })
+    }
+  }
+
+  fn text(&self, text: &str, format: &IDWriteTextFormat) -> Option<Text> {
+    let text: Vec<u16> = text.encode_utf16().collect();
+    unsafe {
+      let layout = self.write.CreateTextLayout(&text, format, 10_000.0, 1_000.0).ok()?;
+      let mut metrics = DWRITE_TEXT_METRICS::default();
+      layout.GetMetrics(&mut metrics).ok()?;
+      let mut lines = [DWRITE_LINE_METRICS::default(); 1];
+      let mut count = 0;
+      // One line (no line breaks in a label or value): the first line's metrics are enough, and
+      // a longer text fails here harmlessly
+      let _ = layout.GetLineMetrics(Some(&mut lines), &mut count);
+      Some(Text { layout, width: metrics.widthIncludingTrailingWhitespace, baseline: lines[0].baseline })
+    }
+  }
+
+  // The widget as a see-through picture at this scale, at least `least` DIPs wide; and its width
+  // in DIPs. None if Windows' drawing failed.
+  fn draw(&self, groups: &[Group], dpi: u32, least: f32) -> Option<(Canvas, f32)> {
+    struct Line {
+      top: f32,
+      title: Option<Text>,
+      label: Option<Text>,
+      value: Option<Text>,
+    }
+    let mut lines = Vec::new();
+    let mut top = PAD_TOP;
+    let mut width = least;
+    for (index, group) in groups.iter().filter(|group| !group.rows.is_empty()).enumerate() {
+      if index > 0 {
+        top += GROUP_GAP;
+      }
+      let title = self.text(&group.title, &self.semibold)?;
+      width = width.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
+      lines.push(Line { top, title: Some(title), label: None, value: None });
+      top += ROW;
+      for (label, value) in &group.rows {
+        let label = self.text(label, &self.regular)?;
+        let value = self.text(value, &self.regular)?;
+        width = width.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
+        lines.push(Line { top, title: None, label: Some(label), value: Some(value) });
+        top += ROW;
+      }
+    }
+    let scale = dpi as f32 / 96.0;
+    let pixels_wide = (width * scale).ceil() as usize;
+    let pixels_high = ((top + PAD_BOTTOM) * scale).ceil() as usize;
+    let (full_width, full_height) = (pixels_wide as f32 / scale, pixels_high as f32 / scale);
+    let canvas = Canvas::new(pixels_wide, pixels_high)?;
+
+    // Where CSS puts a line's baseline in a ROW-high line box with 'SyncR UI': half the room left
+    // by the font's (overridden) height above it, then its ascent. Rounded to whole pixels, as
+    // the browser does.
+    let snap = |dips: f32| (dips * scale).round() / scale;
+    let baseline = (ROW - (ASCENT + DESCENT) * FONT_SIZE) / 2.0 + ASCENT * FONT_SIZE;
+    unsafe {
+      let properties = D2D1_RENDER_TARGET_PROPERTIES {
+        r#type: D2D1_RENDER_TARGET_TYPE_SOFTWARE,
+        pixelFormat: D2D1_PIXEL_FORMAT { format: DXGI_FORMAT_B8G8R8A8_UNORM, alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED },
+        dpiX: dpi as f32,
+        dpiY: dpi as f32,
+        usage: D2D1_RENDER_TARGET_USAGE_NONE,
+        minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
+      };
+      let target = self.d2d.CreateDCRenderTarget(&properties).ok()?;
+      let area = windows::Win32::Foundation::RECT { left: 0, top: 0, right: pixels_wide as i32, bottom: pixels_high as i32 };
+      target.BindDC(windows::Win32::Graphics::Gdi::HDC(canvas.dc), &area).ok()?;
+      let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb), None);
+      let (bg, border, text, dim) = (brush(BG).ok()?, brush(BORDER).ok()?, brush(TEXT).ok()?, brush(DIM).ok()?);
+      target.BeginDraw();
+      target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+      target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
+      let rounded = |inset: f32| D2D1_ROUNDED_RECT {
+        rect: D2D_RECT_F { left: inset, top: inset, right: full_width - inset, bottom: full_height - inset },
+        radiusX: RADIUS - inset,
+        radiusY: RADIUS - inset,
+      };
+      target.FillRoundedRectangle(&rounded(0.0), &bg);
+      // A 1-pixel line, on whole pixels (centered half a pixel in)
+      target.DrawRoundedRectangle(&rounded(0.5 / scale), &border, 1.0 / scale, None);
+      let put = |line: &Text, x: f32, top: f32, brush: &windows::Win32::Graphics::Direct2D::ID2D1SolidColorBrush| {
+        let origin = windows_numerics::Vector2 { X: snap(x), Y: snap(top + baseline) - line.baseline };
+        target.DrawTextLayout(origin, &line.layout, brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+      };
+      for line in &lines {
+        if let Some(title) = &line.title {
+          put(title, PAD_SIDE + INDENT, line.top, &text);
+        }
+        if let (Some(label), Some(value)) = (&line.label, &line.value) {
+          put(label, PAD_SIDE + INDENT, line.top, &dim);
+          put(value, full_width - PAD_SIDE - value.width, line.top, &text);
+        }
+      }
+      target.EndDraw(None, None).ok()?;
+    }
+    Some((canvas, width))
+  }
+}
+
+fn color(rgb: u32) -> D2D1_COLOR_F {
+  let channel = |shift: u32| ((rgb >> shift) & 0xff) as f32 / 255.0;
+  D2D1_COLOR_F { r: channel(16), g: channel(8), b: channel(0), a: 1.0 }
+}

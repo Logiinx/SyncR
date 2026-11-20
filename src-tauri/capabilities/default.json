@@ -33,6 +33,7 @@
     "allow-hardware-readings",
     "allow-hardware-helper-setup",
     "allow-hardware-helper-remove",
+    "allow-hardware-widget",
     "allow-google-sign-in",
     "allow-protect-secret",
     "allow-unprotect-secret",

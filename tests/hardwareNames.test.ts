@@ -6,6 +6,7 @@ import { expect, test, vi } from 'vitest'
 vi.mock('../src/localState', () => ({ read: (_key: string, fallback: unknown) => fallback, write: () => {} }))
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false, invoke: async () => {} }))
 vi.mock('@tauri-apps/api/event', () => ({ listen: async () => () => {} }))
+vi.mock('../src/i18n', () => ({ t: (text: string) => text, decimal: String, percentText: (n: number) => `${n}%` })) // the real one needs a page
 
 const { shortCpuName, shortGpuName } = await import('../src/hardware')
 

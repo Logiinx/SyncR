@@ -14,6 +14,8 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
+#[path = "hardware_widget.rs"]
+pub mod widget;
 #[path = "hardware_helper.rs"]
 pub mod helper;
 

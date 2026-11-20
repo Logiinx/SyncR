@@ -227,6 +227,7 @@ export const settings = {
   Clock: 'Fréquence',
   Temperature: 'Température',
   'Memory temperature': 'Température mémoire',
+  'Memory temp.': 'Temp. mémoire',
   'Memory clock': 'Fréquence mémoire',
   Fan: 'Ventilateur',
   Memory: 'Mémoire',
