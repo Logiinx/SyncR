@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.97.1] - 2026-11-20
+
 **App**
 - **Fixed:** CPU temperature sometimes gone until the next sign-in (PC only)
 - **Fixed:** Hardware widget's menu sometimes no longer opening (PC only)

@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.97.1] - 2026-11-20
+
 **Application**
 - **Corrigé :** température du CPU parfois absente jusqu'à la prochaine connexion (PC uniquement)
 - **Corrigé :** menu du widget Matériel qui parfois ne s'ouvrait plus (PC uniquement)
