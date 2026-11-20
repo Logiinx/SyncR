@@ -5,8 +5,9 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Hardware: GPU power and GPU memory used (PC only)
+- **New:** Hardware: CPU and GPU power, GPU memory used (PC only)
 - **New:** Hardware: highest temperatures and power since start (PC only)
+- **Changed:** Hardware asks once to update its helper (one admin prompt) (PC only)
 
 ## [0.97.1] - 2026-11-20
 

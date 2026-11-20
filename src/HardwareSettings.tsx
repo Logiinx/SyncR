@@ -64,7 +64,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
     <SettingRow
       key={sensor}
       label={sensorLabel(sensor)}
-      value={(sensor === 'cpuTemp' ? helperText(helper, failed) : undefined) ?? (isPeakSensor(sensor) ? peakText(sensor, peaks) : undefined)}
+      value={(sensor === 'cpuTemp' || sensor === 'cpuPower' ? helperText(helper, failed) : undefined) ?? (isPeakSensor(sensor) ? peakText(sensor, peaks) : undefined)}
     >
       {sensor === 'cpuTemp' && setUp ? (
         <button className="setting-button" title={helperAbout()} disabled={asking} onClick={() => askAdmin(true)}>
@@ -212,6 +212,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
         <SettingsCard icon={Cpu} title={groupName('cpu', readings)}>
           {helper !== 'unsupported' && row('cpuTemp')}
           {row('cpuLoad')}
+          {helper !== 'unsupported' && row('cpuPower')}
           {row('cpuClock')}
           {(helper === 'ok' || helper === 'notRunning' || helper === 'outdated' || helper === 'failed') && (
             <SettingRow
@@ -322,7 +323,7 @@ function LimitField(props: { saved: string; className: string; label: string; un
 }
 
 const helperAbout = () =>
-  t('The CPU temperature needs admin rights, which SyncR doesn’t have. This small helper has them: it starts with Windows and only reads the temperature when SyncR asks. Turning the module off leaves it resting.')
+  t('The CPU temperature and power need admin rights, which SyncR doesn’t have. This small helper has them: it starts with Windows and only reads them when SyncR asks. Turning the module off leaves it resting.')
 
 // The button the CPU temperature needs, if any
 function helperButton(state: HelperState | null) {

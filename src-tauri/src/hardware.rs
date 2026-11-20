@@ -3,7 +3,7 @@
 // Without admin: the GPU through NVIDIA's own libraries (nvml.dll, and nvapi64.dll for the memory
 // temperature; both come with the driver), the CPU's load and clock through Windows' performance
 // counters, the RAM through Windows' memory status.
-// The CPU temperature needs the PawnIO driver, which only answers admin programs: it comes from a
+// The CPU temperature and power need the PawnIO driver, which only answers admin programs: they come from a
 // small admin helper, set up once by the user (hardware_helper.rs).
 // Only the sensors asked for are read; the libraries are opened only when one of theirs is asked
 // for, and closed when the module is turned off (the thread ends).
@@ -39,7 +39,8 @@ pub struct Readings {
   cpu_load: Option<f64>,    // %, like Task Manager
   cpu_clock: Option<f64>,   // MHz, average over all cores, like Task Manager's "Speed"
   cpu_temp: Option<f64>,    // °C, "Core (Tctl/Tdie)", from the admin helper
-  cpu_temp_state: Option<&'static str>, // why there's no cpu_temp (helper::OK... ), when asked for
+  cpu_power: Option<f64>,   // W, the whole package, from the admin helper
+  cpu_temp_state: Option<&'static str>, // why there's no cpu_temp or cpu_power (helper::OK... ), when asked for
   gpu_temp: Option<f64>,    // °C
   gpu_mem_temp: Option<f64>, // °C, video memory, from nvapi (None on cards without that sensor)
   gpu_load: Option<f64>,    // %
@@ -162,9 +163,10 @@ fn run(app: AppHandle, receiver: Receiver<()>, id: u64) {
         }
       }
     }
-    if wants("cpuTemp") {
-      let (celsius, state) = helper.get_or_insert_with(helper::Reader::new).read();
-      readings.cpu_temp = celsius;
+    if wants("cpuTemp") || wants("cpuPower") {
+      let (celsius, watts, state) = helper.get_or_insert_with(helper::Reader::new).read();
+      readings.cpu_temp = celsius.filter(|_| wants("cpuTemp"));
+      readings.cpu_power = watts.filter(|_| wants("cpuPower"));
       readings.cpu_temp_state = Some(state);
     } else {
       helper = None;

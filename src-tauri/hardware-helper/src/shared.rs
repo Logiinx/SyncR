@@ -2,10 +2,11 @@
 
 // Raise it on every change to the helper: SyncR then offers to update the installed one (one admin
 // prompt). The same number means the same helper, so an unchanged helper never asks again.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 // The local pipe SyncR asks through: one byte asks for one reading, the answer is one line
-// "<VERSION> ok <°C>" or "<VERSION> <problem>" (problems below).
+// "<VERSION> ok <°C> <W>" ("-" for a number it couldn't read) or "<VERSION> <problem>" (problems below).
+// The power needs two readings: the first after SyncR connects has none.
 pub const PIPE: &str = r"\\.\pipe\SyncR-hardware";
 pub const NO_PAWNIO: &str = "nopawnio"; // PawnIO's library is missing or its driver doesn't answer
 pub const UNSUPPORTED: &str = "unsupported"; // PawnIO refused the AMD module: not a Ryzen

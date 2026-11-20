@@ -1,7 +1,7 @@
-// SyncR's admin helper for the Hardware module (PC). The CPU temperature needs the PawnIO driver,
-// which only answers admin programs; SyncR itself stays a normal program, so this small one does
-// that single job and nothing else. It reads only the CPU temperature, only when SyncR asks, and
-// takes no commands: one byte from SyncR asks for one reading, it answers with one line.
+// SyncR's admin helper for the Hardware module (PC). The CPU temperature and power need the PawnIO
+// driver, which only answers admin programs; SyncR itself stays a normal program, so this small one
+// does that single job and nothing else. It reads only the CPU temperature and power, only when SyncR
+// asks, and takes no commands: one byte from SyncR asks for one reading, it answers with one line.
 //
 // Three ways it's started (SyncR, src/hardware_helper.rs, starts the first two through an admin
 // prompt, from a copy it writes in a fresh temp folder):
@@ -26,7 +26,7 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::ptr::{null, null_mut};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
 
 fn main() {
@@ -240,9 +240,12 @@ fn run(syncr: &OsStr) -> i32 {
     let mut cpu: Option<Result<Cpu, &str>> = None;
     while pipe.read_byte() {
       let answer = match cpu.get_or_insert_with(Cpu::open) {
-        Ok(cpu) => match cpu.temperature() {
-          Some(celsius) => format!("{VERSION} ok {celsius:.3}\n"),
-          None => format!("{VERSION} {FAILED}\n"),
+        Ok(cpu) => match (cpu.temperature(), cpu.power()) {
+          (None, None) => format!("{VERSION} {FAILED}\n"),
+          (celsius, watts) => {
+            let number = |n: Option<f64>| n.map_or("-".to_string(), |n| format!("{n:.3}"));
+            format!("{VERSION} ok {} {}\n", number(celsius), number(watts))
+          }
         },
         Err(problem) => format!("{VERSION} {problem}\n"),
       };
@@ -334,7 +337,7 @@ impl Pipe {
   }
 }
 
-// --- The CPU temperature, through PawnIO ---
+// --- The CPU temperature and power, through PawnIO ---
 
 type Open = unsafe extern "system" fn(*mut HANDLE) -> i32;
 type Load = unsafe extern "system" fn(HANDLE, *const u8, usize) -> i32;
@@ -344,6 +347,10 @@ type Close = unsafe extern "system" fn(HANDLE) -> i32;
 const MODULE: &[u8] = include_bytes!("../pawnio/AMDFamily17.bin");
 // The CPU's temperature register (THM_TCON_CUR_TMP), read through the SMN (the CPU's internal bus)
 const TEMPERATURE_REGISTER: u64 = 0x0005_9800;
+// The power: AMD's RAPL registers (MSRs). The unit register's bits 8-12 say how much energy one step
+// of the counter is (1 / 2^n joules); the counter is the whole package's energy, 32 bits, wrapping.
+const POWER_UNIT_MSR: u64 = 0xC001_0299;
+const PACKAGE_ENERGY_MSR: u64 = 0xC001_029B;
 
 struct Cpu {
   library: windows_sys::Win32::Foundation::HMODULE,
@@ -354,6 +361,11 @@ struct Cpu {
   // two steps, and another tool's read in between would mix them up
   lock: HANDLE,
   offset: f64, // what some old Ryzens add to their temperature (see offset())
+  energy_unit: Option<f64>, // joules per step of the energy counter (None: unreadable, no power)
+  // The power is the energy used between two readings: the last counter and when it was read, and
+  // the last power (given again when SyncR asks twice within a moment, too short to measure)
+  energy: Option<(u32, Instant)>,
+  watts: Option<f64>,
 }
 
 impl Cpu {
@@ -399,7 +411,38 @@ impl Cpu {
     let name = wide(r"Global\Access_PCI".as_ref());
     // name ends in 0; opens the lock when another tool made it first; null when it can't
     let lock = unsafe { CreateMutexW(null(), 0, name.as_ptr()) };
-    Ok(Cpu { library, handle, execute, close, lock, offset: offset() })
+    let mut cpu = Cpu { library, handle, execute, close, lock, offset: offset(), energy_unit: None, energy: None, watts: None };
+    cpu.energy_unit = cpu.msr(POWER_UNIT_MSR).map(|units| 1.0 / (1u64 << ((units >> 8) & 0x1F)) as f64);
+    Ok(cpu)
+  }
+
+  // One of the MSRs the module lets programs read
+  fn msr(&self, register: u64) -> Option<u64> {
+    let input = [register];
+    let mut output = [0u64];
+    let mut count = 0usize;
+    // handle has the module loaded; its "ioctl_read_msr" takes 1 value and gives 1
+    let result = unsafe {
+      (self.execute)(self.handle, b"ioctl_read_msr\0".as_ptr(), input.as_ptr(), 1, output.as_mut_ptr(), 1, &mut count)
+    };
+    (result >= 0 && count == 1).then_some(output[0])
+  }
+
+  // Watts, the whole package (as tools name it "Package"), over the time since the last reading
+  fn power(&mut self) -> Option<f64> {
+    let unit = self.energy_unit?;
+    let counter = self.msr(PACKAGE_ENERGY_MSR)? as u32;
+    let now = Instant::now();
+    if let Some((before, at)) = self.energy {
+      let seconds = now.duration_since(at).as_secs_f64();
+      if seconds < 0.2 {
+        return self.watts; // too short to measure well: the last one again
+      }
+      let watts = counter.wrapping_sub(before) as f64 * unit / seconds;
+      self.watts = (0.0..1000.0).contains(&watts).then_some(watts);
+    }
+    self.energy = Some((counter, now));
+    self.watts
   }
 
   // °C, as tools name it "Core (Tctl/Tdie)"

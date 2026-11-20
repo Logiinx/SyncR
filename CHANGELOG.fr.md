@@ -5,8 +5,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
-- **Nouveau :** Matériel : consommation et mémoire utilisée du GPU (PC uniquement)
+- **Nouveau :** Matériel : consommation du CPU et du GPU, mémoire utilisée du GPU (PC uniquement)
 - **Nouveau :** Matériel : températures et consommation maximales depuis le démarrage (PC uniquement)
+- **Changé :** Matériel demande une fois de mettre à jour son assistant (une demande administrateur) (PC uniquement)
 
 ## [0.97.1] - 2026-11-20
 

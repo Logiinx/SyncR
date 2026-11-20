@@ -1,5 +1,5 @@
 // The Hardware module's admin helper, seen from SyncR (the helper itself: hardware-helper/, built
-// by build.rs and carried in SyncR). The CPU temperature needs admin rights SyncR doesn't have:
+// by build.rs and carried in SyncR). The CPU temperature and power need admin rights SyncR doesn't have:
 // the helper, set up once through an admin prompt, answers one reading per question over a local
 // pipe. Here: asking it, knowing why it can't answer, and setting it up or removing it.
 // Nothing here may panic (panic = "abort").
@@ -45,15 +45,15 @@ impl Reader {
     Reader { supported: ryzen(), client: None, missing: None }
   }
 
-  // (°C, why not)
-  pub fn read(&mut self) -> (Option<f64>, &'static str) {
+  // (°C, W, why not)
+  pub fn read(&mut self) -> (Option<f64>, Option<f64>, &'static str) {
     if !self.supported {
-      return (None, UNSUPPORTED);
+      return (None, None, UNSUPPORTED);
     }
     if self.client.is_none() {
       if let Some((since, state)) = self.missing {
         if since.elapsed() < RETRY && !RETRY_NOW.swap(false, Ordering::SeqCst) {
-          return (None, state);
+          return (None, None, state);
         }
       }
       RETRY_NOW.store(false, Ordering::SeqCst);
@@ -71,27 +71,26 @@ impl Reader {
       };
       if state != OK {
         self.missing = Some((Instant::now(), state));
-        return (None, state);
+        return (None, None, state);
       }
       self.missing = None;
     }
     let answer = self.client.as_ref().and_then(Client::ask);
     let Some(answer) = answer else {
       self.client = None; // gone (stopped, or being updated): tried again next time
-      return (None, NOT_RUNNING);
+      return (None, None, NOT_RUNNING);
     };
     let mut words = answer.split(' ');
     if words.next() != Some(&shared::VERSION.to_string()) {
-      return (None, OUTDATED);
+      return (None, None, OUTDATED);
     }
-    match (words.next(), words.next(), words.next()) {
-      (Some("ok"), Some(number), None) => match number.parse::<f64>() {
-        Ok(celsius) if celsius.is_finite() => (Some(celsius), OK),
-        _ => (None, FAILED),
-      },
-      (Some(shared::NO_PAWNIO), None, None) => (None, NO_PAWNIO),
-      (Some(shared::UNSUPPORTED), None, None) => (None, UNSUPPORTED),
-      _ => (None, FAILED),
+    // A number, or "-" when the helper couldn't read that one
+    let number = |word: &str| word.parse::<f64>().ok().filter(|n| n.is_finite());
+    match (words.next(), words.next(), words.next(), words.next()) {
+      (Some("ok"), Some(celsius), Some(watts), None) => (number(celsius), number(watts), OK),
+      (Some(shared::NO_PAWNIO), None, None, None) => (None, None, NO_PAWNIO),
+      (Some(shared::UNSUPPORTED), None, None, None) => (None, None, UNSUPPORTED),
+      _ => (None, None, FAILED),
     }
   }
 }

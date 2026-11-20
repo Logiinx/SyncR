@@ -280,8 +280,8 @@ export const settings = {
   '{used} / {total} GB': '{used} / {total} Go',
   'Admin helper': 'Assistant administrateur',
   'About the admin helper': 'À propos de l’assistant administrateur',
-  'The CPU temperature needs admin rights, which SyncR doesn’t have. This small helper has them: it starts with Windows and only reads the temperature when SyncR asks. Turning the module off leaves it resting.':
-    'La température du processeur demande des droits administrateur, que SyncR n’a pas. Ce petit assistant les a : il démarre avec Windows et ne lit la température que quand SyncR la demande. Désactiver le module le laisse au repos.',
+  'The CPU temperature and power need admin rights, which SyncR doesn’t have. This small helper has them: it starts with Windows and only reads them when SyncR asks. Turning the module off leaves it resting.':
+    'La température et la consommation du processeur demandent des droits administrateur, que SyncR n’a pas. Ce petit assistant les a : il démarre avec Windows et ne les lit que quand SyncR les demande. Désactiver le module le laisse au repos.',
   'Set up': 'Installer',
   Start: 'Démarrer',
   Update: 'Mettre à jour',

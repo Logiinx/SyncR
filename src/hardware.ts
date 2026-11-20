@@ -11,7 +11,7 @@ import { read, write } from './localState'
 // runs nothing and opens no library.
 
 // The sensors, in the order the settings window lists them. Rust reads only the ones asked for.
-export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan', 'ram'] as const
+export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuPower', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan', 'ram'] as const
 export type Sensor = (typeof SENSORS)[number]
 
 export interface HardwareSettings {
@@ -202,12 +202,12 @@ export function listenHardwareOpen(open: () => void) {
   return () => void stop.then((unlisten) => unlisten())
 }
 
-// Settings → Modules. Turning it on sets up the admin helper for the CPU temperature (one admin
-// prompt) if it isn't yet and the widget shows that temperature; said No: the settings window
+// Settings → Modules. Turning it on sets up the admin helper for the CPU temperature and power (one
+// admin prompt) if it isn't yet and the widget shows one of them; said No: the settings window
 // offers "Set up" (HardwareSettings.tsx).
 export function toggleHardware(on: boolean) {
   saveHardware({ on })
-  if (on && current.shown.includes('cpuTemp')) void setUpHelper(true)
+  if (on && (current.shown.includes('cpuTemp') || current.shown.includes('cpuPower'))) void setUpHelper(true)
 }
 
 // The CPU temperature comes from an admin helper (hardware_helper.rs); why it's missing:
@@ -232,7 +232,8 @@ export interface HardwareReadings {
   cpuLoad: number | null
   cpuClock: number | null
   cpuTemp: number | null
-  cpuTempState: HelperState | null // null: not asked for
+  cpuPower: number | null // W, from the admin helper too
+  cpuTempState: HelperState | null // why there's no CPU temperature or power (null: not asked for)
   gpuTemp: number | null
   gpuMemTemp: number | null // null also on cards without that sensor
   gpuLoad: number | null
@@ -325,6 +326,7 @@ export function sensorLabel(sensor: Sensor, short = false) {
       return t('Memory clock')
     case 'gpuMemUsed':
       return t('Memory used')
+    case 'cpuPower':
     case 'gpuPower':
       return t('Power')
     case 'gpuFan':
@@ -356,8 +358,9 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
       return mhz(r.gpuClock)
     case 'gpuMemClock':
       return mhz(r.gpuMemClock)
+    case 'cpuPower':
     case 'gpuPower':
-      return r.gpuPower === null ? null : wattsText(r.gpuPower)
+      return r[sensor] === null ? null : wattsText(r[sensor])
     case 'gpuMemUsed':
       return gigabytes(r.gpuMemUsed, r.gpuMemTotal)
     case 'gpuFan':
@@ -435,7 +438,7 @@ export function heatLevel(sensor: Sensor) {
 // temperatures and power (a 100 % load peak says nothing). Only for ticked readings: the others are
 // read only while the settings window is open, so their peak would miss most of the time. Unticked
 // or module off: that peak goes.
-export const PEAK_SENSORS = ['cpuTemp', 'gpuTemp', 'gpuMemTemp', 'gpuPower'] as const
+export const PEAK_SENSORS = ['cpuTemp', 'cpuPower', 'gpuTemp', 'gpuMemTemp', 'gpuPower'] as const
 export type PeakSensor = (typeof PEAK_SENSORS)[number]
 export const isPeakSensor = (sensor: Sensor): sensor is PeakSensor => (PEAK_SENSORS as readonly Sensor[]).includes(sensor)
 let peaks: Partial<Record<PeakSensor, number>> = {} // replaced on each change (usePeaks)
@@ -489,13 +492,13 @@ export function usePeaks() {
 // A peak as text ("71.0 °C", "285 W"), "—" when there's none yet
 export function peakText(sensor: PeakSensor, all: Partial<Record<PeakSensor, number>>) {
   const n = all[sensor]
-  const value = n === undefined ? '—' : sensor === 'gpuPower' ? wattsText(n) : temperatureText(n)
+  const value = n === undefined ? '—' : sensor === 'cpuPower' || sensor === 'gpuPower' ? wattsText(n) : temperatureText(n)
   return t('max {value}', { value })
 }
 
 // The widget's hardware, in order, with their readings in the settings window's order
 export const WIDGET_GROUPS = [
-  { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuClock'] },
+  { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuPower', 'cpuClock'] },
   { icon: 'gpu', sensors: ['gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan'] },
   { icon: 'memory', sensors: ['ram'] },
 ] as const
