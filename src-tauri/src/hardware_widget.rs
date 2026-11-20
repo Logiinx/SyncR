@@ -73,15 +73,38 @@ const INDENT: f32 = 21.0; // the icon and its gap (6): the names and rows start 
 const VALUE_GAP: f32 = 16.0; // least room between a label and its value
 const RADIUS: f32 = 8.0;
 const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
-const BG: u32 = 0x161616; // --bg
-const BORDER: u32 = 0x2a2a2a; // --border
-const TEXT: u32 = 0xe4e4e4; // --text
-const DIM: u32 = 0x808080; // --text-dim
-const LINK: &str = "#7aa7e0"; // --link: the color of the settings cards' icons
+
+// The widget's colors (index.css), per theme and frame line (hardware.ts); the same as the
+// mockups in design/hardware-looks.html
+struct Colors {
+  bg: u32,
+  text: u32,
+  dim: u32, // the labels
+  icon: &'static str,
+  frame: Option<u32>,
+}
+
+fn colors(theme: &str, frame: &str) -> Colors {
+  let blue = theme == "blue";
+  let frame = match frame {
+    "none" => None,
+    "gray" if blue => Some(0x4c6990), // white at 15 % over the blue
+    "gray" => Some(0x2a2a2a),         // --border
+    _ if blue => Some(0x7aa7e0),      // --link
+    _ => Some(0x2d4f7c),              // --accent
+  };
+  if blue {
+    // --accent, white text, labels white at 70 %, white icons
+    Colors { bg: 0x2d4f7c, text: 0xffffff, dim: 0xc0cad8, icon: "#ffffff", frame }
+  } else {
+    // --bg, --text, --text-dim, --link (the settings cards' icons)
+    Colors { bg: 0x161616, text: 0xe4e4e4, dim: 0x808080, icon: "#7aa7e0", frame }
+  }
+}
 
 // Each hardware's icon: Lucide's own shapes (lucide-react 1.57: Cpu, Gpu, MemoryStick, ISC license)
 // with Lucide's usual strokes, drawn by Direct2D's SVG support
-fn icon_svg(icon: &str) -> Option<String> {
+fn icon_svg(icon: &str, color: &str) -> Option<String> {
   let shapes = match icon {
     "cpu" => concat!(
       r#"<path d="M12 20v2"/><path d="M12 2v2"/><path d="M17 20v2"/><path d="M17 2v2"/><path d="M2 12h2"/>"#,
@@ -101,7 +124,7 @@ fn icon_svg(icon: &str) -> Option<String> {
     _ => return None,
   };
   Some(format!(
-    r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{LINK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{shapes}</svg>"#
+    r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{shapes}</svg>"#
   ))
 }
 
@@ -124,6 +147,10 @@ pub struct Content {
   on_top: bool, // above other windows, put back on top every second; else on the desktop
   #[serde(default)]
   locked: bool, // can't be dragged
+  #[serde(default)]
+  theme: String, // "dark" (or anything else) · "blue"
+  #[serde(default)]
+  frame: String, // "none" · "gray" · "blue" (or anything else)
 }
 
 static CONTENT: Mutex<Option<Content>> = Mutex::new(None);
@@ -166,6 +193,7 @@ fn stop() {
 // What's on screen now, so an unchanged reading isn't drawn again
 struct Drawn {
   groups: Vec<Group>,
+  style: (String, String), // theme, frame
   dpi: u32,
   width: i32,
   height: i32,
@@ -365,9 +393,12 @@ fn open_menu() {
       MENU_OPEN.store(false, Ordering::SeqCst);
       return;
     };
-    menu.on_window_event(|event| {
+    // Closed in any way: a theme or frame shown from it goes back to the saved one
+    let handle = app.clone();
+    menu.on_window_event(move |event| {
       if matches!(event, tauri::WindowEvent::Destroyed) {
         MENU_OPEN.store(false, Ordering::SeqCst);
+        let _ = handle.emit_to("main", "hardware-menu", serde_json::json!({ "preview": null }));
       }
     });
     let _ = menu.set_position(tauri::PhysicalPosition::new(area.left, area.top));
@@ -483,11 +514,12 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   if local.widest.0 != labels {
     local.widest = (labels, 0.0);
   }
-  let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.dpi == dpi);
+  let style = (content.theme.clone(), content.frame.clone());
+  let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.style == style && drawn.dpi == dpi);
   let picture = if same {
     None
   } else {
-    let Some((picture, width)) = painter.draw(&content.groups, dpi, local.widest.1) else { return false };
+    let Some((picture, width)) = painter.draw(&content.groups, &colors(&style.0, &style.1), dpi, local.widest.1) else { return false };
     local.widest.1 = width;
     Some(picture)
   };
@@ -549,7 +581,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
       SetWindowPos(local.widget, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
   }
-  local.drawn = Some(Drawn { groups: content.groups.clone(), dpi, width, height });
+  local.drawn = Some(Drawn { groups: content.groups.clone(), style, dpi, width, height });
   true
 }
 
@@ -703,7 +735,7 @@ impl Painter {
 
   // The widget as a see-through picture at this scale, at least `least` DIPs wide; and its width
   // in DIPs. None if Windows' drawing failed.
-  fn draw(&self, groups: &[Group], dpi: u32, least: f32) -> Option<(Canvas, f32)> {
+  fn draw(&self, groups: &[Group], colors: &Colors, dpi: u32, least: f32) -> Option<(Canvas, f32)> {
     struct Line<'a> {
       top: f32,
       icon: &'a str,
@@ -762,7 +794,7 @@ impl Painter {
       let area = windows::Win32::Foundation::RECT { left: 0, top: 0, right: pixels_wide as i32, bottom: pixels_high as i32 };
       target.BindDC(windows::Win32::Graphics::Gdi::HDC(canvas.dc), &area).ok()?;
       let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb), None);
-      let (bg, border, text, dim) = (brush(BG).ok()?, brush(BORDER).ok()?, brush(TEXT).ok()?, brush(DIM).ok()?);
+      let (bg, text, dim) = (brush(colors.bg).ok()?, brush(colors.text).ok()?, brush(colors.dim).ok()?);
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
@@ -772,8 +804,11 @@ impl Painter {
         radiusY: RADIUS - inset,
       };
       target.FillRoundedRectangle(&rounded(0.0), &bg);
-      // A 1-pixel line, on whole pixels (centered half a pixel in)
-      target.DrawRoundedRectangle(&rounded(0.5 / scale), &border, 1.0 / scale, None);
+      // The frame: a 1-pixel line, on whole pixels (centered half a pixel in)
+      if let Some(frame) = colors.frame {
+        let border = brush(frame).ok()?;
+        target.DrawRoundedRectangle(&rounded(0.5 / scale), &border, 1.0 / scale, None);
+      }
       let put = |line: &Text, x: f32, y: f32, brush: &windows::Win32::Graphics::Direct2D::ID2D1SolidColorBrush| {
         // Across: on a whole pixel too, an exact half going left, as the browser does
         let origin = windows_numerics::Vector2 { X: ((x * scale - 0.5).ceil()) / scale, Y: y - line.baseline };
@@ -785,7 +820,7 @@ impl Painter {
         if let Some(title) = &line.title {
           put(title, PAD_SIDE + INDENT, at(line.top, title_offset), &text);
           // Centered on the line, as the card's title row centers it, rounded like the text
-          if let (Some(svg), Some(icon)) = (&svg, icon_svg(line.icon)) {
+          if let (Some(svg), Some(icon)) = (&svg, icon_svg(line.icon, colors.icon)) {
             let stream = SHCreateMemStream(Some(icon.as_bytes()));
             let size = D2D_SIZE_F { width: ICON, height: ICON };
             if let Some(document) = stream.and_then(|stream| svg.CreateSvgDocument(&stream, size).ok()) {

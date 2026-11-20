@@ -1,13 +1,13 @@
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { EyeOff, ListChecks, Lock, Pin, Settings, Thermometer, Timer } from 'lucide-react'
+import { EyeOff, ListChecks, Lock, Palette, Pin, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
 import { decimal, t, useLanguage } from './i18n'
-import { type HardwareSettings, type MenuChoice, SPEEDS, WIDGET_GROUPS, sensorLabel, storedHardware } from './hardware'
+import { FRAMES, type HardwareSettings, type MenuChoice, SPEEDS, THEMES, WIDGET_GROUPS, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor, made when the widget is right-clicked and removed when the menu closes
@@ -66,6 +66,15 @@ function HardwareMenu() {
     setSettings((now) => ({ ...now, ...part }))
     void send('choice', { change: part })
   }
+  // A theme or frame under the mouse shows on the widget at once. Leaving waits a moment, so
+  // going from one to the next doesn't flash the saved one in between.
+  const back = useRef<number | undefined>(undefined)
+  const preview = (part: Partial<HardwareSettings>) => (on: boolean) => {
+    clearTimeout(back.current)
+    if (on) void send('choice', { preview: part })
+    else back.current = window.setTimeout(() => void send('choice', { preview: null }), 100)
+  }
+  useEffect(() => () => clearTimeout(back.current), [])
 
   // Every reading, under its hardware's name, as in the settings window
   const shown = WIDGET_GROUPS.flatMap(({ icon, sensors }) =>
@@ -103,6 +112,33 @@ function HardwareMenu() {
           { label: t('Celsius (°C)'), checked: !settings.fahrenheit, onClick: () => change({ fahrenheit: false }) },
           { label: t('Fahrenheit (°F)'), checked: settings.fahrenheit, onClick: () => change({ fahrenheit: true }) },
         ],
+      },
+    },
+    {
+      label: t('Theme'),
+      icon: Palette,
+      divider: true,
+      submenu: {
+        title: t('Theme'),
+        items: THEMES.map(([theme, label]) => ({
+          label: label(),
+          checked: settings.theme === theme,
+          onPreview: preview({ theme }),
+          onClick: () => change({ theme }),
+        })),
+      },
+    },
+    {
+      label: t('Frame'),
+      icon: Square,
+      submenu: {
+        title: t('Frame'),
+        items: FRAMES.map(([frame, label]) => ({
+          label: label(),
+          checked: settings.frame === frame,
+          onPreview: preview({ frame }),
+          onClick: () => change({ frame }),
+        })),
       },
     },
     { label: t('Hardware settings…'), icon: Settings, divider: true, onClick: () => void send('settings') },

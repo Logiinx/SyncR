@@ -21,6 +21,8 @@ export interface HardwareSettings {
   onTop: boolean // above other windows (else on the desktop, under them)
   locked: boolean // can't be dragged
   fahrenheit: boolean // temperatures in °F (else °C)
+  theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or SyncR's blue (--accent) with white text
+  frame: 'none' | 'gray' | 'blue' // the line around its box
 }
 
 const KEY = 'syncr.hardware'
@@ -32,13 +34,26 @@ const DEFAULTS: HardwareSettings = {
   onTop: false,
   locked: false,
   fahrenheit: false,
+  theme: 'dark',
+  frame: 'blue',
 }
 export const SPEEDS = [500, 1000, 2000, 5000]
+// The widget's themes and frame lines, with their names (the menu and the settings window)
+export const THEMES: [HardwareSettings['theme'], () => string][] = [
+  ['dark', () => t('Dark')],
+  ['blue', () => t('SyncR blue')],
+]
+export const FRAMES: [HardwareSettings['frame'], () => string][] = [
+  ['none', () => t('None')],
+  ['gray', () => t('Gray')],
+  ['blue', () => t('Blue')],
+]
 
 let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
 let windowOpen = false // the settings window shows every sensor, so all are read while it's open
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
+let preview: Partial<HardwareSettings> | null = null // a theme or frame under the mouse in the widget's menu
 
 export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
@@ -82,6 +97,10 @@ export function startHardware() {
   // The widget's right-click menu (hardware_menu in hardware_widget.rs): a changed option, or
   // "Hide widget" (the module off). "Hardware settings…" is App's (listenHardwareOpen).
   void listen<MenuChoice>('hardware-menu', ({ payload }) => {
+    if (payload.preview !== undefined || payload.change) {
+      preview = payload.change ? null : (payload.preview ?? null)
+      sendWidget(current.on ? last : null)
+    }
     if (payload.change) saveHardware(payload.change)
     if (payload.hide) toggleHardware(false)
   })
@@ -95,6 +114,7 @@ export function startHardware() {
 export interface MenuChoice {
   change?: Partial<HardwareSettings>
   hide?: boolean
+  preview?: Partial<HardwareSettings> | null // shown on the widget, not saved (null: back to the saved one)
 }
 
 // "Hardware settings…" in the widget's menu: App opens Settings on the Hardware window
@@ -273,7 +293,7 @@ function sendWidget(r: HardwareReadings | null) {
           return value === null ? [] : [[sensorLabel(sensor, true), value]]
         }),
       })).filter((group) => group.rows.length > 0)
-  const { place, onTop, locked } = current
-  const content = groups.length > 0 ? { groups, place, onTop, locked } : null
+  const { place, onTop, locked, theme, frame } = { ...current, ...preview }
+  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

@@ -14,6 +14,7 @@ export interface MenuItem {
   hint?: string // tooltip
   keepFocus?: boolean // pressing it leaves the cursor where it is (e.g. in the text being edited)
   stayOpen?: boolean // pressing it leaves the menu open (ticks often changed several in a row)
+  onPreview?: (on: boolean) => void // the mouse came onto it (true) or left it (false): shows what it would do
   onClick?: () => void
   // A list of its own (e.g. Move to folder), with a › after the label: with a mouse it opens beside
   // the menu on hover (or a click); on a touch screen a tap shows it in the menu's place, under its title
@@ -112,7 +113,11 @@ function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
           disabled={item.disabled}
           title={item.hint}
           onMouseDown={item.keepFocus ? (e) => e.preventDefault() : undefined}
-          onMouseEnter={main ? () => hover(index) : undefined}
+          onMouseEnter={main || item.onPreview ? () => {
+            if (main) hover(index)
+            item.onPreview?.(true)
+          } : undefined}
+          onMouseLeave={item.onPreview ? () => item.onPreview?.(false) : undefined}
           onClick={() => choose(item)}
         >
           {item.icon && <item.icon size={15} className="menu-icon" />}

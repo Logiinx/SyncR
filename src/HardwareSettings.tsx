@@ -6,9 +6,12 @@ import InfoTip from './InfoTip'
 import { SettingRow, SettingsCard } from './SettingsCard'
 import { decimal, t } from './i18n'
 import {
+  FRAMES,
+  type HardwareSettings as HardwareSettingsType,
   type HelperState,
   type Sensor,
   SPEEDS,
+  THEMES,
   removeHelper,
   saveHardware,
   setUpHelper,
@@ -101,6 +104,20 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
             <select value={settings.fahrenheit ? 'f' : 'c'} onChange={(e) => saveHardware({ fahrenheit: e.target.value === 'f' })}>
               <option value="c">{t('Celsius (°C)')}</option>
               <option value="f">{t('Fahrenheit (°F)')}</option>
+            </select>
+          </SettingRow>
+          <SettingRow label={t('Theme')}>
+            <select value={settings.theme} onChange={(e) => saveHardware({ theme: e.target.value as HardwareSettingsType['theme'] })}>
+              {THEMES.map(([theme, label]) => (
+                <option key={theme} value={theme}>{label()}</option>
+              ))}
+            </select>
+          </SettingRow>
+          <SettingRow label={t('Frame')}>
+            <select value={settings.frame} onChange={(e) => saveHardware({ frame: e.target.value as HardwareSettingsType['frame'] })}>
+              {FRAMES.map(([frame, label]) => (
+                <option key={frame} value={frame}>{label()}</option>
+              ))}
             </select>
           </SettingRow>
         </SettingsCard>

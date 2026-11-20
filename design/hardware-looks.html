@@ -25,10 +25,20 @@
     --bg: #161616; --bg-sunken: #101010; --hover: rgb(255 255 255 / 8%); --border: #2a2a2a;
     --text: #e4e4e4; --text-dim: #808080; --link: #7aa7e0; --text-blue: #6fa9f2;
   }
+  /* The widget's own colors: theme Dark (default) or SyncR blue, and its frame line */
+  body {
+    --w-bg: var(--bg); --w-text: var(--text); --w-dim: var(--text-dim); --w-icon: var(--link);
+    --w-bar: var(--text-blue); --w-track: var(--hover); --w-frame: #2d4f7c;
+  }
+  body.blue { --w-bg: #2d4f7c; --w-text: #ffffff; --w-dim: #c0cad8; --w-icon: #ffffff; --w-bar: #ffffff; --w-track: rgb(255 255 255 / 18%); --w-frame: var(--link); }
+  body.frame-grey { --w-frame: var(--border); }
+  body.blue.frame-grey { --w-frame: #4c6990; }
+  body.frame-none { --w-frame: transparent; }
   body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font: 14px 'SyncR UI', sans-serif; }
   h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
   .intro { color: var(--text-dim); margin: 0 0 16px; }
-  .walls { display: flex; gap: 8px; margin-bottom: 20px; }
+  .walls { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .walls .label { color: var(--text-dim); width: 80px; }
   .walls button { font: inherit; color: var(--text-dim); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .walls button.on { color: var(--text); background: var(--hover); }
   .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
@@ -42,11 +52,11 @@
   body.photo .desk { background: radial-gradient(circle at 30% 30%, #f1e2b8, transparent 40%), linear-gradient(160deg, #3d6b8c, #7da35b 55%, #2f4a2a); }
 
   /* Shared pieces */
-  .w { font: 13px 'SyncR UI', sans-serif; color: var(--text); white-space: nowrap; user-select: none; }
-  .box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
-  .icon { width: 15px; height: 15px; flex: none; }
+  .w { font: 13px 'SyncR UI', sans-serif; color: var(--w-text); white-space: nowrap; user-select: none; }
+  .box { background: var(--w-bg); border: 1px solid var(--w-frame); border-radius: 8px; box-sizing: border-box; }
+  .icon { width: 15px; height: 15px; flex: none; color: var(--w-icon); }
   .icon svg { display: block; }
-  .dim { color: var(--text-dim); }
+  .w .dim { color: var(--w-dim); }
   .num { font-variant-numeric: tabular-nums; }
 
   /* A: rows like LHM (what the widget draws now) */
@@ -59,7 +69,7 @@
   .b { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; gap: 14px; }
   .b .part { display: flex; align-items: center; gap: 6px; }
   .b .vals { display: flex; gap: 8px; }
-  .b .sep { width: 1px; height: 16px; background: var(--border); }
+  .b .sep { width: 1px; height: 16px; background: var(--w-dim); opacity: 0.4; }
 
   /* C: tiles, one per hardware */
   .c { display: inline-flex; gap: 6px; }
@@ -74,25 +84,39 @@
   .d .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
   .d .row { padding-left: 21px; }
   .d .line { display: flex; justify-content: space-between; gap: 16px; height: 18px; line-height: 18px; }
-  .d .bar { height: 3px; border-radius: 2px; background: var(--hover); margin: 1px 0 4px; overflow: hidden; }
-  .d .bar i { display: block; height: 100%; border-radius: 2px; background: var(--text-blue); }
+  .d .bar { height: 3px; border-radius: 2px; background: var(--w-track); margin: 1px 0 4px; overflow: hidden; }
+  .d .bar i { display: block; height: 100%; border-radius: 2px; background: var(--w-bar); }
 
   /* E: no box, text only, a soft shadow so it reads on any wallpaper */
   .e { display: inline-block; padding: 8px 12px 10px; text-shadow: 0 0 2px #000, 0 1px 3px #000, 0 0 8px rgb(0 0 0 / 70%); }
   .e .icon svg { filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 1px 2px #000); }
   .e .dim { color: #c4c4c4; }
+  .e { color: #ffffff; }
+  body:not(.blue) .e { color: var(--text); }
   .e .group + .group { margin-top: 6px; }
   .e .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
   .e .row { display: flex; justify-content: space-between; gap: 16px; height: 20px; line-height: 20px; padding-left: 21px; }
 </style>
 
-<body class="dark">
+<body class="dark frame-blue">
 <h1>Hardware widget: looks A–E</h1>
-<p class="intro">Redrawn 2026-11-20 (the first mockups weren't saved). Same font, sizes and colors as the widget. Pick a wallpaper to see each look on it.</p>
+<p class="intro">Redrawn 2026-11-20 (the first mockups weren't saved). Same font, sizes and colors as the widget. Themes: Dark (default) and SyncR blue; frame line: None, Grey or Blue (default).</p>
 <div class="walls">
-  <button data-wall="dark" class="on">Dark wallpaper</button>
-  <button data-wall="light">Light wallpaper</button>
-  <button data-wall="photo">Photo wallpaper</button>
+  <span class="label">Wallpaper</span>
+  <button data-wall="dark" class="on">Dark</button>
+  <button data-wall="light">Light</button>
+  <button data-wall="photo">Photo</button>
+</div>
+<div class="walls">
+  <span class="label">Theme</span>
+  <button data-theme="" class="on">Dark</button>
+  <button data-theme="blue">SyncR blue</button>
+</div>
+<div class="walls" style="margin-bottom: 20px">
+  <span class="label">Frame</span>
+  <button data-frame="none">None</button>
+  <button data-frame="grey">Grey</button>
+  <button data-frame="blue" class="on">Blue</button>
 </div>
 
 <div class="looks">
@@ -186,12 +210,17 @@
     gpu: '<path d="M2 17h18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H2"/><path d="M2 21V3"/><path d="M7 17v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3"/><circle cx="16" cy="11" r="2"/><circle cx="8" cy="11" r="2"/>',
   }
   for (const spot of document.querySelectorAll('[data-icon]')) {
-    spot.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7aa7e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SHAPES[spot.dataset.icon]}</svg>`
+    spot.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SHAPES[spot.dataset.icon]}</svg>`
   }
-  for (const button of document.querySelectorAll('[data-wall]')) {
-    button.onclick = () => {
-      document.body.className = button.dataset.wall
-      for (const other of document.querySelectorAll('[data-wall]')) other.classList.toggle('on', other === button)
+  // Wallpaper, theme and frame: one button on in each row, the body's classes follow
+  const picked = { wall: 'dark', theme: '', frame: 'blue' }
+  for (const kind of Object.keys(picked)) {
+    for (const button of document.querySelectorAll(`[data-${kind}]`)) {
+      button.onclick = () => {
+        picked[kind] = button.dataset[kind]
+        document.body.className = `${picked.wall} ${picked.theme} frame-${picked.frame}`
+        for (const other of document.querySelectorAll(`[data-${kind}]`)) other.classList.toggle('on', other === button)
+      }
     }
   }
 </script>
