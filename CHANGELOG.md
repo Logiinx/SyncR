@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.96.0] - 2026-11-20
+
 **App**
 - **New:** Hardware module in Settings → Modules: CPU and GPU temperatures, loads and more (PC only)
 - **New:** right-click the Hardware widget: size, see-through, theme and more (PC only)

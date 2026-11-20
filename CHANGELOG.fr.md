@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.96.0] - 2026-11-20
+
 **Application**
 - **Nouveau :** module Matériel dans Paramètres → Modules : températures processeur et carte graphique, charges et plus (PC uniquement)
 - **Nouveau :** clic droit sur le widget Matériel : taille, transparence, thème et plus (PC uniquement)
