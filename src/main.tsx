@@ -18,6 +18,7 @@ import { followTabColors } from './tabColors'
 import { followLinkSites } from './linkPreviews'
 import { startMouseBattery } from './mouseBattery'
 import { startHardware } from './hardware'
+import { showTray } from './desktop'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -31,6 +32,7 @@ setUpBoardTab()
 // Not in the pop-up: it sizes its window from its cards, a closing one would still count
 if (!isPopup) startClosingAnimations()
 if (!isPopup) startTrayTexts()
+if (!isPopup) showTray()
 if (!isPopup) startMouseBattery()
 if (!isPopup) startHardware()
 // The sign-ins are decrypted first, both windows read them. On the PC that can take a moment

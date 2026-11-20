@@ -88,5 +88,16 @@ export function popupScreenChange(monitors: Monitor[], main: Monitor | null, bac
 export const startsWithWindows = () => (isTauri() ? isEnabled() : Promise.resolve(false))
 export const setStartWithWindows = (on: boolean) => (on ? enable() : disable())
 
+// The tray icon shows only when a setting uses it: ✕ hides SyncR there, or Windows starts it hidden
+// there ("Start hidden in the tray" counts only with "Start with Windows" on: it's grayed otherwise).
+// At start and when one of them changes. lib.rs shows it at start only when Windows started SyncR.
+export function showTray(background = loadBackground()) {
+  if (!isTauri()) return
+  startsWithWindows()
+    .catch(() => false)
+    .then((autostart) => invoke('show_tray', { shown: background.closeToTray || (background.startHidden && autostart) }))
+    .catch(console.error)
+}
+
 // Was SyncR started by Windows at sign-in? (lib.rs, started_hidden)
 export const startedHidden = () => (isTauri() ? invoke<boolean>('started_hidden') : Promise.resolve(false))

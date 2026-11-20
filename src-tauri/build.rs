@@ -9,6 +9,7 @@ fn main() {
   tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows).app_manifest(tauri_build::AppManifest::new().commands(&[
     "started_hidden",
     "set_tray_texts",
+    "show_tray",
     "google_sign_in",
     "protect_secret",
     "unprotect_secret",

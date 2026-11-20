@@ -49,6 +49,19 @@ fn set_tray_texts(app: tauri::AppHandle, open: String, quit: String) -> Result<(
   Ok(())
 }
 
+// The tray icon shows only while a setting uses it: the page says at start and when one changes
+// (desktop.ts, showTray)
+#[tauri::command]
+fn show_tray(app: tauri::AppHandle, shown: bool) -> Result<(), String> {
+  #[cfg(desktop)]
+  {
+    if let Some(tray) = app.tray_by_id("main") {
+      tray.set_visible(shown).map_err(|e| e.to_string())?;
+    }
+  }
+  Ok(())
+}
+
 // True when Windows started SyncR at sign-in ("Start with Windows" adds --hidden):
 // then the window stays hidden in the tray if "Start hidden in the tray" is on
 // (WindowControls.tsx asks this and decides)
@@ -333,6 +346,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       started_hidden,
       set_tray_texts,
+      show_tray,
       google_sign_in,
       protect_secret,
       unprotect_secret,
@@ -407,8 +421,9 @@ pub fn run() {
           }
         }
 
-        // Tray icon (always there on desktop): click = open SyncR, right-click = menu.
-        // Lets SyncR keep running for reminders while its window is hidden.
+        // Tray icon: click = open SyncR, right-click = menu. Lets SyncR keep running for
+        // reminders while its window is hidden. Shown only while a setting uses it (show_tray);
+        // at start only when Windows started SyncR hidden, so it's never running unreachable.
         use tauri::menu::{Menu, MenuItem};
         use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
         let open = MenuItem::with_id(app, "open", "Open SyncR", true, None::<&str>)?;
@@ -436,7 +451,10 @@ pub fn run() {
         if let Some(icon) = app.default_window_icon() {
           tray = tray.icon(icon.clone());
         }
-        tray.build(app)?;
+        let tray = tray.build(app)?;
+        if !started_hidden() {
+          tray.set_visible(false)?;
+        }
       }
 
       if cfg!(debug_assertions) {

@@ -55,6 +55,7 @@ import {
   saveBackground,
   screenSpot,
   setStartWithWindows,
+  showTray,
   startsWithWindows,
   type Background,
   type MailDrag,
@@ -131,6 +132,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
     const next = { ...loadBackground(), ...change }
     setBackground(next)
     saveBackground(next)
+    if ('closeToTray' in change || 'startHidden' in change) showTray(next)
   }
 
   // Read from Windows (null = not known yet). If changing it fails, show the real state again.
@@ -140,10 +142,12 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   }, [])
   function toggleAutostart(on: boolean) {
     setAutostart(on)
-    setStartWithWindows(on).catch((error) => {
-      console.error(error)
-      startsWithWindows().then(setAutostart)
-    })
+    setStartWithWindows(on)
+      .catch((error) => {
+        console.error(error)
+        startsWithWindows().then(setAutostart)
+      })
+      .finally(() => showTray())
   }
 
   // The slider shows the new value while dragging; the app is scaled when it's released

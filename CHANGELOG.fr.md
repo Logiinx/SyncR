@@ -11,9 +11,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** les clics peuvent traverser le widget Matériel ; Ctrl maintenu pour le cliquer (PC uniquement)
 - **Nouveau :** couleurs d’alerte : les températures du widget Matériel passent en orange, puis rouge (PC uniquement)
 - **Amélioré :** les Paramètres tiennent sans défiler sur un écran 1080p, même marge en haut et en bas
+- **Changé :** l’icône de la zone de notification ne s’affiche que si un réglage l’utilise (PC uniquement)
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** liste des raccourcis clavier dans les lecteurs, dans ⚙️ → Raccourcis clavier
+- **Corrigé :** les vidéos Twitch perdant leur son d’origine pendant quelques secondes
+- **Corrigé :** les courtes parties sans son trop fines pour être vues sur la barre
 
 ## [0.95.0] - 2026-11-20
 

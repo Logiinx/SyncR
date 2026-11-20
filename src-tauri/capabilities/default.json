@@ -26,6 +26,7 @@
     "autostart:allow-is-enabled",
     "allow-started-hidden",
     "allow-set-tray-texts",
+    "allow-show-tray",
     "allow-mouse-battery-config",
     "allow-mouse-battery-status",
     "allow-mouse-battery-tip",

@@ -11,9 +11,12 @@ All notable changes to SyncR. Newest version first.
 - **New:** clicks can go through the Hardware widget; hold Ctrl to click it (PC only)
 - **New:** hot colors: Hardware temperatures turn orange, then red (PC only)
 - **Better:** Settings fit without scrolling on a 1080p screen, same gap above and below
+- **Changed:** the tray icon only shows when a tray setting is on (PC only)
 
 **Video** (PC only)
 - **New:** list of keyboard shortcuts in the players, in ⚙️ → Keyboard shortcuts
+- **Fixed:** Twitch videos losing their original sound for a few seconds
+- **Fixed:** short muted parts too thin to see on the bar
 
 ## [0.95.0] - 2026-11-20
 
