@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **New:** Hardware widget looks: Rows with bars, Tiles, One line (PC only)
+- **Better:** Hardware helper shows as "SyncR Hardware" with SyncR's icon in Task Manager (PC only)
 - **Small fixes:** Hardware menu leaving resources behind (PC only)
 
 ## [0.96.2] - 2026-11-20

@@ -54,7 +54,7 @@ fn main() {
 fn build_hardware_helper() {
   use std::env::var;
   use std::path::PathBuf;
-  for path in ["hardware-helper/src", "hardware-helper/build.rs", "hardware-helper/Cargo.toml", "hardware-helper/Cargo.lock", "hardware-helper/pawnio"] {
+  for path in ["hardware-helper/src", "hardware-helper/build.rs", "hardware-helper/Cargo.toml", "hardware-helper/Cargo.lock", "hardware-helper/pawnio", "icons/icon.ico"] {
     println!("cargo:rerun-if-changed={path}");
   }
   if var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {

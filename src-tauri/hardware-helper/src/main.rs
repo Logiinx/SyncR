@@ -52,8 +52,12 @@ fn install(syncr: &OsStr) -> i32 {
   if std::fs::create_dir_all(&folder).is_err() {
     return 4;
   }
-  // The old helper may take a moment to let go of its file
-  let copied = (0..20).any(|_| std::fs::copy(&me, &exe).is_ok() || pause(100));
+  // The old helper may take a moment to let go of its file. Removed first, so the file takes this
+  // name's case (version 1 was "syncr-hardware.exe": copying over it would keep that).
+  let copied = (0..20).any(|_| {
+    let _ = std::fs::remove_file(&exe);
+    std::fs::copy(&me, &exe).is_ok() || pause(100)
+  });
   if !copied {
     return 4;
   }
