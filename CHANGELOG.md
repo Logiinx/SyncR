@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Games**
 - **New:** the To buy tab shows how many games are on sale, in green
+- **New:** top of Upcoming: your games coming out in the next 30 days
 
 ## [0.97.2] - 2026-11-20
 

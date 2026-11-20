@@ -227,6 +227,7 @@ function GamesView() {
                 {/* A new list for each tab and layout (switching isn't games coming and going),
                     which fades in quickly */}
                 <div key={`${shown}-${shelf}`} className="games-tab-in">
+                  {shown === 'waiting' && <ComingSoon games={games} wide={shelf === 'grid'} onOpen={setOpenId} />}
                   {shown === 'toplay' ? (
                     <ToPlayShelf games={games} layout={shelf} onOpen={setOpenId} onMenu={openMenu} />
                   ) : (
@@ -433,6 +434,47 @@ function GameShelf({
         <Item key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
       ))}
     </div>
+  )
+}
+
+// Top of Upcoming: "2 games out in the next 30 days: Hades III, Silksong", soonest first, at most 3
+// names then "+2 more" (the others in its tooltip). A name opens the game (its date in the
+// tooltip). Only exact days count (not "Q1 2027"); nothing shows when none.
+const SOON_DAYS = 30
+const SOON_NAMES = 3
+function ComingSoon({ games, wide, onOpen }: { games: Game[]; wide: boolean; onOpen: (id: string) => void }) {
+  const today = new Date().setHours(0, 0, 0, 0)
+  const end = new Date(today).setDate(new Date(today).getDate() + SOON_DAYS)
+  const day = (game: Game) => new Date(game.releaseDate!).setHours(0, 0, 0, 0)
+  const soon = games
+    .filter((g) => g.status === 'waiting' && g.releaseDate && day(g) >= today && day(g) <= end)
+    .sort((a, b) => a.releaseDate! - b.releaseDate! || a.name.localeCompare(b.name))
+  if (soon.length === 0) return null
+  const named = soon.slice(0, SOON_NAMES)
+  const others = soon.slice(SOON_NAMES)
+  return (
+    <p className={wide ? 'games-soon wide' : 'games-soon'}>
+      <CalendarClock size={14} className="games-soon-icon" />
+      <span>
+        {plural(soon.length, '{n} game out in the next 30 days:', '{n} games out in the next 30 days:')}{' '}
+        {named.map((game, index) => (
+          <Fragment key={game.id}>
+            {index > 0 && ', '}
+            <button className="games-soon-name" title={releaseText(game, 'full')} onClick={() => onOpen(game.id)}>
+              {game.name}
+            </button>
+          </Fragment>
+        ))}
+        {others.length > 0 && (
+          <>
+            {' '}
+            <span className="games-soon-more" title={others.map((g) => g.name).join(', ')}>
+              {t('+{n} more', { n: others.length })}
+            </span>
+          </>
+        )}
+      </span>
+    </p>
   )
 }
 

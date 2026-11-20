@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Jeux**
 - **Nouveau :** l’onglet À acheter montre combien de jeux sont en promo, en vert
+- **Nouveau :** en haut d’À venir : vos jeux qui sortent dans les 30 prochains jours
 
 ## [0.97.2] - 2026-11-20
 

@@ -11,6 +11,8 @@ export const games = {
   Playing: 'En cours',
   'My games': 'Mes jeux',
   '{n} on sale': '{n} en promo',
+  '{n} game out in the next 30 days:': '{n} jeu sort dans les 30 prochains jours :',
+  '{n} games out in the next 30 days:': '{n} jeux sortent dans les 30 prochains jours :',
   Calendar: 'Calendrier',
   Covers: 'Jaquettes',
   'Month grid': 'Grille du mois',

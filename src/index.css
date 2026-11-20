@@ -5815,6 +5815,35 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
+/* Top of Upcoming: games out in the next 30 days (ComingSoon). Dim, the names bright; lined up
+   with the wide grid in the Covers layout */
+.games-soon {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--text-dim);
+}
+
+.games-soon.wide {
+  margin-inline: min(0px, (100% - var(--shelf-width)) / 2);
+}
+
+.games-soon-icon {
+  flex-shrink: 0;
+  margin-top: calc((1lh - 14px) / 2); /* centered on the first line, also when it wraps */
+}
+
+.games-soon-name {
+  padding: 0;
+  color: var(--text);
+}
+
+.games-soon-name:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
 /* To play's Playing part (PlayingCard): wide cards side by side on the PC (as wide as the cover
    grid in the Covers layout), one slim row each on the phone */
 .playing-cards {
