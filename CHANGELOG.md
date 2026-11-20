@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.96.2] - 2026-11-20
+
 **Video** (PC only)
 - **Fixed:** Twitch videos going silent where Twitch still had the sound
 - **Fixed:** orange marks on the bar where the sound was fine
