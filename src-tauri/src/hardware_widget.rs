@@ -83,6 +83,40 @@ const BAR: f32 = 3.0;
 const BAR_BELOW: f32 = 4.0;
 const BAR_ROW: f32 = BAR_LINE + BAR_GAP + BAR + BAR_BELOW;
 const BAR_LEAST: f32 = 200.0; // narrowest width, so short bars still read
+// Look C (tiles): one box per hardware, its first value big, the rest smaller under it
+const TILE_GAP: f32 = 6.0;
+const TILE_LEAST: f32 = 104.0;
+const BIG_SIZE: f32 = 24.0;
+const BIG_LINE: f32 = 32.0;
+const SMALL_SIZE: f32 = 12.0;
+const SMALL_LINE: f32 = 18.0;
+const SMALL_GAP: f32 = 12.0; // least room between a small label and its value
+// Look B (one line): per hardware its icon and values, a thin line between hardware
+const LINE_HEIGHT: f32 = 32.0;
+const PART_GAP: f32 = 14.0; // on each side of the thin line
+const SEPARATOR: f32 = 16.0; // its height
+const SEPARATOR_ALPHA: f32 = 0.4; // --text-dim, faded
+const VALUE_SPACE: f32 = 8.0; // between two values
+
+// The widget's looks (design/hardware-looks.html; E was dropped: Background 0 % + Frame None)
+#[derive(Clone, Copy, PartialEq)]
+enum Look {
+  Rows,  // A
+  Line,  // B
+  Tiles, // C
+  Bars,  // D
+}
+
+impl Look {
+  fn from(name: &str) -> Look {
+    match name {
+      "line" => Look::Line,
+      "tiles" => Look::Tiles,
+      "bars" => Look::Bars,
+      _ => Look::Rows,
+    }
+  }
+}
 const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
 
 // The widget's colors (index.css), per theme and frame line (hardware.ts); the same as the
@@ -151,15 +185,27 @@ fn icon_svg(icon: &str, color: &str) -> Option<String> {
   ))
 }
 
-// What the page sends: per hardware its name, icon and rows (label, value, its hot color: 0 none,
-// 1 warm, 2 hot, and how full its bar is in look D, 0–1, none for readings without a top), in order; the saved
+// What the page sends: per hardware its name, icon and rows, in order; the saved
 // place (screen pixels, top left), used when the widget appears; and the menu's options
 #[derive(Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
   title: String,
   icon: String, // "cpu", "gpu", "memory" (icon_svg)
-  rows: Vec<(String, String, u8, Option<f32>)>,
+  rows: Vec<Row>,
+}
+
+#[derive(Clone, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Row {
+  label: String,
+  value: String,
+  #[serde(default)]
+  heat: u8, // its hot color: 0 none, 1 warm, 2 hot
+  #[serde(default)]
+  bar: Option<f32>, // how full its bar is in look D (0–1); none for readings without a top
+  #[serde(default)]
+  temperature: bool, // look B shows temperatures in the text color, the rest dim
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize)]
@@ -172,7 +218,7 @@ pub struct Content {
   #[serde(default)]
   locked: bool, // can't be dragged
   #[serde(default)]
-  look: String, // "rows" (A, or anything else) · "bars" (D: a bar under each value)
+  look: String, // "rows" (A, or anything else) · "bars" (D) · "tiles" (C) · "line" (B): Look
   #[serde(default)]
   theme: String, // "dark" (or anything else) · "blue"
   #[serde(default)]
@@ -263,9 +309,9 @@ struct Local {
   parent: HWND,
   painter: Option<Painter>,
   drawn: Option<Drawn>,
-  // The widest it has been for these labels (DIPs): it grows with a longer value but doesn't
-  // shrink back each second; new labels start over
-  widest: (Vec<String>, f32),
+  // The widest each piece has been for these labels (DIPs, Painter::draw): it grows with a longer
+  // value but doesn't shrink back each second; new labels start over
+  widest: (Vec<String>, Vec<f32>),
   opacity: u8,      // the whole widget's (255: solid), lower under the mouse while clicks go through
   watch_every: u32, // the mouse-watching timer's ms (0: off)
   hook: HHOOK,      // the system-wide mouse hook, only for "left clicks only" (null: none)
@@ -278,7 +324,7 @@ thread_local! {
       parent: null_mut(),
       painter: None,
       drawn: None,
-      widest: (Vec::new(), 0.0),
+      widest: (Vec::new(), Vec::new()),
       opacity: 255,
       watch_every: 0,
       hook: null_mut(),
@@ -922,18 +968,19 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
 
   // Another look starts over too
   let labels: Vec<String> = std::iter::once(content.look.clone())
-    .chain(content.groups.iter().flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, ..)| label.clone()))))
+    .chain(content.groups.iter().flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|row| row.label.clone()))))
     .collect();
   if local.widest.0 != labels {
-    local.widest = (labels, 0.0);
+    local.widest = (labels, Vec::new());
   }
   let style = (content.look.clone(), content.theme.clone(), content.frame.clone(), content.background);
   let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.style == style && drawn.scale == scale);
   let picture = if same {
     None
   } else {
-    let Some((picture, width)) = painter.draw(&content.groups, style.0 == "bars", &colors(&style.1, &style.2, style.3), scale, local.widest.1) else { return false };
-    local.widest.1 = width;
+    let look = Look::from(&style.0);
+    let Some((picture, pieces)) = painter.draw(&content.groups, look, &colors(&style.1, &style.2, style.3), scale, &local.widest.1) else { return false };
+    local.widest.1 = pieces;
     Some(picture)
   };
   let (width, height) = match (&picture, &local.drawn) {
@@ -1099,6 +1146,37 @@ struct Painter {
   write: IDWriteFactory,
   regular: IDWriteTextFormat,
   semibold: IDWriteTextFormat,
+  big: IDWriteTextFormat,   // look C's first value
+  small: IDWriteTextFormat, // look C's other rows
+}
+
+// Which brush a mark is drawn with
+#[derive(Clone, Copy)]
+enum Ink {
+  Text,
+  Dim,
+  Warm,
+  Hot,
+  Bar,
+  Track,
+  Separator,
+}
+
+// One thing to draw, placed (DIPs): a text by its baseline, an icon by its top left corner, a
+// rounded shape (bars, the thin line)
+enum Mark<'a> {
+  Text { text: Text, x: f32, y: f32, ink: Ink },
+  Icon { icon: &'a str, x: f32, y: f32 },
+  Shape { rect: D2D_RECT_F, radius: f32, ink: Ink },
+}
+
+// A reading's color: its hot color if it has one
+fn heat_ink(heat: u8, normal: Ink) -> Ink {
+  match heat {
+    2 => Ink::Hot,
+    1 => Ink::Warm,
+    _ => normal,
+  }
 }
 
 // A line of text, laid out: its width and where its baseline sits from its top (DIPs)
@@ -1115,20 +1193,22 @@ impl Painter {
       let write: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).ok()?;
       let font = wide(FONT);
       let locale = wide("en-us");
-      let format = |weight| {
+      let format = |weight, size| {
         write.CreateTextFormat(
           windows::core::PCWSTR(font.as_ptr()),
           None,
           weight,
           DWRITE_FONT_STYLE_NORMAL,
           DWRITE_FONT_STRETCH_NORMAL,
-          FONT_SIZE,
+          size,
           windows::core::PCWSTR(locale.as_ptr()),
         )
       };
-      let regular = format(DWRITE_FONT_WEIGHT_NORMAL).ok()?;
-      let semibold = format(DWRITE_FONT_WEIGHT_SEMI_BOLD).ok()?;
-      Some(Painter { d2d, write, regular, semibold })
+      let regular = format(DWRITE_FONT_WEIGHT_NORMAL, FONT_SIZE).ok()?;
+      let semibold = format(DWRITE_FONT_WEIGHT_SEMI_BOLD, FONT_SIZE).ok()?;
+      let big = format(DWRITE_FONT_WEIGHT_NORMAL, BIG_SIZE).ok()?;
+      let small = format(DWRITE_FONT_WEIGHT_NORMAL, SMALL_SIZE).ok()?;
+      Some(Painter { d2d, write, regular, semibold, big, small })
     }
   }
 
@@ -1147,58 +1227,175 @@ impl Painter {
     }
   }
 
-  // The widget as a see-through picture at this scale (Windows' scaling × the widget's size), at
-  // least `least` DIPs wide; and its width in DIPs. `bars`: look D (a bar under each value), else
-  // A. None if Windows' drawing failed.
-  fn draw(&self, groups: &[Group], bars: bool, colors: &Colors, scale: f32, least: f32) -> Option<(Canvas, f32)> {
-    struct Line<'a> {
-      top: f32,
-      icon: &'a str,
-      title: Option<Text>,
-      label: Option<Text>,
-      value: Option<Text>,
-      heat: u8,
-      bar: Option<f32>,
-    }
-    let (row_height, line_height) = if bars { (BAR_ROW, BAR_LINE) } else { (ROW, ROW) };
-    let mut lines = Vec::new();
-    let mut top = PAD_TOP;
-    let mut width = if bars { least.max(BAR_LEAST) } else { least };
-    for (index, group) in groups.iter().filter(|group| !group.rows.is_empty()).enumerate() {
-      if index > 0 {
-        top += GROUP_GAP;
-      }
-      let title = self.text(&group.title, &self.semibold)?;
-      width = width.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
-      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None, heat: 0, bar: None });
-      top += ROW;
-      for (label, value, heat, bar) in &group.rows {
-        let label = self.text(label, &self.regular)?;
-        let value = self.text(value, &self.regular)?;
-        width = width.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
-        let bar = if bars { bar.map(|full| full.clamp(0.0, 1.0)) } else { None };
-        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value), heat: *heat, bar });
-        top += row_height;
-      }
-    }
-    let pixels_wide = (width * scale).ceil() as usize;
-    let pixels_high = ((top + PAD_BOTTOM) * scale).ceil() as usize;
-    let (full_width, full_height) = (pixels_wide as f32 / scale, pixels_high as f32 / scale);
-    let canvas = Canvas::new(pixels_wide, pixels_high)?;
-
+  // The widget as a see-through picture at this scale (Windows' scaling × the widget's size), and
+  // the width of each of its pieces in DIPs (A and D: the box, C: each tile, B: each value), each
+  // at least its width in `least` (same order), so it doesn't shrink back each second. None if
+  // Windows' drawing failed.
+  fn draw(&self, groups: &[Group], look: Look, colors: &Colors, scale: f32, least: &[f32]) -> Option<(Canvas, Vec<f32>)> {
+    let groups: Vec<&Group> = groups.iter().filter(|group| !group.rows.is_empty()).collect();
+    let least = |index: usize| least.get(index).copied().unwrap_or(0.0);
     let snap = |dips: f32| (dips * scale).round() / scale;
-    // Where the browser paints a line's baseline with 'SyncR UI', in screen pixels (measured in
-    // the pane at 100, 125, 150 and 200 %, 2026-11-20): it rounds the font's ascent and descent to
-    // whole pixels; a name is centered in its line (flex), a row gets the room left halved and
-    // rounded down (CSS half-leading); the line starts on the whole pixel at or above it, and the
-    // rest is rounded. At 175 % the browser paints ½ pixel higher than that, which isn't copied.
-    let font = FONT_SIZE * scale;
-    let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
-    let room = |height: f32| height * scale - ascent - descent;
-    let (title_offset, row_offset) = ((ascent + room(ROW) / 2.0).round(), ascent + (room(line_height) / 2.0).floor());
+    let whole = |dips: f32| (dips * scale - 0.001).ceil() / scale; // up to a whole pixel
+    // Where the browser paints a line's baseline with 'SyncR UI', in screen pixels from the line's
+    // top (measured in the pane at 100, 125, 150 and 200 %, 2026-11-20): it rounds the font's
+    // ascent and descent to whole pixels; text centered in its line (flex, the names) gets it
+    // rounded, a row gets the room left halved and rounded down (CSS half-leading); the line
+    // starts on the whole pixel at or above it (`at`). At 175 % the browser paints ½ pixel higher
+    // than that, which isn't copied.
+    let baseline = |size: f32, height: f32, centered: bool| {
+      let font = size * scale;
+      let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
+      let room = height * scale - ascent - descent;
+      if centered {
+        (ascent + room / 2.0).round()
+      } else {
+        ascent + (room / 2.0).floor()
+      }
+    };
     // A line's top (DIPs) plus an offset in pixels → DIPs, on a whole pixel; the tiny amount keeps
     // a top like 74 × 1.25 = 92.5 from landing just under a whole pixel by float error
     let at = |top: f32, offset: f32| ((top * scale + 0.001).floor() + offset) / scale;
+    // An icon centered on a line of this height, rounded like the text
+    let icon_top = |top: f32, height: f32| at(top, ((height - ICON) * scale / 2.0).round());
+    let title_y = baseline(FONT_SIZE, ROW, true);
+
+    let mut marks: Vec<Mark> = Vec::new();
+    let mut boxes: Vec<D2D_RECT_F> = Vec::new();
+    let mut pieces: Vec<f32> = Vec::new();
+    let (width, height); // the whole picture's, on whole pixels
+    match look {
+      // A and D: one box, per hardware its icon and name, then a row per value (label left, value
+      // right); D adds a bar under each row's line
+      Look::Rows | Look::Bars => {
+        let bars = look == Look::Bars;
+        let (row_height, line_height) = if bars { (BAR_ROW, BAR_LINE) } else { (ROW, ROW) };
+        let row_y = baseline(FONT_SIZE, line_height, false);
+        let mut widest = if bars { least(0).max(BAR_LEAST) } else { least(0) };
+        let mut rows = Vec::new(); // placed once the width is known: (top, value, its row)
+        let mut top = PAD_TOP;
+        for (index, group) in groups.iter().enumerate() {
+          if index > 0 {
+            top += GROUP_GAP;
+          }
+          let title = self.text(&group.title, &self.semibold)?;
+          widest = widest.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
+          marks.push(Mark::Icon { icon: &group.icon, x: snap(PAD_SIDE), y: icon_top(top, ROW) });
+          marks.push(Mark::Text { text: title, x: PAD_SIDE + INDENT, y: at(top, title_y), ink: Ink::Text });
+          top += ROW;
+          for row in &group.rows {
+            let label = self.text(&row.label, &self.regular)?;
+            let value = self.text(&row.value, &self.regular)?;
+            widest = widest.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
+            marks.push(Mark::Text { text: label, x: PAD_SIDE + INDENT, y: at(top, row_y), ink: Ink::Dim });
+            rows.push((top, value, row));
+            top += row_height;
+          }
+        }
+        pieces.push(widest);
+        (width, height) = (whole(widest), whole(top + PAD_BOTTOM));
+        boxes.push(D2D_RECT_F { left: 0.0, top: 0.0, right: width, bottom: height });
+        for (top, value, row) in rows {
+          let x = width - PAD_SIDE - value.width;
+          marks.push(Mark::Text { text: value, x, y: at(top, row_y), ink: heat_ink(row.heat, Ink::Text) });
+          // D: the track across the row, then the bar over it from the left, on whole pixels
+          if let Some(full) = row.bar.filter(|_| bars) {
+            let (left, right) = (snap(PAD_SIDE + INDENT), snap(width - PAD_SIDE));
+            let bar_top = snap(top + BAR_LINE + BAR_GAP);
+            let rect = |right: f32| D2D_RECT_F { left, top: bar_top, right, bottom: bar_top + snap(BAR) };
+            marks.push(Mark::Shape { rect: rect(right), radius: BAR / 2.0, ink: Ink::Track });
+            let filled = left + (right - left) * full.clamp(0.0, 1.0);
+            if filled > left {
+              marks.push(Mark::Shape { rect: rect(filled), radius: BAR / 2.0, ink: heat_ink(row.heat, Ink::Bar) });
+            }
+          }
+        }
+      }
+      // C: a box per hardware, side by side, all as tall as the tallest: its icon and short name,
+      // its first value big, the other rows small under it
+      Look::Tiles => {
+        let big_y = baseline(BIG_SIZE, BIG_LINE, false);
+        let small_y = baseline(SMALL_SIZE, SMALL_LINE, false);
+        let mut x = 0.0;
+        let mut tallest: f32 = 0.0;
+        for (index, group) in groups.iter().enumerate() {
+          if index > 0 {
+            x += TILE_GAP;
+          }
+          let left = snap(x);
+          let (first, rest) = group.rows.split_first()?;
+          let title = self.text(&group.title, &self.semibold)?;
+          let big = self.text(&first.value, &self.big)?;
+          let mut widest = least(index).max(TILE_LEAST).max(PAD_SIDE + INDENT + title.width + PAD_SIDE).max(PAD_SIDE + big.width + PAD_SIDE);
+          let mut rows = Vec::new();
+          for row in rest {
+            let label = self.text(&row.label, &self.small)?;
+            let value = self.text(&row.value, &self.small)?;
+            widest = widest.max(PAD_SIDE + label.width + SMALL_GAP + value.width + PAD_SIDE);
+            rows.push((label, value, row.heat));
+          }
+          pieces.push(widest);
+          let tile = whole(widest);
+          let mut top = PAD_TOP;
+          marks.push(Mark::Icon { icon: &group.icon, x: snap(left + PAD_SIDE), y: icon_top(top, ROW) });
+          marks.push(Mark::Text { text: title, x: left + PAD_SIDE + INDENT, y: at(top, title_y), ink: Ink::Text });
+          top += ROW;
+          marks.push(Mark::Text { text: big, x: left + PAD_SIDE, y: at(top, big_y), ink: heat_ink(first.heat, Ink::Text) });
+          top += BIG_LINE;
+          for (label, value, heat) in rows {
+            let y = at(top, small_y);
+            marks.push(Mark::Text { text: label, x: left + PAD_SIDE, y, ink: Ink::Dim });
+            let value_x = left + tile - PAD_SIDE - value.width;
+            marks.push(Mark::Text { text: value, x: value_x, y, ink: heat_ink(heat, Ink::Text) });
+            top += SMALL_LINE;
+          }
+          tallest = tallest.max(top + PAD_BOTTOM);
+          boxes.push(D2D_RECT_F { left, top: 0.0, right: left + tile, bottom: 0.0 });
+          x = left + tile;
+        }
+        (width, height) = (whole(x), whole(tallest));
+        for rect in &mut boxes {
+          rect.bottom = height;
+        }
+      }
+      // B: one line, per hardware its icon then its values (no labels), a thin line between
+      // hardware. Temperatures in the text color, the rest dim; a hardware without a temperature
+      // shows its first value in the text color. Each value keeps its widest place, the text at
+      // its right end, so the numbers after it don't move.
+      Look::Line => {
+        let line_top = (LINE_HEIGHT - ROW) / 2.0;
+        let text_y = at(line_top, title_y);
+        let mut x = PAD_SIDE;
+        for (index, group) in groups.iter().enumerate() {
+          if index > 0 {
+            x += PART_GAP;
+            let top = snap((LINE_HEIGHT - SEPARATOR) / 2.0);
+            let rect = D2D_RECT_F { left: snap(x), top, right: snap(x) + 1.0 / scale, bottom: top + snap(SEPARATOR) };
+            marks.push(Mark::Shape { rect, radius: 0.0, ink: Ink::Separator });
+            x += 1.0 + PART_GAP;
+          }
+          marks.push(Mark::Icon { icon: &group.icon, x: snap(x), y: icon_top(0.0, LINE_HEIGHT) });
+          x += INDENT;
+          let has_temperature = group.rows.iter().any(|row| row.temperature);
+          for (number, row) in group.rows.iter().enumerate() {
+            if number > 0 {
+              x += VALUE_SPACE;
+            }
+            let value = self.text(&row.value, &self.regular)?;
+            let place = least(pieces.len()).max(value.width);
+            pieces.push(place);
+            let main = row.temperature || (!has_temperature && number == 0);
+            let ink = heat_ink(row.heat, if main { Ink::Text } else { Ink::Dim });
+            marks.push(Mark::Text { x: x + place - value.width, y: text_y, ink, text: value });
+            x += place;
+          }
+        }
+        (width, height) = (whole(x + PAD_SIDE), whole(LINE_HEIGHT));
+        boxes.push(D2D_RECT_F { left: 0.0, top: 0.0, right: width, bottom: height });
+      }
+    }
+
+    let (pixels_wide, pixels_high) = ((width * scale).round() as usize, (height * scale).round() as usize);
+    let canvas = Canvas::new(pixels_wide, pixels_high)?;
     unsafe {
       let properties = D2D1_RENDER_TARGET_PROPERTIES {
         r#type: D2D1_RENDER_TARGET_TYPE_SOFTWARE,
@@ -1211,84 +1408,71 @@ impl Painter {
       let target = self.d2d.CreateDCRenderTarget(&properties).ok()?;
       let area = windows::Win32::Foundation::RECT { left: 0, top: 0, right: pixels_wide as i32, bottom: pixels_high as i32 };
       target.BindDC(windows::Win32::Graphics::Gdi::HDC(canvas.dc), &area).ok()?;
-      let brush = |rgb: u32| target.CreateSolidColorBrush(&color(rgb, 1.0), None);
-      let bg = target.CreateSolidColorBrush(&color(colors.bg, colors.bg_alpha), None).ok()?;
-      let (text, dim) = (brush(colors.text).ok()?, brush(colors.dim).ok()?);
-      let (warm, hot) = (brush(colors.warm).ok()?, brush(colors.hot).ok()?);
-      let (bar, track) = (brush(colors.bar).ok()?, target.CreateSolidColorBrush(&color(colors.track.0, colors.track.1), None).ok()?);
+      let brush = |rgb: u32, alpha: f32| target.CreateSolidColorBrush(&color(rgb, alpha), None).ok();
+      let bg = brush(colors.bg, colors.bg_alpha)?;
+      let (text, dim) = (brush(colors.text, 1.0)?, brush(colors.dim, 1.0)?);
+      let (warm, hot) = (brush(colors.warm, 1.0)?, brush(colors.hot, 1.0)?);
+      let (bar, track) = (brush(colors.bar, 1.0)?, brush(colors.track.0, colors.track.1)?);
+      let separator = brush(colors.dim, SEPARATOR_ALPHA)?;
+      let ink = |ink: Ink| match ink {
+        Ink::Text => &text,
+        Ink::Dim => &dim,
+        Ink::Warm => &warm,
+        Ink::Hot => &hot,
+        Ink::Bar => &bar,
+        Ink::Track => &track,
+        Ink::Separator => &separator,
+      };
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
-      let rounded = |inset: f32| D2D1_ROUNDED_RECT {
-        rect: D2D_RECT_F { left: inset, top: inset, right: full_width - inset, bottom: full_height - inset },
+      let rounded = |rect: &D2D_RECT_F, inset: f32| D2D1_ROUNDED_RECT {
+        rect: D2D_RECT_F { left: rect.left + inset, top: rect.top + inset, right: rect.right - inset, bottom: rect.bottom - inset },
         radiusX: RADIUS - inset,
         radiusY: RADIUS - inset,
       };
-      target.FillRoundedRectangle(&rounded(0.0), &bg);
-      // The frame: a 1-pixel line, on whole pixels (centered half a pixel in)
-      if let Some(frame) = colors.frame {
-        let border = brush(frame).ok()?;
-        target.DrawRoundedRectangle(&rounded(0.5 / scale), &border, 1.0 / scale, None);
-      }
-      let put = |line: &Text, x: f32, y: f32, brush: &windows::Win32::Graphics::Direct2D::ID2D1SolidColorBrush| {
-        // Across: on a whole pixel too, an exact half going left, as the browser does
-        let origin = windows_numerics::Vector2 { X: ((x * scale - 0.5).ceil()) / scale, Y: y - line.baseline };
-        target.DrawTextLayout(origin, &line.layout, brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+      let frame = match colors.frame {
+        Some(frame) => Some(brush(frame, 1.0)?),
+        None => None,
       };
+      for rect in &boxes {
+        target.FillRoundedRectangle(&rounded(rect, 0.0), &bg);
+        // The frame: a 1-pixel line, on whole pixels (centered half a pixel in)
+        if let Some(frame) = &frame {
+          target.DrawRoundedRectangle(&rounded(rect, 0.5 / scale), frame, 1.0 / scale, None);
+        }
+      }
       // Icons need Direct2D's newer drawing (Windows 10 1703 and later); without it, none
       let svg: Option<ID2D1DeviceContext5> = target.cast().ok();
-      for line in &lines {
-        if let Some(title) = &line.title {
-          put(title, PAD_SIDE + INDENT, at(line.top, title_offset), &text);
-          // Centered on the line, as the card's title row centers it, rounded like the text
-          if let (Some(svg), Some(icon)) = (&svg, icon_svg(line.icon, colors.icon)) {
-            let stream = SHCreateMemStream(Some(icon.as_bytes()));
-            let size = D2D_SIZE_F { width: ICON, height: ICON };
-            if let Some(document) = stream.and_then(|stream| svg.CreateSvgDocument(&stream, size).ok()) {
-              let top = at(line.top, ((ROW - ICON) * scale / 2.0).round());
-              let corner = Matrix3x2::translation(snap(PAD_SIDE), top);
-              svg.SetTransform(&corner);
-              svg.DrawSvgDocument(&document);
-              svg.SetTransform(&Matrix3x2::identity());
+      for mark in &marks {
+        match mark {
+          Mark::Text { text, x, y, ink: which } => {
+            // Across: on a whole pixel too, an exact half going left, as the browser does
+            let origin = windows_numerics::Vector2 { X: ((x * scale - 0.5).ceil()) / scale, Y: y - text.baseline };
+            target.DrawTextLayout(origin, &text.layout, ink(*which), D2D1_DRAW_TEXT_OPTIONS_NONE);
+          }
+          Mark::Icon { icon, x, y } => {
+            if let (Some(svg), Some(icon)) = (&svg, icon_svg(icon, colors.icon)) {
+              let stream = SHCreateMemStream(Some(icon.as_bytes()));
+              let size = D2D_SIZE_F { width: ICON, height: ICON };
+              if let Some(document) = stream.and_then(|stream| svg.CreateSvgDocument(&stream, size).ok()) {
+                svg.SetTransform(&Matrix3x2::translation(*x, *y));
+                svg.DrawSvgDocument(&document);
+                svg.SetTransform(&Matrix3x2::identity());
+              }
             }
           }
-        }
-        if let (Some(label), Some(value)) = (&line.label, &line.value) {
-          let y = at(line.top, row_offset);
-          put(label, PAD_SIDE + INDENT, y, &dim);
-          let ink = match line.heat {
-            2 => &hot,
-            1 => &warm,
-            _ => &text,
-          };
-          put(value, full_width - PAD_SIDE - value.width, y, ink);
-        }
-        // Look D: the track across the row, then the bar over it from the left, on whole pixels,
-        // in the value's hot color if it has one
-        if let Some(full) = line.bar {
-          let (left, right) = (snap(PAD_SIDE + INDENT), snap(full_width - PAD_SIDE));
-          let bar_top = snap(line.top + BAR_LINE + BAR_GAP);
-          let bar_bottom = bar_top + snap(BAR);
-          let pill = |right: f32| D2D1_ROUNDED_RECT {
-            rect: D2D_RECT_F { left, top: bar_top, right, bottom: bar_bottom },
-            radiusX: (BAR / 2.0).min((right - left) / 2.0),
-            radiusY: BAR / 2.0,
-          };
-          target.FillRoundedRectangle(&pill(right), &track);
-          let filled = left + (right - left) * full;
-          if filled > left {
-            let ink = match line.heat {
-              2 => &hot,
-              1 => &warm,
-              _ => &bar,
-            };
-            target.FillRoundedRectangle(&pill(filled), ink);
+          Mark::Shape { rect, radius, ink: which } => {
+            // Never rounder than half its size (a nearly empty bar)
+            let radius = radius.min((rect.right - rect.left) / 2.0).min((rect.bottom - rect.top) / 2.0);
+            let shape = D2D1_ROUNDED_RECT { rect: *rect, radiusX: radius, radiusY: radius };
+            target.FillRoundedRectangle(&shape, ink(*which));
           }
         }
       }
       target.EndDraw(None, None).ok()?;
     }
-    Some((canvas, width))
+    Some((canvas, pieces))
   }
 }
 

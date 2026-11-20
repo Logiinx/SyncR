@@ -259,6 +259,7 @@ export const settings = {
   'Hide widget': 'Masquer le widget',
   Rows: 'Lignes',
   'Rows with bars': 'Lignes avec barres',
+  Tiles: 'Tuiles',
   Theme: 'Thème',
   Dark: 'Sombre',
   'SyncR blue': 'Bleu SyncR',

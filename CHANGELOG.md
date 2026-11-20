@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Hardware widget look "Rows with bars", in its menu under Look (PC only)
+- **New:** Hardware widget looks: Rows with bars, Tiles, One line (PC only)
 - **Small fixes:** Hardware menu leaving resources behind (PC only)
 
 ## [0.96.2] - 2026-11-20

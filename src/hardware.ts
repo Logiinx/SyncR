@@ -22,7 +22,9 @@ export interface HardwareSettings {
   onTop: boolean // above other windows (else on the desktop, under them)
   locked: boolean // can't be dragged
   fahrenheit: boolean // temperatures in °F (else °C)
-  look: 'rows' | 'bars' // A: rows like LibreHardwareMonitor · D: the same with a bar under each value (design/hardware-looks.html)
+  // A: rows like LibreHardwareMonitor · B: one line, values only · C: a tile per hardware · D: rows
+  // with a bar under each value (design/hardware-looks.html)
+  look: 'rows' | 'line' | 'tiles' | 'bars'
   theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or a deep SyncR blue with white text
   frame: 'none' | 'gray' | 'blue' // the line around its box
   size: number // its size in %, on top of Windows' scaling of its monitor (SIZES)
@@ -64,6 +66,8 @@ export const BACKGROUNDS = [100, 75, 50, 25, 0]
 export const LOOKS: [HardwareSettings['look'], () => string][] = [
   ['rows', () => t('Rows')],
   ['bars', () => t('Rows with bars')],
+  ['tiles', () => t('Tiles')],
+  ['line', () => t('One line')],
 ]
 export const THEMES: [HardwareSettings['theme'], () => string][] = [
   ['dark', () => t('Dark')],
@@ -383,9 +387,11 @@ export const WIDGET_GROUPS = [
 // PC gives, under their hardware's name. Nothing to show: no widget.
 function sendWidget(r: HardwareReadings | null) {
   if (!isTauri()) return
+  const { place, onTop, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
+  // Tiles are narrow: "CPU" and "GPU" there, the hardware's own name elsewhere (look B shows none)
   const title = (icon: string) => {
-    if (icon === 'cpu') return r?.cpuName ? shortCpuName(r.cpuName) : t('CPU')
-    if (icon === 'gpu') return r?.gpuName ? shortGpuName(r.gpuName) : t('GPU')
+    if (icon === 'cpu') return r?.cpuName && look !== 'tiles' ? shortCpuName(r.cpuName) : t('CPU')
+    if (icon === 'gpu') return r?.gpuName && look !== 'tiles' ? shortGpuName(r.gpuName) : t('GPU')
     return t('Memory')
   }
   const groups = !r || !current.on
@@ -395,10 +401,11 @@ function sendWidget(r: HardwareReadings | null) {
         icon,
         rows: sensors.flatMap((sensor) => {
           const value = current.shown.includes(sensor) ? valueText(sensor, r) : null
-          return value === null ? [] : [[sensorLabel(sensor, true), value, heatLevel(sensor), barFull(sensor, r)]]
+          if (value === null) return []
+          const temperature = (HOT_SENSORS as readonly Sensor[]).includes(sensor)
+          return [{ label: sensorLabel(sensor, true), value, heat: heatLevel(sensor), bar: barFull(sensor, r), temperature }]
         }),
       })).filter((group) => group.rows.length > 0)
-  const { place, onTop, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
   const animations = animationsOn() // its fade under the mouse while clicks go through
   const content = groups.length > 0 ? { groups, place, onTop, locked, look, theme, frame, size, background, clickThrough, animations } : null
   invoke('hardware_widget', { content }).catch(console.error)
