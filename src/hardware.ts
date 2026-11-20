@@ -22,6 +22,7 @@ export interface HardwareSettings {
   onTop: boolean // above other windows (else on the desktop, under them)
   locked: boolean // can't be dragged
   fahrenheit: boolean // temperatures in °F (else °C)
+  look: 'rows' | 'bars' // A: rows like LibreHardwareMonitor · D: the same with a bar under each value (design/hardware-looks.html)
   theme: 'dark' | 'blue' // the widget's colors: SyncR's dark, or a deep SyncR blue with white text
   frame: 'none' | 'gray' | 'blue' // the line around its box
   size: number // its size in %, on top of Windows' scaling of its monitor (SIZES)
@@ -47,6 +48,7 @@ const DEFAULTS: HardwareSettings = {
   onTop: false,
   locked: false,
   fahrenheit: false,
+  look: 'rows',
   theme: 'dark',
   frame: 'blue',
   size: 100,
@@ -58,7 +60,11 @@ const DEFAULTS: HardwareSettings = {
 export const SPEEDS = [500, 1000, 2000, 5000]
 export const SIZES = [80, 90, 100, 110, 125, 150]
 export const BACKGROUNDS = [100, 75, 50, 25, 0]
-// The widget's themes and frame lines, with their names (the menu and the settings window)
+// The widget's looks, themes and frame lines, with their names (the menu and the settings window)
+export const LOOKS: [HardwareSettings['look'], () => string][] = [
+  ['rows', () => t('Rows')],
+  ['bars', () => t('Rows with bars')],
+]
 export const THEMES: [HardwareSettings['theme'], () => string][] = [
   ['dark', () => t('Dark')],
   ['blue', () => t('SyncR blue')],
@@ -80,7 +86,7 @@ let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
 let windowOpen = false // the settings window shows every sensor, so all are read while it's open
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
-let preview: Partial<HardwareSettings> | null = null // a theme, frame, size or background under the mouse in the widget's menu
+let preview: Partial<HardwareSettings> | null = null // a look, theme, frame, size or background under the mouse in the widget's menu
 const heat: Partial<Record<HotSensor, number>> = {} // each temperature's color now: 0 none, 1 orange, 2 red
 let asked: string[] = [] // the sensors Rust was last asked for
 // Whether this GPU has a memory temperature (null: not asked yet since SyncR started). Once seen it
@@ -324,6 +330,25 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
   }
 }
 
+// How full a reading's bar is in look D (0–1): temperatures out of 100 °C, loads, the fan and RAM
+// out of their whole; null for readings without a top (clocks)
+function barFull(sensor: Sensor, r: HardwareReadings): number | null {
+  const of100 = (n: number | null) => (n === null ? null : Math.min(Math.max(n / 100, 0), 1))
+  switch (sensor) {
+    case 'cpuTemp':
+    case 'gpuTemp':
+    case 'gpuMemTemp':
+    case 'cpuLoad':
+    case 'gpuLoad':
+    case 'gpuFan':
+      return of100(r[sensor])
+    case 'ram':
+      return r.ramUsed === null || !r.ramTotal ? null : Math.min(r.ramUsed / r.ramTotal, 1)
+    default:
+      return null
+  }
+}
+
 // A temperature's color after this reading (0 none, 1 orange, 2 red), from its color before: it goes
 // up as soon as a limit is reached, and back down only HOT_MARGIN under that limit
 export function nextHeat(before: number, celsius: number, [warm, hot]: [number, number]) {
@@ -370,11 +395,11 @@ function sendWidget(r: HardwareReadings | null) {
         icon,
         rows: sensors.flatMap((sensor) => {
           const value = current.shown.includes(sensor) ? valueText(sensor, r) : null
-          return value === null ? [] : [[sensorLabel(sensor, true), value, heatLevel(sensor)]]
+          return value === null ? [] : [[sensorLabel(sensor, true), value, heatLevel(sensor), barFull(sensor, r)]]
         }),
       })).filter((group) => group.rows.length > 0)
-  const { place, onTop, locked, theme, frame, size, background, clickThrough } = { ...current, ...preview }
+  const { place, onTop, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
   const animations = animationsOn() // its fade under the mouse while clicks go through
-  const content = groups.length > 0 ? { groups, place, onTop, locked, theme, frame, size, background, clickThrough, animations } : null
+  const content = groups.length > 0 ? { groups, place, onTop, locked, look, theme, frame, size, background, clickThrough, animations } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

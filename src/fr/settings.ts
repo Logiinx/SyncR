@@ -257,6 +257,8 @@ export const settings = {
   'What to show': 'Mesures affichées',
   'Hardware settings…': 'Paramètres Matériel…',
   'Hide widget': 'Masquer le widget',
+  Rows: 'Lignes',
+  'Rows with bars': 'Lignes avec barres',
   Theme: 'Thème',
   Dark: 'Sombre',
   'SyncR blue': 'Bleu SyncR',

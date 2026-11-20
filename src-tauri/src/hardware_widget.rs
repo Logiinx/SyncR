@@ -76,6 +76,13 @@ const ICON: f32 = 15.0; // as in the settings window's cards
 const INDENT: f32 = 21.0; // the icon and its gap (6): the names and rows start there
 const VALUE_GAP: f32 = 16.0; // least room between a label and its value
 const RADIUS: f32 = 8.0;
+// Look D (rows with bars, design/hardware-looks.html): each row is a shorter line, then its bar
+const BAR_LINE: f32 = 18.0;
+const BAR_GAP: f32 = 1.0; // above the bar
+const BAR: f32 = 3.0;
+const BAR_BELOW: f32 = 4.0;
+const BAR_ROW: f32 = BAR_LINE + BAR_GAP + BAR + BAR_BELOW;
+const BAR_LEAST: f32 = 200.0; // narrowest width, so short bars still read
 const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
 
 // The widget's colors (index.css), per theme and frame line (hardware.ts); the same as the
@@ -87,6 +94,8 @@ struct Colors {
   dim: u32, // the labels
   warm: u32, // a temperature past its first limit (hot colors, hardware.ts)
   hot: u32,  // past its second
+  bar: u32,  // look D's bars, warm or hot when the value is
+  track: (u32, f32), // under them (color, how solid)
   icon: &'static str,
   frame: Option<u32>,
 }
@@ -105,11 +114,14 @@ fn colors(theme: &str, frame: &str, background: u32) -> Colors {
   if blue {
     // A deep SyncR blue (user's pick of 6 shades: --accent was too bright), white text, labels
     // white at 70 %, white icons; --text-orange as on Dark, --text-red a little lighter to read as
-    // well on the blue
-    Colors { bg: 0x1e3554, bg_alpha, text: 0xffffff, dim: 0xbcc2cc, warm: 0xf0a052, hot: 0xff8a85, icon: "#ffffff", frame }
+    // well on the blue; white bars on white at 18 %
+    let track = (0xffffff, 0.18);
+    Colors { bg: 0x1e3554, bg_alpha, text: 0xffffff, dim: 0xbcc2cc, warm: 0xf0a052, hot: 0xff8a85, bar: 0xffffff, track, icon: "#ffffff", frame }
   } else {
-    // --bg, --text, --text-dim, --text-orange, --text-red, --link (the settings cards' icons)
-    Colors { bg: 0x161616, bg_alpha, text: 0xe4e4e4, dim: 0x808080, warm: 0xf0a052, hot: 0xf0716b, icon: "#7aa7e0", frame }
+    // --bg, --text, --text-dim, --text-orange, --text-red, --link (the settings cards' icons);
+    // bars in --text-blue on --hover (white at 8 %)
+    let track = (0xffffff, 0.08);
+    Colors { bg: 0x161616, bg_alpha, text: 0xe4e4e4, dim: 0x808080, warm: 0xf0a052, hot: 0xf0716b, bar: 0x6fa9f2, track, icon: "#7aa7e0", frame }
   }
 }
 
@@ -140,14 +152,14 @@ fn icon_svg(icon: &str, color: &str) -> Option<String> {
 }
 
 // What the page sends: per hardware its name, icon and rows (label, value, its hot color: 0 none,
-// 1 warm, 2 hot), in order; the saved
+// 1 warm, 2 hot, and how full its bar is in look D, 0–1, none for readings without a top), in order; the saved
 // place (screen pixels, top left), used when the widget appears; and the menu's options
 #[derive(Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
   title: String,
   icon: String, // "cpu", "gpu", "memory" (icon_svg)
-  rows: Vec<(String, String, u8)>,
+  rows: Vec<(String, String, u8, Option<f32>)>,
 }
 
 #[derive(Clone, PartialEq, serde::Deserialize)]
@@ -159,6 +171,8 @@ pub struct Content {
   on_top: bool, // above other windows, put back on top every second; else on the desktop
   #[serde(default)]
   locked: bool, // can't be dragged
+  #[serde(default)]
+  look: String, // "rows" (A, or anything else) · "bars" (D: a bar under each value)
   #[serde(default)]
   theme: String, // "dark" (or anything else) · "blue"
   #[serde(default)]
@@ -237,7 +251,7 @@ fn stop() {
 // What's on screen now, so an unchanged reading isn't drawn again
 struct Drawn {
   groups: Vec<Group>,
-  style: (String, String, u32), // theme, frame, background
+  style: (String, String, String, u32), // look, theme, frame, background
   scale: f32,
   width: i32,
   height: i32,
@@ -906,20 +920,19 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   }
   let Some(painter) = local.painter.as_ref() else { return false };
 
-  let labels: Vec<String> = content
-    .groups
-    .iter()
-    .flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, _, _)| label.clone())))
+  // Another look starts over too
+  let labels: Vec<String> = std::iter::once(content.look.clone())
+    .chain(content.groups.iter().flat_map(|group| std::iter::once(group.title.clone()).chain(group.rows.iter().map(|(label, ..)| label.clone()))))
     .collect();
   if local.widest.0 != labels {
     local.widest = (labels, 0.0);
   }
-  let style = (content.theme.clone(), content.frame.clone(), content.background);
+  let style = (content.look.clone(), content.theme.clone(), content.frame.clone(), content.background);
   let same = local.drawn.as_ref().is_some_and(|drawn| drawn.groups == content.groups && drawn.style == style && drawn.scale == scale);
   let picture = if same {
     None
   } else {
-    let Some((picture, width)) = painter.draw(&content.groups, &colors(&style.0, &style.1, style.2), scale, local.widest.1) else { return false };
+    let Some((picture, width)) = painter.draw(&content.groups, style.0 == "bars", &colors(&style.1, &style.2, style.3), scale, local.widest.1) else { return false };
     local.widest.1 = width;
     Some(picture)
   };
@@ -1135,8 +1148,9 @@ impl Painter {
   }
 
   // The widget as a see-through picture at this scale (Windows' scaling × the widget's size), at
-  // least `least` DIPs wide; and its width in DIPs. None if Windows' drawing failed.
-  fn draw(&self, groups: &[Group], colors: &Colors, scale: f32, least: f32) -> Option<(Canvas, f32)> {
+  // least `least` DIPs wide; and its width in DIPs. `bars`: look D (a bar under each value), else
+  // A. None if Windows' drawing failed.
+  fn draw(&self, groups: &[Group], bars: bool, colors: &Colors, scale: f32, least: f32) -> Option<(Canvas, f32)> {
     struct Line<'a> {
       top: f32,
       icon: &'a str,
@@ -1144,24 +1158,27 @@ impl Painter {
       label: Option<Text>,
       value: Option<Text>,
       heat: u8,
+      bar: Option<f32>,
     }
+    let (row_height, line_height) = if bars { (BAR_ROW, BAR_LINE) } else { (ROW, ROW) };
     let mut lines = Vec::new();
     let mut top = PAD_TOP;
-    let mut width = least;
+    let mut width = if bars { least.max(BAR_LEAST) } else { least };
     for (index, group) in groups.iter().filter(|group| !group.rows.is_empty()).enumerate() {
       if index > 0 {
         top += GROUP_GAP;
       }
       let title = self.text(&group.title, &self.semibold)?;
       width = width.max(PAD_SIDE + INDENT + title.width + PAD_SIDE);
-      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None, heat: 0 });
+      lines.push(Line { top, icon: &group.icon, title: Some(title), label: None, value: None, heat: 0, bar: None });
       top += ROW;
-      for (label, value, heat) in &group.rows {
+      for (label, value, heat, bar) in &group.rows {
         let label = self.text(label, &self.regular)?;
         let value = self.text(value, &self.regular)?;
         width = width.max(PAD_SIDE + INDENT + label.width + VALUE_GAP + value.width + PAD_SIDE);
-        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value), heat: *heat });
-        top += ROW;
+        let bar = if bars { bar.map(|full| full.clamp(0.0, 1.0)) } else { None };
+        lines.push(Line { top, icon: "", title: None, label: Some(label), value: Some(value), heat: *heat, bar });
+        top += row_height;
       }
     }
     let pixels_wide = (width * scale).ceil() as usize;
@@ -1177,8 +1194,8 @@ impl Painter {
     // rest is rounded. At 175 % the browser paints ½ pixel higher than that, which isn't copied.
     let font = FONT_SIZE * scale;
     let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
-    let room = ROW * scale - ascent - descent;
-    let (title_offset, row_offset) = ((ascent + room / 2.0).round(), ascent + (room / 2.0).floor());
+    let room = |height: f32| height * scale - ascent - descent;
+    let (title_offset, row_offset) = ((ascent + room(ROW) / 2.0).round(), ascent + (room(line_height) / 2.0).floor());
     // A line's top (DIPs) plus an offset in pixels → DIPs, on a whole pixel; the tiny amount keeps
     // a top like 74 × 1.25 = 92.5 from landing just under a whole pixel by float error
     let at = |top: f32, offset: f32| ((top * scale + 0.001).floor() + offset) / scale;
@@ -1198,6 +1215,7 @@ impl Painter {
       let bg = target.CreateSolidColorBrush(&color(colors.bg, colors.bg_alpha), None).ok()?;
       let (text, dim) = (brush(colors.text).ok()?, brush(colors.dim).ok()?);
       let (warm, hot) = (brush(colors.warm).ok()?, brush(colors.hot).ok()?);
+      let (bar, track) = (brush(colors.bar).ok()?, target.CreateSolidColorBrush(&color(colors.track.0, colors.track.1), None).ok()?);
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
@@ -1244,6 +1262,28 @@ impl Painter {
             _ => &text,
           };
           put(value, full_width - PAD_SIDE - value.width, y, ink);
+        }
+        // Look D: the track across the row, then the bar over it from the left, on whole pixels,
+        // in the value's hot color if it has one
+        if let Some(full) = line.bar {
+          let (left, right) = (snap(PAD_SIDE + INDENT), snap(full_width - PAD_SIDE));
+          let bar_top = snap(line.top + BAR_LINE + BAR_GAP);
+          let bar_bottom = bar_top + snap(BAR);
+          let pill = |right: f32| D2D1_ROUNDED_RECT {
+            rect: D2D_RECT_F { left, top: bar_top, right, bottom: bar_bottom },
+            radiusX: (BAR / 2.0).min((right - left) / 2.0),
+            radiusY: BAR / 2.0,
+          };
+          target.FillRoundedRectangle(&pill(right), &track);
+          let filled = left + (right - left) * full;
+          if filled > left {
+            let ink = match line.heat {
+              2 => &hot,
+              1 => &warm,
+              _ => &bar,
+            };
+            target.FillRoundedRectangle(&pill(filled), ink);
+          }
         }
       }
       target.EndDraw(None, None).ok()?;

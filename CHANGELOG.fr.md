@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
+- **Nouveau :** apparence « Lignes avec barres » du widget Matériel, dans son menu sous Apparence (PC uniquement)
 - **Petites corrections :** menu Matériel laissant des ressources derrière lui (PC uniquement)
 
 ## [0.96.2] - 2026-11-20

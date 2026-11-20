@@ -1,13 +1,13 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Blend, EyeOff, Flame, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, Flame, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
 import { decimal, percentText, t, useLanguage } from './i18n'
-import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, sensorLabel, storedHardware } from './hardware'
+import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor (hardware_widget.rs). The window is made hidden as soon as the mouse is over the
@@ -101,7 +101,7 @@ function HardwareMenu() {
     setSettings((now) => ({ ...now, ...part }))
     void send('choice', { change: part })
   }
-  // A theme, frame, background or size under the mouse shows on the widget at once. Leaving waits a moment, so
+  // A look, theme, frame, background or size under the mouse shows on the widget at once. Leaving waits a moment, so
   // going from one to the next doesn't flash the saved one in between.
   const back = useRef<number | undefined>(undefined)
   const preview = (part: Partial<HardwareSettings>) => (on: boolean) => {
@@ -164,9 +164,22 @@ function HardwareMenu() {
     },
     { label: t('Hot colors'), icon: Flame, checked: settings.hot, onClick: () => change({ hot: !settings.hot }) },
     {
+      label: t('Look'),
+      icon: LayoutList,
+      divider: true,
+      submenu: {
+        title: t('Look'),
+        items: LOOKS.map(([look, label]) => ({
+          label: label(),
+          checked: settings.look === look,
+          onPreview: preview({ look }),
+          onClick: () => change({ look }),
+        })),
+      },
+    },
+    {
       label: t('Theme'),
       icon: Palette,
-      divider: true,
       submenu: {
         title: t('Theme'),
         items: THEMES.map(([theme, label]) => ({

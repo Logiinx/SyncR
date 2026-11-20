@@ -14,6 +14,7 @@ import {
   type HelperState,
   type HotSensor,
   type Sensor,
+  LOOKS,
   SIZES,
   SPEEDS,
   THEMES,
@@ -130,6 +131,13 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
             <select value={settings.fahrenheit ? 'f' : 'c'} onChange={(e) => saveHardware({ fahrenheit: e.target.value === 'f' })}>
               <option value="c">{t('Celsius (°C)')}</option>
               <option value="f">{t('Fahrenheit (°F)')}</option>
+            </select>
+          </SettingRow>
+          <SettingRow label={t('Look')}>
+            <select value={settings.look} onChange={(e) => saveHardware({ look: e.target.value as HardwareSettingsType['look'] })}>
+              {LOOKS.map(([look, label]) => (
+                <option key={look} value={look}>{label()}</option>
+              ))}
             </select>
           </SettingRow>
           <SettingRow label={t('Theme')}>
