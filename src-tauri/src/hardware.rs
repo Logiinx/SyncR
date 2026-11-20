@@ -1,7 +1,8 @@
 // Hardware module (PC, off unless turned on in Settings → Modules): reads the sensors the page asks
 // for, at the chosen speed, and sends them to the page (event "hardware").
-// Without admin: the GPU through NVIDIA's own library (nvml.dll, comes with the driver), the CPU's
-// load and clock through Windows' performance counters, the RAM through Windows' memory status.
+// Without admin: the GPU through NVIDIA's own libraries (nvml.dll, and nvapi64.dll for the memory
+// temperature; both come with the driver), the CPU's load and clock through Windows' performance
+// counters, the RAM through Windows' memory status.
 // The CPU temperature needs the PawnIO driver, which only answers admin programs: it comes from a
 // small admin helper, set up once by the user (hardware_helper.rs).
 // Only the sensors asked for are read; the libraries are opened only when one of theirs is asked
@@ -37,6 +38,7 @@ pub struct Readings {
   cpu_temp: Option<f64>,    // °C, "Core (Tctl/Tdie)", from the admin helper
   cpu_temp_state: Option<&'static str>, // why there's no cpu_temp (helper::OK... ), when asked for
   gpu_temp: Option<f64>,    // °C
+  gpu_mem_temp: Option<f64>, // °C, video memory, from nvapi (None on cards without that sensor)
   gpu_load: Option<f64>,    // %
   gpu_clock: Option<f64>,   // MHz, graphics clock
   gpu_mem_clock: Option<f64>, // MHz, video memory clock
@@ -89,6 +91,7 @@ fn read_now() {
 
 fn run(app: AppHandle, receiver: Receiver<()>) {
   let mut nvml: Option<Option<nvml::Nvml>> = None; // None: not tried yet; Some(None): no NVIDIA GPU
+  let mut nvapi: Option<Option<nvapi::NvApi>> = None; // the same
   let mut counters: Option<Option<counters::Counters>> = None;
   let mut helper: Option<helper::Reader> = None; // dropped when not asked for, so the helper rests
   let cpu_name = registry::cpu_name();
@@ -97,7 +100,7 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
     let wants = |name: &str| config.sensors.iter().any(|sensor| sensor == name);
     let mut readings = Readings { cpu_name: cpu_name.clone(), at: now_ms(), ..Default::default() };
 
-    let gpu = ["gpuTemp", "gpuLoad", "gpuClock", "gpuMemClock", "gpuFan"].iter().any(|name| wants(name));
+    let gpu = ["gpuTemp", "gpuMemTemp", "gpuLoad", "gpuClock", "gpuMemClock", "gpuFan"].iter().any(|name| wants(name));
     if gpu {
       if let Some(gpu) = nvml.get_or_insert_with(nvml::Nvml::open) {
         readings.gpu_name = gpu.name.clone();
@@ -118,6 +121,11 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
           readings.gpu_fan_rpm = gpu.fan_rpm();
         }
       }
+    }
+    if wants("gpuMemTemp") {
+      readings.gpu_mem_temp = nvapi.get_or_insert_with(nvapi::NvApi::open).as_ref().and_then(|gpu| gpu.memory_temperature());
+    } else {
+      nvapi = None; // closes the library
     }
     if wants("cpuLoad") || wants("cpuClock") {
       if let Some(cpu) = counters.get_or_insert_with(counters::Counters::open) {
@@ -442,6 +450,131 @@ mod nvml {
       unsafe {
         if let Some(shutdown) = self.shutdown {
           shutdown();
+        }
+        FreeLibrary(self.library);
+      }
+    }
+  }
+}
+
+// NVIDIA's second driver library (nvapi64.dll, also installed with the driver in System32, no
+// admin), for the one number nvml doesn't give on GeForce cards: the video memory temperature. It
+// comes from a function NVIDIA never documented (ThermalGetSensors, the one LHM, HWiNFO and GPU-Z
+// use), found by its number through nvapi_QueryInterface. Checked on an RTX 5070 Ti: slot 2 is the
+// memory (steady, 2 °C steps, stays warm when the core cools), slot 1 only copies the core (RTX 50
+// cards no longer report a hot spot), other slots read 255 (no sensor). A driver that changes this
+// gives an empty or impossible value, so the reading is just None. First GPU only, like nvml.
+mod nvapi {
+  use super::wide;
+  use std::ffi::c_void;
+  use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
+  use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryExW, LOAD_LIBRARY_SEARCH_SYSTEM32};
+
+  type Gpu = *mut c_void;
+  type QueryInterface = unsafe extern "C" fn(u32) -> *mut c_void;
+  type Init = unsafe extern "C" fn() -> i32;
+  type EnumGpus = unsafe extern "C" fn(*mut [Gpu; 64], *mut u32) -> i32;
+  type ThermalSensors = unsafe extern "C" fn(Gpu, *mut Sensors) -> i32;
+
+  // The functions' numbers, as nvapi_QueryInterface knows them
+  const INITIALIZE: u32 = 0x0150_E828;
+  const UNLOAD: u32 = 0xD22B_DD7E;
+  const ENUM_PHYSICAL_GPUS: u32 = 0xE5AC_921F;
+  const THERMAL_GET_SENSORS: u32 = 0x65FE_3AAD;
+  const OK: i32 = 0;
+  const MEMORY_SLOT: usize = 2;
+
+  // What ThermalGetSensors fills: temperatures in 1/256 °C, for the slots whose bit is in mask
+  #[repr(C)]
+  struct Sensors {
+    version: u32, // the struct's size | version 2 << 16
+    mask: u32,
+    reserved: [i32; 8],
+    temperatures: [i32; 32],
+  }
+
+  pub struct NvApi {
+    library: HMODULE,
+    gpu: Gpu,
+    unload: Option<Init>,
+    sensors: ThermalSensors,
+  }
+
+  // The library and GPU belong to the reading thread alone
+  unsafe impl Send for NvApi {}
+
+  // A function of the library by its number, or None when this driver doesn't have it.
+  // T is the function's real type, the same size as a function pointer.
+  unsafe fn function<T>(query: QueryInterface, id: u32) -> Option<T> {
+    // query is nvapi_QueryInterface of the loaded library: it takes a number, gives a pointer or null
+    let found = unsafe { query(id) };
+    (!found.is_null()).then(|| unsafe { std::mem::transmute_copy::<_, T>(&found) })
+  }
+
+  impl NvApi {
+    pub fn open() -> Option<NvApi> {
+      let path = wide("nvapi64.dll");
+      // path ends in 0; only System32 is searched
+      let library = unsafe { LoadLibraryExW(path.as_ptr(), std::ptr::null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) };
+      if library.is_null() {
+        return None;
+      }
+      // library is loaded; the name ends in 0; nvapi_QueryInterface takes a u32 and gives a pointer
+      let query: Option<QueryInterface> = unsafe {
+        GetProcAddress(library, b"nvapi_QueryInterface\0".as_ptr()).map(|found| std::mem::transmute_copy(&found))
+      };
+      // Each call below is a function of the library, called with the shape nvapi gives it
+      let opened = query.and_then(|query| unsafe {
+        let init: Init = function(query, INITIALIZE)?;
+        if init() != OK {
+          return None;
+        }
+        let unload: Option<Init> = function(query, UNLOAD);
+        let found = (|| {
+          let enum_gpus: EnumGpus = function(query, ENUM_PHYSICAL_GPUS)?;
+          let sensors: ThermalSensors = function(query, THERMAL_GET_SENSORS)?;
+          let mut gpus = [std::ptr::null_mut(); 64];
+          let mut count = 0u32;
+          (enum_gpus(&mut gpus, &mut count) == OK && count > 0).then_some((gpus[0], sensors))
+        })();
+        if found.is_none() {
+          if let Some(unload) = unload {
+            unload();
+          }
+        }
+        found.map(|(gpu, sensors)| (gpu, sensors, unload))
+      });
+      match opened {
+        Some((gpu, sensors, unload)) => Some(NvApi { library, gpu, unload, sensors }),
+        None => {
+          // library was loaded above
+          unsafe { FreeLibrary(library) };
+          None
+        }
+      }
+    }
+
+    pub fn memory_temperature(&self) -> Option<f64> {
+      let mut sensors = Sensors {
+        version: size_of::<Sensors>() as u32 | (2 << 16),
+        mask: (1 << (MEMORY_SLOT + 1)) - 1, // slots 0 to 2, asked together like the other tools do
+        reserved: [0; 8],
+        temperatures: [0; 32],
+      };
+      // gpu is valid while the library is started; sensors is the struct the function fills
+      let ok = unsafe { (self.sensors)(self.gpu, &mut sensors) } == OK;
+      let celsius = sensors.temperatures[MEMORY_SLOT] as f64 / 256.0;
+      // 255: no sensor in that slot; anything outside 1–150 °C isn't a real reading
+      (ok && celsius > 0.0 && celsius < 150.0).then_some(celsius)
+    }
+  }
+
+  impl Drop for NvApi {
+    fn drop(&mut self) {
+      // The library was started and loaded in open, and is stopped and freed only here
+      unsafe {
+        if let Some(unload) = self.unload {
+          unload();
         }
         FreeLibrary(self.library);
       }

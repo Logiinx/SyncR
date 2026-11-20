@@ -9,7 +9,7 @@ import { read, write } from './localState'
 // runs nothing and opens no library.
 
 // The sensors, in the order the settings window lists them. Rust reads only the ones asked for.
-export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan', 'ram'] as const
+export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan', 'ram'] as const
 export type Sensor = (typeof SENSORS)[number]
 
 export interface HardwareSettings {
@@ -88,6 +88,7 @@ export interface HardwareReadings {
   cpuTemp: number | null
   cpuTempState: HelperState | null // null: not asked for
   gpuTemp: number | null
+  gpuMemTemp: number | null // null also on cards without that sensor
   gpuLoad: number | null
   gpuClock: number | null
   gpuMemClock: number | null

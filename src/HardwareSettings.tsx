@@ -114,6 +114,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
         </SettingsCard>
         <SettingsCard icon={Gpu} title={readings?.gpuName ? shortGpuName(readings.gpuName) : t('GPU')}>
           {row('gpuTemp', t('Temperature'))}
+          {readings?.gpuMemTemp !== null && row('gpuMemTemp', t('Memory temperature'))}
           {row('gpuLoad', t('Load'))}
           {row('gpuClock', t('Clock'))}
           {row('gpuMemClock', t('Memory clock'))}
@@ -162,6 +163,8 @@ function valueText(sensor: Sensor, r: HardwareReadings) {
       return r.cpuTemp === null ? none : t('{n} °C', { n: decimal(r.cpuTemp, 1) })
     case 'gpuTemp':
       return r.gpuTemp === null ? none : t('{n} °C', { n: decimal(r.gpuTemp, 1) })
+    case 'gpuMemTemp':
+      return r.gpuMemTemp === null ? none : t('{n} °C', { n: decimal(r.gpuMemTemp, 1) })
     case 'gpuLoad':
       return percent(r.gpuLoad)
     case 'gpuClock':
