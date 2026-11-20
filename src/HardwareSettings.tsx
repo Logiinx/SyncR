@@ -22,11 +22,16 @@ import {
   groupName,
   heatLevel,
   hasMemTemp,
+  isPeakSensor,
+  peakText,
+  peaksAbout,
   removeHelper,
+  resetPeaks,
   saveHardware,
   setUpHelper,
   useHardware,
   useHardwareReadings,
+  usePeaks,
   sensorLabel,
   valueText,
 } from './hardware'
@@ -40,6 +45,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
   const [failed, setFailed] = useState(false) // the last set-up didn't work (a failed removal: Remove stays)
   const helper = readings?.cpuTempState ?? null
   const memTemp = hasMemTemp()
+  const peaks = usePeaks()
 
   // One admin prompt; the readings then show the new state
   const askAdmin = (setUp: boolean) => {
@@ -55,7 +61,11 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
   // One reading: its name, its value now, and whether the widget shows it. The CPU temperature
   // needs the admin helper: why it's missing, next to its name, and the button that fixes it.
   const row = (sensor: Sensor) => (
-    <SettingRow key={sensor} label={sensorLabel(sensor)} value={sensor === 'cpuTemp' ? helperText(helper, failed) : undefined}>
+    <SettingRow
+      key={sensor}
+      label={sensorLabel(sensor)}
+      value={(sensor === 'cpuTemp' ? helperText(helper, failed) : undefined) ?? (isPeakSensor(sensor) ? peakText(sensor, peaks) : undefined)}
+    >
       {sensor === 'cpuTemp' && setUp ? (
         <button className="setting-button" title={helperAbout()} disabled={asking} onClick={() => askAdmin(true)}>
           {setUp}
@@ -100,6 +110,18 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
                 </option>
               ))}
             </select>
+          </SettingRow>
+          <SettingRow
+            label={
+              <>
+                {t('Peaks')}
+                <InfoTip label={t('About peaks')}>{peaksAbout()}</InfoTip>
+              </>
+            }
+          >
+            <button className="setting-button" disabled={Object.keys(peaks).length === 0} onClick={resetPeaks}>
+              {t('Reset')}
+            </button>
           </SettingRow>
         </SettingsCard>
         <SettingsCard icon={AppWindow} title={t('Widget')}>

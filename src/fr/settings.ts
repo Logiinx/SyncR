@@ -232,6 +232,13 @@ export const settings = {
   'Memory used': 'Mémoire utilisée',
   Power: 'Consommation',
   '{n} W': '{n} W',
+  Peaks: 'Pics',
+  'About peaks': 'À propos des pics',
+  'Reset peaks': 'Remettre les pics à zéro',
+  Reset: 'Remettre à zéro',
+  'max {value}': 'max {value}',
+  'Next to each temperature and power: the highest since SyncR started, for the readings shown in the widget.':
+    'À côté de chaque température et consommation : la plus haute depuis le démarrage de SyncR, pour les mesures affichées dans le widget.',
   Fan: 'Ventilateur',
   Memory: 'Mémoire',
   'RAM used': 'RAM utilisée',

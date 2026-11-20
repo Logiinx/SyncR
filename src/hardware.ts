@@ -100,6 +100,7 @@ export function saveHardware(change: Partial<HardwareSettings>) {
   current = { ...current, ...change }
   write(KEY, current)
   updateHeat(last) // new limits, or turned on or off: the colors follow at once
+  keepPeaks()
   listeners.forEach((listener) => listener())
   send()
   sendWidget(current.on ? last : null) // no more readings come when off: closed now
@@ -150,6 +151,7 @@ export function startHardware() {
     // Only a reading that was asked for it says the GPU has none (one under an older config can come late)
     else if (memTemp === null && last.sensors.includes('gpuMemTemp')) memTemp = false
     updateHeat(last)
+    updatePeaks(last)
     sendWidget(last)
   })
   // The widget's right-click menu (hardware_menu in hardware_widget.rs): a changed option, or
@@ -165,6 +167,7 @@ export function startHardware() {
       sendWidget(current.on ? last : null)
     }
     if (payload.hide) toggleHardware(false)
+    if (payload.resetPeaks) resetPeaks()
   })
   // Ctrl + mouse wheel over the widget: one size up or down per notch (Rust ignores it when locked)
   void listen<number>('hardware-widget-zoom', ({ payload: step }) => {
@@ -188,6 +191,7 @@ export function nextSize(size: number, step: number) {
 export interface MenuChoice {
   change?: Partial<HardwareSettings>
   hide?: boolean
+  resetPeaks?: boolean
   preview?: Partial<HardwareSettings> | null // shown on the widget, not saved (null: back to the saved one)
 }
 
@@ -332,10 +336,7 @@ export function sensorLabel(sensor: Sensor, short = false) {
 
 // A reading as text, the same in the settings window and the widget; null when this PC can't give it
 export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
-  const temperature = (n: number | null) => {
-    if (n === null) return null
-    return current.fahrenheit ? t('{n} °F', { n: decimal((n * 9) / 5 + 32, 1) }) : t('{n} °C', { n: decimal(n, 1) })
-  }
+  const temperature = (n: number | null) => (n === null ? null : temperatureText(n))
   const mhz = (n: number | null) => (n === null ? null : t('{n} MHz', { n: decimal(n, 0) }))
   const percent = (n: number | null) => (n === null ? null : percentText(Math.round(n)))
   switch (sensor) {
@@ -356,7 +357,7 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
     case 'gpuMemClock':
       return mhz(r.gpuMemClock)
     case 'gpuPower':
-      return r.gpuPower === null ? null : t('{n} W', { n: decimal(r.gpuPower, 0) })
+      return r.gpuPower === null ? null : wattsText(r.gpuPower)
     case 'gpuMemUsed':
       return gigabytes(r.gpuMemUsed, r.gpuMemTotal)
     case 'gpuFan':
@@ -365,6 +366,14 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
     case 'ram':
       return gigabytes(r.ramUsed, r.ramTotal)
   }
+}
+
+function temperatureText(celsius: number) {
+  return current.fahrenheit ? t('{n} °F', { n: decimal((celsius * 9) / 5 + 32, 1) }) : t('{n} °C', { n: decimal(celsius, 1) })
+}
+
+function wattsText(watts: number) {
+  return t('{n} W', { n: decimal(watts, 0) })
 }
 
 // "6.2 / 16.0 GB" (RAM and video memory)
@@ -420,6 +429,68 @@ function updateHeat(r: HardwareReadings | null) {
 // A reading's color now, the same in the widget and the settings window
 export function heatLevel(sensor: Sensor) {
   return (heat as Partial<Record<Sensor, number>>)[sensor] ?? 0
+}
+
+// Peaks: the highest reading since SyncR started (main window only, lost on close), for
+// temperatures and power (a 100 % load peak says nothing). Only for ticked readings: the others are
+// read only while the settings window is open, so their peak would miss most of the time. Unticked
+// or module off: that peak goes.
+export const PEAK_SENSORS = ['cpuTemp', 'gpuTemp', 'gpuMemTemp', 'gpuPower'] as const
+export type PeakSensor = (typeof PEAK_SENSORS)[number]
+export const isPeakSensor = (sensor: Sensor): sensor is PeakSensor => (PEAK_SENSORS as readonly Sensor[]).includes(sensor)
+let peaks: Partial<Record<PeakSensor, number>> = {} // replaced on each change (usePeaks)
+const peakListeners = new Set<() => void>()
+
+function setPeaks(next: Partial<Record<PeakSensor, number>>) {
+  peaks = next
+  peakListeners.forEach((listener) => listener())
+}
+
+function updatePeaks(r: HardwareReadings) {
+  const next = nextPeaks(peaks, r, current.shown)
+  if (next !== peaks) setPeaks(next)
+}
+
+// The peaks after this reading (the same object when none went up), counting only the ticked readings
+export function nextPeaks(before: Partial<Record<PeakSensor, number>>, r: Pick<HardwareReadings, PeakSensor>, shown: readonly Sensor[]) {
+  let next = before
+  for (const sensor of PEAK_SENSORS) {
+    const n = r[sensor]
+    const peak = next[sensor]
+    if (n === null || !shown.includes(sensor) || (peak !== undefined && n <= peak)) continue
+    next = { ...next, [sensor]: n }
+  }
+  return next
+}
+
+function keepPeaks() {
+  const kept = PEAK_SENSORS.filter((sensor) => peaks[sensor] !== undefined && current.on && current.shown.includes(sensor))
+  if (kept.length !== Object.keys(peaks).length) setPeaks(Object.fromEntries(kept.map((sensor) => [sensor, peaks[sensor]])))
+}
+
+export const peaksAbout = () =>
+  t('Next to each temperature and power: the highest since SyncR started, for the readings shown in the widget.')
+
+// "Reset peaks" (the widget's menu and the settings window)
+export function resetPeaks() {
+  setPeaks({})
+}
+
+export function usePeaks() {
+  return useSyncExternalStore(
+    (listener) => {
+      peakListeners.add(listener)
+      return () => void peakListeners.delete(listener)
+    },
+    () => peaks,
+  )
+}
+
+// A peak as text ("71.0 °C", "285 W"), "—" when there's none yet
+export function peakText(sensor: PeakSensor, all: Partial<Record<PeakSensor, number>>) {
+  const n = all[sensor]
+  const value = n === undefined ? '—' : sensor === 'gpuPower' ? wattsText(n) : temperatureText(n)
+  return t('max {value}', { value })
 }
 
 // The widget's hardware, in order, with their readings in the settings window's order

@@ -1,13 +1,13 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Blend, EyeOff, Flame, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, Flame, RotateCcw, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
 import { decimal, percentText, t, useLanguage } from './i18n'
-import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, groupName, sensorLabel, storedHardware } from './hardware'
+import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, groupName, peaksAbout, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor (hardware_widget.rs). The window is made hidden as soon as the mouse is over the
@@ -163,6 +163,7 @@ function HardwareMenu() {
       },
     },
     { label: t('Hot colors'), icon: Flame, checked: settings.hot, onClick: () => change({ hot: !settings.hot }) },
+    { label: t('Reset peaks'), icon: RotateCcw, hint: peaksAbout(), onClick: () => void send('choice', { resetPeaks: true }) },
     {
       label: t('Look'),
       icon: LayoutList,
