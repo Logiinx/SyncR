@@ -266,7 +266,7 @@ export const settings = {
   Frame: 'Cadre',
   Background: 'Fond',
   Size: 'Taille',
-  '{percent}% · {rpm} RPM': '{percent} % · {rpm} tr/min',
+  '{percent} · {rpm} RPM': '{percent} · {rpm} tr/min',
   '{used} / {total} GB': '{used} / {total} Go',
   'Admin helper': 'Assistant administrateur',
   'About the admin helper': 'À propos de l’assistant administrateur',

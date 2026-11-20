@@ -342,7 +342,7 @@ export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
       return mhz(r.gpuMemClock)
     case 'gpuFan':
       if (r.gpuFan === null) return null
-      return r.gpuFanRpm === null ? percent(r.gpuFan) : t('{percent}% · {rpm} RPM', { percent: Math.round(r.gpuFan), rpm: decimal(r.gpuFanRpm, 0) })
+      return r.gpuFanRpm === null ? percent(r.gpuFan) : t('{percent} · {rpm} RPM', { percent: percentText(Math.round(r.gpuFan)), rpm: decimal(r.gpuFanRpm, 0) })
     case 'ram':
       if (r.ramUsed === null || r.ramTotal === null) return null
       return t('{used} / {total} GB', { used: decimal(r.ramUsed / GB, 1), total: decimal(r.ramTotal / GB, 1) })
