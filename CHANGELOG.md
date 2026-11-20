@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **New:** Hardware module in Settings → Modules: CPU and GPU temperatures, loads and more (PC only)
+- **Better:** Settings fit without scrolling on a 1080p screen, same gap above and below
 
 **Video** (PC only)
 - **New:** list of keyboard shortcuts in the players, in ⚙️ → Keyboard shortcuts

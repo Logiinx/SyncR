@@ -708,21 +708,30 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
     columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, modulesCard]]
     : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, modulesCard]]
     : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, modulesCard]]
+  // The version line ends the column that's shortest on the PC, so it adds no height of its own
+  // (a line under all columns made Settings scroll on a 1080p screen)
+  const aboutColumn = columns === 3 ? 1 : 0
+
+  // Check for updates: the icon next to Settings in the sidebar
+  const about = (
+    <p className="settings-about">
+      SyncR{' '}
+      {/* Click the version: what's new in it */}
+      <button className="version-link" title={t("What's new")} onClick={() => setShowWhatsNew(true)}>
+        {`v${__APP_VERSION__}`}
+      </button>
+      {' '}· {t('by Logiinx')}
+    </p>
+  )
 
   const cards = (
     <div className="settings-cards" style={{ '--settings-columns': columns } as React.CSSProperties}>
       {columnCards.map((column, i) => (
-        <div key={i} className="settings-column">{column}</div>
+        <div key={i} className="settings-column">
+          {column}
+          {i === aboutColumn && about}
+        </div>
       ))}
-      {/* Under all cards. Check for updates: the icon next to Settings in the sidebar */}
-      <p className="settings-about">
-        SyncR{' '}
-        {/* Click the version: what's new in it */}
-        <button className="version-link" title={t("What's new")} onClick={() => setShowWhatsNew(true)}>
-          {`v${__APP_VERSION__}`}
-        </button>
-        {' '}· {t('by Logiinx')}
-      </p>
     </div>
   )
 

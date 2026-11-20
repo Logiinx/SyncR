@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Nouveau :** module Matériel dans Paramètres → Modules : températures processeur et carte graphique, charges et plus (PC uniquement)
+- **Amélioré :** les Paramètres tiennent sans défiler sur un écran 1080p, même marge en haut et en bas
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** liste des raccourcis clavier dans les lecteurs, dans ⚙️ → Raccourcis clavier

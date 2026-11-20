@@ -4483,14 +4483,11 @@ button {
 
 /* Seven cards, all open, in columns (3 on a wide window, else 2; 1 on the phone: the count and
    which card goes where are in SettingsDialog.tsx); each setting a row: name left, control
-   right. The top stays at the same place when "Manage accounts…" changes the height. Phone:
-   full screen. */
+   right. The top stays at the same place when "Manage accounts…" changes the height; the gap
+   above and below is the same (the backdrop's padding). Phone: full screen. */
 .dialog.settings {
-  --settings-top: calc(8vh / var(--zoom, 1));
   align-self: flex-start;
   width: min(880px, 100%);
-  max-height: calc(100% - var(--settings-top));
-  margin-top: var(--settings-top);
 }
 
 .dialog.settings.wide {
@@ -4536,7 +4533,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 34px;
+  min-height: 30px;
 }
 
 .settings-row-label {
@@ -4736,7 +4733,6 @@ button {
     width: 100%;
     height: 100%;
     max-height: 100%;
-    margin-top: 0;
   }
 
   .settings-cards {
@@ -4821,9 +4817,9 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* Settings: the quiet "SyncR v… · by Logiinx" line under all cards */
-.settings-about {
-  grid-column: 1 / -1;
+/* Settings: the quiet "SyncR v… · by Logiinx" line, under the cards of the column that's shortest
+   on the PC (SettingsDialog.tsx). `.dialog` so it beats `.dialog p`'s margin. */
+.dialog .settings-about {
   margin: 0 0 2px;
   color: var(--text-dim);
   font-size: 0.85em;
