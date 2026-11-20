@@ -49,6 +49,24 @@ fn local_playlist(text: &str) -> String {
   out
 }
 
+// The browser name Twitch gets with SyncR's requests: WebView2's own, as the player page sends it
+// itself (from the WebView2 version installed, so it never goes stale; checked equal to the
+// page's navigator.userAgent, 2026-11-20). None if WebView2 can't say: then no name, as before.
+fn browser_name() -> Option<String> {
+  use webview2_com::Microsoft::Web::WebView2::Win32::GetAvailableCoreWebView2BrowserVersionString;
+  let mut version = windows::core::PWSTR::null();
+  // version receives a text ending in 0, freed below
+  unsafe { GetAvailableCoreWebView2BrowserVersionString(windows::core::PCWSTR::null(), &mut version) }.ok()?;
+  if version.is_null() {
+    return None;
+  }
+  let text = unsafe { version.to_string() }.ok();
+  unsafe { windows_sys::Win32::System::Com::CoTaskMemFree(version.0.cast()) };
+  // "142.0.3595.80": browsers only tell their main number now
+  let major = text?.split('.').next()?.parse::<u32>().ok()?;
+  Some(format!("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{major}.0.0.0 Safari/537.36 Edg/{major}.0.0.0"))
+}
+
 fn player_client() -> &'static reqwest::Client {
   use std::sync::OnceLock;
   use std::time::Duration;
@@ -58,7 +76,12 @@ fn player_client() -> &'static reqwest::Client {
     if rustls::crypto::CryptoProvider::get_default().is_none() {
       let _ = rustls::crypto::ring::default_provider().install_default();
     }
-    reqwest::Client::builder()
+    let builder = reqwest::Client::builder();
+    let builder = match browser_name() {
+      Some(name) => builder.user_agent(name),
+      None => builder,
+    };
+    builder
       .connect_timeout(Duration::from_secs(10))
       .read_timeout(Duration::from_secs(30))
       .redirect(reqwest::redirect::Policy::custom(|attempt| {
