@@ -402,6 +402,8 @@ function measureSource(_, parsed) {
 const MUTED_PIECE = /^(.*\/)(\d+)-muted\.(ts|mp4)$/ // video_window.rs names them all "-muted"
 const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind) => `${folder}${number}${kind === 'ts' ? '.ts' : '-unmuted.mp4'}`)
 const CHECKS_AT_ONCE = 6
+const UNCUT_RETRIES = 2 // a piece's original sound, after a passing failure (PieceLoader)
+const UNCUT_PATIENCE = 20000 // ms: no more tries after this, the muted one plays before the buffer runs out
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
 const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
@@ -472,9 +474,9 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   load(context, config, callbacks) {
     if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
     this.stopped = false
-    this.loadUncut(context, config, callbacks)
+    this.loadUncut(context, config, callbacks, 0, performance.now())
   }
-  loadUncut(context, config, callbacks) {
+  loadUncut(context, config, callbacks, tries, started) {
     const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
     const heard = (sound) => {
       playedPieces.add(context.url)
@@ -484,10 +486,16 @@ class PieceLoader extends Hls.DefaultConfig.loader {
       else uncutPieces.delete(context.url)
       drawMutedSoon()
     }
-    // Refused: muted, and shown so
-    const muted = () => {
+    // Refused (Twitch says it's gone: 4xx): muted, and shown so. A passing failure (no answer, slow,
+    // Twitch busy: 0, 5xx, 429) tries the sound again first, while the piece isn't needed soon.
+    const muted = (gone) => {
       inner.destroy()
       this.inner = null
+      if (this.stopped) return
+      if (!gone && tries < UNCUT_RETRIES && performance.now() - started < UNCUT_PATIENCE) {
+        this.retry = setTimeout(() => this.loadUncut(context, config, callbacks, tries + 1, started), 1000)
+        return
+      }
       heard(false)
       super.load(context, config, callbacks)
     }
@@ -498,17 +506,19 @@ class PieceLoader extends Hls.DefaultConfig.loader {
         Object.assign(this.stats, stats)
         callbacks.onSuccess(response, this.stats, context, details)
       },
-      onError: muted,
-      onTimeout: muted,
+      onError: (error) => muted(error.code >= 400 && error.code < 500 && error.code !== 429),
+      onTimeout: () => muted(false),
     })
   }
   abort() {
     this.stopped = true
+    clearTimeout(this.retry)
     this.inner?.abort()
     super.abort()
   }
   destroy() {
     this.stopped = true
+    clearTimeout(this.retry)
     this.inner?.destroy()
     this.inner = null
     super.destroy()

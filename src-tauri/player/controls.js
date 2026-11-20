@@ -173,6 +173,7 @@ function playerControls(env, media) {
   let gaps = []
   let marked = [] // { start, end, color }
   const GAP = 2 // px
+  const MARKED_MIN = 3 // px: a few seconds in a long video would be thinner than a pixel
   const at = (seconds) => `${(seconds / media.duration()) * 100}%`
   function drawParts() {
     const length = media.duration()
@@ -186,7 +187,8 @@ function playerControls(env, media) {
     const colors = []
     for (const part of [...marked].sort((a, b) => a.start - b.start)) {
       if (!length) break
-      const [from, to] = [at(part.start), at(Math.min(part.end, length))]
+      const from = at(part.start)
+      const to = `max(${at(Math.min(part.end, length))}, calc(${from} + ${MARKED_MIN}px))`
       colors.push(`transparent ${from}`, `${part.color} ${from}`, `${part.color} ${to}`, `transparent ${to}`)
     }
     $('track').style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
