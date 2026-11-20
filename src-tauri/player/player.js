@@ -163,6 +163,7 @@ const controls = playerControls({
       timelineMenu(menu)
     },
     keys: { c: () => toggleChat() },
+    keyHelp: { c: labels.chatTitle }, // its line in ⚙️ → Keyboard shortcuts
     rememberStart: () => rememberStart(), // timeline.js
     keepShowing: () => !$('goto').hidden || gamesOpen(),
     beforeMenu: () => {

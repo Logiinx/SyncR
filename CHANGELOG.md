@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** list of keyboard shortcuts in the players, in ⚙️ → Keyboard shortcuts
+
 ## [0.95.0] - 2026-11-20
 
 **Video** (PC only)

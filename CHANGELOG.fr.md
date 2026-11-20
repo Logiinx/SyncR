@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** liste des raccourcis clavier dans les lecteurs, dans ⚙️ → Raccourcis clavier
+
 ## [0.95.0] - 2026-11-20
 
 **Vidéo** (PC uniquement)

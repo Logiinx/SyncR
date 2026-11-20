@@ -203,6 +203,20 @@ function controlsData() {
       rememberLate: t('Only in the first 30 minutes'),
       rememberNoPictures: t('No preview pictures from YouTube yet'), // a past live, for some hours (video-watch.js)
       close: t('Close'),
+      // ⚙️ → Keyboard shortcuts (controls.js)
+      shortcuts: t('Keyboard shortcuts'),
+      keyboard: t('Keyboard'),
+      mouse: t('Mouse'),
+      keySpace: t('Space|key'),
+      keyShift: t('Shift|key'),
+      keyEscape: t('Esc|key'),
+      wheel: t('Wheel|mouse'),
+      doubleClick: t('Double-click'),
+      playPause: t('Play or pause'),
+      muteToggle: t('Mute or unmute'),
+      nextVideo: t('Next video'),
+      jumpTenths: t('Jump to 0%–90% of the video'),
+      closeMenu: t('Close the menu'),
       // ⚙️ → Miscellaneous: Twitch's Game changes (timeline.js), YouTube's Most replayed (video-watch.js)
       miscTitle: t('Miscellaneous'),
       barTitle: t('Progress bar'),

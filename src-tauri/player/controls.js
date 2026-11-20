@@ -9,7 +9,7 @@
 //   surface: what a click on the picture lands on, html: (text) => what innerHTML takes,
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
 //   hooks: { fillTip, besideTime: (seconds) => text after the time, besideOnHover: it slides out only while the time is hovered, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
-//            keys: { key: action }, keepShowing,
+//            keys: { key: action }, keyHelp: { key: its text in ⚙️ → Keyboard shortcuts }, keepShowing,
 //            beforeMenu, pictureClick: () => true when it did something }
 // }
 // media: {
@@ -42,6 +42,7 @@ function playerControls(env, media) {
     // MessageSquare, also the chat button's
     quality: '<path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>',
     speed: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+    keyboard: '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>', // Lucide Keyboard
     chat: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>',
     misc: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
     minus: '<path d="M5 12h14"/>',
@@ -839,11 +840,47 @@ function playerControls(env, media) {
       panel('subtitles', labels.subtitles, on ? on.text : labels.subtitlesOff, (side) => drawSubtitlesMenu(side, tracks), 'subtitles')
     }
     hooks.menu?.({ ...main, panel })
+    if (labels.shortcuts) panel('shortcuts', labels.shortcuts, '', drawShortcuts, 'keyboard')
     const info = document.createElement('div')
     info.id = 'menu-info'
     menu.append(info)
     drawInfo()
     drawSide()
+  }
+
+  // ⚙️ → Keyboard shortcuts: only what does something in this player (C: its subtitles, or what
+  // the player's hooks.keyHelp names, like Twitch's chat; Shift+N only with a next video), then the mouse
+  function drawShortcuts(side) {
+    const line = (keys, text) => {
+      const row = document.createElement('div')
+      row.className = 'menu-key'
+      const boxes = document.createElement('span')
+      for (const key of keys) {
+        const box = document.createElement('kbd')
+        box.textContent = key
+        boxes.append(box)
+      }
+      const name = document.createElement('span')
+      name.textContent = text
+      row.append(boxes, name)
+      side.element.append(row)
+    }
+    const help = hooks.keyHelp || {}
+    side.title(labels.keyboard)
+    line([labels.keySpace, 'K'], labels.playPause)
+    line(['←', 'J'], labels.back)
+    line(['→', 'L'], labels.forward)
+    line(['↑', '↓'], labels.volume)
+    line(['M'], labels.muteToggle)
+    line(['F'], labels.fullscreen)
+    if (next) line([`${labels.keyShift}+N`], labels.nextVideo)
+    line(['0–9'], labels.jumpTenths)
+    if (!help.c && subtitles?.tracks().length) line(['C'], labels.subtitles)
+    for (const [key, text] of Object.entries(help)) line([key.toUpperCase()], text)
+    line([labels.keyEscape], labels.closeMenu)
+    side.title(labels.mouse)
+    line([labels.wheel], labels.volume)
+    line([labels.doubleClick], labels.fullscreen)
   }
 
   function drawSide() {
@@ -1385,6 +1422,10 @@ const CONTROLS_CSS = `
   .menu-size svg { width: 16px; height: 16px; }
   .menu-size-value { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
   .menu-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
+  /* ⚙️ → Keyboard shortcuts: the keys in small boxes in a column, then what they do */
+  .menu-key { display: flex; align-items: center; gap: 12px; min-height: 30px; padding: 0 12px; }
+  .menu-key > span:first-child { display: flex; gap: 4px; min-width: 96px; flex-shrink: 0; }
+  .menu-key kbd { min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border, #2a2a2a); border-radius: 5px; background: var(--hover, #262626); font: inherit; font-size: 12px; white-space: nowrap; }
   #goto-text { display: block; width: calc(100% - 8px); height: 30px; margin: 2px 4px 4px; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none; background: var(--hover, #262626); color: inherit; font: inherit; font-size: 12px; user-select: text; }
   #goto { position: absolute; bottom: 70px; width: 250px; box-sizing: border-box; padding: 6px; border-radius: 8px; background: var(--bg, #161616); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text, #e4e4e4); }
   #goto-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
