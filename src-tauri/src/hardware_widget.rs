@@ -614,11 +614,19 @@ impl Painter {
     let (full_width, full_height) = (pixels_wide as f32 / scale, pixels_high as f32 / scale);
     let canvas = Canvas::new(pixels_wide, pixels_high)?;
 
-    // Where CSS puts a line's baseline in a ROW-high line box with 'SyncR UI': half the room left
-    // by the font's (overridden) height above it, then its ascent. Rounded to whole pixels, as
-    // the browser does.
     let snap = |dips: f32| (dips * scale).round() / scale;
-    let baseline = (ROW - (ASCENT + DESCENT) * FONT_SIZE) / 2.0 + ASCENT * FONT_SIZE;
+    // Where the browser paints a line's baseline with 'SyncR UI', in screen pixels (measured in
+    // the pane at 100, 125, 150 and 200 %, 2026-11-20): it rounds the font's ascent and descent to
+    // whole pixels; a name is centered in its line (flex), a row gets the room left halved and
+    // rounded down (CSS half-leading); the line starts on the whole pixel at or above it, and the
+    // rest is rounded. At 175 % the browser paints ½ pixel higher than that, which isn't copied.
+    let font = FONT_SIZE * scale;
+    let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
+    let room = ROW * scale - ascent - descent;
+    let (title_offset, row_offset) = ((ascent + room / 2.0).round(), ascent + (room / 2.0).floor());
+    // A line's top (DIPs) plus an offset in pixels → DIPs, on a whole pixel; the tiny amount keeps
+    // a top like 74 × 1.25 = 92.5 from landing just under a whole pixel by float error
+    let at = |top: f32, offset: f32| ((top * scale + 0.001).floor() + offset) / scale;
     unsafe {
       let properties = D2D1_RENDER_TARGET_PROPERTIES {
         r#type: D2D1_RENDER_TARGET_TYPE_SOFTWARE,
@@ -644,21 +652,23 @@ impl Painter {
       target.FillRoundedRectangle(&rounded(0.0), &bg);
       // A 1-pixel line, on whole pixels (centered half a pixel in)
       target.DrawRoundedRectangle(&rounded(0.5 / scale), &border, 1.0 / scale, None);
-      let put = |line: &Text, x: f32, top: f32, brush: &windows::Win32::Graphics::Direct2D::ID2D1SolidColorBrush| {
-        let origin = windows_numerics::Vector2 { X: snap(x), Y: snap(top + baseline) - line.baseline };
+      let put = |line: &Text, x: f32, y: f32, brush: &windows::Win32::Graphics::Direct2D::ID2D1SolidColorBrush| {
+        // Across: on a whole pixel too, an exact half going left, as the browser does
+        let origin = windows_numerics::Vector2 { X: ((x * scale - 0.5).ceil()) / scale, Y: y - line.baseline };
         target.DrawTextLayout(origin, &line.layout, brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
       };
       // Icons need Direct2D's newer drawing (Windows 10 1703 and later); without it, none
       let svg: Option<ID2D1DeviceContext5> = target.cast().ok();
       for line in &lines {
         if let Some(title) = &line.title {
-          put(title, PAD_SIDE + INDENT, line.top, &text);
-          // Centered on the line, as the card's title row centers it (on whole pixels)
+          put(title, PAD_SIDE + INDENT, at(line.top, title_offset), &text);
+          // Centered on the line, as the card's title row centers it, rounded like the text
           if let (Some(svg), Some(icon)) = (&svg, icon_svg(line.icon)) {
             let stream = SHCreateMemStream(Some(icon.as_bytes()));
             let size = D2D_SIZE_F { width: ICON, height: ICON };
             if let Some(document) = stream.and_then(|stream| svg.CreateSvgDocument(&stream, size).ok()) {
-              let corner = Matrix3x2::translation(snap(PAD_SIDE), snap(line.top + (ROW - ICON) / 2.0));
+              let top = at(line.top, ((ROW - ICON) * scale / 2.0).round());
+              let corner = Matrix3x2::translation(snap(PAD_SIDE), top);
               svg.SetTransform(&corner);
               svg.DrawSvgDocument(&document);
               svg.SetTransform(&Matrix3x2::identity());
@@ -666,8 +676,9 @@ impl Painter {
           }
         }
         if let (Some(label), Some(value)) = (&line.label, &line.value) {
-          put(label, PAD_SIDE + INDENT, line.top, &dim);
-          put(value, full_width - PAD_SIDE - value.width, line.top, &text);
+          let y = at(line.top, row_offset);
+          put(label, PAD_SIDE + INDENT, y, &dim);
+          put(value, full_width - PAD_SIDE - value.width, y, &text);
         }
       }
       target.EndDraw(None, None).ok()?;
