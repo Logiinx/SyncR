@@ -7,7 +7,7 @@ import ContextMenu, { type MenuItem } from './ContextMenu'
 import { animationsOn, startClosingAnimations, TIMING } from './animations'
 import { applyAppearance, loadAppearance } from './appearance'
 import { decimal, percentText, t, useLanguage } from './i18n'
-import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, sensorLabel, storedHardware } from './hardware'
+import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, groupName, sensorLabel, storedHardware } from './hardware'
 
 // The Hardware widget's right-click menu: a page of its own in a see-through window over the
 // whole monitor (hardware_widget.rs). The window is made hidden as soon as the mouse is over the
@@ -115,7 +115,7 @@ function HardwareMenu() {
   const shown = WIDGET_GROUPS.flatMap(({ icon, sensors }) =>
     sensors.map((sensor, index): MenuItem => ({
       label: sensorLabel(sensor),
-      section: index === 0 ? (icon === 'cpu' ? t('CPU') : icon === 'gpu' ? t('GPU') : t('Memory')) : undefined,
+      section: index === 0 ? groupName(icon) : undefined,
       checked: settings.shown.includes(sensor),
       stayOpen: true, // several are often ticked in a row
       onClick: () =>

@@ -19,13 +19,12 @@ import {
   SPEEDS,
   THEMES,
   clickThroughAbout,
+  groupName,
   heatLevel,
   hasMemTemp,
   removeHelper,
   saveHardware,
   setUpHelper,
-  shortCpuName,
-  shortGpuName,
   useHardware,
   useHardwareReadings,
   sensorLabel,
@@ -184,11 +183,11 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           >
             <input type="checkbox" checked={settings.hot} onChange={(e) => saveHardware({ hot: e.target.checked })} />
           </SettingRow>
-          <LimitsRow sensor="cpuTemp" label={t('CPU')} settings={settings} />
-          <LimitsRow sensor="gpuTemp" label={t('GPU')} settings={settings} />
+          <LimitsRow sensor="cpuTemp" label={groupName('cpu')} settings={settings} />
+          <LimitsRow sensor="gpuTemp" label={groupName('gpu')} settings={settings} />
           {memTemp && <LimitsRow sensor="gpuMemTemp" label={t('GPU memory')} settings={settings} />}
         </SettingsCard>
-        <SettingsCard icon={Cpu} title={readings?.cpuName ? shortCpuName(readings.cpuName) : t('CPU')}>
+        <SettingsCard icon={Cpu} title={groupName('cpu', readings)}>
           {helper !== 'unsupported' && row('cpuTemp')}
           {row('cpuLoad')}
           {row('cpuClock')}
@@ -209,7 +208,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
             </SettingRow>
           )}
         </SettingsCard>
-        <SettingsCard icon={Gpu} title={readings?.gpuName ? shortGpuName(readings.gpuName) : t('GPU')}>
+        <SettingsCard icon={Gpu} title={groupName('gpu', readings)}>
           {row('gpuTemp')}
           {memTemp && row('gpuMemTemp')}
           {row('gpuLoad')}
@@ -217,7 +216,7 @@ export default function HardwareSettings({ onClose }: { onClose: () => void }) {
           {row('gpuMemClock')}
           {row('gpuFan')}
         </SettingsCard>
-        <SettingsCard icon={MemoryStick} title={t('Memory')}>
+        <SettingsCard icon={MemoryStick} title={groupName('memory')}>
           {row('ram')}
         </SettingsCard>
       </div>

@@ -9,7 +9,7 @@ vi.mock('@tauri-apps/api/event', () => ({ listen: async () => () => {} }))
 vi.mock('../src/i18n', () => ({ t: (text: string) => text, decimal: String, percentText: (n: number) => `${n}%` })) // the real one needs a page
 vi.mock('../src/animations', () => ({ animationsOn: () => true })) // needs a page too
 
-const { shortCpuName, shortGpuName } = await import('../src/hardware')
+const { groupName, shortCpuName, shortGpuName } = await import('../src/hardware')
 
 test('CPU names', () => {
   expect(shortCpuName('AMD Ryzen 7 5700X3D 8-Core Processor')).toBe('Ryzen 7 5700X3D')
@@ -22,4 +22,11 @@ test('CPU names', () => {
 test('GPU names', () => {
   expect(shortGpuName('NVIDIA GeForce RTX 5070 Ti')).toBe('RTX 5070 Ti')
   expect(shortGpuName('NVIDIA RTX A4000')).toBe('RTX A4000')
+})
+
+test('Group names', () => {
+  const r = { cpuName: 'AMD Ryzen 7 5700X3D 8-Core Processor', gpuName: 'NVIDIA GeForce RTX 5070 Ti' }
+  expect([groupName('cpu', r), groupName('gpu', r), groupName('memory', r)]).toEqual(['Ryzen 7 5700X3D', 'RTX 5070 Ti', 'Memory'])
+  expect([groupName('cpu'), groupName('gpu', null), groupName('memory')]).toEqual(['CPU', 'GPU', 'Memory'])
+  expect(groupName('cpu', { cpuName: null, gpuName: null })).toBe('CPU') // not read yet
 })

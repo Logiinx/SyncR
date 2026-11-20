@@ -290,6 +290,14 @@ export function shortGpuName(name: string) {
   return name.replace(/^NVIDIA\s+/i, '').replace(/^GeForce\s+/i, '').trim()
 }
 
+// A hardware group's name (WIDGET_GROUPS): the hardware's own short name when readings with it are
+// given, else "CPU", "GPU" or "Memory". The same in the settings window, the widget and its menu.
+export function groupName(icon: 'cpu' | 'gpu' | 'memory', r?: Pick<HardwareReadings, 'cpuName' | 'gpuName'> | null) {
+  if (icon === 'cpu') return r?.cpuName ? shortCpuName(r.cpuName) : t('CPU')
+  if (icon === 'gpu') return r?.gpuName ? shortGpuName(r.gpuName) : t('GPU')
+  return t('Memory')
+}
+
 const GB = 1024 ** 3 // like Task Manager
 
 // A reading's name: the settings window's, or the widget's (shorter where the name is long)
@@ -403,16 +411,10 @@ export const WIDGET_GROUPS = [
 function sendWidget(r: HardwareReadings | null) {
   if (!isTauri()) return
   const { place, onTop, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
-  // Tiles are narrow: "CPU" and "GPU" there, the hardware's own name elsewhere (look B shows none)
-  const title = (icon: string) => {
-    if (icon === 'cpu') return r?.cpuName && look !== 'tiles' ? shortCpuName(r.cpuName) : t('CPU')
-    if (icon === 'gpu') return r?.gpuName && look !== 'tiles' ? shortGpuName(r.gpuName) : t('GPU')
-    return t('Memory')
-  }
   const groups = !r || !current.on
     ? []
     : WIDGET_GROUPS.map(({ icon, sensors }) => ({
-        title: title(icon),
+        title: groupName(icon, look === 'tiles' ? null : r), // tiles are narrow: "CPU", "GPU" (look B shows none)
         icon,
         rows: sensors.flatMap((sensor) => {
           const value = current.shown.includes(sensor) ? valueText(sensor, r) : null
