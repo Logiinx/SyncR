@@ -1,0 +1,198 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Hardware widget: looks A–E</title>
+<!-- Mockups of the Hardware module's widget looks (design only, not used by the app). Look A is
+     what hardware_widget.rs draws; B–E are to build later. Same numbers as the widget: 13 px
+     'SyncR UI', 20 px rows, 8/12/10 px padding, 15 px Lucide icons in --link, 8 px corners -->
+<style>
+  @font-face {
+    font-family: 'SyncR UI';
+    font-weight: 400;
+    src: local('Segoe UI'), local('SegoeUI');
+    ascent-override: 101%;
+    descent-override: 32.5%;
+    line-gap-override: 0%;
+  }
+  @font-face {
+    font-family: 'SyncR UI';
+    font-weight: 600;
+    src: local('Segoe UI Semibold'), local('SegoeUI-Semibold');
+    ascent-override: 101%;
+    descent-override: 32.5%;
+    line-gap-override: 0%;
+  }
+  :root {
+    --bg: #161616; --bg-sunken: #101010; --hover: rgb(255 255 255 / 8%); --border: #2a2a2a;
+    --text: #e4e4e4; --text-dim: #808080; --link: #7aa7e0; --text-blue: #6fa9f2;
+  }
+  body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font: 14px 'SyncR UI', sans-serif; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .intro { color: var(--text-dim); margin: 0 0 16px; }
+  .walls { display: flex; gap: 8px; margin-bottom: 20px; }
+  .walls button { font: inherit; color: var(--text-dim); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .walls button.on { color: var(--text); background: var(--hover); }
+  .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .look { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+  .look h2 { font-size: 14px; font-weight: 600; margin: 0; padding: 10px 12px 2px; }
+  .look p { margin: 0; padding: 0 12px 10px; color: var(--text-dim); font-size: 13px; }
+  /* A piece of desktop for the widget to sit on */
+  .desk { flex: 1; padding: 20px; min-height: 120px; display: flex; align-items: flex-start; }
+  body.dark .desk { background: linear-gradient(135deg, #1d2633, #2b1f2e 60%, #12161c); }
+  body.light .desk { background: linear-gradient(135deg, #9fb7cf, #d8c3a8 60%, #7d93a8); }
+  body.photo .desk { background: radial-gradient(circle at 30% 30%, #f1e2b8, transparent 40%), linear-gradient(160deg, #3d6b8c, #7da35b 55%, #2f4a2a); }
+
+  /* Shared pieces */
+  .w { font: 13px 'SyncR UI', sans-serif; color: var(--text); white-space: nowrap; user-select: none; }
+  .box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
+  .icon { width: 15px; height: 15px; flex: none; }
+  .icon svg { display: block; }
+  .dim { color: var(--text-dim); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* A: rows like LHM (what the widget draws now) */
+  .a { display: inline-block; padding: 8px 12px 10px; }
+  .a .group + .group { margin-top: 6px; }
+  .a .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
+  .a .row { display: flex; justify-content: space-between; gap: 16px; height: 20px; line-height: 20px; padding-left: 21px; }
+
+  /* B: one line */
+  .b { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; gap: 14px; }
+  .b .part { display: flex; align-items: center; gap: 6px; }
+  .b .vals { display: flex; gap: 8px; }
+  .b .sep { width: 1px; height: 16px; background: var(--border); }
+
+  /* C: tiles, one per hardware */
+  .c { display: inline-flex; gap: 6px; }
+  .c .tile { padding: 8px 12px 10px; min-width: 104px; }
+  .c .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
+  .c .big { font-size: 24px; height: 32px; line-height: 32px; }
+  .c .row { display: flex; justify-content: space-between; gap: 12px; height: 18px; line-height: 18px; font-size: 12px; }
+
+  /* D: rows with bars */
+  .d { display: inline-block; padding: 8px 12px 10px; min-width: 200px; }
+  .d .group + .group { margin-top: 6px; }
+  .d .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
+  .d .row { padding-left: 21px; }
+  .d .line { display: flex; justify-content: space-between; gap: 16px; height: 18px; line-height: 18px; }
+  .d .bar { height: 3px; border-radius: 2px; background: var(--hover); margin: 1px 0 4px; overflow: hidden; }
+  .d .bar i { display: block; height: 100%; border-radius: 2px; background: var(--text-blue); }
+
+  /* E: no box, text only, a soft shadow so it reads on any wallpaper */
+  .e { display: inline-block; padding: 8px 12px 10px; text-shadow: 0 0 2px #000, 0 1px 3px #000, 0 0 8px rgb(0 0 0 / 70%); }
+  .e .icon svg { filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 1px 2px #000); }
+  .e .dim { color: #c4c4c4; }
+  .e .group + .group { margin-top: 6px; }
+  .e .title { display: flex; align-items: center; gap: 6px; height: 20px; font-weight: 600; }
+  .e .row { display: flex; justify-content: space-between; gap: 16px; height: 20px; line-height: 20px; padding-left: 21px; }
+</style>
+
+<body class="dark">
+<h1>Hardware widget: looks A–E</h1>
+<p class="intro">Redrawn 2026-11-20 (the first mockups weren't saved). Same font, sizes and colors as the widget. Pick a wallpaper to see each look on it.</p>
+<div class="walls">
+  <button data-wall="dark" class="on">Dark wallpaper</button>
+  <button data-wall="light">Light wallpaper</button>
+  <button data-wall="photo">Photo wallpaper</button>
+</div>
+
+<div class="looks">
+  <section class="look">
+    <h2>A · Rows (default)</h2>
+    <p>Like LibreHardwareMonitor. What the widget shows now.</p>
+    <div class="desk"><div class="w box a">
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="cpu"></span>Ryzen 7 5700X3D</div>
+        <div class="row"><span class="dim">Temperature</span><span class="num">52.4 °C</span></div>
+        <div class="row"><span class="dim">Load</span><span class="num">12%</span></div>
+      </div>
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="gpu"></span>RTX 5070 Ti</div>
+        <div class="row"><span class="dim">Temperature</span><span class="num">46 °C</span></div>
+        <div class="row"><span class="dim">Memory temp.</span><span class="num">54 °C</span></div>
+        <div class="row"><span class="dim">Load</span><span class="num">8%</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="look">
+    <h2>B · One line</h2>
+    <p>The icon stands for the hardware, then its values. No labels.</p>
+    <div class="desk"><div class="w box b">
+      <div class="part"><span class="icon" data-icon="cpu"></span><span class="vals num"><span>52.4 °C</span><span class="dim">12%</span></span></div>
+      <div class="sep"></div>
+      <div class="part"><span class="icon" data-icon="gpu"></span><span class="vals num"><span>46 °C</span><span>54 °C</span><span class="dim">8%</span></span></div>
+    </div></div>
+  </section>
+
+  <section class="look">
+    <h2>C · Tiles</h2>
+    <p>One tile per hardware. Its first value big, the rest small under it.</p>
+    <div class="desk"><div class="w c">
+      <div class="box tile">
+        <div class="title"><span class="icon" data-icon="cpu"></span>CPU</div>
+        <div class="big num">52.4 °C</div>
+        <div class="row"><span class="dim">Load</span><span class="num">12%</span></div>
+      </div>
+      <div class="box tile">
+        <div class="title"><span class="icon" data-icon="gpu"></span>GPU</div>
+        <div class="big num">46 °C</div>
+        <div class="row"><span class="dim">Memory temp.</span><span class="num">54 °C</span></div>
+        <div class="row"><span class="dim">Load</span><span class="num">8%</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="look">
+    <h2>D · Rows with bars</h2>
+    <p>Like A, with a thin bar under each value (temperatures: 0–100 °C).</p>
+    <div class="desk"><div class="w box d">
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="cpu"></span>Ryzen 7 5700X3D</div>
+        <div class="row"><div class="line"><span class="dim">Temperature</span><span class="num">52.4 °C</span></div><div class="bar"><i style="width: 52%"></i></div></div>
+        <div class="row"><div class="line"><span class="dim">Load</span><span class="num">12%</span></div><div class="bar"><i style="width: 12%"></i></div></div>
+      </div>
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="gpu"></span>RTX 5070 Ti</div>
+        <div class="row"><div class="line"><span class="dim">Temperature</span><span class="num">46 °C</span></div><div class="bar"><i style="width: 46%"></i></div></div>
+        <div class="row"><div class="line"><span class="dim">Memory temp.</span><span class="num">54 °C</span></div><div class="bar"><i style="width: 54%"></i></div></div>
+        <div class="row"><div class="line"><span class="dim">Load</span><span class="num">8%</span></div><div class="bar"><i style="width: 8%"></i></div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="look">
+    <h2>E · No box</h2>
+    <p>Like A, without the box: text right on the wallpaper, with a soft shadow.</p>
+    <div class="desk"><div class="w e">
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="cpu"></span>Ryzen 7 5700X3D</div>
+        <div class="row"><span class="dim">Temperature</span><span class="num">52.4 °C</span></div>
+        <div class="row"><span class="dim">Load</span><span class="num">12%</span></div>
+      </div>
+      <div class="group">
+        <div class="title"><span class="icon" data-icon="gpu"></span>RTX 5070 Ti</div>
+        <div class="row"><span class="dim">Temperature</span><span class="num">46 °C</span></div>
+        <div class="row"><span class="dim">Memory temp.</span><span class="num">54 °C</span></div>
+        <div class="row"><span class="dim">Load</span><span class="num">8%</span></div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<script>
+  // Lucide's shapes (lucide-react 1.57, ISC license), as in hardware_widget.rs
+  const SHAPES = {
+    cpu: '<path d="M12 20v2"/><path d="M12 2v2"/><path d="M17 20v2"/><path d="M17 2v2"/><path d="M2 12h2"/><path d="M2 17h2"/><path d="M2 7h2"/><path d="M20 12h2"/><path d="M20 17h2"/><path d="M20 7h2"/><path d="M7 20v2"/><path d="M7 2v2"/><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/>',
+    gpu: '<path d="M2 17h18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H2"/><path d="M2 21V3"/><path d="M7 17v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3"/><circle cx="16" cy="11" r="2"/><circle cx="8" cy="11" r="2"/>',
+  }
+  for (const spot of document.querySelectorAll('[data-icon]')) {
+    spot.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7aa7e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SHAPES[spot.dataset.icon]}</svg>`
+  }
+  for (const button of document.querySelectorAll('[data-wall]')) {
+    button.onclick = () => {
+      document.body.className = button.dataset.wall
+      for (const other of document.querySelectorAll('[data-wall]')) other.classList.toggle('on', other === button)
+    }
+  }
+</script>
+</body>
