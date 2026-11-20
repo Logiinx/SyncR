@@ -5792,6 +5792,20 @@ h3.games-group-title {
   color: var(--link);
 }
 
+/* To buy: games on sale on Steam, after the count: "12 · 3" with the 3 in green */
+.games-on-sale {
+  margin-left: -2px; /* with the row's 6 px gap: the dot sits halfway */
+  color: var(--text-green);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.games-on-sale::before {
+  content: '·';
+  color: var(--text-dim);
+  margin-right: 4px;
+}
+
 /* Covers / list: at the end of the row, a bit smaller than the calendar's */
 .games-status-tabs .games-layouts.fill-switch > button {
   padding: 0 7px;

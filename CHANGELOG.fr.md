@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Nouveau :** l’onglet À acheter montre combien de jeux sont en promo, en vert
+
 ## [0.97.2] - 2026-11-20
 
 **Application**

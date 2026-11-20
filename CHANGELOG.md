@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **New:** the To buy tab shows how many games are on sale, in green
+
 ## [0.97.2] - 2026-11-20
 
 **App**

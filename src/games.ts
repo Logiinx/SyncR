@@ -152,7 +152,8 @@ export async function removeGameQuestion(game: Game, onRemoved: () => void): Pro
 // Priority games first. To buy: then games on sale on Steam, biggest discount first (prices
 // already known). Waiting: soonest release first, not announced (TBA) last.
 // The others: most recent first (Library: newest added first).
-const saleDiscount = (game: Game) => (game.status === 'tobuy' ? knownDiscount(game.igdbId) : 0)
+// Also To buy's tab count of games on sale (GamesView.tsx)
+export const saleDiscount = (game: Game) => (game.status === 'tobuy' ? knownDiscount(game.igdbId) : 0)
 export function sortGames(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) =>

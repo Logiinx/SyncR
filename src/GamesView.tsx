@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { t, textKey } from './i18n'
+import { plural, t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, Settings, X } from 'lucide-react'
 import GamesSettings from './GamesSettings'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, saleDiscount, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
@@ -80,9 +80,12 @@ function GamesView() {
   useEffect(() => {
     refreshPlaying(PLAYING_ON_OPEN)
   }, [])
-  // To buy and Upcoming: fresh prices each time the list opens (prices.ts; recent ones aren't asked again)
+  // To buy and Upcoming: fresh prices each time the list opens (prices.ts; recent ones aren't asked
+  // again), and once when Games opens, whatever tab is shown, for To buy's count of games on sale
+  const pricesAsked = useRef(false)
   useEffect(() => {
-    if (TABS.find((t) => t.tab === shown)!.statuses.some((status) => canWatch({ status }))) loadListPrices()
+    if (!pricesAsked.current || TABS.find((t) => t.tab === shown)!.statuses.some((status) => canWatch({ status }))) loadListPrices()
+    pricesAsked.current = true
   }, [shown])
   const [view, setView] = useLocalState<GamesViewName>('syncr.gamesView', 'mine') // remembered per device
   const [layout, setLayout] = useLocalState<CalendarLayout>('syncr.calendarLayout', 'grid') // PC only
@@ -189,6 +192,8 @@ function GamesView() {
                   <div className="games-status-list" ref={statusList} onPointerLeave={lines.onRowLeave}>
                     {TABS.map(({ tab, label, icon: TabIcon }) => {
                       const count = games.filter((g) => tabOf(g.status).tab === tab).length
+                      // To buy: how many are on sale on Steam (prices already known), in green
+                      const onSale = tab === 'tobuy' ? games.filter((g) => saleDiscount(g) > 0).length : 0
                       let className = shown === tab ? 'active' : ''
                       if (lines.hovered === tab) className += ' hovered'
                       return (
@@ -196,6 +201,11 @@ function GamesView() {
                           <TabIcon size={16} className="games-tab-icon" />
                           {t(label)}
                           {count > 0 && <span className="games-count">{count}</span>}
+                          {onSale > 0 && (
+                            <span className="games-on-sale" title={plural(onSale, '{n} on sale', '{n} on sale')}>
+                              {onSale}
+                            </span>
+                          )}
                           <TabLines />
                         </button>
                       )

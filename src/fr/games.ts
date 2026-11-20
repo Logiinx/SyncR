@@ -10,6 +10,7 @@ export const games = {
   'Not started': 'Pas commencé',
   Playing: 'En cours',
   'My games': 'Mes jeux',
+  '{n} on sale': '{n} en promo',
   Calendar: 'Calendrier',
   Covers: 'Jaquettes',
   'Month grid': 'Grille du mois',
