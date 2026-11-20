@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Games**
+- **New:** Not started: drag games into your play order (phone: Move up / Move down)
 - **New:** the To buy tab shows how many games are on sale, in green
 - **New:** top of Upcoming: your games coming out in the next 30 days
 - **New:** Library: sort by rating, hours played or name

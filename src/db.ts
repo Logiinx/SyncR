@@ -210,6 +210,10 @@ export interface Game {
   watch?: PriceWatch // To buy and Upcoming games only (canWatch)
   editionWatches?: EditionWatch[] // same; apart from watch, so an app before v0.24 keeps them when it changes watch
   steamStats?: SteamStats // Playing and Library games on Steam (steam.ts)
+  // Not started: its place in the play order, set by hand (playOrder.ts). Counts only while
+  // playOrderAt is still the game's statusAt: a game that left and came back joins at the bottom.
+  playOrder?: number
+  playOrderAt?: number
   hltbId?: number // its HowLongToBeat page, when the user pasted a link (playtimes.ts); else found by search
   deleted: boolean
   restoredAt?: number // brought back after being deleted (sync.ts localWins)

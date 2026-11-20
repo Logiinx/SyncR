@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { plural, t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDownUp, ArrowRight, CalendarCheck, CalendarClock, ChevronDown, Download, Gamepad2, LayoutGrid, List, ListFilter, Search, Settings, X } from 'lucide-react'
@@ -21,6 +22,7 @@ import ContextMenu, { type MenuItem } from './ContextMenu'
 import GameDialog, { AchievementBar, GameBadge, gameClass, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
+import { dragPlayOrder, moveItem, savePlayOrder, sortPlayOrder } from './playOrder'
 import Spinner from './Spinner'
 import { FillSwitch, TabLines, useTabLines } from './tabLines'
 import { useListItem, usePage } from './animations'
@@ -113,10 +115,11 @@ function GamesView() {
   }
 
   // The shared game menu (gameMenu.ts)
-  function menuItems({ game, pinned, hltbId, x, y }: GameMenu): MenuItem[] {
+  function menuItems({ game, pinned, hltbId, place, x, y }: GameMenu): MenuItem[] {
     return gameMenuItems(game, {
       pinned,
       hltbId,
+      place,
       onAsk: setDialog,
       onAskEnding: () => setEndingMenu({ game, pinned, x, y }),
       onWatch: () => {
@@ -329,9 +332,21 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
   onOpen: (id: string) => void
   onMenu: (game: Game, x: number, y: number) => void
 }) {
+  // Not started: in the play order set by hand (playOrder.ts). A dropped game shows in its new
+  // place at once (pending), until the saved order comes back from the database.
+  const [pending, setPending] = useState<string[] | null>(null)
+  useEffect(() => setPending(null), [games])
+  const placed = sortPlayOrder(games.filter((g) => g.status === 'upnext'))
+  const at = (game: Game) => (pending?.includes(game.id) ? pending.indexOf(game.id) : Infinity)
+  const upNext = pending ? [...placed].sort((a, b) => at(a) - at(b)) : placed
+  function drop(from: number, to: number) {
+    const ordered = moveItem(upNext, from, to)
+    flushSync(() => setPending(ordered.map((g) => g.id)))
+    void savePlayOrder(ordered, ordered[to].id)
+  }
   const parts = [
-    { status: 'playing', title: t('Playing'), games: games.filter((g) => g.status === 'playing'), empty: t('Nothing being played right now') },
-    { status: 'upnext', title: t('Not started'), games: games.filter((g) => g.status === 'upnext'), empty: t("Games you own and haven't started yet") },
+    { status: 'playing', title: t('Playing'), games: sortGames(games.filter((g) => g.status === 'playing')), empty: t('Nothing being played right now') },
+    { status: 'upnext', title: t('Not started'), games: upNext, empty: t("Games you own and haven't started yet") },
   ]
   return (
     <div className={layout === 'grid' ? 'games-parts wide' : 'games-parts'}>
@@ -343,12 +358,19 @@ function ToPlayShelf({ games, layout, onOpen, onMenu }: {
           </h3>
           {part.status === 'playing' && part.games.length > 0 ? (
             <div className="playing-cards">
-              {sortGames(part.games).map((game) => (
+              {part.games.map((game) => (
                 <PlayingCard key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
               ))}
             </div>
           ) : (
-            <GameShelf games={sortGames(part.games)} layout={layout} emptyText={part.empty} onOpen={onOpen} onMenu={onMenu} />
+            <GameShelf
+              games={part.games}
+              layout={layout}
+              emptyText={part.empty}
+              onOpen={onOpen}
+              onMenu={onMenu}
+              onPointerDown={part.status === 'upnext' ? (e) => dragPlayOrder(e, drop) : undefined}
+            />
           )}
         </section>
       ))}
@@ -466,17 +488,23 @@ function GameShelf({
   emptyText,
   onOpen,
   onMenu,
+  onPointerDown,
 }: {
   games: Game[]
   layout: ShelfLayout
   emptyText: string
   onOpen: (id: string) => void
   onMenu: (game: Game, x: number, y: number) => void
+  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void // Not started: drag into the play order
 }) {
   if (games.length === 0) return <p className="games-shelf-empty">{emptyText}</p>
   const Item = layout === 'grid' ? GameTile : GameRow
   return (
-    <div className={layout === 'grid' ? 'games-grid' : 'games-group'}>
+    <div
+      className={layout === 'grid' ? 'games-grid' : 'games-group'}
+      onPointerDown={onPointerDown}
+      onDragStart={onPointerDown && ((e) => e.preventDefault())} // a cover's picture isn't dragged out
+    >
       {games.map((game) => (
         <Item key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
       ))}
@@ -557,6 +585,7 @@ function GameTile({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; on
     <div
       ref={ref}
       className={gameClass('game-tile', game)}
+      data-game-id={game.id}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -642,6 +671,7 @@ function GameRow({ game, onOpen, onMenu }: { game: Game; onOpen: () => void; onM
     <div
       ref={ref}
       className={gameClass('game-row', game)}
+      data-game-id={game.id}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()

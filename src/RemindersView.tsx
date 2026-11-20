@@ -330,6 +330,7 @@ function RemindersView() {
           items={gameMenuItems(gameMenu.game, {
             pinned: gameMenu.pinned,
             hltbId: gameMenu.hltbId,
+            place: gameMenu.place,
             onAsk: setDialog,
             onWatch: () => {
               setOpenWatch(gameMenu.game.id)

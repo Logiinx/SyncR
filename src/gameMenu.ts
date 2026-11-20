@@ -1,4 +1,4 @@
-import { Archive, ArrowRight, Bell, BellOff, CircleCheck, CirclePause, CircleX, ExternalLink, Heart, Hourglass, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
+import { Archive, ArrowDown, ArrowRight, ArrowUp, Bell, BellOff, CircleCheck, CirclePause, CircleX, ExternalLink, Heart, Hourglass, PackageCheck, PackageX, Pin, PinOff, Play, Sparkles, Trash2 } from 'lucide-react'
 import { t, textKey, type TextKey } from './i18n'
 import { canWatch, db, isWatched, pinGameToBoard, pinnedCard, setGameStatus, setPreordered, unpinGameFromBoard, updateGame, type Game } from './db'
 import { endingChange, endingOf, isFavoriteTab, isReleased, moveToLibrary, priorityLabel, STATUSES, type Ending } from './games'
@@ -7,15 +7,17 @@ import type { MenuItem } from './ContextMenu'
 import type { DialogRequest } from './Dialog'
 import { openLink } from './links'
 import { playtimeLink, playtimePageQuestion } from './playtimes'
+import { moveInPlayOrder, playOrderPlace } from './playOrder'
 
 // A game's right-click menu, the same wherever a game of your list shows (Games, Reminders).
-// Groups: Move to … ("Start playing" for Playing) | Library: how it ended | priority, price alert,
+// Groups: Move to … ("Start playing" for Playing) | Not started on a touch screen: Move up / Move
+// down in the play order (the PC drags instead) | Library: how it ended | priority, price alert,
 // Board (priority first), HowLongToBeat's page (open it, or paste another one: view.onAsk shows the
 // box) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
 // With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
 export function gameMenuItems(
   game: Game,
-  view: { pinned: boolean; hltbId?: number | null; onWatch: () => void; onRemove: () => void; onAsk: (request: DialogRequest) => void; onAskEnding?: () => void },
+  view: { pinned: boolean; hltbId?: number | null; place?: PlayPlace; onWatch: () => void; onRemove: () => void; onAsk: (request: DialogRequest) => void; onAskEnding?: () => void },
 ): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
@@ -27,6 +29,10 @@ export function gameMenuItems(
           ? view.onAskEnding()
           : setGameStatus(game.id, status),
     })),
+    ...(!view.place ? [] : [
+      { label: t('Move up'), icon: ArrowUp, divider: true, disabled: view.place.first, hint: view.place.first ? t('Already first') : undefined, onClick: () => moveInPlayOrder(game, -1) },
+      { label: t('Move down'), icon: ArrowDown, disabled: view.place.last, hint: view.place.last ? t('Already last') : undefined, onClick: () => moveInPlayOrder(game, 1) },
+    ]),
     // Library: how it ended, like the game window's pills (✓ = the current one, again = none)
     ...(game.status !== 'library' ? [] : ENDINGS.filter((e) => e.ending).map(({ ending, label, icon }, i) => {
       const on = endingOf(game) === ending
@@ -87,9 +93,16 @@ export const endingHeader = () => ({ title: t('How did it end?'), subtitle: t('M
 
 // The menu to open at x, y: whether the game has a Board card ("Pin to Board" or "Unpin from
 // Board") and its HowLongToBeat page are looked up once here, not kept up to date while no menu is open
-export type GameMenu = { game: Game; x: number; y: number; pinned: boolean; hltbId?: number | null }
+// On a touch screen, a Not started game's place in the play order (Move up / Move down).
+type PlayPlace = { first: boolean; last: boolean }
+export type GameMenu = { game: Game; x: number; y: number; pinned: boolean; hltbId?: number | null; place?: PlayPlace }
 
+const touchScreen = () => !matchMedia('(hover: hover) and (pointer: fine)').matches
 export async function gameMenuAt(game: Game, x: number, y: number): Promise<GameMenu> {
-  const [card, playtime] = await Promise.all([pinnedCard(game.id), db.playtimes.get(game.id)])
-  return { game, x, y, pinned: !!card, hltbId: playtime?.hltbId }
+  const [card, playtime, place] = await Promise.all([
+    pinnedCard(game.id),
+    db.playtimes.get(game.id),
+    game.status === 'upnext' && touchScreen() ? playOrderPlace(game) : undefined,
+  ])
+  return { game, x, y, pinned: !!card, hltbId: playtime?.hltbId, place }
 }

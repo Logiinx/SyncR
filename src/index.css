@@ -5837,6 +5837,29 @@ h3.games-group-title {
   color: var(--text-dim);
 }
 
+/* Not started: a game dragged into the play order (playOrder.ts) follows the mouse; the others
+   glide to where they'd go. Once dropped they're already in place (settling: no glide) */
+.games-grid.ordering,
+.games-group.ordering {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.ordering > [data-game-id] {
+  transition: transform 0.15s var(--ease-open);
+}
+
+.ordering > [data-game-id].lifted,
+.ordering.settling > [data-game-id] {
+  transition: none;
+}
+
+.ordering > [data-game-id].lifted {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* Top of Upcoming: games out in the next 30 days (ComingSoon). Dim, the names bright; lined up
    with the wide grid in the Covers layout */
 .games-soon {
