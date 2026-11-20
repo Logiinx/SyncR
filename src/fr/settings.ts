@@ -234,4 +234,16 @@ export const settings = {
   '{n} °C': '{n} °C',
   '{percent}% · {rpm} RPM': '{percent} % · {rpm} tr/min',
   '{used} / {total} GB': '{used} / {total} Go',
+  'Admin helper': 'Assistant administrateur',
+  'About the admin helper': 'À propos de l’assistant administrateur',
+  'The CPU temperature needs admin rights, which SyncR doesn’t have. This small helper has them: it starts with Windows and only reads the temperature when SyncR asks. Turning the module off leaves it resting.':
+    'La température du processeur demande des droits administrateur, que SyncR n’a pas. Ce petit assistant les a : il démarre avec Windows et ne lit la température que quand SyncR la demande. Désactiver le module le laisse au repos.',
+  'Set up': 'Installer',
+  Start: 'Démarrer',
+  Update: 'Mettre à jour',
+  'setup failed': 'échec de l’installation',
+  'needs PawnIO': 'requiert PawnIO',
+  'needs the helper': 'requiert l’assistant',
+  'helper stopped': 'assistant arrêté',
+  'helper out of date': 'assistant à mettre à jour',
 }

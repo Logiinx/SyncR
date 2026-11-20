@@ -2,8 +2,8 @@
 // for, at the chosen speed, and sends them to the page (event "hardware").
 // Without admin: the GPU through NVIDIA's own library (nvml.dll, comes with the driver), the CPU's
 // load and clock through Windows' performance counters, the RAM through Windows' memory status.
-// The CPU temperature needs the PawnIO driver, which only answers admin programs: it will come from
-// a small admin helper (later step).
+// The CPU temperature needs the PawnIO driver, which only answers admin programs: it comes from a
+// small admin helper, set up once by the user (hardware_helper.rs).
 // Only the sensors asked for are read; the libraries are opened only when one of theirs is asked
 // for, and closed when the module is turned off (the thread ends).
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
@@ -12,6 +12,9 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
+
+#[path = "hardware_helper.rs"]
+pub mod helper;
 
 // What the page sends (hardware.ts)
 #[derive(Clone, serde::Deserialize)]
@@ -31,6 +34,8 @@ pub struct Readings {
   gpu_name: Option<String>, // as NVIDIA has it ("NVIDIA GeForce RTX 5070 Ti")
   cpu_load: Option<f64>,    // %, like Task Manager
   cpu_clock: Option<f64>,   // MHz, average over all cores, like Task Manager's "Speed"
+  cpu_temp: Option<f64>,    // °C, "Core (Tctl/Tdie)", from the admin helper
+  cpu_temp_state: Option<&'static str>, // why there's no cpu_temp (helper::OK... ), when asked for
   gpu_temp: Option<f64>,    // °C
   gpu_load: Option<f64>,    // %
   gpu_clock: Option<f64>,   // MHz, graphics clock
@@ -75,9 +80,17 @@ pub fn hardware_readings() -> Option<Readings> {
   lock(&LAST).clone()
 }
 
+// After the helper was set up or removed: read again at once
+fn read_now() {
+  if let Some(sender) = lock(&WORKER).as_ref() {
+    let _ = sender.send(());
+  }
+}
+
 fn run(app: AppHandle, receiver: Receiver<()>) {
   let mut nvml: Option<Option<nvml::Nvml>> = None; // None: not tried yet; Some(None): no NVIDIA GPU
   let mut counters: Option<Option<counters::Counters>> = None;
+  let mut helper: Option<helper::Reader> = None; // dropped when not asked for, so the helper rests
   let cpu_name = registry::cpu_name();
   loop {
     let Some(config) = lock(&CONFIG).clone() else { return };
@@ -117,6 +130,13 @@ fn run(app: AppHandle, receiver: Receiver<()>) {
         }
       }
     }
+    if wants("cpuTemp") {
+      let (celsius, state) = helper.get_or_insert_with(helper::Reader::new).read();
+      readings.cpu_temp = celsius;
+      readings.cpu_temp_state = Some(state);
+    } else {
+      helper = None;
+    }
     if wants("ram") {
       if let Some((used, total)) = memory() {
         readings.ram_used = Some(used);
@@ -138,8 +158,9 @@ fn now_ms() -> u64 {
   std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |since| since.as_millis() as u64)
 }
 
-fn wide(text: &str) -> Vec<u16> {
-  text.encode_utf16().chain(Some(0)).collect()
+fn wide(text: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
+  use std::os::windows::ffi::OsStrExt;
+  text.as_ref().encode_wide().chain(Some(0)).collect()
 }
 
 // RAM in use and in total, in bytes
@@ -162,7 +183,12 @@ mod registry {
   const CPU_KEY: &str = r"HARDWARE\DESCRIPTION\System\CentralProcessor\0";
 
   pub fn cpu_name() -> Option<String> {
-    let (key, value) = (wide(CPU_KEY), wide("ProcessorNameString"));
+    cpu_text("ProcessorNameString")
+  }
+
+  // A text value of the CPU's key
+  pub fn cpu_text(name: &str) -> Option<String> {
+    let (key, value) = (wide(CPU_KEY), wide(name));
     let mut text = [0u16; 128];
     let mut size = size_of_val(&text) as u32;
     // text has room for size bytes; Windows writes a text ending in 0 there

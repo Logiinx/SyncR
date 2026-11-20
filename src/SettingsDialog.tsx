@@ -37,7 +37,7 @@ import MouseBatterySettings from './MouseBatterySettings'
 import HardwareSettings from './HardwareSettings'
 import Dialog from './Dialog'
 import { saveMouseBattery, useMouseBattery } from './mouseBattery'
-import { saveHardware, useHardware } from './hardware'
+import { toggleHardware, useHardware } from './hardware'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -699,7 +699,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: 'mouse-
             {t('Open…')}
           </button>
         )}
-        <input type="checkbox" checked={hardware.on} onChange={(e) => saveHardware({ on: e.target.checked })} />
+        <input type="checkbox" checked={hardware.on} onChange={(e) => toggleHardware(e.target.checked)} />
       </SettingRow>
     </SettingsCard>
   )

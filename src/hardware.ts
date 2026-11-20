@@ -9,7 +9,7 @@ import { read, write } from './localState'
 // runs nothing and opens no library.
 
 // The sensors, in the order the settings window lists them. Rust reads only the ones asked for.
-export const SENSORS = ['cpuLoad', 'cpuClock', 'gpuTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan', 'ram'] as const
+export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuClock', 'gpuTemp', 'gpuLoad', 'gpuClock', 'gpuMemClock', 'gpuFan', 'ram'] as const
 export type Sensor = (typeof SENSORS)[number]
 
 export interface HardwareSettings {
@@ -19,7 +19,7 @@ export interface HardwareSettings {
 }
 
 const KEY = 'syncr.hardware'
-const DEFAULTS: HardwareSettings = { on: false, everyMs: 1000, shown: ['gpuTemp'] }
+const DEFAULTS: HardwareSettings = { on: false, everyMs: 1000, shown: ['cpuTemp', 'gpuTemp'] }
 export const SPEEDS = [500, 1000, 2000, 5000]
 
 let current: HardwareSettings = { ...DEFAULTS, ...read<Partial<HardwareSettings>>(KEY, {}) }
@@ -56,12 +56,37 @@ export function startHardware() {
   if (current.on) send()
 }
 
+// Settings → Modules. Turning it on sets up the admin helper for the CPU temperature (one admin
+// prompt) if it isn't yet and the widget shows that temperature; said No: the settings window
+// offers "Set up" (HardwareSettings.tsx).
+export function toggleHardware(on: boolean) {
+  saveHardware({ on })
+  if (on && current.shown.includes('cpuTemp')) void setUpHelper(true)
+}
+
+// The CPU temperature comes from an admin helper (hardware_helper.rs); why it's missing:
+// ok · unsupported (not a Ryzen: not offered) · noPawnio · noHelper (not set up) · notRunning ·
+// outdated (set up by an older SyncR) · failed (this reading)
+export type HelperState = 'ok' | 'unsupported' | 'noPawnio' | 'noHelper' | 'notRunning' | 'outdated' | 'failed'
+
+// One admin prompt each. ifMissing: only if it isn't set up yet. Answers "ok", "declined" (the
+// user said No), "failed", or a HelperState that prevents it.
+export function setUpHelper(ifMissing = false) {
+  return invoke<string>('hardware_helper_setup', { ifMissing }).catch(() => 'failed')
+}
+
+export function removeHelper() {
+  return invoke<string>('hardware_helper_remove').catch(() => 'failed')
+}
+
 // As hardware.rs sends it (null: not asked for, or this PC can't give it)
 export interface HardwareReadings {
   cpuName: string | null
   gpuName: string | null
   cpuLoad: number | null
   cpuClock: number | null
+  cpuTemp: number | null
+  cpuTempState: HelperState | null // null: not asked for
   gpuTemp: number | null
   gpuLoad: number | null
   gpuClock: number | null

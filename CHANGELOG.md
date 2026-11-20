@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Hardware module in Settings → Modules: GPU temperature, loads, clocks, fan and RAM (PC only)
+- **New:** Hardware module in Settings → Modules: CPU and GPU temperatures, loads and more (PC only)
 
 **Video** (PC only)
 - **New:** list of keyboard shortcuts in the players, in ⚙️ → Keyboard shortcuts

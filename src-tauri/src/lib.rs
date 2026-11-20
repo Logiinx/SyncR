@@ -362,7 +362,9 @@ pub fn run() {
       mouse_battery::mouse_battery_status,
       mouse_battery::mouse_battery_tip,
       hardware::hardware_config,
-      hardware::hardware_readings
+      hardware::hardware_readings,
+      hardware::helper::hardware_helper_setup,
+      hardware::helper::hardware_helper_remove
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,

@@ -3,6 +3,7 @@
 // capability of each window that calls it.
 // The Windows app manifest is our own (windows-app-manifest.xml: Tauri's + supported Windows versions).
 fn main() {
+  build_hardware_helper();
   println!("cargo:rerun-if-changed=windows-app-manifest.xml");
   let windows = tauri_build::WindowsAttributes::new().app_manifest(include_str!("windows-app-manifest.xml"));
   tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows).app_manifest(tauri_build::AppManifest::new().commands(&[
@@ -38,6 +39,38 @@ fn main() {
     "mouse_battery_tip",
     "hardware_config",
     "hardware_readings",
+    "hardware_helper_setup",
+    "hardware_helper_remove",
   ])))
   .expect("failed to build");
+}
+
+// The Hardware module's admin helper (hardware-helper/): its own small program, built here and
+// carried inside SyncR, which writes it out when the user sets it up (src/hardware_helper.rs).
+// Its own target folder, so this build doesn't wait for the one running this script.
+fn build_hardware_helper() {
+  use std::env::var;
+  use std::path::PathBuf;
+  for path in ["hardware-helper/src", "hardware-helper/build.rs", "hardware-helper/Cargo.toml", "hardware-helper/Cargo.lock", "hardware-helper/pawnio"] {
+    println!("cargo:rerun-if-changed={path}");
+  }
+  if var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+    return;
+  }
+  let here = PathBuf::from(var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+  let target = here.join("target").join("hardware-helper");
+  let mut cargo = std::process::Command::new(var("CARGO").unwrap_or_else(|_| "cargo".into()));
+  cargo
+    .args(["build", "--release", "--locked", "--manifest-path"])
+    .arg(here.join("hardware-helper").join("Cargo.toml"))
+    .arg("--target-dir")
+    .arg(&target);
+  // Settings meant for SyncR's own build, not the helper's
+  for name in ["CARGO_TARGET_DIR", "CARGO_BUILD_TARGET", "CARGO_ENCODED_RUSTFLAGS", "RUSTFLAGS"] {
+    cargo.env_remove(name);
+  }
+  let status = cargo.status().expect("couldn't start cargo for hardware-helper");
+  assert!(status.success(), "hardware-helper didn't build");
+  let out = PathBuf::from(var("OUT_DIR").expect("OUT_DIR")).join("syncr-hardware.exe");
+  std::fs::copy(target.join("release").join("syncr-hardware.exe"), out).expect("couldn't copy syncr-hardware.exe");
 }

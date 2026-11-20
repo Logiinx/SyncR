@@ -31,6 +31,8 @@
     "allow-mouse-battery-tip",
     "allow-hardware-config",
     "allow-hardware-readings",
+    "allow-hardware-helper-setup",
+    "allow-hardware-helper-remove",
     "allow-google-sign-in",
     "allow-protect-secret",
     "allow-unprotect-secret",

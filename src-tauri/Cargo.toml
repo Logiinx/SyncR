@@ -48,9 +48,10 @@ tauri-plugin-single-instance = "2"
 # Windows DPAPI for secrets (lib.rs, dpapi). Same version Tauri already uses.
 # Also the mouse battery (mouse_battery.rs): the receiver (HID, SetupDi, file reads) and its strip in the
 # taskbar (mouse_battery/strip.rs: drawing with GDI, windows, messages, tooltip, hover).
-# The hardware module (hardware.rs): performance counters (CPU load, clock), memory status, nvml.dll.
+# The hardware module (hardware.rs): performance counters (CPU load, clock), memory status, nvml.dll;
+# its admin helper (hardware_helper.rs): the pipe, Program Files, the admin prompt.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Performance", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Performance", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 # The video window's extensions (video_extensions.rs): Tauri can only load a fixed folder and hides
 # whether it worked. The same versions as Tauri's own, so nothing new gets built.
 webview2-com = "0.39"
