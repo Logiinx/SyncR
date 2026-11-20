@@ -4086,6 +4086,28 @@ button {
   color: var(--text);
 }
 
+/* Library's Sort and Show (LibraryPick): at the row's left, like Import from Steam; blue while
+   Show hides some games. On a phone these three show their icons only (the text is in the tooltip) */
+.games-picks {
+  display: flex;
+  gap: 6px;
+  margin-right: auto;
+}
+
+.games-status-tabs .games-pick {
+  gap: 5px;
+}
+
+.games-status-tabs .games-pick.on {
+  color: var(--link);
+}
+
+@container (max-width: 480px) {
+  .games-tool-label {
+    display: none;
+  }
+}
+
 /* My games' ⚙️ (Games settings), right of the Covers / list switch: a square as tall as it */
 .games-status-tabs .games-settings-button {
   justify-content: center;

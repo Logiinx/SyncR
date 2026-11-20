@@ -1,4 +1,4 @@
-import { CalendarClock, Library, Play, ShoppingCart, type LucideIcon } from 'lucide-react'
+import { ArrowDownAZ, CalendarClock, CircleCheck, CirclePause, CircleX, Clock, Heart, History, Library, Play, ShoppingCart, Star, type LucideIcon } from 'lucide-react'
 import { plural, t, textKey, type TextKey } from './i18n'
 import { changed, db, isWatched, matchGamePriorities, pinnedCard, updateGame, setGameStatus, type Game, type GameStatus } from './db'
 import type { DialogRequest } from './Dialog'
@@ -164,6 +164,32 @@ export function sortGames(games: Game[]): Game[] {
         ? (a.releaseDate ?? Infinity) - (b.releaseDate ?? Infinity) || a.name.localeCompare(b.name)
         : b.statusAt - a.statusAt),
   )
+}
+
+// Library's Sort and Show menus (GamesView.tsx), remembered on each device. "Recently moved" is
+// sortGames' order (favorites first); the others are strict (favorites have their own Show choice).
+// Games without a rating or Steam hours go last; equal ones by name.
+export type LibrarySort = 'moved' | 'rating' | 'hours' | 'name'
+export type LibraryShow = 'all' | Ending | 'favorites'
+export const LIBRARY_SORTS: { value: LibrarySort; label: TextKey; icon: LucideIcon }[] = [
+  { value: 'moved', label: textKey('Recently moved'), icon: History },
+  { value: 'rating', label: textKey('Rating'), icon: Star },
+  { value: 'hours', label: textKey('Hours played'), icon: Clock },
+  { value: 'name', label: textKey('Name'), icon: ArrowDownAZ },
+]
+export const LIBRARY_SHOWS: { value: LibraryShow; label: TextKey; icon: LucideIcon }[] = [
+  { value: 'all', label: textKey('All'), icon: Library },
+  { value: 'completed', label: textKey('Completed'), icon: CircleCheck },
+  { value: 'paused', label: textKey('Paused'), icon: CirclePause },
+  { value: 'dropped', label: textKey('Dropped'), icon: CircleX },
+  { value: 'favorites', label: textKey('Favorites'), icon: Heart },
+]
+const byName = (a: Game, b: Game) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+export function libraryGames(games: Game[], sort: LibrarySort, show: LibraryShow): Game[] {
+  const shown = games.filter((g) => (show === 'all' ? true : show === 'favorites' ? g.priority : endingOf(g) === show))
+  if (sort === 'moved') return sortGames(shown)
+  const value = (g: Game) => (sort === 'rating' ? g.rating : sort === 'hours' ? g.steamStats?.minutes : undefined) ?? -1
+  return [...shown].sort((a, b) => value(b) - value(a) || byName(a, b))
 }
 
 // A game's platforms, PC and Android first (what you play on). Windows (game window, preview,

@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { plural, t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, CalendarCheck, CalendarClock, Download, Gamepad2, LayoutGrid, List, Search, Settings, X } from 'lucide-react'
+import { ArrowDownUp, ArrowRight, CalendarCheck, CalendarClock, ChevronDown, Download, Gamepad2, LayoutGrid, List, ListFilter, Search, Settings, X } from 'lucide-react'
 import GamesSettings from './GamesSettings'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
-import { addGame, formatRelease, gameId, isPlayed, isReleased, releaseText, removeGameQuestion, saleDiscount, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab } from './games'
+import { addGame, formatRelease, gameId, isPlayed, isReleased, libraryGames, LIBRARY_SHOWS, LIBRARY_SORTS, releaseText, removeGameQuestion, saleDiscount, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab, type LibraryShow, type LibrarySort } from './games'
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
@@ -66,6 +66,14 @@ function GamesView() {
   const [shown, setShownState] = useState<GamesTab>(sessionTab)
   const setShown = (tab: GamesTab) => setShownState((sessionTab = tab))
   const [shelf, setShelf] = useLocalState<ShelfLayout>('syncr.gamesLayout', 'grid')
+  // Library's Sort and Show menus, remembered per device
+  const [libSort, setLibSort] = useLocalState<LibrarySort>('syncr.librarySort', 'moved')
+  const [libShow, setLibShow] = useLocalState<LibraryShow>('syncr.libraryShow', 'all')
+  const [pickMenu, setPickMenu] = useState<{ kind: 'sort' | 'show'; x: number; y: number } | null>(null)
+  const openPickMenu = (kind: 'sort' | 'show', button: HTMLElement) => {
+    const box = button.getBoundingClientRect()
+    setPickMenu({ kind, x: box.left, y: box.bottom + 4 })
+  }
   const statusList = useRef<HTMLDivElement>(null)
   const lines = useTabLines(statusList, shown)
   const [menu, setMenu] = useState<GameMenu | null>(null)
@@ -182,6 +190,18 @@ function GamesView() {
               </p>
             )}
             {importing && <SteamImport onClose={() => setImporting(false)} />}
+            {pickMenu && (
+              <ContextMenu
+                x={pickMenu.x}
+                y={pickMenu.y}
+                onClose={() => setPickMenu(null)}
+                items={
+                  pickMenu.kind === 'sort'
+                    ? LIBRARY_SORTS.map((s) => ({ label: t(s.label), icon: s.icon, checked: s.value === libSort, onClick: () => setLibSort(s.value) }))
+                    : LIBRARY_SHOWS.map((s) => ({ label: t(s.label), icon: s.icon, checked: s.value === libShow, divider: s.value === 'favorites', onClick: () => setLibShow(s.value) }))
+                }
+              />
+            )}
             {settingsOpen && <GamesSettings onClose={() => setSettingsOpen(false)} />}
             {games && games.length > 0 && (
               <>
@@ -212,10 +232,29 @@ function GamesView() {
                     })}
                   </div>
                   <div className="games-tools">
+                    {/* Library: Sort and Show at the left (on a phone their icons only) */}
+                    {shown === 'library' && (
+                      <div className="games-picks">
+                        <LibraryPick
+                          title={t('Sort')}
+                          icon={ArrowDownUp}
+                          label={t(LIBRARY_SORTS.find((s) => s.value === libSort)?.label ?? LIBRARY_SORTS[0].label)}
+                          onOpen={(button) => openPickMenu('sort', button)}
+                        />
+                        <LibraryPick
+                          title={t('Show')}
+                          icon={ListFilter}
+                          label={t(LIBRARY_SHOWS.find((s) => s.value === libShow)?.label ?? LIBRARY_SHOWS[0].label)}
+                          on={libShow !== 'all'}
+                          onOpen={(button) => openPickMenu('show', button)}
+                        />
+                      </div>
+                    )}
                     {/* Library, with a Steam profile set (Settings → Accounts) */}
                     {shown === 'library' && steam?.steamId && (
-                      <button className="games-import" onClick={() => setImporting(true)}>
-                        <Download size={14} /> {t('Import from Steam…')}
+                      <button className="games-import" title={t('Import from Steam…')} onClick={() => setImporting(true)}>
+                        <Download size={14} />
+                        <span className="games-tool-label">{t('Import from Steam…')}</span>
                       </button>
                     )}
                     <FillSwitch className="calendar-layouts games-layouts" options={shelfLayouts()} value={shelf} onChange={setShelf} />
@@ -232,9 +271,17 @@ function GamesView() {
                     <ToPlayShelf games={games} layout={shelf} onOpen={setOpenId} onMenu={openMenu} />
                   ) : (
                     <GameShelf
-                      games={sortGames(games.filter((g) => tabOf(g.status).tab === shown))}
+                      games={
+                        shown === 'library'
+                          ? libraryGames(games.filter((g) => g.status === 'library'), libSort, libShow)
+                          : sortGames(games.filter((g) => tabOf(g.status).tab === shown))
+                      }
                       layout={shelf}
-                      emptyText={t('No games in {place}', { place: t(TABS.find((tab) => tab.tab === shown)!.label) })}
+                      emptyText={
+                        shown === 'library' && libShow !== 'all'
+                          ? t('No games to show')
+                          : t('No games in {place}', { place: t(TABS.find((tab) => tab.tab === shown)!.label) })
+                      }
                       onOpen={setOpenId}
                       onMenu={openMenu}
                     />
@@ -434,6 +481,18 @@ function GameShelf({
         <Item key={game.id} game={game} onOpen={() => onOpen(game.id)} onMenu={(x, y) => onMenu(game, x, y)} />
       ))}
     </div>
+  )
+}
+
+// Library's Sort / Show button: icon, the current choice (hidden on a phone), ▾. "on" (blue) =
+// some games are hidden.
+function LibraryPick({ title, icon: Icon, label, on, onOpen }: { title: string; icon: typeof X; label: string; on?: boolean; onOpen: (button: HTMLElement) => void }) {
+  return (
+    <button className={on ? 'games-import games-pick on' : 'games-import games-pick'} title={t('{what}: {choice}', { what: title, choice: label })} onClick={(e) => onOpen(e.currentTarget)}>
+      <Icon size={14} />
+      <span className="games-tool-label">{label}</span>
+      <ChevronDown size={14} />
+    </button>
   )
 }
 

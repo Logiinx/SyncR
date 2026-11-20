@@ -7,6 +7,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Jeux**
 - **Nouveau :** l’onglet À acheter montre combien de jeux sont en promo, en vert
 - **Nouveau :** en haut d’À venir : vos jeux qui sortent dans les 30 prochains jours
+- **Nouveau :** Bibliothèque : trier par évaluation, heures jouées ou nom
+- **Nouveau :** Bibliothèque : n’afficher que les jeux terminés, en pause, abandonnés ou favoris
+- **Changé :** sur téléphone, Importer depuis Steam ne montre que son icône
 
 ## [0.97.2] - 2026-11-20
 
