@@ -25,6 +25,9 @@ All notable changes to SyncR. Newest version first.
 **Notes**
 - **New:** hovering ☰ shows the notes list over the page, a click keeps it (PC only)
 
+**Sync**
+- **New:** a sign when a sync sends or gets changes: a line or a glow (Settings → Look)
+
 ## [0.98.2] - 2026-11-21
 
 **Games**

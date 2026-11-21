@@ -826,6 +826,55 @@ button {
   display: none;
 }
 
+/* The sign that a sync worked (syncSign.ts), over everything below the tabs, never in the way
+   of the mouse. "sweep": a 2px line slides along under the tabs, then fades. "edge": the
+   page's edge glows once, no motion. Neither holds text (a fade over the page keeps it sharp). */
+.sync-sign {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.sync-sign.sweep {
+  bottom: auto;
+  height: 2px;
+  background: var(--sign-color);
+  animation: sync-sweep 1.2s ease-out forwards;
+}
+
+.sync-sign.edge {
+  box-shadow:
+    inset 0 0 0 2px var(--sign-color),
+    inset 0 0 18px color-mix(in srgb, var(--sign-color) 18%, transparent);
+  opacity: 0;
+  animation: sync-edge 1.4s ease-out forwards;
+}
+
+@keyframes sync-sweep {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  60% {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0);
+    opacity: 0;
+  }
+}
+
+@keyframes sync-edge {
+  15%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Conflict copy marker in the notes list, before the title */
 .conflict-mark {
   margin-right: 5px;

@@ -4,6 +4,7 @@ import { plural, t } from './i18n'
 import { read, write } from './localState'
 import { endAllSessions } from './noteHistory'
 import { RetrySoonError, syncNow, type SyncResult } from './sync'
+import { playSyncSign } from './syncSign'
 
 // Runs sync automatically and keeps track of its status for the cloud button.
 // Syncs: when started (app open + unlocked), ~1.5 s after the user stops editing, right away
@@ -38,6 +39,8 @@ let enabled = false
 let running = false
 let changedDuringSync = false
 let urgentAfterSync = false // syncSoon() was called during a sync: go again right away
+// A click on the cloud during a sync: the sign (syncSign.ts) shows after the next one
+let signWanted = false
 let buzzWanted = false // the user left the editor: buzz once everything is sent (vibrateDone)
 let quickRetries = 0
 let failing = false // the last sync ended with an error (already reported)
@@ -86,6 +89,7 @@ async function run(manual = false): Promise<SyncResult | undefined> {
   if (!enabled) return
   if (running) {
     changedDuringSync = true
+    if (manual) signWanted = true
     return
   }
   window.clearTimeout(timer)
@@ -102,6 +106,8 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
     if (!changedDuringSync && (buzzWanted || manual)) vibrateDone()
+    if (manual || signWanted || result.uploaded + result.downloaded + result.deleted + result.conflicts > 0) playSyncSign()
+    signWanted = false
     if (!manual && result.conflicts) {
       notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
     }
@@ -131,10 +137,12 @@ async function run(manual = false): Promise<SyncResult | undefined> {
       // fetch() throws TypeError when there's no connection
       if (manual) notify(t("You're offline. Changes will sync when you're back online."))
       buzzWanted = false // no buzz much later, when it's back
+      signWanted = false
       setStatus('offline')
       schedule(RETRY_LATER_MS)
     } else {
       buzzWanted = false
+      signWanted = false
       if (manual || !failing) notify(message)
       failing = true
       quickRetries = 0

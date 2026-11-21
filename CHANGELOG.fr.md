@@ -25,6 +25,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Notes**
 - **Nouveau :** survoler ☰ montre la liste des notes par-dessus la page, un clic la garde (PC uniquement)
 
+**Synchronisation**
+- **Nouveau :** un signe quand une synchro envoie ou reçoit des changements : un trait ou une lueur (Paramètres → Apparence)
+
 ## [0.98.2] - 2026-11-21
 
 **Jeux**
