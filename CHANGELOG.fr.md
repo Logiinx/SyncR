@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-21
+
 **Application**
 - **Corrigé :** un bref clignement en changeant d’onglet, fondu enchaîné fluide à nouveau
 
