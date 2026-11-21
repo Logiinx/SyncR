@@ -317,7 +317,8 @@ button {
   fill: none;
 }
 
-/* Syncing: a turning ring in the corner */
+/* Syncing: a turning ring in the corner. Its dashes slide around it (drawn in place), like the
+   spinner's arc: a rotation would soften the text around it (see spin-arc). */
 .sync-button .ring-gap {
   fill: var(--gap);
   stroke: none;
@@ -326,10 +327,14 @@ button {
 .sync-button .ring {
   stroke: var(--link);
   stroke-width: 1.5;
-  stroke-dasharray: 10 7;
-  transform-box: view-box;
-  transform-origin: 19px 18px;
-  animation: spin 1s linear infinite;
+  stroke-dasharray: 9.6 6.74; /* together once around the circle (2π × 2.6 ≈ 16.34) */
+  animation: spin-ring 1s linear infinite;
+}
+
+@keyframes spin-ring {
+  to {
+    stroke-dashoffset: -16.34;
+  }
 }
 
 /* Settings → Animations off: no slides or fades anywhere. They still end at once (1ms),
@@ -371,12 +376,6 @@ button {
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Hover info under the cloud button: status + last sync, then a dim hint (SyncButton.tsx) */
 .sync-info {
   position: fixed;
@@ -388,7 +387,6 @@ button {
   font-size: 13px;
   white-space: nowrap;
   pointer-events: none;
-  animation: fade-in 0.15s;
 }
 
 .sync-info-hint {
@@ -4379,14 +4377,21 @@ button {
 
 /* The window's content fades in: a cover of its own background on top fades away (user,
    2026-11-21). Only the cover is see-through, never the text under it, so the text stays sharp.
-   The frame (border) shows at once. */
+   The frame (border) shows at once. The same sharp fade-in for the cloud button's hover info,
+   info tips that open upward and a Games / Video list switching; pages switching tabs get a
+   cover from animations.ts (coverIn). */
 .dialog-backdrop > .dialog,
-.game-window > .dialog {
+.game-window > .dialog,
+.games-tab-in {
   position: relative;
 }
 
 .dialog-backdrop > .dialog::after,
-.game-window > .dialog::after {
+.game-window > .dialog::after,
+.sync-info::after,
+.info-tip-box.above::after,
+.games-tab-in::after,
+.fade-cover {
   content: '';
   position: absolute;
   inset: 0;
@@ -4396,6 +4401,27 @@ button {
   opacity: var(--cover);
   pointer-events: none;
   animation: cover-off var(--open-big) var(--ease-open);
+}
+
+.sync-info::after {
+  animation-duration: 0.15s;
+  animation-timing-function: ease;
+}
+
+.info-tip-box.above::after {
+  animation-duration: var(--open-small);
+}
+
+/* On the page: covered by the page's background */
+.games-tab-in::after {
+  background: var(--bg);
+  animation: cover-off var(--close-small) ease-out;
+}
+
+/* Placed and colored by coverIn (animations.ts), which runs its fade */
+.fade-cover {
+  inset: auto;
+  animation: none;
 }
 
 @property --cover {
@@ -4711,8 +4737,9 @@ button {
   animation: menu-in var(--open-small) var(--ease-open);
 }
 
+/* Opening upward: fades in (a cover: see "The window's content fades in") */
 .info-tip-box.above {
-  animation: fade-in var(--open-small) var(--ease-open);
+  animation: none;
 }
 
 .info-tip-box ul {
@@ -6712,10 +6739,8 @@ h3.games-group-title {
   outline-offset: -1.5px;
 }
 
-/* Games: a tab's (or layout's) list fades in quickly when switching (GamesView.tsx) */
-.games-tab-in {
-  animation: fade-in var(--close-small) ease-out;
-}
+/* Games: a tab's (or layout's) list fades in quickly when switching (GamesView.tsx): see
+   "The window's content fades in" (a cover) */
 
 /* A cover that just arrived fades in (CoverImage, GameCover.tsx; an already loaded one shows at once) */
 img[data-fade] {
@@ -8470,19 +8495,27 @@ button.history-row.selected {
   cursor: default;
 }
 
-/* Still asking IGDB: dim blue, softly pulsing */
+/* Still asking IGDB: dim blue, softly pulsing. The pulse fades its colors through a registered
+   variable, not its opacity: an opacity fade draws its text without ClearType (soft), see
+   "Windows" (dialog-backdrop). */
+@property --pulse {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
 .gd-action.trailer-toggle.loading {
-  background: color-mix(in srgb, var(--accent) 50%, var(--bg-raised));
-  color: color-mix(in srgb, #fff 60%, transparent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--accent) 50%, var(--bg-raised)) calc(var(--pulse) * 100%), transparent);
+  color: color-mix(in srgb, #fff calc(var(--pulse) * 60%), transparent);
   animation: trailer-loading 1.2s ease-in-out infinite alternate;
 }
 
 @keyframes trailer-loading {
   from {
-    opacity: 0.5;
+    --pulse: 0.5;
   }
   to {
-    opacity: 1;
+    --pulse: 1;
   }
 }
 

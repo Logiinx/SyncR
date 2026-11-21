@@ -150,17 +150,45 @@ export function useList(ref: RefObject<HTMLElement | null>) {
   })
 }
 
+// A sharp fade-in: a cover the color of what's behind el, placed over it, fades away. el itself
+// is never see-through: an opacity fade draws its text without ClearType (soft), then sharp at
+// the end with a 1px snap (index.css, "Windows"). The cover fades through a registered variable
+// (--cover), which the browser can't hand to the graphics card.
+function coverIn(el: HTMLElement) {
+  if (el.nextElementSibling?.matches('.fade-cover')) return // React runs it twice in development
+  const cover = document.createElement('div')
+  cover.className = 'fade-cover'
+  Object.assign(cover.style, {
+    left: `${el.offsetLeft}px`,
+    top: `${el.offsetTop}px`,
+    width: `${el.offsetWidth}px`,
+    height: `${el.offsetHeight}px`,
+    background: backgroundBehind(el),
+  })
+  el.after(cover)
+  cover
+    .animate([{ '--cover': 1 }, { '--cover': 0 }], { duration: TIMING.openSmall, easing: EASE_OPEN })
+    .finished.finally(() => cover.remove())
+}
+
+// The first background color under el (its own isn't counted: the cover stands for "not there yet")
+function backgroundBehind(el: Element) {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const color = getComputedStyle(node).backgroundColor
+    if (color !== 'transparent' && !color.startsWith('rgba(0, 0, 0, 0)')) return color
+  }
+  return 'var(--bg)'
+}
+
 // Pages (a note, Games, Reminders, the empty page) crossfade when switching tabs: the new one
-// fades in while a copy of the old one (made before React empties it), on top, fades out. Not
-// when the app starts.
+// fades in (coverIn) while a copy of the old one (made before React empties it), on top, fades
+// out. Not when the app starts.
 export function usePage(ref: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const el = ref.current
     const body = el?.parentElement
     if (!el || !body) return
-    if (document.documentElement.classList.contains('ready') && animationsOn()) {
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: TIMING.openSmall, easing: EASE_OPEN })
-    }
+    if (document.documentElement.classList.contains('ready') && animationsOn()) coverIn(el)
     return () => {
       if (!animationsOn()) return
       const copy = el.cloneNode(true) as HTMLElement
