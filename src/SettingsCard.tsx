@@ -31,7 +31,8 @@ export function SettingRow({ label, value, title, className, children }: {
 }
 
 // A module's on/off switch, the first row of its section (Mail, Video, Games, Hardware). What
-// follows it sits in a `settings-part` fieldset, grayed while off.
+// follows it sits in a `settings-part` fieldset, grayed while off. Search shows it with any of the
+// module's results (SettingsSearch.tsx).
 export function ModuleSwitch({ name, about, aboutLabel, on, onChange }: {
   name: string
   about: string
@@ -41,6 +42,7 @@ export function ModuleSwitch({ name, about, aboutLabel, on, onChange }: {
 }) {
   return (
     <SettingRow
+      className="module-switch"
       label={
         <>
           {name}

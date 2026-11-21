@@ -3,6 +3,7 @@ import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, 
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { RowStatus, SettingRow } from './SettingsCard'
+import { SettingsResults, SettingsSearchBox } from './SettingsSearch'
 import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -97,12 +98,22 @@ import { saveLanguageChoice, useLanguageChoice } from './language'
 // start: opens on that section instead of the last one (a module's ⚙️, the taskbar battery, the
 // Hardware widget's menu: openSettings.ts)
 function SettingsDialog({ onClose, start }: { onClose: () => void; start?: SettingsStart }) {
-  // Focused when it opens (so Escape works), without scrolling: it opens at the top
+  // Focused when it opens (so Escape works), without scrolling: it opens at the top. On the PC
+  // the cursor goes in the search box, to type right away (a phone would pop up its keyboard).
   const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
+  const searchRef = useRef<HTMLInputElement>(null)
+  const narrow = useNarrow()
+  useEffect(() => (narrow ? dialogRef : searchRef).current?.focus({ preventScroll: true }), [])
+  // Search (SettingsSearch.tsx): while it has text, the results take the section's place (phone:
+  // the list's place)
+  const [query, setQuery] = useState('')
+  const searching = query.trim() !== ''
+  function search(text: string) {
+    setQuery(text)
+    pageRef.current?.scrollTo({ top: 0 })
+  }
   // The section shown on the right of the sidebar: the last one looked at on this device (PC).
   // On a phone the list shows first and a section opens in its place (phoneOpen).
-  const narrow = useNarrow()
   const startSection = start === 'mouse-battery' ? 'hardware' : start
   const [section, setSection] = useState(() => {
     if (startSection) write(SECTION_KEY, startSection)
@@ -114,6 +125,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   // taskbar battery: Hardware's mouse battery, at the bottom)
   const partToShow = useRef<string | null>(start === 'mouse-battery' ? '.mouse-battery-part' : null)
   function openSection(id: string, part?: string) {
+    setQuery('')
     setSection(id)
     write(SECTION_KEY, id)
     setPhoneOpen(true)
@@ -121,6 +133,9 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     partToShow.current = part ?? null
   }
   useEffect(() => {
+    // The focus back in Settings when the button clicked went away (a result, Accounts' rows), so
+    // Escape still closes it
+    if (!dialogRef.current?.contains(document.activeElement)) dialogRef.current?.focus({ preventScroll: true })
     const page = pageRef.current
     const selector = partToShow.current
     partToShow.current = null
@@ -133,7 +148,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     // Again a moment later: a check's line (Steam's) comes in after, making the page longer
     const timer = window.setTimeout(show, 400)
     return () => window.clearTimeout(timer)
-  }, [section, phoneOpen])
+  }, [section, phoneOpen, searching])
 
   const [appearance, setAppearance] = useState(loadAppearance)
   function update(change: Partial<Appearance>) {
@@ -742,9 +757,14 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   const firstModule = sections.find((s) => s.module)?.id
   const current = sections.find((s) => s.id === section) ?? sections[0]
   // Phone: the list fills the window; a section opens in its place, with ‹ back to the list
+  // While searching, the results take the section's place (phone: the list's, under the box) and
+  // no section is lit in the sidebar
   const showList = !narrow || !phoneOpen
-  const showPage = !narrow || phoneOpen
+  const showNav = showList && !(narrow && searching)
+  const showPage = !narrow || phoneOpen || searching
+  const lit = !narrow && !searching
   const back = narrow && phoneOpen ? () => setPhoneOpen(false) : null
+  const searchBox = <SettingsSearchBox query={query} onQuery={search} inputRef={searchRef} />
 
   // Check for updates: the icon next to Settings in the sidebar
   const about = (
@@ -770,17 +790,19 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           ) : (
             <h2>{t('Settings')}</h2>
           )}
+          {!narrow && searchBox}
           <CloseButton onClick={onClose} />
         </div>
         <div className="settings-body">
-          {showList && (
+          {narrow && showList && searchBox}
+          {showNav && (
             <nav className="settings-nav" aria-label={t('Settings sections')}>
               {sections.map(({ id, icon: Icon, name, off }) => (
                 <Fragment key={id}>
                   {id === firstModule && <h3 className="settings-nav-heading">{t('Modules')}</h3>}
                   <button
-                    className={`settings-nav-item${id === current.id && !narrow ? ' on' : ''}${id === 'accounts' ? ' last' : ''}${off ? ' off' : ''}`}
-                    aria-current={id === current.id && !narrow ? 'page' : undefined}
+                    className={`settings-nav-item${id === current.id && lit ? ' on' : ''}${id === 'accounts' ? ' last' : ''}${off ? ' off' : ''}`}
+                    aria-current={id === current.id && lit ? 'page' : undefined}
                     onClick={() => openSection(id)}
                   >
                     <Icon size={15} /> {name}
@@ -792,7 +814,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           )}
           {showPage && (
             <div className="settings-page" ref={pageRef}>
-              {current.content}
+              {searching ? <SettingsResults query={query} sections={sections} /> : current.content}
             </div>
           )}
         </div>

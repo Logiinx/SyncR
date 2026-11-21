@@ -4840,6 +4840,52 @@ button {
   overflow-y: auto;
 }
 
+/* Search (SettingsSearch.tsx): at the right of the title row, before ✕ (mockup); phone: full
+   width above the list. Looks like the other search boxes (.game-search-bar). */
+.sidebar-settings .settings-search {
+  flex: 0 1 240px;
+  margin: 0 8px 0 auto;
+  font-size: 14px;
+}
+
+.sidebar-settings .settings-search input {
+  margin: 0; /* not the windows' space under a field */
+  padding: 5px 0;
+}
+
+/* The results: each section's name, then its matching rows (the others hidden by
+   data-unmatched) */
+.settings-results [data-unmatched] {
+  display: none !important;
+}
+
+.settings-page .settings-results [data-last] {
+  border-bottom: none;
+}
+
+.settings-result-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.settings-result-section svg {
+  color: var(--text-dim);
+}
+
+/* Room above each section's name but the first one shown */
+.settings-result-group:not([data-unmatched]) ~ .settings-result-group .settings-result-section {
+  margin-top: 24px;
+}
+
+.settings-results-none {
+  margin: 16px 0 0;
+  color: var(--text-dim);
+}
+
 /* A module's settings under its switch: grayed while it's off (fieldset disabled) */
 .settings-part {
   min-width: 0;
@@ -5261,8 +5307,25 @@ button {
     height: 100%;
   }
 
+  /* A column: the search box above the list or the results, which scroll under it */
   .settings-body {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-body > .settings-nav,
+  .settings-body > .settings-page {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sidebar-settings .settings-search {
+    flex: none;
+    margin: 10px 16px 0;
+  }
+
+  .sidebar-settings .settings-search input {
+    padding: 8px 0;
   }
 
   .settings-nav {

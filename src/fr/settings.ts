@@ -155,6 +155,8 @@ export const settings = {
   Look: 'Apparence',
   Window: 'Fenêtre',
   'Settings sections': 'Sections des paramètres',
+  'Search settings': 'Rechercher un paramètre',
+  'No settings match': 'Aucun paramètre trouvé',
   'App scaling': 'Échelle',
   Animations: 'Animations',
   'Sync sign': 'Signe de synchro',
