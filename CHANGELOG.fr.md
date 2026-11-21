@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [0.98.0] - 2026-11-21
+
 **Jeux**
 - **Nouveau :** fenêtre du jeu : courbe du prix Steam sur 2 ans, zoomable
 - **Nouveau :** Pas commencé : glissez les jeux dans votre ordre de jeu (téléphone : Monter / Descendre)
