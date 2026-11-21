@@ -22,6 +22,9 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** after 5 s in a muted part, a countdown to the sound replaces Skip
 - **Changed:** muted parts of Twitch videos are red instead of orange
 
+**Notes**
+- **New:** hovering ☰ shows the notes list over the page, a click keeps it (PC only)
+
 ## [0.98.2] - 2026-11-21
 
 **Games**

@@ -119,6 +119,32 @@ function App() {
   // menu, opens Settings straight on that module's window (a new key starts it there again when
   // Settings was already open)
   const [settingsStart, setSettingsStart] = useState<{ page?: SettingsPage; key: number }>({ key: 0 })
+
+  // PC, mouse: hovering the ☰ button opens the sidebar over the note after 0.3 s ("peek"); it
+  // closes 0.5 s after the mouse left the button and the panel (not while one of its menus or
+  // windows is up). A click on ☰ pins it as usual (it then pushes the note).
+  const [sidebarPeek, setSidebarPeek] = useState(false)
+  const [overSidebar, setOverSidebar] = useState(false)
+  const busy = !!menu || !!dialog || settingsOpen
+  useEffect(() => {
+    if (sidebarOpen || overSidebar === sidebarPeek || (!overSidebar && busy)) return
+    const timer = setTimeout(() => setSidebarPeek(overSidebar), overSidebar ? 300 : 500)
+    return () => clearTimeout(timer)
+  }, [sidebarOpen, overSidebar, sidebarPeek, busy])
+  // Pinned (or a note picked): the peek is over. The mouse counts as gone, else the panel would
+  // open again under it (a removed panel never tells that the mouse left).
+  function endPeek() {
+    setSidebarPeek(false)
+    setOverSidebar(false)
+  }
+  useEffect(() => {
+    if (sidebarOpen) endPeek()
+  }, [sidebarOpen])
+  function hoverSidebar(over: boolean) {
+    if (over && (sidebarOpen || isNarrowScreen())) return
+    setOverSidebar(over)
+  }
+
   useEffect(() => {
     const openOn = (page: SettingsPage) => () => {
       setSettingsStart((start) => ({ page, key: start.key + 1 }))
@@ -197,6 +223,7 @@ function App() {
     if (!openTabs.includes(id)) setOpenTabs([...openTabs, id])
     setActiveId(id)
     if (isNarrowScreen()) setSidebarOpen(false)
+    endPeek()
   }
 
   // A pinned tab is unpinned first. The next open tab: the neighbor in the row as shown.
@@ -268,7 +295,10 @@ function App() {
             // Phone: only one panel at a time, they both slide over the note
             if (isNarrowScreen()) setBoardOpen(false)
             setSidebarOpen(!sidebarOpen)
+            endPeek()
           }}
+          onPointerEnter={(e) => e.pointerType === 'mouse' && hoverSidebar(true)}
+          onPointerLeave={() => hoverSidebar(false)}
           title={t('Notes')}
         >
           <Menu size={18} />
@@ -290,15 +320,20 @@ function App() {
       <UpdateBanner />
 
       <div className="body" ref={bodyRef}>
-        {sidebarOpen && (
+        {(sidebarOpen || sidebarPeek) && (
           <Sidebar
+            peek={!sidebarOpen}
+            onHover={hoverSidebar}
             activeId={activeId}
             onOpen={(id) => {
               openNote(id)
               // A search result: the note jumps to the first match (noteSearch.ts)
               if (searchQuery.trim()) setPendingSearch(id, searchQuery)
             }}
-            onClose={() => setSidebarOpen(false)}
+            onClose={() => {
+              setSidebarOpen(false)
+              endPeek()
+            }}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
             onSettings={() => setSettingsOpen(true)}
             onGames={() => openNote(GAMES_TAB)}

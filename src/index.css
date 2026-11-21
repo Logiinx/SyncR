@@ -4523,6 +4523,15 @@ button {
     position: relative;
   }
 
+  /* Opened by hovering ☰ (App.tsx): over the note instead of pushing it */
+  .sidebar.peek {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 11;
+    box-shadow: 4px 0 16px rgb(0 0 0 / 40%);
+  }
+
   .board.slide-in {
     animation: board-in var(--open-big) var(--ease-open);
   }

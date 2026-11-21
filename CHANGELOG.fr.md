@@ -22,6 +22,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** après 5 s dans un passage muet, un compte à rebours remplace Passer
 - **Changé :** les passages muets des vidéos Twitch sont rouges au lieu d’orange
 
+**Notes**
+- **Nouveau :** survoler ☰ montre la liste des notes par-dessus la page, un clic la garde (PC uniquement)
+
 ## [0.98.2] - 2026-11-21
 
 **Jeux**

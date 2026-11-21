@@ -18,6 +18,8 @@ import { searchNotes, type Snippet } from './noteSearch'
 import { dayTime } from './dates'
 
 interface Props {
+  peek: boolean // opened by hovering ☰ (App.tsx): over the note, closes when the mouse leaves
+  onHover: (over: boolean) => void
   activeId: string | null
   onOpen: (id: string) => void
   onClose: () => void
@@ -50,7 +52,7 @@ function notePreview(note: Note) {
 
 // The note list. Pushes the note aside; on narrow screens it slides over it
 // instead, and the dark backdrop (only shown there) closes it.
-function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, onVideo, query, onQuery, focusSearch, onSearchFocused }: Props) {
+function Sidebar({ peek, onHover, activeId, onOpen, onClose, onMenu, onSettings, onGames, onReminders, onMail, onVideo, query, onQuery, focusSearch, onSearchFocused }: Props) {
   const slideIn = useSlideIn()
   const accounts = useGmailAccounts()
   const missed = useMissed()
@@ -74,7 +76,11 @@ function Sidebar({ activeId, onOpen, onClose, onMenu, onSettings, onGames, onRem
   return (
     <>
       <div className={'backdrop' + slideIn} onClick={onClose} />
-      <aside className={'sidebar' + slideIn}>
+      <aside
+        className={'sidebar' + slideIn + (peek ? ' peek' : '')}
+        onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(true)}
+        onPointerLeave={() => onHover(false)}
+      >
         <button className={activeId === GAMES_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onGames}>
           <SpecialIcon kind="games" size={15} /> {t('Games')}
         </button>
