@@ -206,7 +206,7 @@ export function startInstantMail() {
 }
 
 // Runs while the main window is open (PC only: two collectors would take each other's
-// signals, so not in the browser, even while developing)
-export function useInstantMail() {
-  useEffect(() => (isTauri() ? startInstantMail() : undefined), [])
+// signals, so not in the browser, even while developing). on: Mail not turned off (modules.ts).
+export function useInstantMail(on: boolean) {
+  useEffect(() => (on && isTauri() ? startInstantMail() : undefined), [on])
 }

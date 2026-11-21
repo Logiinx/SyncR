@@ -1,3 +1,5 @@
+import InfoTip from './InfoTip'
+
 // The pieces of Settings
 
 // After a window on top of Settings closed (a question, a warning): the focus back in Settings, so
@@ -23,5 +25,28 @@ export function SettingRow({ label, value, title, className, children }: {
       </span>
       <span className="settings-row-control">{children}</span>
     </div>
+  )
+}
+
+// A module's on/off switch, the first row of its section (Mail, Video, Games, Hardware). What
+// follows it sits in a `settings-part` fieldset, grayed while off.
+export function ModuleSwitch({ name, about, aboutLabel, on, onChange }: {
+  name: string
+  about: string
+  aboutLabel: string
+  on: boolean
+  onChange: (on: boolean) => void
+}) {
+  return (
+    <SettingRow
+      label={
+        <>
+          {name}
+          <InfoTip label={aboutLabel}>{about}</InfoTip>
+        </>
+      }
+    >
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
+    </SettingRow>
   )
 }

@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
+- **New:** switches to turn Mail, Video or Games off on this device
 - **Better:** every window opens at the same height as a game's window
 - **Changed:** Settings has a sidebar of sections, one shown at a time
 - **Changed:** Video, Games and Hardware settings are now sections of Settings

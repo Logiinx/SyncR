@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import InfoTip from './InfoTip'
 import MouseBatteryPart from './MouseBatterySettings'
-import { SettingRow } from './SettingsCard'
+import { ModuleSwitch, SettingRow } from './SettingsCard'
 import { decimal, percentText, t } from './i18n'
 import {
   BACKGROUNDS,
@@ -86,18 +86,13 @@ export default function HardwareSection() {
 
   return (
     <>
-      <SettingRow
-        label={
-          <>
-            {t('Hardware widget')}
-            <InfoTip label={t('About the hardware module')}>
-              {t('Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.')}
-            </InfoTip>
-          </>
-        }
-      >
-        <input type="checkbox" checked={settings.on} onChange={(e) => toggleHardware(e.target.checked)} />
-      </SettingRow>
+      <ModuleSwitch
+        name={t('Hardware widget')}
+        aboutLabel={t('About the hardware module')}
+        about={t('Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.')}
+        on={settings.on}
+        onChange={toggleHardware}
+      />
       {/* Off: everything about the widget grayed (the mouse battery stays usable) */}
       <fieldset className="settings-part" disabled={!settings.on}>
         <h4 className="settings-card-sub">{t('Readings')}</h4>

@@ -220,6 +220,15 @@ export const settings = {
   Hardware: 'Matériel',
   'About the hardware module': 'À propos du module Matériel',
   'Hardware widget': 'Widget Matériel',
+  'About the Mail module': 'À propos du module Mail',
+  'Your Gmail inboxes in a Mail tab, and new emails in the pop-up. Off: the tab closes and no mail is checked. This device only.':
+    'Vos boîtes Gmail dans un onglet Mail, et les nouveaux e-mails dans les pop-ups. Désactivé : l’onglet se ferme et aucun e-mail n’est vérifié. Cet appareil uniquement.',
+  'About the Video module': 'À propos du module Vidéo',
+  'Your YouTube and Twitch follows in a Video tab, with new videos in the pop-up and video links played in SyncR’s player. Off: the tab closes, links open in your browser and nothing is checked. This device only.':
+    'Vos chaînes YouTube et Twitch suivies dans un onglet Vidéo, avec les nouvelles vidéos dans les pop-ups et les liens de vidéos lus dans le lecteur de SyncR. Désactivé : l’onglet se ferme, les liens s’ouvrent dans votre navigateur et rien n’est vérifié. Cet appareil uniquement.',
+  'About the Games module': 'À propos du module Jeux',
+  'Your game lists in a Games tab, with release days, prices and Steam playtimes kept up to date. Off: the tab closes and nothing is checked. This device only.':
+    'Vos listes de jeux dans un onglet Jeux, avec les dates de sortie, les prix et le temps de jeu Steam tenus à jour. Désactivé : l’onglet se ferme et rien n’est vérifié. Cet appareil uniquement.',
   'Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.':
     'Affiche les températures, charges, consommations et fréquences du processeur et de la carte graphique, le ventilateur et la mémoire dans un petit widget sur votre bureau.',
   Readings: 'Mesures',

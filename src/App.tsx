@@ -27,6 +27,7 @@ import { MAIL_TAB } from './mailbox'
 import { startVideoChecks, useVideoEnabled, useVideoFeed, VIDEO_TAB } from './video'
 import VideoView from './VideoView'
 import { startLinkShortcut } from './videoPaste'
+import { useModuleOn } from './modules'
 import { isTauri } from '@tauri-apps/api/core'
 import { listenMouseBatteryOpen } from './mouseBattery'
 import { listenHardwareOpen } from './hardware'
@@ -48,7 +49,13 @@ const isPageTab = (id: string) => id === GAMES_TAB || id === REMINDERS_TAB || id
 
 function App() {
   useLanguage()
-  const videoOn = useVideoEnabled()
+  // Mail, Video and Games: turned off in Settings = no tab, no background work (modules.ts).
+  // Video also needs the Worker's yes.
+  const videoAllowed = useVideoEnabled()
+  const videoModule = useModuleOn('video')
+  const videoOn = videoAllowed && videoModule
+  const mailOn = useModuleOn('mail')
+  const gamesOn = useModuleOn('games')
   useEffect(() => (videoOn ? startVideoChecks() : undefined), [videoOn])
   // Ctrl+Alt+Shift+V opens a copied video link (videoPaste.ts)
   useEffect(() => (videoOn ? startLinkShortcut() : undefined), [videoOn])
@@ -68,7 +75,7 @@ function App() {
   usePanelSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen, setSidebarOpen)
 
   // Games: release day check and daily refresh from IGDB (games.ts)
-  useEffect(startGameChecks, [])
+  useEffect(() => (gamesOn ? startGameChecks() : undefined), [gamesOn])
 
   // Google Calendar: events kept fresh in the background, for their alerts (calendarEvents.ts)
   useEffect(startCalendarChecks, [])
@@ -166,9 +173,9 @@ function App() {
   )
   // The tabs that exist: notes found in the database, and the Games, Reminders, Mail and Video tabs
   const openTabsList: Tab[] = (tabsResult?.ids ?? []).flatMap((id, i): Tab[] => {
-    if (id === GAMES_TAB) return [{ id, title: t('Games'), icon: <SpecialIcon kind="games" size={14} className="tab-icon" /> }]
+    if (id === GAMES_TAB) return gamesOn ? [{ id, title: t('Games'), icon: <SpecialIcon kind="games" size={14} className="tab-icon" /> }] : []
     if (id === REMINDERS_TAB) return [{ id, title: t('Reminders'), icon: <SpecialIcon kind="reminders" size={14} className="tab-icon" /> }]
-    if (id === MAIL_TAB) return [{ id, title: t('Mail'), icon: <MailTabIcon /> }]
+    if (id === MAIL_TAB) return mailOn ? [{ id, title: t('Mail'), icon: <MailTabIcon /> }] : []
     if (id === VIDEO_TAB) return videoOn ? [{ id, title: t('Video'), icon: <VideoTabIcon /> }] : []
     const note = tabsResult?.notes[i]
     return note ? [{ id, title: noteTitle(note) }] : []
@@ -183,17 +190,17 @@ function App() {
     [activeId],
   )
 
-  // Close tabs whose note no longer exists (e.g. deleted on the other device), and the Video
-  // tab if the Worker turned it off
+  // Close tabs whose note no longer exists (e.g. deleted on the other device), and the tab of a
+  // module turned off (Video: also when the Worker turned it off)
   useEffect(() => {
     if (!tabsResult || tabsResult.ids !== openTabs) return
-    const missing = openTabs.filter((id, i) => (id === VIDEO_TAB ? !videoOn : !isPageTab(id) && !tabsResult.notes[i]))
+    const missing = openTabs.filter((id, i) => !tabAllowed(id) || (!isPageTab(id) && !tabsResult.notes[i]))
     if (missing.length === 0) return
     missing.forEach(forgetScroll)
     const remaining = openTabs.filter((id) => !missing.includes(id))
     setOpenTabs(remaining)
     if (activeId && missing.includes(activeId)) setActiveId(remaining.at(-1) ?? null)
-  }, [tabsResult, openTabs, activeId, videoOn, setOpenTabs, setActiveId])
+  }, [tabsResult, openTabs, activeId, videoOn, mailOn, gamesOn, setOpenTabs, setActiveId])
 
   // A pinned tab that was closed some other way (its note deleted…) is no longer pinned
   useEffect(() => {
@@ -224,7 +231,13 @@ function App() {
     return () => window.removeEventListener('show-video-tab', onShow)
   })
 
+  // A module's tab can't open while it's off (a pop-up card, the link shortcut…)
+  function tabAllowed(id: string) {
+    return id === VIDEO_TAB ? videoOn : id === MAIL_TAB ? mailOn : id === GAMES_TAB ? gamesOn : true
+  }
+
   function openNote(id: string) {
+    if (!tabAllowed(id)) return
     if (!openTabs.includes(id)) setOpenTabs([...openTabs, id])
     setActiveId(id)
     if (isNarrowScreen()) setSidebarOpen(false)
@@ -341,9 +354,9 @@ function App() {
             }}
             onMenu={(noteId, x, y) => setMenu({ noteId, x, y })}
             onSettings={() => setSettingsOpen(true)}
-            onGames={() => openNote(GAMES_TAB)}
+            onGames={gamesOn ? () => openNote(GAMES_TAB) : null}
             onReminders={() => openNote(REMINDERS_TAB)}
-            onMail={() => openNote(MAIL_TAB)}
+            onMail={mailOn ? () => openNote(MAIL_TAB) : null}
             onVideo={videoOn ? () => openNote(VIDEO_TAB) : null}
             query={searchQuery}
             onQuery={setSearchQuery}
@@ -353,9 +366,9 @@ function App() {
         )}
         {activeId === REMINDERS_TAB && openTabs.includes(REMINDERS_TAB) ? (
           <RemindersView />
-        ) : activeId === GAMES_TAB && openTabs.includes(GAMES_TAB) ? (
+        ) : activeId === GAMES_TAB && gamesOn && openTabs.includes(GAMES_TAB) ? (
           <GamesView />
-        ) : activeId === MAIL_TAB && openTabs.includes(MAIL_TAB) ? (
+        ) : activeId === MAIL_TAB && mailOn && openTabs.includes(MAIL_TAB) ? (
           <MailView />
         ) : activeId === VIDEO_TAB && videoOn && openTabs.includes(VIDEO_TAB) ? (
           <VideoView />

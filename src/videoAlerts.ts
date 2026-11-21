@@ -28,6 +28,9 @@ export function addVideoAlerts(ids: string[]) {
   if (added.length) save([...added, ...alerts].slice(0, MAX))
 }
 
+// Video turned off (Settings → Video): its cards go from the pop-up
+export const clearVideoAlerts = () => save([])
+
 export function removeVideoAlerts(ids: string[]) {
   const gone = new Set(ids)
   const alerts = loadVideoAlerts()

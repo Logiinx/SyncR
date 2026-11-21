@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, Cpu, Gamepad2, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, Cpu, Gamepad2, Link, Mail, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { SettingRow } from './SettingsCard'
@@ -35,6 +35,8 @@ import { useVideoEnabled } from './video'
 import VideoSection from './VideoSettings'
 import GamesSection from './GamesSettings'
 import HardwareSection from './HardwareSettings'
+import MailSection from './MailSettings'
+import { useModuleOn } from './modules'
 import { useMouseBattery } from './mouseBattery'
 import { useHardware } from './hardware'
 import type { SettingsStart } from './openSettings'
@@ -141,7 +143,10 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   }
 
   const [links, setLinks] = useState(loadLinkPreviewSettings)
-  const videoOn = useVideoEnabled()
+  const videoOn = useVideoEnabled() // the Worker allows Video here
+  const mailOn = useModuleOn('mail')
+  const videoModuleOn = useModuleOn('video')
+  const gamesOn = useModuleOn('games')
   function updateLinks(change: Partial<LinkPreviewSettings>) {
     saveLinkPreviewSettings(change)
     setLinks(loadLinkPreviewSettings())
@@ -716,17 +721,18 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
       </SettingRow>
     </>
   )
-  // The sidebar's sections, in the user's order (Window and Hardware: PC only; Video where the
-  // Worker allows it), the modules under their heading; Accounts sits at the bottom. off: a module
-  // turned off, grayed (Hardware: the widget and the mouse battery both off).
+  // The sidebar's sections, in the user's order (Window, Mail and Hardware: PC only; Video where
+  // the Worker allows it), the modules under their heading; Accounts sits at the bottom. off: a
+  // module turned off, grayed (Hardware: the widget and the mouse battery both off).
   const sections = [
     { id: 'notes', icon: NotebookPen, name: t('Notes'), content: notesCard },
     { id: 'links', icon: Link, name: t('Links'), content: linksCard },
     { id: 'alerts', icon: Bell, name: t('Alerts'), content: alertsCard },
     { id: 'look', icon: Palette, name: t('Look'), content: lookCard },
     { id: 'window', icon: AppWindow, name: t('Window'), content: windowCard },
-    { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true },
-    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection />, module: true },
+    { id: 'mail', icon: Mail, name: t('Mail'), content: (isTauri() || import.meta.env.DEV) && <MailSection />, module: true, off: !mailOn },
+    { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true, off: !videoModuleOn },
+    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection />, module: true, off: !gamesOn },
     { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)

@@ -1,6 +1,7 @@
 import { isTauri } from '@tauri-apps/api/core'
 import { openLink } from './links'
 import { read } from './localState'
+import { moduleOn } from './modules'
 import { findVideo, markOpened } from './video'
 import { playVideo } from './videoPlayer'
 import { linkTime } from './videoPaste'
@@ -30,8 +31,9 @@ export function isVideoLink(href: string) {
 }
 
 // SyncR's player can be used here: the desktop app, where the Video tab shows (the key
-// useVideoEnabled in video.ts remembers; reading it asks the Worker nothing)
-export const playerHere = () => isTauri() && read('syncr.videoFeed', false)
+// useVideoEnabled in video.ts remembers; reading it asks the Worker nothing) and Video isn't
+// turned off (modules.ts)
+export const playerHere = () => isTauri() && read('syncr.videoFeed', false) && moduleOn('video')
 
 // A click on it plays it in the player (then its right-click menu offers the browser)
 export const playsHere = (href: string) => playerHere() && isVideoLink(href)

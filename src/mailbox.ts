@@ -122,14 +122,22 @@ export async function refreshMailbox() {
 }
 
 // Started once by the app (PC; in the browser only while developing): the first load waits a
-// few seconds (the minute check also asks Gmail right at start), then follows every change
+// few seconds (the minute check also asks Gmail right at start), then follows every change.
+// The returned function stops it (Mail turned off, modules.ts).
 const FIRST_LOAD_AFTER = 5000
+const EVENTS = ['mailbox-change', 'gmail-change', 'online']
 let started = false
 export function startMailbox() {
   if (started || (!isTauri() && !import.meta.env.DEV)) return
   started = true
-  window.setTimeout(() => !mailbox.loading && !mailbox.rows && refreshMailbox(), FIRST_LOAD_AFTER)
-  for (const event of ['mailbox-change', 'gmail-change', 'online']) window.addEventListener(event, refreshMailbox)
+  const first = window.setTimeout(() => !mailbox.loading && !mailbox.rows && refreshMailbox(), FIRST_LOAD_AFTER)
+  for (const event of EVENTS) window.addEventListener(event, refreshMailbox)
+  return () => {
+    started = false
+    window.clearTimeout(first)
+    window.clearTimeout(retryTimer)
+    for (const event of EVENTS) window.removeEventListener(event, refreshMailbox)
+  }
 }
 
 export function useMailbox() {

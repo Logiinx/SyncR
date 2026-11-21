@@ -8,6 +8,7 @@ import { useVideoAlerts } from './videoAlerts'
 import { useShownVideoAlerts } from './VideoAlertCards'
 import { useInstantMail } from './instantMail'
 import { startMailbox } from './mailbox'
+import { useModuleOn } from './modules'
 import { popupMonitor, useReminderPopup } from './popupWindow'
 import { useLowAlert } from './mouseBattery'
 import { useQueuedNote } from './queuedNote'
@@ -92,12 +93,13 @@ export function ReminderCards({ due, onAction }: {
 // fallback if the pop-up can't open. In the browser / on the phone: cards, bottom-right.
 function ReminderAlerts() {
   const due = useDueReminders({ runsCheck: true })
-  useMailCheck() // PC: new emails go to the pop-up too
-  useEffect(startMailbox, []) // PC: the Mail tab's list, ready before the tab opens
+  const mailOn = useModuleOn('mail') // turned off in Settings: no checks, no cards (modules.ts)
+  useMailCheck(mailOn) // PC: new emails go to the pop-up too
+  useEffect(() => (mailOn ? startMailbox() : undefined), [mailOn]) // PC: the Mail tab's list, ready before the tab opens
   useEffect(() => {
     if (isTauri()) popupMonitor().catch((error) => console.error(error)) // PC: notes where the pop-up's screen is
   }, [])
-  useInstantMail() // PC: and within seconds, once set up (Settings → Accounts)
+  useInstantMail(mailOn) // PC: and within seconds, once set up (Settings → Accounts)
   const mails = useMailAlerts()
   const battery = useLowAlert() // PC: the mouse battery's low warning too
   const videos = useShownVideoAlerts(useVideoAlerts()) // PC: new videos of bell channels

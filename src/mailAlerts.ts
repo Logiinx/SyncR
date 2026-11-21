@@ -264,9 +264,10 @@ function decodeEntities(text: string) {
 
 // Checks every minute while SyncR runs (PC; in the browser only while developing), and right
 // away when accounts change (added, turned on).
-export function useMailCheck() {
+// on: Mail not turned off (modules.ts)
+export function useMailCheck(on: boolean) {
   useEffect(() => {
-    if (!isTauri() && !import.meta.env.DEV) return
+    if (!on || (!isTauri() && !import.meta.env.DEV)) return
     sealOldMailAlerts()
     const run = () => void checkMail().catch((error) => console.error(error))
     run()
@@ -276,7 +277,20 @@ export function useMailCheck() {
       clearInterval(timer)
       window.removeEventListener('gmail-change', run)
     }
-  }, [])
+  }, [on])
+}
+
+// Mail turned off (Settings → Mail): its cards go from the pop-up. Back on: only emails arriving
+// from then on pop up, not the ones that came while it was off (they're in the Mail tab).
+export function mailTurned(on: boolean) {
+  if (!on) {
+    saveMailAlerts([])
+    return
+  }
+  const checked = read<Record<string, number>>(CHECKED_KEY, {})
+  const now = Date.now()
+  for (const { email } of loadAccounts()) checked[email] = now
+  write(CHECKED_KEY, checked)
 }
 
 // ---------- Card buttons ----------

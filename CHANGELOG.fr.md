@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
+- **Nouveau :** des boutons pour désactiver Mail, Vidéo ou Jeux sur cet appareil
 - **Amélioré :** chaque fenêtre s’ouvre à la même hauteur que celle d’un jeu
 - **Changé :** les Paramètres ont une barre latérale de sections, une affichée à la fois
 - **Changé :** les paramètres Vidéo, Jeux et Matériel sont des sections des Paramètres

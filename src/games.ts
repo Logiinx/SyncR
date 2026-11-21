@@ -391,12 +391,18 @@ async function upgradeOldStatuses() {
 // Started once by the app. The refresh and the release events wait for a finished sync (when
 // Dropbox is set up): saving makes a record the newest copy, which must not win over an edit
 // made on the other device that hasn't arrived yet; and the release events must follow the
-// latest game list (e.g. a game removed on the phone).
+// latest game list (e.g. a game removed on the phone). The returned function stops them all
+// (Games turned off in Settings, modules.ts); a refresh already running ends by itself.
 let started = false
+let moved = false
 export function startGameChecks() {
   if (started) return
-  moveOldConnection().catch((e) => console.warn('Could not move the game search settings', e))
+  if (!moved) moveOldConnection().catch((e) => console.warn('Could not move the game search settings', e))
+  moved = true
   started = true
+  let stopped = false
+  let stopWatch: (() => void) | undefined
+  let editionsTimer = 0
   let pricesLoaded = false
   const check = async () => {
     try {
@@ -444,18 +450,28 @@ export function startGameChecks() {
     // and the price alert checks (every hour, see startWatchChecks); a minute later the editions (game windows)
     if (!pricesLoaded) {
       pricesLoaded = true
-      loadListPrices().then(startWatchChecks)
-      window.setTimeout(loadListEditions, 60_000)
+      void loadListPrices().then(() => {
+        if (!stopped) stopWatch = startWatchChecks()
+      })
+      editionsTimer = window.setTimeout(loadListEditions, 60_000)
     }
   }
   check()
-  window.setInterval(check, CHECK_EVERY)
+  const timer = window.setInterval(check, CHECK_EVERY)
   if (!dropboxConnected()) refresh()
   let lastSync = getStatus().lastSuccessAt
-  subscribe(() => {
+  const unsubscribe = subscribe(() => {
     const { lastSuccessAt } = getStatus()
     if (lastSuccessAt === lastSync) return
     lastSync = lastSuccessAt
     refresh()
   })
+  return () => {
+    stopped = true
+    started = false
+    window.clearInterval(timer)
+    window.clearTimeout(editionsTimer)
+    unsubscribe()
+    stopWatch?.()
+  }
 }

@@ -251,16 +251,25 @@ async function checkIfDue() {
   }
 }
 
+// The returned function stops them (Games turned off: startGameChecks in games.ts)
 let started = false
 export function startWatchChecks() {
-  if (started) return
+  if (started) return () => {}
   started = true
   lastTry = 0
   checkIfDue()
-  window.setInterval(checkIfDue, 5 * 60 * 1000) // after sleep it fires soon, so no long gaps
+  const timer = window.setInterval(checkIfDue, 5 * 60 * 1000) // after sleep it fires soon, so no long gaps
+  const onVisible = () => document.visibilityState === 'visible' && checkIfDue()
   window.addEventListener('focus', checkIfDue)
   window.addEventListener('online', checkIfDue)
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkIfDue())
+  document.addEventListener('visibilitychange', onVisible)
+  return () => {
+    started = false
+    window.clearInterval(timer)
+    window.removeEventListener('focus', checkIfDue)
+    window.removeEventListener('online', checkIfDue)
+    document.removeEventListener('visibilitychange', onVisible)
+  }
 }
 
 // "12,5" or "12.50 €" → 1250 cents; null if it isn't a price
