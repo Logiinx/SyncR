@@ -281,21 +281,26 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
   }
   // "/has/<host>/<path>": only whether that video address is there, from its headers (player.js: a
   // muted piece's original sound). Not from a part of it: Twitch refuses parts once only its delivery
-  // network still keeps the piece, which still plays whole.
-  let only_check = path.starts_with("/has/");
-  let Some((host, rest)) = path.strip_prefix("/v/").or_else(|| path.strip_prefix("/has/")).and_then(|rest| rest.split_once('/')) else {
+  // network still keeps the piece, which still plays whole. "/v-plain/" and "/has-plain/": the same,
+  // asked the other way (see like_browser).
+  // (prefix, only a check, plain)
+  let routes = [("/v/", false, false), ("/has/", true, false), ("/v-plain/", false, true), ("/has-plain/", true, true)];
+  let Some((only_check, plain, (host, rest))) = routes.into_iter().find_map(|(prefix, check, plain)| Some((check, plain, path.strip_prefix(prefix)?.split_once('/')?))) else {
     return answer(404, "text/plain", Vec::new());
   };
   if !twitch_host(host) {
     return answer(403, "text/plain", Vec::new());
   }
   let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
-  // A video piece is asked for as a browser does, saying it takes compressed answers: Twitch's
-  // delivery network keeps one copy per way of asking, and after Twitch deletes a muted piece's
-  // original sound, the copy browsers ask for can still be there while the other is refused
-  // (found 2026-11-20). Pieces are never sent compressed (only text is), so nothing to unpack.
+  // A video piece is asked for as a browser does, saying it takes compressed answers. Twitch's
+  // delivery network keeps two copies of each piece: one for requests that accept gzip, one for
+  // those that don't. After Twitch deletes a muted piece's original sound, either copy can still be
+  // there while the other is refused (found 2026-11-20 and 2026-11-21: 206 of 450 pieces one way,
+  // 303 the other, 402 together), so player.js asks the plain way ("identity") when refused.
+  // Pieces are never sent compressed (only text is), so nothing to unpack.
   let piece = rest.ends_with(".ts") || rest.ends_with(".mp4");
-  let like_browser = |ask: reqwest::RequestBuilder| if piece { ask.header(reqwest::header::ACCEPT_ENCODING, "gzip, deflate, br, zstd") } else { ask };
+  let encoding = if plain { "identity" } else { "gzip, deflate, br, zstd" };
+  let like_browser = |ask: reqwest::RequestBuilder| if piece { ask.header(reqwest::header::ACCEPT_ENCODING, encoding) } else { ask };
   if only_check {
     let status = like_browser(player_client().head(format!("https://{host}/{rest}{query}"))).send().await.map_or(502, |response| response.status().as_u16());
     return answer(status, "text/plain", Vec::new());

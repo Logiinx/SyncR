@@ -401,31 +401,62 @@ function measureSource(_, parsed) {
 // their sound load uncut and aren't shown as muted on the bar.
 const MUTED_PIECE = /^(.*\/)(\d+)-muted\.(ts|mp4)$/ // video_window.rs names them all "-muted"
 const uncutAddress = (url) => url.replace(MUTED_PIECE, (_, folder, number, kind) => `${folder}${number}${kind === 'ts' ? '.ts' : '-unmuted.mp4'}`)
+// Twitch's delivery network keeps two copies of each piece, one per way of asking (video_window.rs,
+// like_browser): after Twitch deletes the sound, either can still have it while the other refuses
+// (2026-11-21: 206 of 450 pieces one way, 303 the other, 402 with both). So both are asked, the way
+// that last found sound first: neighbouring pieces mostly sit in the same one.
+const WAYS = ['/v/', '/v-plain/']
+const wayAddress = (url, way) => uncutAddress(url).replace('/v/', WAYS[way])
+const foundWay = new Map() // muted piece → the way that found its sound
+let lastWay = 0
+const waysFor = (url) => (foundWay.get(url) ?? lastWay) === 0 ? [0, 1] : [1, 0]
+const noteWay = (url, way) => {
+  foundWay.set(url, way)
+  lastWay = way
+}
+// A failure that may pass (no answer, timeout 408, too many requests 429, Twitch busy 5xx; our
+// network failures arrive as 502), unlike a refusal (other 4xx), which is final for that copy
+const passing = (status) => !status || status === 408 || status === 429 || status >= 500
 const CHECKS_AT_ONCE = 6
-const UNCUT_RETRIES = 2 // a piece's original sound, after a passing failure (PieceLoader)
-const UNCUT_PATIENCE = 20000 // ms: no more tries after this, the muted one plays before the buffer runs out
+// A piece's original sound, after a passing failure (PieceLoader): tried again until this long
+// before it plays (pieces load ~30 s ahead), but at least the first and at most the second number
+const UNCUT_MARGIN = 5000 // ms
+const UNCUT_PATIENCE = [6000, 60000] // ms
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
 const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
-const mutedWhy = new Map() // muted piece played muted → why: 'gone' (Twitch refused it) or 'slow' (no answer in time, Twitch busy)
+// Muted piece played muted → why: { why: 'refused' (both copies refused) or 'slow' (no answer in
+// time, Twitch busy), codes: Twitch's answers, 'timeout' when none came }
+const mutedWhy = new Map()
 let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
 // Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
 // parts of pieces only its delivery network still keeps, which play fine whole. Only for the bar:
-// playing tries the sound anyway. Only a refusal (4xx) means gone; no real answer (network: 502,
-// Twitch busy: 5xx, 429) is asked again a little later, and shows as muted meanwhile.
-const checkAddress = (url) => uncutAddress(url).replace('/v/', '/has/')
+// playing tries the sound anyway. Both copies refused means gone; a passing failure is asked again
+// a little later, and shows as muted meanwhile.
+const checkAddress = (url, way) => wayAddress(url, way).replace(/\/v(-plain)?\//, '/has$1/') // the first one: the route (full addresses)
 const CHECK_RETRIES = 2
 const CHECK_AGAIN_AFTER = 10000 // ms
+async function askHas(url) {
+  let again = false
+  for (const way of waysFor(url)) {
+    const status = await fetch(checkAddress(url, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
+    if (status >= 200 && status < 300) return { way }
+    if (passing(status)) again = true
+  }
+  return { again }
+}
 function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
-    const again = () => recheckPiece(url, tries)
-    pieceChecks.set(url, fetch(checkAddress(url), { cache: 'no-store' }).then((response) => {
-      if (response.ok && !playedPieces.has(url)) uncutPieces.add(url)
-      else if (response.status >= 500 || response.status === 429) again()
-    }, again))
+    pieceChecks.set(url, askHas(url).then(({ way, again }) => {
+      if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
+      if (way !== undefined) {
+        uncutPieces.add(url)
+        noteWay(url, way)
+      } else if (again) recheckPiece(url, tries)
+    }))
   }
   return pieceChecks.get(url)
 }
@@ -478,16 +509,18 @@ function drawMuted() {
   }
 }
 
-// The ⚙️ menu's info: why the quality playing's pieces played muted, once some did ("muted parts: 2
-// deleted, 1 too slow"). Counts are 1 or more, where English and French both use the singular for 1
-// only. Labels come in pairs: [one, more].
+// The ⚙️ menu's info: why the quality playing's pieces played muted, once some did, with Twitch's
+// answers ("muted parts: 2 refused (403), 1 too slow (timeout/502)"). Counts are 1 or more, where
+// English and French both use the singular for 1 only. Labels come in pairs: [one, more].
 function mutedText() {
   const pieces = (playingLevel()?.details?.fragments ?? []).map((one) => mutedWhy.get(one.url)).filter(Boolean)
   const count = (why, forms) => {
-    const n = pieces.filter((one) => one === why).length
-    return n ? forms[n > 1 ? 1 : 0].replace('{n}', numbers.format(n)) : ''
+    const these = pieces.filter((one) => one.why === why)
+    if (!these.length) return ''
+    const codes = [...new Set(these.flatMap((one) => one.codes))].sort().map((code) => (code === 'timeout' ? labels.mutedTimeout : code))
+    return `${forms[these.length > 1 ? 1 : 0].replace('{n}', numbers.format(these.length))} (${codes.join('/')})`
   }
-  const why = [count('gone', labels.mutedGone), count('slow', labels.mutedSlow)].filter(Boolean)
+  const why = [count('refused', labels.mutedRefused), count('slow', labels.mutedSlow)].filter(Boolean)
   return why.length ? labels.infoMutedWhy.replace('{why}', why.join(', ')) : labels.infoMuted
 }
 
@@ -497,47 +530,63 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     this.hlsConfig = config
   }
   // A muted piece always tries its original sound first, whatever its check said: only the download
-  // itself is sure (Twitch can delete it while you watch). Its answer corrects the bar.
+  // itself is sure (Twitch can delete it while you watch). Its answer corrects the bar. Both copies
+  // are asked (WAYS); a refused one is done, one that failed in passing is asked again, with longer
+  // pauses, as long as the piece isn't needed yet (UNCUT_MARGIN before it plays, within
+  // UNCUT_PATIENCE). Then the muted one plays.
   load(context, config, callbacks) {
     if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
     this.stopped = false
-    this.loadUncut(context, config, callbacks, 0, performance.now())
+    const ahead = context.frag ? ((context.frag.start - video.currentTime) / (video.playbackRate || 1)) * 1000 : 0
+    const patience = Math.min(Math.max(ahead - UNCUT_MARGIN, UNCUT_PATIENCE[0]), UNCUT_PATIENCE[1])
+    this.tries = { ways: waysFor(context.url), deadline: performance.now() + patience, pause: 1000, codes: new Set() }
+    this.round(context, config, callbacks, 0)
   }
-  loadUncut(context, config, callbacks, tries, started) {
-    const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
-    const heard = (sound, why) => {
-      playedPieces.add(context.url)
-      if (sound) mutedWhy.delete(context.url)
-      else mutedWhy.set(context.url, why)
-      pieceChecks.set(context.url, Promise.resolve()) // no check needed any more
-      if (sound === uncutPieces.has(context.url)) return
-      if (sound) uncutPieces.add(context.url)
-      else uncutPieces.delete(context.url)
-      drawMutedSoon()
+  // One round: each copy not refused yet, one after the other
+  round(context, config, callbacks, index) {
+    const tries = this.tries
+    if (index >= tries.ways.length) {
+      const left = tries.deadline - performance.now() // the last try at the limit, not before
+      if (tries.ways.length && left > 500) {
+        this.retry = setTimeout(() => this.round(context, config, callbacks, 0), Math.min(tries.pause, left))
+        tries.pause *= 2
+        return
+      }
+      this.heard(context, false, { why: tries.ways.length ? 'slow' : 'refused', codes: [...tries.codes] })
+      return super.load(context, config, callbacks)
     }
-    // Refused (Twitch says it's gone: 4xx): muted, and shown so. A passing failure (no answer, slow,
-    // Twitch busy: 0, 5xx, 429) tries the sound again first, while the piece isn't needed soon.
-    const muted = (gone) => {
+    const way = tries.ways[index]
+    const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
+    const failed = (code) => {
       inner.destroy()
       this.inner = null
       if (this.stopped) return
-      if (!gone && tries < UNCUT_RETRIES && performance.now() - started < UNCUT_PATIENCE) {
-        this.retry = setTimeout(() => this.loadUncut(context, config, callbacks, tries + 1, started), 1000)
-        return
-      }
-      heard(false, gone ? 'gone' : 'slow')
-      super.load(context, config, callbacks)
+      tries.codes.add(code)
+      if (passing(code === 'timeout' ? 0 : code)) return this.round(context, config, callbacks, index + 1)
+      tries.ways.splice(index, 1) // refused: that copy is gone
+      this.round(context, config, callbacks, index)
     }
-    inner.load({ ...context, url: uncutAddress(context.url) }, config, {
+    inner.load({ ...context, url: wayAddress(context.url, way) }, config, {
       ...callbacks,
       onSuccess: (response, stats, _, details) => {
-        heard(true)
+        noteWay(context.url, way)
+        this.heard(context, true)
         Object.assign(this.stats, stats)
         callbacks.onSuccess(response, this.stats, context, details)
       },
-      onError: (error) => muted(error.code >= 400 && error.code < 500 && error.code !== 429),
-      onTimeout: () => muted(false),
+      onError: (error) => failed(error.code),
+      onTimeout: () => failed('timeout'),
     })
+  }
+  heard(context, sound, why) {
+    playedPieces.add(context.url)
+    if (sound) mutedWhy.delete(context.url)
+    else mutedWhy.set(context.url, why)
+    pieceChecks.set(context.url, Promise.resolve()) // no check needed any more
+    if (sound === uncutPieces.has(context.url)) return
+    if (sound) uncutPieces.add(context.url)
+    else uncutPieces.delete(context.url)
+    drawMutedSoon()
   }
   abort() {
     this.stopped = true
