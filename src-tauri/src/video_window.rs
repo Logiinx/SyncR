@@ -864,7 +864,7 @@ pub fn video_bar(
         .map_err(|e| e.to_string());
     }
     // left, at: the button's left edge and middle, in pixels from the window's left edge
-    "extensions-menu" => {
+    "menu" => {
       let (Some(left), Some(at)) = (left, at) else {
         return Err("Where's the button?".to_string());
       };

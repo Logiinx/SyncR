@@ -390,13 +390,15 @@ function barData(video: PlayableVideo, way: Way) {
     zoom: currentZoom(),
     colors,
     labels: {
+      watched: t('Watched'),
       watch: t('Mark as watched'),
       unwatch: t('Back to To watch'),
       onTop: t('Always on top'),
       nextScreen: t('Move to the other screen'),
+      more: t('More'),
+      // Its menu (video-menu.html) gets the same address
       browser: t('Open in browser'),
       anotherWay: t('Try another way'),
-      extensions: t('Extensions'),
       minimize: t('Minimize'),
       maximize: t('Maximize'),
       restore: t('Restore'),

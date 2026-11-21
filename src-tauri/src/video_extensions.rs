@@ -592,6 +592,13 @@ pub fn video_menu(
       close_menu(&app);
       focus_site(&app);
     }
+    // The player's own rows: done by the main window, as when they were on the bar
+    "another-way" | "browser" => {
+      use tauri::Emitter;
+      close_menu(&app);
+      focus_site(&app);
+      app.emit_to("main", "video-bar", serde_json::json!({ "action": action })).map_err(|e| e.to_string())?;
+    }
     "open" => {
       let folder = extension.ok_or("Which extension?")?;
       let at = MENU_STATE.lock().map(|state| state.at).unwrap_or(0.0);
