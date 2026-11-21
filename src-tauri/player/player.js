@@ -502,7 +502,7 @@ function drawMuted() {
   const muted = (playingLevel()?.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
   const silent = muted.filter((one) => !uncutPieces.has(one.url))
   mutedSound = !muted.length ? '' : silent.length ? 'muted' : 'uncut'
-  noteMutedParts(silent)
+  noteMutedParts(silent, playingLevel()?.details?.totalduration)
   if (silent.length < muted.length && !soundTold) {
     soundTold = true
     tellBar('sound')

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** muted parts close together on a Twitch bar count as one, also for the skip
+
 ## [1.0.2] - 2026-11-21
 
 **App**

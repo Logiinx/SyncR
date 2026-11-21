@@ -8,20 +8,24 @@ const LIVE_QUERY = `query($id: ID!) { video(id: $id) { ${GAMES_PART} } }`
 const LIVE_AGAIN = 120000 // ms: a stream still live, for its title and new games (the header, the bar)
 const DETAILS_TRIES = 3
 const DETAILS_AGAIN = 20000 // ms after a failed answer
-const MUTED_GAP = 1 // seconds: parts closer than this count as one
+// Muted parts closer than this count as one (on the bar, in its tip and for the skip button), even
+// when the bit between still has its sound: 0.2% of the video's length (about a pixel on the bar),
+// at least 10 s and at most 60 s. 1 h → 10 s, 5 h → 36 s, 10 h → 60 s.
+const mutedGap = (length) => Math.min(60, Math.max(10, length * 0.002))
 
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
 const MUTED_COLOR = 'var(--text-red, #f0716b)' // on the bar and in its tip
 // video_window.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
 // (.ts in older videos, .mp4 in newer ones)
-function noteMutedParts(pieces) {
+function noteMutedParts(pieces, length) {
   const parts = []
+  const gap = mutedGap(length || 0)
   for (const piece of pieces) {
     if (!/-muted\.(ts|mp4)$/.test(piece.relurl ?? '')) continue
     const last = parts[parts.length - 1]
     const end = piece.start + piece.duration
-    if (last && piece.start - last.end < MUTED_GAP) last.end = end
+    if (last && piece.start - last.end <= gap) last.end = end
     else parts.push({ start: piece.start, end })
   }
   mutedParts = parts
