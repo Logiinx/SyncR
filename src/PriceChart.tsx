@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { t } from './i18n'
-import { shortDate, shortMonthName } from './dates'
+import { dayRange, shortDate, shortMonthName } from './dates'
 import { FillSwitch } from './tabLines'
 import { formatEuros, type GamePrices } from './prices'
 import { discountText, usePriceHistory, type PriceChange } from './saleGuess'
@@ -9,8 +9,9 @@ import { discountText, usePriceHistory, type PriceChange } from './saleGuess'
 // by hand under "Lowest ever" in the game window and the search preview (on a phone in the
 // game window: a full-width row under the cover, like the sale table). A step line (gray, sales
 // green with a light fill), scaled from 0 €; year lines labelled under it, month lines (names
-// when they fit) once zoomed in. The line above it is its title, or the day under the mouse:
-// "12 Aug 2026 · 14,99 € −50%". Zoom: mouse wheel, drag moves, double-click goes back; the
+// when they fit) once zoomed in. The line above it is its title, or the stretch under the mouse
+// (lit up; a short one is caught from a few px): "12 Aug – 26 Aug 2026 · 14,99 € −50%", the
+// last one "Since 12 Aug 2026 · …". Zoom: mouse wheel, drag moves, double-click goes back; the
 // 2 y · 1 y · 6 m · 3 m switch; phone: one finger reads (it stays after lifting), two pinch and
 // move. Opens on the last year each time (nothing remembered). No change in 2 years: nothing.
 
@@ -23,6 +24,8 @@ const PAD = 2 // above and below the line, so it isn't cut
 const MONTH_LINES = 14 // px per month at least, for their lines
 const MONTH_NAMES = 30 // … and for their names
 const LABEL_ROOM = 14 // a mark's name this close to an edge would be cut: left out
+const CATCH = 8 // px: a stretch narrower than this (a 3-day sale over 2 years) is caught this wide
+const LIT = 4 // px: the light behind the picked stretch, at least
 
 const RANGES = [
   { days: 730, label: () => t('2 y'), title: () => t('Steam price, last 2 years') },
@@ -159,10 +162,25 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
   const x = (time: number) => ((time - view.start) / span) * width
   const y = (price: number) => PAD + (1 - price / top) * (HEIGHT - 2 * PAD)
 
-  // The reading: never before the first change (nothing is known there), and only while that day
-  // is in view (a finger's reading stays, but the view may change after it)
-  const readAt = at === null ? null : Math.max(at, stretches[0].start)
-  const read = readAt !== null && readAt >= view.start && readAt <= view.end ? stretches.findLast((stretch) => stretch.start <= readAt)! : null
+  // The stretch under the mouse: the one it's in, unless a short one is that close (then the
+  // closest short one); before the first change, the first (nothing is known there)
+  const pick = (time: number) => {
+    const mouse = x(time)
+    let best: Stretch | null = null
+    let bestGap = CATCH / 2
+    for (const stretch of stretches) {
+      const left = x(stretch.start)
+      const right = x(stretch.end)
+      const gap = Math.abs(mouse - (left + right) / 2)
+      if (right - left < CATCH && gap <= bestGap) [best, bestGap] = [stretch, gap]
+    }
+    return best ?? stretches.findLast((stretch) => stretch.start <= time) ?? stretches[0]
+  }
+  // Only while that time is in view (a finger's reading stays, but the view may change after it)
+  const read = at !== null && at >= view.start && at <= view.end ? pick(at) : null
+  const lastRead = read === stretches[stretches.length - 1]
+  const lit = read && { left: x(read.start), right: x(read.end) }
+  if (lit && lit.right - lit.left < LIT) [lit.left, lit.right] = [(lit.left + lit.right - LIT) / 2, (lit.left + lit.right + LIT) / 2]
 
   // Month and year lines, from the first month start in view
   const marks: { x: number; year: boolean; name: string | null }[] = []
@@ -185,7 +203,7 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
       <div className="price-chart-head">
         {read ? (
           <span className="price-chart-read">
-            <span className="sale-value">{shortDate(readAt!)}</span>
+            <span className="sale-value">{lastRead ? t('Since {date}', { date: shortDate(read.start) }) : dayRange(read.start, read.end)}</span>
             {' · '}
             <span className="sale-value">{formatEuros(read.price)}</span>
             {read.cut > 0 ? <span className="sale-value discount"> {discountText(read.cut)}</span> : ` · ${t('full price')}`}
@@ -216,6 +234,7 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
             {marks.map((mark) => (
               <line key={mark.x} className={mark.year ? 'price-chart-year' : 'price-chart-month'} x1={mark.x} x2={mark.x} y1={0} y2={HEIGHT} />
             ))}
+            {lit && <rect className="price-chart-lit" x={lit.left} y={0} width={lit.right - lit.left} height={HEIGHT} />}
             {sales.map((sale) => (
               <rect key={sale.start} className="price-chart-sale-fill" x={x(sale.start)} y={y(sale.price)} width={x(sale.end) - x(sale.start)} height={HEIGHT - y(sale.price)} />
             ))}
@@ -223,12 +242,7 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
             {sales.map((sale) => (
               <line key={sale.start} className="price-chart-sale" x1={x(sale.start)} x2={x(sale.end)} y1={y(sale.price)} y2={y(sale.price)} />
             ))}
-            {read && (
-              <>
-                <line className="price-chart-guide" x1={x(readAt!)} x2={x(readAt!)} y1={0} y2={HEIGHT} />
-                <circle className={read.cut > 0 ? 'price-chart-dot discount' : 'price-chart-dot'} cx={x(readAt!)} cy={y(read.price)} r={3.5} />
-              </>
-            )}
+            {lit && <line className={read.cut > 0 ? 'price-chart-picked discount' : 'price-chart-picked'} x1={lit.left} x2={lit.right} y1={y(read.price)} y2={y(read.price)} />}
           </svg>
         )}
       </div>

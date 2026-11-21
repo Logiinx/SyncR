@@ -168,6 +168,7 @@ export const games = {
   'Steam price, last 6 months': 'Prix Steam, 6 derniers mois',
   'Steam price, last 3 months': 'Prix Steam, 3 derniers mois',
   'full price': 'plein tarif',
+  'Since {date}': 'Depuis le {date}',
   'Price history range': 'Période de l’historique des prix',
   'Steam price history': 'Historique du prix Steam',
   'Steam, cheaper than keys': 'Steam, moins cher que les clés',

@@ -15,6 +15,14 @@ export function dayMonth(time: number) {
   return currentLanguage() === 'fr' ? text.replace(/(^|\s)1 /, '$11er ') : text
 }
 
+// "12 Aug – 26 Aug 2026" (the year once when both share it), one day alone: a stretch of the
+// price chart
+export function dayRange(start: number, end: number) {
+  if (shortDate(start) === shortDate(end)) return shortDate(end)
+  const sameYear = new Date(start).getFullYear() === new Date(end).getFullYear()
+  return `${sameYear ? dayMonth(start) : shortDate(start)} – ${shortDate(end)}`
+}
+
 // "November 2026": a month's title (calendars' month grids and list groups)
 export const monthTitle = (date: Date) => capitalize(date.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }))
 // Short day names, Monday first (1 January 2024 was a Monday): a month grid's head

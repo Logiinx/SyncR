@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Amélioré :** courbe des prix : pointez une période pour voir ses dates et son prix
+
 ## [0.98.0] - 2026-11-21
 
 **Jeux**

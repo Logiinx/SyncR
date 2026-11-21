@@ -7995,17 +7995,19 @@ button.history-row.selected {
   stroke: var(--border);
 }
 
-.price-chart-guide {
-  stroke: var(--text);
-  stroke-opacity: 0.35;
-}
-
-.price-chart-dot {
+/* The stretch under the mouse or finger: a light behind it, its line bright */
+.price-chart-lit {
   fill: var(--text);
+  opacity: 0.08;
 }
 
-.price-chart-dot.discount {
-  fill: var(--text-green);
+.price-chart-picked {
+  stroke: var(--text);
+  stroke-width: 2.5;
+}
+
+.price-chart-picked.discount {
+  stroke: var(--text-green);
 }
 
 .price-chart-marks {
