@@ -106,17 +106,29 @@ export function makeGuess(answer: SalesAnswer, now = Date.now()): SaleGuess {
 // ---------- Asking the proxy ----------
 
 // By Steam app id, this session. retryAt: a failed ask (offline, IsThereAnyDeal busy) is asked
-// again from then on, not on every hover.
-const answers = new Map<number, { answer: Promise<SalesAnswer | null>; retryAt?: number }>()
+// again from then on, not on every hover. settled: the answer once it came (read at once by a
+// game window, so its chart shows from its first frame instead of popping in a moment later).
+interface Asked {
+  answer: Promise<SalesAnswer | null>
+  retryAt?: number
+  settled?: SalesAnswer | null
+}
+const answers = new Map<number, Asked>()
 const RETRY_AFTER = 5 * 60 * 1000
 
 // The Steam app of the prices (packages and bundles have no history on IsThereAnyDeal here)
 export const steamAppOf = (prices: GamePrices) => Number(prices.steamUrl.match(/\/app\/(\d+)\//)?.[1] ?? 0) || null
 
-function loadSales(appId: number) {
+// The kept ask, unless it failed and is due to be asked again
+function keptSales(appId: number) {
   const kept = answers.get(appId)
-  if (kept && !(kept.retryAt && Date.now() >= kept.retryAt)) return kept.answer
-  const asked: { answer: Promise<SalesAnswer | null>; retryAt?: number } = { answer: Promise.resolve(null) }
+  return kept && !(kept.retryAt && Date.now() >= kept.retryAt) ? kept : undefined
+}
+
+function loadSales(appId: number) {
+  const kept = keptSales(appId)
+  if (kept) return kept.answer
+  const asked: Asked = { answer: Promise.resolve(null) }
   asked.answer = (async () => {
     if (!isComplete(await loadConnection())) return null
     const response = await igdbProxyFetch('sales', JSON.stringify({ steamId: appId }), 20_000)
@@ -128,6 +140,7 @@ function loadSales(appId: number) {
     asked.retryAt = Date.now() + RETRY_AFTER
     return null
   })
+  void asked.answer.then((answer) => (asked.settled = answer))
   answers.set(appId, asked)
   return asked.answer
 }
@@ -148,7 +161,8 @@ function useSalesAnswer(prices: GamePrices | null | undefined, active: boolean):
     }
   }, [active, appId, got?.appId])
   if (!appId) return null
-  return got?.appId === appId ? got.answer : undefined
+  if (got?.appId === appId) return got.answer
+  return active ? keptSales(appId)?.settled : undefined // already answered: no loading moment
 }
 
 // The guess for a game's prices, asked once active (hovered, or shown in the game window):

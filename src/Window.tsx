@@ -3,7 +3,9 @@ import type { FormEvent, KeyboardEvent, ReactNode, Ref } from 'react'
 // The frame of every window (Settings, game window, questions…): the dark backdrop (a click on
 // it closes), the box (role "dialog", focusable so Escape works when it has the focus) and
 // Escape closing it. The box gets `ref`, so a window can focus or scroll it. Game windows put
-// the box in a row with what shows beside it (`inRow`, `beside`: the trailer panel).
+// the box in a row with what shows beside it (`inRow`, `beside`: the trailer panel). They sit
+// at the top instead of the middle: their prices and times arrive after opening, and a centered
+// window growing would jump up (user, 2026-11-21).
 function Window(props: {
   className: string // the box's classes ("dialog settings")
   label?: string
@@ -39,7 +41,7 @@ function Window(props: {
     <div {...boxProps}>{props.children}</div>
   )
   return (
-    <div className="dialog-backdrop" onMouseDown={props.onClose}>
+    <div className={props.inRow ? 'dialog-backdrop at-top' : 'dialog-backdrop'} onMouseDown={props.onClose}>
       {props.inRow ? (
         <div className="game-window">
           {box}

@@ -4,6 +4,17 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Jeux**
+- **Amélioré :** un jeu déjà ouvert s’affiche complet d’emblée, sans sauter
+- **Amélioré :** des lignes grises montrent où les détails et les prix vont s’afficher
+- **Changé :** la fenêtre du jeu s’ouvre un peu plus haut et ne bouge plus pendant le chargement des prix
+- **Corrigé :** haut d’une grande fenêtre de jeu coupé et inaccessible
+
+**Application**
+- **Amélioré :** les fenêtres s’ouvrent plus en douceur : le cadre apparaît, le contenu se fond
+- **Corrigé :** texte flou qui sautait d’un pixel à l’ouverture ou au chargement d’une fenêtre
+- **Petites corrections :** clignement à la fermeture d’une fenêtre
+
 ## [0.98.2] - 2026-11-21
 
 **Jeux**

@@ -4323,23 +4323,104 @@ button {
 }
 
 /* Opening and closing animations (closing: animations.ts). Settings → Animations off stops
-   them (.no-animations). A closing element is .closing: no opening animation again. */
+   them (.no-animations). A closing element is .closing: no opening animation again, its
+   ::before / ::after included (a window's cover came back solid: a blink while it closed). */
 .closing,
-.closing * {
+.closing *,
+.closing ::before,
+.closing ::after {
   animation: none !important;
 }
 
 /* Timings and curves: variables set by animations.ts (TIMING): --open-big, --close-small…,
    --ease-open, --ease-close, --settle */
 
-/* Windows and the image viewer: the dark background fades in, the window rises 8px (settles in;
-   no scaling: text stays sharp, nothing snaps at the end) */
-.dialog-backdrop,
+/* Windows: the dark background's color fades in, the window is solid at once and rises 8px.
+   No fade (opacity) or transform on the window or around it: either one draws it apart on the
+   graphics card, with blurry text that snaps a pixel when it's drawn normally again at the end.
+   The rise is a margin: drawn in place, sharp at every frame. Top margin + the same bottom
+   margin taken off: the window moves by exactly that, centered or not, short or as tall as the
+   screen. It stops on whole screen pixels only (--rise-now rounded to --device-px,
+   appearance.ts): at the curve's slow end, moves of a fraction of a pixel shifted text against
+   its box.
+   Every fade here goes through a registered variable (--shade, --cover): the browser can't
+   hand those to the graphics card, so the window is drawn normally at every frame. A plain
+   color or opacity fade may be handed over, taking the window's text along (no ClearType),
+   then redrawn sharp at the end: a faint flicker. */
+@property --shade {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+.dialog-backdrop {
+  background: rgb(0 0 0 / calc(var(--shade) * 50%));
+  animation: backdrop-in var(--open-big) var(--ease-open);
+}
+
+@property --rise-now {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.dialog-backdrop > * {
+  --rise-px: round(var(--rise-now), var(--device-px, 1px));
+  margin-top: var(--rise-px);
+  margin-bottom: calc(-1 * var(--rise-px));
+  animation: window-rise var(--open-big) var(--ease-open);
+}
+
+@keyframes backdrop-in {
+  from {
+    --shade: 0;
+  }
+}
+
+/* The window's content fades in: a cover of its own background on top fades away (user,
+   2026-11-21). Only the cover is see-through, never the text under it, so the text stays sharp.
+   The frame (border) shows at once. */
+.dialog-backdrop > .dialog,
+.game-window > .dialog {
+  position: relative;
+}
+
+.dialog-backdrop > .dialog::after,
+.game-window > .dialog::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: inherit;
+  background: inherit;
+  opacity: var(--cover);
+  pointer-events: none;
+  animation: cover-off var(--open-big) var(--ease-open);
+}
+
+@property --cover {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes cover-off {
+  from {
+    --cover: 1;
+  }
+}
+
+@keyframes window-rise {
+  from {
+    --rise-now: 8px;
+  }
+}
+
+/* The image viewer (an image, no text): fades in, rises 8px */
 .image-viewer {
   animation: fade-in var(--open-big) var(--ease-open);
 }
 
-.dialog-backdrop > *,
 .image-viewer-stage {
   animation: window-in var(--open-big) var(--ease-open);
 }
@@ -4426,8 +4507,25 @@ button {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgb(0 0 0 / 50%);
-  z-index: 30;
+  z-index: 30; /* its dark color: with its opening animation (--shade) */
+}
+
+/* Game windows (Window.tsx inRow): 92px from the top (user, 2026-11-21: about centered once
+   loaded), they grow downward as their prices arrive. The space above gives way first when the
+   window wouldn't fit (then it sits higher, down to the 16px edge). */
+.dialog-backdrop.at-top {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.dialog-backdrop.at-top::before {
+  content: '';
+  flex: 0 1 76px; /* + the backdrop's 16px padding = 92px */
+}
+
+.dialog-backdrop.at-top > .game-window {
+  flex-shrink: 0;
 }
 
 .dialog {
@@ -6378,9 +6476,16 @@ h3.games-group-title {
   stroke-width: 1.8;
   stroke-dasharray: 22 12.6; /* one arc and one gap around the circle (2π × 5.5 ≈ 34.6) */
   stroke-linecap: round;
-  transform-box: view-box;
-  transform-origin: 8px 8px;
-  animation: spin 1s linear infinite;
+  animation: spin-arc 1s linear infinite;
+}
+
+/* The arc slides once around the circle: looks like turning, but drawn in place. A rotation
+   (transform) is handed to the graphics card, and what's drawn after it (a window's text below)
+   goes along, blurry, then snaps a pixel when the ring goes. */
+@keyframes spin-arc {
+  to {
+    stroke-dashoffset: -34.6;
+  }
 }
 
 /* A reminder in a day: "14:30 Text", up to 3 lines */
@@ -7700,6 +7805,37 @@ button.history-row.selected {
   overflow-wrap: anywhere;
 }
 
+/* While loading (GameExtrasView.tsx): a short gray line in each column, the values of varied lengths */
+.game-extras.loading dt .skeleton {
+  width: 60px;
+}
+
+.game-extras.loading dd .skeleton {
+  width: 110px;
+}
+
+.game-extras.loading div:nth-child(2) dd .skeleton {
+  width: 80px;
+}
+
+.game-extras.loading div:nth-child(3) dd .skeleton {
+  width: 95px;
+}
+
+/* The prices while loading: Steam, key, then the longer lowest prices line. Rows as tall as a
+   line of text, like the price rows (a lone gray line would make them only its own height). */
+.game-prices.loading > div {
+  min-height: 1lh;
+}
+
+.game-prices.loading .skeleton {
+  width: 70px;
+}
+
+.game-prices.loading .price-lows .skeleton {
+  width: 190px;
+}
+
 /* HowLongToBeat's times under the extras (GameExtrasView.tsx): "⌛ label time · label time ↗ ✎",
    each "label time" on one line, wrapping between them; its two small buttons are dim like the
    icon. Under the title on a PC, a full-width row under the cover on a phone (GameDialog.tsx). */
@@ -8202,7 +8338,9 @@ button.history-row.selected {
 .game-window {
   display: flex;
   flex-wrap: wrap;
-  align-content: center;
+  /* safe: taller than the screen, it overflows downward only (plain center put its top out of
+     reach above the screen, where scrolling can't go) */
+  align-content: safe center;
   justify-content: center;
   gap: 12px;
   width: 100%;

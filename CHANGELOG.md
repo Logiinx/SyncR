@@ -4,6 +4,17 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Better:** a game you've opened before shows complete at once, no jumping
+- **Better:** gray lines show where details and prices will appear while they load
+- **Changed:** game window opens a bit higher and stays put while prices load
+- **Fixed:** top of a tall game window cut off and out of reach
+
+**App**
+- **Better:** windows open more softly: the frame appears, the content fades in
+- **Fixed:** blurry text that jumped a pixel as a window opened or loaded
+- **Small fixes:** blink when closing a window
+
 ## [0.98.2] - 2026-11-21
 
 **Games**

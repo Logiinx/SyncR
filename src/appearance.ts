@@ -49,6 +49,24 @@ export function currentZoom() {
   return Number(document.documentElement.style.getPropertyValue('--zoom')) || 1
 }
 
+// One screen pixel in the page's own pixels (app scaling × Windows' display scaling), as
+// --device-px: the windows' rise stops on whole screen pixels only (index.css, window-rise).
+// Followed when the window moves to a screen with another scaling.
+function setDevicePixel() {
+  document.documentElement.style.setProperty('--device-px', `${1 / (currentZoom() * devicePixelRatio)}px`)
+}
+function followDevicePixel() {
+  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      setDevicePixel()
+      followDevicePixel()
+    },
+    { once: true },
+  )
+}
+followDevicePixel()
+
 export function applyAppearance({ scale, font, fontSize, showDates, animations }: Appearance) {
   const root = document.documentElement
   // Scaling: CSS zoom on the whole page. --zoom lets heights based on the window (100vh)
@@ -56,6 +74,7 @@ export function applyAppearance({ scale, font, fontSize, showDates, animations }
   const zoom = String(scale / 100)
   root.style.zoom = zoom
   root.style.setProperty('--zoom', zoom)
+  setDevicePixel()
   // Font and size of the note text (see .editor .tiptap in index.css)
   root.style.setProperty('--note-font', FONTS[font].css)
   root.style.setProperty('--note-size', `${fontSize}px`)

@@ -209,13 +209,22 @@ export function formatEuros(value: number | string): string {
   return euros.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 }
 
+// Prices still fresh in the cache: a game window shows them from its first frame, with no
+// loading moment (a window drawn short, then growing at once, jumped)
+function knownPrices(igdbId: number) {
+  const cached = cache.get(igdbId)
+  return cached && Date.now() - cached.time < CACHE_MS ? cached.prices : undefined
+}
+
 // One game's prices for the game windows: undefined while loading, null when there's nothing
 // to show (not on Steam, game search not set up, offline)
 export function useGamePrices(igdbId: number): GamePrices | null | undefined {
-  const [prices, setPrices] = useState<GamePrices | null | undefined>(undefined)
+  const [prices, setPrices] = useState<GamePrices | null | undefined>(() => knownPrices(igdbId))
   useEffect(() => {
     let current = true
-    setPrices(undefined)
+    const known = knownPrices(igdbId)
+    setPrices(known)
+    if (known !== undefined) return
     loadConnection()
       .then((connection) => (isComplete(connection) ? gamePrices([igdbId]) : null))
       .then((result) => current && setPrices(result?.get(igdbId) ?? null))

@@ -9,7 +9,6 @@ import Window from './Window'
 import CloseButton from './CloseButton'
 import { useGameExtras } from './gameExtras'
 import { openLink } from './links'
-import Spinner from './Spinner'
 import TrailerPlayer from './TrailerPlayer'
 import { playerHere } from './videoLinks'
 import { HoverTip } from './InfoTip'
@@ -23,7 +22,7 @@ import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice
 
 export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   const extras = useGameExtras(igdbId)
-  if (extras === undefined) return <Spinner />
+  if (extras === undefined) return <ExtrasPlaceholder />
   if (!extras) return null
   const lines: [TextKey, string[]][] = [
     [textKey('Developer'), extras.developers],
@@ -44,6 +43,33 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
   )
 }
 
+// While they load: gray lines where Developer, Publisher and Modes will be, as tall as them, so
+// what's below doesn't move when they arrive (the game window grows downward: Window.tsx)
+function ExtrasPlaceholder() {
+  return (
+    <dl className="game-extras loading" role="status" aria-label={t('Loading')}>
+      {[0, 1, 2].map((line) => (
+        <div key={line}>
+          <dt><span className="skeleton" /></dt>
+          <dd><span className="skeleton" /></dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+// While they load: gray lines where the Steam price, the key price and the lowest prices will
+// be (the chart's room can't be known: not every game has one)
+function PricesPlaceholder() {
+  return (
+    <div className="game-prices loading" role="status" aria-label={t('Loading')}>
+      <div><span className="skeleton" /></div>
+      <div><span className="skeleton" /></div>
+      <p className="price-lows"><span className="skeleton" /></p>
+    </div>
+  )
+}
+
 // Prices in the game windows (prices.ts), same look as the To buy list (GamePriceLine): Steam
 // logo + price + green discount badge (and the old price), key icon + the cheapest key that
 // works in France (GG.deals), then the all-time lows. A price opens its Steam or GG.deals page.
@@ -52,7 +78,7 @@ export function GameExtrasInfo({ igdbId }: { igdbId: number }) {
 // "Prices for: …" (fix the link on igdb.com). Borrowed from the main game: "Prices from …", dim.
 export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string }) {
   const prices = useGamePrices(igdbId)
-  if (prices === undefined) return <Spinner />
+  if (prices === undefined) return <PricesPlaceholder />
   if (!prices) return null
   const { steam, deals } = prices
   // Borrowed from the main game: said plainly, it's expected (no warning)
@@ -119,7 +145,10 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
 // place: under the title on a PC; on a phone the title's column beside the cover is too narrow, so
 // it's a full-width row under the cover instead (GameDialog shows both, CSS keeps one).
 export function GamePlaytimeInfo({ game, place }: { game: Game; place: 'title' | 'row' }) {
-  const row = usePlaytime(game.id)
+  // The Games page's copy (already read) until this game's own arrives: shown from the window's
+  // first frame, so nothing below jumps a moment later
+  const shared = useContext(PlaytimesContext)?.get(game.id)
+  const row = usePlaytime(game.id) ?? shared
   if (!row) return null
   const times = [
     { label: t('Main story'), seconds: row.main },
