@@ -262,6 +262,8 @@ function SyncButton() {
         <div
           className={message.leaving ? 'sync-message leaving' : 'sync-message'}
           style={message.place}
+          // Its width, for its slide in (index.css, message-in)
+          ref={(el) => el?.style.setProperty('--width', `${el.offsetWidth}px`)}
           onAnimationEnd={() => message.leaving && setMessage(null)}
         >
           {message.ok && <Check size={14} className="sync-message-ok" />}

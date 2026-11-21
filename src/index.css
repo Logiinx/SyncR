@@ -414,18 +414,21 @@ button {
   background: var(--bg-raised);
   box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
   font-size: 13px;
+  margin-right: calc(-1 * round(var(--away), var(--device-px, 1px)));
   animation: message-in var(--open-big) var(--ease-open);
 }
 
-/* Slides in from the right and back out; it's not at the window's edge, so it also fades */
+/* Slides in from the right and back out; it's not at the window's edge, so it also fades.
+   Sliding in: by its margin, on whole screen pixels (see "Side panels"), half its width
+   (--width, SyncButton.tsx); its text fades in under a cover (see "The window's content fades
+   in"). Leaving: a transform and opacity, soft only while it goes. */
 .sync-message.leaving {
   animation: message-out var(--close-big) var(--ease-close) forwards;
 }
 
 @keyframes message-in {
   from {
-    opacity: 0;
-    transform: translateX(50%);
+    --away: calc(var(--width, 0px) / 2);
   }
 }
 
@@ -1539,7 +1542,7 @@ button {
     display: block;
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 40%);
+    background: rgb(0 0 0 / calc(var(--shade) * 40%)); /* --shade: fades in like a window's */
     z-index: 10;
   }
 }
@@ -4389,6 +4392,7 @@ button {
 .dialog-backdrop > .dialog::after,
 .game-window > .dialog::after,
 .sync-info::after,
+.sync-message::after,
 .info-tip-box.above::after,
 .games-tab-in::after,
 .fade-cover {
@@ -4469,51 +4473,81 @@ button {
 /* Side panels (opening; closing: animations.ts). PC: the page makes room at once (its text
    rewraps once), then the Board glides into it from the right, the sidebar from the left: only
    the panel moves, so it stays smooth. Phone: they slide over the page from their edge, the
-   shade fades in. Not when already open at start (.slide-in: animations.ts). */
+   shade fades in. Not when already open at start (.slide-in: animations.ts).
+   Sliding in, like the windows' rise (user, 2026-11-21): moved by its position (--away: how far
+   from its place), on whole screen pixels, never a transform. A transform is drawn on the
+   graphics card: soft text, then a 1px snap at the end. A position moves only the panel: the
+   page beside it isn't laid out again. Closing slides stay transforms (animations.ts): the
+   text is soft only while it leaves, like a closing window. */
+@property --away {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.sidebar {
+  left: round(calc(-1 * var(--away)), var(--device-px, 1px));
+}
+
+.board {
+  right: round(calc(-1 * var(--away)), var(--device-px, 1px));
+}
+
 @media (min-width: 700px) {
+  .sidebar {
+    position: relative;
+  }
+
   .board.slide-in {
-    animation: from-right var(--open-big) var(--ease-open);
+    animation: board-in var(--open-big) var(--ease-open);
   }
 
   .sidebar.slide-in {
-    animation: from-left var(--open-big) var(--ease-open);
+    animation: sidebar-in var(--open-big) var(--ease-open);
   }
 }
 
 @media (max-width: 699px) {
-  .board.slide-in {
-    animation: from-right var(--open-phone) var(--ease-open);
-  }
-
+  .board.slide-in,
   .sidebar.slide-in {
-    animation: from-left var(--open-phone) var(--ease-open);
+    animation: panel-in-phone var(--open-phone) var(--ease-open);
   }
 
   .backdrop.slide-in {
-    animation: fade-in var(--open-phone) var(--ease-open);
+    animation: backdrop-in var(--open-phone) var(--ease-open);
   }
 }
 
-/* Due reminder cards and "N reminders · Done all" slide in from the window's right edge */
+/* From their whole width away (+ the 1px border) */
+@keyframes board-in {
+  from {
+    --away: calc(var(--board-width, 280px) + 1px);
+  }
+}
+
+@keyframes sidebar-in {
+  from {
+    --away: 261px;
+  }
+}
+
+@keyframes panel-in-phone {
+  from {
+    --away: calc(min(300px, 85vw) + 1px);
+  }
+}
+
+/* Due reminder cards and "N reminders · Done all" slide in from the window's right edge (left:
+   100% = a card's width, its box's) */
 .reminder-alerts > * {
-  animation: from-edge var(--open-big) var(--ease-open);
+  position: relative;
+  left: round(var(--away), var(--device-px, 1px));
+  animation: card-in var(--open-big) var(--ease-open);
 }
 
-@keyframes from-edge {
+@keyframes card-in {
   from {
-    transform: translateX(calc(100% + 16px));
-  }
-}
-
-@keyframes from-right {
-  from {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes from-left {
-  from {
-    transform: translateX(-100%);
+    --away: calc(100% + 16px);
   }
 }
 

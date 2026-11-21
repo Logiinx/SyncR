@@ -12,7 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Amélioré :** les fenêtres s’ouvrent plus en douceur : le cadre apparaît, le contenu se fond
-- **Corrigé :** texte flou qui sautait d’un pixel à l’apparition des fenêtres, bulles ou pages
+- **Corrigé :** texte flou qui sautait d’un pixel à l’apparition des fenêtres, panneaux, bulles ou pages
 - **Petites corrections :** clignement à la fermeture d’une fenêtre
 
 ## [0.98.2] - 2026-11-21
