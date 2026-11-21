@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Jeux**
+- **Nouveau :** fenêtre du jeu : courbe du prix Steam sur 2 ans, zoomable
 - **Nouveau :** Pas commencé : glissez les jeux dans votre ordre de jeu (téléphone : Monter / Descendre)
 - **Nouveau :** l’onglet À acheter montre combien de jeux sont en promo, en vert
 - **Nouveau :** en haut d’À venir : vos jeux qui sortent dans les 30 prochains jours

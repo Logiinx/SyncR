@@ -3,7 +3,7 @@
 // (proxy/igdb-worker.js). Asked only when shown (hover on a Steam price, the game window), kept
 // in memory for this session, never saved or synced. Price alerts only show it as a hint by the
 // price (PriceWatchView), they don't act on it.
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
 import { dayMonth, shortDate, untilText } from './dates'
 import { igdbProxyFetch, isComplete, loadConnection } from './igdb'
@@ -15,7 +15,7 @@ interface BigSale {
   end: string // last day (included)
   official?: false // Black Friday: publishers' own discounts, not a Steam sale
 }
-interface PriceChange {
+export interface PriceChange {
   at: number // ms
   price: number // cents
   regular: number
@@ -132,25 +132,41 @@ function loadSales(appId: number) {
   return asked.answer
 }
 
-// The guess for a game's prices, asked once active (hovered, or shown in the game window):
-// undefined while loading (or not active yet), null when there's nothing to show
-export function useSaleGuess(prices: GamePrices | null | undefined, active: boolean): SaleGuess | null | undefined {
+// The proxy's answer for a game's prices, asked once active: undefined while loading (or not
+// active yet), null when there's none (not a Steam app, or the ask failed)
+function useSalesAnswer(prices: GamePrices | null | undefined, active: boolean): SalesAnswer | null | undefined {
   const appId = prices ? steamAppOf(prices) : null
-  const [guess, setGuess] = useState<{ appId: number; guess: SaleGuess | null } | undefined>(undefined)
+  const [got, setGot] = useState<{ appId: number; answer: SalesAnswer | null } | undefined>(undefined)
   useEffect(() => {
-    if (!active || !appId || guess?.appId === appId) return
+    if (!active || !appId || got?.appId === appId) return
     let current = true
     loadSales(appId).then((answer) => {
-      if (!current) return
-      const made = answer && makeGuess(answer)
-      setGuess({ appId, guess: made && (made.bigSale || made.deals || made.history) ? made : null })
+      if (current) setGot({ appId, answer })
     })
     return () => {
       current = false
     }
-  }, [active, appId, guess?.appId])
+  }, [active, appId, got?.appId])
   if (!appId) return null
-  return guess?.appId === appId ? guess.guess : undefined
+  return got?.appId === appId ? got.answer : undefined
+}
+
+// The guess for a game's prices, asked once active (hovered, or shown in the game window):
+// undefined while loading (or not active yet), null when there's nothing to show
+export function useSaleGuess(prices: GamePrices | null | undefined, active: boolean): SaleGuess | null | undefined {
+  const answer = useSalesAnswer(prices, active)
+  return useMemo(() => {
+    if (!answer) return answer
+    const made = makeGuess(answer)
+    return made.bigSale || made.deals || made.history ? made : null
+  }, [answer])
+}
+
+// The game's Steam price changes over the last 2 years (PriceChart.tsx), from the same answer:
+// undefined while loading, null when unknown, [] when the price never changed
+export function usePriceHistory(prices: GamePrices | null | undefined): PriceChange[] | null | undefined {
+  const answer = useSalesAnswer(prices, true)
+  return answer === undefined ? undefined : (answer?.history ?? null)
 }
 
 

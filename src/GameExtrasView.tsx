@@ -13,6 +13,7 @@ import Spinner from './Spinner'
 import TrailerPlayer from './TrailerPlayer'
 import { playerHere } from './videoLinks'
 import { HoverTip } from './InfoTip'
+import { PriceHistory } from './PriceChart'
 import { discountText, saleTable, useSaleGuess, type SaleGuess, type SalePiece } from './saleGuess'
 import { formatEuros, listPricesLoading, pricesFit, useGamePrices, useKnownPrice, type GamePrices } from './prices'
 
@@ -103,6 +104,7 @@ export function GamePricesInfo({ igdbId, name }: { igdbId: number; name: string 
         </div>
       )}
       {lows.length > 0 && <p className="price-lows">{t('Lowest ever: {prices}', { prices: lows.join(' · ') })}</p>}
+      {steam && <PriceHistory prices={prices} place="title" />}
       {steam && <SaleGuessLines prices={prices} place="title" />}
       {check}
     </div>
@@ -343,11 +345,17 @@ function SaleFacts({ facts, wide }: { facts: SalePiece[]; wide: 'beside' | 'unde
   )
 }
 
-// The game window's row of it on a phone (the prices the window loaded: no lookup of its own)
+// The game window's row of it (and the price chart) on a phone (the prices the window loaded: no
+// lookup of its own)
 export function GameSaleRow({ igdbId }: { igdbId: number }) {
   const prices = useKnownPrice(igdbId)
   if (!prices?.steam) return null
-  return <SaleGuessLines prices={prices} place="row" />
+  return (
+    <>
+      <PriceHistory prices={prices} place="row" />
+      <SaleGuessLines prices={prices} place="row" />
+    </>
+  )
 }
 
 // The same in a box when hovering a Steam price in the Games lists (asked only then)

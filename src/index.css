@@ -7910,6 +7910,136 @@ button.history-row.selected {
   }
 }
 
+/* The Steam price chart (PriceChart.tsx) under "Lowest ever": a title line (or the day under the
+   mouse) with the 2 y · 1 y · 6 m · 3 m switch, the chart, then the year / month names under it */
+.price-chart,
+.game-prices > .price-chart {
+  display: grid; /* stacked, not side by side like a price row */
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  container-type: inline-size;
+}
+
+.price-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Narrow (search preview, phone): the switch on a line of its own above, so the reading always
+   has the whole width (and nothing jumps when it gets longer than the title) */
+@container (width < 340px) {
+  .price-chart-head {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+.price-chart-head > .fill-switch {
+  flex: none;
+}
+
+.price-chart-ranges.fill-switch > button {
+  white-space: nowrap;
+}
+
+.price-chart-read {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A small switch, like History's */
+.price-chart-ranges.fill-switch > button {
+  padding: 1px 6px;
+  font-size: 0.9em;
+}
+
+.price-chart-box {
+  height: 56px;
+  cursor: crosshair;
+  touch-action: pan-y; /* one finger scrolls up and down or reads; two pinch */
+  user-select: none;
+}
+
+.price-chart-box svg {
+  display: block;
+}
+
+.price-chart-line {
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+}
+
+.price-chart-sale {
+  stroke: var(--text-green);
+  stroke-width: 2;
+}
+
+.price-chart-sale-fill {
+  fill: var(--text-green);
+  opacity: 0.12;
+}
+
+.price-chart-year {
+  stroke: var(--border-strong);
+}
+
+.price-chart-month {
+  stroke: var(--border);
+}
+
+.price-chart-guide {
+  stroke: var(--text);
+  stroke-opacity: 0.35;
+}
+
+.price-chart-dot {
+  fill: var(--text);
+}
+
+.price-chart-dot.discount {
+  fill: var(--text-green);
+}
+
+.price-chart-marks {
+  position: relative;
+  height: 1.3em;
+  overflow: hidden;
+  font-size: 0.9em;
+}
+
+.price-chart-marks > span {
+  position: absolute;
+  translate: -50%;
+  white-space: nowrap;
+}
+
+.price-chart-marks > .year {
+  color: var(--text);
+}
+
+.price-chart.in-row {
+  display: none;
+  font-size: 0.85em;
+}
+
+@media (max-width: 699px) {
+  .game-dialog .price-chart.in-title {
+    display: none;
+  }
+
+  .game-dialog .price-chart.in-row {
+    display: grid;
+  }
+}
+
 /* The values (dates, the estimate, "on now"): bright among the dim words, like the HowLongToBeat
    times */
 .sale-value {
