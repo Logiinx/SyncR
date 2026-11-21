@@ -4752,17 +4752,112 @@ button {
   text-transform: uppercase;
 }
 
-/* Seven cards, all open, in columns (3 on a wide window, else 2; 1 on the phone: the count and
-   which card goes where are in SettingsDialog.tsx); each setting a row: name left, control
-   right. The top stays at the same place when "Manage accounts…" changes the height; the gap
-   above and below is the same (the backdrop's padding). Phone: full screen. */
+/* Settings and the windows sharing its look (Video, Games, modules): at the top of the backdrop,
+   the same gap above and below (its padding). Phone: full screen. */
 .dialog.settings {
   align-self: flex-start;
   width: min(880px, 100%);
 }
 
-.dialog.settings.wide {
-  width: min(1300px, 100%);
+/* Settings (SettingsDialog.tsx): the title row, then a sidebar of sections and the one shown on
+   its right. One fixed size, so switching sections never moves the window; a long section
+   scrolls on its own. Each setting a row: name left, control right, a thin line between rows. */
+.dialog.sidebar-settings {
+  display: flex;
+  flex-direction: column;
+  height: min(600px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.sidebar-settings > .dialog-head {
+  align-items: center;
+  padding: 12px 12px 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-settings > .dialog-head h2 {
+  margin: 0;
+}
+
+.settings-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  text-align: left;
+}
+
+.settings-nav-item svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.settings-nav-item:hover {
+  background: var(--hover);
+}
+
+.settings-nav-item.on {
+  background: var(--border-strong);
+}
+
+.settings-nav-item.on svg {
+  color: var(--link);
+}
+
+/* Accounts: alone at the bottom of the sidebar, the version line under it */
+.settings-nav-item.last {
+  margin-top: auto;
+}
+
+.settings-nav .settings-about {
+  margin: 8px 0 0;
+}
+
+.settings-page {
+  padding: 8px 20px 16px;
+  overflow-y: auto;
+}
+
+.settings-page .settings-row {
+  min-height: 34px;
+  padding-block: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-page .settings-row:last-child,
+.settings-page .settings-row:has(+ .settings-card-sub) {
+  border-bottom: none;
+}
+
+.settings-page .settings-row-label {
+  color: var(--text);
+}
+
+.settings-page .settings-card-sub {
+  margin: 14px 0 2px;
+}
+
+.settings-page > .settings-card-sub:first-child {
+  margin-top: 6px;
 }
 
 .settings-cards {
@@ -5035,17 +5130,9 @@ button {
   font-weight: 600;
 }
 
-/* Two columns on the PC: Games | Calendar, Gmail, Instant mail */
-.settings-manage {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 0 32px;
-  margin-top: 8px;
-}
-
-.settings-manage > div > section:first-child > .settings-section {
-  margin-top: 0;
+/* In place of the Accounts section: Games, then Calendar, Gmail, Instant mail */
+.settings-manage > div:first-child > section:first-child > .settings-section {
+  margin-top: 6px;
   padding-top: 0;
   border-top: none;
 }
@@ -5090,14 +5177,25 @@ button {
     width: 100%;
   }
 
-  .settings-manage {
+  /* The sidebar becomes the list, a section opens in its place (SettingsDialog.tsx) */
+  .dialog.sidebar-settings {
+    height: 100%;
+  }
+
+  .settings-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .settings-manage > div + div > section:first-child > .settings-section {
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border-strong);
+  .settings-nav {
+    border-right: none;
+  }
+
+  .settings-nav-item {
+    padding: 12px 10px;
+  }
+
+  .settings-page {
+    padding-inline: 16px;
   }
 }
 

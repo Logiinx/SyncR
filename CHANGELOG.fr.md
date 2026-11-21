@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Changé :** les Paramètres ont une barre latérale de sections, une affichée à la fois
+
 **Vidéo** (PC uniquement)
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va
 - **Changé :** barre du lecteur : Vue (avec son nom) et un menu ⋯ à gauche

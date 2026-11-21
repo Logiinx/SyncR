@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Changed:** Settings has a sidebar of sections, one shown at a time
+
 **Video** (PC only)
 - **Better:** Move to the other screen: its arrow points to the screen it goes to
 - **Changed:** player's top bar: Watched (with its name) and a ⋯ menu on the left

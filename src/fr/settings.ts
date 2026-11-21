@@ -150,7 +150,8 @@ export const settings = {
 
   Links: 'Liens',
   Look: 'Apparence',
-  'Window and privacy': 'Fenêtre et confidentialité',
+  Window: 'Fenêtre',
+  'Settings sections': 'Sections des paramètres',
   'Open…': 'Ouvrir…',
   'App scaling': 'Échelle',
   Animations: 'Animations',
@@ -196,8 +197,8 @@ export const settings = {
   'Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.':
     'Affiche la batterie d’une souris Teevolution Terra Pro (récepteur 8K) dans la barre des tâches, près de l’horloge.',
   'The battery only shows while SyncR runs': 'La batterie ne s’affiche que pendant que SyncR tourne',
-  '{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window and privacy.':
-    '{close} quitte SyncR, et la batterie disparaît avec. Pour la garder, activez « {close} masque SyncR dans la zone de notification » dans Fenêtre et confidentialité.',
+  '{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.':
+    '{close} quitte SyncR, et la batterie disparaît avec. Pour la garder, activez « {close} masque SyncR dans la zone de notification » dans Fenêtre.',
   'Teevolution Terra Pro': 'Teevolution Terra Pro',
   Battery: 'Batterie',
   'About the battery check': 'À propos de la lecture de la batterie',

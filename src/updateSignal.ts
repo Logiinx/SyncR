@@ -3,7 +3,7 @@ import { read, write } from './localState'
 
 // Instant updates (PC): once a release is published, GitHub drops a note in instant mail's queue
 // (update-signal.yml → instantMail.ts → the 'update-signal' event → UpdateBanner.tsx). Once a
-// note has come, the chosen check (Settings → Window and privacy) only runs every 6 hours, as a
+// note has come, the chosen check (Settings → Window) only runs every 6 hours, as a
 // safety net. If a quiet check then finds a version no note announced, the notes have stopped
 // (key removed, setup changed): the chosen check comes back until the next note.
 // Stored per PC, never synced.

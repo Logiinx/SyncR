@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AppWindow, Bell, Blocks, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
-import { SettingRow, SettingsCard } from './SettingsCard'
+import { SettingRow } from './SettingsCard'
 import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -85,12 +85,15 @@ import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from
 import { percentText, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
 import { richText, withIcon } from './richText'
 import SecretField from './SecretField'
+import { useNarrow } from './useNarrow'
+import { read, write } from './localState'
 import { saveLanguageChoice, useLanguageChoice } from './language'
 
-// Settings: four cards, all open at once (two columns on the PC, one on the phone), each
-// setting one row: name on the left, its control on the right. The Accounts card shows how
-// each connection is doing; "Manage accounts…" opens the details in the same window, with
-// ← Back. Changes are saved right away. Closed with Escape or a click outside it.
+// Settings: a sidebar of sections, one shown at a time on its right (on a phone the list fills
+// the window and a section opens in its place). Each setting one row: name on the left, its
+// control on the right. The Accounts section shows how each connection is doing; "Manage
+// accounts…" opens the details in its place, with ‹ Accounts. Changes are saved right away.
+// Closed with Escape or a click outside it.
 // page: opens straight on that window, and closing it closes Settings (a click on the taskbar strip)
 // A module's window that Settings can open on (App.tsx)
 export type SettingsPage = 'mouse-battery' | 'hardware'
@@ -99,10 +102,24 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
-  const [manage, setManage] = useState(false) // the accounts' details instead of the cards
+  // The section shown on the right of the sidebar: the last one looked at on this device (PC).
+  // On a phone the list shows first and a section opens in its place (phoneOpen).
+  const narrow = useNarrow()
+  const [section, setSection] = useState(() => read(SECTION_KEY, 'notes'))
+  const [phoneOpen, setPhoneOpen] = useState(false)
+  const pageRef = useRef<HTMLDivElement>(null)
+  function openSection(id: string) {
+    setSection(id)
+    write(SECTION_KEY, id)
+    setManage(false)
+    setPhoneOpen(true)
+    pageRef.current?.scrollTo({ top: 0 })
+  }
+  const [manage, setManage] = useState(false) // the accounts' details instead of the Accounts section
   function showManage(on: boolean) {
+    if (on) openSection('accounts')
     setManage(on)
-    dialogRef.current?.scrollTo({ top: 0 })
+    pageRef.current?.scrollTo({ top: 0 })
   }
 
   const [appearance, setAppearance] = useState(loadAppearance)
@@ -217,17 +234,6 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
     return () => window.removeEventListener('google-change', refresh)
   }, [])
 
-  // Columns of cards: 3 when the window is wide enough at the app's scale, 1 on a phone (the same
-  // 700 px as index.css). The cards change columns, so the browser can't do it alone.
-  const columnsFor = () => (window.innerWidth < 700 ? 1 : window.innerWidth / (appearance.scale / 100) >= WIDE_SETTINGS ? 3 : 2)
-  const [columns, setColumns] = useState(columnsFor)
-  useEffect(() => {
-    const resize = () => setColumns(columnsFor())
-    resize()
-    window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
-  }, [appearance.scale])
-
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
   if (showBattery) return <MouseBatterySettings onClose={() => (page === 'mouse-battery' ? onClose() : setShowBattery(false))} />
@@ -235,9 +241,9 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
-  // The cards (Window and privacy, Video: PC only), placed in columns at the end
+  // The sections' contents (Window and Modules: PC only), listed in the sidebar at the end
   const notesCard = (
-    <SettingsCard key="notes" icon={NotebookPen} title={t('Notes')}>
+    <>
       <SettingRow label={t('Font')}>
         {/* Each choice is shown in its own font */}
         <select
@@ -280,10 +286,10 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           {rulesSummary && `${rulesSummary} · `}{t('Edit…')}
         </button>
       </SettingRow>
-    </SettingsCard>
+    </>
   )
   const linksCard = (
-    <SettingsCard key="links" icon={Link} title={t('Links')}>
+    <>
       <SettingRow
         label={
           <>
@@ -396,11 +402,17 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           onChange={(sites) => updateLinks({ sites })}
         />
       </SettingRow>
-    </SettingsCard>
+    </>
   )
   const alertsCard = (
-    <SettingsCard key="alerts" icon={Bell} title={t('Alerts')}>
-      {isTauri() && <PopupPlace background={background} onChange={updateBackground} />}
+    <>
+      {isTauri() && (
+        <>
+          <h4 className="settings-card-sub">{t('Pop-up')}</h4>
+          <PopupPlace background={background} onChange={updateBackground} />
+        </>
+      )}
+      <h4 className="settings-card-sub">{t('Reminders')}</h4>
       <SettingRow label={t('Reminder sound')}>
         <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
       </SettingRow>
@@ -429,6 +441,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
       </SettingRow>
       {mail && gmailAccounts.length > 0 && (
         <>
+          <h4 className="settings-card-sub">{t('Emails')}</h4>
           <SettingRow label={t('Email sound')}>
             <SoundChoice value={background.emailSoundId} onChange={(id) => updateBackground({ emailSoundId: id })} />
           </SettingRow>
@@ -472,10 +485,10 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           </button>
         </SettingRow>
       )}
-    </SettingsCard>
+    </>
   )
   const accountsCard = (
-    <SettingsCard key="accounts" icon={Plug} title={t('Accounts')}>
+    <>
       <SettingRow label={<>{t('Game search')} <Synced /></>}>
         <Status ok={proxyStatus.ok} text={proxyStatus.text} />
       </SettingRow>
@@ -499,10 +512,10 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           {t('Manage accounts…')}
         </button>
       </div>
-    </SettingsCard>
+    </>
   )
   const lookCard = (
-    <SettingsCard key="look" icon={Palette} title={t('Look')}>
+    <>
       <SettingRow label={<>{t('Language')} <Synced /></>}>
         {languageChoice !== undefined && (
           <select value={languageChoice} onChange={(e) => saveLanguageChoice(validChoice(e.target.value))}>
@@ -607,10 +620,10 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           )}
         />
       )}
-    </SettingsCard>
+    </>
   )
   const windowCard = isTauri() && (
-    <SettingsCard key="window" icon={AppWindow} title={t('Window and privacy')}>
+    <>
       <SettingRow
         label={
           <>
@@ -698,7 +711,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           onChange={(e) => setPinDialog(e.target.checked ? 'on' : 'off')}
         />
       </SettingRow>
-    </SettingsCard>
+    </>
   )
   // Modules (PC): extras apart from notes, each with its own settings window. Turning one on that
   // only shows while SyncR runs warns once when ✕ quits SyncR. Video has no checkbox: it shows
@@ -709,7 +722,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
     if (warn) setQuitWarning(true)
   }
   const modulesCard = isTauri() && (
-    <SettingsCard key="modules" icon={Blocks} title={t('Modules')}>
+    <>
       {videoOn && (
         <SettingRow label={t('Video')}>
           <button className="setting-button" onClick={() => setShowVideo(true)}>
@@ -751,16 +764,24 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
         )}
         <input type="checkbox" checked={hardware.on} onChange={(e) => toggleHardware(e.target.checked)} />
       </SettingRow>
-    </SettingsCard>
+    </>
   )
-  // 3 columns on a wide window, 2 with the same cards in another order, 1 on a phone
-  const columnCards =
-    columns === 3 ? [[notesCard, linksCard], [alertsCard, accountsCard], [lookCard, windowCard, modulesCard]]
-    : columns === 2 ? [[notesCard, linksCard, accountsCard], [lookCard, alertsCard, windowCard, modulesCard]]
-    : [[notesCard, linksCard, alertsCard, accountsCard, lookCard, windowCard, modulesCard]]
-  // The version line ends the column that's shortest on the PC, so it adds no height of its own
-  // (a line under all columns made Settings scroll on a 1080p screen)
-  const aboutColumn = columns === 3 ? 1 : 0
+  // The sidebar's sections, in the user's order (Window and Modules: PC only); Accounts sits at
+  // the bottom
+  const sections = [
+    { id: 'notes', icon: NotebookPen, name: t('Notes'), content: notesCard },
+    { id: 'links', icon: Link, name: t('Links'), content: linksCard },
+    { id: 'alerts', icon: Bell, name: t('Alerts'), content: alertsCard },
+    { id: 'look', icon: Palette, name: t('Look'), content: lookCard },
+    { id: 'window', icon: AppWindow, name: t('Window'), content: windowCard },
+    { id: 'modules', icon: Blocks, name: t('Modules'), content: modulesCard },
+    { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
+  ].filter((s) => s.content)
+  const current = sections.find((s) => s.id === section) ?? sections[0]
+  // Phone: the list fills the window; a section opens in its place, with ‹ back to the list
+  const showList = !narrow || !phoneOpen
+  const showPage = !narrow || phoneOpen
+  const back = manage ? () => showManage(false) : narrow && phoneOpen ? () => setPhoneOpen(false) : null
 
   // Check for updates: the icon next to Settings in the sidebar
   const about = (
@@ -774,50 +795,62 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
     </p>
   )
 
-  const cards = (
-    <div className="settings-cards" style={{ '--settings-columns': columns } as React.CSSProperties}>
-      {columnCards.map((column, i) => (
-        <div key={i} className="settings-column">
-          {column}
-          {i === aboutColumn && about}
-        </div>
-      ))}
+  const shown = manage ? (
+    <div className="settings-manage">
+      <div>
+        <GamesSettings />
+      </div>
+      <div>
+        <GoogleSettings />
+        {mail && <GmailSettings />}
+        {mail && <SafeSenders />}
+      </div>
     </div>
+  ) : (
+    current.content
   )
 
   return (
     <>
-      <Window className={`dialog settings${columns === 3 && !manage ? ' wide' : ''}`} label={t('Settings')} onClose={onClose} ref={dialogRef}>
+      <Window className="dialog settings sidebar-settings" label={t('Settings')} onClose={onClose} ref={dialogRef}>
         <div className="dialog-head">
-          {manage ? (
-            <button className="settings-back" onClick={() => showManage(false)}>
-              <ChevronLeft size={18} /> {t('Accounts')}
+          {back ? (
+            <button className="settings-back" onClick={back}>
+              <ChevronLeft size={18} /> {manage ? t('Accounts') : current.name}
             </button>
           ) : (
             <h2>{t('Settings')}</h2>
           )}
           <CloseButton onClick={onClose} />
         </div>
-        {manage ? (
-          <div className="settings-manage">
-            <div>
-              <GamesSettings />
+        <div className="settings-body">
+          {showList && (
+            <nav className="settings-nav" aria-label={t('Settings sections')}>
+              {sections.map(({ id, icon: Icon, name }) => (
+                <button
+                  key={id}
+                  className={`settings-nav-item${id === current.id && !narrow ? ' on' : ''}${id === 'accounts' ? ' last' : ''}`}
+                  aria-current={id === current.id && !narrow ? 'page' : undefined}
+                  onClick={() => openSection(id)}
+                >
+                  <Icon size={15} /> {name}
+                </button>
+              ))}
+              {about}
+            </nav>
+          )}
+          {showPage && (
+            <div className="settings-page" ref={pageRef}>
+              {shown}
             </div>
-            <div>
-              <GoogleSettings />
-              {mail && <GmailSettings />}
-              {mail && <SafeSenders />}
-            </div>
-          </div>
-        ) : (
-          cards
-        )}
+          )}
+        </div>
       </Window>
       {quitWarning && (
         <Dialog
           request={{
             title: t('The battery only shows while SyncR runs'),
-            message: withIcon(t('{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window and privacy.'), 'close', <X size={13} aria-label={t('Close')} />),
+            message: withIcon(t('{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.'), 'close', <X size={13} aria-label={t('Close')} />),
             confirmLabel: 'OK',
             noCancel: true,
             onConfirm: () => {},
@@ -829,9 +862,8 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   )
 }
 
-// The app's width (at its scale) from which Settings shows 3 columns: the wide window (index.css,
-// `.dialog.settings.wide`) and the space around it
-const WIDE_SETTINGS = 1340
+// The section Settings opens on (the last one looked at, this device only)
+const SECTION_KEY = 'syncr.settingsSection'
 
 // Google Calendar's state when signed in
 const connectedText = () => {

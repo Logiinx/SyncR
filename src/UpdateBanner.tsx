@@ -19,7 +19,7 @@ export function checkForUpdates(): Promise<void> {
 }
 
 // The PC's quiet check while it keeps running: every minute, is the chosen time (Settings →
-// Window and privacy; 6 hours while instant updates work, updateSignal.ts) up since the last
+// Window; 6 hours while instant updates work, updateSignal.ts) up since the last
 // look? Read each time, so a new choice counts at once, and a PC waking from sleep looks right away.
 const TICK_MS = 60_000
 const EARLY_MS = 5_000 // a timer can fire a little early: don't wait a whole extra minute for it
