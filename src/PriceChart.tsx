@@ -68,7 +68,8 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
     () => history.map((change, i) => ({ start: change.at, end: history[i + 1]?.at ?? now, price: change.price, cut: change.cut })),
     [history, now],
   )
-  const top = Math.max(1, ...history.map((change) => Math.max(change.price, change.regular)))
+  // (a change without its normal price counts only its price, so the scale never breaks)
+  const top = Math.max(1, ...history.map((change) => Math.max(change.price, Number.isFinite(change.regular) ? change.regular : 0)))
 
   // Its width in CSS pixels (the drawing's own units, so lines and text stay sharp)
   useEffect(() => {
@@ -158,9 +159,10 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
   const x = (time: number) => ((time - view.start) / span) * width
   const y = (price: number) => PAD + (1 - price / top) * (HEIGHT - 2 * PAD)
 
-  // The reading: never before the first change (nothing is known there)
+  // The reading: never before the first change (nothing is known there), and only while that day
+  // is in view (a finger's reading stays, but the view may change after it)
   const readAt = at === null ? null : Math.max(at, stretches[0].start)
-  const read = readAt !== null && readAt <= view.end ? stretches.findLast((stretch) => stretch.start <= readAt)! : null
+  const read = readAt !== null && readAt >= view.start && readAt <= view.end ? stretches.findLast((stretch) => stretch.start <= readAt)! : null
 
   // Month and year lines, from the first month start in view
   const marks: { x: number; year: boolean; name: string | null }[] = []
