@@ -395,6 +395,10 @@ function barData(video: PlayableVideo, way: Way) {
       unwatch: t('Back to To watch'),
       onTop: t('Always on top'),
       nextScreen: t('Move to the other screen'),
+      screenRight: t('Move to the screen on the right'),
+      screenLeft: t('Move to the screen on the left'),
+      screenUp: t('Move to the screen above'),
+      screenDown: t('Move to the screen below'),
       more: t('More'),
       // Its menu (video-menu.html) gets the same address
       browser: t('Open in browser'),

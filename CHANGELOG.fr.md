@@ -5,7 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
-- **Amélioré :** Déplacer vers l’autre écran est près des boutons de fenêtre, nouvelle icône
+- **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va
 - **Changé :** barre du lecteur : Vue (avec son nom) et un menu ⋯ à gauche
 - **Changé :** Essayer une autre façon, Ouvrir dans le navigateur et extensions sont dans ⋯
 

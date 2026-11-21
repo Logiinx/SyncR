@@ -406,6 +406,8 @@ fn place_video_pages(window: &tauri::Window, bar_height: f64) {
 static VIDEO_SHAPE: std::sync::Mutex<Option<(f64, f64)>> = std::sync::Mutex::new(None);
 static VIDEO_SIZE: std::sync::Mutex<(u32, u32)> = std::sync::Mutex::new((0, 0)); // as it last fitted
 static VIDEO_BAR_HEIGHT: std::sync::Mutex<f64> = std::sync::Mutex::new(0.0);
+// The screen the video window was last on (its corner), to see when it lands on another one
+static VIDEO_SCREEN: std::sync::Mutex<Option<(i32, i32)>> = std::sync::Mutex::new(None);
 static VIDEO_RESIZES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[cfg(windows)]
@@ -809,11 +811,18 @@ pub async fn open_video_player(
           let _ = bar.eval(format!("window.setMaximized?.({maximized})"));
         }
       }
+      // On another screen (the button or dragged there): the bar's screen button points again
+      WindowEvent::Moved(_) => {
+        let here = moved.current_monitor().ok().flatten().map(|screen| (screen.position().x, screen.position().y));
+        let changed = VIDEO_SCREEN.lock().map(|mut last| std::mem::replace(&mut *last, here) != here).unwrap_or(false);
+        if let (true, Some(bar)) = (changed, moved.get_webview(VIDEO_BAR)) {
+          show_screens(&moved, &bar);
+        }
+      }
       // A screen plugged in or out while away: the bar's screen button follows
       WindowEvent::Focused(true) => {
         if let Some(bar) = moved.get_webview(VIDEO_BAR) {
-          let screens = moved.available_monitors().map(|all| all.len()).unwrap_or(1);
-          let _ = bar.eval(format!("window.setScreens?.({screens})"));
+          show_screens(&moved, &bar);
         }
       }
       // Out of full screen first, so the window closes as a normal one
@@ -857,11 +866,9 @@ pub fn video_bar(
   let result = match action.as_str() {
     "ready" => {
       let maximized = window.is_maximized().unwrap_or(false);
-      let screens = window.available_monitors().map(|all| all.len()).unwrap_or(1);
       video_extensions::bar_ready(app);
-      return webview
-        .eval(format!("window.setMaximized({maximized}); window.setScreens({screens})"))
-        .map_err(|e| e.to_string());
+      show_screens(&window, &webview);
+      return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());
     }
     // left, at: the button's left edge and middle, in pixels from the window's left edge
     "menu" => {
@@ -893,23 +900,58 @@ pub fn video_bar(
   result.map_err(|e| e.to_string())
 }
 
-// The window to the next screen (left to right, then back to the first), always maximized there.
-// Out of maximized first: a maximized window can't be moved.
-fn move_to_next_screen(window: &tauri::Window) -> tauri::Result<()> {
-  let mut screens = window.available_monitors()?;
+// The screen the window goes to next: left to right, then back to the first. None with one screen.
+fn next_screen(window: &tauri::Window) -> Option<(Option<tauri::Monitor>, tauri::Monitor)> {
+  let mut screens = window.available_monitors().ok()?;
   if screens.len() < 2 {
-    return Ok(());
+    return None;
   }
   screens.sort_by_key(|screen| (screen.position().x, screen.position().y));
-  let here = window.current_monitor()?.map(|screen| *screen.position());
-  let next = screens
-    .iter()
-    .position(|screen| Some(*screen.position()) == here)
+  let here = window.current_monitor().ok().flatten();
+  let next = here
+    .as_ref()
+    .and_then(|here| screens.iter().position(|screen| screen.position() == here.position()))
     .map_or(0, |index| (index + 1) % screens.len());
+  Some((here, screens.swap_remove(next)))
+}
+
+// Which way the bar's screen button points: "left", "right", "up" or "down" (from the middle of
+// this screen to the middle of the next), "" when unknown
+fn next_screen_way(window: &tauri::Window) -> &'static str {
+  let Some((Some(here), next)) = next_screen(window) else {
+    return "";
+  };
+  let middle = |screen: &tauri::Monitor| {
+    (screen.position().x as i64 * 2 + screen.size().width as i64, screen.position().y as i64 * 2 + screen.size().height as i64)
+  };
+  let ((x, y), (to_x, to_y)) = (middle(&here), middle(&next));
+  let (dx, dy) = (to_x - x, to_y - y);
+  if dx.abs() >= dy.abs() {
+    if dx >= 0 { "right" } else { "left" }
+  } else if dy > 0 {
+    "down"
+  } else {
+    "up"
+  }
+}
+
+// The bar's screen button: shown with two screens or more, pointing to the next one
+fn show_screens(window: &tauri::Window, bar: &tauri::Webview) {
+  let screens = window.available_monitors().map(|all| all.len()).unwrap_or(1);
+  let way = next_screen_way(window);
+  let _ = bar.eval(format!("window.setScreens?.({screens}, '{way}')"));
+}
+
+// The window to the next screen, always maximized there. Out of maximized first: a maximized
+// window can't be moved.
+fn move_to_next_screen(window: &tauri::Window) -> tauri::Result<()> {
+  let Some((_, next)) = next_screen(window) else {
+    return Ok(());
+  };
   if window.is_maximized()? {
     window.unmaximize()?;
   }
-  let corner = screens[next].position();
+  let corner = next.position();
   window.set_position(tauri::PhysicalPosition::new(corner.x + 40, corner.y + 40))?;
   window.maximize()
 }

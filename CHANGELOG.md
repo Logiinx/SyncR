@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
-- **Better:** Move to the other screen sits by the window buttons, new icon
+- **Better:** Move to the other screen: its arrow points to the screen it goes to
 - **Changed:** player's top bar: Watched (with its name) and a ⋯ menu on the left
 - **Changed:** Try another way, Open in browser and extensions are in the ⋯ menu
 
