@@ -12,7 +12,7 @@ All notable changes to SyncR. Newest version first.
 
 **App**
 - **Better:** windows open more softly: the frame appears, the content fades in
-- **Fixed:** blurry text that jumped a pixel as windows, panels, tips or pages appeared
+- **Fixed:** blurry text that jumped a pixel as windows, panels, pages or lists appeared
 - **Small fixes:** blink when closing a window
 
 ## [0.98.2] - 2026-11-21

@@ -126,7 +126,7 @@ export function useListItem(ref: RefObject<HTMLElement | null>) {
     else if (performance.now() - seen > 300 && animationsOn()) {
       // Measured without a running one (React runs this twice in development); sync's tint stays
       el.getAnimations().forEach((animation) => animation.id !== TINT_ID && animation.cancel())
-      el.animate(itemFrames(el, list), { duration: TIMING.openSmall, easing: EASE_OPEN })
+      itemIn(el, list)
       if (takeGlow(el.dataset.cardId, 'added')) syncTint(el, 'added')
     }
     return () => {
@@ -175,9 +175,13 @@ function coverIn(el: HTMLElement) {
 function backgroundBehind(el: Element) {
   for (let node = el.parentElement; node; node = node.parentElement) {
     const color = getComputedStyle(node).backgroundColor
-    if (color !== 'transparent' && !color.startsWith('rgba(0, 0, 0, 0)')) return color
+    if (!isClear(color)) return color
   }
   return 'var(--bg)'
+}
+
+function isClear(color: string) {
+  return color === 'transparent' || color.startsWith('rgba(0, 0, 0, 0)')
 }
 
 // Pages (a note, Games, Reminders, the empty page) crossfade when switching tabs: the new one
@@ -244,7 +248,7 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
     const parents = new Set([...prev.items.values()].map((item) => item.parent))
     for (const [key, { el, parent }] of items) {
       if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
-        el.animate(itemFrames(el, parent), { duration: TIMING.openSmall, easing: EASE_OPEN })
+        itemIn(el, parent)
         if (glows && takeGlow(key, 'added')) syncTint(el, 'added')
       } else if (glows && prev.items.has(key) && takeGlow(key, 'edited')) syncTint(el, 'edited')
     }
@@ -267,26 +271,51 @@ function isGrid(list: Element) {
 }
 
 // Gone ↔ there. In a column: its height, margins and the gap after it (the last gap goes with it).
-// In a row (note tabs): the same with its width.
-function itemFrames(el: Element, list: Element): Keyframe[] {
-  if (isGrid(list)) return [{ opacity: 0 }, { opacity: 1 }] // no scaling (blurry, then snaps)
+// In a row (note tabs): the same with its width. In a grid: nothing moves. A leaving item also
+// fades (soft only while it goes); an arriving one fades in under a cover instead (itemIn).
+function itemFrames(el: Element, list: Element, leaving = false): Keyframe[] {
+  const fade = (frames: Keyframe[]) => (leaving ? [{ ...frames[0], opacity: 0 }, { ...frames[1], opacity: 1 }] : frames)
+  if (isGrid(list)) return fade([{}, {}]) // no scaling (blurry, then snaps)
   const listStyle = getComputedStyle(list)
   if (listStyle.display.endsWith('flex') && !listStyle.flexDirection.startsWith('column')) {
     const gap = parseFloat(listStyle.columnGap) || 0
     const style = getComputedStyle(el)
     const sides = ['minWidth', 'paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth', 'marginLeft'] as const
-    const gone: Keyframe = { width: '0px', marginRight: `${-gap}px`, opacity: 0, overflow: 'hidden' }
-    const there: Keyframe = { width: 'auto', marginRight: style.marginRight, opacity: 1, overflow: 'hidden' }
+    const gone: Keyframe = { width: '0px', marginRight: `${-gap}px`, overflow: 'hidden' }
+    const there: Keyframe = { width: 'auto', marginRight: style.marginRight, overflow: 'hidden' }
     for (const side of sides) {
       gone[side] = '0px'
       there[side] = style[side]
     }
-    return [gone, there]
+    return fade([gone, there])
   }
   const gap = parseFloat(getComputedStyle(list).rowGap) || 0
-  const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px`, opacity: 0 }
-  const there = { ...upright(el), opacity: 1 }
-  return [{ ...gone, overflow: 'hidden' }, { ...there, overflow: 'hidden' }]
+  const gone = { ...FLAT, marginTop: '0px', marginBottom: `${-gap}px` }
+  return fade([{ ...gone, overflow: 'hidden' }, { ...upright(el), overflow: 'hidden' }])
+}
+
+// An item arriving: it grows in (itemFrames) and its content fades in under a cover of its own
+// background (or of what's behind it), like a window's (index.css). The item itself is never
+// see-through: its text keeps ClearType, no 1px snap at the end.
+function itemIn(el: HTMLElement, list: Element) {
+  const frames = itemFrames(el, list)
+  if (Object.keys(frames[0]).length) el.animate(frames, { duration: TIMING.openSmall, easing: EASE_OPEN })
+  if (el.querySelector(':scope > .fade-cover')) return // React runs it twice in development
+  const cover = document.createElement('div')
+  cover.className = 'fade-cover inside' // i18n-ok
+  // Its own background, live (index.css: inherit), as it may still change (a new card starts
+  // editing); when it has none, what's behind it
+  if (isClear(getComputedStyle(el).backgroundColor)) cover.style.background = backgroundBehind(el)
+  // Held inside the item (and clipped by it while it grows)
+  const placed = getComputedStyle(el).position === 'static'
+  if (placed) el.style.position = 'relative'
+  el.append(cover)
+  cover
+    .animate([{ '--cover': 1 }, { '--cover': 0 }], { duration: TIMING.openSmall, easing: EASE_OPEN })
+    .finished.finally(() => {
+      cover.remove()
+      if (placed) el.style.position = ''
+    })
 }
 
 // tinted: deleted by sync, so it's red for a moment first (syncTint)
@@ -305,22 +334,37 @@ function itemOut(copy: HTMLElement, list: Element, next: Node | null, tinted = f
 
 function shrinkAway(copy: HTMLElement, list: Element) {
   const grid = isGrid(list)
-  const animation = copy.animate(itemFrames(copy, list).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' })
+  const animation = copy.animate(itemFrames(copy, list, true).reverse(), { duration: TIMING.closeSmall, easing: EASE_CLOSE, fill: 'forwards' })
   animation.finished.finally(() => {
     if (!grid) return copy.remove()
-    // The other tiles glide from where they were to their new places
+    // The other tiles glide from where they were to their new places: by their position, on whole
+    // screen pixels (.gliding, index.css), never a transform (soft text, then a 1px snap)
     const others = [...list.children].filter((child) => child !== copy)
     const before = others.map((child) => child.getBoundingClientRect())
     copy.remove()
+    // A glide still running (two removed quickly) stops, so "after" is the tile's real place
+    others.forEach((child) => {
+      child.getAnimations().forEach((glide) => glide.id === GLIDE_ID && glide.cancel())
+      child.classList.remove('gliding')
+    })
     const zoom = currentZoom()
     others.forEach((child, i) => {
       const after = child.getBoundingClientRect()
       const dx = (before[i].left - after.left) / zoom
       const dy = (before[i].top - after.top) / zoom
-      if (dx || dy) child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: TIMING.openSmall, easing: EASE_OPEN })
+      if (dx || dy) glide(child, dx, dy)
     })
   })
 }
+
+function glide(el: Element, dx: number, dy: number) {
+  el.classList.add('gliding')
+  const frames = [{ '--glide-x': `${dx}px`, '--glide-y': `${dy}px` }, { '--glide-x': '0px', '--glide-y': '0px' }]
+  const animation = el.animate(frames, { id: GLIDE_ID, duration: TIMING.openSmall, easing: EASE_OPEN })
+  animation.onfinish = () => el.classList.remove('gliding')
+}
+
+const GLIDE_ID = 'glide' // i18n-ok
 
 // Sync's tint (syncGlow.ts, DECISIONS.md "Sync changes tinted green / red"): the item's
 // background turns green (new), blue (edited) or red (deleted), under its text, for 2 s. Green

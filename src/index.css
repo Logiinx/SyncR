@@ -4422,10 +4422,35 @@ button {
   animation: cover-off var(--close-small) ease-out;
 }
 
-/* Placed and colored by coverIn (animations.ts), which runs its fade */
+/* Placed and colored by coverIn (animations.ts), which runs its fade. Inside an item growing in
+   (itemIn): covers the item. */
 .fade-cover {
   inset: auto;
   animation: none;
+}
+
+.fade-cover.inside {
+  inset: 0;
+}
+
+/* Games grid: the other tiles glide to their places after one is removed (animations.ts,
+   glide): by their position on whole screen pixels, never a transform (see "Side panels") */
+@property --glide-x {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --glide-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.gliding {
+  position: relative;
+  left: round(var(--glide-x), var(--device-px, 1px));
+  top: round(var(--glide-y), var(--device-px, 1px));
 }
 
 @property --cover {
