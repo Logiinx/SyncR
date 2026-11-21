@@ -15,7 +15,7 @@ import { LIST_PIECES, useCardPieces, VIDEO_PIECES, type CardPiece } from './vide
 import Spinner from './Spinner'
 import { byChannel, channelKey, checkVideosNow, clearFresh, clearWatched, followOf, isRecent, markAllWatched, markOpened, searchMatches, setFollowStartSkip, setWatched, startOver, useChecking, useVideoFeed, type FeedVideo } from './video'
 import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from './VideoFollows'
-import VideoSettings from './VideoSettings'
+import { openSettings } from './openSettings'
 import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
@@ -372,7 +372,7 @@ function VideoView() {
   // The list and follow last shown, on this PC (user, 2026-11-16): the tab reopens on them
   const [storedList, setList] = useLocalState<List>('syncr.video.list', 'towatch')
   const pickedList: List = ['towatch', 'rewatch', 'watched', 'music'].includes(storedList) ? storedList : 'towatch' // i18n-ok
-  // Rewatch is its own list, or a section at the bottom of To watch (Video settings window)
+  // Rewatch is its own list, or a section at the bottom of To watch (Settings → Video)
   const asSection = useRewatchSection()
   const musicName = useMusicName()
   const [layout, setLayout] = useLocalState<ListLayout>('syncr.video.layout', 'list')
@@ -398,7 +398,6 @@ function VideoView() {
   const [pickFolders, setPickFolders] = useState<{ x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
   const [listOpen, setListOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false) // the Video settings window
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
   const [grouped, setGrouped] = useLocalState('syncr.video.byChannel', false)
@@ -1106,7 +1105,7 @@ function VideoView() {
             <button className="reminders-refresh" title={t('More')} onClick={(e) => openBarMenu('more', e.currentTarget)}>
               <Ellipsis size={15} />
             </button>
-            <button className="reminders-refresh" title={t('Video settings')} onClick={() => setSettingsOpen(true)}>
+            <button className="reminders-refresh" title={t('Video settings')} onClick={() => openSettings('video')}>
               <Settings size={15} />
             </button>
           </div>
@@ -1228,7 +1227,6 @@ function VideoView() {
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {addingPlaylist && <AddPlaylistDialog onAdded={showAdded} onClose={() => setAddingPlaylist(false)} />}
       {listOpen && <FollowsWindow onClose={() => setListOpen(false)} />}
-      {settingsOpen && <VideoSettings onClose={() => setSettingsOpen(false)} />}
       {barMenu && (
         <ContextMenu
           x={barMenu.x}

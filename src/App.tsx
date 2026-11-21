@@ -16,7 +16,8 @@ import Sidebar from './Sidebar'
 import Board from './Board'
 import { usePanelSwipe } from './edgeSwipe'
 import { setPendingSearch } from './noteSearch'
-import SettingsDialog, { type SettingsPage } from './SettingsDialog'
+import SettingsDialog from './SettingsDialog'
+import { listenOpenSettings, type SettingsStart } from './openSettings'
 import TabBar, { type Tab } from './TabBar'
 import GamesView from './GamesView'
 import RemindersView from './RemindersView'
@@ -115,10 +116,10 @@ function App() {
   const [menu, setMenu] = useState<{ noteId: string; x: number; y: number; tab?: boolean } | null>(null)
   const [dialog, setDialog] = useState<DialogRequest | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // A click on the mouse battery's taskbar strip, or "Hardware settings…" in the Hardware widget's
-  // menu, opens Settings straight on that module's window (a new key starts it there again when
+  // A module's ⚙️, a click on the mouse battery's taskbar strip, or "Hardware settings…" in the
+  // Hardware widget's menu opens Settings on that section (a new key starts it there again when
   // Settings was already open)
-  const [settingsStart, setSettingsStart] = useState<{ page?: SettingsPage; key: number }>({ key: 0 })
+  const [settingsStart, setSettingsStart] = useState<{ start?: SettingsStart; key: number }>({ key: 0 })
 
   // PC, mouse: hovering the ☰ button opens the sidebar over the note after 0.3 s ("peek"); it
   // closes 0.5 s after the mouse left the button and the panel (not while one of its menus or
@@ -146,11 +147,15 @@ function App() {
   }
 
   useEffect(() => {
-    const openOn = (page: SettingsPage) => () => {
-      setSettingsStart((start) => ({ page, key: start.key + 1 }))
+    const openOn = (start: SettingsStart) => {
+      setSettingsStart((before) => ({ start, key: before.key + 1 }))
       setSettingsOpen(true)
     }
-    const stops = [listenMouseBatteryOpen(openOn('mouse-battery')), listenHardwareOpen(openOn('hardware'))]
+    const stops = [
+      listenOpenSettings(openOn),
+      listenMouseBatteryOpen(() => openOn('mouse-battery')),
+      listenHardwareOpen(() => openOn('hardware')),
+    ]
     return () => stops.forEach((stop) => stop())
   }, [])
 
@@ -416,7 +421,7 @@ function App() {
       {settingsOpen && (
         <SettingsDialog
           key={settingsStart.key}
-          page={settingsStart.page}
+          start={settingsStart.start}
           onClose={() => {
             setSettingsOpen(false)
             setSettingsStart((start) => ({ key: start.key }))

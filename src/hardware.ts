@@ -5,12 +5,12 @@ import { animationsOn } from './animations'
 import { decimal, percentText, t } from './i18n'
 import { read, write } from './localState'
 
-// Hardware module (PC, Settings → Modules): temperatures, loads, power, clocks, memory and fan, read by Rust
+// Hardware module (PC, Settings → Hardware): temperatures, loads, power, clocks, memory and fan, read by Rust
 // (hardware.rs) and shown in a small widget on the desktop (hardware_widget.rs). Its settings are kept on
 // this device, never synced. This sends Rust the settings, at start and on every change. Off: Rust
 // runs nothing and opens no library.
 
-// The sensors, in the order the settings window lists them. Rust reads only the ones asked for.
+// The sensors, in the order Settings → Hardware lists them. Rust reads only the ones asked for.
 export const SENSORS = ['cpuTemp', 'cpuLoad', 'cpuPower', 'cpuClock', 'gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan', 'ram'] as const
 export type Sensor = (typeof SENSORS)[number]
 
@@ -62,7 +62,7 @@ const DEFAULTS: HardwareSettings = {
 export const SPEEDS = [500, 1000, 2000, 5000]
 export const SIZES = [80, 90, 100, 110, 125, 150]
 export const BACKGROUNDS = [100, 75, 50, 25, 0]
-// The widget's looks, themes and frame lines, with their names (the menu and the settings window)
+// The widget's looks, themes and frame lines, with their names (the menu and Settings)
 export const LOOKS: [HardwareSettings['look'], () => string][] = [
   ['rows', () => t('Rows')],
   ['bars', () => t('Rows with bars')],
@@ -88,7 +88,7 @@ export const clickThroughAbout = () =>
 
 let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
-let windowOpen = false // the settings window shows every sensor, so all are read while it's open
+let windowOpen = false // Settings → Hardware shows every sensor, so all are read while it's shown
 let last: HardwareReadings | null = null // the latest readings, so a changed option shows at once
 let preview: Partial<HardwareSettings> | null = null // a look, theme, frame, size or background under the mouse in the widget's menu
 const heat: Partial<Record<HotSensor, number>> = {} // each temperature's color now: 0 none, 1 orange, 2 red
@@ -202,8 +202,8 @@ export function listenHardwareOpen(open: () => void) {
   return () => void stop.then((unlisten) => unlisten())
 }
 
-// Settings → Modules. Turning it on sets up the admin helper for the CPU temperature and power (one
-// admin prompt) if it isn't yet and the widget shows one of them; said No: the settings window
+// Settings → Hardware. Turning it on sets up the admin helper for the CPU temperature and power (one
+// admin prompt) if it isn't yet and the widget shows one of them; said No: Settings → Hardware
 // offers "Set up" (HardwareSettings.tsx).
 export function toggleHardware(on: boolean) {
   saveHardware({ on })
@@ -250,7 +250,7 @@ export interface HardwareReadings {
   sensors: string[] // what this reading was asked for
 }
 
-// The latest readings, for the settings window, which asks for every sensor while it's open
+// The latest readings, for Settings → Hardware, which asks for every sensor while it's shown
 // (null: off, or not read yet)
 export function useHardwareReadings(on: boolean) {
   const [readings, setReadings] = useState<HardwareReadings | null>(null)
@@ -272,7 +272,7 @@ export function useHardwareReadings(on: boolean) {
   return readings
 }
 
-// The settings window's GPU memory rows: shown until a reading that asked for it says this GPU has
+// Settings → Hardware's GPU memory rows: shown until a reading that asked for it says this GPU has
 // none (it re-renders on each reading), so they don't show up late on cards with it. Cards without
 // it see them only until the first such reading after SyncR starts.
 export function hasMemTemp() {
@@ -299,7 +299,7 @@ export function shortGpuName(name: string) {
 }
 
 // A hardware group's name (WIDGET_GROUPS): the hardware's own short name when readings with it are
-// given, else "CPU", "GPU" or "Memory". The same in the settings window, the widget and its menu.
+// given, else "CPU", "GPU" or "Memory". The same in Settings, the widget and its menu.
 export function groupName(icon: 'cpu' | 'gpu' | 'memory', r?: Pick<HardwareReadings, 'cpuName' | 'gpuName'> | null) {
   if (icon === 'cpu') return r?.cpuName ? shortCpuName(r.cpuName) : t('CPU')
   if (icon === 'gpu') return r?.gpuName ? shortGpuName(r.gpuName) : t('GPU')
@@ -308,7 +308,7 @@ export function groupName(icon: 'cpu' | 'gpu' | 'memory', r?: Pick<HardwareReadi
 
 const GB = 1024 ** 3 // like Task Manager
 
-// A reading's name: the settings window's, or the widget's (shorter where the name is long)
+// A reading's name: Settings', or the widget's (shorter where the name is long)
 export function sensorLabel(sensor: Sensor, short = false) {
   switch (sensor) {
     case 'cpuTemp':
@@ -336,7 +336,7 @@ export function sensorLabel(sensor: Sensor, short = false) {
   }
 }
 
-// A reading as text, the same in the settings window and the widget; null when this PC can't give it
+// A reading as text, the same in Settings and the widget; null when this PC can't give it
 export function valueText(sensor: Sensor, r: HardwareReadings): string | null {
   const temperature = (n: number | null) => (n === null ? null : temperatureText(n))
   const mhz = (n: number | null) => (n === null ? null : t('{n} MHz', { n: decimal(n, 0) }))
@@ -429,14 +429,14 @@ function updateHeat(r: HardwareReadings | null) {
   }
 }
 
-// A reading's color now, the same in the widget and the settings window
+// A reading's color now, the same in the widget and Settings
 export function heatLevel(sensor: Sensor) {
   return (heat as Partial<Record<Sensor, number>>)[sensor] ?? 0
 }
 
 // Peaks: the highest reading since SyncR started (main window only, lost on close), for
 // temperatures and power (a 100 % load peak says nothing). Only for ticked readings: the others are
-// read only while the settings window is open, so their peak would miss most of the time. Unticked
+// read only while Settings → Hardware is shown, so their peak would miss most of the time. Unticked
 // or module off: that peak goes.
 export const PEAK_SENSORS = ['cpuTemp', 'cpuPower', 'gpuTemp', 'gpuMemTemp', 'gpuPower'] as const
 export type PeakSensor = (typeof PEAK_SENSORS)[number]
@@ -474,7 +474,7 @@ function keepPeaks() {
 export const peaksAbout = () =>
   t('Next to each temperature and power: the highest since SyncR started, for the readings shown in the widget.')
 
-// "Reset peaks" (the widget's menu and the settings window)
+// "Reset peaks" (the widget's menu and Settings)
 export function resetPeaks() {
   setPeaks({})
 }
@@ -496,7 +496,7 @@ export function peakText(sensor: PeakSensor, all: Partial<Record<PeakSensor, num
   return t('max {value}', { value })
 }
 
-// The widget's hardware, in order, with their readings in the settings window's order
+// The widget's hardware, in order, with their readings in Settings → Hardware's order
 export const WIDGET_GROUPS = [
   { icon: 'cpu', sensors: ['cpuTemp', 'cpuLoad', 'cpuPower', 'cpuClock'] },
   { icon: 'gpu', sensors: ['gpuTemp', 'gpuMemTemp', 'gpuLoad', 'gpuPower', 'gpuClock', 'gpuMemClock', 'gpuMemUsed', 'gpuFan'] },

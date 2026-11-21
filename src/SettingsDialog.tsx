@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, Blocks, ChevronLeft, Link, NotebookPen, Palette, Play, Plug, X } from 'lucide-react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { AppWindow, Bell, ChevronLeft, Cpu, Gamepad2, Link, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { SettingRow } from './SettingsCard'
@@ -32,12 +32,12 @@ import {
 } from './google'
 import { igdb, isComplete, saveConnection, useConnection, type IgdbConnection } from './igdb'
 import { useVideoEnabled } from './video'
-import VideoSettings from './VideoSettings'
-import MouseBatterySettings from './MouseBatterySettings'
-import HardwareSettings from './HardwareSettings'
-import Dialog from './Dialog'
-import { saveMouseBattery, useMouseBattery } from './mouseBattery'
-import { toggleHardware, useHardware } from './hardware'
+import VideoSection from './VideoSettings'
+import GamesSection from './GamesSettings'
+import HardwareSection from './HardwareSettings'
+import { useMouseBattery } from './mouseBattery'
+import { useHardware } from './hardware'
+import type { SettingsStart } from './openSettings'
 import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { forgetAccountMail } from './mailAlerts'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
@@ -83,7 +83,7 @@ import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
 import { percentText, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
-import { richText, withIcon } from './richText'
+import { richText } from './richText'
 import SecretField from './SecretField'
 import { useNarrow } from './useNarrow'
 import { read, write } from './localState'
@@ -94,20 +94,29 @@ import { saveLanguageChoice, useLanguageChoice } from './language'
 // control on the right. The Accounts section shows how each connection is doing; "Manage
 // accounts…" opens the details in its place, with ‹ Accounts. Changes are saved right away.
 // Closed with Escape or a click outside it.
-// page: opens straight on that window, and closing it closes Settings (a click on the taskbar strip)
-// A module's window that Settings can open on (App.tsx)
-export type SettingsPage = 'mouse-battery' | 'hardware'
-
-function SettingsDialog({ onClose, page }: { onClose: () => void; page?: SettingsPage }) {
+// start: opens on that section instead of the last one (a module's ⚙️, the taskbar battery, the
+// Hardware widget's menu: openSettings.ts)
+function SettingsDialog({ onClose, start }: { onClose: () => void; start?: SettingsStart }) {
   // Focused when it opens (so Escape works), without scrolling: it opens at the top
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [])
   // The section shown on the right of the sidebar: the last one looked at on this device (PC).
   // On a phone the list shows first and a section opens in its place (phoneOpen).
   const narrow = useNarrow()
-  const [section, setSection] = useState(() => read(SECTION_KEY, 'notes'))
-  const [phoneOpen, setPhoneOpen] = useState(false)
+  const startSection = start === 'mouse-battery' ? 'hardware' : start
+  const [section, setSection] = useState(() => {
+    if (startSection) write(SECTION_KEY, startSection)
+    return startSection ?? read(SECTION_KEY, 'notes')
+  })
+  const [phoneOpen, setPhoneOpen] = useState(!!startSection)
   const pageRef = useRef<HTMLDivElement>(null)
+  // The taskbar battery: Hardware scrolled to the mouse battery, at the bottom
+  useEffect(() => {
+    if (start !== 'mouse-battery') return
+    const page = pageRef.current
+    const part = page?.querySelector<HTMLElement>('.mouse-battery-part')
+    if (page && part) page.scrollTop = part.offsetTop - 6
+  }, [])
   function openSection(id: string) {
     setSection(id)
     write(SECTION_KEY, id)
@@ -177,12 +186,8 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
 
   // Color rules open in their own window (more room); back here when it closes
   const [showRules, setShowRules] = useState(false)
-  const [showVideo, setShowVideo] = useState(false)
-  const [showBattery, setShowBattery] = useState(page === 'mouse-battery')
   const mouseBattery = useMouseBattery()
-  const [showHardware, setShowHardware] = useState(page === 'hardware')
   const hardware = useHardware()
-  const [quitWarning, setQuitWarning] = useState(false) // Modules: "✕ quits SyncR" (modulesCard)
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
   useEffect(() => {
@@ -235,13 +240,11 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   }, [])
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
-  if (showVideo) return <VideoSettings onClose={() => setShowVideo(false)} />
-  if (showBattery) return <MouseBatterySettings onClose={() => (page === 'mouse-battery' ? onClose() : setShowBattery(false))} />
-  if (showHardware) return <HardwareSettings onClose={() => (page === 'hardware' ? onClose() : setShowHardware(false))} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
   if (showWhatsNew) return <WhatsNewDialog releases={recentReleases()} onClose={() => setShowWhatsNew(false)} />
 
-  // The sections' contents (Window and Modules: PC only), listed in the sidebar at the end
+  // The sections' contents (Window: PC only), listed in the sidebar at the end; the modules' own
+  // in their files (VideoSettings, GamesSettings, HardwareSettings.tsx)
   const notesCard = (
     <>
       <SettingRow label={t('Font')}>
@@ -713,70 +716,21 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
       </SettingRow>
     </>
   )
-  // Modules (PC): extras apart from notes, each with its own settings window. Turning one on that
-  // only shows while SyncR runs warns once when ✕ quits SyncR. Video has no checkbox: it shows
-  // when the Worker says yes.
-  function toggleMouseBattery(on: boolean) {
-    const warn = on && !mouseBattery.warned && !background.closeToTray
-    saveMouseBattery(warn ? { on, warned: true } : { on })
-    if (warn) setQuitWarning(true)
-  }
-  const modulesCard = isTauri() && (
-    <>
-      {videoOn && (
-        <SettingRow label={t('Video')}>
-          <button className="setting-button" onClick={() => setShowVideo(true)}>
-            {t('Open…')}
-          </button>
-        </SettingRow>
-      )}
-      <SettingRow
-        label={
-          <>
-            {t('Mouse battery')}
-            <InfoTip label={t('About the mouse battery')}>
-              {t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.')}
-            </InfoTip>
-          </>
-        }
-      >
-        {mouseBattery.on && (
-          <button className="setting-button" onClick={() => setShowBattery(true)}>
-            {t('Open…')}
-          </button>
-        )}
-        <input type="checkbox" checked={mouseBattery.on} onChange={(e) => toggleMouseBattery(e.target.checked)} />
-      </SettingRow>
-      <SettingRow
-        label={
-          <>
-            {t('Hardware')}
-            <InfoTip label={t('About the hardware module')}>
-              {t('Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.')}
-            </InfoTip>
-          </>
-        }
-      >
-        {hardware.on && (
-          <button className="setting-button" onClick={() => setShowHardware(true)}>
-            {t('Open…')}
-          </button>
-        )}
-        <input type="checkbox" checked={hardware.on} onChange={(e) => toggleHardware(e.target.checked)} />
-      </SettingRow>
-    </>
-  )
-  // The sidebar's sections, in the user's order (Window and Modules: PC only); Accounts sits at
-  // the bottom
+  // The sidebar's sections, in the user's order (Window and Hardware: PC only; Video where the
+  // Worker allows it), the modules under their heading; Accounts sits at the bottom. off: a module
+  // turned off, grayed (Hardware: the widget and the mouse battery both off).
   const sections = [
     { id: 'notes', icon: NotebookPen, name: t('Notes'), content: notesCard },
     { id: 'links', icon: Link, name: t('Links'), content: linksCard },
     { id: 'alerts', icon: Bell, name: t('Alerts'), content: alertsCard },
     { id: 'look', icon: Palette, name: t('Look'), content: lookCard },
     { id: 'window', icon: AppWindow, name: t('Window'), content: windowCard },
-    { id: 'modules', icon: Blocks, name: t('Modules'), content: modulesCard },
+    { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true },
+    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection />, module: true },
+    { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)
+  const firstModule = sections.find((s) => s.module)?.id
   const current = sections.find((s) => s.id === section) ?? sections[0]
   // Phone: the list fills the window; a section opens in its place, with ‹ back to the list
   const showList = !narrow || !phoneOpen
@@ -826,15 +780,17 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
         <div className="settings-body">
           {showList && (
             <nav className="settings-nav" aria-label={t('Settings sections')}>
-              {sections.map(({ id, icon: Icon, name }) => (
-                <button
-                  key={id}
-                  className={`settings-nav-item${id === current.id && !narrow ? ' on' : ''}${id === 'accounts' ? ' last' : ''}`}
-                  aria-current={id === current.id && !narrow ? 'page' : undefined}
-                  onClick={() => openSection(id)}
-                >
-                  <Icon size={15} /> {name}
-                </button>
+              {sections.map(({ id, icon: Icon, name, off }) => (
+                <Fragment key={id}>
+                  {id === firstModule && <h3 className="settings-nav-heading">{t('Modules')}</h3>}
+                  <button
+                    className={`settings-nav-item${id === current.id && !narrow ? ' on' : ''}${id === 'accounts' ? ' last' : ''}${off ? ' off' : ''}`}
+                    aria-current={id === current.id && !narrow ? 'page' : undefined}
+                    onClick={() => openSection(id)}
+                  >
+                    <Icon size={15} /> {name}
+                  </button>
+                </Fragment>
               ))}
               {about}
             </nav>
@@ -846,18 +802,6 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
           )}
         </div>
       </Window>
-      {quitWarning && (
-        <Dialog
-          request={{
-            title: t('The battery only shows while SyncR runs'),
-            message: withIcon(t('{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.'), 'close', <X size={13} aria-label={t('Close')} />),
-            confirmLabel: 'OK',
-            noCancel: true,
-            onConfirm: () => {},
-          }}
-          onClose={() => setQuitWarning(false)}
-        />
-      )}
     </>
   )
 }

@@ -7,6 +7,8 @@ All notable changes to SyncR. Newest version first.
 **App**
 - **Better:** every window opens at the same height as a game's window
 - **Changed:** Settings has a sidebar of sections, one shown at a time
+- **Changed:** Video, Games and Hardware settings are now sections of Settings
+- **Changed:** mouse battery settings are at the bottom of Hardware (PC only)
 
 **Video** (PC only)
 - **Better:** Move to the other screen: its arrow points to the screen it goes to

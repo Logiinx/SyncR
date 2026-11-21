@@ -1,17 +1,9 @@
-import type { LucideIcon } from 'lucide-react'
+// The pieces of Settings
 
-// The pieces of Settings and the Video settings window
-
-// A card of settings: icon + title, then its rows
-export function SettingsCard({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
-  return (
-    <section className="settings-card">
-      <h3 className="settings-card-title">
-        <Icon size={15} /> {title}
-      </h3>
-      {children}
-    </section>
-  )
+// After a window on top of Settings closed (a question, a warning): the focus back in Settings, so
+// Escape closes it. `inside`: any element of the section.
+export function focusSettings(inside: Element | null) {
+  inside?.closest<HTMLElement>('[role="dialog"]')?.focus()
 }
 
 // One setting: its name (and a dim detail) on the left, its control on the right. `title`: a

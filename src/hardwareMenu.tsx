@@ -111,7 +111,7 @@ function HardwareMenu() {
   }
   useEffect(() => () => clearTimeout(back.current), [])
 
-  // Every reading, under its hardware's name, as in the settings window
+  // Every reading, under its hardware's name, as in Settings → Hardware
   const shown = WIDGET_GROUPS.flatMap(({ icon, sensors }) =>
     sensors.map((sensor, index): MenuItem => ({
       label: sensorLabel(sensor),

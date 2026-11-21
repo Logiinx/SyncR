@@ -4817,6 +4817,20 @@ button {
   color: var(--link);
 }
 
+/* A module turned off: grayed, still opens (its switch is at the top) */
+.settings-nav-item.off,
+.settings-nav-item.off svg {
+  color: var(--text-dim);
+}
+
+/* "Modules" over Video, Games, Hardware: like a section's small headings */
+.settings-nav-heading {
+  margin: 14px 10px 4px;
+  color: var(--text-dim);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
 /* Accounts: alone at the bottom of the sidebar, the version line under it */
 .settings-nav-item.last {
   margin-top: auto;
@@ -4827,8 +4841,23 @@ button {
 }
 
 .settings-page {
+  position: relative; /* the taskbar battery scrolls to the mouse battery (offsetTop) */
   padding: 8px 20px 16px;
   overflow-y: auto;
+}
+
+/* A module's settings under its switch: grayed while it's off (fieldset disabled) */
+.settings-part {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.settings-part:disabled .settings-row-label,
+.settings-part:disabled .settings-card-sub,
+.settings-part:disabled .settings-status {
+  color: var(--text-dim);
 }
 
 .settings-page .settings-row {
@@ -4838,7 +4867,8 @@ button {
 }
 
 .settings-page .settings-row:last-child,
-.settings-page .settings-row:has(+ .settings-card-sub) {
+.settings-page .settings-row:has(+ .settings-card-sub),
+.settings-page .settings-row:has(+ .settings-part > .settings-card-sub:first-child) {
   border-bottom: none;
 }
 
@@ -4852,39 +4882,6 @@ button {
 
 .settings-page > .settings-card-sub:first-child {
   margin-top: 6px;
-}
-
-.settings-cards {
-  display: grid;
-  grid-template-columns: repeat(var(--settings-columns, 2), minmax(0, 1fr));
-  align-items: start;
-  gap: 14px;
-}
-
-.settings-column {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-.settings-card {
-  padding: 10px 14px 6px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-}
-
-.settings-card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  color: var(--text);
-  font-size: 1em;
-  font-weight: 600;
-}
-
-.settings-card-title svg {
-  color: var(--link);
 }
 
 .settings-row {
@@ -5084,7 +5081,7 @@ button {
   color: var(--text-dim);
 }
 
-/* A small dim heading over a few rows of a card (Video settings → Hover cards: Videos, Playlists…) */
+/* A small dim heading over a few rows of a section (Alerts: Pop-up, Reminders, Emails…) */
 .settings-card-sub {
   margin: 8px 0 2px;
   color: var(--text-dim);
@@ -5136,10 +5133,6 @@ button {
     width: 100%;
     height: 100%;
     max-height: 100%;
-  }
-
-  .settings-cards {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Too narrow for one width: a 170 px column would wrap most names. Each control fits its text */
@@ -5226,7 +5219,7 @@ button {
    mouse battery): fixed-width digits, so they don't jiggle (Games' own: see .game-prices) */
 .setting-value,
 .update-text,
-.module-settings .settings-status,
+.settings-page .settings-status,
 .battery-percent {
   font-variant-numeric: tabular-nums;
 }
@@ -8982,20 +8975,8 @@ button.history-row.selected {
   margin-top: 12px;
 }
 
-/* The Video, Games and modules' settings windows: Settings' cards, in one narrower column (also on the PC) */
-.dialog.settings.video-settings,
-.dialog.settings.games-settings,
-.dialog.settings.module-settings {
-  width: min(560px, 100%);
-}
-
-.video-settings .settings-cards,
-.games-settings .settings-cards,
-.module-settings .settings-cards {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.video-settings .video-extensions-foot {
+/* Settings → Video's extensions: Add from a folder under the list */
+.settings-page .video-extensions-foot {
   margin: 4px 0 6px;
 }
 

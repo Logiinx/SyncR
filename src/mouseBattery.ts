@@ -5,7 +5,7 @@ import { read, write } from './localState'
 import { percentText, subscribe as onLanguageChange, t } from './i18n'
 import { clockTime } from './dates'
 
-// Mouse battery module (PC, Settings → Modules): its settings, kept on this device, never synced.
+// Mouse battery module (PC, Settings → Hardware): its settings, kept on this device, never synced.
 // The checks and the taskbar strip are in Rust (mouse_battery.rs, strip.rs): this sends them the
 // settings, at start and on every change. Off: Rust runs nothing and opens no device.
 
@@ -148,7 +148,7 @@ export interface MouseBatteryStatus {
   answering: boolean // the last check got an answer
 }
 
-// The latest check, for the settings window (null: off, or not known yet)
+// The latest check, for Settings → Hardware (null: off, or not known yet)
 export function useMouseBatteryStatus(on: boolean) {
   const [status, setStatus] = useState<MouseBatteryStatus | null>(null)
   useEffect(() => {

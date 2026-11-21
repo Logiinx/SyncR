@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { read, write } from './localState'
 
-// The Games settings window's choices (GamesSettings.tsx). This device only, like grid / list.
+// Settings → Games' choices (GamesSettings.tsx). This device only, like grid / list.
 
 // Which HowLongToBeat time shows on the Games page's tiles, rows and Playing cards (GameExtrasView's
 // PlaytimeShort); the game window always shows them all

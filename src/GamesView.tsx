@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { plural, t, textKey } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDownUp, ArrowRight, CalendarCheck, CalendarClock, ChevronDown, Download, Gamepad2, LayoutGrid, List, ListFilter, Search, Settings, X } from 'lucide-react'
-import GamesSettings from './GamesSettings'
+import { openSettings } from './openSettings'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, libraryGames, LIBRARY_SHOWS, LIBRARY_SORTS, releaseText, removeGameQuestion, saleDiscount, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab, type LibraryShow, type LibrarySort } from './games'
 import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
@@ -85,7 +85,6 @@ function GamesView() {
   const [openWatch, setOpenWatch] = useState<string | null>(null) // opened by "Watch price…"
   const steam = useSteamProfile()
   const [importing, setImporting] = useState(false) // the Steam import window
-  const [settingsOpen, setSettingsOpen] = useState(false) // the Games settings window
   // Playing games' Steam hours and achievements, unless looked at in the last 5 minutes
   useEffect(() => {
     refreshPlaying(PLAYING_ON_OPEN)
@@ -205,7 +204,6 @@ function GamesView() {
                 }
               />
             )}
-            {settingsOpen && <GamesSettings onClose={() => setSettingsOpen(false)} />}
             {games && games.length > 0 && (
               <>
                 {/* Underlined tabs, each a quarter of the row, with an icon (an empty status shows no
@@ -261,7 +259,7 @@ function GamesView() {
                       </button>
                     )}
                     <FillSwitch className="calendar-layouts games-layouts" options={shelfLayouts()} value={shelf} onChange={setShelf} />
-                    <button className="games-import games-settings-button" title={t('Games settings')} onClick={() => setSettingsOpen(true)}>
+                    <button className="games-import games-settings-button" title={t('Games settings')} onClick={() => openSettings('games')}>
                       <Settings size={14} />
                     </button>
                   </div>

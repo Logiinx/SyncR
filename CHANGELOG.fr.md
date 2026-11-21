@@ -7,6 +7,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Application**
 - **Amélioré :** chaque fenêtre s’ouvre à la même hauteur que celle d’un jeu
 - **Changé :** les Paramètres ont une barre latérale de sections, une affichée à la fois
+- **Changé :** les paramètres Vidéo, Jeux et Matériel sont des sections des Paramètres
+- **Changé :** la batterie de la souris est en bas de Matériel (PC uniquement)
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va

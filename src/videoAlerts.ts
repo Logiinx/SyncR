@@ -50,7 +50,7 @@ export function useVideoAlerts() {
   return alerts
 }
 
-// The cards' size (Video settings window, this PC): Large = the Video tab's hover card, Compact =
+// The cards' size (Settings → Video, this PC): Large = the Video tab's hover card, Compact =
 // a small picture beside the title. Followed in both windows.
 export type PopupCardSize = 'large' | 'compact'
 const SIZE_KEY = 'syncr.video.popupCards'

@@ -152,7 +152,6 @@ export const settings = {
   Look: 'Apparence',
   Window: 'Fenêtre',
   'Settings sections': 'Sections des paramètres',
-  'Open…': 'Ouvrir…',
   'App scaling': 'Échelle',
   Animations: 'Animations',
   'Sync sign': 'Signe de synchro',
@@ -193,6 +192,7 @@ export const settings = {
   // Modules: Mouse battery (MouseBatterySettings.tsx, mouseBattery.ts)
   Modules: 'Modules',
   'Mouse battery': 'Batterie de la souris',
+  'Show in the taskbar': 'Afficher dans la barre des tâches',
   'About the mouse battery': 'À propos de la batterie de la souris',
   'Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.':
     'Affiche la batterie d’une souris Teevolution Terra Pro (récepteur 8K) dans la barre des tâches, près de l’horloge.',
@@ -219,13 +219,14 @@ export const settings = {
   // Modules: Hardware (HardwareSettings.tsx, hardware.ts)
   Hardware: 'Matériel',
   'About the hardware module': 'À propos du module Matériel',
+  'Hardware widget': 'Widget Matériel',
   'Shows your CPU and GPU temperatures, loads, power, clocks, fan and memory in a small widget on your desktop.':
     'Affiche les températures, charges, consommations et fréquences du processeur et de la carte graphique, le ventilateur et la mémoire dans un petit widget sur votre bureau.',
   Readings: 'Mesures',
   'Update every': 'Mise à jour toutes les',
   'About the readings': 'À propos des mesures',
-  'Only the readings ticked below are read, except while this window is open: it shows them all.':
-    'Seules les mesures cochées ci-dessous sont lues, sauf pendant que cette fenêtre est ouverte : elle les affiche toutes.',
+  'Only the readings ticked below are read, except while Settings shows them: then they all are.':
+    'Seules les mesures cochées ci-dessous sont lues, sauf quand les Paramètres les affichent : elles le sont alors toutes.',
   '{n} s': '{n} s',
   'Show in the widget': 'Afficher dans le widget',
   CPU: 'Processeur',
