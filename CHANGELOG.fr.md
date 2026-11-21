@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-21
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** survoler une partie rouge de la barre Twitch affiche « Partie sans son » et sa durée
 - **Petites corrections :** nom SponsorBlock sur les parties très courtes
