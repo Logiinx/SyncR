@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Fixed:** a short blink when switching tabs, smooth crossfade again
+
 ## [1.0.1] - 2026-11-21
 
 **Video** (PC only)

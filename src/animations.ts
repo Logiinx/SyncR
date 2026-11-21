@@ -202,17 +202,22 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
       const next = el.nextSibling
       queueMicrotask(() => {
         if (el.isConnected || !body.isConnected) return
-        // Where it was, over the new page (.body is position: relative)
+        // Where it was, over the new page (.body is position: relative), and over the new page's
+        // cover: same level, placed after it (under it, the old page vanished at once: a blink).
+        // Not higher: the sidebar opened by hovering ☰ (level 11) stays on top.
         Object.assign(copy.style, {
           position: 'absolute',
           left: `${place.left}px`,
           top: `${place.top}px`,
           width: `${place.width}px`,
           height: `${place.height}px`,
+          zIndex: '10',
         })
         copy.classList.add('closing')
         copy.inert = true
-        body.insertBefore(copy, next?.parentNode === body ? next : null)
+        const cover = [...body.children].find((child) => child.matches('.fade-cover'))
+        if (cover) cover.after(copy)
+        else body.insertBefore(copy, next?.parentNode === body ? next : null)
         const copyScroller = copy.matches('.page') ? copy : copy.querySelector('.page')
         if (copyScroller) copyScroller.scrollTop = scroll
         copy
