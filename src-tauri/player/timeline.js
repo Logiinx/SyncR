@@ -12,6 +12,7 @@ const MUTED_GAP = 1 // seconds: parts closer than this count as one
 
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
+const MUTED_COLOR = 'var(--text-red, #f0716b)' // on the bar and in its tip
 // video_window.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
 // (.ts in older videos, .mp4 in newer ones)
 function noteMutedParts(pieces) {
@@ -84,7 +85,7 @@ function gameAt(seconds) {
 
 // ---- Drawn on the bar (controls.js): muted parts in color, game changes as gaps ---------------------
 function drawMarks() {
-  setMarked(mutedParts.map((part) => ({ ...part, color: 'var(--text-red, #f0716b)' })))
+  setMarked(mutedParts.map((part) => ({ ...part, color: MUTED_COLOR })))
   setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }
 
@@ -361,7 +362,9 @@ function fillTip(seconds) {
   const day = dayAt(seconds)
   $('tip-time').textContent = day ? `${clock(seconds)} · ${day}` : clock(seconds)
   showPicture(pictureAt(seconds))
-  tipLines(gameAt(seconds), null)
+  // Over a muted part (red on the bar): its name and length, in the bar's red
+  const muted = markedAt(seconds)
+  tipLines(gameAt(seconds), muted && { color: MUTED_COLOR, text: `${labels.mutedPart} · ${clock(muted.end - muted.start)}` })
 }
 
 // ---- Its part of the player's menu (player.js, drawMenu): a Miscellaneous row under Chat --------

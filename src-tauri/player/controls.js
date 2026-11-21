@@ -214,6 +214,13 @@ function playerControls(env, media) {
   video.addEventListener('durationchange', drawHeat)
   const setGaps = (list) => { gaps = list; drawParts() }
   const setMarked = (list) => { marked = list; drawParts() }
+  // The marked part drawn at that second (for the tip): a short one counts as wide as it's drawn
+  function markedAt(seconds) {
+    const length = media.duration()
+    if (!length) return null
+    const least = (MARKED_MIN / ($('track').clientWidth || 1)) * length
+    return marked.find((part) => seconds >= part.start && seconds < Math.max(part.end, part.start + least)) || null
+  }
   video.addEventListener('durationchange', drawParts)
 
   // ---- Preview pictures in the tip --------------------------------------------------------------
@@ -1203,7 +1210,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, setHeader, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setHeader, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, markedAt, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each

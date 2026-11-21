@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** hovering a red part of a Twitch bar shows "Muted part" and its length
+- **Small fixes:** SponsorBlock name on very short parts
+
 ## [1.0.0] - 2026-11-21
 
 **Video** (PC only)

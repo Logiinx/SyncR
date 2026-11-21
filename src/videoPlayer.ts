@@ -260,6 +260,8 @@ function twitchPlayerAddress(video: PlayableVideo) {
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
+      // In the bar's tip over a muted part, before its length ("Muted part · 3:30")
+      mutedPart: t('Muted part'),
       soundBack: t('Sound back in {time}'),
       gameChanges: t('Game changes'),
       games: t('Games'),

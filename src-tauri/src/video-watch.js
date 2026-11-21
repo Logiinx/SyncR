@@ -509,7 +509,6 @@
     }
     // SponsorBlock's own colors and categories (the extension's defaults)
     const SPONSOR_COLORS = { sponsor: '#00d400', selfpromo: '#ffff00', interaction: '#cc00ff', intro: '#00ffff', outro: '#0202ed', preview: '#008fd6', music_offtopic: '#ff9900', filler: '#7300ff' }
-    const sponsorAt = (seconds) => sponsorParts.find((part) => seconds >= part.start && seconds < part.end)
     // Asked by the first 4 characters of the video's scrambled id, so SponsorBlock never learns
     // which video it is (its private way); the answer lists several, ours is picked out.
     const askSponsorBlock = async (id) => {
@@ -623,7 +622,7 @@
         fillTip: (seconds) => {
           root.getElementById('tip-time').textContent = controls.clock(seconds)
           controls.showPicture(pictureAt(seconds))
-          const part = sponsorAt(seconds)
+          const part = controls.markedAt(seconds)
           controls.tipLines(chapterAt(seconds), part && { color: SPONSOR_COLORS[part.category], text: labels.sponsorParts?.[part.category] || part.category })
         },
         besideTime: (seconds) => chapterAt(seconds),

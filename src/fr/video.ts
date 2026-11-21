@@ -248,6 +248,7 @@ export const video = {
   '{n} too slow|muted pieces': '{n} trop lentes',
   'timeout|no answer in time': 'délai dépassé',
   'Skip muted part': 'Passer la partie sans son',
+  'Muted part': 'Partie sans son',
   'Sound back in {time}': 'Son de retour dans {time}',
   'Resumed at {time}': 'Reprise à {time}',
   'You can resume by jumping to {time}': 'Vous pouvez reprendre en allant à {time}',
