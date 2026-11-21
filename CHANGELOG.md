@@ -16,6 +16,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** blink when closing a window
 
 **Video** (PC only)
+- **New:** the ⚙️ menu tells why Twitch muted parts are silent: deleted or too slow
 - **Better:** a thin line always shows where you are on the bar, no need to hover
 - **Changed:** after 5 s in a muted part, a countdown to the sound replaces Skip
 - **Changed:** muted parts of Twitch videos are red instead of orange

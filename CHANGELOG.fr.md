@@ -16,6 +16,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Petites corrections :** clignement à la fermeture d’une fenêtre
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** le menu ⚙️ dit pourquoi les passages muets Twitch sont sans son : supprimés ou trop lents
 - **Amélioré :** un trait fin montre toujours où vous en êtes sur la barre, sans survol
 - **Changé :** après 5 s dans un passage muet, un compte à rebours remplace Passer
 - **Changé :** les passages muets des vidéos Twitch sont rouges au lieu d’orange

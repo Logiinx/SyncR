@@ -279,6 +279,10 @@ function twitchPlayerAddress(video: PlayableVideo) {
       infoCopy: t('Twitch copy'),
       infoMuted: t('muted parts'),
       infoUncut: t('original sound|muted parts'),
+      // Why the pieces played muted ({why} = the counts below, joined by commas). Pairs: [one, more]
+      infoMutedWhy: t('muted parts: {why}'),
+      mutedGone: [t('{n} deleted|one muted piece'), t('{n} deleted|muted pieces')],
+      mutedSlow: [t('{n} too slow|one muted piece'), t('{n} too slow|muted pieces')],
       chatSize: t('Size|chat'),
       chatTitle: t('Chat'),
       chatHideBots: t('Hide bots and !commands'),

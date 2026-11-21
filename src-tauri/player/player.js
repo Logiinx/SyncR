@@ -133,7 +133,7 @@ const media = {
     const level = hls?.levels[hls.currentLevel]
     const extra = []
     if (level) extra.push(level.url[0]?.includes('/chunked/') ? labels.infoOriginal : labels.infoCopy)
-    if (mutedSound) extra.push(mutedSound === 'uncut' ? labels.infoUncut : labels.infoMuted)
+    if (mutedSound) extra.push(mutedSound === 'uncut' ? labels.infoUncut : mutedText())
     return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
   },
   switchingTo: () => (stillSwitching() ? levelName(hls.levels[switchingTo]) : ''),
@@ -407,6 +407,7 @@ const UNCUT_PATIENCE = 20000 // ms: no more tries after this, the muted one play
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
 const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
+const mutedWhy = new Map() // muted piece played muted → why: 'gone' (Twitch refused it) or 'slow' (no answer in time, Twitch busy)
 let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
@@ -477,6 +478,19 @@ function drawMuted() {
   }
 }
 
+// The ⚙️ menu's info: why the quality playing's pieces played muted, once some did ("muted parts: 2
+// deleted, 1 too slow"). Counts are 1 or more, where English and French both use the singular for 1
+// only. Labels come in pairs: [one, more].
+function mutedText() {
+  const pieces = (playingLevel()?.details?.fragments ?? []).map((one) => mutedWhy.get(one.url)).filter(Boolean)
+  const count = (why, forms) => {
+    const n = pieces.filter((one) => one === why).length
+    return n ? forms[n > 1 ? 1 : 0].replace('{n}', numbers.format(n)) : ''
+  }
+  const why = [count('gone', labels.mutedGone), count('slow', labels.mutedSlow)].filter(Boolean)
+  return why.length ? labels.infoMutedWhy.replace('{why}', why.join(', ')) : labels.infoMuted
+}
+
 class PieceLoader extends Hls.DefaultConfig.loader {
   constructor(config) {
     super(config)
@@ -491,8 +505,10 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   }
   loadUncut(context, config, callbacks, tries, started) {
     const inner = (this.inner = new Hls.DefaultConfig.loader(this.hlsConfig))
-    const heard = (sound) => {
+    const heard = (sound, why) => {
       playedPieces.add(context.url)
+      if (sound) mutedWhy.delete(context.url)
+      else mutedWhy.set(context.url, why)
       pieceChecks.set(context.url, Promise.resolve()) // no check needed any more
       if (sound === uncutPieces.has(context.url)) return
       if (sound) uncutPieces.add(context.url)
@@ -509,7 +525,7 @@ class PieceLoader extends Hls.DefaultConfig.loader {
         this.retry = setTimeout(() => this.loadUncut(context, config, callbacks, tries + 1, started), 1000)
         return
       }
-      heard(false)
+      heard(false, gone ? 'gone' : 'slow')
       super.load(context, config, callbacks)
     }
     inner.load({ ...context, url: uncutAddress(context.url) }, config, {
