@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [0.98.2] - 2026-11-21
+
+**Games**
+- **Better:** price chart: price and length on top, dates under the stretch
+- **Small fixes:** price chart in a window made narrower
+
 ## [0.98.1] - 2026-11-21
 
 **Games**

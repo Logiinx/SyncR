@@ -15,12 +15,14 @@ export function dayMonth(time: number) {
   return currentLanguage() === 'fr' ? text.replace(/(^|\s)1 /, '$11er ') : text
 }
 
-// "12 Aug – 26 Aug 2026" (the year once when both share it), one day alone: a stretch of the
-// price chart
+// "5–18 Nov 2026", "28 Oct – 4 Nov 2026", "19 Dec 2025 – 2 Jan 2026" (what both share said once),
+// one day alone: a stretch of the price chart. (Both languages put the day first.)
 export function dayRange(start: number, end: number) {
   if (shortDate(start) === shortDate(end)) return shortDate(end)
-  const sameYear = new Date(start).getFullYear() === new Date(end).getFullYear()
-  return `${sameYear ? dayMonth(start) : shortDate(start)} – ${shortDate(end)}`
+  const [from, to] = [new Date(start), new Date(end)]
+  if (from.getFullYear() !== to.getFullYear()) return `${shortDate(start)} – ${shortDate(end)}`
+  if (from.getMonth() !== to.getMonth()) return `${dayMonth(start)} – ${shortDate(end)}`
+  return `${from.getDate() === 1 && currentLanguage() === 'fr' ? '1er' : from.getDate()}–${shortDate(end)}` // i18n-ok (French's "1er", like dayText)
 }
 
 // "November 2026": a month's title (calendars' month grids and list groups)

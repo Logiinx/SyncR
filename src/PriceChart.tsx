@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { t } from './i18n'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { plural, t } from './i18n'
 import { dayRange, shortDate, shortMonthName } from './dates'
 import { FillSwitch } from './tabLines'
 import { formatEuros, type GamePrices } from './prices'
@@ -10,8 +10,8 @@ import { discountText, usePriceHistory, type PriceChange } from './saleGuess'
 // game window: a full-width row under the cover, like the sale table). A step line (gray, sales
 // green with a light fill), scaled from 0 €; year lines labelled under it, month lines (names
 // when they fit) once zoomed in. The line above it is its title, or the stretch under the mouse
-// (lit up; a short one is caught from a few px): "12 Aug – 26 Aug 2026 · 14,99 € −50%", the
-// last one "Since 12 Aug 2026 · …". Zoom: mouse wheel, drag moves, double-click goes back; the
+// (lit up; a short one is caught from a few px): "14,99 € −50% · 13 days", its dates under it in
+// place of the month names ("5–18 Nov 2026", the last one "Since 12 Aug 2026"). Zoom: mouse wheel, drag moves, double-click goes back; the
 // 2 y · 1 y · 6 m · 3 m switch; phone: one finger reads (it stays after lifting), two pinch and
 // move. Opens on the last year each time (nothing remembered). No change in 2 years: nothing.
 
@@ -180,6 +180,11 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
   const read = at !== null && at >= view.start && at <= view.end ? pick(at) : null
   const lastRead = read === stretches[stretches.length - 1]
   const lit = read && { left: x(read.start), right: x(read.end) }
+  // Its dates under it, in place of the month names (kept inside the chart's width)
+  const stretchDates = read && (lastRead ? t('Since {date}', { date: shortDate(read.start) }) : dayRange(read.start, read.end))
+  const label = useRef<HTMLSpanElement>(null)
+  const [labelWidth, setLabelWidth] = useState(0)
+  useLayoutEffect(() => setLabelWidth(label.current?.offsetWidth ?? 0), [stretchDates])
   if (lit && lit.right - lit.left < LIT) [lit.left, lit.right] = [(lit.left + lit.right - LIT) / 2, (lit.left + lit.right + LIT) / 2]
 
   // Month and year lines, from the first month start in view
@@ -203,10 +208,10 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
       <div className="price-chart-head">
         {read ? (
           <span className="price-chart-read">
-            <span className="sale-value">{lastRead ? t('Since {date}', { date: shortDate(read.start) }) : dayRange(read.start, read.end)}</span>
-            {' · '}
             <span className="sale-value">{formatEuros(read.price)}</span>
-            {read.cut > 0 ? <span className="sale-value discount"> {discountText(read.cut)}</span> : ` · ${t('full price')}`}
+            {read.cut > 0 ? <span className="sale-value discount"> {discountText(read.cut)}</span> : ` ${t('full price')}`}
+            {' · '}
+            {plural(Math.max(1, Math.round((read.end - read.start) / DAY)), '{n} day', '{n} days')}
           </span>
         ) : (
           <span className="price-chart-read">{preset ? preset.title() : `${shortDate(view.start)} – ${shortDate(view.end)}`}</span>
@@ -247,13 +252,19 @@ function PriceChart({ history, className }: { history: PriceChange[]; className:
         )}
       </div>
       <div className="price-chart-marks">
-        {marks.map(
-          (mark) =>
-            mark.name && (
-              <span key={mark.x} className={mark.year ? 'year' : undefined} style={{ left: mark.x }}>
-                {mark.name}
-              </span>
-            ),
+        {stretchDates ? (
+          <span ref={label} className="stretch" style={{ left: Math.min(Math.max(0, (lit!.left + lit!.right - labelWidth) / 2), width - labelWidth) }}>
+            {stretchDates}
+          </span>
+        ) : (
+          marks.map(
+            (mark) =>
+              mark.name && (
+                <span key={mark.x} className={mark.year ? 'year' : undefined} style={{ left: mark.x }}>
+                  {mark.name}
+                </span>
+              ),
+          )
         )}
       </div>
     </div>
