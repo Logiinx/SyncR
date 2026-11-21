@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Application**
+- **Amélioré :** chaque fenêtre s’ouvre à la même hauteur que celle d’un jeu
 - **Changé :** les Paramètres ont une barre latérale de sections, une affichée à la fois
 
 **Vidéo** (PC uniquement)

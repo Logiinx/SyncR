@@ -4643,31 +4643,27 @@ button {
   }
 }
 
+/* Every window (Window.tsx): 92px from the top (user, 2026-11-21: game windows first, about
+   centered once loaded, then all windows), growing downward (a game window as its prices arrive).
+   The space above gives way first when the window wouldn't fit (then it sits higher, down to the
+   16px edge). */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 16px;
   z-index: 30; /* its dark color: with its opening animation (--shade) */
 }
 
-/* Game windows (Window.tsx inRow): 92px from the top (user, 2026-11-21: about centered once
-   loaded), they grow downward as their prices arrive. The space above gives way first when the
-   window wouldn't fit (then it sits higher, down to the 16px edge). */
-.dialog-backdrop.at-top {
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.dialog-backdrop.at-top::before {
+.dialog-backdrop::before {
   content: '';
   flex: 0 1 76px; /* + the backdrop's 16px padding = 92px */
 }
 
-.dialog-backdrop.at-top > .game-window {
+.dialog-backdrop > * {
   flex-shrink: 0;
 }
 
@@ -4752,10 +4748,8 @@ button {
   text-transform: uppercase;
 }
 
-/* Settings and the windows sharing its look (Video, Games, modules): at the top of the backdrop,
-   the same gap above and below (its padding). Phone: full screen. */
+/* Settings and the windows sharing its look (Video, Games, modules). Phone: full screen. */
 .dialog.settings {
-  align-self: flex-start;
   width: min(880px, 100%);
 }
 

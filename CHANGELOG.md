@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
+- **Better:** every window opens at the same height as a game's window
 - **Changed:** Settings has a sidebar of sections, one shown at a time
 
 **Video** (PC only)
