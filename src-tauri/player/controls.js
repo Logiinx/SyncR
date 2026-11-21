@@ -1266,11 +1266,12 @@ const CONTROLS_CSS = `
   #marked, #marked-played { position: absolute; inset: 0; background: var(--marked-parts, none); }
   #marked { opacity: 0.6; }
   #marked-played { clip-path: inset(0 calc(100% - var(--played, 0%)) 0 0); }
+  /* Where you are: a thin line, always shown (a dot only on hover was hard to find), with a dark
+     edge so it still shows over the white buffer and a bright picture */
   #knob {
-    position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px;
-    border-radius: 50%; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    position: absolute; top: 50%; left: 0; width: 2px; height: 14px; margin: -7px 0 0 -1px;
+    border-radius: 1px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); pointer-events: none;
   }
-  #progress:hover #knob, #player.dragging #knob { opacity: 1; }
   #tip {
     position: absolute; bottom: 22px; transform: translateX(-50%); padding: 3px 8px; border-radius: 6px;
     background: rgba(0, 0, 0, 0.85); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;

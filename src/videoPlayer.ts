@@ -153,7 +153,7 @@ function controlsData() {
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
-    colors: pageColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--accent']),
+    colors: pageColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--text-red', '--accent']),
     labels: {
       play: t('Play video'),
       pause: t('Pause'),

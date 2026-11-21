@@ -15,6 +15,10 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** blurry text that jumped a pixel as windows, panels, pages or lists appeared
 - **Small fixes:** blink when closing a window
 
+**Video** (PC only)
+- **Better:** a thin line always shows where you are on the bar, no need to hover
+- **Changed:** muted parts of Twitch videos are red instead of orange
+
 ## [0.98.2] - 2026-11-21
 
 **Games**

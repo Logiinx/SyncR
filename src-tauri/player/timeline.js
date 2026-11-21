@@ -68,7 +68,7 @@ function gameAt(seconds) {
 
 // ---- Drawn on the bar (controls.js): muted parts in color, game changes as gaps ---------------------
 function drawMarks() {
-  setMarked(mutedParts.map((part) => ({ ...part, color: 'var(--text-orange, #f0a052)' })))
+  setMarked(mutedParts.map((part) => ({ ...part, color: 'var(--text-red, #f0716b)' })))
   setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }
 

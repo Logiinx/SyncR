@@ -15,6 +15,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** texte flou qui sautait d’un pixel à l’apparition des fenêtres, panneaux, pages ou listes
 - **Petites corrections :** clignement à la fermeture d’une fenêtre
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** un trait fin montre toujours où vous en êtes sur la barre, sans survol
+- **Changé :** les passages muets des vidéos Twitch sont rouges au lieu d’orange
+
 ## [0.98.2] - 2026-11-21
 
 **Jeux**
