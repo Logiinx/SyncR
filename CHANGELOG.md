@@ -4,16 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Games**
-- **Better:** a game you've opened before shows complete at once, no jumping
-- **Better:** gray lines show where details and prices will appear while they load
-- **Changed:** game window opens a bit higher and stays put while prices load
-- **Fixed:** top of a tall game window cut off and out of reach
-
-**App**
-- **Better:** windows open more softly: the frame appears, the content fades in
-- **Fixed:** blurry text that jumped a pixel as windows, panels, pages or lists appeared
-- **Small fixes:** blink when closing a window
+## [1.0.0] - 2026-11-21
 
 **Video** (PC only)
 - **New:** the ⚙️ menu tells why Twitch muted parts are silent: refused or too slow
@@ -27,6 +18,17 @@ All notable changes to SyncR. Newest version first.
 
 **Sync**
 - **New:** a sign when a sync sends or gets changes: a line or a glow (Settings → Look)
+
+**App**
+- **Better:** windows open more softly: the frame appears, the content fades in
+- **Fixed:** blurry text that jumped a pixel as windows, panels, pages or lists appeared
+- **Small fixes:** blink when closing a window
+
+**Games**
+- **Better:** a game you've opened before shows complete at once, no jumping
+- **Better:** gray lines show where details and prices will appear while they load
+- **Changed:** game window opens a bit higher and stays put while prices load
+- **Fixed:** top of a tall game window cut off and out of reach
 
 ## [0.98.2] - 2026-11-21
 

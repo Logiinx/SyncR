@@ -4,16 +4,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
-**Jeux**
-- **Amélioré :** un jeu déjà ouvert s’affiche complet d’emblée, sans sauter
-- **Amélioré :** des lignes grises montrent où les détails et les prix vont s’afficher
-- **Changé :** la fenêtre du jeu s’ouvre un peu plus haut et ne bouge plus pendant le chargement des prix
-- **Corrigé :** haut d’une grande fenêtre de jeu coupé et inaccessible
-
-**Application**
-- **Amélioré :** les fenêtres s’ouvrent plus en douceur : le cadre apparaît, le contenu se fond
-- **Corrigé :** texte flou qui sautait d’un pixel à l’apparition des fenêtres, panneaux, pages ou listes
-- **Petites corrections :** clignement à la fermeture d’une fenêtre
+## [1.0.0] - 2026-11-21
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** le menu ⚙️ dit pourquoi les passages muets Twitch sont sans son : refusés ou trop lents
@@ -27,6 +18,17 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Synchronisation**
 - **Nouveau :** un signe quand une synchro envoie ou reçoit des changements : un trait ou une lueur (Paramètres → Apparence)
+
+**Application**
+- **Amélioré :** les fenêtres s’ouvrent plus en douceur : le cadre apparaît, le contenu se fond
+- **Corrigé :** texte flou qui sautait d’un pixel à l’apparition des fenêtres, panneaux, pages ou listes
+- **Petites corrections :** clignement à la fermeture d’une fenêtre
+
+**Jeux**
+- **Amélioré :** un jeu déjà ouvert s’affiche complet d’emblée, sans sauter
+- **Amélioré :** des lignes grises montrent où les détails et les prix vont s’afficher
+- **Changé :** la fenêtre du jeu s’ouvre un peu plus haut et ne bouge plus pendant le chargement des prix
+- **Corrigé :** haut d’une grande fenêtre de jeu coupé et inaccessible
 
 ## [0.98.2] - 2026-11-21
 
