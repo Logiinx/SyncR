@@ -74,6 +74,7 @@ import {
   SCALE_MIN,
   type Appearance,
   type FontId,
+  type SyncSign,
 } from './appearance'
 import Spinner from './Spinner'
 import CloseButton from './CloseButton'
@@ -198,6 +199,7 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
   // The special tabs' icon colors: one button per tab this device has, a click opens the color list
   const tabColors = useTabColors()
   const [tabColorMenu, setTabColorMenu] = useState<{ kind: SpecialTab; x: number; y: number } | null>(null)
+  const [syncColorMenu, setSyncColorMenu] = useState<{ x: number; y: number } | null>(null)
   const tabNames: Record<SpecialTab, string> = { games: t('Games'), reminders: t('Reminders'), mail: t('Mail'), video: t('Video') }
   const colorTabs: SpecialTab[] = [
     'games',
@@ -528,6 +530,38 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
       <SettingRow label={t('Animations')}>
         <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />
       </SettingRow>
+      {/* A short sign that a sync worked (syncSign.ts); nothing without animations */}
+      <SettingRow
+        label={
+          <>
+            {t('Sync sign')}
+            <InfoTip label={t('About the sync sign')}>
+              {t('Shows after a sync that sent or received changes, and when you click the sync button.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <span className="sync-sign-controls">
+          <button
+            className="color-dot-button"
+            title={t('Color')}
+            aria-label={t('Color')}
+            disabled={!appearance.animations || appearance.syncSign === 'off'}
+            onClick={(e) => setSyncColorMenu({ x: e.clientX, y: e.clientY })}
+          >
+            <span className="menu-swatch" style={{ background: `var(--text-${appearance.syncSignColor})` }} />
+          </button>
+          <select
+            value={appearance.syncSign}
+            disabled={!appearance.animations}
+            onChange={(e) => update({ syncSign: e.target.value as SyncSign })}
+          >
+            <option value="off">{t('Off')}</option>
+            <option value="sweep">{t('Line under the tabs')}</option>
+            <option value="edge">{t('Glowing edge')}</option>
+          </select>
+        </span>
+      </SettingRow>
       {tabColors && (
         <>
           <SettingRow label={<>{t('Colored tab icons')} <Synced /></>}>
@@ -550,6 +584,15 @@ function SettingsDialog({ onClose, page }: { onClose: () => void; page?: Setting
             </span>
           </SettingRow>
         </>
+      )}
+      {syncColorMenu && (
+        <ContextMenu
+          x={syncColorMenu.x}
+          y={syncColorMenu.y}
+          onClose={() => setSyncColorMenu(null)}
+          header={{ title: t('Sync sign') }}
+          items={colorMenuItems(appearance.syncSignColor, (color) => color && update({ syncSignColor: color }), false)}
+        />
       )}
       {tabColorMenu && tabColors && (
         <ContextMenu
@@ -1154,7 +1197,7 @@ function GmailSettings() {
             {/* The account's color (its pop-ups' strip, its dot in the Mail tab): a click
                 opens the color list, like Board cards' "Card color…" */}
             <button
-              className="gmail-account-color"
+              className="color-dot-button"
               title={t('Color')}
               aria-label={t('Color')}
               onClick={(e) => setColorMenu({ email: account.email, color: account.color, x: e.clientX, y: e.clientY })}

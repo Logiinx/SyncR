@@ -154,6 +154,12 @@ export const settings = {
   'Open…': 'Ouvrir…',
   'App scaling': 'Échelle',
   Animations: 'Animations',
+  'Sync sign': 'Signe de synchro',
+  'About the sync sign': 'À propos du signe de synchronisation',
+  'Shows after a sync that sent or received changes, and when you click the sync button.':
+    'S’affiche après une synchronisation qui a envoyé ou reçu des changements, et quand vous cliquez sur le bouton de synchronisation.',
+  'Line under the tabs': 'Trait sous les onglets',
+  'Glowing edge': 'Bord lumineux',
   'Colored tab icons': 'Icônes d’onglets en couleur',
   'Tab colors': 'Couleurs des onglets',
   'hides SyncR in the tray': 'masque SyncR dans la zone de notification',

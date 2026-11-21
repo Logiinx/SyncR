@@ -1,5 +1,6 @@
 import { t } from './i18n'
 import { read, write } from './localState'
+import { COLORS } from './cardColors'
 
 // How the app looks on this device (Settings dialog). Stored per device, never synced.
 
@@ -9,7 +10,13 @@ export interface Appearance {
   fontSize: number // note text only, in px
   showDates: boolean // dates in the note list
   animations: boolean // slides and fades (off: things just appear)
+  // A short sign that a sync sent or received changes (syncSign.ts): a line sweeping under the
+  // tabs, a glow around the edge, or none. Never with animations off.
+  syncSign: SyncSign
+  syncSignColor: string // a palette color id (cardColors.ts COLORS): var(--text-<id>)
 }
+
+export type SyncSign = 'off' | 'sweep' | 'edge'
 
 // Fonts for the note text. The four named ones are built into the app (fonts.css),
 // so they look the same on every device.
@@ -30,11 +37,13 @@ export const FONT_SIZE_MIN = 12
 export const FONT_SIZE_MAX = 24
 
 const KEY = 'syncr.appearance'
-export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true, animations: true }
+export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true, animations: true, syncSign: 'off', syncSignColor: 'green' }
 
 export function loadAppearance(): Appearance {
   const saved = { ...DEFAULTS, ...read<Partial<Appearance>>(KEY, {}) }
   if (!(saved.font in FONTS)) saved.font = DEFAULTS.font
+  if (!['off', 'sweep', 'edge'].includes(saved.syncSign)) saved.syncSign = DEFAULTS.syncSign // i18n-ok
+  if (!COLORS.some(({ id }) => id === saved.syncSignColor)) saved.syncSignColor = DEFAULTS.syncSignColor
   return saved
 }
 

@@ -5169,14 +5169,27 @@ button {
   gap: 8px;
 }
 
-.gmail-account-color {
+/* A round color dot that opens the color list: a Gmail account's color, the sync sign's color
+   (Settings) */
+.color-dot-button {
   display: flex;
   padding: 3px;
   border-radius: 50%;
 }
 
-.gmail-account-color:hover {
+.color-dot-button:hover:not(:disabled) {
   background: var(--border);
+}
+
+.color-dot-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sync-sign-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Settings → App: one button per special tab, its icon in its color; a click opens the color list
