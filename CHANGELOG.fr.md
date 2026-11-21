@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-21
+
 **Vidéo** (PC uniquement)
 - **Amélioré :** les parties sans son proches sur la barre Twitch comptent comme une seule, aussi pour le saut
 
