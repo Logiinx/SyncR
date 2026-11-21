@@ -242,6 +242,7 @@ export const video = {
   'muted parts': 'parties muettes',
   'original sound|muted parts': 'son d’origine',
   'Skip muted part': 'Passer la partie sans son',
+  'Sound back in {time}': 'Son de retour dans {time}',
   'Resumed at {time}': 'Reprise à {time}',
   'You can resume by jumping to {time}': 'Vous pouvez reprendre en allant à {time}',
   'Subscriber-only video': 'Vidéo réservée aux abonnés',

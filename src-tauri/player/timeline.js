@@ -29,12 +29,28 @@ function noteMutedParts(pieces) {
 }
 
 const mutedHere = () => mutedParts.find((part) => video.currentTime >= part.start - 0.01 && video.currentTime < part.end - 0.25)
+// "Skip muted part" at first; after SKIP_OFFER seconds watched in the part, a countdown to the
+// sound instead (still skips when clicked). A jump starts the SKIP_OFFER over.
+const SKIP_OFFER = 5 // seconds
+let mutedSince = null // where the muted part was reached, in the video's seconds
 function drawSkip() {
-  $('skip').hidden = !mutedHere()
+  const part = mutedHere()
+  $('skip').hidden = !part
+  if (!part) return void (mutedSince = null)
+  mutedSince ??= video.currentTime
+  const counting = video.currentTime - mutedSince >= SKIP_OFFER
+  $('skip').classList.toggle('counting', counting)
+  $('skip').title = counting ? labels.skipMuted : ''
+  // Real time left: at 2x it comes twice as fast
+  const left = Math.ceil((part.end - video.currentTime) / (video.playbackRate || 1))
+  $('skip').textContent = counting ? (labels.soundBack || '{time}').replace('{time}', clock(left)) : labels.skipMuted
 }
 video.addEventListener('timeupdate', drawSkip)
-video.addEventListener('seeking', drawSkip)
-$('skip').textContent = labels.skipMuted
+video.addEventListener('ratechange', drawSkip)
+video.addEventListener('seeking', () => {
+  mutedSince = null
+  drawSkip()
+})
 $('skip').onclick = () => {
   const part = mutedHere()
   if (part) jumpTo(part.end)

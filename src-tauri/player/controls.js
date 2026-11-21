@@ -1309,7 +1309,10 @@ const CONTROLS_CSS = `
   #endcard-close svg { width: 16px; height: 16px; }
   @keyframes endcard-in { from { opacity: 0; } }
   .no-animations #endcard { animation: none; }
-  #skip { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
+  #skip { position: absolute; left: 0; right: 0; bottom: 72px; width: fit-content; margin: 0 auto; height: 32px; padding: 0 14px; border-radius: 6px; background: var(--accent, #2d4f7c); color: #fff; white-space: nowrap; }
+  /* After a few seconds: a quiet countdown to the sound, still a button (skips) */
+  #skip.counting { background: rgba(0, 0, 0, 0.6); color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
+  #skip.counting:hover { background: var(--accent, #2d4f7c); color: #fff; }
   /* Past the waiting screen: small, bottom left, as high as the end card on the right; stays when
      the controls fade. Its card above it, like ⏭'s. */
   #start-skip, #start-back {

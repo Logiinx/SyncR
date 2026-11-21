@@ -17,6 +17,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Better:** a thin line always shows where you are on the bar, no need to hover
+- **Changed:** after 5 s in a muted part, a countdown to the sound replaces Skip
 - **Changed:** muted parts of Twitch videos are red instead of orange
 
 ## [0.98.2] - 2026-11-21
