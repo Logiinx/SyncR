@@ -199,7 +199,7 @@ async function accessToken(email: string) {
 export function gmailErrorText(error: unknown) {
   const e = asGmailError(error)
   const status = e.status ?? 0
-  if (e.signedOut) return t('Signed out, sign in again in Settings → Accounts')
+  if (e.signedOut) return t('Signed out, sign in again in Settings → Mail')
   if (e.offline) return t('No connection to Gmail (offline?)')
   if (status === 404) return t('This email is gone (deleted or moved in Gmail)')
   if (isBusy(e)) return t('Gmail is busy right now')

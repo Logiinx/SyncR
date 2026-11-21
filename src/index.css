@@ -4025,8 +4025,14 @@ button {
   background: var(--bg);
 }
 
-.setting-button:hover {
+.setting-button:hover:not(:disabled) {
   border-color: var(--text-dim);
+}
+
+/* Not available now (no proxy yet, a module turned off): dim text, like the grayed names */
+.setting-button:disabled {
+  color: var(--text-dim);
+  cursor: default;
 }
 
 /* ---------- What's new after an update (WhatsNew.tsx) ---------- */
@@ -4736,18 +4742,6 @@ button {
   font-size: 0.9em;
 }
 
-/* Settings sections: a small title with a thin line above it (not above the first) */
-.settings-section {
-  margin: 20px 0 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border-strong);
-  color: var(--link);
-  font-size: 0.75em;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 /* Settings and the windows sharing its look (Video, Games, modules). Phone: full screen. */
 .dialog.settings {
   width: min(880px, 100%);
@@ -5015,6 +5009,96 @@ button {
   resize: none;
 }
 
+/* An address, password or ID in a row (Accounts' proxy, Steam profile, Mail's project ID): wider
+   than the other controls so an address fits (user) */
+.settings-page {
+  --settings-field: 260px;
+}
+
+.dialog .settings-row-field input[type='url'],
+.dialog .settings-row-field input[type='text'],
+.settings-row-field .secret-field {
+  width: var(--settings-field);
+  max-width: 100%;
+  margin: 0;
+}
+
+.dialog .settings-row-field input {
+  padding: 3px 6px;
+  font-size: 0.95em;
+}
+
+.dialog .settings-row-field .secret-field input {
+  padding-right: 30px;
+}
+
+.settings-row-field .secret-field .eye {
+  width: 28px;
+}
+
+/* A connection's check under its row (RowStatus in SettingsCard.tsx): under a field, lined up with
+   it; under a button, on the right. The row's line goes under it instead. */
+.dialog .settings-row-status {
+  margin: -4px 0 0 auto;
+  padding-bottom: 7px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.9em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.settings-row-status.under-field {
+  width: min(var(--settings-field), 60%);
+}
+
+.settings-row-status.under-button {
+  width: fit-content;
+  max-width: 60%;
+}
+
+.settings-row-status .spinner {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.settings-row-status.full {
+  white-space: normal;
+}
+
+.settings-row-status.ok {
+  color: var(--text-green);
+}
+
+.settings-page .settings-row:has(+ .settings-row-status),
+.settings-page .settings-row-status:last-child,
+.settings-page .settings-row-status:has(+ .settings-card-sub) {
+  border-bottom: none;
+}
+
+/* Accounts: a connection set up in another section; the whole row opens it */
+.settings-row.settings-jump {
+  width: calc(100% + 16px);
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.settings-jump:hover {
+  background: var(--hover);
+}
+
+.settings-jump .settings-status {
+  max-width: 100%;
+}
+
+.settings-jump-arrow {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
 /* A connection's state (Accounts card): dim, green when it works, one line */
 .settings-status {
   display: flex;
@@ -5089,12 +5173,6 @@ button {
   font-weight: 600;
 }
 
-.settings-card-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin: 4px 0 6px;
-}
-
 /* ▶ next to a sound's dropdown */
 .settings-play {
   display: flex;
@@ -5108,7 +5186,7 @@ button {
   color: var(--text);
 }
 
-/* "Manage accounts…": the details, with ← Accounts in the head to go back */
+/* Phone: ‹ and the section's name in the title row, back to the list */
 .settings-back {
   display: flex;
   flex: 1;
@@ -5119,13 +5197,6 @@ button {
   color: var(--text);
   font-size: 1.15em;
   font-weight: 600;
-}
-
-/* In place of the Accounts section: Games, then Calendar, Gmail, Instant mail */
-.settings-manage > div:first-child > section:first-child > .settings-section {
-  margin-top: 6px;
-  padding-top: 0;
-  border-top: none;
 }
 
 @media (max-width: 699px) {
@@ -5164,6 +5235,27 @@ button {
     width: 100%;
   }
 
+  /* Addresses and passwords too, their check under them full width */
+  .settings-row-field {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding-block: 0 6px;
+  }
+
+  .settings-row-field .settings-row-control {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .settings-page {
+    --settings-field: 100%;
+  }
+
+  .settings-row-status.under-field,
+  .settings-row-status.under-button {
+    width: 100%;
+  }
+
   /* The sidebar becomes the list, a section opens in its place (SettingsDialog.tsx) */
   .dialog.sidebar-settings {
     height: 100%;
@@ -5198,17 +5290,6 @@ button {
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-}
-
-.setting {
-  display: block;
-  margin-bottom: 16px;
-}
-
-.setting-label {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
 }
 
 .setting-value {
@@ -5249,50 +5330,16 @@ button {
   text-decoration: underline;
 }
 
-/* Settings → Games: the connection check (green when it works) */
-.setting-status {
-  margin: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--text-dim);
-  font-size: 0.9em;
-}
-
-.setting-status.full {
-  white-space: normal;
-}
-
-.setting-status.ok {
-  color: var(--text-green);
-}
-
-/* Text fields in a setting: the setting already has the space below */
-.setting > input[type='url'],
-.setting > input[type='password'] {
-  margin-bottom: 0;
-}
-
-/* A checkbox setting: text on the left, box on the right */
-.setting-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-}
-
-.setting-toggle input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--link);
-  cursor: pointer;
-}
-
-/* Settings → Gmail: one row per account: color dot + address (cut with … if long), on/off,
-   Remove */
+/* Settings → Mail: one row per account: color dot + address (cut with … if long), Remove, on/off */
 .gmail-account {
   gap: 10px;
+}
+
+/* Settings: an empty list's line (Mail's safe senders) */
+.dialog .settings-empty {
+  margin: 6px 0;
+  color: var(--text-dim);
+  font-size: 0.9em;
 }
 
 .gmail-account-name {
@@ -6697,12 +6744,6 @@ h3.games-group-title {
 
 .primary .spinner circle {
   stroke: currentColor;
-}
-
-/* In a one-line status (Settings): before the text */
-.setting-status .spinner {
-  margin-right: 6px;
-  vertical-align: -2px;
 }
 
 /* A line or a button with the ring before its text: "⟳ Checking Dropbox…" */

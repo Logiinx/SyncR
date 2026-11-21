@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import InfoTip from './InfoTip'
+import Spinner from './Spinner'
 
 // The pieces of Settings
 
@@ -48,5 +50,27 @@ export function ModuleSwitch({ name, about, aboutLabel, on, onChange }: {
     >
       <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
     </SettingRow>
+  )
+}
+
+// A connection's check under its row (the proxy, Steam, Google Calendar, Gmail): dim, green when
+// it works, lined up with the control above (`under`: a field, or a button). One line, cut with …;
+// the whole text on hover, or a tap shows it in full (a long error on the phone).
+export function RowStatus({ ok, text, busy, under = 'field' }: {
+  ok: boolean
+  text: string
+  busy?: boolean
+  under?: 'field' | 'button'
+}) {
+  const [full, setFull] = useState(false)
+  return (
+    <p
+      className={`settings-row-status under-${under}${ok ? ' ok' : ''}${full ? ' full' : ''}`}
+      title={text}
+      onClick={() => setFull(!full)}
+    >
+      {busy && <Spinner size={12} />}
+      {text}
+    </p>
   )
 }

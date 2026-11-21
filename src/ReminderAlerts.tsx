@@ -99,7 +99,7 @@ function ReminderAlerts() {
   useEffect(() => {
     if (isTauri()) popupMonitor().catch((error) => console.error(error)) // PC: notes where the pop-up's screen is
   }, [])
-  useInstantMail(mailOn) // PC: and within seconds, once set up (Settings → Accounts)
+  useInstantMail(mailOn) // PC: and within seconds, once set up (Settings → Mail)
   const mails = useMailAlerts()
   const battery = useLowAlert() // PC: the mouse battery's low warning too
   const videos = useShownVideoAlerts(useVideoAlerts()) // PC: new videos of bell channels

@@ -5,7 +5,7 @@ export const reminders = {
 
   // The Reminders tab
   'Connect Google Calendar': 'Connecter Google Agenda',
-  'New events go to your Google Calendar. Connect it first in Settings → Accounts.': 'Les nouveaux événements vont dans votre Google Agenda. Connectez-le d’abord dans Paramètres → Comptes.',
+  'New events go to your Google Calendar. Connect it first in Settings → Alerts.': 'Les nouveaux événements vont dans votre Google Agenda. Connectez-le d’abord dans Paramètres → Alertes.',
   'Delete event?': 'Supprimer l’événement ?',
   '"{title}" will be deleted from your Google Calendar. Only this date, unless you tick the box.': '« {title} » sera supprimé de votre Google Agenda. Seulement cette date, sauf si vous cochez la case.',
   '"{title}" will be deleted from your Google Calendar.': '« {title} » sera supprimé de votre Google Agenda.',

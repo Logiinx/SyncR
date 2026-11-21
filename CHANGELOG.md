@@ -10,6 +10,8 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** Settings has a sidebar of sections, one shown at a time
 - **Changed:** Video, Games and Hardware settings are now sections of Settings
 - **Changed:** mouse battery settings are at the bottom of Hardware (PC only)
+- **Changed:** Steam, Gmail and Google Calendar are set up in their own section
+- **Small fixes:** unavailable Settings buttons look grayed
 
 **Video** (PC only)
 - **Better:** Move to the other screen: its arrow points to the screen it goes to

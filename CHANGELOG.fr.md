@@ -10,6 +10,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** les Paramètres ont une barre latérale de sections, une affichée à la fois
 - **Changé :** les paramètres Vidéo, Jeux et Matériel sont des sections des Paramètres
 - **Changé :** la batterie de la souris est en bas de Matériel (PC uniquement)
+- **Changé :** Steam, Gmail et Google Agenda se règlent dans leur propre section
+- **Petites corrections :** boutons indisponibles des Paramètres grisés
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va

@@ -251,7 +251,7 @@ function GamesView() {
                         />
                       </div>
                     )}
-                    {/* Library, with a Steam profile set (Settings → Accounts) */}
+                    {/* Library, with a Steam profile set (Settings → Games) */}
                     {shown === 'library' && steam?.steamId && (
                       <button className="games-import" title={t('Import from Steam…')} onClick={() => setImporting(true)}>
                         <Download size={14} />

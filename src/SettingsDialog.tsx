@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, Cpu, Gamepad2, Link, Mail, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
-import { SettingRow } from './SettingsCard'
+import { RowStatus, SettingRow } from './SettingsCard'
 import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
 import { WhatsNewDialog, recentReleases } from './WhatsNew'
@@ -40,16 +40,14 @@ import { useModuleOn } from './modules'
 import { useMouseBattery } from './mouseBattery'
 import { useHardware } from './hardware'
 import type { SettingsStart } from './openSettings'
-import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
-import { forgetAccountMail } from './mailAlerts'
-import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
-import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
+import { useGmailAccounts } from './gmail'
+import { useInstantStatus } from './instantMail'
 import { signalsWork } from './updateSignal'
 import { colorMenuItems } from './cardColors'
 import ContextMenu from './ContextMenu'
 import { SpecialIcon, type SpecialTab } from './tabIcons'
 import { saveTabColors, useTabColors } from './tabColors'
-import { checkSteamProfile, followSteam, saveSteamFollow, saveSteamProfile, useSteamFollow, useSteamProfile, type SteamProfile } from './steam'
+import { useSteamProfile } from './steam'
 import {
   findPopupScreen,
   loadBackground,
@@ -85,7 +83,6 @@ import { pinLockOn } from './secrets'
 import { getKey } from './crypto'
 import { ALL_DAY_ALERTS, allDayAlertText, saveAllDayAlert, useAllDayAlert } from './eventAlerts'
 import { percentText, plural, t, textKey, useLanguage, validChoice, type TextKey } from './i18n'
-import { richText } from './richText'
 import SecretField from './SecretField'
 import { useNarrow } from './useNarrow'
 import { read, write } from './localState'
@@ -93,8 +90,9 @@ import { saveLanguageChoice, useLanguageChoice } from './language'
 
 // Settings: a sidebar of sections, one shown at a time on its right (on a phone the list fills
 // the window and a section opens in its place). Each setting one row: name on the left, its
-// control on the right. The Accounts section shows how each connection is doing; "Manage
-// accounts…" opens the details in its place, with ‹ Accounts. Changes are saved right away.
+// control on the right. Each connection is set up in its section (Steam in Games, Google Calendar
+// in Alerts, Gmail in Mail); Accounts holds the game search proxy they share and shows how each
+// one is doing, a click opening its section. Changes are saved right away.
 // Closed with Escape or a click outside it.
 // start: opens on that section instead of the last one (a module's ⚙️, the taskbar battery, the
 // Hardware widget's menu: openSettings.ts)
@@ -112,26 +110,30 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   })
   const [phoneOpen, setPhoneOpen] = useState(!!startSection)
   const pageRef = useRef<HTMLDivElement>(null)
-  // The taskbar battery: Hardware scrolled to the mouse battery, at the bottom
-  useEffect(() => {
-    if (start !== 'mouse-battery') return
-    const page = pageRef.current
-    const part = page?.querySelector<HTMLElement>('.mouse-battery-part')
-    if (page && part) page.scrollTop = part.offsetTop - 6
-  }, [])
-  function openSection(id: string) {
+  // part: a selector inside the section to scroll to (Accounts' rows: Steam, Google Calendar; the
+  // taskbar battery: Hardware's mouse battery, at the bottom)
+  const partToShow = useRef<string | null>(start === 'mouse-battery' ? '.mouse-battery-part' : null)
+  function openSection(id: string, part?: string) {
     setSection(id)
     write(SECTION_KEY, id)
-    setManage(false)
     setPhoneOpen(true)
     pageRef.current?.scrollTo({ top: 0 })
+    partToShow.current = part ?? null
   }
-  const [manage, setManage] = useState(false) // the accounts' details instead of the Accounts section
-  function showManage(on: boolean) {
-    if (on) openSection('accounts')
-    setManage(on)
-    pageRef.current?.scrollTo({ top: 0 })
-  }
+  useEffect(() => {
+    const page = pageRef.current
+    const selector = partToShow.current
+    partToShow.current = null
+    if (!page || !selector) return
+    const show = () => {
+      const part = page.querySelector<HTMLElement>(selector)
+      if (part) page.scrollTop = part.offsetTop - 6
+    }
+    show()
+    // Again a moment later: a check's line (Steam's) comes in after, making the page longer
+    const timer = window.setTimeout(show, 400)
+    return () => window.clearTimeout(timer)
+  }, [section, phoneOpen])
 
   const [appearance, setAppearance] = useState(loadAppearance)
   function update(change: Partial<Appearance>) {
@@ -218,7 +220,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     return () => window.removeEventListener('sync-key-change', check)
   }, [])
 
-  // The Accounts card: each connection's state (the details: "Manage accounts…")
+  // Accounts: the game search proxy, and the state of the connections set up in other sections
   const mail = isTauri() || import.meta.env.DEV // Gmail: PC only (and the browser while developing)
   const gmailAccounts = useGmailAccounts()
   const allDayAlert = useAllDayAlert()
@@ -420,7 +422,8 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           <PopupPlace background={background} onChange={updateBackground} />
         </>
       )}
-      <h4 className="settings-card-sub">{t('Reminders')}</h4>
+      <h4 className="settings-card-sub calendar-part">{t('Reminders')}</h4>
+      <CalendarRow />
       <SettingRow label={t('Reminder sound')}>
         <SoundChoice value={background.reminderSoundId} onChange={(id) => updateBackground({ reminderSoundId: id })} />
       </SettingRow>
@@ -488,7 +491,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
       )}
       {mail && gmailAccounts.length === 0 && (
         <SettingRow label={t('Emails')}>
-          <button className="setting-button" onClick={() => showManage(true)}>
+          <button className="setting-button" onClick={() => openSection('mail')}>
             {t('Add account…')}
           </button>
         </SettingRow>
@@ -497,29 +500,29 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   )
   const accountsCard = (
     <>
-      <SettingRow label={<>{t('Game search')} <Synced /></>}>
-        <Status ok={proxyStatus.ok} text={proxyStatus.text} />
-      </SettingRow>
-      <SettingRow label="Steam">
-        <Status ok={!!steam?.name} text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))} />
-      </SettingRow>
-      <SettingRow label={t('Google Calendar')}>
-        <Status ok={calendar} text={calendar ? connectedText() : t('Not connected')} />
-      </SettingRow>
+      <ProxyRows status={proxyStatus} />
+      <h4 className="settings-card-sub">{t('In their sections')}</h4>
+      <JumpRow
+        label="Steam"
+        ok={!!steam?.name}
+        text={steam?.name ?? (steam?.link ? t('Not checked yet') : t('Not set up'))}
+        onClick={() => openSection('games', '.steam-part')}
+      />
+      <JumpRow
+        label={t('Google Calendar')}
+        ok={calendar}
+        text={calendar ? connectedText() : t('Not connected')}
+        onClick={() => openSection('alerts', '.calendar-part')}
+      />
       {mail && (
-        <SettingRow label="Gmail">
-          <Status
-            ok={gmailAccounts.length > 0}
-            text={gmailAccounts.length === 0 ? t('No account yet')
-              : `${plural(gmailAccounts.length, '{n} account', '{n} accounts')}${instant.ok ? ` · ${t('instant mail on')}` : ''}`}
-          />
-        </SettingRow>
+        <JumpRow
+          label="Gmail"
+          ok={gmailAccounts.length > 0}
+          text={gmailAccounts.length === 0 ? t('No account yet')
+            : `${plural(gmailAccounts.length, '{n} account', '{n} accounts')}${instant.ok ? ` · ${t('instant mail on')}` : ''}`}
+          onClick={() => openSection('mail')}
+        />
       )}
-      <div className="settings-card-foot">
-        <button className="setting-button" onClick={() => showManage(true)}>
-          {t('Manage accounts…')}
-        </button>
-      </div>
     </>
   )
   const lookCard = (
@@ -732,7 +735,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     { id: 'window', icon: AppWindow, name: t('Window'), content: windowCard },
     { id: 'mail', icon: Mail, name: t('Mail'), content: (isTauri() || import.meta.env.DEV) && <MailSection />, module: true, off: !mailOn },
     { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true, off: !videoModuleOn },
-    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection />, module: true, off: !gamesOn },
+    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection proxyReady={proxyStatus.ok} />, module: true, off: !gamesOn },
     { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)
@@ -741,7 +744,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   // Phone: the list fills the window; a section opens in its place, with ‹ back to the list
   const showList = !narrow || !phoneOpen
   const showPage = !narrow || phoneOpen
-  const back = manage ? () => showManage(false) : narrow && phoneOpen ? () => setPhoneOpen(false) : null
+  const back = narrow && phoneOpen ? () => setPhoneOpen(false) : null
 
   // Check for updates: the icon next to Settings in the sidebar
   const about = (
@@ -755,20 +758,6 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     </p>
   )
 
-  const shown = manage ? (
-    <div className="settings-manage">
-      <div>
-        <GamesSettings />
-      </div>
-      <div>
-        <GoogleSettings />
-        {mail && <GmailSettings />}
-        {mail && <SafeSenders />}
-      </div>
-    </div>
-  ) : (
-    current.content
-  )
 
   return (
     <>
@@ -776,7 +765,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
         <div className="dialog-head">
           {back ? (
             <button className="settings-back" onClick={back}>
-              <ChevronLeft size={18} /> {manage ? t('Accounts') : current.name}
+              <ChevronLeft size={18} /> {current.name}
             </button>
           ) : (
             <h2>{t('Settings')}</h2>
@@ -803,7 +792,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           )}
           {showPage && (
             <div className="settings-page" ref={pageRef}>
-              {shown}
+              {current.content}
             </div>
           )}
         </div>
@@ -841,7 +830,7 @@ function Synced() {
 // a green "Connected", or what went wrong.
 const CHECK_DELAY = 800 // ms after the last key
 
-// Address + password of the last check that worked, until the app closes (see GamesSettings)
+// Address + password of the last check that worked, until the app closes (see useProxyStatus)
 let lastGoodConnection: string | null = null
 
 // Whether the proxy answers with this address + password: "Connected", or what went wrong.
@@ -889,11 +878,12 @@ function useProxyStatus(connection: IgdbConnection | null) {
   return status
 }
 
-function GamesSettings() {
+// Accounts: the game search proxy's address and password (synced), its check under them (status:
+// useProxyStatus, in the dialog, so Games' Steam part follows the same check). Video, Steam and the
+// Google sign-ins go through it too.
+function ProxyRows({ status }: { status: { ok: boolean; text: string } }) {
   const saved = useConnection()
   const [connection, setConnection] = useState<IgdbConnection | null>(null) // null until loaded
-  const status = useProxyStatus(connection)
-  const [fullStatus, setFullStatus] = useState(false) // a long message, tapped: shown in full
   const [showPassword, setShowPassword] = useState(false)
 
   // The saved one, once loaded (not later: an older save arriving while typing would undo keys)
@@ -908,21 +898,25 @@ function GamesSettings() {
   }
 
   return (
-    <section className="settings-group">
-      <SectionTitle title={t('Games')} synced />
-      <label className="setting">
-        <span className="setting-label">{t('Game search proxy address')}</span>
+    <>
+      <h4 className="settings-card-sub">
+        {t('Game search')} <Synced />
+        <InfoTip label={t('About the game search proxy')}>
+          {t('Your Cloudflare Worker. Game search, Steam, Video and the Google sign-ins (Calendar, Gmail) go through it.')}
+        </InfoTip>
+      </h4>
+      <SettingRow label={t('Proxy address')} className="settings-row-field">
         <input
           type="url"
           placeholder="https://….workers.dev"
+          aria-label={t('Proxy address')}
           value={connection?.url ?? ''}
           onChange={(e) => change({ url: e.target.value.trim() })}
           disabled={!connection}
           spellCheck={false}
         />
-      </label>
-      <label className="setting">
-        <span className="setting-label">{t('Proxy password')}</span>
+      </SettingRow>
+      <SettingRow label={t('Proxy password')} className="settings-row-field">
         <SecretField
           value={connection?.password ?? ''}
           onChange={(password) => change({ password })}
@@ -932,120 +926,29 @@ function GamesSettings() {
           visible={showPassword}
           onToggle={() => setShowPassword(!showPassword)}
         />
-      </label>
-      {/* One line (a long error would make the dialog grow on the phone): cut with …, the whole
-          text on hover, or tap it to show it in full */}
-      <p
-        className={`setting-status${status.ok ? ' ok' : ''}${fullStatus ? ' full' : ''}`}
-        title={status.text}
-        onClick={() => setFullStatus(!fullStatus)}
-      >
-        {status.text === t('Checking…') && <Spinner size={12} />}
-        {status.text}
-      </p>
-      <SteamSetting proxyReady={status.ok} />
-    </section>
-  )
-}
-
-// Your Steam profile (steam.ts), synced: checked like the proxy above, shortly after typing
-// stops and when Settings opens. Its id and name are saved once found.
-function SteamSetting({ proxyReady }: { proxyReady: boolean }) {
-  const saved = useSteamProfile()
-  const follow = useSteamFollow()
-  const [profile, setProfile] = useState<SteamProfile | null>(null) // null until loaded
-  const [status, setStatus] = useState({ ok: false, text: '' })
-  const language = useLanguage()
-
-  useEffect(() => {
-    if (saved) setProfile((current) => current ?? saved)
-  }, [saved])
-
-  useEffect(() => {
-    if (!profile) return
-    if (!profile.link.trim()) return setStatus({ ok: false, text: t('Not set up') })
-    if (!proxyReady) return setStatus({ ok: false, text: t('Needs the game search proxy (above)') })
-    if (profile.name) setStatus({ ok: true, text: t('Connected as {name}', { name: profile.name }) })
-    let current = true
-    const timer = window.setTimeout(async () => {
-      if (!profile.name) setStatus({ ok: false, text: t('Checking…') })
-      try {
-        const found = await checkSteamProfile(profile.link)
-        const name = found.name ?? found.steamId
-        if (!current) return // another link was typed meanwhile: don't save over it
-        if (found.steamId !== profile.steamId || name !== profile.name) {
-          await saveSteamProfile({ link: profile.link, steamId: found.steamId, name })
-        }
-        if (found.games === null) setStatus({ ok: false, text: t('{name}: game details are private (Steam → Profile → Privacy)', { name }) })
-        else setStatus({ ok: true, text: plural(found.games, 'Connected as {name} · {n} game', 'Connected as {name} · {n} games', { name }) })
-      } catch (error) {
-        if (current) setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) })
-      }
-    }, CHECK_DELAY)
-    return () => {
-      current = false
-      window.clearTimeout(timer)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.link, proxyReady, language])
-
-  return (
-    <>
-      <label className="setting">
-        <span className="setting-label">{t('Steam profile')}</span>
-        <input
-          type="url"
-          placeholder="https://steamcommunity.com/id/…"
-          value={profile?.link ?? ''}
-          onChange={(e) => {
-            // A new link: the id and name come with its check
-            const next = { link: e.target.value.trim() }
-            setProfile(next)
-            saveSteamProfile(next)
-          }}
-          disabled={!profile}
-          spellCheck={false}
-        />
-      </label>
-      <p className={`setting-status${status.ok ? ' ok' : ''}`} title={status.text}>
-        {status.text === t('Checking…') && <Spinner size={12} />}
-        {status.text}
-      </p>
-      {/* Games move by themselves (steam.ts followSteam); checked right away when switched on */}
-      <SettingRow
-        label={
-          <>
-            {t('Follow my Steam account')}
-            <InfoTip label={t('How Follow my Steam account works')}>
-              {t('Moves games for you, based on your Steam account (checked about every 30 minutes):')}
-              <ul>
-                <li>{richText(t('A **To buy** game you own on Steam → **To play › Not started**'))}</li>
-                <li>{richText(t('A **Not started** game you play for 1 hour on Steam → **Playing**'))}</li>
-              </ul>
-              {t('Each move shows a line at the top of Games. Nothing else moves, and you can always move a game back.')}
-            </InfoTip>
-          </>
-        }
-      >
-        <input
-          type="checkbox"
-          checked={!!follow}
-          disabled={follow === undefined}
-          onChange={async (e) => {
-            const on = e.target.checked // read first: the box shows the saved value again meanwhile
-            await saveSteamFollow(on)
-            if (on) followSteam(true)
-          }}
-        />
       </SettingRow>
+      <RowStatus ok={status.ok} text={status.text} busy={status.text === t('Checking…')} />
     </>
   )
 }
 
-// Google Calendar sign-in (google.ts), per device. Phone/browser: Connect leaves the app for
-// Google's page; the result shows under the cloud button on return. PC app: Google's page opens
-// in the browser; the result shows here. Needs the game search proxy (above).
-function GoogleSettings() {
+// Accounts: a connection set up in another section, its state; a click opens that section
+function JumpRow({ label, ok, text, onClick }: { label: string; ok: boolean; text: string; onClick: () => void }) {
+  return (
+    <button className="settings-row settings-jump" onClick={onClick}>
+      <span className="settings-row-label">{label}</span>
+      <span className="settings-row-control">
+        <Status ok={ok} text={text} />
+        <ChevronRight size={15} className="settings-jump-arrow" />
+      </span>
+    </button>
+  )
+}
+
+// Alerts → Reminders: Google Calendar sign-in (google.ts), per device. Phone/browser: Connect
+// leaves the app for Google's page; the result shows under the cloud button on return. PC app:
+// Google's page opens in the browser; the result shows here. Needs the game search proxy.
+function CalendarRow() {
   const [connected, setConnected] = useState(isGoogleConnected)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null) // PC app: waiting, or what went wrong
@@ -1059,7 +962,7 @@ function GoogleSettings() {
 
   const status = connected
     ? connectedText()
-    : (message ?? (!isComplete(proxy) ? t('Needs the game search proxy (above)') : t('Not connected')))
+    : (message ?? (!isComplete(proxy) ? t('Needs the game search proxy (Accounts)') : t('Not connected')))
 
   async function toggle() {
     setBusy(true)
@@ -1079,24 +982,14 @@ function GoogleSettings() {
   }
 
   return (
-    <section className="settings-group">
-      <SectionTitle title={t('Google Calendar')} />
-      <div className="setting setting-toggle">
-        <span>{t('Main calendar')}</span>
-        <button
-          className="setting-button"
-          disabled={busy || (!connected && !isComplete(proxy))}
-          onClick={toggle}
-        >
+    <>
+      <SettingRow label={t('Google Calendar')}>
+        <button className="setting-button" disabled={busy || (!connected && !isComplete(proxy))} onClick={toggle}>
           {connected ? t('Disconnect') : t('Connect…')}
         </button>
-      </div>
-      {/* Same status line as Games: green when connected */}
-      <p className={`setting-status${connected ? ' ok' : ''}`} title={status}>
-        {busy && !connected && isTauri() && <Spinner size={12} />}
-        {status}
-      </p>
-    </section>
+      </SettingRow>
+      <RowStatus ok={connected} text={status} busy={busy && !connected && isTauri()} under="button" />
+    </>
   )
 }
 
@@ -1137,139 +1030,6 @@ const FADE_CHOICES = [
   { seconds: 60, name: '1 min' },
 ]
 
-// Gmail accounts (gmail.ts): PC only (the phone has the Gmail app); also in the browser while
-// developing, to test. Each account: its color (the strip on its pop-ups), address, on/off
-// (off: no pop-ups, not in the Mail tab), Remove. Sound and fading: in Alerts. "Add account…" opens Google's sign-in like Calendar's (needs the proxy too).
-// Instant mail (instantMail.ts): the Google Cloud project ID, and a sign-in of the project's
-// owner (one of the accounts) with the Pub/Sub permission.
-function GmailSettings() {
-  const accounts = useGmailAccounts()
-  const [projectId, setProjectId] = useState(loadProjectId)
-  const instant = useInstantStatus()
-  const collector = accounts.find((a) => a.pubsub && !a.expired)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
-  const [colorMenu, setColorMenu] = useState<{ email: string; color: string; x: number; y: number } | null>(null)
-  const proxy = useConnection()
-
-  async function add(pubsub = false) {
-    setBusy(true)
-    setMessage(isTauri() ? { text: t('Finish the sign-in in your browser…'), ok: false } : null)
-    try {
-      setMessage(await connectGmail(pubsub)) // browser: leaves the app
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : String(error), ok: false })
-    }
-    setBusy(false)
-  }
-
-  const status = message?.text ??
-    (!isComplete(proxy) ? t('Needs the game search proxy (above)') : accounts.length === 0 ? t('No account yet') : null)
-  return (
-    <>
-    <section className="settings-group">
-      <SectionTitle title="Gmail">
-        <InfoTip label={t('About the checkboxes')}>
-          {t("An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.")}
-        </InfoTip>
-      </SectionTitle>
-      {accounts.map((account) => (
-        <div key={account.email} className="setting setting-toggle gmail-account">
-          <span className="gmail-account-name" title={account.email}>
-            {/* The account's color (its pop-ups' strip, its dot in the Mail tab): a click
-                opens the color list, like Board cards' "Card color…" */}
-            <button
-              className="color-dot-button"
-              title={t('Color')}
-              aria-label={t('Color')}
-              onClick={(e) => setColorMenu({ email: account.email, color: account.color, x: e.clientX, y: e.clientY })}
-            >
-              <span className="menu-swatch" style={{ background: `var(--text-${account.color})` }} />
-            </button>
-            <span className="gmail-account-email" title={account.email}>{account.email}</span>
-            {account.expired && <span className="setting-value">{t('signed out')}</span>}
-          </span>
-          {account.expired ? (
-            // The instant mail account asks for the Pub/Sub permission again, or it would lose it
-            <button className="setting-button" disabled={busy} onClick={() => add(account.pubsub)}>
-              {t('Sign in…')}
-            </button>
-          ) : (
-            <input
-              type="checkbox"
-              checked={account.enabled}
-              aria-label={t('Emails from {email}', { email: account.email })}
-              onChange={(e) => setAccountEnabled(account.email, e.target.checked)}
-            />
-          )}
-          <button
-            className="setting-button"
-            onClick={() => {
-              removeAccount(account.email)
-              forgetAccountMail(account.email) // its stored emails go too (privacy page)
-            }}
-          >
-            {t('Remove')}
-          </button>
-        </div>
-      ))}
-      <div className="setting setting-toggle">
-        <span>{t('New emails in Primary')}</span>
-        <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add()}>
-          {t('Add account…')}
-        </button>
-      </div>
-      {status && (
-        <p className={`setting-status${message?.ok ? ' ok' : ''}`} title={status}>
-          {busy && isTauri() && <Spinner size={12} />}
-          {status}
-        </p>
-      )}
-      {colorMenu && (
-        <ContextMenu
-          x={colorMenu.x}
-          y={colorMenu.y}
-          onClose={() => setColorMenu(null)}
-          header={{ title: t('Account color') }}
-          items={colorMenuItems(colorMenu.color, (color) => color && setAccountColor(colorMenu.email, color), false)}
-        />
-      )}
-    </section>
-      {accounts.length > 0 && (
-        <section className="settings-group">
-          <SectionTitle title={t('Instant mail')} />
-          <label className="setting">
-            <span className="setting-label">{t('Google Cloud project ID')}</span>
-            <input
-              type="text"
-              placeholder={t('e.g. syncr-123456')}
-              value={projectId}
-              onChange={(e) => {
-                setProjectId(e.target.value.trim())
-                saveProjectId(e.target.value.trim())
-              }}
-              spellCheck={false}
-            />
-          </label>
-          <div className="setting setting-toggle">
-            <span>
-              {t('Pub/Sub permission')} <span className="setting-value">{collector?.email ?? t('not yet')}</span>
-            </span>
-            <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add(true)}>
-              {t('Sign in…')}
-            </button>
-          </div>
-          {instant.text && (
-            <p className={`setting-status${instant.ok ? ' ok' : ''}`} title={instant.text}>
-              {instant.text}
-            </p>
-          )}
-        </section>
-      )}
-    </>
-  )
-}
-
 // The sites whose links get a card: typed as "github.com, x.com", saved when leaving the field.
 // Emptied: back to the default sites (as the placeholder shows). A text area that wraps and grows
 // with its text: scrolling a single line sideways kept the cursor out of view at the end (PC) or
@@ -1301,41 +1061,6 @@ function SitesInput({ sites, disabled, onChange }: { sites: string[]; disabled: 
         e.currentTarget.blur()
       }}
     />
-  )
-}
-
-// Safe senders (safeSenders.ts): their emails open with web images. Added from an email
-// ("Always for …"), removed here. The list follows changes made meanwhile in the pop-up window.
-function SafeSenders() {
-  const [list, setList] = useState(loadSafeSenders)
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => e.key === SAFE_SENDERS_KEY && setList(loadSafeSenders())
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
-  return (
-    <section className="settings-group">
-      <SectionTitle title={t('Safe senders')} />
-      {list.map((entry) => (
-        <div key={entry} className="setting setting-toggle">
-          <span className="gmail-account-name">
-            <span className="gmail-account-email" title={entry}>{entry}</span>
-          </span>
-          <button
-            className="setting-button"
-            onClick={() => {
-              removeSafeSender(entry)
-              setList(loadSafeSenders())
-            }}
-          >
-            {t('Remove')}
-          </button>
-        </div>
-      ))}
-      <p className="setting-status" title={t('Web images show by themselves in their emails. Add one from an email: "Always for …"')}>
-        {list.length ? t('Web images show by themselves in their emails') : t('None yet. Add one from an email: "Always for …"')}
-      </p>
-    </section>
   )
 }
 
@@ -1462,18 +1187,6 @@ function PopupPlace({
         </select>
       </SettingRow>
     </>
-  )
-}
-
-// A group of settings: small title, "synced" if it applies to all devices
-// children: an InfoTip about the whole section
-function SectionTitle({ title, synced, children }: { title: string; synced?: boolean; children?: React.ReactNode }) {
-  return (
-    <h3 className="settings-section">
-      {title}
-      {synced && <> <Synced /></>}
-      {children}
-    </h3>
   )
 }
 

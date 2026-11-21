@@ -200,7 +200,7 @@ function MailView() {
             </button>
           </div>
         </div>
-        {accounts.length === 0 && <p className="games-empty">{t('Add a Gmail account in Settings → Accounts.')}</p>}
+        {accounts.length === 0 && <p className="games-empty">{t('Add a Gmail account in Settings → Mail.')}</p>}
         {errors.map(({ email, text, details, retry }) => (
           <p key={email} className="games-empty error" title={details || undefined}>
             {email}: {text}{retry && t('. Trying again…')}
