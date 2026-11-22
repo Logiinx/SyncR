@@ -222,7 +222,9 @@ function giveUp() {
   location.href = `https://syncr-video.invalid/failed?video=${encodeURIComponent(videoId)}`
 }
 
-async function askTwitch(query) {
+// All of Twitch's answer. field: the part wanted; an error instead of it is a hiccup on Twitch's
+// side, not a missing video: tried again.
+async function askTwitchAll(query, field) {
   const response = await fetch('https://gql.twitch.tv/gql', {
     method: 'POST',
     headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
@@ -230,11 +232,19 @@ async function askTwitch(query) {
   })
   if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
   const answer = await response.json()
-  // An error instead of an answer is a hiccup on Twitch's side, not a missing video: tried again
-  if (!answer.data?.video && answer.errors?.length) throw new Error(`Twitch answered ${JSON.stringify(answer.errors).slice(0, 200)}`)
-  return answer.data?.video ?? null
+  if (!answer.data?.[field] && answer.errors?.length) throw new Error(`Twitch answered ${JSON.stringify(answer.errors).slice(0, 200)}`)
+  return answer.data ?? {}
 }
-const TOKEN_QUERY = 'query($id: ID!) { video: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }'
+// The video's part only (also timeline.js)
+const askTwitch = async (query) => (await askTwitchAll(query, 'video')).video ?? null
+// The access pass, plus where the video's files are and what kind of video it is (their list's
+// name) in the same question: needed when Twitch says no (subscribers only, rebuild), saving a
+// second question then. Same in video_window.rs (early_list).
+const FILES = 'video(id: $id) { seekPreviewsURL broadcastType }'
+const TOKEN_QUERY = `query($id: ID!) { token: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } ${FILES} }`
+// That answer ({ seekPreviewsURL, broadcastType }), when Twitch gave it. Missing (deleted or
+// private, or only the pass came): rebuild asks for it again.
+let filesKnown
 
 // ---- Videos Twitch refuses (subscribers only) ---------------------------------------------------
 // Their files still lie next to their preview pictures, one folder per quality, and can be read.
@@ -248,33 +258,40 @@ let list = '' // the video's qualities: Twitch's list (plus the original, withOr
 let refused = false // Twitch refused the video: its list was rebuilt from its folders
 
 async function rebuild() {
-  const previews = (await askTwitch('query($id: ID!) { video(id: $id) { seekPreviewsURL } }'))?.seekPreviewsURL
-  if (!previews) return null // deleted or private
-  const address = new URL(previews)
+  const files = filesKnown || await askTwitch(`query($id: ID!) { ${FILES} }`)
+  if (!files?.seekPreviewsURL) return null // deleted or private
+  const address = new URL(files.seekPreviewsURL)
   const parts = address.pathname.split('/')
   const folder = parts[parts.indexOf('storyboards') - 1]
   if (!folder) return null
-  // A past stream's list is index-dvr, a highlight's is named after it
-  const names = ['index-dvr.m3u8', `highlight-${encodeURIComponent(videoId)}.m3u8`]
+  // The original's setup file, asked at the same time as the lists (as withOriginal does)
+  const guessed = `${location.origin}/v/${address.host}/${folder}/chunked/init-0.mp4`
+  const setup = fetch(guessed).catch(() => null)
+  // A past stream's list is index-dvr, a highlight's is named after it. Only the right one, when
+  // known: a quality the video doesn't have would otherwise wait for both refusals (~0.3 s).
+  const dvr = 'index-dvr.m3u8'
+  const highlight = `highlight-${encodeURIComponent(videoId)}.m3u8`
+  const names = files.broadcastType === 'ARCHIVE' ? [dvr] : files.broadcastType === 'HIGHLIGHT' ? [highlight] : [dvr, highlight]
   let unreachable = false // a folder that couldn't be asked (network, Twitch's servers), not one that isn't there
   const found = await Promise.all([...Object.keys(FOLDERS), 'chunked'].map(async (quality) => {
     for (const name of names) {
       const url = `${location.origin}/v/${address.host}/${folder}/${quality}/${name}`
       const response = await fetch(url)
-      if (response.ok) return { quality, url, text: quality === 'chunked' ? await response.text() : '' }
+      if (response.ok) return { quality, url, text: await response.text() }
       if (response.status >= 500 || response.status === 429) unreachable = true
     }
     return null
   }))
   // None found because of a hiccup: tried again (playRebuilt) instead of giving up
   if (unreachable && !found.some(Boolean)) throw new Error('Twitch\'s video folders couldn\'t be reached')
+  for (const one of found) if (one) listsAsked.set(one.url, one.text)
   const lines = ['#EXTM3U']
   const add = (url, height, frameRate, bandwidth, codec) => lines.push(qualityLine(height, frameRate, bandwidth, codec), url)
   const named = found.filter((one) => one && one.quality !== 'chunked')
   const source = found.find((one) => one?.quality === 'chunked')
   // Only when it's above the copies (or it would show twice), and when this PC can play it
   const top = Math.max(0, ...named.map((one) => Number(one.quality.split('p')[0])))
-  const { height, codec } = source ? await sourceInfo(source).catch(() => ({ height: 0, codec: '' })) : { height: 0, codec: '' }
+  const { height, codec } = source ? await sourceInfo(source, { url: guessed, setup }).catch(() => ({ height: 0, codec: '' })) : { height: 0, codec: '' }
   if (source && (codec ? playable(codec) && height > top : top < 1080)) {
     add(source.url, height || 1080, named.some((one) => one.quality.endsWith('p60')) ? 60 : 30, bandwidthFor(height || 1080), codec)
   }
@@ -338,12 +355,14 @@ async function withOriginal(text) {
     const setup = fetch(guessed).catch(() => null)
     const answer = await fetch(url)
     if (!answer.ok) return text
-    const { height, codec } = await sourceInfo({ url, text: await answer.text() }, { url: guessed, setup })
+    const original = await answer.text()
+    const { height, codec } = await sourceInfo({ url, text: original }, { url: guessed, setup })
     const top = Math.max(0, ...lines.map((line) => Number(line.match(/RESOLUTION=\d+x(\d+)/)?.[1] ?? 0)))
     if (height <= top || !playable(codec)) return text
     const smooth = lines.some((line) => Number(line.match(/FRAME-RATE=([\d.]+)/)?.[1]) >= 50)
     const at = lines.findIndex((line) => line.startsWith('#EXT-X-MEDIA') || line.startsWith('#EXT-X-STREAM-INF'))
     lines.splice(at, 0, qualityLine(height, smooth ? 60 : 30, bandwidthFor(height), codec), url)
+    listsAsked.set(url, original)
     return lines.join('\n')
   } catch (error) {
     console.error(error)
@@ -358,10 +377,18 @@ async function withOriginal(text) {
 const FAR_FROM_END = 300 // seconds
 const LIST_EVERY = 60000 // ms
 const listCopies = new Map() // address → { text, at }
+// Qualities' lists already downloaded while finding the qualities (rebuild, withOriginal): hls.js
+// gets each once from here instead of downloading it again (~0.3 s sooner at the start)
+const listsAsked = new Map() // address → text
 
 class ListLoader extends Hls.DefaultConfig.loader {
   load(context, config, callbacks) {
     if (context.url === OWN_LIST) return this.answer(context, callbacks, list)
+    const asked = listsAsked.get(context.url)
+    if (asked !== undefined) {
+      listsAsked.delete(context.url)
+      return this.answer(context, callbacks, asked)
+    }
     const copy = listCopies.get(context.url)
     if (copy && live && video.duration - video.currentTime > FAR_FROM_END && performance.now() - copy.at < LIST_EVERY) {
       return this.answer(context, callbacks, copy.text)
@@ -706,9 +733,16 @@ async function twitchList() {
   if (!earlyAsked) {
     earlyAsked = true
     const early = await fetch(`/early?video=${encodeURIComponent(videoId)}`).catch(() => null)
-    if (early?.status === 200 || early?.status === 403) return early
+    if (early?.status === 200) return early
+    // Twitch said no: the app also has its files' answer ({ video: … })
+    if (early?.status === 403) {
+      filesKnown = (await early.clone().json().catch(() => null))?.video
+      return early
+    }
   }
-  const token = await askTwitch(TOKEN_QUERY)
+  const answer = await askTwitchAll(TOKEN_QUERY, 'token')
+  filesKnown = answer.video
+  const token = answer.token
   if (!token) return null
   return fetch(`/v/usher.ttvnw.net/vod/${encodeURIComponent(videoId)}.m3u8?nauth=${encodeURIComponent(token.value)}&nauthsig=${encodeURIComponent(token.signature)}&allow_source=true&allow_audio_only=false`)
 }

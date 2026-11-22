@@ -112,21 +112,24 @@ fn start_early_list(address: &str) {
 }
 
 // The same questions as player.js's load. 200: the list · 403: Twitch says no (deleted, private,
-// subscribers only), the page rebuilds it from the video's folders
+// subscribers only), the page rebuilds it from the video's folders, found from the address of its
+// preview pictures and its kind, asked in the same question: { "video": { seekPreviewsURL,
+// broadcastType } or null }
 async fn early_list(video: String) -> Option<(u16, Vec<u8>)> {
   const CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // the one Twitch's own website uses (as player.js)
-  let query = r#"query($id: ID!) { video: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }"#;
+  let query = r#"query($id: ID!) { token: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } video(id: $id) { seekPreviewsURL broadcastType } }"#;
   let body = serde_json::json!({ "query": query, "variables": { "id": video } }).to_string();
   let response = player_client().post("https://gql.twitch.tv/gql").header("Client-ID", CLIENT_ID).header("Content-Type", "application/json").body(body).send().await.ok()?;
   if !response.status().is_success() {
     return None;
   }
   let answer: serde_json::Value = serde_json::from_slice(&response.bytes().await.ok()?).ok()?;
-  let token = &answer["data"]["video"];
+  let token = &answer["data"]["token"];
+  let refused = Some((403, serde_json::json!({ "video": answer["data"]["video"] }).to_string().into_bytes()));
   if token.is_null() {
     // An error instead of an answer is a hiccup on Twitch's side, not a missing video
     let hiccup = answer["errors"].as_array().is_some_and(|errors| !errors.is_empty());
-    return if hiccup { None } else { Some((403, Vec::new())) };
+    return if hiccup { None } else { refused };
   }
   let (value, signature) = (token["value"].as_str()?, token["signature"].as_str()?);
   let url = reqwest::Url::parse_with_params(
@@ -137,7 +140,7 @@ async fn early_list(video: String) -> Option<(u16, Vec<u8>)> {
   let response = player_client().get(url).send().await.ok()?;
   let status = response.status().as_u16();
   if (400..500).contains(&status) && status != 429 {
-    return Some((403, Vec::new()));
+    return refused;
   }
   if status != 200 {
     return None;

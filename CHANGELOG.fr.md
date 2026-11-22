@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** les vidéos Twitch réservées aux abonnés démarrent plus vite
+
 ## [1.1.3] - 2026-11-22
 
 **Vidéo** (PC uniquement)
