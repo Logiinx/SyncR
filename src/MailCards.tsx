@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from 'react'
+import { type CSSProperties } from 'react'
 import { plural, t } from './i18n'
 import { Check, Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
@@ -7,7 +7,7 @@ import { DragRow, type DragAction } from './MailDrag'
 import { clockTime, dayTime } from './dates'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
-import CardBar from './CardBar'
+import CardBar, { LineButtons, type BarButton } from './CardBar'
 
 // New emails in the desktop pop-up, below the reminders (mockup H, mail-popup-cards.html): a
 // strip in the account's color, the sender's first letter in a circle of that color, sender +
@@ -92,29 +92,19 @@ function MailRow({ alert, fading, loading, onAction, onRead }: {
       onDrag={(action) => onAction(dragAction(alert, action))}
     >
       <div
-        className={`reminder-alert mail-line${alert.opened ? ' opened' : ''}${fading ? ' fading' : ''}`}
+        className={`reminder-alert card-line${alert.opened ? ' opened' : ''}${fading ? ' fading' : ''}`}
         style={{ borderLeftColor: color, '--account': color } as CSSProperties}
       >
-        <button className="mail-line-body" onClick={onRead} title={t('Read')}>
+        <button className="card-line-body" onClick={onRead} title={t('Read')}>
           <span className="mail-letter">{senderLetter(alert.from)}</span>
-          <span className="mail-line-from">{alert.from}</span>
-          <span className="mail-line-subject">{alert.subject}</span>
+          <span className="card-line-name">{alert.from}</span>
+          <span className="card-line-text">{alert.subject}</span>
           <span className="mail-card-time">
             {loading && <Spinner size={12} />}
             {lineTime(alert.date)}
           </span>
         </button>
-        {cardActions(alert.opened).map((button) => (
-          <button
-            key={button.action}
-            className={`mail-line-button${button.primary ? ' primary' : ''}${button.action === 'mail-delete' ? ' delete' : ''}`}
-            onClick={() => onAction(button.action)}
-            title={button.label}
-            aria-label={button.label}
-          >
-            {button.icon}
-          </button>
-        ))}
+        <LineButtons buttons={mailButtons(alert.opened, onAction)} />
       </div>
     </DragRow>
   )
@@ -127,11 +117,11 @@ const lineTime = (time: number) => (new Date(time).toDateString() === new Date()
 // A card's 3 actions, also the icons of a row: a new mail: ✓ Mark as read (blue) · Keep unread ·
 // trash; one already opened (so read): ✓ Done · Mark as unread · trash (to Gmail's Trash, no
 // question, like the Mail tab's menu)
-function cardActions(opened?: boolean): { action: MailAction; label: string; icon: ReactNode; primary?: boolean }[] {
+function mailButtons(opened: boolean | undefined, onAction: (action: MailAction) => void): BarButton[] {
   return [
-    { action: opened ? 'mail-close' : 'mail-read', label: opened ? t('Done') : t('Mark as read'), icon: <Check size={15} />, primary: true },
-    { action: opened ? 'mail-unread' : 'mail-keep', label: opened ? t('Mark as unread') : t('Keep unread'), icon: <Mail size={15} /> },
-    { action: 'mail-delete', label: t('Delete'), icon: <Trash2 size={15} /> },
+    { label: opened ? t('Done') : t('Mark as read'), icon: <Check size={15} />, primary: true, onClick: () => onAction(opened ? 'mail-close' : 'mail-read') },
+    { label: opened ? t('Mark as unread') : t('Keep unread'), icon: <Mail size={15} />, onClick: () => onAction(opened ? 'mail-unread' : 'mail-keep') },
+    { label: t('Delete'), icon: <Trash2 size={15} />, end: 'delete', onClick: () => onAction('mail-delete') },
   ]
 }
 
@@ -139,13 +129,7 @@ function cardActions(opened?: boolean): { action: MailAction; label: string; ico
 // Also under the mail in the reader (MailReader.tsx), pop-up and Mail tab
 export function MailBar({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
   return (
-    <CardBar
-      buttons={cardActions(opened).map((button) => ({
-        ...button,
-        onClick: () => onAction(button.action),
-        end: button.action === 'mail-delete' ? 'delete' : undefined,
-      }))}
-    />
+    <CardBar buttons={mailButtons(opened, onAction)} />
   )
 }
 

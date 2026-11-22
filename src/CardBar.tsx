@@ -36,3 +36,19 @@ export default function CardBar({ buttons }: { buttons: BarButton[] }) {
     </div>
   )
 }
+
+// The same buttons as icons at the end of a one-line row (older emails and videos in the pop-up,
+// below the newest one's card), colored like the bar's, the words as tooltips
+export function LineButtons({ buttons }: { buttons: BarButton[] }) {
+  return buttons.map((button) => (
+    <button
+      key={button.label}
+      className={`card-line-button${button.primary ? ' primary' : ''}${button.end === 'delete' ? ' delete' : ''}`}
+      onClick={button.onClick}
+      title={button.label}
+      aria-label={button.label}
+    >
+      {button.icon}
+    </button>
+  ))
+}

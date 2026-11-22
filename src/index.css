@@ -2002,12 +2002,6 @@ button {
   to { width: 0; }
 }
 
-/* ✕: a square at the right end of its buttons, like an email's trash but not red */
-.reminder-alert-buttons .video-alert-close {
-  flex: 0 0 32px;
-  margin-left: auto;
-}
-
 /* An email card (MailCards.tsx): the subject under the sender; the account's address cut with
    … if long */
 .mail-alert-subject {
@@ -2174,15 +2168,16 @@ button {
   color: var(--error);
 }
 
-/* An older email as one line below the newest one's card (MailRow in MailCards.tsx): the line
-   can be clicked (opens it), then the card's actions as icons, colored like the bar's */
-.reminder-alert.mail-line {
+/* An older email or video as one line below the newest one's card (MailRow in MailCards.tsx,
+   VideoRow in VideoAlertCards.tsx): the line can be clicked (opens or plays it), then the
+   card's actions as icons (LineButtons in CardBar.tsx), colored like the bar's */
+.reminder-alert.card-line {
   display: flex;
   align-items: center;
   padding: 0 6px 0 0;
 }
 
-.mail-line-body {
+.card-line-body {
   display: flex;
   flex: 1;
   align-items: center;
@@ -2193,17 +2188,27 @@ button {
   text-align: left;
 }
 
-.mail-line-body:hover {
+.card-line-body:hover {
   background: rgb(255 255 255 / 5%);
 }
 
-.mail-line .mail-letter {
+.card-line .mail-letter {
   width: 22px;
   height: 22px;
   font-size: 11px;
 }
 
-.mail-line-from {
+/* An older video's row (VideoRow in VideoAlertCards.tsx): a small picture in the letter's place */
+.video-line-thumb {
+  flex-shrink: 0;
+  width: 40px;
+  aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  object-fit: cover;
+  background: rgb(255 255 255 / 6%);
+}
+
+.card-line-name {
   flex-shrink: 0;
   max-width: 32%;
   overflow: hidden;
@@ -2213,11 +2218,11 @@ button {
 }
 
 /* Opened (so read): the sender no longer bold, like a card's subject */
-.mail-line.opened .mail-line-from {
+.card-line.opened .card-line-name {
   font-weight: 400;
 }
 
-.mail-line-subject {
+.card-line-text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2226,7 +2231,7 @@ button {
   text-overflow: ellipsis;
 }
 
-.mail-line-button {
+.card-line-button {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -2237,17 +2242,17 @@ button {
   color: var(--text-dim);
 }
 
-.mail-line-button:hover {
+.card-line-button:hover {
   background: var(--hover);
   color: var(--text);
 }
 
-.mail-line-button.primary,
-.mail-line-button.primary:hover {
+.card-line-button.primary,
+.card-line-button.primary:hover {
   color: var(--link);
 }
 
-.mail-line-button.delete:hover {
+.card-line-button.delete:hover {
   background: color-mix(in srgb, var(--error) 15%, transparent);
   color: var(--error);
 }

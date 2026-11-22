@@ -11,6 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** les cartes de nouvelles vidéos ont la barre de boutons légère des e-mails
+- **Changé :** dans la pop-up, les vidéos plus anciennes en lignes courtes sous la plus récente
 - **Petites corrections :** même icône Ajouter à la file partout
 
 ## [1.2.3] - 2026-11-22

@@ -1,7 +1,7 @@
 import { useEffect, type CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, List, ListPlus, ListVideo, Play, X } from 'lucide-react'
-import CardBar from './CardBar'
+import CardBar, { LineButtons, type BarButton } from './CardBar'
 import { useCardPieces, VIDEO_PIECES } from './videoCards'
 import { VideoCardContent } from './VideoHoverCard'
 import { db, type VideoRow } from './db'
@@ -19,14 +19,14 @@ import { betterTitles, checkTitles, useDeArrow, withBetterTitle } from './videoT
 // views and likes, as its checkboxes say); Compact = the site's logo + when it was found + the
 // channel, then a small picture beside the title and length. A click on it plays it (SyncR's
 // player); a bar at the bottom (CardBar, like the emails'): ▶ Watch · Add to queue · ✕ (the card
-// goes, the video stays in To watch). From
-// FOLD_FROM on, one "N new videos" card opens the Video tab. They fade like emails (ReminderPopup.tsx).
-const FOLD_FROM = { large: 3, compact: 4 } // Large ones are about 3 times taller
+// goes, the video stays in To watch). Like the emails (mockup A + B, video-popup-cards.html), only
+// the newest video gets the card; older ones are one-line rows below it (VideoRow), under a
+// "N new videos · Show in the Video tab" head. They fade like emails (ReminderPopup.tsx).
 
 // A card's key among the pop-up's fading cards (ReminderPopup.tsx)
 export const videoFadeKey = (id: string) => `video:${id}` // i18n-ok
 
-// play · queue: Add to queue · close: ✕ or faded · open-tab: the folded card (all of them go)
+// play · queue: Add to queue · close: ✕ or faded · open-tab: the head's button (all of them go)
 export type VideoAlertAction = 'video-play' | 'video-queue' | 'video-close' | 'video-open-tab'
 
 interface Shown {
@@ -80,13 +80,34 @@ function VideoCard({ shown: { alert, video, channel }, large, fading, onAction }
           </span>
         </button>
       )}
-      <CardBar
-        buttons={[
-          { label: t('Watch'), icon: <Play size={15} />, primary: true, onClick: () => onAction('video-play') },
-          { label: t('Add to queue'), icon: <ListPlus size={15} />, onClick: () => onAction('video-queue') },
-          { label: t('Dismiss'), icon: <X size={15} />, end: 'close', onClick: () => onAction('video-close') },
-        ]}
-      />
+      <CardBar buttons={videoButtons(onAction)} />
+    </div>
+  )
+}
+
+// A new video's 3 actions: the card's bar, also the icons of a row
+const videoButtons = (onAction: (action: VideoAlertAction) => void): BarButton[] => [
+  { label: t('Watch'), icon: <Play size={15} />, primary: true, onClick: () => onAction('video-play') },
+  { label: t('Add to queue'), icon: <ListPlus size={15} />, onClick: () => onAction('video-queue') },
+  { label: t('Dismiss'), icon: <X size={15} />, end: 'close', onClick: () => onAction('video-close') },
+]
+
+// An older video, as one line below the newest one's card (like an email's row): a small
+// picture, the channel (semi-bold), the title (dim), then the card's 3 actions as icons. The
+// site only by its color (strip). A click on the line plays it, like the card.
+function VideoRow({ shown: { video, channel }, fading, onAction }: {
+  shown: Shown
+  fading: boolean
+  onAction: (action: VideoAlertAction) => void
+}) {
+  return (
+    <div className={`reminder-alert card-line${fading ? ' fading' : ''}`} style={{ borderLeftColor: `var(--${video.platform})` }}>
+      <button className="card-line-body" onClick={() => onAction('video-play')} title={t('Watch')}>
+        {video.thumbnail ? <img className="video-line-thumb" src={video.thumbnail} alt="" /> : <span className="video-line-thumb" />}
+        <span className="card-line-name">{channel}</span>
+        <span className="card-line-text">{video.title}</span>
+      </button>
+      <LineButtons buttons={videoButtons(onAction)} />
     </div>
   )
 }
@@ -101,36 +122,18 @@ export function VideoCards({ shown, fading, onAction }: {
   // Large with every hover card piece off would be empty: Compact then
   const large = size === 'large' && VIDEO_PIECES.some(shows)
   if (!shown.length) return null
-  if (shown.length >= FOLD_FROM[large ? 'large' : 'compact']) {
-    const channels = [...new Set(shown.map((item) => item.channel))]
-    const platforms = new Set(shown.map((item) => item.video.platform))
-    const all = (action: VideoAlertAction) => shown.forEach((item) => onAction(item.alert, action))
-    return (
-      <div
-        className={`reminder-alert${shown.every((item) => fading.has(videoFadeKey(item.alert.id))) ? ' fading' : ''}`}
-        style={{ borderLeftColor: platforms.size === 1 ? `var(--${shown[0].video.platform})` : undefined }}
-      >
-        <button className="reminder-alert-body" onClick={() => all('video-open-tab')} title={t('Show in the Video tab')}>
-          <span className="reminder-alert-due">
-            {platforms.size === 1 && <VideoLogo platform={shown[0].video.platform} />} {formatDue(shown[0].alert.at)}
-          </span>
-          <span className="reminder-alert-text">{plural(shown.length, '{n} new video', '{n} new videos')}</span>
-          <span className="reminder-alert-note">{channels.join(', ')}</span>
-        </button>
-        <div className="reminder-alert-buttons">
-          <button className="primary" onClick={() => all('video-open-tab')}>{t('Show in the Video tab')}</button>
-          <button className="video-alert-close" onClick={() => all('video-close')} title={t('Dismiss all')} aria-label={t('Dismiss all')}>
-            <X size={15} />
-          </button>
-        </div>
-      </div>
-    )
-  }
   return (
     <>
-      {shown.map((item) => (
-        <VideoCard key={item.alert.id} shown={item} large={large} fading={fading.has(videoFadeKey(item.alert.id))} onAction={(action) => onAction(item.alert, action)} />
-      ))}
+      {shown.length > 1 && (
+        <div className="reminder-alerts-head">
+          <span>{plural(shown.length, '{n} new video', '{n} new videos')}</span>
+          <button onClick={() => shown.forEach((item) => onAction(item.alert, 'video-open-tab'))}>{t('Show in the Video tab')}</button>
+        </div>
+      )}
+      {shown.map((item, i) => {
+        const props = { shown: item, fading: fading.has(videoFadeKey(item.alert.id)), onAction: (action: VideoAlertAction) => onAction(item.alert, action) }
+        return i === 0 ? <VideoCard key={item.alert.id} {...props} large={large} /> : <VideoRow key={item.alert.id} {...props} />
+      })}
     </>
   )
 }
