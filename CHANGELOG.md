@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-22
+
 **App**
 - **Better:** Settings: each control sits right after its name, in a narrower window
 - **Better:** Settings: on/off switches instead of checkboxes, row lit under the mouse
