@@ -23,7 +23,6 @@ export const mail = {
   // Mail alerts
   Read: 'Lire',
   'Keep unread': 'Garder non lu',
-  'Show all': 'Tout afficher',
   '{n} new email': '{n} nouvel e-mail',
   '{n} new emails': '{n} nouveaux e-mails',
   'Mark all read': 'Tout marquer comme lu',

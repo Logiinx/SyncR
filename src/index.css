@@ -2173,6 +2173,84 @@ button {
   color: var(--error);
 }
 
+/* An older email as one line below the newest one's card (MailRow in MailCards.tsx): the line
+   can be clicked (opens it), then the card's actions as icons, colored like the bar's */
+.reminder-alert.mail-line {
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 0;
+}
+
+.mail-line-body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 8px 7px 12px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.mail-line-body:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.mail-line .mail-letter {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.mail-line-from {
+  flex-shrink: 0;
+  max-width: 32%;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Opened (so read): the sender no longer bold, like a card's subject */
+.mail-line.opened .mail-line-from {
+  font-weight: 400;
+}
+
+.mail-line-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mail-line-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--text-dim);
+}
+
+.mail-line-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.mail-line-button.primary,
+.mail-line-button.primary:hover {
+  color: var(--link);
+}
+
+.mail-line-button.delete:hover {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+}
+
 /* An email open to read (MailReader.tsx): fills the grown pop-up below any reminders; the
    mail scrolls in its frame. Sizes from the window's height: see "App scale" in CLAUDE.md. */
 .reminder-popup.reading {
