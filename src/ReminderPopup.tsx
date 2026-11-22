@@ -179,7 +179,7 @@ function ReminderPopup() {
     ],
     [battery, mails, videoKeys, queuedKey],
   )
-  const fading = useFade(fadeCards, !!open)
+  const { fading, paused } = useFade(fadeCards, !!open)
   const mailAction = (alert: MailAlert, action: MailAction) => sendFromPopup({ id: alert.key, action })
   return (
     <>
@@ -212,6 +212,7 @@ function ReminderPopup() {
         <QueuedCard
           note={queued}
           fading={fading.has(queuedFadeKey(queued.at))}
+          paused={paused}
           onOpen={() => sendFromPopup({ id: String(queued.at), action: 'queued-open' })}
           onWatch={() => sendFromPopup({ id: String(queued.at), action: 'queued-watch' })}
           onClose={() => sendFromPopup({ id: String(queued.at), action: 'queued-done' })}
@@ -309,7 +310,7 @@ function useFade(mails: { key: string; opened?: boolean; fadeAfter?: number }[],
     return () => timers.forEach(clearTimeout)
   }, [mails, paused])
 
-  return fading
+  return { fading, paused }
 }
 
 // Opening and closing an email: the window is see-through (popupWindow.ts), so it changes size

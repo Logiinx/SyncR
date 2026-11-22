@@ -112,6 +112,8 @@ export const video = {
   'Opening the link…': 'Ouverture du lien…',
   'The copied text isn’t a YouTube or Twitch link': 'Le texte copié n’est pas un lien YouTube ou Twitch',
   'Added to queue': 'Ajoutée à la file',
+  'Watch now': 'Regarder maintenant',
+  'Show queue': 'Voir la file',
   'Already in the queue': 'Déjà dans la file',
   'Show the queue': 'Voir la file',
   'Edit follow': 'Modifier le suivi',

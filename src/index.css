@@ -1919,6 +1919,89 @@ button {
   line-height: 1.45;
 }
 
+/* "Added to queue" (QueuedCard, VideoAlertCards.tsx): a confirmation. The message is the heading
+   in --queued-color (green added, blue already there), a badge of that color on a bigger picture,
+   then the title (2 lines) and logo · channel · length dim. A line at the bottom counts the
+   seconds before it goes (--countdown); it keeps counting with Animations off (it's information). */
+.queued-card {
+  position: relative;
+}
+
+.queued-thumb {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.queued-thumb .video-alert-thumb {
+  display: block;
+  width: 120px;
+}
+
+.queued-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--queued-color);
+  box-shadow: 0 0 0 2px var(--bg-raised);
+  color: var(--bg-raised);
+}
+
+.queued-heading {
+  color: var(--queued-color);
+}
+
+.queued-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.queued-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.queued-length {
+  flex-shrink: 0;
+}
+
+.queued-countdown {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--queued-color) 55%, transparent);
+  animation: queued-countdown var(--countdown) linear;
+}
+
+.queued-countdown.paused {
+  width: 100%;
+  animation: none;
+}
+
+.no-animations .queued-countdown:not(.paused) {
+  animation-duration: var(--countdown) !important;
+}
+
+@keyframes queued-countdown {
+  from { width: 100%; }
+  to { width: 0; }
+}
+
 /* ✕: a square at the right end of its buttons, like an email's trash but not red */
 .reminder-alert-buttons .video-alert-close {
   flex: 0 0 32px;

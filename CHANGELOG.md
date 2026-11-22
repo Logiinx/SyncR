@@ -5,6 +5,8 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** Show queue button and a 5-second countdown line in the “Added to queue” pop-up
+- **Better:** that pop-up is clearer: green when added, blue if already there
 - **Removed:** YouTube’s “Click ⚙ for settings” tip when subtitles turn on
 
 ## [1.2.2] - 2026-11-22
