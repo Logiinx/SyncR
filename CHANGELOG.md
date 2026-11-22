@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-11-22
+
 **Video** (PC only)
 - **Better:** ⏭ from the Queue follows the order shown
 - **Changed:** videos played with ⏭ or one after another keep their place in the Queue
