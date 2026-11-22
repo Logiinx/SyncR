@@ -124,7 +124,8 @@ function MailRow({ alert, fading, loading, onAction, onRead }: {
 const lineTime = (time: number) => (new Date(time).toDateString() === new Date().toDateString() ? clockTime(time) : dayTime(time))
 
 // A card's 3 actions, also the icons of a row: a new mail: ✓ Mark as read (blue) · Keep unread ·
-// trash; one already opened (so read): ✓ Done · Mark as unread · trash
+// trash; one already opened (so read): ✓ Done · Mark as unread · trash (to Gmail's Trash, no
+// question, like the Mail tab's menu)
 function cardActions(opened?: boolean): { action: MailAction; label: string; icon: ReactNode; primary?: boolean }[] {
   return [
     { action: opened ? 'mail-close' : 'mail-read', label: opened ? t('Done') : t('Mark as read'), icon: <Check size={15} />, primary: true },
@@ -133,8 +134,9 @@ function cardActions(opened?: boolean): { action: MailAction; label: string; ico
   ]
 }
 
-// A card's buttons as one flat bar across its bottom: icon + word, the trash alone at the end
-function MailBar({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
+// A card's buttons as one flat bar across its bottom: icon + word, the trash alone at the end.
+// Also under the mail in the reader (MailReader.tsx), pop-up and Mail tab
+export function MailBar({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
   return (
     <div className="card-bar">
       {cardActions(opened).map((button) =>
@@ -159,25 +161,6 @@ export function MailWhen({ alert }: { alert: Pick<MailAlert, 'date' | 'account'>
     <span className="reminder-alert-due">
       <Mail size={12} /> {formatDue(alert.date)} · <span className="mail-alert-account" title={alert.account}>{alert.account}</span>
     </span>
-  )
-}
-
-// A new mail: Mark as read (big) · Keep unread. One already opened (so read): Done · Mark as
-// unread. Then a red trash at the right: Delete (to Gmail's Trash, no question, like the Mail
-// tab's menu). Also under the mail in the reader.
-export function MailButtons({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
-  return (
-    <div className="reminder-alert-buttons">
-      <button className="primary" onClick={() => onAction(opened ? 'mail-close' : 'mail-read')}>
-        {opened ? t('Done') : t('Mark as read')}
-      </button>
-      <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-keep')}>
-        {opened ? t('Mark as unread') : t('Keep unread')}
-      </button>
-      <button className="mail-delete" onClick={() => onAction('mail-delete')} title={t('Delete')} aria-label={t('Delete')}>
-        <Trash2 size={15} />
-      </button>
-    </div>
   )
 }
 

@@ -7,7 +7,7 @@ import { openImageViewer } from './ImageViewer'
 import MailFilesRow from './MailFilesRow'
 import { errorDetails, gmailErrorPasses, gmailErrorText } from './gmail'
 import { openLink } from './links'
-import { accountColor, MailButtons, MailWhen } from './MailCards'
+import { accountColor, MailBar, MailWhen } from './MailCards'
 import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from './mailAlerts'
 import { darkenMail } from './mailDark'
 import { addSafeSender, isSafeSender, isTracker, trustFor } from './safeSenders'
@@ -15,7 +15,7 @@ import Spinner from './Spinner'
 
 // A mail opened to read, in the desktop pop-up (which grows into a bigger window meanwhile,
 // ReminderPopup.tsx). Head: ‹ Back (to the list), when + account, sender, subject, ✕ (= Done).
-// Then the mail, then Done · Mark as unread · Delete.
+// Then the mail, then the card's bar across the bottom: Done · Mark as unread · trash.
 // The mail shows in a sandboxed frame: no scripts run, and a content policy blocks anything
 // from the web (images, fonts, styles: they can tell the sender you opened it) until "Show
 // images". Links open in the normal browser. HTML mails show dark: the mail's own dark
@@ -182,7 +182,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
         </div>
       )}
       {body && <MailFilesRow key={alert.key} alert={alert} files={body.files} />}
-      <MailButtons opened onAction={onAction} />
+      <MailBar opened onAction={onAction} />
     </div>
   )
 }
