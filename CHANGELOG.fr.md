@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-11-22
+
 **Vidéo** (PC uniquement)
 - **Changé :** la dernière vidéo ouverte passe en tête de la file d’attente
 

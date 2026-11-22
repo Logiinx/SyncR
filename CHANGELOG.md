@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-11-22
+
 **Video** (PC only)
 - **Changed:** the last video you opened goes first in the Queue
 
