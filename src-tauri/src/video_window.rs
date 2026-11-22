@@ -282,6 +282,11 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
     }
     _ => {}
   }
+  // Muted parts' sound saved ahead (muted_sound.rs)
+  if let Some(rest) = path.strip_prefix("/saved/") {
+    let (status, kind, body) = super::muted_sound::saved_answer(&app, rest);
+    return answer(status, kind, body);
+  }
   // "/has/<host>/<path>": only whether that video address is there, from its headers (player.js: a
   // muted piece's original sound). Not from a part of it: Twitch refuses parts once only its delivery
   // network still keeps the piece, which still plays whole. "/v-plain/" and "/has-plain/": the same,

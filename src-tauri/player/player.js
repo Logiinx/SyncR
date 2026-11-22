@@ -486,6 +486,21 @@ function donorsFor(url) {
   return DONORS.filter((one) => one !== quality && (one === 'audio_only' || listed.has(one))).map((one) => `${base}${one}/${number}-muted.ts`)
 }
 
+// ---- Sound saved ahead --------------------------------------------------------------------------
+// For channels with "Save the sound of muted parts" on, the app downloads the audio-only sound of a
+// finished stream's muted pieces before Twitch deletes it (muted_sound.rs). On this PC's disk, so
+// it's the first borrowed sound tried: instant, and never deleted by Twitch. Older videos (.ts)
+// only, like the rest of the borrowing. The list is asked once; the app may save more while you
+// watch, so a piece missing from it is still asked for when it plays.
+const savedNumbers = new Set()
+const savedReady = fetch(`/saved/${encodeURIComponent(videoId)}`)
+  .then((answer) => (answer.ok ? answer.text() : ''))
+  .then((text) => { for (const line of text.split('\n')) if (/^\d+$/.test(line)) savedNumbers.add(line) }, () => {})
+// A muted piece's number, if it's an older video's (.ts)
+const pieceNumber = (url) => { const [, , number, kind] = url.match(MUTED_PIECE) || []; return kind === 'ts' ? number : null }
+const isSaved = (url) => savedNumbers.has(pieceNumber(url))
+const SAVED = 'saved' // askHas's answer when only the saved sound has it
+
 // MPEG-TS pieces are 188-byte packets, each tagged with the number of its stream (PID). A table
 // (PMT, found through the PAT, stream 0) tells which stream is the sound (AAC, type 0x0F).
 const PACKET = 188
@@ -550,17 +565,19 @@ let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't
 const checkAddress = (url, way) => wayAddress(url, way).replace(/\/v(-plain)?\//, '/has$1/') // the first one: the route (full addresses)
 const CHECK_RETRIES = 2
 const CHECK_AGAIN_AFTER = 10000 // ms
-// Its own sound first, then the other qualities' (DONORS)
+// Its own sound first, then the saved one, then the other qualities' (DONORS)
 async function askHas(url) {
   let again = false
-  for (const piece of [url, ...donorsFor(url)]) {
+  await savedReady
+  const saved = isSaved(url)
+  for (const piece of [url, ...(saved ? [] : donorsFor(url))]) {
     for (const way of waysFor(piece)) {
       const status = await fetch(checkAddress(piece, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
       if (status >= 200 && status < 300) return { piece, way }
       if (passing(status)) again = true
     }
   }
-  return { again }
+  return saved ? { piece: SAVED } : { again }
 }
 function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
@@ -571,9 +588,9 @@ function checkPiece(url, tries = 0) {
       soundNowhere.delete(url)
       if (piece) {
         setSound(url, piece === url ? 'uncut' : 'borrowed')
-        if (piece !== url) donorOf.set(url, piece)
+        if (piece !== url && piece !== SAVED) donorOf.set(url, piece)
         soundSeen.set(url, performance.now())
-        noteWay(piece, way)
+        if (piece !== SAVED) noteWay(piece, way)
       } else if (again) recheckPiece(url, tries)
       else {
         setSound(url, 'muted') // asked again (recheckAhead): its sound is gone by now
@@ -700,14 +717,15 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     const tries = this.tries
     if (index >= tries.ways.length) {
       const left = tries.deadline - performance.now() // the last try at the limit, not before
-      if (tries.ways.length && left > 500) {
+      // With its sound saved, no waiting for Twitch to answer
+      if (tries.ways.length && left > 500 && !isSaved(context.url)) {
         this.retry = setTimeout(() => this.round(context, config, callbacks, 0), Math.min(tries.pause, left))
         tries.pause *= 2
         return
       }
       const why = { why: tries.ways.length ? 'slow' : 'refused', codes: [...tries.codes] }
-      // Its own sound is gone: another quality's, if one still has it
-      if (why.why === 'refused') return this.borrow(context, config, callbacks, why)
+      // Its own sound is gone (or slow, when saved): the saved one or another quality's
+      if (why.why === 'refused' || isSaved(context.url)) return this.borrow(context, config, callbacks, why)
       this.heard(context, 'muted', why)
       return super.load(context, config, callbacks)
     }
@@ -734,32 +752,45 @@ class PieceLoader extends Hls.DefaultConfig.loader {
       onTimeout: () => failed('timeout'),
     })
   }
-  // The same piece's sound from another quality (DONORS), the one its check found first, put into
-  // this piece's picture. None has it (or the check found it nowhere): the muted piece as it is.
+  // The same piece's sound saved on this PC, else from another quality (DONORS, the one its check
+  // found first; only when its own was refused, not just slow), put into this piece's picture. None
+  // has it (or the check found it nowhere): the muted piece as it is. A saved piece is asked even
+  // when missing from the list: the app may have saved it while you watch.
   async borrow(context, config, callbacks, why) {
-    const donors = soundNowhere.has(context.url) ? [] : donorsFor(context.url)
+    const stop = (this.borrowing = new AbortController())
+    const sound = async (address) => {
+      const answer = await fetch(address, { signal: stop.signal }).catch(() => null)
+      return answer?.ok ? answer.arrayBuffer().catch(() => null) : null
+    }
+    const number = pieceNumber(context.url)
+    const saved = number && (await sound(`/saved/${encodeURIComponent(videoId)}/${number}.ts`))
+    if (this.stopped) return
+    if (saved) return this.mix(context, config, callbacks, why, saved)
+    const donors = soundNowhere.has(context.url) || why.why !== 'refused' ? [] : donorsFor(context.url)
     const known = donorOf.get(context.url)
     if (donors.includes(known)) donors.sort((a, b) => (b === known) - (a === known))
-    const stop = (this.borrowing = new AbortController())
     for (const donor of donors) {
       for (const way of waysFor(donor)) {
-        const answer = await fetch(wayAddress(donor, way), { signal: stop.signal }).catch(() => null)
-        const sound = answer?.ok ? await answer.arrayBuffer().catch(() => null) : null
+        const borrowed = await sound(wayAddress(donor, way))
         if (this.stopped) return
-        if (!sound) continue
+        if (!borrowed) continue
         noteWay(donor, way)
-        return super.load(context, config, {
-          ...callbacks,
-          onSuccess: (response, stats, loaded, details) => {
-            const mixed = withSoundOf(response.data, sound)
-            this.heard(context, mixed ? 'borrowed' : 'muted', why)
-            callbacks.onSuccess(mixed ? { ...response, data: mixed } : response, stats, loaded, details)
-          },
-        })
+        return this.mix(context, config, callbacks, why, borrowed)
       }
     }
     this.heard(context, 'muted', why)
     super.load(context, config, callbacks)
+  }
+  // The muted piece, with the sound put in once it's downloaded
+  mix(context, config, callbacks, why, sound) {
+    super.load(context, config, {
+      ...callbacks,
+      onSuccess: (response, stats, loaded, details) => {
+        const mixed = withSoundOf(response.data, sound)
+        this.heard(context, mixed ? 'borrowed' : 'muted', why)
+        callbacks.onSuccess(mixed ? { ...response, data: mixed } : response, stats, loaded, details)
+      },
+    })
   }
   // state: 'uncut' (its own sound), 'borrowed' or 'muted'; why: { why, codes } when its own was refused
   heard(context, state, why) {

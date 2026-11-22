@@ -142,6 +142,30 @@ async fn save(root: PathBuf, video: String) -> Result<SavedSound, String> {
   Ok(report)
 }
 
+// The player's "/saved/<video>" (the numbers of its saved pieces, one per line) and
+// "/saved/<video>/<number>.ts" (one piece's sound), from player_answer. Also open to any site in the
+// player window: only digits pass, and all it gives is sound Twitch itself published.
+pub fn saved_answer(app: &tauri::AppHandle, rest: &str) -> (u16, &'static str, Vec<u8>) {
+  let digits = |text: &str| !text.is_empty() && text.len() <= 20 && text.bytes().all(|byte| byte.is_ascii_digit());
+  let Ok(root) = sound_folder(app) else { return (404, "text/plain", Vec::new()) };
+  match rest.split_once('/') {
+    None if digits(rest) => {
+      let numbers: String = std::fs::read_dir(root.join(rest))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| entry.file_name().to_str()?.strip_suffix(".ts").filter(|number| digits(number)).map(|number| format!("{number}\n")))
+        .collect();
+      (200, "text/plain", numbers.into_bytes())
+    }
+    Some((video, piece)) if digits(video) && piece.strip_suffix(".ts").is_some_and(digits) => match std::fs::read(root.join(video).join(piece)) {
+      Ok(bytes) => (200, "video/mp2t", bytes),
+      Err(_) => (404, "text/plain", Vec::new()),
+    },
+    _ => (404, "text/plain", Vec::new()),
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::muted_numbers;
