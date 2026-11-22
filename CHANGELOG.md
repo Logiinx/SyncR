@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Changed:** the last video you opened goes first in the Queue
+
 **App**
 - **Small fixes:** Settings: connection state under its name
 

@@ -29,7 +29,7 @@ vi.mock('../src/video', () => ({
 }))
 vi.mock('../src/videoPlaylists', () => ({ nextInPlaylist: async () => null }))
 const queued: string[] = []
-vi.mock('../src/videoQueue', () => ({ queueStarted: (id: string) => void queued.push(id) }))
+vi.mock('../src/videoQueue', () => ({ queueOpened: (id: string) => void queued.push(id) }))
 const calls: { command: string; args: Record<string, unknown> }[] = []
 let windowOpen = true
 vi.mock('@tauri-apps/api/core', () => ({
@@ -96,6 +96,15 @@ test('a watched video played again stays out of the Queue', async () => {
 test('a video stopped partway joins the Queue', async () => {
   await openAndPlayTo(900)
   expect(queued).toEqual(['youtube-abcdefghijk'])
+})
+
+test('it goes first in the Queue once per opening, again when opened again', async () => {
+  await openAndPlayTo(900)
+  send('video-position', { t: 905, length: 3600 }) // moved by hand meanwhile: it stays there
+  expect(queued).toEqual(['youtube-abcdefghijk'])
+  vi.useRealTimers()
+  await openAndPlayTo(910)
+  expect(queued).toEqual(['youtube-abcdefghijk', 'youtube-abcdefghijk'])
 })
 
 // A Twitch stream still live, in our own player, played to the end of what's recorded so far

@@ -10,7 +10,7 @@ import { addOrFindVideo, followOfChannel, loadFollowsNow, markOpened, setFollowS
 import { askNextPart, knownNextPart, PART_GAP } from './videoParts'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
-import { leaveQueue, queueStarted } from './videoQueue'
+import { leaveQueue, queueOpened } from './videoQueue'
 
 // The video player window (desktop only; video_window.rs, open_video_player). In a browser, videos just
 // open in a new tab.
@@ -419,6 +419,7 @@ let queue = Promise.resolve()
 let stopWatching = () => {}
 let watchedNow = false // the open video's Watched mark
 let undone = false // taken out of Watched during this viewing: it stays out
+let queuedNow = false // put first in the Queue during this viewing (videoQueue.ts)
 // A live stream: its end isn't the end (never Watched by itself, the window stays). Our player says
 // when it's over, as the list may say live for up to a check after.
 let liveNow = false
@@ -503,8 +504,12 @@ function listenToBar() {
     savePosition(current.id, { t: seconds, length, ...(liveNow && { live: true }) })
     lastLength = length
     playedTo = { videoId: current.id, t: Math.floor(seconds) }
+    // Goes first in the Queue, once per opening: dragged elsewhere while it plays, it stays there.
     // A watched one played again stays out: the Queue never shows watched videos, it would stay in it unseen
-    if (!current.music && !watchedNow && resumePosition(current.id)) queueStarted(current.id)
+    if (!current.music && !watchedNow && !queuedNow && resumePosition(current.id)) {
+      queuedNow = true
+      queueOpened(current.id)
+    }
     if (current.platform === 'twitch' && currentWay === 'own' && seconds > 0) forgetFails(current)
     // Not with an unknown length: the report could be an ad's
     if (liveNow) return
@@ -574,6 +579,7 @@ function startWatching(video: PlayableVideo, playlistId: string | null, after: U
   upNext = playlistId ? [] : after
   watchedNow = video.watched
   undone = false
+  queuedNow = false
   liveNow = !!video.live
   partNext = null
   partSearch = null

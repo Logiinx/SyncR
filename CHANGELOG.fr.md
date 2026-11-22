@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Changé :** la dernière vidéo ouverte passe en tête de la file d’attente
+
 **Application**
 - **Petites corrections :** Paramètres : état de connexion sous son nom
 
