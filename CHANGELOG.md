@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
 **App**
 - **New:** search in Settings: type to find any setting and change it right there
 - **New:** switches to turn Mail, Video or Games off on this device
@@ -14,14 +16,14 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** Steam, Gmail and Google Calendar are set up in their own section
 - **Small fixes:** unavailable Settings buttons look grayed
 
-**Mail** (PC only)
-- **New:** a bell next to each address turns its pop-ups and sound off
-
 **Video** (PC only)
 - **Better:** Move to the other screen: its arrow points to the screen it goes to
 - **Changed:** player's top bar: Watched (with its name) and a ⋯ menu on the left
 - **Changed:** Try another way, Open in browser and extensions are in the ⋯ menu
 - **Fixed:** muted parts appearing by surprise, “Sound back in” going back up
+
+**Mail** (PC only)
+- **New:** a bell next to each address turns its pop-ups and sound off
 
 ## [1.0.3] - 2026-11-21
 

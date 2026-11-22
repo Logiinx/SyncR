@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
 **Application**
 - **Nouveau :** rechercher dans les Paramètres et modifier les résultats sur place
 - **Nouveau :** des boutons pour désactiver Mail, Vidéo ou Jeux sur cet appareil
@@ -14,14 +16,14 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** Steam, Gmail et Google Agenda se règlent dans leur propre section
 - **Petites corrections :** boutons indisponibles des Paramètres grisés
 
-**Mail** (PC uniquement)
-- **Nouveau :** une cloche à côté de chaque adresse coupe ses pop-ups et son son
-
 **Vidéo** (PC uniquement)
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va
 - **Changé :** barre du lecteur : Vue (avec son nom) et un menu ⋯ à gauche
 - **Changé :** Essayer une autre façon, Ouvrir dans le navigateur et extensions sont dans ⋯
 - **Corrigé :** parties muettes surgissant d’un coup, « Son de retour dans » qui remontait
+
+**Mail** (PC uniquement)
+- **Nouveau :** une cloche à côté de chaque adresse coupe ses pop-ups et son son
 
 ## [1.0.3] - 2026-11-21
 
