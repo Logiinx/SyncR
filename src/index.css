@@ -606,6 +606,7 @@ button {
   padding: 3px 12px;
   border: 0;
   border-radius: 6px;
+  background: none;
   color: var(--text-dim);
 }
 
@@ -1559,7 +1560,7 @@ button {
 }
 
 .board-undo button:hover {
-  background: var(--border);
+  background: var(--hover);
 }
 
 /* Narrow screens (phone): the sidebar slides over the note instead of pushing it */
@@ -2713,14 +2714,7 @@ button {
 
 .compare-actions button {
   padding: 3px 12px;
-  border-radius: 6px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
   font-size: 13px;
-}
-
-.compare-actions button:hover:not(:disabled) {
-  border-color: var(--text-dim);
 }
 
 .compare-body {
@@ -4301,18 +4295,37 @@ button {
 
 /* ---------- Dialog (rename / delete) ---------- */
 
+/* Buttons on their own (user's pick, 2026-11-22): a dark box with a faint edge, lighter under
+   the mouse. Darker than the page like the sliding switches' track (in a window: --bg). Buttons
+   inside a bar or list ("+ Add…", card bars, Back) stay flat instead: dim text, --hover. */
+.setting-button,
+.compare-actions button,
+.games-views button,
+.dialog-buttons button:not(.primary, .danger) {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-sunken);
+}
+
+.dialog .setting-button,
+.dialog .compare-actions button,
+.dialog .games-views button,
+.dialog-buttons button:not(.primary, .danger) {
+  background: var(--bg);
+}
+
+.setting-button:hover:not(:disabled),
+.compare-actions button:hover:not(:disabled),
+.games-views button:hover:not(:disabled),
+.dialog-buttons button:not(.primary, .danger):hover:not(:disabled) {
+  border-color: var(--text-dim);
+}
+
 /* Settings: a button on the right of a setting ("Edit…") */
 .setting-button {
   flex-shrink: 0;
   white-space: nowrap; /* longer French labels stay on one line */
   padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-}
-
-.setting-button:hover:not(:disabled) {
-  border-color: var(--text-dim);
 }
 
 /* Not available now (no proxy yet, a module turned off): dim text, like the grayed names */
@@ -4660,7 +4673,7 @@ button {
 }
 
 .add-button:hover {
-  background: var(--border);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -6041,13 +6054,11 @@ button {
   gap: 8px;
 }
 
+/* The blue and red ones get an edge of their own color: as tall as the boxed ones next to them */
 .dialog-buttons button {
-  padding: 6px 14px;
+  padding: 5px 14px;
+  border: 1px solid transparent;
   border-radius: 6px;
-}
-
-.dialog-buttons button:hover {
-  background: var(--border);
 }
 
 .dialog-buttons .primary,
@@ -6528,10 +6539,9 @@ h3.games-group-title {
   }
 }
 
+/* Dim text like the switches' unchosen choices next to them */
 .games-views button {
   padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
   color: var(--text-dim);
 }
 

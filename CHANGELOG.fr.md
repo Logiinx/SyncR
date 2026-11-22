@@ -9,6 +9,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Petites corrections :** boutons Tout terminer, Tout marquer comme lu et Afficher les images plus discrets
 
 **Application**
+- **Amélioré :** les boutons ont le même style partout, sombres comme dans les Paramètres
 - **Petites corrections :** même couleur de case à cocher partout
 
 ## [1.2.4] - 2026-11-22

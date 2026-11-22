@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** quieter Done all, Mark all read and Show images buttons
 
 **App**
+- **Better:** buttons look the same everywhere, dark like in Settings
 - **Small fixes:** same checkbox color everywhere
 
 ## [1.2.4] - 2026-11-22
