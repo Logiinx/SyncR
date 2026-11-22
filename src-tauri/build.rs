@@ -34,6 +34,7 @@ fn main() {
     "video_extension_enable",
     "video_extension_settings",
     "video_extensions_done",
+    "save_muted_sound",
     "start_link_shortcut",
     "mouse_battery_config",
     "mouse_battery_status",

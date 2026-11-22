@@ -3,6 +3,7 @@ use tauri::Manager;
 mod hardware;
 mod link_shortcut;
 mod mouse_battery;
+mod muted_sound;
 mod trailer_player;
 mod video_extensions;
 mod video_window;
@@ -371,6 +372,7 @@ pub fn run() {
       video_extensions::video_extension_enable,
       video_extensions::video_extension_settings,
       video_extensions::video_extensions_done,
+      muted_sound::save_muted_sound,
       link_shortcut::start_link_shortcut,
       mouse_battery::mouse_battery_config,
       mouse_battery::mouse_battery_status,

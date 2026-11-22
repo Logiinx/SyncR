@@ -21,7 +21,7 @@ pub const VIDEO_REQUEST: &str = "syncr-video.invalid";
 // fetches the video, because Twitch's video servers don't let a page read their answers, while
 // Rust isn't held to that. /v/<host>/<path> fetches https://<host>/<path>, only from Twitch's
 // video addresses.
-fn twitch_host(host: &str) -> bool {
+pub(crate) fn twitch_host(host: &str) -> bool {
   host.ends_with(".ttvnw.net") || host.ends_with(".twitch.tv") || host.ends_with(".cloudfront.net")
 }
 
@@ -67,7 +67,7 @@ fn browser_name() -> Option<String> {
   Some(format!("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{major}.0.0.0 Safari/537.36 Edg/{major}.0.0.0"))
 }
 
-fn player_client() -> &'static reqwest::Client {
+pub(crate) fn player_client() -> &'static reqwest::Client {
   use std::sync::OnceLock;
   use std::time::Duration;
   static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
