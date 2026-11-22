@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-22
+
 **Video** (PC only)
 - **New:** Twitch muted parts take their sound from another quality when it's still there
 - **New:** those parts in green on the bar, "Sound from another quality" in its tip

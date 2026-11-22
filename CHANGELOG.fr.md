@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-22
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** les parties muettes Twitch prennent le son d’une autre qualité s’il y est encore
 - **Nouveau :** ces parties en vert sur la barre, « Son d’une autre qualité » dans son infobulle
