@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Sync**
+- **Better:** the sync sign shows once you stop typing, not at every pause
+
 **Mail** (PC only)
 - **Changed:** new emails play the Bubble sound by default
 

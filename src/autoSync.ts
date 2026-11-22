@@ -23,6 +23,9 @@ const MAX_QUICK_RETRIES = 3
 const HEARTBEAT_MS = 5000
 const WAKE_GAP_MS = 20_000 // the heartbeat came this late: the computer was asleep
 const VIBRATION_MS = 20 // the moment syncing is done, on a phone: safe to close the app
+// The sync sign waits until nothing was typed for this long: a short pause mid-sentence still
+// syncs, but shows no sign
+const SIGN_QUIET_MS = 2500
 
 let status: SyncStatus = 'off'
 // Same object until the status changes (React's useSyncExternalStore needs that)
@@ -41,6 +44,10 @@ let changedDuringSync = false
 let urgentAfterSync = false // syncSoon() was called during a sync: go again right away
 // A click on the cloud during a sync: the sign (syncSign.ts) shows after the next one
 let signWanted = false
+// A sync sent or received changes: the sign shows once all is sent and typing stopped (signWhenQuiet)
+let signDue = false
+let signTimer: number | undefined
+let lastTypedAt = 0
 let buzzWanted = false // the user left the editor: buzz once everything is sent (vibrateDone)
 let quickRetries = 0
 let failing = false // the last sync ended with an error (already reported)
@@ -106,7 +113,13 @@ async function run(manual = false): Promise<SyncResult | undefined> {
     failing = false
     setStatus(changedDuringSync ? 'pending' : 'synced')
     if (!changedDuringSync && (buzzWanted || manual)) vibrateDone()
-    if (manual || signWanted || result.uploaded + result.downloaded + result.deleted + result.conflicts > 0) playSyncSign()
+    if (result.uploaded + result.downloaded + result.deleted + result.conflicts > 0) signDue = true
+    if (manual || signWanted) {
+      // A click on the cloud: the sign right away
+      signDue = false
+      window.clearTimeout(signTimer)
+      playSyncSign()
+    } else signWhenQuiet()
     signWanted = false
     if (!manual && result.conflicts) {
       notify(plural(result.conflicts, '{n} conflict copy created.', '{n} conflict copies created.'))
@@ -166,6 +179,21 @@ function vibrateDone() {
   if (deviceName() === 'phone' && document.visibilityState === 'visible') navigator.vibrate?.(VIBRATION_MS)
 }
 
+// The sign that a sync worked (syncSign.ts), user 2026-11-23: only once everything is sent (green
+// cloud) and the user stopped typing, not after the syncs during short pauses (it showed all the
+// time on a phone). Typing again cancels it until the next sync that ends green.
+function signWhenQuiet() {
+  window.clearTimeout(signTimer)
+  if (!signDue || status !== 'synced') return
+  const wait = lastTypedAt + SIGN_QUIET_MS - Date.now()
+  if (wait > 0) {
+    signTimer = window.setTimeout(signWhenQuiet, wait)
+    return
+  }
+  signDue = false
+  playSyncSign()
+}
+
 // Like schedule(), but when the app is in the background, starts right away: Android
 // pauses timers in hidden apps, so a timer might only fire when the app is opened again.
 function syncAfter(delay: number) {
@@ -181,6 +209,7 @@ function syncAfter(delay: number) {
 // right away instead of after the usual delay, then buzz. Already sent: buzz now.
 export function syncSoon() {
   if (!enabled) return
+  lastTypedAt = 0 // done typing: the sign needn't wait (signWhenQuiet)
   if (running) {
     buzzWanted = true
     if (changedDuringSync) urgentAfterSync = true
@@ -189,7 +218,10 @@ export function syncSoon() {
   if (status === 'pending') {
     buzzWanted = true
     syncAfter(0)
-  } else if (status === 'synced') vibrateDone()
+  } else if (status === 'synced') {
+    vibrateDone()
+    signWhenQuiet()
+  }
 }
 
 // The user clicked the cloud. Returns undefined if it failed or a sync was already running.
@@ -254,9 +286,16 @@ async function poll() {
 
 function onLocalChange() {
   buzzWanted = false // editing again: no buzz until the editor is left again (syncSoon)
+  window.clearTimeout(signTimer) // changed again: the sign waits for the sync that follows
   if (!running) setStatus('pending')
   else changedDuringSync = true
   syncAfter(EDIT_DELAY_MS)
+}
+
+// Any typing (note, card, text box). Saves come only 0.5 s after the last key, so they can't
+// tell that the user is typing again.
+function onTyped() {
+  lastTypedAt = Date.now() // a waiting sign waits longer (signWhenQuiet checks again)
 }
 
 function onVisible() {
@@ -298,6 +337,7 @@ export function startAutoSync() {
   if (enabled) return
   enabled = true
   window.addEventListener('notes-changed', onLocalChange)
+  window.addEventListener('input', onTyped, true)
   window.addEventListener('focus', onFocus)
   window.addEventListener('online', onOnline)
   document.addEventListener('visibilitychange', onVisible)
@@ -310,10 +350,13 @@ export function stopAutoSync() {
   if (!enabled) return
   enabled = false
   window.removeEventListener('notes-changed', onLocalChange)
+  window.removeEventListener('input', onTyped, true)
   window.removeEventListener('focus', onFocus)
   window.removeEventListener('online', onOnline)
   document.removeEventListener('visibilitychange', onVisible)
   window.clearTimeout(timer)
+  window.clearTimeout(signTimer)
+  signDue = false
   window.clearInterval(heartbeat)
   pollAbort?.abort()
   cursor = null
