@@ -4,12 +4,17 @@ import type { ReactNode } from 'react'
 // icon + word, dim until hovered, the main one in blue, each as wide as its words; the last one
 // can be a narrow icon at the right end (`end`): the email's trash (red under the mouse) or a
 // video's ✕. Email cards and reader (MailCards.tsx, MailReader.tsx), video cards (VideoAlertCards.tsx).
+// The bar of reminder and battery cards keeps a solid blue Done (`filled`, user 2026-11-22); a
+// narrow icon can also start the bar (`end: 'back'`: the Postpone choices' way back).
 export interface BarButton {
   label: string
-  icon: ReactNode
+  icon?: ReactNode
+  after?: ReactNode
+  title?: string
   onClick: () => void
   primary?: boolean
-  end?: 'delete' | 'close'
+  filled?: boolean
+  end?: 'delete' | 'close' | 'back'
 }
 
 export default function CardBar({ buttons }: { buttons: BarButton[] }) {
@@ -27,9 +32,15 @@ export default function CardBar({ buttons }: { buttons: BarButton[] }) {
             {button.icon}
           </button>
         ) : (
-          <button key={button.label} className={button.primary ? 'primary' : undefined} onClick={button.onClick}>
+          <button
+            key={button.label}
+            className={button.filled ? 'filled' : button.primary ? 'primary' : undefined}
+            onClick={button.onClick}
+            title={button.title}
+          >
             {button.icon}
             {button.label}
+            {button.after}
           </button>
         ),
       )}

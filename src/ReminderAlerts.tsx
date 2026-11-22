@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { plural, t } from './i18n'
 import { isTauri } from '@tauri-apps/api/core'
-import { ArrowLeft, Bell, Check, ChevronDown, Clock } from 'lucide-react'
+import { ArrowLeft, Bell, Check, ChevronDown, Clock, KeyRound } from 'lucide-react'
+import CardBar from './CardBar'
 import { openAlertEvent, runAction, useChime, useDueReminders, type DueItem, type ReminderAction } from './dueReminders'
 import { useMailAlerts, useMailCheck } from './mailAlerts'
 import { useVideoAlerts } from './videoAlerts'
@@ -16,14 +17,14 @@ import { formatDue } from './reminders'
 import { eventColor } from './calendarEvents'
 
 // One due event alert: a strip in the event's color (none: the accent), time, title, note. A click on the text
-// opens the event in SyncR (a price alert: its game). Done (big), Snooze (a key price alert: also
-// Wrong key, see priceWatch.ts ignoreAlertKey), Snooze unfolds its choices in place of the
-// buttons (inside the card: a menu could be cut off by the pop-up window's edge).
+// opens the event in SyncR (a price alert: its game). The card bar (CardBar.tsx): Done (solid blue),
+// Postpone (a key price alert: also Wrong key, see priceWatch.ts ignoreAlertKey); Postpone unfolds
+// its choices in place of the buttons (inside the card: a menu could be cut off by the pop-up's edge).
 export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (action: ReminderAction) => void }) {
   const [snoozing, setSnoozing] = useState(false)
   const color = eventColor(item.colorId)
   return (
-    <div className="reminder-alert" style={color ? { borderLeftColor: color } : undefined}>
+    <div className="reminder-alert bar-card" style={color ? { borderLeftColor: color } : undefined}>
       <button className="reminder-alert-body" onClick={() => onAction('open')} title={t('Show in SyncR')}>
         <span className="reminder-alert-due">
           <Bell size={12} /> {formatDue(item.time, item.allDay)}
@@ -40,28 +41,29 @@ export function ReminderCard({ item, onAction }: { item: DueItem; onAction: (act
           {item.elsewhere.text}
         </div>
       ) : snoozing ? (
-        <div className="reminder-alert-buttons">
-          <button className="reminder-alert-back" onClick={() => setSnoozing(false)} title={t('Back')} aria-label={t('Back')}>
-            <ArrowLeft size={15} />
-          </button>
-          <button onClick={() => onAction('snooze10')}>{t('10 min')}</button>
-          <button onClick={() => onAction('snooze60')}>{t('1 hour')}</button>
-          <button onClick={() => onAction('tomorrow')}>{t('Tomorrow')}</button>
-        </div>
+        <CardBar
+          buttons={[
+            { label: t('Back'), icon: <ArrowLeft size={15} />, end: 'back', onClick: () => setSnoozing(false) },
+            { label: t('10 min'), onClick: () => onAction('snooze10') },
+            { label: t('1 hour'), onClick: () => onAction('snooze60') },
+            { label: t('Tomorrow'), onClick: () => onAction('tomorrow') },
+          ]}
+        />
       ) : (
-        <div className="reminder-alert-buttons">
-          <button className="primary" onClick={() => onAction('done')}>
-            {t('Done')}
-          </button>
-          <button onClick={() => setSnoozing(true)}>
-            {t('Postpone')} <ChevronDown size={14} />
-          </button>
-          {item.keyAlert && (
-            <button onClick={() => onAction('wrongkey')} title={t('Not a key I can use (e.g. Xbox): keep watching, skip keys at this price')}>
-              {t('Wrong key')}
-            </button>
-          )}
-        </div>
+        <CardBar
+          buttons={[
+            { label: t('Done'), icon: <Check size={15} />, filled: true, onClick: () => onAction('done') },
+            { label: t('Postpone'), icon: <Clock size={15} />, after: <ChevronDown size={14} />, onClick: () => setSnoozing(true) },
+            ...(item.keyAlert
+              ? [{
+                  label: t('Wrong key'),
+                  icon: <KeyRound size={15} />,
+                  title: t('Not a key I can use (e.g. Xbox): keep watching, skip keys at this price'),
+                  onClick: () => onAction('wrongkey'),
+                }]
+              : []),
+          ]}
+        />
       )}
     </div>
   )

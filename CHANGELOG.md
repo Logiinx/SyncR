@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Better:** reminder and mouse battery cards get the emails’ button bar, Done stays blue
+
 ## [1.2.4] - 2026-11-22
 
 **Mail** (PC only)

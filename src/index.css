@@ -1782,7 +1782,7 @@ button {
 }
 
 /* One alert card: a strip on the left (the event's Google color, else the accent), the text
-   (a click opens the event), then a big Done and Snooze (which unfolds its choices) */
+   (a click opens the event), then the card bar (CardBar.tsx): Done, Postpone (which unfolds its choices) */
 .reminder-alert {
   padding: 12px 14px 12px 12px;
   border: 1px solid var(--border);
@@ -1840,46 +1840,22 @@ button {
   font-size: 12px;
 }
 
-.reminder-alert-buttons {
-  display: flex;
-  gap: 6px;
-  margin: 10px 0 0 6px;
-}
-
-/* Handled on the other device: in place of the buttons and as tall, for a few seconds */
+/* Handled on the other device: in place of the card bar and as tall, for a few seconds */
 .reminder-alert-elsewhere {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 32px;
-  margin: 10px 0 0 6px;
-  padding: 4px 10px;
+  min-height: 36px;
+  padding: 4px 12px;
   box-sizing: border-box;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 6%);
-  font-size: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
   text-wrap: balance; /* two lines: not one word alone on the second */
 }
 
 .reminder-alert-elsewhere svg {
   flex-shrink: 0;
   color: var(--text-dim);
-}
-
-.reminder-alert-buttons button {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 32px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 8%);
-  font-size: 13px;
-}
-
-.reminder-alert-buttons button:hover {
-  background: rgb(255 255 255 / 14%);
 }
 
 /* An email card fading out by itself (Settings → Alerts → Emails; ReminderPopup.tsx, FADE_OUT_MS) */
@@ -2161,6 +2137,29 @@ button {
 
 .card-bar .card-bar-end {
   flex: 0 0 48px;
+}
+
+/* The bar's outer buttons follow the card's rounded bottom corners (inside its 4 px strip and 1 px
+   frame), so a fill or hover never pokes out */
+.bar-card > .card-bar > :first-child {
+  border-bottom-left-radius: 4px 7px;
+}
+
+.bar-card > .card-bar > :last-child {
+  border-bottom-right-radius: 7px;
+}
+
+/* Reminder and battery cards keep a solid blue Done (user 2026-11-22), wider than the others */
+.card-bar .filled {
+  flex-grow: 2;
+  background: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.card-bar .filled:hover {
+  background: color-mix(in srgb, var(--accent), white 12%);
+  color: var(--text);
 }
 
 .card-bar .card-bar-delete:hover {
@@ -2478,21 +2477,6 @@ button {
 }
 
 /* Done: twice as wide as Snooze */
-.reminder-alert-buttons .primary {
-  flex: 2;
-  background: var(--accent);
-  font-weight: 600;
-}
-
-.reminder-alert-buttons .primary:hover {
-  background: var(--accent);
-  filter: brightness(1.2);
-}
-
-.reminder-alert-buttons .reminder-alert-back {
-  flex: 0 0 32px;
-}
-
 /* "3 reminders · Done all", above the cards when 2 or more are due */
 .reminder-alerts-head {
   display: flex;

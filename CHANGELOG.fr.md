@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Rappels**
+- **Amélioré :** les cartes de rappel et de batterie ont la barre de boutons des e-mails, Terminé reste bleu
+
 ## [1.2.4] - 2026-11-22
 
 **Mail** (PC uniquement)
