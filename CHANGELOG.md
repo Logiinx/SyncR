@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-22
+
 **Video** (PC only)
 - **Changed:** Follows moved out of the ⋯ menu, to its own button next to Add
 
