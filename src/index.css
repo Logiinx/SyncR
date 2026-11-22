@@ -2022,13 +2022,14 @@ button {
   text-overflow: ellipsis;
 }
 
-/* The pop-up's email card (MailCards.tsx, mockup H): the text fills the card's top (the whole
-   of it can be clicked), the button bar its bottom. --account = the account's color. */
-.reminder-alert.mail-card {
+/* A pop-up card with a button bar (CardBar.tsx): emails (MailCards.tsx, mockup H) and videos
+   (VideoAlertCards.tsx). The text fills the card's top (the whole of it can be clicked), the
+   bar its bottom. An email's --account = the account's color. */
+.reminder-alert.bar-card {
   padding: 0;
 }
 
-.mail-card .reminder-alert-body {
+.bar-card > .reminder-alert-body {
   margin: 0;
   padding: 12px 14px 10px 12px;
   border-radius: 0;
@@ -2164,7 +2165,7 @@ button {
   color: var(--link);
 }
 
-.card-bar .card-bar-delete {
+.card-bar .card-bar-end {
   flex: 0 0 48px;
 }
 

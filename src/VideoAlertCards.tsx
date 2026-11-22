@@ -1,6 +1,7 @@
 import { useEffect, type CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, List, ListVideo, Play, X } from 'lucide-react'
+import { Check, List, ListPlus, ListVideo, Play, X } from 'lucide-react'
+import CardBar from './CardBar'
 import { useCardPieces, VIDEO_PIECES } from './videoCards'
 import { VideoCardContent } from './VideoHoverCard'
 import { db, type VideoRow } from './db'
@@ -17,7 +18,8 @@ import { betterTitles, checkTitles, useDeArrow, withBetterTitle } from './videoT
 // Large = the Video tab's hover card (VideoHoverCard.tsx: big picture, whole title, channel, day,
 // views and likes, as its checkboxes say); Compact = the site's logo + when it was found + the
 // channel, then a small picture beside the title and length. A click on it plays it (SyncR's
-// player); Watch (big) · Add to queue · ✕ (the card goes, the video stays in To watch). From
+// player); a bar at the bottom (CardBar, like the emails'): ▶ Watch · Add to queue · ✕ (the card
+// goes, the video stays in To watch). From
 // FOLD_FROM on, one "N new videos" card opens the Video tab. They fade like emails (ReminderPopup.tsx).
 const FOLD_FROM = { large: 3, compact: 4 } // Large ones are about 3 times taller
 
@@ -59,7 +61,7 @@ function VideoCard({ shown: { alert, video, channel }, large, fading, onAction }
 }) {
   const shows = useCardPieces()
   return (
-    <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: `var(--${video.platform})` }}>
+    <div className={`reminder-alert bar-card${fading ? ' fading' : ''}`} style={{ borderLeftColor: `var(--${video.platform})` }}>
       {large ? (
         <button className="reminder-alert-body video-card video-alert-large" onClick={() => onAction('video-play')} title={t('Watch')}>
           <VideoCardContent video={{ ...video, channel }} opened={null} shows={shows} />
@@ -78,13 +80,13 @@ function VideoCard({ shown: { alert, video, channel }, large, fading, onAction }
           </span>
         </button>
       )}
-      <div className="reminder-alert-buttons">
-        <button className="primary" onClick={() => onAction('video-play')}>{t('Watch')}</button>
-        <button onClick={() => onAction('video-queue')}>{t('Add to queue')}</button>
-        <button className="video-alert-close" onClick={() => onAction('video-close')} title={t('Dismiss')} aria-label={t('Dismiss')}>
-          <X size={15} />
-        </button>
-      </div>
+      <CardBar
+        buttons={[
+          { label: t('Watch'), icon: <Play size={15} />, primary: true, onClick: () => onAction('video-play') },
+          { label: t('Add to queue'), icon: <ListPlus size={15} />, onClick: () => onAction('video-queue') },
+          { label: t('Dismiss'), icon: <X size={15} />, end: 'close', onClick: () => onAction('video-close') },
+        ]}
+      />
     </div>
   )
 }
@@ -136,7 +138,7 @@ export function VideoCards({ shown, fading, onAction }: {
 // "Added to queue" (queuedNote.ts): a copied video the link shortcut sent to the Queue. A
 // confirmation, not an alert: the message is the heading, in green (added) or blue (already
 // there), also the strip and a badge on the picture; then the title, the site's logo, channel
-// and length. A click on it or Show queue shows the Queue; Watch now plays it; ✕ or after a few
+// and length. A click on it or Show queue shows the Queue; Watch now plays it (bar: CardBar); ✕ or after a few
 // seconds it goes (ReminderPopup.tsx). A line at the bottom counts those seconds down; full
 // while the mouse is over the pop-up (the count starts again after).
 export function QueuedCard({ note, fading, paused, onOpen, onWatch, onClose }: {
@@ -151,7 +153,7 @@ export function QueuedCard({ note, fading, paused, onOpen, onWatch, onClose }: {
   const color = note.already ? 'var(--text-blue)' : 'var(--text-green)'
   return (
     <div
-      className={`reminder-alert queued-card${fading ? ' fading' : ''}`}
+      className={`reminder-alert bar-card queued-card${fading ? ' fading' : ''}`}
       style={{ borderLeftColor: color, '--queued-color': color, '--countdown': `${QUEUED_FADE_SECONDS}s` } as CSSProperties}
     >
       <button className="reminder-alert-body" onClick={onOpen} title={t('Show the queue')}>
@@ -171,17 +173,13 @@ export function QueuedCard({ note, fading, paused, onOpen, onWatch, onClose }: {
           </span>
         </span>
       </button>
-      <div className="reminder-alert-buttons">
-        <button className="primary" onClick={onWatch}>
-          <Play size={15} /> {t('Watch now')}
-        </button>
-        <button onClick={onOpen}>
-          <ListVideo size={15} /> {t('Show queue')}
-        </button>
-        <button className="video-alert-close" onClick={onClose} title={t('Dismiss')} aria-label={t('Dismiss')}>
-          <X size={15} />
-        </button>
-      </div>
+      <CardBar
+        buttons={[
+          { label: t('Watch now'), icon: <Play size={15} />, primary: true, onClick: onWatch },
+          { label: t('Show queue'), icon: <ListVideo size={15} />, onClick: onOpen },
+          { label: t('Dismiss'), icon: <X size={15} />, end: 'close', onClick: onClose },
+        ]}
+      />
       {/* A new card or the end of a pause starts the count again */}
       <span key={`${note.at}${paused}`} className={`queued-countdown${paused ? ' paused' : ''}`} />
     </div>

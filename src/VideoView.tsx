@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListEnd, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -939,7 +939,7 @@ function VideoView() {
   function queueVideoItem(video: FeedVideo): MenuItem {
     if (queue.some((entry) => entry.id === video.id)) return { label: t('Remove from queue'), icon: ListX, onClick: () => leaveQueue([video.id]) }
     const why = video.watched ? t('Already watched') : video.gone ? t('No longer available') : undefined
-    return { label: t('Add to queue'), icon: ListEnd, disabled: !!why, hint: why, onClick: () => addToQueue(video.id) }
+    return { label: t('Add to queue'), icon: ListPlus, disabled: !!why, hint: why, onClick: () => addToQueue(video.id) }
   }
   // One switch for both lists (grayed in Watched and Music)
   const queueItem = (inList: boolean): MenuItem => ({
@@ -1136,7 +1136,7 @@ function VideoView() {
               Queue's end, from anywhere in the list (user, 2026-11-18; videoDrag.ts) */}
           {videoLifted && (
             <div className="video-queue-strip" data-queue-head="">
-              <ListEnd size={15} /> {t('Drop here to add to the Queue')}
+              <ListPlus size={15} /> {t('Drop here to add to the Queue')}
             </div>
           )}
           {/* Videos picked: the bar is their actions, icons only (user, 2026-11-18, from mockups) */}
@@ -1163,7 +1163,7 @@ function VideoView() {
                   title={pickedToQueue.length ? t('Add to queue') : t('Already in the queue, or watched')}
                   onClick={pickAction(() => pickedToQueue.forEach((video) => addToQueue(video.id)))}
                 >
-                  <ListEnd size={15} />
+                  <ListPlus size={15} />
                 </button>
                 <button
                   className="reminders-refresh"

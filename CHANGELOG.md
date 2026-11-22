@@ -9,6 +9,10 @@ All notable changes to SyncR. Newest version first.
 - **Better:** the same light button bar under an email opened to read
 - **Changed:** older emails in the pop-up as one-line rows under the newest
 
+**Video** (PC only)
+- **Better:** new video pop-up cards get the emails’ light button bar
+- **Small fixes:** same Add to queue icon everywhere
+
 ## [1.2.3] - 2026-11-22
 
 **Video** (PC only)
