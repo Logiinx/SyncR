@@ -18,6 +18,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va
 - **Changé :** barre du lecteur : Vue (avec son nom) et un menu ⋯ à gauche
 - **Changé :** Essayer une autre façon, Ouvrir dans le navigateur et extensions sont dans ⋯
+- **Corrigé :** parties muettes surgissant d’un coup, « Son de retour dans » qui remontait
 
 ## [1.0.3] - 2026-11-21
 

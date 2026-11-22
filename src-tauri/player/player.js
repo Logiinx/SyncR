@@ -454,8 +454,10 @@ function checkPiece(url, tries = 0) {
       if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
       if (way !== undefined) {
         uncutPieces.add(url)
+        soundSeen.set(url, performance.now())
         noteWay(url, way)
       } else if (again) recheckPiece(url, tries)
+      else uncutPieces.delete(url) // asked again (recheckAhead): its sound is gone by now
     }))
   }
   return pieceChecks.get(url)
@@ -468,6 +470,25 @@ function recheckPiece(url, tries) {
     checkPiece(url, tries + 1).then(drawMutedSoon)
   }, CHECK_AGAIN_AFTER)
 }
+
+// Twitch deletes the sound while you watch (2026-11-22), so a "sound there" answer goes stale; the
+// download, ~30 s ahead, would only find out one piece at a time (the muted part and its countdown
+// growing by a piece again and again). So the pieces coming up are asked again: every minute while
+// playing those whose answer is older than that, and all of them (all) as soon as one plays muted
+// after all, further ahead so a long part's end is right at once (no countdown jumping up later).
+// Only the ones not downloaded yet: a download outranks a check.
+const RECHECK_AHEAD = [300, 1200] // seconds of video: every minute, after a stale answer
+const RECHECK_AFTER = 60000 // ms
+const soundSeen = new Map() // muted piece → when its sound was last found (performance.now())
+function recheckAhead(from, all = false) {
+  const pieces = playingLevel()?.details?.fragments ?? []
+  const old = (one) => all || performance.now() - (soundSeen.get(one.url) ?? 0) > RECHECK_AFTER
+  const stale = pieces.filter((one) => uncutPieces.has(one.url) && !playedPieces.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
+  if (!stale.length) return
+  for (const one of stale) pieceChecks.delete(one.url)
+  checkUncut(pieces)
+}
+setInterval(() => { if (!video.paused) recheckAhead(video.currentTime) }, RECHECK_AFTER)
 
 // When a quality's list loads or it starts playing: all its muted pieces not asked yet, a few at a
 // time, the bar redrawn as answers come. Only the quality playing (hls.js reads others' lists too).
@@ -587,6 +608,8 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     if (sound) uncutPieces.add(context.url)
     else uncutPieces.delete(context.url)
     drawMutedSoon()
+    // Its check said the sound was there, and it's gone: the next pieces' checks are stale too
+    if (why?.why === 'refused' && context.frag) recheckAhead(context.frag.start, true)
   }
   abort() {
     this.stopped = true

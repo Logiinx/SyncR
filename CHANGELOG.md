@@ -18,6 +18,7 @@ All notable changes to SyncR. Newest version first.
 - **Better:** Move to the other screen: its arrow points to the screen it goes to
 - **Changed:** player's top bar: Watched (with its name) and a ⋯ menu on the left
 - **Changed:** Try another way, Open in browser and extensions are in the ⋯ menu
+- **Fixed:** muted parts appearing by surprise, “Sound back in” going back up
 
 ## [1.0.3] - 2026-11-21
 
