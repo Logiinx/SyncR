@@ -564,9 +564,9 @@ async function askHas(url) {
 }
 function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
-    asking.add(url)
+    piecesAsking.add(url)
     pieceChecks.set(url, askHas(url).then(({ piece, way, again }) => {
-      asking.delete(url)
+      piecesAsking.delete(url)
       if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
       soundNowhere.delete(url)
       if (piece) {
@@ -585,9 +585,9 @@ function checkPiece(url, tries = 0) {
 }
 function recheckPiece(url, tries) {
   if (tries >= CHECK_RETRIES) return
-  asking.add(url)
+  piecesAsking.add(url)
   setTimeout(() => {
-    asking.delete(url)
+    piecesAsking.delete(url)
     if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
     pieceChecks.delete(url)
     checkPiece(url, tries + 1).then(drawMutedSoon)
@@ -606,14 +606,14 @@ const RECHECK_AHEAD = [300, 1200] // seconds of video: every minute, after a sta
 const RECHECK_AFTER = 60000 // ms
 const RECHECK_MARGIN = 5000 // ms: an answer from the last minute's round counts as old (timers drift)
 const soundSeen = new Map() // muted piece → when its sound was last found (performance.now())
-const asking = new Set() // muted pieces whose check is running or waiting to try again
+const piecesAsking = new Set() // muted pieces whose check is running or waiting to try again
 let allRecheckAt = -Infinity
 function recheckAhead(from, all = false) {
   if (all && performance.now() - allRecheckAt < RECHECK_AFTER) all = false
   if (all) allRecheckAt = performance.now()
   const pieces = playingLevel()?.details?.fragments ?? []
   const old = (one) => all || performance.now() - (soundSeen.get(one.url) ?? 0) > RECHECK_AFTER - RECHECK_MARGIN
-  const stale = pieces.filter((one) => soundOf(one.url) !== 'muted' && !playedPieces.has(one.url) && !asking.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
+  const stale = pieces.filter((one) => soundOf(one.url) !== 'muted' && !playedPieces.has(one.url) && !piecesAsking.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
   if (!stale.length) return
   for (const one of stale) pieceChecks.delete(one.url)
   checkUncut(pieces)

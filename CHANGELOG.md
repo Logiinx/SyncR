@@ -9,6 +9,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** those parts in green on the bar, "Sound from another quality" in its tip
 - **New:** "Save the sound of muted parts" per Twitch channel, before it's deleted
 - **Better:** subscriber-only Twitch videos start faster
+- **Fixed:** no Twitch chat, and a blank chat button that did nothing
 
 ## [1.1.3] - 2026-11-22
 
