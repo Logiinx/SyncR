@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail** (PC only)
+- **Changed:** new emails play the Bubble sound by default
+
 ## [1.2.5] - 2026-11-22
 
 **Reminders**

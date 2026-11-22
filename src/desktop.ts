@@ -31,7 +31,7 @@ export const BACKGROUND_KEY = 'syncr.background'
 const DEFAULTS: Background = {
   closeToTray: false,
   reminderSoundId: 'chime',
-  emailSoundId: 'double',
+  emailSoundId: 'bubble',
   emailFade: 0,
   emailDragRight: 'read',
   emailDragLeft: 'archive',

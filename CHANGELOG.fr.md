@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Mail** (PC uniquement)
+- **Changé :** les nouveaux e-mails jouent le son Bulle par défaut
+
 ## [1.2.5] - 2026-11-22
 
 **Rappels**
