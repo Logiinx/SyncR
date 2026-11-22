@@ -450,7 +450,9 @@ async function askHas(url) {
 }
 function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
+    asking.add(url)
     pieceChecks.set(url, askHas(url).then(({ way, again }) => {
+      asking.delete(url)
       if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
       if (way !== undefined) {
         uncutPieces.add(url)
@@ -464,7 +466,9 @@ function checkPiece(url, tries = 0) {
 }
 function recheckPiece(url, tries) {
   if (tries >= CHECK_RETRIES) return
+  asking.add(url)
   setTimeout(() => {
+    asking.delete(url)
     if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
     pieceChecks.delete(url)
     checkPiece(url, tries + 1).then(drawMutedSoon)
@@ -476,14 +480,21 @@ function recheckPiece(url, tries) {
 // growing by a piece again and again). So the pieces coming up are asked again: every minute while
 // playing those whose answer is older than that, and all of them (all) as soon as one plays muted
 // after all, further ahead so a long part's end is right at once (no countdown jumping up later).
-// Only the ones not downloaded yet: a download outranks a check.
+// Only the ones not downloaded yet: a download outranks a check. Not those being asked right now,
+// and all of them at most once a minute: a check can keep saying "there" while the download is
+// refused, and every muted piece would ask them all again.
 const RECHECK_AHEAD = [300, 1200] // seconds of video: every minute, after a stale answer
 const RECHECK_AFTER = 60000 // ms
+const RECHECK_MARGIN = 5000 // ms: an answer from the last minute's round counts as old (timers drift)
 const soundSeen = new Map() // muted piece → when its sound was last found (performance.now())
+const asking = new Set() // muted pieces whose check is running or waiting to try again
+let allRecheckAt = -Infinity
 function recheckAhead(from, all = false) {
+  if (all && performance.now() - allRecheckAt < RECHECK_AFTER) all = false
+  if (all) allRecheckAt = performance.now()
   const pieces = playingLevel()?.details?.fragments ?? []
-  const old = (one) => all || performance.now() - (soundSeen.get(one.url) ?? 0) > RECHECK_AFTER
-  const stale = pieces.filter((one) => uncutPieces.has(one.url) && !playedPieces.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
+  const old = (one) => all || performance.now() - (soundSeen.get(one.url) ?? 0) > RECHECK_AFTER - RECHECK_MARGIN
+  const stale = pieces.filter((one) => uncutPieces.has(one.url) && !playedPieces.has(one.url) && !asking.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
   if (!stale.length) return
   for (const one of stale) pieceChecks.delete(one.url)
   checkUncut(pieces)
