@@ -748,9 +748,9 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     { id: 'alerts', icon: Bell, name: t('Alerts'), content: alertsCard },
     { id: 'look', icon: Palette, name: t('Look'), content: lookCard },
     { id: 'window', icon: AppWindow, name: t('Window'), content: windowCard },
+    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection proxyReady={proxyStatus.ok} />, module: true, off: !gamesOn },
     { id: 'mail', icon: Mail, name: t('Mail'), content: (isTauri() || import.meta.env.DEV) && <MailSection />, module: true, off: !mailOn },
     { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true, off: !videoModuleOn },
-    { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection proxyReady={proxyStatus.ok} />, module: true, off: !gamesOn },
     { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)

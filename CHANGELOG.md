@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Better:** Settings: each control sits right after its name, in a narrower window
+- **Better:** Settings: on/off switches instead of checkboxes, row lit under the mouse
+- **Changed:** Settings: modules in this order: Games, Mail, Video, Hardware
+
 ## [1.1.0] - 2026-11-22
 
 **App**

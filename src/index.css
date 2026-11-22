@@ -4742,15 +4742,17 @@ button {
   font-size: 0.9em;
 }
 
-/* Settings and the windows sharing its look (Video, Games, modules). Phone: full screen. */
+/* Settings. Phone: full screen. */
 .dialog.settings {
   width: min(880px, 100%);
 }
 
 /* Settings (SettingsDialog.tsx): the title row, then a sidebar of sections and the one shown on
    its right. One fixed size, so switching sections never moves the window; a long section
-   scrolls on its own. Each setting a row: name left, control right, a thin line between rows. */
+   scrolls on its own. Each setting a row: name, then its control, a thin line between rows. As
+   wide as the sidebar + the names' column + one control (no empty space on the right). */
 .dialog.sidebar-settings {
+  width: min(778px, 100%); /* 190 + 20 + 350 + 16 + 170 + 20 + 10 (scrollbar) + 2 (borders) */
   display: flex;
   flex-direction: column;
   height: min(600px, 100%);
@@ -4817,7 +4819,7 @@ button {
   color: var(--text-dim);
 }
 
-/* "Modules" over Video, Games, Hardware: like a section's small headings */
+/* "Modules" over Games, Mail, Video, Hardware: like a section's small headings */
 .settings-nav-heading {
   margin: 14px 10px 4px;
   color: var(--text-dim);
@@ -4838,6 +4840,7 @@ button {
   position: relative; /* the taskbar battery scrolls to the mouse battery (offsetTop) */
   padding: 8px 20px 16px;
   overflow-y: auto;
+  scrollbar-gutter: stable; /* short and long sections line up the same */
 }
 
 /* Search (SettingsSearch.tsx): at the right of the title row, before ✕ (mockup); phone: full
@@ -4901,9 +4904,24 @@ button {
 }
 
 .settings-page .settings-row {
-  min-height: 34px;
+  position: relative;
+  isolation: isolate; /* its hover band (below) stays behind its own text, above the window */
+  min-height: 40px;
   padding-block: 4px;
   border-bottom: 1px solid var(--border);
+}
+
+/* The row under the mouse lights up, a little wider than the row, so the eye follows a name to
+   its control */
+@media (hover: hover) {
+  .settings-page .settings-row:hover::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0 -8px;
+    border-radius: 6px;
+    background: var(--hover);
+  }
 }
 
 .settings-page .settings-row:last-child,
@@ -4917,11 +4935,12 @@ button {
 }
 
 .settings-page .settings-card-sub {
-  margin: 14px 0 2px;
+  margin: 20px 0 4px;
+  font-size: 0.9em;
 }
 
 .settings-page > .settings-card-sub:first-child {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .settings-row {
@@ -5000,6 +5019,41 @@ button {
   max-width: 60%;
 }
 
+/* PC: the names in one column, every control starts right after it, and the window ends where
+   the controls end (no gap to cross). The phone keeps name left, control right (narrow already). */
+@media (min-width: 700px) {
+  .settings-page {
+    --settings-name: 350px; /* the longest name, in French (345 px) */
+  }
+
+  .settings-page .settings-row {
+    justify-content: flex-start;
+    gap: 16px;
+  }
+
+  .settings-page .settings-row-label {
+    flex: 0 1 var(--settings-name); /* a window squeezed by the app scale wraps names first */
+  }
+
+  .settings-page .settings-row-control {
+    flex: 1;
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  /* A connection's check: under its control, the row's line still across the whole row */
+  .dialog .settings-page .settings-row-status {
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    padding-left: calc(var(--settings-name) + 16px);
+  }
+
+  .settings-jump-arrow {
+    margin-left: auto;
+  }
+}
+
 .dialog .settings-row select {
   width: var(--settings-control);
   max-width: 100%;
@@ -5021,14 +5075,57 @@ button {
   padding-inline: 8px;
 }
 
+/* Beside a switch (6 px apart): both together fill one control's width */
 .settings-row-control > .setting-button:has(+ input[type='checkbox']) {
-  width: calc(var(--settings-control) - 19px);
+  width: calc(var(--settings-control) - 40px);
 }
 
+/* Every on/off in Settings is a switch: a track, its knob on the right and the track blue when on */
 .dialog .settings-row input[type='checkbox'] {
-  width: auto;
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
   margin: 0;
-  accent-color: var(--accent);
+  padding: 0;
+  border: none;
+  border-radius: 9px;
+  outline: none;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.dialog .settings-row input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: translate 0.15s, background-color 0.15s;
+}
+
+.dialog .settings-row input[type='checkbox']:checked {
+  background: var(--accent);
+}
+
+.dialog .settings-row input[type='checkbox']:checked::after {
+  translate: 16px 0;
+  background: var(--text);
+}
+
+.dialog .settings-row input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+.dialog .settings-row input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Settings → Notes → Sites (link cards): a text area as tall as its text. Its name stays beside
@@ -5057,8 +5154,9 @@ button {
 
 /* An address, password or ID in a row (Accounts' proxy, Steam profile, Mail's project ID): wider
    than the other controls so an address fits (user) */
+/* Addresses, passwords and IDs: one control wide like the rest (a long one scrolls in its box) */
 .settings-page {
-  --settings-field: 260px;
+  --settings-field: 170px;
 }
 
 .dialog .settings-row-field input[type='url'],
@@ -5125,15 +5223,9 @@ button {
 
 /* Accounts: a connection set up in another section; the whole row opens it */
 .settings-row.settings-jump {
-  width: calc(100% + 16px);
-  margin-inline: -8px;
-  padding-inline: 8px;
-  border-radius: 6px;
+  width: 100%;
+  padding-inline: 0; /* a button's own: its name lines up with the other rows' */
   text-align: left;
-}
-
-.settings-jump:hover {
-  background: var(--hover);
 }
 
 .settings-jump .settings-status {
@@ -5398,6 +5490,19 @@ button {
   gap: 10px;
 }
 
+/* Remove shares one control's width with the bell and the switch. Signed out, Remove + the bell +
+   Sign in… don't fit in it: they take room from the address (cut with …) instead of being cut */
+@media (min-width: 700px) {
+  .gmail-account .settings-row-control {
+    flex: 1 0 auto;
+  }
+
+  .gmail-account .settings-row-control > .setting-button {
+    flex: 1 0 auto;
+    width: auto;
+  }
+}
+
 /* Settings: an empty list's line (Mail's safe senders) */
 .dialog .settings-empty {
   margin: 6px 0;
@@ -5434,6 +5539,11 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Its dropdown after the color dot (20 px + 6): both together one control wide */
+.dialog .settings-row .sync-sign-controls select {
+  width: calc(var(--settings-control) - 26px);
 }
 
 /* Settings → App: one button per special tab, its icon in its color; a click opens the color list

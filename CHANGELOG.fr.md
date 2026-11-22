@@ -4,6 +4,11 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Amélioré :** Paramètres : chaque réglage juste après son nom, fenêtre plus étroite
+- **Amélioré :** Paramètres : interrupteurs au lieu de cases, ligne éclairée au survol
+- **Changé :** Paramètres : modules dans cet ordre : Jeux, Mail, Vidéo, Matériel
+
 ## [1.1.0] - 2026-11-22
 
 **Application**
