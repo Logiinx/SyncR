@@ -1,4 +1,4 @@
-import { t } from './i18n'
+import { percentText, t } from './i18n'
 import { Check, Mouse } from 'lucide-react'
 import CardBar from './CardBar'
 import { formatDue } from './reminders'
@@ -20,7 +20,7 @@ export function BatteryCard({ alert, fading, onOpen, onDone }: {
         <span className="reminder-alert-due">
           <Mouse size={12} /> {formatDue(alert.at)} · {t('Teevolution Terra Pro')}
         </span>
-        <span className="reminder-alert-text battery-percent">{t('Mouse battery low: {percent}%', { percent: alert.percent })}</span>
+        <span className="reminder-alert-text battery-percent">{t('Mouse battery low: {percent}', { percent: percentText(alert.percent) })}</span>
       </button>
       <CardBar buttons={[{ label: t('Done'), icon: <Check size={15} />, filled: true, onClick: onDone }]} />
     </div>

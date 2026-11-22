@@ -222,7 +222,7 @@ export const settings = {
   'About low battery': 'À propos de la batterie faible',
   'At or below this level, the number turns red and the pop-up warns you once, until the mouse charges above it again.':
     'À ce niveau ou en dessous, le nombre passe en rouge et un pop-up vous prévient une fois, jusqu’à ce que la souris recharge au-dessus.',
-  'Mouse battery low: {percent}%': 'Batterie de la souris faible : {percent} %',
+  'Mouse battery low: {percent}': 'Batterie de la souris faible : {percent}',
   // Modules: Hardware (HardwareSettings.tsx, hardware.ts)
   Hardware: 'Matériel',
   'About the hardware module': 'À propos du module Matériel',

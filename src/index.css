@@ -4569,7 +4569,7 @@ button {
   height: 16px;
   margin: 0;
   flex-shrink: 0;
-  accent-color: var(--link);
+  accent-color: var(--accent); /* every checkbox's tick: the same dark blue */
   cursor: pointer;
 }
 
@@ -7542,7 +7542,7 @@ img[data-fade] {
 
 .game-search-dlc input {
   margin: 0;
-  accent-color: var(--link);
+  accent-color: var(--accent); /* every checkbox's tick: the same dark blue */
 }
 
 .game-results {

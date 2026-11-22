@@ -8,6 +8,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** les cartes de rappel et de batterie ont la barre de boutons des e-mails, Terminé reste bleu
 - **Petites corrections :** boutons Tout terminer, Tout marquer comme lu et Afficher les images plus discrets
 
+**Application**
+- **Petites corrections :** même couleur de case à cocher partout
+
 ## [1.2.4] - 2026-11-22
 
 **Mail** (PC uniquement)
