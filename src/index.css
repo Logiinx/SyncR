@@ -2309,21 +2309,13 @@ button {
   font-size: 12px;
 }
 
+/* Their colors: with the alert heads' buttons (search "Small text buttons") */
 .mail-reader-images button {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
-  border-radius: 5px;
-  background: rgb(255 255 255 / 8%);
-  color: var(--text);
-  font-size: 12px;
   white-space: nowrap;
   flex-shrink: 0;
-}
-
-.mail-reader-images button:hover {
-  background: rgb(255 255 255 / 14%);
 }
 
 /* Show images · Always for … · Show original: together on the right; the whole group moves
@@ -2490,15 +2482,20 @@ button {
   font-size: 12px;
 }
 
-.reminder-alerts-head button {
+/* Small text buttons like the card bar's: dim, lit under the mouse, no pill (user 2026-11-22);
+   also the email reader's Show images / Always for … / Show original */
+.reminder-alerts-head button,
+.mail-reader-images button {
   padding: 3px 10px;
   border-radius: 5px;
-  color: var(--text);
+  color: var(--text-dim);
   font-size: 12px;
 }
 
-.reminder-alerts-head button:hover {
-  background: rgb(255 255 255 / 10%);
+.reminder-alerts-head button:hover,
+.mail-reader-images button:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 /* The desktop pop-up window (ReminderPopup.tsx): see-through (popupWindow.ts); the cards fill
