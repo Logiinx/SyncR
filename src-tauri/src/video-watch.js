@@ -224,6 +224,9 @@
     '.ytp-featured-product', '.ytp-tooltip', '.ytp-popup', '.ytp-contextmenu', '.ytp-doubletap-ui-legacy',
     '#player-controls', '#player-control-overlay', '.ytPlayerControlsContainerHost', '.player-controls-top',
     '.player-controls-bottom',
+    // The tip YouTube shows when subtitles turn on ("English (auto-generated) / Click ⚙ for
+    // settings"): a subtitle box of its own, the only one with a picture (the ⚙) in it
+    '.caption-window:has(svg)',
   ]
   const startControls = () => {
     const player = document.querySelector('#movie_player')

@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Removed:** YouTube’s “Click ⚙ for settings” tip when subtitles turn on
+
 ## [1.2.2] - 2026-11-22
 
 **Video** (PC only)

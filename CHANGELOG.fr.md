@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Supprimé :** l’astuce YouTube « Cliquez sur ⚙ pour accéder aux paramètres » quand les sous-titres s’activent
+
 ## [1.2.2] - 2026-11-22
 
 **Vidéo** (PC uniquement)
