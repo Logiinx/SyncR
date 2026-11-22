@@ -9,7 +9,7 @@ vi.mock('../src/localState', () => ({
 }))
 vi.mock('../src/videoPositions', () => ({ startedIds: () => [] }))
 
-const { addToQueue, joinedAlone, queueOpened, queueStarted } = await import('../src/videoQueue')
+const { addToQueue, joinedAlone, leaveQueue, placeInQueue, queueOpened, queueStarted } = await import('../src/videoQueue')
 const order = () => (store.get('syncr.videoQueue') as { id: string }[]).map((entry) => entry.id)
 
 test('opened: goes first, also from a spot placed by hand, and keeps how it joined', () => {
@@ -30,4 +30,18 @@ test('opened, not in the Queue yet: joins first, as joined alone', () => {
   expect(order()[0]).toBe('d')
   expect(joinedAlone('d')).toBe(true)
   expect(order().filter((id) => id === 'd')).toHaveLength(1)
+})
+
+test('dragged: before a row, after the last row shown, or at the end; one dragged in joins as added by hand', () => {
+  leaveQueue(order())
+  for (const id of ['a', 'b', 'c']) addToQueue(id)
+  placeInQueue('c', 'a', null)
+  expect(order()).toEqual(['c', 'a', 'b'])
+  placeInQueue('c', null, 'a')
+  expect(order()).toEqual(['a', 'c', 'b'])
+  placeInQueue('a', null, null)
+  expect(order()).toEqual(['c', 'b', 'a'])
+  placeInQueue('e', 'b', null)
+  expect(order()).toEqual(['c', 'e', 'b', 'a'])
+  expect(joinedAlone('e')).toBe(false)
 })

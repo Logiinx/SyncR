@@ -865,6 +865,9 @@ function VideoView() {
     if (!candidates.has(video.id) || video.watched || video.gone || queue.some((entry) => entry.id === video.id)) return undefined
     return { leaves: list === 'towatch' && !episode && !video.folderId }
   }
+  // ⏭ from a Queue row goes on in the order shown once it plays: opened, it goes first (the others
+  // after it as they are), except music, which keeps its place (videoPlayer.ts)
+  const queueAfter = (video: FeedVideo) => (video.music ? queued.slice(queued.findIndex((entry) => entry.video === video) + 1) : queued.filter((entry) => entry.video !== video))
   // No row when it's empty (a dragged video goes in by the bar's strip then); its videos at the
   // list's left edge, like the part below
   function queueRows(): ReactNode[] {
@@ -884,7 +887,7 @@ function VideoView() {
       />,
       ...(!queueOpen
         ? []
-        : queuedShown.map((entry) => ({ ...entry, index: queued.indexOf(entry) })).map(({ video, playlist, rewatch: ofRewatch, index }) => (
+        : queuedShown.map(({ video, playlist, rewatch: ofRewatch }) => (
             <VideoRow
               key={`${id} ${video.id}`}
               video={video}
@@ -893,7 +896,7 @@ function VideoView() {
               queued={id}
               ofRewatch={ofRewatch}
               from={playlist?.name}
-              after={queued.slice(index + 1).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
+              after={queueAfter(video).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
               pick={pickOf(video, playlist?.id, id)}
               onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
               onOpenRow={openRow}

@@ -13,6 +13,7 @@ vi.mock('../src/localState', () => ({
   write: (key: string, value: unknown) => void store.set(key, structuredClone(value)),
 }))
 const watchedSet: string[] = []
+let watchedChange = (_watched: boolean) => {} // the open video's Watched mark, ticked in the list
 // A Twitch stream's next part (videoParts.ts): on this device, and Twitch's answer
 const part = { id: 'twitch-456', platform: 'twitch' as const, title: 'Subathon, part 2', channelId: 'c', url: 'https://www.twitch.tv/videos/456', thumbnail: null, watched: false, duration: 7200, live: true }
 let knownPart: typeof part | null = null
@@ -22,14 +23,18 @@ vi.mock('../src/video', () => ({
   addOrFindVideo: async () => ({ video: { ...part, thumbnail: undefined } }),
   markOpened: async () => {},
   setWatched: async (id: string) => void watchedSet.push(id),
-  watchWatched: () => () => {},
+  watchWatched: (_id: string, onChange: (watched: boolean) => void) => {
+    watchedChange = onChange
+    return () => {}
+  },
   followOfChannel: () => undefined,
   loadFollowsNow: async () => {},
   setFollowStartSkip: async () => {},
 }))
 vi.mock('../src/videoPlaylists', () => ({ nextInPlaylist: async () => null }))
-const queued: string[] = []
-vi.mock('../src/videoQueue', () => ({ queueOpened: (id: string) => void queued.push(id) }))
+const queued: string[] = [] // put first (opened by hand)
+const joined: string[] = [] // joined at the top only when not in it (opened by ⏭ or one after another)
+vi.mock('../src/videoQueue', () => ({ queueOpened: (id: string) => void queued.push(id), queueStarted: (id: string) => void joined.push(id) }))
 const calls: { command: string; args: Record<string, unknown> }[] = []
 let windowOpen = true
 vi.mock('@tauri-apps/api/core', () => ({
@@ -57,6 +62,7 @@ beforeEach(() => {
   store.clear()
   calls.length = 0
   queued.length = 0
+  joined.length = 0
   watchedSet.length = 0
   knownPart = null
   askedPart = { part: null, end: 0 }
@@ -100,11 +106,33 @@ test('a video stopped partway joins the Queue', async () => {
 
 test('it goes first in the Queue once per opening, again when opened again', async () => {
   await openAndPlayTo(900)
-  send('video-position', { t: 905, length: 3600 }) // moved by hand meanwhile: it stays there
+  send('video-position', { t: 905, length: 3600 }) // a later report: not again (dragged meanwhile, it stays there)
   expect(queued).toEqual(['youtube-abcdefghijk'])
   vi.useRealTimers()
   await openAndPlayTo(910)
   expect(queued).toEqual(['youtube-abcdefghijk', 'youtube-abcdefghijk'])
+})
+
+test('taken out of Watched while it plays, it joins the Queue again', async () => {
+  await openAndPlayTo(900)
+  watchedChange(true) // it left the Queue (video.ts)
+  watchedChange(false)
+  send('video-position', { t: 905, length: 3600 })
+  expect(queued).toEqual(['youtube-abcdefghijk', 'youtube-abcdefghijk'])
+})
+
+test('the next one opened by ⏭ keeps its place in the Queue', async () => {
+  const next = { ...video(), id: 'youtube-bbbbbbbbbbb', url: 'https://youtu.be/bbbbbbbbbbb' }
+  playVideo(video(), undefined, undefined, [{ video: next }])
+  await settle()
+  vi.useFakeTimers({ now: Date.now() + 4000, toFake: ['Date'] })
+  send('video-position', { t: 900, length: 3600 })
+  send('video-next', {})
+  await settle()
+  vi.setSystemTime(Date.now() + 4000)
+  send('video-position', { t: 300, length: 3600 })
+  expect(queued).toEqual(['youtube-abcdefghijk'])
+  expect(joined).toEqual(['youtube-bbbbbbbbbbb'])
 })
 
 // A Twitch stream still live, in our own player, played to the end of what's recorded so far

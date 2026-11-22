@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** ⏭ from the Queue follows the order shown
+- **Changed:** videos played with ⏭ or one after another keep their place in the Queue
+- **Fixed:** a video taken out of Watched while playing missing from the Queue
+- **Small fixes:** Twitch muted parts checks
+
 ## [1.1.2] - 2026-11-22
 
 **Video** (PC only)

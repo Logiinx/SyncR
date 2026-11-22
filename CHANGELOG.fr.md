@@ -4,6 +4,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** ⏭ depuis la file d’attente suit l’ordre affiché
+- **Changé :** les vidéos lues avec ⏭ ou à la suite gardent leur place dans la file d’attente
+- **Corrigé :** une vidéo retirée des vues pendant la lecture absente de la file d’attente
+- **Petites corrections :** vérification des parties muettes Twitch
+
 ## [1.1.2] - 2026-11-22
 
 **Vidéo** (PC uniquement)
