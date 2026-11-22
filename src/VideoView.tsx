@@ -1105,6 +1105,9 @@ function VideoView() {
             <button className="reminders-new" onClick={(e) => openBarMenu('add', e.currentTarget)}>
               <Plus size={15} /> {t('Add')} <ChevronDown size={14} />
             </button>
+            <button className="reminders-refresh" disabled={!follows?.length} title={follows?.length ? t('Follows') : t('No follows yet')} onClick={() => setListOpen(true)}>
+              <Users size={15} />
+            </button>
             <button className="reminders-refresh" title={t('More')} onClick={(e) => openBarMenu('more', e.currentTarget)}>
               <Ellipsis size={15} />
             </button>
@@ -1256,7 +1259,6 @@ function VideoView() {
                   },
                   queueItem(list === 'rewatch' || list === 'towatch'),
                   queueRewatchItem,
-                  { label: t('Follows'), icon: Users, divider: true, disabled: !follows?.length, hint: follows?.length ? undefined : t('No follows yet'), onClick: () => setListOpen(true) },
                   // What the list shows now: all follows, or the chosen one
                   {
                     label: t('Mark all as watched'),

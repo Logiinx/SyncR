@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Changé :** Chaînes suivies sort du menu ⋯, avec son propre bouton à côté d’Ajouter
+
 ## [1.2.0] - 2026-11-22
 
 **Vidéo** (PC uniquement)
