@@ -11,6 +11,8 @@ import { setAutoRewatch, setBigPictures, setMusicName, setRewatchSection, useAut
 import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
 import { setDeArrow, useDeArrow } from './videoTitles'
 import { clearVideoAlerts, setPopupCardSize, usePopupCardSize, type PopupCardSize } from './videoAlerts'
+import { deleteMutedSound, mutedSoundSpace } from './mutedSound'
+import { fileSize } from './mailFiles'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -59,6 +61,10 @@ export default function VideoSection() {
   const [removing, setRemoving] = useState<ExtensionRow | null>(null)
   const headRef = useRef<HTMLHeadingElement>(null)
   const on = useModuleOn('video')
+  // Twitch muted parts' saved sound (mutedSound.ts): its space in bytes, null until known
+  const [soundSpace, setSoundSpace] = useState<number | null>(null)
+  const [deletingSound, setDeletingSound] = useState(false)
+  const readSoundSpace = () => mutedSoundSpace().then(setSoundSpace, () => setSoundSpace(0))
 
   // One thing at a time; the list is read again after each, also if it failed
   async function run(action: () => Promise<unknown>) {
@@ -83,6 +89,7 @@ export default function VideoSection() {
   useEffect(() => {
     if (!extensions) return
     void run(async () => {})
+    void readSoundSpace()
     return () => void invoke('video_extensions_done')
   }, [])
 
@@ -188,6 +195,17 @@ export default function VideoSection() {
           </select>
         </SettingRow>
         {extensions && (
+          <SettingRow
+            label={t('Saved sound of Twitch muted parts')}
+            value={soundSpace ? fileSize(soundSpace) : undefined}
+            title={t('For channels with “Save the sound of muted parts” on. Deleted once its video leaves the list, and the oldest above 2 GB.')}
+          >
+            <button className="setting-button" disabled={!soundSpace} onClick={() => setDeletingSound(true)}>
+              {t('Delete')}
+            </button>
+          </SettingRow>
+        )}
+        {extensions && (
           <>
             <h4 className="settings-card-sub">{t('Extensions')}</h4>
             <p className="video-extensions-about">{t('They only run in the video window and can’t reach your notes. Nothing updates by itself.')}</p>
@@ -251,6 +269,21 @@ export default function VideoSection() {
           }}
           onClose={() => {
             setRemoving(null)
+            focusSettings(headRef.current)
+          }}
+        />
+      )}
+      {deletingSound && (
+        <Dialog
+          request={{
+            title: t('Delete the saved sound?'),
+            message: t('Muted parts of those videos play muted again, unless Twitch still has their sound. New streams are still saved.'),
+            confirmLabel: t('Delete'),
+            danger: true,
+            onConfirm: () => void deleteMutedSound().catch((e) => console.warn('Deleting muted sound failed', e)).then(readSoundSpace),
+          }}
+          onClose={() => {
+            setDeletingSound(false)
             focusSettings(headRef.current)
           }}
         />

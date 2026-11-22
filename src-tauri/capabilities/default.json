@@ -58,6 +58,9 @@
     "allow-video-extension-settings",
     "allow-video-extensions-done",
     "allow-save-muted-sound",
+    "allow-tidy-muted-sound",
+    "allow-muted-sound-space",
+    "allow-delete-muted-sound",
     "allow-start-link-shortcut"
   ]
 }

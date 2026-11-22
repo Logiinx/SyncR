@@ -319,6 +319,12 @@ export const video = {
   'Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the ⏩ button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).': 'Saute l’écran « ça commence bientôt » au début de ses vidéos, une fois qu’il a appris celui de cette chaîne : en attendant, le bouton ⏩ s’affiche, et l’utiliser une fois le lui apprend (tout comme « Retenir comme écran d’attente », dans le menu du clic droit sur la vidéo).',
   'Save the sound of muted parts': 'Garder le son des parties muettes',
   'About saving the sound of muted parts': 'À propos du son gardé des parties muettes',
+  'Saved sound of Twitch muted parts': 'Son gardé des parties muettes Twitch',
+  'For channels with “Save the sound of muted parts” on. Deleted once its video leaves the list, and the oldest above 2 GB.':
+    'Pour les chaînes avec « Garder le son des parties muettes ». Supprimé dès que sa vidéo quitte la liste, et le plus ancien au-delà de 2 Go.',
+  'Delete the saved sound?': 'Supprimer le son gardé ?',
+  'Muted parts of those videos play muted again, unless Twitch still has their sound. New streams are still saved.':
+    'Les parties muettes de ces vidéos seront de nouveau sans son, sauf si Twitch l’a encore. Celui des nouveaux lives sera toujours gardé.',
   'Twitch deletes the sound of the parts it mutes, often within hours. While SyncR is open, it saves that sound from this channel’s new videos once the stream is over, so those parts keep their sound. Kept on this PC until the video leaves your list.': 'Twitch supprime le son des parties qu’il rend muettes, souvent en quelques heures. Tant que SyncR est ouvert, il garde ce son pour les nouvelles vidéos de cette chaîne une fois le live fini, pour que ces parties gardent leur son. Gardé sur ce PC jusqu’à ce que la vidéo quitte votre liste.',
   'Once it has learned the waiting screen: until then the ⏩ button shows': 'Une fois l’écran d’attente appris : en attendant, le bouton ⏩ s’affiche',
   'Forget waiting screen': 'Oublier l’écran d’attente',

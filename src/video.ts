@@ -494,7 +494,7 @@ export async function checkVideos(only?: string[]) {
     if (!stoppedOffline && !only) await refreshLiveAdded().catch((e) => console.warn('Video check failed', e))
     if (!failed && !stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
     // In the background: downloads can take minutes, the list doesn't wait for them
-    if (!stoppedOffline) void saveMutedAhead()
+    if (!stoppedOffline) void saveMutedAhead(videoKept)
     // Also what failed earlier and is waiting for its retry
     const playlists = await db.videoPlaylists.filter((playlist) => !playlist.deleted).toArray()
     const waiting = [...follows.flatMap((item) => failures.get(item.id)?.message ?? []), ...playlists.flatMap((item) => playlistFailures.get(item.id)?.message ?? [])]
