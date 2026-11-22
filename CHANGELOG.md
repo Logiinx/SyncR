@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Sync**
 - **Better:** the sync sign shows once you stop typing, not at every pause
+- **Fixed:** the cloud staying green for a moment while you type
 
 **Mail** (PC only)
 - **Changed:** new emails play the Bubble sound by default

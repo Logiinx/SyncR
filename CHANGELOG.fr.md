@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Synchronisation**
 - **Amélioré :** le signe de synchro s’affiche quand vous arrêtez d’écrire, pas à chaque pause
+- **Corrigé :** le nuage qui restait vert un instant pendant la frappe
 
 **Mail** (PC uniquement)
 - **Changé :** les nouveaux e-mails jouent le son Bulle par défaut
