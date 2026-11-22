@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-11-22
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** bouton Voir la file et ligne de 5 secondes dans la pop-up « Ajoutée à la file »
 - **Amélioré :** cette pop-up est plus claire : verte si ajoutée, bleue si déjà là

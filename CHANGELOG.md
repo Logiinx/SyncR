@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-11-22
+
 **Video** (PC only)
 - **New:** Show queue button and a 5-second countdown line in the “Added to queue” pop-up
 - **Better:** that pop-up is clearer: green when added, blue if already there
