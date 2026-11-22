@@ -7,6 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Nouveau :** les parties muettes Twitch prennent le son d’une autre qualité s’il y est encore
 - **Nouveau :** ces parties en vert sur la barre, « Son d’une autre qualité » dans son infobulle
+- **Nouveau :** « Garder le son des parties muettes » par chaîne Twitch, avant sa suppression
 - **Amélioré :** les vidéos Twitch réservées aux abonnés démarrent plus vite
 
 ## [1.1.3] - 2026-11-22

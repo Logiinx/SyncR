@@ -72,7 +72,7 @@ export interface VideoChannel {
   icon: string | null
 }
 
-export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts' | 'music' | 'autoSkip'>
+export type FollowSettings = Pick<VideoFollow, 'onlyWords' | 'exceptWords' | 'onlyGames' | 'minMinutes' | 'hideShorts' | 'music' | 'autoSkip' | 'saveMuted'>
 export type PastChoice = 'today' | '30' | '60' | 'all'
 
 const TWITCH_TABS = new Set(['about', 'clips', 'home', 'schedule', 'videos'])
