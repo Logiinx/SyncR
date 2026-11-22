@@ -16,9 +16,11 @@ const mutedGap = (length) => Math.min(60, Math.max(10, length * 0.002))
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
 let borrowedParts = [] // muted parts playing with another quality's sound (player.js, DONORS)
+let savedParts = [] // muted parts playing with the sound saved on this PC (player.js, sound saved ahead)
 const MUTED_COLOR = 'var(--text-red, #f0716b)' // on the bar and in its tip
 const BORROWED_COLOR = 'var(--text-green, #7ccb8c)' // the same, for parts with another quality's sound
-// Pieces close together as parts (mutedGap), never across one of walls (other parts). video_window.rs
+const SAVED_COLOR = 'var(--text-purple, #b590f2)' // and for parts with the sound saved on this PC
+// Pieces close together as parts (mutedGap), never across one of walls (other parts or pieces). video_window.rs
 // and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now (.ts in older
 // videos, .mp4 in newer ones)
 function partsOf(pieces, gap, walls = []) {
@@ -33,13 +35,16 @@ function partsOf(pieces, gap, walls = []) {
   }
   return parts
 }
-// pieces: silent ones; borrowed: those with another quality's sound. One inside a muted part
-// counts as muted, like a bit with its own sound there; a muted part cuts them in two.
-function noteMutedParts(pieces, length, borrowed = []) {
+// pieces: silent ones; borrowed: those with another quality's sound; saved: those with the sound
+// saved on this PC. One inside a muted part counts as muted, like a bit with its own sound there; a
+// muted part cuts them in two, and borrowed and saved ones cut each other.
+function noteMutedParts(pieces, length, borrowed = [], saved = []) {
   const gap = mutedGap(length || 0)
   mutedParts = partsOf(pieces, gap)
   const inMuted = (piece) => mutedParts.some((part) => piece.start >= part.start && piece.start < part.end)
-  borrowedParts = partsOf(borrowed.filter((piece) => !inMuted(piece)), gap, mutedParts)
+  const heard = (list) => list.filter((piece) => !inMuted(piece))
+  borrowedParts = partsOf(heard(borrowed), gap, [...mutedParts, ...heard(saved)])
+  savedParts = partsOf(heard(saved), gap, [...mutedParts, ...heard(borrowed)])
   drawMarks()
   drawSkip()
 }
@@ -103,6 +108,7 @@ function drawMarks() {
   setMarked([
     ...mutedParts.map((part) => ({ ...part, color: MUTED_COLOR, name: labels.mutedPart })),
     ...borrowedParts.map((part) => ({ ...part, color: BORROWED_COLOR, name: labels.borrowedPart })),
+    ...savedParts.map((part) => ({ ...part, color: SAVED_COLOR, name: labels.savedPart })),
   ])
   setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }

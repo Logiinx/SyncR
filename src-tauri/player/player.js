@@ -133,9 +133,10 @@ const media = {
     const level = hls?.levels[hls.currentLevel]
     const extra = []
     if (level) extra.push(level.url[0]?.includes('/chunked/') ? labels.infoOriginal : labels.infoCopy)
+    if (someSaved) extra.push(labels.infoSaved)
     if (someBorrowed) extra.push(labels.infoBorrowed)
     if (mutedSound === 'muted') extra.push(mutedText())
-    else if (mutedSound === 'uncut' && !someBorrowed) extra.push(labels.infoUncut)
+    else if (mutedSound === 'uncut' && !someBorrowed && !someSaved) extra.push(labels.infoUncut)
     return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
   },
   switchingTo: () => (stillSwitching() ? levelName(hls.levels[switchingTo]) : ''),
@@ -454,15 +455,19 @@ const UNCUT_PATIENCE = [6000, 60000] // ms
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
 const borrowedPieces = new Set() // those whose sound is gone, but still there in another quality (DONORS)
+const savedPieces = new Set() // those whose sound is gone, but saved on this PC (sound saved ahead)
 const soundNowhere = new Set() // those whose check found no sound in any quality
 const donorOf = new Map() // muted piece → the other quality's piece whose check found the sound
 const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
-// A muted piece's state: 'uncut' (its own sound), 'borrowed' (another quality's) or 'muted'
-const soundOf = (url) => (uncutPieces.has(url) ? 'uncut' : borrowedPieces.has(url) ? 'borrowed' : 'muted')
+// A muted piece's state: 'uncut' (its own sound), 'saved' (saved on this PC), 'borrowed' (another
+// quality's) or 'muted'
+const soundOf = (url) => (uncutPieces.has(url) ? 'uncut' : savedPieces.has(url) ? 'saved' : borrowedPieces.has(url) ? 'borrowed' : 'muted')
 function setSound(url, state) {
   uncutPieces.delete(url)
+  savedPieces.delete(url)
   borrowedPieces.delete(url)
   if (state === 'uncut') uncutPieces.add(url)
+  if (state === 'saved') savedPieces.add(url)
   if (state === 'borrowed') borrowedPieces.add(url)
 }
 
@@ -556,6 +561,7 @@ const mutedWhy = new Map()
 let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
 let someBorrowed = false // some of them with another quality's sound
+let someSaved = false // some of them with the sound saved on this PC
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
 // Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
@@ -587,7 +593,7 @@ function checkPiece(url, tries = 0) {
       if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
       soundNowhere.delete(url)
       if (piece) {
-        setSound(url, piece === url ? 'uncut' : 'borrowed')
+        setSound(url, piece === url ? 'uncut' : piece === SAVED ? 'saved' : 'borrowed')
         if (piece !== url && piece !== SAVED) donorOf.set(url, piece)
         soundSeen.set(url, performance.now())
         if (piece !== SAVED) noteWay(piece, way)
@@ -670,9 +676,11 @@ function drawMuted() {
   const muted = (playingLevel()?.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
   const silent = muted.filter((one) => soundOf(one.url) === 'muted')
   const borrowed = muted.filter((one) => soundOf(one.url) === 'borrowed')
+  const saved = muted.filter((one) => soundOf(one.url) === 'saved')
   mutedSound = !muted.length ? '' : silent.length ? 'muted' : 'uncut'
   someBorrowed = borrowed.length > 0
-  noteMutedParts(silent, playingLevel()?.details?.totalduration, borrowed)
+  someSaved = saved.length > 0
+  noteMutedParts(silent, playingLevel()?.details?.totalduration, borrowed, saved)
   if (silent.length < muted.length && !soundTold) {
     soundTold = true
     tellBar('sound')
@@ -765,7 +773,7 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     const number = pieceNumber(context.url)
     const saved = number && (await sound(`/saved/${encodeURIComponent(videoId)}/${number}.ts`))
     if (this.stopped) return
-    if (saved) return this.mix(context, config, callbacks, why, saved)
+    if (saved) return this.mix(context, config, callbacks, why, saved, 'saved')
     const donors = soundNowhere.has(context.url) || why.why !== 'refused' ? [] : donorsFor(context.url)
     const known = donorOf.get(context.url)
     if (donors.includes(known)) donors.sort((a, b) => (b === known) - (a === known))
@@ -775,24 +783,24 @@ class PieceLoader extends Hls.DefaultConfig.loader {
         if (this.stopped) return
         if (!borrowed) continue
         noteWay(donor, way)
-        return this.mix(context, config, callbacks, why, borrowed)
+        return this.mix(context, config, callbacks, why, borrowed, 'borrowed')
       }
     }
     this.heard(context, 'muted', why)
     super.load(context, config, callbacks)
   }
-  // The muted piece, with the sound put in once it's downloaded
-  mix(context, config, callbacks, why, sound) {
+  // The muted piece, with the sound put in once it's downloaded (state: 'saved' or 'borrowed')
+  mix(context, config, callbacks, why, sound, state) {
     super.load(context, config, {
       ...callbacks,
       onSuccess: (response, stats, loaded, details) => {
         const mixed = withSoundOf(response.data, sound)
-        this.heard(context, mixed ? 'borrowed' : 'muted', why)
+        this.heard(context, mixed ? state : 'muted', why)
         callbacks.onSuccess(mixed ? { ...response, data: mixed } : response, stats, loaded, details)
       },
     })
   }
-  // state: 'uncut' (its own sound), 'borrowed' or 'muted'; why: { why, codes } when its own was refused
+  // state: 'uncut' (its own sound), 'saved', 'borrowed' or 'muted'; why: { why, codes } when its own was refused
   heard(context, state, why) {
     playedPieces.add(context.url)
     if (state === 'muted') mutedWhy.set(context.url, why)

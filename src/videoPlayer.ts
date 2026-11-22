@@ -153,7 +153,7 @@ function controlsData() {
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
-    colors: pageColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--text-red', '--accent']),
+    colors: pageColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--text-red', '--text-green', '--text-purple', '--accent']),
     labels: {
       play: t('Play video'),
       pause: t('Pause'),
@@ -264,6 +264,8 @@ function twitchPlayerAddress(video: PlayableVideo) {
       mutedPart: t('Muted part'),
       // The same for a muted part playing with the sound of another quality's copy (green)
       borrowedPart: t('Sound from another quality'),
+      // ... and with the sound the app saved ahead on this PC (purple)
+      savedPart: t('Sound saved on this PC'),
       soundBack: t('Sound back in {time}'),
       gameChanges: t('Game changes'),
       games: t('Games'),
@@ -284,6 +286,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       infoMuted: t('muted parts'),
       infoUncut: t('original sound|muted parts'),
       infoBorrowed: t('sound from another quality|muted parts'),
+      infoSaved: t('saved sound|muted parts'),
       // Why the pieces played muted ({why} = the counts below, joined by commas, each with Twitch's
       // answers in brackets). Pairs: [one, more]
       infoMutedWhy: t('muted parts: {why}'),
