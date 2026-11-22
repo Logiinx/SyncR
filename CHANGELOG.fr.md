@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-22
+
 **Mail** (PC uniquement)
 - **Amélioré :** nouvelles cartes d’e-mail dans la pop-up : objet d’abord, initiale, boutons légers
 - **Amélioré :** la même barre de boutons légère sous un e-mail ouvert pour le lire
