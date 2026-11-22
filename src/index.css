@@ -2022,6 +2022,157 @@ button {
   text-overflow: ellipsis;
 }
 
+/* The pop-up's email card (MailCards.tsx, mockup H): the text fills the card's top (the whole
+   of it can be clicked), the button bar its bottom. --account = the account's color. */
+.reminder-alert.mail-card {
+  padding: 0;
+}
+
+.mail-card .reminder-alert-body {
+  margin: 0;
+  padding: 12px 14px 10px 12px;
+  border-radius: 0;
+}
+
+/* 2 lines of the mail's text; 4 when it's the only email (often enough not to open it) */
+.mail-card .reminder-alert-note {
+  -webkit-line-clamp: 2;
+}
+
+.mail-card.single .reminder-alert-note {
+  -webkit-line-clamp: 4;
+}
+
+.mail-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The sender's first letter in a circle of the account's color */
+.mail-letter {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--account);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mail-card-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mail-card-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mail-card-from {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mail-card-time {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.mail-card-account {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.mail-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--account);
+}
+
+.mail-card-subject {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Opened (so read): the subject no longer bold */
+.mail-card.opened .mail-card-subject {
+  font-weight: 400;
+}
+
+/* A card's buttons as one flat bar across its bottom (MailBar in MailCards.tsx): icon + word,
+   dim until hovered, the main one in blue text, a narrow trash at the right end */
+.card-bar {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+
+/* Each as wide as its words, the space left shared out evenly (French words are longer) */
+.card-bar button {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.card-bar button + button {
+  border-left: 1px solid var(--border);
+}
+
+.card-bar button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.card-bar .primary {
+  color: var(--link);
+  font-weight: 600;
+}
+
+.card-bar .primary:hover {
+  color: var(--link);
+}
+
+.card-bar .card-bar-delete {
+  flex: 0 0 48px;
+}
+
+.card-bar .card-bar-delete:hover {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+}
+
 /* An email open to read (MailReader.tsx): fills the grown pop-up below any reminders; the
    mail scrolls in its frame. Sizes from the window's height: see "App scale" in CLAUDE.md. */
 .reminder-popup.reading {

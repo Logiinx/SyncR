@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Mail** (PC only)
+- **Better:** new email pop-up cards: subject first, sender’s letter, light buttons
+
 ## [1.2.3] - 2026-11-22
 
 **Video** (PC only)

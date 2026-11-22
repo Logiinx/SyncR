@@ -1,27 +1,30 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { plural, t } from './i18n'
-import { Mail, Trash2 } from 'lucide-react'
+import { Check, Mail, Trash2 } from 'lucide-react'
 import { loadAccounts } from './gmail'
 import type { MailAction, MailAlert } from './mailAlerts'
 import { DragRow } from './MailDrag'
 import { formatDue } from './reminders'
 import Spinner from './Spinner'
 
-// New emails in the desktop pop-up, below the reminders. Same card as a reminder's: a strip in
-// the account's color, when + which account, sender, subject, start of the text. A click on
-// the text opens the mail to read in the pop-up (MailReader.tsx). Mark as read (big) and Keep
-// unread (the card goes, the mail stays unread). A spinner after the account while a clicked
-// mail is still loading. Dragged left or right: the actions chosen in Settings → Alerts
-// (MailDrag.tsx); each one takes the card away, like its buttons.
+// New emails in the desktop pop-up, below the reminders (mockup H, mail-popup-cards.html): a
+// strip in the account's color, the sender's first letter in a circle of that color, sender +
+// when, the account (dot + address), the subject (bold until opened), 2 lines of the text. A
+// click on the text opens the mail to read in the pop-up (MailReader.tsx). A flat bar of
+// buttons at the bottom (MailBar). A spinner before the time while a clicked mail is still
+// loading. Dragged left or right: the actions chosen in Settings → Alerts (MailDrag.tsx); each
+// one takes the card away, like its buttons.
 const FOLD_FROM = 4 // this many or more: one "N new emails" card until unfolded
 
-function MailCard({ alert, fading, loading, onAction, onRead }: {
+function MailCard({ alert, fading, loading, single, onAction, onRead }: {
   alert: MailAlert
   fading: boolean // fading out by itself (ReminderPopup.tsx)
+  single: boolean // the only email: up to 4 lines of its text instead of 2 (mockup G)
   loading: boolean
   onAction: (action: MailAction) => void
   onRead: () => void
 }) {
+  const color = accountColor(alert.account) ?? 'var(--link)'
   return (
     <DragRow
       className="drag-card"
@@ -31,16 +34,58 @@ function MailCard({ alert, fading, loading, onAction, onRead }: {
         onAction(action === 'archive' ? 'mail-archive' : action === 'trash' ? 'mail-delete' : alert.opened ? 'mail-unread' : 'mail-read')
       }
     >
-      <div className={`reminder-alert${fading ? ' fading' : ''}`} style={{ borderLeftColor: accountColor(alert.account) }}>
+      <div
+        className={`reminder-alert mail-card${alert.opened ? ' opened' : ''}${single ? ' single' : ''}${fading ? ' fading' : ''}`}
+        style={{ borderLeftColor: color, '--account': color } as CSSProperties}
+      >
         <button className="reminder-alert-body" onClick={onRead} title={t('Read')}>
-          <MailWhen alert={alert}>{loading && <Spinner size={12} />}</MailWhen>
-          <span className="reminder-alert-text">{alert.from}</span>
-          <span className="mail-alert-subject">{alert.subject}</span>
+          <span className="mail-card-top">
+            <span className="mail-letter">{senderLetter(alert.from)}</span>
+            <span className="mail-card-who">
+              <span className="mail-card-line">
+                <span className="mail-card-from">{alert.from}</span>
+                <span className="mail-card-time">
+                  {loading && <Spinner size={12} />}
+                  {formatDue(alert.date)}
+                </span>
+              </span>
+              <span className="mail-card-account">
+                <span className="mail-dot" />
+                <span className="mail-alert-account">{alert.account}</span>
+              </span>
+            </span>
+          </span>
+          <span className="mail-card-subject">{alert.subject}</span>
           {alert.snippet && <span className="reminder-alert-note">{alert.snippet}</span>}
         </button>
-        <MailButtons opened={alert.opened} onAction={onAction} />
+        <MailBar opened={alert.opened} onAction={onAction} />
       </div>
     </DragRow>
+  )
+}
+
+// The sender's first letter or digit, in the round badge ("?" when there's none)
+function senderLetter(from: string) {
+  return [...from].find((c) => /[\p{L}\p{N}]/u.test(c))?.toUpperCase() ?? '?'
+}
+
+// A card's buttons as one flat bar across its bottom: a new mail: ✓ Mark as read (blue) · Keep
+// unread · trash; one already opened (so read): ✓ Done · Mark as unread · trash
+function MailBar({ opened, onAction }: { opened?: boolean; onAction: (action: MailAction) => void }) {
+  return (
+    <div className="card-bar">
+      <button className="primary" onClick={() => onAction(opened ? 'mail-close' : 'mail-read')}>
+        <Check size={15} />
+        {opened ? t('Done') : t('Mark as read')}
+      </button>
+      <button onClick={() => onAction(opened ? 'mail-unread' : 'mail-keep')}>
+        <Mail size={15} />
+        {opened ? t('Mark as unread') : t('Keep unread')}
+      </button>
+      <button className="card-bar-delete" onClick={() => onAction('mail-delete')} title={t('Delete')} aria-label={t('Delete')}>
+        <Trash2 size={15} />
+      </button>
+    </div>
   )
 }
 
@@ -137,6 +182,7 @@ export function MailCards({ alerts, fading, loadingKey = null, onAction, onRead 
           alert={alert}
           fading={fading.has(alert.key)}
           loading={alert.key === loadingKey}
+          single={alerts.length === 1}
           onAction={(action) => onAction(alert, action)}
           onRead={() => onRead(alert)}
         />
