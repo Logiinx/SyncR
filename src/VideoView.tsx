@@ -63,11 +63,6 @@ function orderButtonTitle(playlist: VideoPlaylist) {
 
 // Grid or list, this PC only; a switch in the bar like Games' Covers / List (user, 2026-11-19)
 type ListLayout = 'list' | 'grid'
-const listLayouts = (): { value: ListLayout; label: ReactNode; title: string }[] => [
-  { value: 'grid', label: <LayoutGrid size={15} />, title: t('Grid') },
-  { value: 'list', label: <ListIcon size={15} />, title: t('List') },
-]
-
 const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : undefined)
 
 // A row that folds what's under it: a channel's videos, a folder or a playlist. Videos can be dragged
@@ -1095,7 +1090,6 @@ function VideoView() {
             </select>
           )}
           <div className="reminders-tools">
-            <FillSwitch className="calendar-layouts" options={listLayouts()} value={layout} onChange={setLayout} />
             <button className={`reminders-refresh${search !== null ? ' on' : ''}`} aria-pressed={search !== null} title={t('Search (Ctrl+F)')} onClick={() => setSearch(search === null ? '' : null)}>
               <Search size={15} />
             </button>
@@ -1249,9 +1243,13 @@ function VideoView() {
                   { label: t('New folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: list === 'rewatch' ? REWATCH : list === 'music' ? MUSIC : null }) },
                 ]
               : [
+                  // How the list is laid out first, then what it shows
+                  { label: t('Grid'), icon: LayoutGrid, checked: layout === 'grid', onClick: () => setLayout('grid') },
+                  { label: t('List'), icon: ListIcon, checked: layout === 'list', onClick: () => setLayout('list') },
                   {
                     label: t('By channel'),
                     icon: ListTree,
+                    divider: true,
                     checked: grouped,
                     disabled: !anyFollowsOrVideos || shownChannel !== 'all' || list !== 'towatch',
                     hint: !anyFollowsOrVideos ? t('No follows yet') : list !== 'towatch' ? t('Only in To watch') : shownChannel !== 'all' ? t('Only with All follows') : t('Fold each channel’s videos into one row'),

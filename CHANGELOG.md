@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Changed:** Grid and List moved from the bar into the ⋯ menu
+
 ## [1.2.1] - 2026-11-22
 
 **Video** (PC only)

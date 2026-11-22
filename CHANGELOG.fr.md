@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Changé :** Grille et Liste passent de la barre au menu ⋯
+
 ## [1.2.1] - 2026-11-22
 
 **Vidéo** (PC uniquement)
