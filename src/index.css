@@ -5042,7 +5042,7 @@ button {
   }
 
   /* A connection's check: under its control, the row's line still across the whole row */
-  .dialog .settings-page .settings-row-status {
+  .dialog .settings-page .settings-row-status.under-field {
     width: auto;
     max-width: none;
     margin-left: 0;
@@ -5180,26 +5180,25 @@ button {
   width: 28px;
 }
 
-/* A connection's check under its row (RowStatus in SettingsCard.tsx): under a field, lined up with
-   it; under a button, on the right. The row's line goes under it instead. */
+/* A connection's check (RowStatus in SettingsCard.tsx): under a field, its own line lined up with
+   it (the row's line goes under it instead); for a button, a line under the row's name. */
 .dialog .settings-row-status {
-  margin: -4px 0 0 auto;
-  padding-bottom: 7px;
   overflow: hidden;
-  border-bottom: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 0.9em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.settings-row-status.under-field {
+.dialog .settings-row-status.under-field {
   width: min(var(--settings-field), 60%);
+  margin: -4px 0 0 auto;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border);
 }
 
-.settings-row-status.under-button {
-  width: fit-content;
-  max-width: 60%;
+.settings-row-status.under-name {
+  display: block;
 }
 
 .settings-row-status .spinner {
@@ -5216,8 +5215,8 @@ button {
 }
 
 .settings-page .settings-row:has(+ .settings-row-status),
-.settings-page .settings-row-status:last-child,
-.settings-page .settings-row-status:has(+ .settings-card-sub) {
+.settings-page .settings-row-status.under-field:last-child,
+.settings-page .settings-row-status.under-field:has(+ .settings-card-sub) {
   border-bottom: none;
 }
 
@@ -5389,8 +5388,7 @@ button {
     --settings-field: 100%;
   }
 
-  .settings-row-status.under-field,
-  .settings-row-status.under-button {
+  .dialog .settings-row-status.under-field {
     width: 100%;
   }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
-import { ModuleSwitch, RowStatus, SettingRow } from './SettingsCard'
+import { ModuleSwitch, SettingRow } from './SettingsCard'
 import InfoTip from './InfoTip'
 import ContextMenu from './ContextMenu'
 import PopupBell from './PopupBell'
@@ -125,12 +125,14 @@ function GmailPart() {
           )}
         </SettingRow>
       ))}
-      <SettingRow label={t('New emails in Primary')}>
+      <SettingRow
+        label={t('New emails in Primary')}
+        status={status ? { ok: !!message?.ok, text: status, busy: busy && isTauri() } : null}
+      >
         <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add()}>
           {t('Add account…')}
         </button>
       </SettingRow>
-      {status && <RowStatus ok={!!message?.ok} text={status} busy={busy && isTauri()} under="button" />}
       {colorMenu && (
         <ContextMenu
           x={colorMenu.x}
@@ -156,12 +158,15 @@ function GmailPart() {
               spellCheck={false}
             />
           </SettingRow>
-          <SettingRow label={t('Pub/Sub permission')} value={collector?.email ?? t('not yet')}>
+          <SettingRow
+            label={t('Pub/Sub permission')}
+            value={collector?.email ?? t('not yet')}
+            status={instant.text ? instant : null}
+          >
             <button className="setting-button" disabled={busy || !isComplete(proxy)} onClick={() => add(true)}>
               {t('Sign in…')}
             </button>
           </SettingRow>
-          {instant.text && <RowStatus ok={instant.ok} text={instant.text} under="button" />}
         </>
       )}
     </>

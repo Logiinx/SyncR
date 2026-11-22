@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Petites corrections :** Paramètres : état de connexion sous son nom
+
 ## [1.1.1] - 2026-11-22
 
 **Application**

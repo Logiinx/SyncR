@@ -1004,14 +1004,14 @@ function CalendarRow() {
   }
 
   return (
-    <>
-      <SettingRow label={t('Google Calendar')}>
-        <button className="setting-button" disabled={busy || (!connected && !isComplete(proxy))} onClick={toggle}>
-          {connected ? t('Disconnect') : t('Connect…')}
-        </button>
-      </SettingRow>
-      <RowStatus ok={connected} text={status} busy={busy && !connected && isTauri()} under="button" />
-    </>
+    <SettingRow
+      label={t('Google Calendar')}
+      status={{ ok: connected, text: status, busy: busy && !connected && isTauri() }}
+    >
+      <button className="setting-button" disabled={busy || (!connected && !isComplete(proxy))} onClick={toggle}>
+        {connected ? t('Disconnect') : t('Connect…')}
+      </button>
+    </SettingRow>
   )
 }
 

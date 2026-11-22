@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Small fixes:** Settings: connection state under its name
+
 ## [1.1.1] - 2026-11-22
 
 **App**
