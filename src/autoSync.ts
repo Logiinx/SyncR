@@ -16,6 +16,7 @@ import { playSyncSign } from './syncSign'
 export type SyncStatus = 'off' | 'synced' | 'syncing' | 'pending' | 'offline' | 'error'
 
 const EDIT_DELAY_MS = 1000
+const SAVE_DELAY_MS = 500 // note and card editors save this long after the last key
 const RETRY_SOON_MS = 3000
 const RETRY_LATER_MS = 60_000
 const FOCUS_MIN_GAP_MS = 5000 // no new sync on focus if the last one was this recent
@@ -285,17 +286,26 @@ async function poll() {
 // ---------- Events ----------
 
 function onLocalChange() {
+  markChanged(EDIT_DELAY_MS)
+}
+
+// Something changed or is about to (typing, not saved yet): blue cloud, sync after the delay
+function markChanged(delay: number) {
   buzzWanted = false // editing again: no buzz until the editor is left again (syncSoon)
   window.clearTimeout(signTimer) // changed again: the sign waits for the sync that follows
-  if (!running) setStatus('pending')
-  else changedDuringSync = true
-  syncAfter(EDIT_DELAY_MS)
+  if (running) changedDuringSync = true
+  else if (status !== 'pending') setStatus('pending') // once, not at every key
+  syncAfter(delay)
 }
 
 // Any typing (note, card, text box). Saves come only 0.5 s after the last key, so they can't
 // tell that the user is typing again.
-function onTyped() {
+function onTyped(event: Event) {
   lastTypedAt = Date.now() // a waiting sign waits longer (signWhenQuiet checks again)
+  // In a note or card: the cloud turns blue at the first key (user 2026-11-23: blue = something
+  // waiting), not at the save. The save that follows syncs as usual; this delay only covers a
+  // key that changed nothing to save, so the cloud can't stay blue.
+  if (event.target instanceof Element && event.target.closest('.tiptap')) markChanged(EDIT_DELAY_MS + SAVE_DELAY_MS)
 }
 
 function onVisible() {
