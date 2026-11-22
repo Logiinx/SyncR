@@ -133,7 +133,9 @@ const media = {
     const level = hls?.levels[hls.currentLevel]
     const extra = []
     if (level) extra.push(level.url[0]?.includes('/chunked/') ? labels.infoOriginal : labels.infoCopy)
-    if (mutedSound) extra.push(mutedSound === 'uncut' ? labels.infoUncut : mutedText())
+    if (someBorrowed) extra.push(labels.infoBorrowed)
+    if (mutedSound === 'muted') extra.push(mutedText())
+    else if (mutedSound === 'uncut' && !someBorrowed) extra.push(labels.infoUncut)
     return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
   },
   switchingTo: () => (stillSwitching() ? levelName(hls.levels[switchingTo]) : ''),
@@ -451,12 +453,94 @@ const UNCUT_MARGIN = 5000 // ms
 const UNCUT_PATIENCE = [6000, 60000] // ms
 const pieceChecks = new Map() // muted piece's address → its check
 const uncutPieces = new Set() // the muted pieces whose sound is still there
+const borrowedPieces = new Set() // those whose sound is gone, but still there in another quality (DONORS)
+const soundNowhere = new Set() // those whose check found no sound in any quality
+const donorOf = new Map() // muted piece → the other quality's piece whose check found the sound
 const playedPieces = new Set() // the muted pieces whose download answered (it outranks their check)
+// A muted piece's state: 'uncut' (its own sound), 'borrowed' (another quality's) or 'muted'
+const soundOf = (url) => (uncutPieces.has(url) ? 'uncut' : borrowedPieces.has(url) ? 'borrowed' : 'muted')
+function setSound(url, state) {
+  uncutPieces.delete(url)
+  borrowedPieces.delete(url)
+  if (state === 'uncut') uncutPieces.add(url)
+  if (state === 'borrowed') borrowedPieces.add(url)
+}
+
+// ---- Sound from another quality -----------------------------------------------------------------
+// Twitch deletes the original sound of each quality on its own schedule (probe 2026-11-22: a 3 h
+// old video had lost it in 55 of its original's 234 muted pieces, all 55 still had it in another
+// quality), and the same piece starts at the same moment in every quality. So a piece whose own
+// sound is gone keeps its picture and takes the sound of the same piece in another quality.
+// Older videos (.ts) only: newer ones (.mp4) are harder to put together, and lost it all sooner.
+// Full sound first (audio_only's pieces are tiny, ~0.3 MB), the weaker sound of the small
+// qualities (~64 kb/s instead of ~160) last. Not 1080p and the original: big downloads.
+const DONORS = ['audio_only', '480p30', '720p30', '720p60', '360p30', '160p30']
+// The same piece in the other qualities, in that order (named "-muted", like the piece)
+function donorsFor(url) {
+  const [, folder, number, kind] = url.match(MUTED_PIECE) || []
+  if (kind !== 'ts' || !hls) return []
+  const quality = folder.split('/').at(-2)
+  const base = folder.slice(0, folder.length - quality.length - 1)
+  // Only qualities the video has (audio_only is never listed, but always made)
+  const listed = new Set(hls.levels.map((level) => level.url[0]?.split('/').at(-2)))
+  return DONORS.filter((one) => one !== quality && (one === 'audio_only' || listed.has(one))).map((one) => `${base}${one}/${number}-muted.ts`)
+}
+
+// MPEG-TS pieces are 188-byte packets, each tagged with the number of its stream (PID). A table
+// (PMT, found through the PAT, stream 0) tells which stream is the sound (AAC, type 0x0F).
+const PACKET = 188
+function soundStream(bytes) {
+  let table = -1
+  for (let at = 0; at + PACKET <= bytes.length; at += PACKET) {
+    if (bytes[at] !== 0x47) return -1
+    if (!(bytes[at + 1] & 0x40)) continue // not the start of something
+    const stream = ((bytes[at + 1] & 0x1f) << 8) | bytes[at + 2]
+    const field = (bytes[at + 3] >> 4) & 3
+    if (field === 2) continue // no content
+    let p = at + 4 + (field === 3 ? 1 + bytes[at + 4] : 0)
+    p += 1 + bytes[p] // where the table starts
+    if (stream === 0) table = ((bytes[p + 10] & 0x1f) << 8) | bytes[p + 11]
+    else if (stream === table) {
+      const end = p + 3 + (((bytes[p + 1] & 0x0f) << 8) | bytes[p + 2]) - 4
+      for (let q = p + 12 + (((bytes[p + 10] & 0x0f) << 8) | bytes[p + 11]); q + 5 <= end; q += 5 + (((bytes[q + 3] & 0x0f) << 8) | bytes[q + 4])) {
+        if (bytes[q] === 0x0f) return ((bytes[q + 1] & 0x1f) << 8) | bytes[q + 2]
+      }
+      return -1
+    }
+  }
+  return -1
+}
+// The muted piece without its sound, then the other quality's sound renamed to its stream: hls.js
+// reads each stream on its own, so their order doesn't matter. null if either can't be read.
+function withSoundOf(picture, sound) {
+  const a = new Uint8Array(picture)
+  const b = new Uint8Array(sound)
+  const keep = soundStream(a)
+  const take = soundStream(b)
+  if (keep < 0 || take < 0 || a.length % PACKET || b.length % PACKET) return null
+  const out = new Uint8Array(a.length + b.length)
+  let size = 0
+  const streamAt = (bytes, at) => ((bytes[at + 1] & 0x1f) << 8) | bytes[at + 2]
+  for (let at = 0; at < a.length; at += PACKET) {
+    if (streamAt(a, at) === keep) continue
+    out.set(a.subarray(at, at + PACKET), size)
+    size += PACKET
+  }
+  for (let at = 0; at < b.length; at += PACKET) {
+    if (streamAt(b, at) !== take) continue
+    out.set(b.subarray(at, at + PACKET), size)
+    out[size + 1] = (out[size + 1] & 0xe0) | (keep >> 8)
+    out[size + 2] = keep & 0xff
+    size += PACKET
+  }
+  return out.buffer.slice(0, size)
+}
 // Muted piece played muted → why: { why: 'refused' (both copies refused) or 'slow' (no answer in
 // time, Twitch busy), codes: Twitch's answers, 'timeout' when none came }
 const mutedWhy = new Map()
 let soundTold = false
 let mutedSound = '' // the quality playing has muted parts: 'uncut' (all with their sound) or 'muted'
+let someBorrowed = false // some of them with another quality's sound
 let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't always list it)
 
 // Only whether it's there (/has/: its headers, video_window.rs), never a part of it: Twitch refuses
@@ -466,27 +550,35 @@ let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't
 const checkAddress = (url, way) => wayAddress(url, way).replace(/\/v(-plain)?\//, '/has$1/') // the first one: the route (full addresses)
 const CHECK_RETRIES = 2
 const CHECK_AGAIN_AFTER = 10000 // ms
+// Its own sound first, then the other qualities' (DONORS)
 async function askHas(url) {
   let again = false
-  for (const way of waysFor(url)) {
-    const status = await fetch(checkAddress(url, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
-    if (status >= 200 && status < 300) return { way }
-    if (passing(status)) again = true
+  for (const piece of [url, ...donorsFor(url)]) {
+    for (const way of waysFor(piece)) {
+      const status = await fetch(checkAddress(piece, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
+      if (status >= 200 && status < 300) return { piece, way }
+      if (passing(status)) again = true
+    }
   }
   return { again }
 }
 function checkPiece(url, tries = 0) {
   if (!pieceChecks.has(url)) {
     asking.add(url)
-    pieceChecks.set(url, askHas(url).then(({ way, again }) => {
+    pieceChecks.set(url, askHas(url).then(({ piece, way, again }) => {
       asking.delete(url)
       if (playedPieces.has(url)) return // its download answered meanwhile, which outranks a check
-      if (way !== undefined) {
-        uncutPieces.add(url)
+      soundNowhere.delete(url)
+      if (piece) {
+        setSound(url, piece === url ? 'uncut' : 'borrowed')
+        if (piece !== url) donorOf.set(url, piece)
         soundSeen.set(url, performance.now())
-        noteWay(url, way)
+        noteWay(piece, way)
       } else if (again) recheckPiece(url, tries)
-      else uncutPieces.delete(url) // asked again (recheckAhead): its sound is gone by now
+      else {
+        setSound(url, 'muted') // asked again (recheckAhead): its sound is gone by now
+        soundNowhere.add(url)
+      }
     }))
   }
   return pieceChecks.get(url)
@@ -521,7 +613,7 @@ function recheckAhead(from, all = false) {
   if (all) allRecheckAt = performance.now()
   const pieces = playingLevel()?.details?.fragments ?? []
   const old = (one) => all || performance.now() - (soundSeen.get(one.url) ?? 0) > RECHECK_AFTER - RECHECK_MARGIN
-  const stale = pieces.filter((one) => uncutPieces.has(one.url) && !playedPieces.has(one.url) && !asking.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
+  const stale = pieces.filter((one) => soundOf(one.url) !== 'muted' && !playedPieces.has(one.url) && !asking.has(one.url) && one.start + one.duration > from && one.start < from + RECHECK_AHEAD[all ? 1 : 0] && old(one))
   if (!stale.length) return
   for (const one of stale) pieceChecks.delete(one.url)
   checkUncut(pieces)
@@ -559,9 +651,11 @@ function playingFolder() {
 // Its muted parts
 function drawMuted() {
   const muted = (playingLevel()?.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
-  const silent = muted.filter((one) => !uncutPieces.has(one.url))
+  const silent = muted.filter((one) => soundOf(one.url) === 'muted')
+  const borrowed = muted.filter((one) => soundOf(one.url) === 'borrowed')
   mutedSound = !muted.length ? '' : silent.length ? 'muted' : 'uncut'
-  noteMutedParts(silent, playingLevel()?.details?.totalduration)
+  someBorrowed = borrowed.length > 0
+  noteMutedParts(silent, playingLevel()?.details?.totalduration, borrowed)
   if (silent.length < muted.length && !soundTold) {
     soundTold = true
     tellBar('sound')
@@ -611,7 +705,10 @@ class PieceLoader extends Hls.DefaultConfig.loader {
         tries.pause *= 2
         return
       }
-      this.heard(context, false, { why: tries.ways.length ? 'slow' : 'refused', codes: [...tries.codes] })
+      const why = { why: tries.ways.length ? 'slow' : 'refused', codes: [...tries.codes] }
+      // Its own sound is gone: another quality's, if one still has it
+      if (why.why === 'refused') return this.borrow(context, config, callbacks, why)
+      this.heard(context, 'muted', why)
       return super.load(context, config, callbacks)
     }
     const way = tries.ways[index]
@@ -629,7 +726,7 @@ class PieceLoader extends Hls.DefaultConfig.loader {
       ...callbacks,
       onSuccess: (response, stats, _, details) => {
         noteWay(context.url, way)
-        this.heard(context, true)
+        this.heard(context, 'uncut')
         Object.assign(this.stats, stats)
         callbacks.onSuccess(response, this.stats, context, details)
       },
@@ -637,27 +734,57 @@ class PieceLoader extends Hls.DefaultConfig.loader {
       onTimeout: () => failed('timeout'),
     })
   }
-  heard(context, sound, why) {
+  // The same piece's sound from another quality (DONORS), the one its check found first, put into
+  // this piece's picture. None has it (or the check found it nowhere): the muted piece as it is.
+  async borrow(context, config, callbacks, why) {
+    const donors = soundNowhere.has(context.url) ? [] : donorsFor(context.url)
+    const known = donorOf.get(context.url)
+    if (donors.includes(known)) donors.sort((a, b) => (b === known) - (a === known))
+    const stop = (this.borrowing = new AbortController())
+    for (const donor of donors) {
+      for (const way of waysFor(donor)) {
+        const answer = await fetch(wayAddress(donor, way), { signal: stop.signal }).catch(() => null)
+        const sound = answer?.ok ? await answer.arrayBuffer().catch(() => null) : null
+        if (this.stopped) return
+        if (!sound) continue
+        noteWay(donor, way)
+        return super.load(context, config, {
+          ...callbacks,
+          onSuccess: (response, stats, loaded, details) => {
+            const mixed = withSoundOf(response.data, sound)
+            this.heard(context, mixed ? 'borrowed' : 'muted', why)
+            callbacks.onSuccess(mixed ? { ...response, data: mixed } : response, stats, loaded, details)
+          },
+        })
+      }
+    }
+    this.heard(context, 'muted', why)
+    super.load(context, config, callbacks)
+  }
+  // state: 'uncut' (its own sound), 'borrowed' or 'muted'; why: { why, codes } when its own was refused
+  heard(context, state, why) {
     playedPieces.add(context.url)
-    if (sound) mutedWhy.delete(context.url)
-    else mutedWhy.set(context.url, why)
+    if (state === 'muted') mutedWhy.set(context.url, why)
+    else mutedWhy.delete(context.url)
     pieceChecks.set(context.url, Promise.resolve()) // no check needed any more
-    if (sound === uncutPieces.has(context.url)) return
-    if (sound) uncutPieces.add(context.url)
-    else uncutPieces.delete(context.url)
+    const before = soundOf(context.url)
+    if (state === before) return
+    setSound(context.url, state)
     drawMutedSoon()
-    // Its check said the sound was there, and it's gone: the next pieces' checks are stale too
-    if (why?.why === 'refused' && context.frag) recheckAhead(context.frag.start, true)
+    // Its check said there was sound, and its own is gone: the next pieces' checks are stale too
+    if (before !== 'muted' && why?.why === 'refused' && context.frag) recheckAhead(context.frag.start, true)
   }
   abort() {
     this.stopped = true
     clearTimeout(this.retry)
+    this.borrowing?.abort()
     this.inner?.abort()
     super.abort()
   }
   destroy() {
     this.stopped = true
     clearTimeout(this.retry)
+    this.borrowing?.abort()
     this.inner?.destroy()
     this.inner = null
     super.destroy()

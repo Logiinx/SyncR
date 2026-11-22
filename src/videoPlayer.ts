@@ -262,6 +262,8 @@ function twitchPlayerAddress(video: PlayableVideo) {
       skipMuted: t('Skip muted part'),
       // In the bar's tip over a muted part, before its length ("Muted part · 3:30")
       mutedPart: t('Muted part'),
+      // The same for a muted part playing with the sound of another quality's copy (green)
+      borrowedPart: t('Sound from another quality'),
       soundBack: t('Sound back in {time}'),
       gameChanges: t('Game changes'),
       games: t('Games'),
@@ -281,6 +283,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
       infoCopy: t('Twitch copy'),
       infoMuted: t('muted parts'),
       infoUncut: t('original sound|muted parts'),
+      infoBorrowed: t('sound from another quality|muted parts'),
       // Why the pieces played muted ({why} = the counts below, joined by commas, each with Twitch's
       // answers in brackets). Pairs: [one, more]
       infoMutedWhy: t('muted parts: {why}'),

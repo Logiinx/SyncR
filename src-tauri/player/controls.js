@@ -214,12 +214,14 @@ function playerControls(env, media) {
   video.addEventListener('durationchange', drawHeat)
   const setGaps = (list) => { gaps = list; drawParts() }
   const setMarked = (list) => { marked = list; drawParts() }
-  // The marked part drawn at that second (for the tip): a short one counts as wide as it's drawn
+  // The marked part drawn at that second (for the tip): a short one counts as wide as it's drawn,
+  // unless another part is really there (two kinds of parts can touch, Twitch's muted ones)
   function markedAt(seconds) {
     const length = media.duration()
     if (!length) return null
     const least = (MARKED_MIN / ($('track').clientWidth || 1)) * length
-    return marked.find((part) => seconds >= part.start && seconds < Math.max(part.end, part.start + least)) || null
+    return marked.find((part) => seconds >= part.start && seconds < part.end)
+      || marked.find((part) => seconds >= part.start && seconds < Math.max(part.end, part.start + least)) || null
   }
   video.addEventListener('durationchange', drawParts)
 

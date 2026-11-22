@@ -15,20 +15,31 @@ const mutedGap = (length) => Math.min(60, Math.max(10, length * 0.002))
 
 // ---- Muted parts --------------------------------------------------------------------------------
 let mutedParts = []
+let borrowedParts = [] // muted parts playing with another quality's sound (player.js, DONORS)
 const MUTED_COLOR = 'var(--text-red, #f0716b)' // on the bar and in its tip
-// video_window.rs and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now
-// (.ts in older videos, .mp4 in newer ones)
-function noteMutedParts(pieces, length) {
+const BORROWED_COLOR = 'var(--text-green, #7ccb8c)' // the same, for parts with another quality's sound
+// Pieces close together as parts (mutedGap), never across one of walls (other parts). video_window.rs
+// and the stand-in rename "-unmuted" pieces, so they all end in "-muted" by now (.ts in older
+// videos, .mp4 in newer ones)
+function partsOf(pieces, gap, walls = []) {
   const parts = []
-  const gap = mutedGap(length || 0)
   for (const piece of pieces) {
     if (!/-muted\.(ts|mp4)$/.test(piece.relurl ?? '')) continue
     const last = parts[parts.length - 1]
     const end = piece.start + piece.duration
-    if (last && piece.start - last.end <= gap) last.end = end
+    const walled = last && walls.some((wall) => wall.start >= last.end && wall.start < piece.start)
+    if (last && !walled && piece.start - last.end <= gap) last.end = end
     else parts.push({ start: piece.start, end })
   }
-  mutedParts = parts
+  return parts
+}
+// pieces: silent ones; borrowed: those with another quality's sound. One inside a muted part
+// counts as muted, like a bit with its own sound there; a muted part cuts them in two.
+function noteMutedParts(pieces, length, borrowed = []) {
+  const gap = mutedGap(length || 0)
+  mutedParts = partsOf(pieces, gap)
+  const inMuted = (piece) => mutedParts.some((part) => piece.start >= part.start && piece.start < part.end)
+  borrowedParts = partsOf(borrowed.filter((piece) => !inMuted(piece)), gap, mutedParts)
   drawMarks()
   drawSkip()
 }
@@ -89,7 +100,10 @@ function gameAt(seconds) {
 
 // ---- Drawn on the bar (controls.js): muted parts in color, game changes as gaps ---------------------
 function drawMarks() {
-  setMarked(mutedParts.map((part) => ({ ...part, color: MUTED_COLOR })))
+  setMarked([
+    ...mutedParts.map((part) => ({ ...part, color: MUTED_COLOR, name: labels.mutedPart })),
+    ...borrowedParts.map((part) => ({ ...part, color: BORROWED_COLOR, name: labels.borrowedPart })),
+  ])
   setGaps(gamesShown() ? games.map((game) => game.at) : [])
 }
 
@@ -366,9 +380,10 @@ function fillTip(seconds) {
   const day = dayAt(seconds)
   $('tip-time').textContent = day ? `${clock(seconds)} · ${day}` : clock(seconds)
   showPicture(pictureAt(seconds))
-  // Over a muted part (red on the bar): its name and length, in the bar's red
-  const muted = markedAt(seconds)
-  tipLines(gameAt(seconds), muted && { color: MUTED_COLOR, text: `${labels.mutedPart} · ${clock(muted.end - muted.start)}` })
+  // Over a muted part (red on the bar) or one with another quality's sound (green): its name and
+  // length, in its color
+  const part = markedAt(seconds)
+  tipLines(gameAt(seconds), part && { color: part.color, text: `${part.name} · ${clock(part.end - part.start)}` })
 }
 
 // ---- Its part of the player's menu (player.js, drawMenu): a Miscellaneous row under Chat --------
