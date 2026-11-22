@@ -9028,9 +9028,28 @@ button.history-row.selected {
   color: var(--text);
 }
 
-/* The bell, on: new videos in the pop-up */
-.video-follow-row button.on {
+/* PopupBell.tsx: a pop-up on or off (Follows window rows, Gmail accounts in Settings) */
+.popup-bell {
+  display: flex;
+  flex-shrink: 0;
+  padding: 5px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.popup-bell:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.popup-bell.on,
+.popup-bell.on:hover {
   color: var(--text-yellow);
+}
+
+.popup-bell:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .video-follow-line {

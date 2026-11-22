@@ -3,11 +3,12 @@ import { isTauri } from '@tauri-apps/api/core'
 import { ModuleSwitch, RowStatus, SettingRow } from './SettingsCard'
 import InfoTip from './InfoTip'
 import ContextMenu from './ContextMenu'
+import PopupBell from './PopupBell'
 import { colorMenuItems } from './cardColors'
 import { t } from './i18n'
 import { setModuleOn, useModuleOn } from './modules'
 import { forgetAccountMail, mailTurned } from './mailAlerts'
-import { connectGmail, removeAccount, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
+import { connectGmail, removeAccount, setAccountAlerts, setAccountColor, setAccountEnabled, useGmailAccounts } from './gmail'
 import { loadProjectId, saveProjectId, useInstantStatus } from './instantMail'
 import { loadSafeSenders, removeSafeSender, SAFE_SENDERS_KEY } from './safeSenders'
 import { isComplete, useConnection } from './igdb'
@@ -37,7 +38,8 @@ export default function MailSection() {
 }
 
 // Gmail accounts (gmail.ts). Each account: its color (the strip on its pop-ups), address, Remove,
-// on/off (off: no pop-ups, not in the Mail tab). "Add account…" opens Google's sign-in like
+// its bell (off: no pop-up or sound, its new mail shows as missed), on/off (off: no pop-ups, not
+// in the Mail tab). "Add account…" opens Google's sign-in like
 // Calendar's (needs the proxy too).
 // Instant mail (instantMail.ts): the Google Cloud project ID, and a sign-in of the project's
 // owner (one of the accounts) with the Pub/Sub permission.
@@ -69,7 +71,7 @@ function GmailPart() {
       <h4 className="settings-card-sub">
         Gmail
         <InfoTip label={t('About the checkboxes')}>
-          {t("An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.")}
+          {t("An account's checkbox turns it on or off. On: its mail shows in the Mail tab. The bell: its new emails pop up with a sound. Bell off: they show as missed in the Mail tab instead.")}
         </InfoTip>
       </h4>
       {accounts.map((account) => (
@@ -102,6 +104,12 @@ function GmailPart() {
           >
             {t('Remove')}
           </button>
+          <PopupBell
+            on={account.alerts !== false}
+            onChange={(on) => setAccountAlerts(account.email, on)}
+            title={account.alerts !== false ? t('New emails in the pop-up: on') : t('New emails in the pop-up: off')}
+            disabled={!account.enabled || account.expired}
+          />
           {account.expired ? (
             // The instant mail account asks for the Pub/Sub permission again, or it would lose it
             <button className="setting-button" disabled={busy} onClick={() => add(account.pubsub)}>

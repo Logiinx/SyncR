@@ -20,6 +20,7 @@ export interface GmailAccount {
   refreshToken: string
   color: string // a palette name (var(--text-<name>)): the strip on its pop-up cards
   enabled: boolean // off: not checked for new mail
+  alerts?: boolean // false: no pop-up or sound for its new mail, which shows as missed (Mail tab)
   expired?: boolean // Google refused the sign-in (e.g. access removed): sign in again
   pubsub?: boolean // signed in with the Pub/Sub permission: collects instant mail's signals
 }
@@ -44,6 +45,7 @@ function updateAccount(email: string, change: Partial<GmailAccount>) {
 }
 
 export const setAccountEnabled = (email: string, enabled: boolean) => updateAccount(email, { enabled })
+export const setAccountAlerts = (email: string, alerts: boolean) => updateAccount(email, { alerts })
 export const setAccountColor = (email: string, color: string) => updateAccount(email, { color })
 
 // Forgets the account on this device (its stored emails: forgetAccountMail in mailAlerts.ts).

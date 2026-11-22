@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { Bell, Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
+import PopupBell from './PopupBell'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
@@ -414,14 +415,11 @@ export function FollowsWindow({ onClose }: { onClose: () => void }) {
                   </span>
                 </span>
                 {/* A pop-up card for each new video (PC): lit when on */}
-                <button
-                  className={follow.notify ? 'on' : undefined}
-                  onClick={() => void setFollowNotify(follow.id, !follow.notify)}
+                <PopupBell
+                  on={!!follow.notify}
+                  onChange={(on) => void setFollowNotify(follow.id, on)}
                   title={follow.notify ? t('New videos in the pop-up: on') : t('New videos in the pop-up: off')}
-                  aria-pressed={!!follow.notify}
-                >
-                  <Bell size={15} fill={follow.notify ? 'currentColor' : 'none'} />
-                </button>
+                />
                 <button onClick={() => setEditing(follow)} title={t('Edit')}>
                   <Pencil size={15} />
                 </button>

@@ -178,6 +178,12 @@ export async function checkMail() {
     // Cards of accounts that were removed, turned off or signed out go
     let alerts = loadMailAlerts().filter((alert) => accounts.some((a) => a.email === alert.account))
     let missed = loadMissed().filter((key) => accounts.some((a) => key.startsWith(`mail:${a.email}:`)))
+    // Accounts whose alerts are off (Settings → Mail, the bell): their new mail counts as missed
+    // right away instead of popping up. Cards already there go the same way (not one open to read)
+    const quiet = new Set(accounts.filter((a) => a.alerts === false).map((a) => a.email))
+    const hushed = alerts.filter((alert) => quiet.has(alert.account) && !alert.opened)
+    alerts = alerts.filter((alert) => !hushed.includes(alert))
+    missed = [...new Set([...hushed.map((alert) => alert.key), ...missed])]
     let anyChange = false
     for (const { email } of accounts) {
       try {
@@ -195,8 +201,9 @@ export async function checkMail() {
         const fresh = known ? unread.filter((m) => !known.includes(m.id)).slice(0, MAX_NEW) : [] // first check: none
         const since = checked[email] ? checked[email] - ARRIVAL_MARGIN_MS : 0
         const added = (await Promise.all(fresh.map((m) => fetchAlert(email, m.id)))).filter((a) => a.date > since)
+        if (quiet.has(email)) missed = [...new Set([...added.map((alert) => alert.key), ...missed])]
         alerts = [
-          ...added,
+          ...(quiet.has(email) ? [] : added),
           // Read since (anywhere): its card goes, unless it's open to read
           ...alerts.filter((alert) => alert.account !== email || alert.opened || unreadIds.has(alert.id)),
         ]

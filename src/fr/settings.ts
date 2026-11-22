@@ -132,8 +132,10 @@ export const settings = {
   Disconnect: 'Déconnecter',
   'Connect…': 'Connecter…',
   'About the checkboxes': 'À propos des cases à cocher',
-  "An account's checkbox turns it on or off. On: its new emails pop up, and its mail shows in the Mail tab.":
-    'La case d’un compte l’active ou le désactive. Activé : ses nouveaux e-mails s’affichent en pop-up et son courrier apparaît dans l’onglet Mail.',
+  "An account's checkbox turns it on or off. On: its mail shows in the Mail tab. The bell: its new emails pop up with a sound. Bell off: they show as missed in the Mail tab instead.":
+    'La case d’un compte l’active ou le désactive. Activé : son courrier apparaît dans l’onglet Mail. La cloche : ses nouveaux e-mails s’affichent en pop-up avec un son. Cloche désactivée : ils apparaissent comme manqués dans l’onglet Mail.',
+  'New emails in the pop-up: on': 'Nouveaux e-mails en pop-up : activé',
+  'New emails in the pop-up: off': 'Nouveaux e-mails en pop-up : désactivé',
   'signed out': 'déconnecté',
   'Sign in…': 'Se connecter…',
   'Emails from {email}': 'E-mails de {email}',

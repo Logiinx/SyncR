@@ -14,6 +14,9 @@ All notable changes to SyncR. Newest version first.
 - **Changed:** Steam, Gmail and Google Calendar are set up in their own section
 - **Small fixes:** unavailable Settings buttons look grayed
 
+**Mail** (PC only)
+- **New:** a bell next to each address turns its pop-ups and sound off
+
 **Video** (PC only)
 - **Better:** Move to the other screen: its arrow points to the screen it goes to
 - **Changed:** player's top bar: Watched (with its name) and a ⋯ menu on the left

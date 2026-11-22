@@ -14,6 +14,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Changé :** Steam, Gmail et Google Agenda se règlent dans leur propre section
 - **Petites corrections :** boutons indisponibles des Paramètres grisés
 
+**Mail** (PC uniquement)
+- **Nouveau :** une cloche à côté de chaque adresse coupe ses pop-ups et son son
+
 **Vidéo** (PC uniquement)
 - **Amélioré :** Déplacer vers l’autre écran : sa flèche montre l’écran où il va
 - **Changé :** barre du lecteur : Vue (avec son nom) et un menu ⋯ à gauche
