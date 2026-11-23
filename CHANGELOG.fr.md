@@ -4,6 +4,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** supprimer plusieurs vidéos sélectionnées d’un coup, avec la corbeille de la barre
+- **Nouveau :** sélectionner plusieurs vidéos dans Vues aussi
+
 ## [1.2.8] - 2026-11-23
 
 **Vidéo** (PC uniquement)

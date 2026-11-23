@@ -4,6 +4,10 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** delete several selected videos at once, with the bin in the selection bar
+- **New:** select several videos in Watched too
+
 ## [1.2.8] - 2026-11-23
 
 **Video** (PC only)

@@ -393,6 +393,8 @@ function VideoView() {
   const pickStart = useRef<string | null>(null)
   const [pickFolders, setPickFolders] = useState<{ x: number; y: number } | null>(null)
   const [deleting, setDeleting] = useState<VideoFolder | null>(null)
+  // Picked videos to delete, once the bar's bin is clicked (asks first: gone on every device)
+  const [deletingPicks, setDeletingPicks] = useState<{ videos: FeedVideo[]; skipped: boolean } | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
@@ -545,7 +547,7 @@ function VideoView() {
   const upNextOf = (video: FeedVideo, siblings: FeedVideo[]): UpNext[] =>
     siblings.slice(siblings.indexOf(video) + 1).filter((other) => !other.gone && (list === 'watched' || !other.watched)).map((other) => ({ video: other }))
   // The rows shown in this render that can be picked: a pick whose row went (folded, watched...)
-  // no longer counts. Not in Watched (user).
+  // no longer counts. Watched too (user, 2026-11-23).
   const pickRows = new Map<string, { video: FeedVideo; episode: boolean }>()
   const dropPicks = () => {
     pickStart.current = null
@@ -571,7 +573,7 @@ function VideoView() {
     })
   }
   function pickOf(video: FeedVideo, playlistId?: string, queued?: string): RowPick | undefined {
-    if (list === 'watched' || video.gone) return undefined
+    if (video.gone) return undefined
     const key = rowKey(video.id, playlistId, queued)
     pickRows.set(key, { video, episode: !!playlistId })
     return { on: picks.has(key), many: picks.size > 1, click: clickPick, drop: dropPicks }
@@ -1032,6 +1034,8 @@ function VideoView() {
   const pickedToQueue = pickedVideos.filter((video) => !queuedIds.has(video.id) && !video.watched)
   const pickedInQueue = pickedVideos.filter((video) => queuedIds.has(video.id))
   const pickedUnwatched = pickedVideos.filter((video) => !video.watched)
+  // Delete skips a playlist's videos: they belong to it
+  const pickedDeletable = picked.filter(({ episode }) => !episode).map(({ video }) => video)
   const pickedFolders = picked.some(({ episode }) => episode)
     ? t('A playlist’s videos stay in it')
     : pickedVideos.some((video) => video.music) && pickedVideos.some((video) => !video.music)
@@ -1148,7 +1152,7 @@ function VideoView() {
                 <button
                   className="reminders-refresh"
                   disabled={!pickedUnwatched.length}
-                  title={pickedUnwatched.length ? (list === 'music' ? t('Done: remove from Music') : t('Mark as watched')) : t('Already watched')}
+                  title={pickedUnwatched.length ? (list === 'music' ? t('Done: remove from Music') : t('Mark as watched')) : plural(picked.length, 'Already watched', 'All already watched')}
                   onClick={pickAction(() => {
                     const songs = pickedUnwatched.filter((video) => video.music)
                     if (songs.length) void clearWatched(pickedIds(songs))
@@ -1184,6 +1188,14 @@ function VideoView() {
                   }}
                 >
                   <FolderInput size={15} />
+                </button>
+                <button
+                  className="reminders-refresh"
+                  disabled={!pickedDeletable.length}
+                  title={pickedDeletable.length ? t('Delete') : t('A playlist’s videos stay in it')}
+                  onClick={() => setDeletingPicks({ videos: pickedDeletable, skipped: pickedDeletable.length < picked.length })}
+                >
+                  <Trash2 size={15} />
                 </button>
                 <button className="reminders-refresh" title={t('Deselect all')} onClick={dropPicks}>
                   <X size={15} />
@@ -1442,6 +1454,23 @@ function VideoView() {
             onConfirm: () => void deleteFolder(deleting.id),
           }}
           onClose={() => setDeleting(null)}
+        />
+      )}
+      {deletingPicks && (
+        <Dialog
+          request={{
+            title: plural(deletingPicks.videos.length, 'Delete {n} video?', 'Delete {n} videos?'),
+            message:
+              plural(deletingPicks.videos.length, 'It’s gone on every device.', 'They’re gone on every device.') +
+              (deletingPicks.skipped ? ' ' + t('Playlist videos stay in their playlist.') : ''),
+            confirmLabel: t('Delete'),
+            danger: true,
+            onConfirm: () => {
+              void clearWatched(pickedIds(deletingPicks.videos))
+              dropPicks()
+            },
+          }}
+          onClose={() => setDeletingPicks(null)}
         />
       )}
       {markingAll && videos && (
