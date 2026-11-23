@@ -2,6 +2,7 @@ import { useEditorState, type Editor } from '@tiptap/react'
 import { t } from './i18n'
 import { Ban } from 'lucide-react'
 import { COLORS } from './cardColors'
+import { useBack } from './backStack'
 
 const textColor = (id: string) => `var(--text-${id})`
 export const highlightColor = (id: string) => `var(--hl-${id})`
@@ -28,8 +29,10 @@ export const currentTextColor = (editor: Editor) =>
   COLORS.find(({ id }) => editor.getAttributes('textStyle').color === textColor(id))?.id
 
 // Two rows of swatches: text color, then highlighter. The first swatch of each row removes it.
-// Cards only get the text color row (highlights = false).
+// Cards only get the text color row (highlights = false). Back (backStack.ts) closes it too:
+// every place that shows it closes it on onPicked.
 function ColorPicker({ editor, onPicked, highlights = true }: { editor: Editor; onPicked: () => void; highlights?: boolean }) {
+  useBack(onPicked)
   const { color, highlight } = useEditorState({
     editor,
     selector: ({ editor }) => ({

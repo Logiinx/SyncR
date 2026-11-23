@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Back (phone gesture, mouse side button) closes menus and windows
+- **New:** Back (phone gesture, mouse side button) closes menus, windows, side panels
 
 **Sync**
 - **Better:** the sync sign shows once you stop typing, not at every pause

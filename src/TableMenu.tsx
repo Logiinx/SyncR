@@ -13,6 +13,7 @@ import {
 import { currentZoom } from './appearance'
 import { COLORS } from './cardColors'
 import { highlightColor } from './ColorPicker'
+import { useBack } from './backStack'
 
 interface Props {
   editor: Editor
@@ -25,13 +26,14 @@ const MENU_WIDTH = 230
 const MENU_HEIGHT = 390 // roughly, to keep it inside the window
 
 // Right-click (long press on a phone) in a table: rows, columns, header row, cell color.
-// Works on the cell under the mouse, or on all selected cells.
+// Works on the cell under the mouse, or on all selected cells. Escape or Back (backStack.ts) closes it.
 function TableMenu({ editor, x, y, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  useBack(onClose)
 
   const chain = () => editor.chain().focus()
   const run = (action: () => void) => () => {

@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { t, textKey, type TextKey } from './i18n'
 import { Extension, ReactRenderer, type ChainedCommands, type Editor } from '@tiptap/react'
 import { PluginKey } from '@tiptap/pm/state'
-import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
+import { Suggestion, exitSuggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
 import {
   FoldVertical,
   Heading1,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { currentZoom } from './appearance'
 import { closeCopy } from './animations'
+import { pushBack } from './backStack'
 
 // Type "/" at the start of a line or after a space: a menu to insert a block. Typing more
 // filters it ("/tab" → Table), ↑ ↓ choose, Enter inserts, Esc closes. Not inside code.
@@ -83,14 +84,40 @@ export function mountPopup(props: SuggestionProps<any, any>, element: HTMLElemen
   })
 }
 
+// Back (phone gesture, mouse button: backStack.ts) closes a "/" or "[[" popup, like Escape.
+// Only while it lists something: with no match it's empty and unseen, and Back would seem to
+// do nothing.
+export function popupBack(key: PluginKey) {
+  let remove: (() => void) | undefined
+  return {
+    update(props: SuggestionProps<any, any>) {
+      const shows = props.items.length > 0
+      if (shows && !remove) {
+        remove = pushBack(() => {
+          remove = undefined
+          exitSuggestion(props.editor.view, key)
+        })
+      } else if (!shows && remove) {
+        remove()
+        remove = undefined
+      }
+    },
+    end() {
+      remove?.()
+      remove = undefined
+    },
+  }
+}
+
 export const SlashMenu = Extension.create({
   name: 'slashMenu',
 
   addProseMirrorPlugins() {
+    const slashKey = new PluginKey('slashMenu')
     return [
       Suggestion<SlashItem, SlashItem>({
         editor: this.editor,
-        pluginKey: new PluginKey('slashMenu'),
+        pluginKey: slashKey,
         char: '/',
         // Only after a space or at the start of a line, so "1/2" or "http://" don't open it
         allowedPrefixes: [' '],
@@ -111,17 +138,23 @@ export const SlashMenu = Extension.create({
         render: () => {
           let component: ReactRenderer<SlashMenuHandle, SlashMenuListProps> | null = null
           let unmount: (() => void) | undefined
+          const back = popupBack(slashKey)
           return {
             onStart: (props) => {
               component = new ReactRenderer(SlashMenuList, { props, editor: props.editor, className: 'slash-menu-popup' })
               unmount = mountPopup(props, component.element as HTMLElement)
+              back.update(props)
             },
-            onUpdate: (props) => component?.updateProps(props),
+            onUpdate: (props) => {
+              component?.updateProps(props)
+              back.update(props)
+            },
             onKeyDown: (props) => {
               if (props.event.key === 'Escape') return false // the plugin closes the menu
               return component?.ref?.onKeyDown(props) ?? false
             },
             onExit: () => {
+              back.end()
               if (component) closeCopy(component.element as HTMLElement)
               unmount?.()
               component?.destroy()

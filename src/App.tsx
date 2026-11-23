@@ -15,6 +15,8 @@ import ReminderAlerts from './ReminderAlerts'
 import Sidebar from './Sidebar'
 import Board from './Board'
 import { usePanelSwipe } from './edgeSwipe'
+import { useBack } from './backStack'
+import { useNarrow } from './useNarrow'
 import { setPendingSearch } from './noteSearch'
 import SettingsDialog from './SettingsDialog'
 import { listenOpenSettings, type SettingsStart } from './openSettings'
@@ -73,6 +75,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [focusSearch, setFocusSearch] = useState(false)
   usePanelSwipe(bodyRef, boardOpen, sidebarOpen, setBoardOpen, setSidebarOpen)
+  // Phone: Back hides the notes menu or the Board (backStack.ts). Not on the PC, where they're
+  // docked beside the note (user, 2026-11-23)
+  const narrow = useNarrow()
+  useBack(() => setSidebarOpen(false), sidebarOpen && narrow)
+  useBack(() => setBoardOpen(false), boardOpen && narrow)
 
   // Games: release day check and daily refresh from IGDB (games.ts)
   useEffect(() => (gamesOn ? startGameChecks() : undefined), [gamesOn])

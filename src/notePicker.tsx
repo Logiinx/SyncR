@@ -6,7 +6,7 @@ import { Suggestion, type SuggestionKeyDownProps, type SuggestionProps } from '@
 import { ChevronRight, FileText, FoldVertical, Heading } from 'lucide-react'
 import { db, noteTitle, saveNoteContent } from './db'
 import { noteLinkHref } from './noteLinks'
-import { mountPopup } from './slashMenu'
+import { mountPopup, popupBack } from './slashMenu'
 import { closeCopy } from './animations'
 
 // Type [[ to link to another note: a list of notes, filtered by what you type next.
@@ -148,10 +148,11 @@ export const NotePicker = Extension.create({
 
   addProseMirrorPlugins() {
     const editor = this.editor
+    const pickerKey = new PluginKey('notePicker')
     return [
       Suggestion<PickItem, PickItem>({
         editor,
-        pluginKey: new PluginKey('notePicker'),
+        pluginKey: pickerKey,
         char: '[[',
         allowSpaces: true, // note titles have spaces
         allowedPrefixes: null, // anywhere, also right after a word
@@ -162,17 +163,23 @@ export const NotePicker = Extension.create({
         render: () => {
           let component: ReactRenderer<PickerHandle, PickerProps> | null = null
           let unmount: (() => void) | undefined
+          const back = popupBack(pickerKey)
           return {
             onStart: (props) => {
               component = new ReactRenderer(NotePickerList, { props, editor: props.editor, className: 'slash-menu-popup' })
               unmount = mountPopup(props, component.element as HTMLElement)
+              back.update(props)
             },
-            onUpdate: (props) => component?.updateProps(props),
+            onUpdate: (props) => {
+              component?.updateProps(props)
+              back.update(props)
+            },
             onKeyDown: (props) => {
               if (props.event.key === 'Escape') return false // the plugin closes the menu
               return component?.ref?.onKeyDown(props) ?? false
             },
             onExit: () => {
+              back.end()
               if (component) closeCopy(component.element as HTMLElement)
               unmount?.()
               component?.destroy()
