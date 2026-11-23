@@ -8,6 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Retour (geste du téléphone, bouton de souris) ferme menus, fenêtres et panneaux latéraux
 - **Amélioré :** boutons à glissière aux coins plus carrés, un peu d’espace entre les choix
 - **Amélioré :** nombres de nouvelles vidéos et d’e-mails manqués dans de petites bulles bleues
+- **Amélioré :** interrupteurs des Paramètres aux coins plus carrés
 - **Corrigé :** les barres du haut de Jeux et Vidéo qui sautaient un peu en changeant de liste
 
 **Synchronisation**
