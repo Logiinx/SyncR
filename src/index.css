@@ -5453,7 +5453,13 @@ button {
     border-color 0.15s;
 }
 
-.dialog .settings-row input[type='checkbox']:hover:not(:disabled, :checked) {
+/* A click anywhere on a switch's row flips it (SettingRow): the hand on the whole row, and the
+   switch's edge lights up as if the mouse were on it (not while on the row's own button) */
+.dialog .settings-row:has(> .settings-row-control > input[type='checkbox']:not(:disabled)) {
+  cursor: pointer;
+}
+
+.dialog .settings-row:hover:not(:has(> .settings-row-control > :not(input):hover)) input[type='checkbox']:not(:disabled, :checked) {
   border-color: var(--text-dim);
 }
 

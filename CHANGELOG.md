@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Better:** click anywhere on a Settings row to flip its switch
+
 ## [1.2.6] - 2026-11-23
 
 **App**

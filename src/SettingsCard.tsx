@@ -21,7 +21,7 @@ export function SettingRow({ label, value, title, className, status, children }:
   children: React.ReactNode
 }) {
   return (
-    <div className={`settings-row${className ? ` ${className}` : ''}`} title={title}>
+    <div className={`settings-row${className ? ` ${className}` : ''}`} title={title} onClick={flipFromRow}>
       <span className="settings-row-label">
         {label}
         {value && <span className="setting-value"> {value}</span>}
@@ -30,6 +30,20 @@ export function SettingRow({ label, value, title, className, status, children }:
       <span className="settings-row-control">{children}</span>
     </div>
   )
+}
+
+// A row with one switch: a click anywhere on it flips the switch (user, 2026-11-23). Not on the
+// row's other controls (a button, a link, the ⓘ, a status line), nor on what only belongs to the
+// row in React (the ⓘ's tip is drawn elsewhere on the page), nor while text is selected. A grayed
+// switch ignores the click by itself.
+function flipFromRow(event: React.MouseEvent<HTMLDivElement>) {
+  const row = event.currentTarget
+  const target = event.target as Element
+  if (!row.contains(target)) return
+  if (target.closest('input, button, select, textarea, a, label, .info-tip, .settings-row-status')) return
+  if (!window.getSelection()?.isCollapsed) return
+  const switches = row.querySelectorAll<HTMLInputElement>('.settings-row-control > input[type="checkbox"]')
+  if (switches.length === 1) switches[0].click()
 }
 
 // A module's on/off switch, the first row of its section (Mail, Video, Games, Hardware). What
