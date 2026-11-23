@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, type LucideIcon } from 'lucide-react'
 import { currentZoom } from './appearance'
+import { useBack } from './backStack'
 
 export interface MenuItem {
   label: string
@@ -35,7 +36,8 @@ const GAP = 2 // px between the menu and its side list
 const SWITCH_AFTER = 120 // ms over another line before an open side list gives way (the mouse crossing it)
 const hasMouse = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
-// Right-click menu (long press on a phone). Closes on any click elsewhere or Escape.
+// Right-click menu (long press on a phone). Closes on any click elsewhere, Escape or Back
+// (backStack.ts; a list shown in the menu's place goes back to the menu first).
 function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -53,6 +55,7 @@ function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
   // (again when it changes, e.g. to a color list), and convert to the zoomed page (app scaling)
   const box = useRef<HTMLDivElement>(null)
   const side = useRef<HTMLDivElement>(null)
+  useBack(() => (inPlace ? setInPlace(null) : onClose()), true, box)
   useLayoutEffect(() => {
     const el = box.current
     if (!el) return

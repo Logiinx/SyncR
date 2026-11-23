@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Nouveau :** Retour (geste du téléphone, bouton de souris) ferme menus et fenêtres
+
 **Synchronisation**
 - **Amélioré :** le signe de synchro s’affiche quand vous arrêtez d’écrire, pas à chaque pause
 - **Corrigé :** le nuage qui restait vert un instant pendant la frappe

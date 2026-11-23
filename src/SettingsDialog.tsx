@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
+import { useBack } from './backStack'
 import { RowStatus, SettingRow } from './SettingsCard'
 import { SettingsResults, SettingsSearchBox } from './SettingsSearch'
 import InfoTip from './InfoTip'
@@ -260,6 +261,13 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     window.addEventListener('google-change', refresh)
     return () => window.removeEventListener('google-change', refresh)
   }, [])
+  // Back (phone gesture, mouse button: backStack.ts), like Escape: clears the search first, then
+  // the phone's ‹ back to the list, then (Window) closes Settings: its place is inside the window
+  // (bodyRef), so it goes first. Paused while a window takes Settings' place (color rules, PIN,
+  // What's new).
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const replaced = showRules || !!pinDialog || showWhatsNew
+  useBack(() => (searching ? search('') : setPhoneOpen(false)), !replaced && (searching || (narrow && phoneOpen)), bodyRef)
 
   if (showRules) return <ColorRulesDialog onClose={() => setShowRules(false)} />
   if (pinDialog) return <PinDialog mode={pinDialog} onClose={() => { setPinDialog(null); setPinOn(pinLockOn()) }} />
@@ -793,7 +801,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           {!narrow && searchBox}
           <CloseButton onClick={onClose} />
         </div>
-        <div className="settings-body">
+        <div className="settings-body" ref={bodyRef}>
           {narrow && showList && searchBox}
           {showNav && (
             <nav className="settings-nav" aria-label={t('Settings sections')}>

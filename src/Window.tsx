@@ -1,8 +1,9 @@
-import type { FormEvent, KeyboardEvent, ReactNode, Ref } from 'react'
+import { useRef, type FormEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
+import { useBack } from './backStack'
 
 // The frame of every window (Settings, game window, questions…): the dark backdrop (a click on
 // it closes), the box (role "dialog", focusable so Escape works when it has the focus) and
-// Escape closing it. The box gets `ref`, so a window can focus or scroll it. Game windows put
+// Escape or Back (phone gesture, mouse button: backStack.ts) closing it. The box gets `ref`, so a window can focus or scroll it. Game windows put
 // the box in a row with what shows beside it (`inRow`, `beside`: the trailer panel). They sit
 // 92px from the top, like every window, instead of the middle: their prices and times arrive after
 // opening, and a centered window growing would jump up (user, 2026-11-21).
@@ -18,8 +19,11 @@ function Window(props: {
   ref?: Ref<HTMLElement> // the box, a <div> or (onSubmit) a <form>
   children: ReactNode
 }) {
+  const boxRef = useRef<HTMLElement | null>(null)
+  useBack(props.onClose, true, boxRef)
   // The box to the window's `ref`, whether it's a <div> or a <form>
   const setBox = (box: HTMLElement | null) => {
+    boxRef.current = box
     if (typeof props.ref === 'function') props.ref(box)
     else if (props.ref) props.ref.current = box
   }

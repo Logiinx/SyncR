@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { t } from './i18n'
 import { X } from 'lucide-react'
 import { currentZoom } from './appearance'
+import { useBack } from './backStack'
 
 // Opens the full-screen view of an image (an image clicked in a note, image.ts, or in an
 // email, MailReader.tsx)
@@ -50,18 +51,12 @@ function ImageViewer() {
       setUrl((e as CustomEvent<string>).detail)
       setSize(null)
       setView(null)
-      // An extra history entry, so the phone's back button closes the viewer
-      // instead of leaving the app
-      history.pushState({ imageViewer: true }, '')
     }
-    const onBack = () => setUrl(null)
     window.addEventListener('open-image', onOpen)
-    window.addEventListener('popstate', onBack)
-    return () => {
-      window.removeEventListener('open-image', onOpen)
-      window.removeEventListener('popstate', onBack)
-    }
+    return () => window.removeEventListener('open-image', onOpen)
   }, [])
+  // Back (phone gesture, mouse button: backStack.ts) closes it instead of leaving the app
+  useBack(() => setUrl(null), url !== null)
 
   // Escape closes it, before anything else gets it (an open email would go back to the list).
   // The viewer takes the keyboard, which may be inside an email's frame after the click.
@@ -78,9 +73,8 @@ function ImageViewer() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [url])
 
-  // Going back removes the extra history entry; popstate then hides the viewer
   function close() {
-    history.back()
+    setUrl(null)
   }
 
   // Fitted and centered in the window
