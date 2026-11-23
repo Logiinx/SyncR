@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-11-23
+
 **Application**
 - **Nouveau :** Retour (geste du téléphone, bouton de souris) ferme menus, fenêtres et panneaux latéraux
 - **Amélioré :** boutons à glissière aux coins plus carrés, un peu d’espace entre les choix

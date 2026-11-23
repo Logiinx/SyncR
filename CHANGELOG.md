@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-11-23
+
 **App**
 - **New:** Back (phone gesture, mouse side button) closes menus, windows, side panels
 - **Better:** sliding switches with squarer corners and a little space between choices
