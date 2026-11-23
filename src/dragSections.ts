@@ -1,6 +1,8 @@
 import { Extension } from '@tiptap/react'
 import { t } from './i18n'
 import { Plugin, Selection, TextSelection } from '@tiptap/pm/state'
+import type { EditorState } from '@tiptap/pm/state'
+import type { ResolvedPos } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import { currentZoom } from './appearance'
 
@@ -75,14 +77,56 @@ export const DragSections = Extension.create({
   },
 
   addProseMirrorPlugins() {
+    let shown: EditorView | null = null
     return [
       new Plugin({
-        view: (view) => new SectionDragger(view),
+        view: (view) => {
+          shown = view
+          return new SectionDragger(view)
+        },
         props: { handleDOMEvents: { dragstart: blockTitleDrag } },
+        appendTransaction: (transactions, _old, state) => {
+          if (!shown || !transactions.some((tr) => tr.selectionSet) || transactions.some((tr) => tr.docChanged)) return null
+          const fixed = cursorOutOfHidden(shown, state)
+          return fixed ? state.tr.setSelection(fixed) : null
+        },
       }),
     ]
   },
 })
+
+// The cursor never stays where it can't be seen or typed (user, 2026-11-23: on a phone it then
+// jumped to the top of the note):
+// - inside a folded section (folding only hides its content: persist is off, so the cursor
+//   stays in it; a tap during the closing animation can land there too) → the line right after
+//   the section, or the end of its title when nothing visible follows;
+// - between blocks (the Details extension sends a cursor coming from above to just before the
+//   title, not into it) → the nearest text forward.
+// Only reads the screen for a change of cursor alone: the page still matches the document.
+function cursorOutOfHidden(view: EditorView, state: EditorState): Selection | null {
+  const { selection } = state
+  if (!(selection instanceof TextSelection) || !selection.empty) return null
+  const { $head } = selection
+  const section = foldedSectionAt(view, $head)
+  if (section !== null) {
+    const after = Selection.near(state.doc.resolve($head.after(section)), 1)
+    if (after.from > $head.pos && foldedSectionAt(view, after.$head) === null) return after
+    const title = $head.node(section).firstChild!
+    return TextSelection.create(state.doc, $head.start(section) + title.nodeSize - 1)
+  }
+  if (!$head.parent.inlineContent) return Selection.near($head, 1)
+  return null
+}
+
+// Depth of the outermost folded section this position is hidden in, or null
+function foldedSectionAt(view: EditorView, $pos: ResolvedPos): number | null {
+  for (let depth = 1; depth <= $pos.depth; depth++) {
+    if ($pos.node(depth).type.name !== 'detailsContent') continue
+    const content = view.nodeDOM($pos.before(depth))
+    if (content instanceof HTMLElement && content.hidden) return depth - 1
+  }
+  return null
+}
 
 // Native drag of selected text that touches a section title: blocked
 function blockTitleDrag(view: EditorView, e: DragEvent) {
@@ -122,6 +166,9 @@ class SectionDragger {
     // Added once, not at each press: Chrome decides when a touch starts whether a touchmove
     // listener may block scrolling. One added later only gets moves it can't cancel.
     view.dom.addEventListener('touchmove', this.blockScroll, { passive: false })
+    // A section folded or unfolded (screen only, no change to the note): its content gets
+    // "hidden" right after this event, at its target, so check the cursor just after
+    view.dom.addEventListener('toggleDetailsContent', this.onToggle, true)
   }
 
   // ---------- Framing the section under the mouse ----------
@@ -140,6 +187,14 @@ class SectionDragger {
   }
 
   onLeave = () => this.frame(null)
+
+  onToggle = () => {
+    queueMicrotask(() => {
+      if (this.view.isDestroyed) return
+      const fixed = cursorOutOfHidden(this.view, this.view.state)
+      if (fixed) this.view.dispatch(this.view.state.tr.setSelection(fixed))
+    })
+  }
 
   frame(section: HTMLElement | null) {
     if (section === this.hovered) return
@@ -393,6 +448,7 @@ class SectionDragger {
     this.view.dom.removeEventListener('pointerleave', this.onLeave)
     this.view.dom.removeEventListener('contextmenu', this.onContextMenu)
     this.view.dom.removeEventListener('touchmove', this.blockScroll)
+    this.view.dom.removeEventListener('toggleDetailsContent', this.onToggle, true)
     this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }
 }

@@ -10,6 +10,7 @@ All notable changes to SyncR. Newest version first.
 
 **Notes**
 - **Changed:** on a phone, a tap on a section title only folds it; hold it to rename
+- **Fixed:** cursor jumping to the top of the note near a folded section
 - **Small fixes:** plain arrow over section titles
 
 ## [1.2.8] - 2026-11-23

@@ -10,6 +10,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Notes**
 - **Changé :** sur téléphone, toucher le titre d’une section la plie seulement ; maintenir pour renommer
+- **Corrigé :** curseur qui sautait en haut de la note près d’une section pliée
 - **Petites corrections :** flèche simple sur les titres de section
 
 ## [1.2.8] - 2026-11-23
