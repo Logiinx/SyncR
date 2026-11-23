@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-11-23
+
 **Vidéo** (PC uniquement)
 - **Changé :** le compteur Vidéo ne compte que les vidéos manquées, ni en file ni ajoutées
 
