@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Nouveau :** Retour (geste du téléphone, bouton de souris) ferme menus, fenêtres et panneaux latéraux
+- **Corrigé :** les barres du haut de Jeux et Vidéo qui sautaient un peu en changeant de liste
 
 **Synchronisation**
 - **Amélioré :** le signe de synchro s’affiche quand vous arrêtez d’écrire, pas à chaque pause

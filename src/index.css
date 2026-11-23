@@ -6482,6 +6482,12 @@ h3.games-group-title {
   z-index: 1;
 }
 
+/* A page starting with a pinned bar starts it where it pins (user, 2026-11-23): it never moves,
+   so switching between a scrolled list and one at its top (To watch → Rewatch) doesn't jump. */
+.games:has(> .pinned-bar:first-child) {
+  padding-top: 12px;
+}
+
 .pinned-bar::before {
   content: '';
   position: absolute;
