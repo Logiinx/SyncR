@@ -8,6 +8,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** supprimer plusieurs vidéos sélectionnées d’un coup, avec la corbeille de la barre
 - **Nouveau :** sélectionner plusieurs vidéos dans Vues aussi
 
+**Notes**
+- **Changé :** sur téléphone, toucher le titre d’une section la plie seulement ; maintenir pour renommer
+- **Petites corrections :** flèche simple sur les titres de section
+
 ## [1.2.8] - 2026-11-23
 
 **Vidéo** (PC uniquement)

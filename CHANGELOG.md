@@ -8,6 +8,10 @@ All notable changes to SyncR. Newest version first.
 - **New:** delete several selected videos at once, with the bin in the selection bar
 - **New:** select several videos in Watched too
 
+**Notes**
+- **Changed:** on a phone, a tap on a section title only folds it; hold it to rename
+- **Small fixes:** plain arrow over section titles
+
 ## [1.2.8] - 2026-11-23
 
 **Video** (PC only)

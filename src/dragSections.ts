@@ -7,16 +7,17 @@ import { currentZoom } from './appearance'
 // Section titles: press and drag a title to move its section, with everything inside.
 // A quick click only opens/closes the section; a right-click edits the title (cursor at its
 // end). Enter in a title opens the section and moves into it. While the cursor is already in
-// that title, it behaves like normal text (click, select). Phone: a tap opens/closes and puts
-// the cursor in the title, so a second tap edits it. hold the title a moment before dragging, so a swipe still scrolls;
-// holding drags even while editing the title (a tap still places the cursor). While the
+// that title, it behaves like normal text (click, select). Phone: a tap only opens/closes;
+// hold the title a moment, then let go without moving = edit it (cursor at its end), or move
+// = drag it, so a swipe still scrolls (user, 2026-11-23). Holding drags even while editing the
+// title (a tap still places the cursor). While the
 // finger is down, the title is briefly not editable (CSS: not selectable), otherwise Android's
 // own long press selects its words and opens the keyboard, which cancels the drag.
 // The browser's own drag of selected text is blocked when the selection touches a title:
 // dropping part of a title elsewhere made new, broken sections.
 // Mouse over a title that isn't being edited: the section is framed (faint tint, two corner
-// brackets like the app icon) and the pointer is a grab hand, so moving it and editing the
-// title look different.
+// brackets like the app icon) and the pointer is a plain arrow (no grab hand: user, 2026-11-23),
+// so moving it and editing the title look different.
 // While dragging, a copy of the title follows the pointer and a blue line shows where the
 // section will land: between any two blocks, also inside another section.
 
@@ -44,6 +45,7 @@ interface Press {
   section: HTMLElement // its section
   from: number | null // the section's position in the document, once dragging
   drop: Drop | null
+  wandered?: boolean // touch: the finger left its spot while dragging (so letting go isn't "in place")
   holdTimer?: number
 }
 
@@ -192,6 +194,7 @@ class SectionDragger {
       this.startDrag()
       if (!this.press || this.press.from === null) return // the section was gone
     }
+    if (press.touch && Math.hypot(e.clientX - press.x, e.clientY - press.y) > TOUCH_SLOP) press.wandered = true
     this.autoScroll(e.clientY)
     this.moveGhost(e.clientY)
     press.drop = this.findDrop(e.clientX, e.clientY, press.from!)
@@ -201,35 +204,37 @@ class SectionDragger {
   onPointerUp = (e: PointerEvent) => {
     const press = this.press
     if (!press || e.pointerId !== press.pointerId) return
-    if (press.from !== null) {
+    // Touch: held, then let go where it was pressed = edit the title (no right-click on a phone)
+    const inPlace = press.touch && !press.wandered && Math.hypot(e.clientX - press.x, e.clientY - press.y) <= TOUCH_SLOP
+    if (press.from !== null && !inPlace) {
       if (press.drop) this.move(press.from, press.drop.pos, press.section.classList.contains('is-open'))
-    } else if (!press.editing) {
+    } else if (press.from === null && !press.editing) {
       this.clickTitle(press)
     }
-    this.cancel()
+    const editTitle = press.from !== null && inPlace && !press.editing
+    this.cancel() // first: the title must be editable again before the cursor goes in
+    if (editTitle) this.editTitle(press.summary)
   }
 
-  // A click (or tap) on a title: open/close the section. Touch: also put the cursor where it
-  // was tapped, so a second tap edits the title (no right-click on a phone).
+  // A click (or tap) on a title: only open/close the section
   clickTitle(press: Press) {
     // Layout: <div data-type="details"><button>(arrow)</button><div><summary>…
     const toggle = press.section.querySelector(':scope > button')
     if (toggle instanceof HTMLButtonElement) toggle.click()
-    if (!press.touch) return
-    const hit = this.view.posAtCoords({ left: press.x, top: press.y })
-    this.view.focus()
-    if (hit) {
-      const { state } = this.view
-      this.view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(hit.pos))))
-    }
   }
 
-  // Right-click on a title: edit it, cursor at the end. (A phone's long press never gets
-  // here: blockMenu stops it while the finger is down.)
+  // Right-click on a title: edit it. (A phone's long press never gets here: blockMenu stops it
+  // while the finger is down; there, hold and let go does it.)
   onContextMenu = (e: MouseEvent) => {
     const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
     if (!summary || !this.view.editable || this.editingTitle(summary)) return
     e.preventDefault()
+    this.editTitle(summary)
+  }
+
+  // Edit a title: cursor at its end
+  editTitle(summary: HTMLElement) {
+    if (!summary.isConnected) return
     this.frame(null)
     const start = this.view.posAtDOM(summary, 0)
     const { state } = this.view
