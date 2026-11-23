@@ -3,6 +3,7 @@ import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRig
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
+import { CountBadge } from './CountBadge'
 import { type VideoFolder, type VideoFollow, type VideoPlaylist } from './db'
 import { dayTime, lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
 import Dialog from './Dialog'
@@ -42,9 +43,9 @@ function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   return newIds
 }
 
-// A list button's new videos, the sidebar count's look (the Video tab's count is the sum of both)
+// A list button's new videos, on its corner (the Video tab's count is the sum of both)
 function ListCount({ count }: { count: number }) {
-  return count > 0 ? <span className="video-list-count" title={t('New videos')}>{count}</span> : null
+  return <CountBadge count={count} title={t('New videos')} />
 }
 
 // With its time when near (user: which of several "Today" came out first). A group's row: the day

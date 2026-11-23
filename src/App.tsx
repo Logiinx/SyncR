@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, useLanguage } from './i18n'
 import { ChevronLeft, Menu, Pencil, Pin, PinOff, Plus, Trash2, X } from 'lucide-react'
 import { SpecialIcon } from './tabIcons'
+import { CountBadge } from './CountBadge'
 import { useLiveQuery } from 'dexie-react-hooks'
 import ContextMenu from './ContextMenu'
 import { createNote, db, deleteNote, noteTitle, renameNote } from './db'
@@ -458,11 +459,7 @@ function CountIcon({ icon, count, title }: { icon: ReactNode; count: number; tit
   return (
     <span className="tab-icon mail-tab-icon">
       {icon}
-      {count > 0 && (
-        <span className="mail-tab-count" title={title}>
-          {count > 9 ? '9+' : count}
-        </span>
-      )}
+      <CountBadge count={count} title={title} max={9} />
     </span>
   )
 }

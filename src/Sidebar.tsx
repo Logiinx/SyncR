@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useListItems, useSlideIn } from './animations'
 import { RefreshCw, Search, Settings, TriangleAlert, X } from 'lucide-react'
 import { SpecialIcon } from './tabIcons'
+import { CountBadge } from './CountBadge'
 import { isTauri } from '@tauri-apps/api/core'
 import { useGmailAccounts } from './gmail'
 import { useMissed } from './mailAlerts'
@@ -97,13 +98,13 @@ function Sidebar({ peek, onHover, activeId, onOpen, onClose, onMenu, onSettings,
         {(isTauri() || import.meta.env.DEV) && accounts.length > 0 && onMail && (
           <button className={activeId === MAIL_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onMail}>
             <SpecialIcon kind="mail" size={15} /> {t('Mail')}
-            {missed.length > 0 && <span className="sidebar-count" title={t('Missed emails')}>{missed.length}</span>}
+            <CountBadge pill count={missed.length} title={t('Missed emails')} />
           </button>
         )}
         {onVideo && (
           <button className={activeId === VIDEO_TAB ? 'sidebar-games active' : 'sidebar-games'} onClick={onVideo}>
             <SpecialIcon kind="video" size={15} /> {t('Video')}
-            {newVideos > 0 && <span className="sidebar-count" title={t('New videos')}>{newVideos}</span>}
+            <CountBadge pill count={newVideos} title={t('New videos')} />
           </button>
         )}
         <div className="game-search-bar sidebar-search">

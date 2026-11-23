@@ -7,6 +7,7 @@ All notable changes to SyncR. Newest version first.
 **App**
 - **New:** Back (phone gesture, mouse side button) closes menus, windows, side panels
 - **Better:** sliding switches with squarer corners and a little space between choices
+- **Better:** new video and missed email counts in small blue bubbles
 - **Fixed:** Games and Video top bars jumping a little when switching lists
 
 **Sync**

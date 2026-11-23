@@ -10,6 +10,7 @@
   --text-dim: #808080;
   --accent: #2d4f7c;
   --link: #7aa7e0; /* links in notes: the accent is too dark to read as text */
+  --badge: #3a679f; /* counts of new things (.count-badge): lighter than the accent, white text */
   --ok: #6cc28a; /* sync: done */
   --warn: #e0a040; /* sync: action needed (passphrase) */
   --error: #e5534b; /* sync: error */
@@ -661,6 +662,46 @@ button {
   pointer-events: none;
 }
 
+/* Counts of new things (CountBadge.tsx, user's pick 7, 2026-11-23): a round bubble on the top
+   right corner of a switch button or tab icon, over its edge, with a ring of the background
+   behind; in the sidebar the same blue as a pill after the name. */
+.count-badge {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--badge);
+  box-shadow: 0 0 0 2px var(--badge-ring, var(--bg));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.count-badge.pill {
+  position: static;
+  min-width: 0;
+  height: auto;
+  margin-left: auto;
+  padding: 2px 6px;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Over the next choice, whose fill would cover its overhang */
+.fill-switch > button:has(> .count-badge) {
+  z-index: 1;
+}
+
 /* Dragging a tab (TabBar.tsx): the other tabs slide aside to make room */
 .tab {
   -webkit-touch-callout: none;
@@ -766,8 +807,8 @@ button {
   height: 16px;
 }
 
-/* The Mail tab's missed count (App.tsx): accent blue like the sidebar's, on the icon's top right
-   corner. The pinned tab's title box doesn't clip it (nothing to cut there) */
+/* The Mail and Video tabs' count (App.tsx): the corner bubble (.count-badge), on the icon's top
+   right corner. The pinned tab's title box doesn't clip it (nothing to cut there) */
 .mail-tab-icon {
   position: relative;
   display: flex;
@@ -778,18 +819,22 @@ button {
 }
 
 /* Unpinned: room for it before the word "Mail" */
-.tab:not(.icon-only) .mail-tab-icon:has(.mail-tab-count) {
-  margin-right: 7px;
+.tab:not(.icon-only) .mail-tab-icon:has(.count-badge) {
+  margin-right: 12px;
 }
 
-.mail-tab-count {
-  position: absolute;
-  top: -6px;
-  left: calc(100% - 4px);
-  color: var(--link);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
+/* Mostly beside the icon, so it stays readable; its ring the tile's color behind it */
+.mail-tab-icon .count-badge {
+  right: auto;
+  left: calc(100% - 6px);
+}
+
+.tab:hover {
+  --badge-ring: var(--bg-raised);
+}
+
+.tab.active {
+  --badge-ring: var(--border);
 }
 
 .tab-new {
@@ -6233,13 +6278,7 @@ button {
   border-radius: 0 6px 6px 0;
 }
 
-/* Mail: how many emails were missed (their pop-up faded unread) */
-.sidebar-count {
-  margin-left: auto;
-  color: var(--link);
-  font-size: 12px;
-  font-weight: 600;
-}
+/* Mail's missed emails, Video's new videos: the count's pill (.count-badge.pill) at the end */
 
 /* Mail tab (MailView.tsx): sender before the subject; unread mail in bold, read mail dimmed.
    The color dot (also on Reminders' event rows) sits on the first line. */
@@ -9532,13 +9571,6 @@ button.history-row.selected {
 .video-list-switch.fill-switch > button,
 .video-music-switch.fill-switch > button {
   gap: 6px;
-}
-
-/* New videos on To watch and Music, like the sidebar's count */
-.video-list-count {
-  color: var(--link);
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .video-toolbar .reminders-tools {
