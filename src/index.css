@@ -578,14 +578,16 @@ button {
    under the mouse, behind the text. They slide the same way; the moving copy sits in the row
    (first, so the buttons and their text cover it). One look everywhere (user's pick, from the
    game window's status): a sunken track with a thin frame, the fill 2 px inside it. As tall as
-   the toolbar buttons next to it (frame 1 + 2 + 3 = their padding 5 + border 1). */
+   the toolbar buttons next to it (frame 1 + 2 + 3 = their padding 5 + border 1). Corners as square
+   as the toolbar buttons (6 px, inside 4 px), 2 px between choices (user's pick 4c, 2026-11-23). */
 .fill-switch {
   position: relative;
   display: flex;
+  gap: 2px;
   width: fit-content;
   padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--bg-sunken);
 }
 
@@ -598,14 +600,15 @@ button {
   z-index: 0; /* keeps its fill (z-index -1) behind its text but above the row */
 }
 
-/* After the toolbars' own button look (.games-views button), which they'd otherwise take */
+/* After the toolbars' own button look (.games-views button), which they'd otherwise take. A clear
+   1 px edge, so each switch's own padding below is 1 px less than its height needs. */
 .fill-switch.fill-switch > button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 12px;
-  border: 0;
-  border-radius: 6px;
+  padding: 2px 11px;
+  border: 1px solid transparent;
+  border-radius: 4px;
   background: none;
   color: var(--text-dim);
 }
@@ -630,6 +633,10 @@ button {
   background: var(--accent);
   opacity: 0;
   pointer-events: none;
+}
+
+.fill-switch .tab-fill {
+  inset: -1px; /* over the button's clear edge too */
 }
 
 .tab-fill.ghost {
@@ -6566,7 +6573,7 @@ h3.games-group-title {
 }
 
 .calendar-top .fill-switch.fill-switch > button {
-  padding: 2px 8px;
+  padding: 1px 7px;
 }
 
 /* Grid / list switch on the right (PC only: the phone always shows the list) */
@@ -6577,7 +6584,7 @@ h3.games-group-title {
 /* As tall as Top's buttons next to it (text 0.85em) */
 .calendar-layouts.fill-switch > button {
   height: 22px;
-  padding: 0 8px;
+  padding: 0 7px;
 }
 
 @media (max-width: 699px) {
@@ -6690,7 +6697,7 @@ h3.games-group-title {
 
 /* Covers / list: at the end of the row, a bit smaller than the calendar's */
 .games-status-tabs .games-layouts.fill-switch > button {
-  padding: 0 7px;
+  padding: 0 6px;
 }
 
 .games-shelf-empty {
@@ -7933,7 +7940,7 @@ img[data-fade] {
 
 /* Differences | Full text: smaller text, in the header bar */
 .history-switch.fill-switch > button {
-  padding: 2px 10px;
+  padding: 1px 9px;
   font-size: 13px;
 }
 
@@ -8102,8 +8109,7 @@ button.history-row.selected {
 /* One line; on a narrow screen at a big app scale "Upcoming" wraps instead of overflowing */
 .gd-status.fill-switch > button {
   flex: 1 1 auto;
-  padding: 5px 2px;
-  border-radius: 6px;
+  padding: 4px 1px;
   color: var(--text-dim);
   font-size: 0.85em;
   line-height: 1.25;
@@ -8846,7 +8852,7 @@ button.history-row.selected {
 
 /* A small switch, like History's */
 .price-chart-ranges.fill-switch > button {
-  padding: 1px 6px;
+  padding: 0 5px;
   font-size: 0.9em;
 }
 
@@ -9680,7 +9686,7 @@ button.history-row.selected {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 8px; /* the bar's switch */
+  border-radius: 6px; /* the bar's switch */
   background: color-mix(in srgb, var(--text) 6%, var(--bg));
   color: var(--text-dim);
   cursor: grabbing;
@@ -9695,7 +9701,7 @@ button.history-row.selected {
   align-items: center;
   gap: 8px;
   padding-left: 12px;
-  border-radius: 8px; /* the bar's switch */
+  border-radius: 6px; /* the bar's switch */
   background: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
 }
 

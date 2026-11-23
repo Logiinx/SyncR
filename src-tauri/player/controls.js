@@ -769,7 +769,7 @@ function playerControls(env, media) {
       line.append(ghost, fill)
       const moveTo = (part, index) => {
         part.hidden = index < 0
-        if (index >= 0) part.style.transform = `translateX(${index * 100}%)`
+        if (index >= 0) part.style.transform = `translateX(calc(${index} * (100% + 2px)))` // its width + the gap
       }
       const buttons = items.map((choice, index) => {
         const button = document.createElement('button')
@@ -1448,10 +1448,10 @@ const CONTROLS_CSS = `
   .menu-item.on { color: var(--text-blue, #6ea8fe); }
   .menu-item svg { width: 16px; height: 16px; }
   /* The app's sliding switch (FillSwitch): sunken track, thin frame, the fill 2 px inside */
-  .menu-switch { position: relative; display: grid; grid-template-columns: repeat(var(--count), 1fr); margin: 2px 4px 4px; padding: 2px; border: 1px solid var(--border, #2a2a2a); border-radius: 8px; background: var(--bg-sunken, #101010); }
-  .menu-switch button { position: relative; height: 26px; border-radius: 6px; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
+  .menu-switch { position: relative; display: grid; grid-template-columns: repeat(var(--count), 1fr); gap: 2px; margin: 2px 4px 4px; padding: 2px; border: 1px solid var(--border, #2a2a2a); border-radius: 6px; background: var(--bg-sunken, #101010); }
+  .menu-switch button { position: relative; height: 26px; border-radius: 4px; color: var(--text-dim, #9a9a9a); font-variant-numeric: tabular-nums; }
   .menu-switch button:hover, .menu-switch button.on { color: var(--text, #e4e4e4); }
-  .menu-switch i { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--count)); border-radius: 6px; background: var(--accent, #2d4f7c); transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none; } /* like FillSwitch */
+  .menu-switch i { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px - (var(--count) - 1) * 2px) / var(--count)); border-radius: 4px; background: var(--accent, #2d4f7c); transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none; } /* like FillSwitch */
   .menu-switch i.ghost { background: color-mix(in srgb, var(--accent, #2d4f7c) 30%, transparent); }
 
   #spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
