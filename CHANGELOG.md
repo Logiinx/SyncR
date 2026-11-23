@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Changed:** the Video count only shows missed videos, not queued or added ones
+
 ## [1.2.7] - 2026-11-23
 
 **App**

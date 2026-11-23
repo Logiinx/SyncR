@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { isTauri } from '@tauri-apps/api/core'
@@ -10,7 +10,7 @@ import { inMusic, inRewatch, liveFolders, musicFolder, rewatchFolder } from './v
 import { checkPlaylists, nextInPlaylist, playlistFailures, playOrder } from './videoPlaylists'
 import { forgetPositions, resumePosition, savePosition } from './videoPositions'
 import { addVideoAlerts, removeVideoAlerts } from './videoAlerts'
-import { joinedAlone, leaveQueue, queueStarted, replaceInQueue } from './videoQueue'
+import { joinedAlone, leaveQueue, queueStarted, replaceInQueue, useQueue } from './videoQueue'
 import { addTwitchGames } from './videoTwitch'
 import { saveMutedAhead } from './mutedSound'
 import { betterTitles, checkTitles, useDeArrow, withBetterTitle } from './videoTitles'
@@ -822,10 +822,12 @@ export function useVideoFeed() {
       const mark = markOf.get(videoMarkId(video.id))
       return video.later && !mark?.opened && !mark?.watched
     }).map((video) => video.id))
-    // The list buttons' counts; the Video tab's is their sum (user, 2026-11-20)
-    const unopened = (list: FeedVideo[]) => list.filter((video) => !video.opened && !video.gone).length
-    const newToWatch = unopened(toWatch) + newInPlaylists.size
-    const newMusic = unopened(music)
+    // The list buttons' counts; the Video tab's is their sum (user, 2026-11-20). Only what was
+    // missed: brought by a follow, not opened, not in the Queue (user, 2026-11-23). A video added
+    // by hand never counts. The Queue is left out below (it isn't in the database).
+    const unopened = (list: FeedVideo[]) => list.filter((video) => !video.opened && !video.gone && !addedIds.has(video.id)).map((video) => video.id)
+    const newToWatchIds = [...unopened(toWatch), ...newInPlaylists]
+    const newMusicIds = unopened(music)
     return {
       follows,
       folders,
@@ -845,9 +847,8 @@ export function useVideoFeed() {
           return { ...withBetterTitle(video, better), gone: false, followId: playlist.id, channelIcon: null, music: false, opened: !!mark?.opened, watched: !!mark?.watched, watchedAt: watchedAtOf(mark), folderId: null }
         }),
       })),
-      newToWatch,
-      newMusic,
-      newCount: newToWatch + newMusic,
+      newToWatchIds,
+      newMusicIds,
     }
   }, [deArrow])
   // DeArrow's titles: what's left to watch first, Watched last. Each answer saved redraws the list,
@@ -857,5 +858,13 @@ export function useVideoFeed() {
     const original = (video: FeedVideo) => ({ id: video.id, title: video.originalTitle ?? video.title, published: video.published })
     void checkTitles([...feed.toWatch, ...feed.music, ...feed.rewatch, ...feed.playlists.flatMap((list) => list.videos), ...feed.watched].map(original))
   }, [feed, deArrow])
-  return feed
+  const queue = useQueue()
+  return useMemo(() => {
+    if (!feed) return feed
+    const queued = new Set(queue.map((entry) => entry.id))
+    const missed = (ids: string[]) => ids.filter((id) => !queued.has(id)).length
+    const newToWatch = missed(feed.newToWatchIds)
+    const newMusic = missed(feed.newMusicIds)
+    return { ...feed, newToWatch, newMusic, newCount: newToWatch + newMusic }
+  }, [feed, queue])
 }
