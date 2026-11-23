@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-11-23
+
 **Application**
 - **Amélioré :** un clic n’importe où sur une ligne des Paramètres bascule son interrupteur
 
