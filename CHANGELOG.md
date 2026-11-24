@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** ⚙️ → Compressor stays open after a pick, to compare strengths
+
 **Board**
 - **Small fixes:** plain arrow over cards
 

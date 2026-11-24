@@ -940,7 +940,7 @@ function playerControls(env, media) {
       for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
     }, 'speed')
     if (labels.compressor) {
-      panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ pick, element }) => {
+      panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ row, element }) => { // row: the menu stays open, to compare them
         // Each choice with what it changes on a second line, dim
         const detailed = (button, text) => {
           const top = document.createElement('span')
@@ -953,10 +953,10 @@ function playerControls(env, media) {
           button.append(top, under)
         }
         const signed = (dB) => `${dB > 0 ? '+' : dB < 0 ? '−' : ''}${numbers.format(Math.abs(dB))}`
-        detailed(pick(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
+        detailed(row(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
         for (const [name, { shown }] of Object.entries(COMPRESSOR)) {
           const detail = labels.compressorDetail.replace('{quiet}', signed(shown.quiet)).replace('{loud}', signed(shown.loud))
-          detailed(pick(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name)), shown.noise ? labels.compressorNoise.replace('{detail}', detail) : detail)
+          detailed(row(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name)), shown.noise ? labels.compressorNoise.replace('{detail}', detail) : detail)
         }
         // About the whole list, not the last choice
         const line = document.createElement('div')

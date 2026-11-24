@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** ⚙️ → Compresseur reste ouvert après un choix, pour comparer
+
 **Board**
 - **Petites corrections :** flèche normale sur les cartes
 
