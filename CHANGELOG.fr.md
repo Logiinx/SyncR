@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.12] - 2026-11-24
+
 **Vidéo** (PC uniquement)
 - **Corrigé :** sélecteur et curseurs du compresseur qui sautaient au survol
 
