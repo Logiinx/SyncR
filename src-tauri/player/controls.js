@@ -642,16 +642,16 @@ function playerControls(env, media) {
   // and applied again after it, so it compresses the same at any volume.
   // Strengths 1 to 7, measured with a steady tone: quiet talk = a sound at −45 dB, loud parts one
   // at −3 dB, normal talk at −20 dB stays about as loud (`after`, in dB, undoes the browser's own
-  // gain). shown: what ⚙️ → Compressor says under the switch (noise: 1 a bit more background
-  // noise, 2 more, 3 the most). 1, 3 and 6 were Light, Medium and Strong. Retuned: measure again.
+  // gain). shown: the numbers ⚙️ → Compressor shows (when to use each: the app's labels).
+  // 1, 3 and 6 were Light, Medium and Strong. Retuned: measure again.
   const COMPRESSOR = {
     1: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4, shown: { quiet: 1, loud: -6 } },
     2: { threshold: -24, knee: 12, ratio: 3.25, attack: 0.005, release: 0.25, after: -5.5, shown: { quiet: 2, loud: -8 } },
     3: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6, shown: { quiet: 4, loud: -10 } },
     4: { threshold: -30, knee: 11, ratio: 5, attack: 0.004, release: 0.22, after: -6, shown: { quiet: 6, loud: -11 } },
-    5: { threshold: -32, knee: 10, ratio: 7.5, attack: 0.004, release: 0.22, after: -5.5, shown: { quiet: 9, loud: -12, noise: 1 } },
-    6: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12, noise: 2 } },
-    7: { threshold: -39, knee: 10, ratio: 17, attack: 0.003, release: 0.2, after: -5, shown: { quiet: 15, loud: -15, noise: 3 } },
+    5: { threshold: -32, knee: 10, ratio: 7.5, attack: 0.004, release: 0.22, after: -5.5, shown: { quiet: 9, loud: -12 } },
+    6: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12 } },
+    7: { threshold: -39, knee: 10, ratio: 17, attack: 0.003, release: 0.2, after: -5, shown: { quiet: 15, loud: -15 } },
     // Beside the steps: only loud bursts go down (talk up to −15 dB untouched), and step 3 with
     // clearer voices (voice: less low rumble before the compressor, a lift around 3 kHz after it)
     peaks: { threshold: -16, knee: 6, ratio: 20, attack: 0.002, release: 0.15, after: -8, shown: { loud: -10 } },
@@ -924,7 +924,7 @@ function playerControls(env, media) {
 
   // What fills the list or a panel: titles, rows, a sliding switch
   function builder(target) {
-    const title = (text) => {
+    const title = (text, aside) => { // aside: a dim note on its right
       // A new group under another one: a thin line between them (none under "‹ Back")
       const before = target.lastElementChild
       if (before && !before.classList.contains('menu-back')) {
@@ -935,6 +935,13 @@ function playerControls(env, media) {
       const line = document.createElement('div')
       line.className = 'menu-title'
       line.textContent = text
+      if (aside) {
+        const note = document.createElement('span')
+        note.className = 'menu-title-aside'
+        note.textContent = aside
+        line.classList.add('with-aside')
+        line.append(note)
+      }
       target.append(line)
     }
     const item = (text, on, action) => {
@@ -1050,8 +1057,8 @@ function playerControls(env, media) {
     }, 'speed')
     if (labels.compressor) {
       panel('compressor', labels.compressor, compressing ? strengthName(strength) : labels.off, ({ title, row, choices, element }) => { // the menu stays open, to compare them
-        // A row with what it does on a second line, dim
-        const detailed = (button, text) => {
+        // A row with what it does on a second line, dim, and when to use it on a third, dimmer
+        const detailed = (button, text, advice) => {
           const top = document.createElement('span')
           top.className = 'menu-top'
           top.append(...button.childNodes)
@@ -1060,6 +1067,12 @@ function playerControls(env, media) {
           under.textContent = text
           button.classList.add('two-lines')
           button.append(top, under)
+          if (advice) {
+            const tip = document.createElement('span')
+            tip.className = 'menu-under menu-advice'
+            tip.textContent = advice
+            button.append(tip)
+          }
           return button
         }
         // A dim line that keeps the height of the tallest text it can show (texts), so the menu
@@ -1083,21 +1096,35 @@ function playerControls(env, media) {
           element.append(line)
         }
         detailed(row(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
-        // Then the 1–7 switch, the names of 1, 3, 6, 7 under it, and a line saying what the step
-        // under the mouse does (the ticked one otherwise). A click doesn't redraw: the fill slides.
+        // Then the 1–7 switch, the names of 1, 3, 6, 7 under it, and two lines saying what the step
+        // under the mouse does and when to use it (the ticked one otherwise). A click doesn't
+        // redraw: the fill slides. Every choice reads the same: numbers, then advice.
         const signed = (dB) => `${dB > 0 ? '+' : dB < 0 ? '−' : ''}${numbers.format(Math.abs(dB))}`
-        const detailOf = (name) => {
+        const numbersText = (quiet, loud) => labels.compressorDetail.replace('{quiet}', signed(quiet)).replace('{loud}', signed(loud))
+        const numbersOf = (name) => {
           const { shown } = COMPRESSOR[name]
-          if (shown.noise === 3) return labels.compressorNight
-          const detail = labels.compressorDetail.replace('{quiet}', signed(shown.quiet)).replace('{loud}', signed(shown.loud))
-          return shown.noise ? (shown.noise === 1 ? labels.compressorSomeNoise : labels.compressorNoise).replace('{detail}', detail) : detail
+          const { quiet = 0, loud } = shown.like ? COMPRESSOR[shown.like].shown : shown // Voice: its step's numbers
+          return numbersText(quiet, loud)
+        }
+        const adviceOf = (name) => {
+          const { like } = COMPRESSOR[name].shown
+          return labels.compressorAdvice[name].replace('{level}', like ? labels.strengths[like] || like : '')
         }
         const steps = Object.keys(COMPRESSOR).filter(isStep)
         const detail = document.createElement('div')
-        const setDetail = steady(detail, [...steps.map(detailOf), labels.compressorPick])
-        const showDetail = (name) => setDetail(name ? detailOf(name) : compressing && isStep(strength) ? detailOf(strength) : labels.compressorPick)
+        const detailNumbers = document.createElement('div')
+        const detailAdvice = document.createElement('div')
+        detailAdvice.className = 'menu-advice'
+        detail.append(detailNumbers, detailAdvice)
+        const setNumbers = steady(detailNumbers, [...steps.map(numbersOf), labels.compressorPick])
+        const setAdvice = steady(detailAdvice, steps.map(adviceOf)) // empty under "Pick a strength", same height
+        const showDetail = (name) => {
+          const shown = name || (compressing && isStep(strength) ? strength : null)
+          setNumbers(shown ? numbersOf(shown) : labels.compressorPick)
+          setAdvice(shown ? adviceOf(shown) : '')
+        }
         let customParts = [] // Custom's sliders and Clearer voices, gone when a step is picked
-        title(labels.compressorStrength)
+        title(labels.compressorStrength, labels.compressorScale)
         choices(steps.map((name) => ({ value: name, text: numbers.format(Number(name)) })), compressing ? strength : null, (name) => {
           chooseCompressor(name)
           showDetail(name)
@@ -1122,25 +1149,32 @@ function playerControls(env, media) {
         element.append(names, detail)
         // Then the ones beside the steps
         separator()
-        detailed(row(labels.strengths.peaks, compressing && strength === 'peaks', () => chooseCompressor('peaks')), labels.compressorPeaks.replace('{loud}', signed(COMPRESSOR.peaks.shown.loud)))
-        detailed(row(labels.strengths.voice, compressing && strength === 'voice', () => chooseCompressor('voice')), labels.compressorVoice.replace('{level}', strengthName(COMPRESSOR.voice.shown.like)))
+        for (const name of ['peaks', 'voice']) detailed(row(labels.strengths[name], compressing && strength === name, () => chooseCompressor(name)), numbersOf(name), adviceOf(name))
         // Custom: its numbers under it (where its sliders would start, before it's ever picked),
         // and while it's ticked its two sliders and Clearer voices. The sound follows a slider
         // while it's dragged; the app saves it once let go.
-        const customText = (numbers, talk) => {
-          const detail = labels.compressorCustom.replace('{quiet}', signed(numbers.quiet)).replace('{loud}', signed(-numbers.loud))
-          return talk >= 1 ? labels.compressorTalk.replace('{detail}', detail).replace('{talk}', signed(talk)) : detail
+        // Its advice line says how much louder normal talk comes out, when it does
+        const customAdvice = (talk) => (talk >= 1 ? labels.compressorTalk.replace('{talk}', signed(talk)) : labels.compressorAdvice.custom)
+        const customNumbers = () => {
+          const { quiet, loud } = custom || startingCustom()
+          return numbersText(quiet, -loud)
         }
-        const customDetail = () => customText(custom || startingCustom(), custom ? Math.round(customSettings().talk) : 0)
+        const customTalk = () => (custom ? Math.round(customSettings().talk) : 0)
         const customOn = compressing && strength === 'custom'
         const customRow = detailed(row(labels.strengths.custom, customOn, () => {
           custom ??= startingCustom()
           chooseCompressor('custom')
-        }), customDetail())
+        }), customNumbers(), customAdvice(customTalk()))
         if (customOn) {
-          // Its line changes while a slider is dragged: as tall as its longest text, so the slider stays put
-          const setCustomDetail = steady(customRow.querySelector('.menu-under'), [customText({ quiet: 15, loud: 15 }, 15)])
-          setCustomDetail(customDetail())
+          // Its lines change while a slider is dragged: as tall as their longest texts, so the slider stays put
+          const [numbersLine, adviceLine] = customRow.querySelectorAll('.menu-under')
+          const setCustomNumbers = steady(numbersLine, [numbersText(15, -15)])
+          const setCustomAdvice = steady(adviceLine, [customAdvice(0), customAdvice(15)])
+          const setCustomDetail = () => {
+            setCustomNumbers(customNumbers())
+            setCustomAdvice(customAdvice(customTalk()))
+          }
+          setCustomDetail()
           const sliders = document.createElement('div')
           sliders.className = 'menu-sliders'
           const slider = (text, key, sign) => {
@@ -1157,7 +1191,7 @@ function playerControls(env, media) {
             input.oninput = () => {
               custom = { ...custom, [key]: Number(input.value) }
               show()
-              setCustomDetail(customDetail())
+              setCustomDetail()
               if (sound) setStrength()
             }
             input.onchange = () => chooseCompressor('custom')
@@ -1176,10 +1210,6 @@ function playerControls(env, media) {
         // About the whole list, not the last choice (every channel: only for a video with one)
         separator()
         if (env.compressor) detailed(row(labels.compressorEvery, everyChannel, toggleEveryChannel), everyChannel ? labels.compressorEveryOn : labels.compressorEveryOff)
-        const hint = document.createElement('div')
-        hint.className = 'menu-note'
-        hint.textContent = labels.compressorHint
-        element.append(hint)
       }, 'compressor')
     }
     const tracks = subtitles?.tracks() || []
@@ -1781,6 +1811,10 @@ const CONTROLS_CSS = `
   .menu-item.two-lines { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-top: 5px; padding-bottom: 5px; }
   .menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .menu-under { font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
+  /* When to use it, under the numbers: dimmer (an opaque mix, so the text stays sharp) */
+  .menu-advice { color: color-mix(in srgb, var(--text-dim, #9a9a9a) 78%, var(--bg, #161616)); }
+  .menu-title.with-aside { display: flex; justify-content: space-between; gap: 10px; }
+  .menu-title-aside { color: color-mix(in srgb, var(--text-dim, #9a9a9a) 78%, var(--bg, #161616)); }
   .menu-steady { display: grid; }
   .menu-steady > span { grid-area: 1 / 1; }
   .menu-steady > span + span { visibility: hidden; }

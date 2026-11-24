@@ -224,19 +224,28 @@ function controlsData() {
       speed: t('Speed'),
       normal: t('Normal'),
       compressor: t('Compressor'),
-      compressorHint: t('Evens out loud and quiet sounds. 10 dB ≈ twice as loud or quiet.'),
-      // Under each strength in ⚙️ → Compressor ({quiet}, {loud}: "+4", "−10")
+      // Beside "Strength", to read the numbers under each choice
+      compressorScale: t('10 dB ≈ twice as loud or quiet'),
+      // Under each strength in ⚙️ → Compressor: the numbers ({quiet}, {loud}: "+4", "−10"), then
+      // when to use it (each short enough for one row)
       compressorAsIs: t('The sound as it is'),
       compressorDetail: t('Quiet talk {quiet} dB · loud parts {loud} dB'),
-      compressorNoise: t('{detail} · more background noise'),
-      compressorSomeNoise: t('{detail} · a bit more background noise'),
-      compressorNight: t('Everything about as loud, for low volume · most background noise'),
       compressorPick: t('Pick a strength'),
       compressorStrength: t('Strength|compressor'),
-      compressorPeaks: t('Only shouts and bangs go down ({loud} dB), talk untouched'),
-      compressorVoice: t('Like {level}, plus clearer voices and less low rumble'),
-      compressorCustom: t('Your own: quiet talk {quiet} dB · loud parts {loud} dB'),
-      compressorTalk: t('{detail} · normal talk {talk} dB'),
+      compressorAdvice: {
+        1: t('Barely noticeable: fine for any video'),
+        2: t('Calm streams with a few loud moments'),
+        3: t('Most streams: talk with some shouting'),
+        4: t('Games with loud action and quiet talk'),
+        5: t('Uneven sound · a bit more background noise'),
+        6: t('Very uneven sound · more background noise'),
+        7: t('Low volume, at night · most background noise'),
+        peaks: t('Talk untouched: only shouts and bangs go down'),
+        voice: t('Like {level}, clearer voices · less bass and hum'),
+        custom: t('Your own levels, set with the sliders'),
+      },
+      // Custom's second row when its numbers make normal talk louder ({talk}: "+7")
+      compressorTalk: t('Your own levels · normal talk {talk} dB'),
       compressorQuietUp: t('Quiet talk up'),
       compressorLoudDown: t('Loud parts down'),
       compressorDb: t('{value} dB'),

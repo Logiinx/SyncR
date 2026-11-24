@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** chaque choix du compresseur montre ses chiffres et quand l’utiliser
+
 ## [1.2.12] - 2026-11-24
 
 **Vidéo** (PC uniquement)
