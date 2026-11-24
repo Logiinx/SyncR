@@ -662,9 +662,65 @@ function playerControls(env, media) {
   const strengthName = (name) => (!isStep(name) ? labels.strengths[name] : labels.strengths[name] ? `${name} · ${labels.strengths[name]}` : name)
   // Clearer voices (voice above), and nothing changed otherwise
   const VOICE = { rumble: 100, lift: 2800, liftQ: 1, liftDb: 3 } // Hz, Hz, width, dB
+  // Custom: the user's own numbers, custom = { quiet: talk up, loud: parts down (0 to 15 dB each),
+  // voice: clearer voices }, kept when another strength is picked. Turned into settings with a
+  // copy of the browser's compressor curve (Chromium's, its own gain included: matches the steps'
+  // measurements within 0.5 dB), trying thresholds and ratios for the closest fit. Normal talk
+  // stays as loud when a compressor can do the pair; quiet talk far up with loud parts barely down
+  // can't (it only turns sound down): normal talk then comes out louder, and `talk` says how much.
+  let custom = null
+  const CUSTOM = { knee: 10, attack: 0.004, release: 0.22 }
+  function compressorCurve(threshold, knee, ratio) {
+    const linear = (dB) => Math.pow(10, dB / 20)
+    const decibels = (value) => 20 * Math.log10(value)
+    const start = linear(threshold)
+    const kneeCurve = (x, k) => (x < start ? x : start + (1 - Math.exp(-k * (x - start))) / k)
+    const slopeAt = (x, k) => (decibels(kneeCurve(x * 1.001, k)) - decibels(kneeCurve(x, k))) / (decibels(x * 1.001) - decibels(x))
+    const kneeEnd = linear(threshold + knee)
+    let low = 0.1, high = 10000, k = 5
+    for (let i = 0; i < 15; i++) {
+      if (slopeAt(kneeEnd, k) < 1 / ratio) high = k
+      else low = k
+      k = Math.sqrt(low * high)
+    }
+    const kneeEndOut = decibels(kneeCurve(kneeEnd, k))
+    const shaped = (x) => (x < kneeEnd ? kneeCurve(x, k) : linear(kneeEndOut + (decibels(x) - threshold - knee) / ratio))
+    const ownGain = 0.6 * -decibels(shaped(1)) // the browser raises the whole by this much
+    return (dB) => decibels(shaped(linear(dB))) - dB + ownGain // what a sound at that level gets
+  }
+  const customFits = new Map()
+  function customSettings() {
+    const key = `${custom.quiet} ${custom.loud}`
+    if (!customFits.has(key)) {
+      let best = null
+      for (let threshold = -45; threshold <= -8; threshold += 0.5) {
+        for (let i = 0; i <= 60; i++) {
+          const ratio = Math.pow(20, i / 60) // 1 to 20
+          const gain = compressorCurve(threshold, CUSTOM.knee, ratio)
+          const after = custom.quiet - gain(-45) // quiet talk: exactly its number
+          const loud = gain(-3) + after
+          const talk = gain(-20) + after
+          const miss = 10 * (loud + custom.loud) ** 2 + talk ** 2 // loud parts first, then talk
+          if (!best || miss < best.miss) best = { miss, threshold, ratio, after, talk }
+        }
+      }
+      customFits.set(key, best)
+    }
+    const { threshold, ratio, after, talk } = customFits.get(key)
+    return { threshold, knee: CUSTOM.knee, ratio, attack: CUSTOM.attack, release: CUSTOM.release, after, voice: custom.voice, talk }
+  }
+  const settingsOf = (name) => (name === 'custom' ? customSettings() : COMPRESSOR[name])
+  // Where Custom's sliders start: the ticked strength's numbers (Voice: step 3's, clearer voices on)
+  function startingCustom() {
+    const from = !compressing ? '1' : strength === 'voice' ? COMPRESSOR.voice.shown.like : strength
+    const { quiet = 0, loud } = COMPRESSOR[from].shown
+    return { quiet, loud: -loud, voice: strength === 'voice' && compressing }
+  }
+  // What the app saves: the strength's name, Custom with its numbers ("custom-7-9-1")
+  const savedName = () => (strength === 'custom' ? `custom-${custom.quiet}-${custom.loud}-${custom.voice ? 1 : 0}` : strength)
   // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
-  // { on, strength }, none for a video without a channel (a trailer: off, nothing remembered)
-  const known = (name) => Object.hasOwn(COMPRESSOR, name)
+  // { on, strength, custom }, none for a video without a channel (a trailer: off, nothing remembered)
+  const known = (name) => Object.hasOwn(COMPRESSOR, name) || (name === 'custom' && !!custom)
   let sound = null // { context, source (once connected), before, rumble, compressor, lift, after }
   let compressing = false
   let strength = '1' // the last one picked, which A turns back on
@@ -672,13 +728,13 @@ function playerControls(env, media) {
     if (!sound) return
     const volume = video.muted ? 0 : video.volume
     sound.before.gain.value = 1 / Math.max(volume, 0.01)
-    sound.after.gain.value = volume * Math.pow(10, COMPRESSOR[strength].after / 20)
+    sound.after.gain.value = volume * Math.pow(10, settingsOf(strength).after / 20)
   }
   function setStrength() {
-    const { after, shown, voice, ...values } = COMPRESSOR[strength]
-    for (const [name, value] of Object.entries(values)) sound.compressor[name].value = value
-    sound.rumble.frequency.value = voice ? VOICE.rumble : 10 // 10 Hz: below hearing, so no change
-    sound.lift.gain.value = voice ? VOICE.liftDb : 0
+    const settings = settingsOf(strength)
+    for (const name of ['threshold', 'knee', 'ratio', 'attack', 'release']) sound.compressor[name].value = settings[name]
+    sound.rumble.frequency.value = settings.voice ? VOICE.rumble : 10 // 10 Hz: below hearing, so no change
+    sound.lift.gain.value = settings.voice ? VOICE.liftDb : 0
     setSoundLevel()
   }
   // The sound is taken only once the browser lets it run (it may wait for a click or key, more so
@@ -736,7 +792,7 @@ function playerControls(env, media) {
   // Picked by hand (⚙️ or A): the app keeps it for the channel
   function chooseCompressor(on) {
     setCompressor(on)
-    if (env.compressor) hooks.compressorChosen?.(compressing, strength)
+    if (env.compressor) hooks.compressorChosen?.(compressing, savedName())
   }
   function toggleCompressor() {
     chooseCompressor(!compressing)
@@ -745,7 +801,9 @@ function playerControls(env, media) {
   // A video's start (and the next one playing in the same page: video-watch.js)
   function setChannelCompressor(choice) {
     env.compressor = choice || null
+    custom = choice?.custom ? { ...choice.custom } : null
     if (choice && known(choice.strength)) strength = choice.strength
+    else if (strength === 'custom' && !custom) strength = '1'
     setCompressor(choice?.on ? strength : false)
   }
   setChannelCompressor(env.compressor)
@@ -1005,10 +1063,12 @@ function playerControls(env, media) {
         const steps = Object.keys(COMPRESSOR).filter(isStep)
         const detail = document.createElement('div')
         const showDetail = (name) => { detail.textContent = name ? detailOf(name) : compressing && isStep(strength) ? detailOf(strength) : labels.compressorPick }
+        let customParts = [] // Custom's sliders and Clearer voices, gone when a step is picked
         title(labels.compressorStrength)
         choices(steps.map((name) => ({ value: name, text: numbers.format(Number(name)) })), compressing ? strength : null, (name) => {
           chooseCompressor(name)
           showDetail(name)
+          for (const part of customParts) part.remove()
           for (const ticked of element.querySelectorAll('.menu-item.on')) {
             ticked.classList.remove('on')
             ticked.querySelector('svg')?.remove()
@@ -1031,6 +1091,53 @@ function playerControls(env, media) {
         separator()
         detailed(row(labels.strengths.peaks, compressing && strength === 'peaks', () => chooseCompressor('peaks')), labels.compressorPeaks.replace('{loud}', signed(COMPRESSOR.peaks.shown.loud)))
         detailed(row(labels.strengths.voice, compressing && strength === 'voice', () => chooseCompressor('voice')), labels.compressorVoice.replace('{level}', strengthName(COMPRESSOR.voice.shown.like)))
+        // Custom: its numbers under it (where its sliders would start, before it's ever picked),
+        // and while it's ticked its two sliders and Clearer voices. The sound follows a slider
+        // while it's dragged; the app saves it once let go.
+        const customDetail = () => {
+          const numbers = custom || startingCustom()
+          const detail = labels.compressorCustom.replace('{quiet}', signed(numbers.quiet)).replace('{loud}', signed(-numbers.loud))
+          const talk = custom ? Math.round(customSettings().talk) : 0
+          return talk >= 1 ? labels.compressorTalk.replace('{detail}', detail).replace('{talk}', signed(talk)) : detail
+        }
+        const customOn = compressing && strength === 'custom'
+        const customRow = detailed(row(labels.strengths.custom, customOn, () => {
+          custom ??= startingCustom()
+          chooseCompressor('custom')
+        }), customDetail())
+        if (customOn) {
+          const sliders = document.createElement('div')
+          sliders.className = 'menu-sliders'
+          const slider = (text, key, sign) => {
+            const line = document.createElement('div')
+            line.className = 'menu-slider'
+            const value = document.createElement('b')
+            const input = document.createElement('input')
+            input.type = 'range'
+            input.min = 0
+            input.max = 15
+            input.step = 1
+            input.value = custom[key]
+            const show = () => { value.textContent = labels.compressorDb.replace('{value}', signed(sign * custom[key])) }
+            input.oninput = () => {
+              custom = { ...custom, [key]: Number(input.value) }
+              show()
+              customRow.querySelector('.menu-under').textContent = customDetail()
+              if (sound) setStrength()
+            }
+            input.onchange = () => chooseCompressor('custom')
+            show()
+            line.append(text, value, input)
+            sliders.append(line)
+          }
+          slider(labels.compressorQuietUp, 'quiet', 1)
+          slider(labels.compressorLoudDown, 'loud', -1)
+          element.append(sliders)
+          customParts = [sliders, row(labels.compressorClearer, custom.voice, () => {
+            custom = { ...custom, voice: !custom.voice }
+            chooseCompressor('custom')
+          })]
+        }
         // About the whole list, not the last choice
         separator()
         const hint = document.createElement('div')
@@ -1638,6 +1745,11 @@ const CONTROLS_CSS = `
   .menu-item.two-lines { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-top: 5px; padding-bottom: 5px; }
   .menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .menu-under { font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
+  /* ⚙️ → Compressor → Custom's sliders: the name dim, its value bright on the right, the slider under them */
+  .menu-sliders { padding: 0 12px 2px; }
+  .menu-slider { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
+  .menu-slider b { font-weight: normal; color: var(--text, #e4e4e4); font-variant-numeric: tabular-nums; }
+  .menu-slider input { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--text-blue, #6ea8fe); cursor: pointer; }
   /* ⚙️ → Keyboard shortcuts: the keys in small boxes in a column, then what they do */
   .menu-key { display: flex; align-items: center; gap: 12px; min-height: 30px; padding: 0 12px; }
   .menu-key > span:first-child { display: flex; gap: 4px; min-width: 96px; flex-shrink: 0; }

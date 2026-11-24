@@ -255,3 +255,29 @@ test('the compressor: Light, Medium and Strong saved before the 1–7 steps beco
   await settle()
   expect(compressorGiven()).toEqual({ on: true, strength: '1' })
 })
+
+test('the compressor: Custom keeps its numbers, also once another strength is picked', async () => {
+  playVideo(video())
+  await settle()
+  send('video-compressor', { on: true, strength: 'custom-12-2-1', video: 'youtube-abcdefghijk' })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: 'custom', custom: { quiet: 12, loud: 2, voice: true } })
+  send('video-compressor', { on: true, strength: '5', video: 'youtube-abcdefghijk' }) // its numbers stay for next time
+  send('video-compressor', { on: true, strength: 'custom-16-2-1', video: 'youtube-abcdefghijk' }) // over 15: ignored
+  send('video-compressor', { on: true, strength: 'custom', video: 'youtube-abcdefghijk' }) // no numbers: ignored
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '5', custom: { quiet: 12, loud: 2, voice: true } })
+  send('video-compressor', { on: false, strength: 'custom-0-15-0', video: 'youtube-abcdefghijk' })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: false, strength: 'custom', custom: { quiet: 0, loud: 15, voice: false } })
+})
+
+test('the compressor: Custom saved without valid numbers falls back to step 1', async () => {
+  store.set('syncr.videoCompressor', { 'youtube c': { on: true, strength: 'custom', custom: { quiet: 3.5, loud: 2, voice: false } } })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '1' })
+})
