@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Fixed:** compressor switch and sliders jumping while hovering or dragging
+
 ## [1.2.11] - 2026-11-24
 
 **Video** (PC only)

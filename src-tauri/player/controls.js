@@ -1062,6 +1062,21 @@ function playerControls(env, media) {
           button.append(top, under)
           return button
         }
+        // A dim line that keeps the height of the tallest text it can show (texts), so the menu
+        // doesn't jump when it changes (the menu sits on the bottom: a taller line pushes the
+        // switch up). They all lie in the same spot, hidden; the shown one on top. Returns its setter.
+        const steady = (holder, texts) => {
+          holder.classList.add('menu-steady')
+          const shown = document.createElement('span')
+          const spares = texts.map((text) => {
+            const spare = document.createElement('span')
+            spare.textContent = text
+            spare.setAttribute('aria-hidden', 'true')
+            return spare
+          })
+          holder.replaceChildren(shown, ...spares)
+          return (text) => { shown.textContent = text }
+        }
         const separator = () => {
           const line = document.createElement('div')
           line.className = 'menu-separator'
@@ -1079,7 +1094,8 @@ function playerControls(env, media) {
         }
         const steps = Object.keys(COMPRESSOR).filter(isStep)
         const detail = document.createElement('div')
-        const showDetail = (name) => { detail.textContent = name ? detailOf(name) : compressing && isStep(strength) ? detailOf(strength) : labels.compressorPick }
+        const setDetail = steady(detail, [...steps.map(detailOf), labels.compressorPick])
+        const showDetail = (name) => setDetail(name ? detailOf(name) : compressing && isStep(strength) ? detailOf(strength) : labels.compressorPick)
         let customParts = [] // Custom's sliders and Clearer voices, gone when a step is picked
         title(labels.compressorStrength)
         choices(steps.map((name) => ({ value: name, text: numbers.format(Number(name)) })), compressing ? strength : null, (name) => {
@@ -1101,7 +1117,7 @@ function playerControls(env, media) {
           cell.textContent = labels.strengths[name] || ''
           names.append(cell)
         }
-        detail.className = 'menu-note'
+        detail.classList.add('menu-note')
         showDetail(null)
         element.append(names, detail)
         // Then the ones beside the steps
@@ -1111,18 +1127,20 @@ function playerControls(env, media) {
         // Custom: its numbers under it (where its sliders would start, before it's ever picked),
         // and while it's ticked its two sliders and Clearer voices. The sound follows a slider
         // while it's dragged; the app saves it once let go.
-        const customDetail = () => {
-          const numbers = custom || startingCustom()
+        const customText = (numbers, talk) => {
           const detail = labels.compressorCustom.replace('{quiet}', signed(numbers.quiet)).replace('{loud}', signed(-numbers.loud))
-          const talk = custom ? Math.round(customSettings().talk) : 0
           return talk >= 1 ? labels.compressorTalk.replace('{detail}', detail).replace('{talk}', signed(talk)) : detail
         }
+        const customDetail = () => customText(custom || startingCustom(), custom ? Math.round(customSettings().talk) : 0)
         const customOn = compressing && strength === 'custom'
         const customRow = detailed(row(labels.strengths.custom, customOn, () => {
           custom ??= startingCustom()
           chooseCompressor('custom')
         }), customDetail())
         if (customOn) {
+          // Its line changes while a slider is dragged: as tall as its longest text, so the slider stays put
+          const setCustomDetail = steady(customRow.querySelector('.menu-under'), [customText({ quiet: 15, loud: 15 }, 15)])
+          setCustomDetail(customDetail())
           const sliders = document.createElement('div')
           sliders.className = 'menu-sliders'
           const slider = (text, key, sign) => {
@@ -1139,7 +1157,7 @@ function playerControls(env, media) {
             input.oninput = () => {
               custom = { ...custom, [key]: Number(input.value) }
               show()
-              customRow.querySelector('.menu-under').textContent = customDetail()
+              setCustomDetail(customDetail())
               if (sound) setStrength()
             }
             input.onchange = () => chooseCompressor('custom')
@@ -1763,6 +1781,9 @@ const CONTROLS_CSS = `
   .menu-item.two-lines { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-top: 5px; padding-bottom: 5px; }
   .menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .menu-under { font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
+  .menu-steady { display: grid; }
+  .menu-steady > span { grid-area: 1 / 1; }
+  .menu-steady > span + span { visibility: hidden; }
   /* ⚙️ → Compressor → Custom's sliders: the name dim, its value bright on the right, the slider under them */
   .menu-sliders { padding: 0 12px 2px; }
   .menu-slider { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
