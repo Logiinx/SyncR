@@ -41,6 +41,7 @@ function playerControls(env, media) {
     // The ⚙️ menu's rows (Lucide SlidersHorizontal, Gauge, Ellipsis for Miscellaneous); chat = Lucide
     // MessageSquare, also the chat button's
     quality: '<path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>',
+    compressor: '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>', // Lucide AudioLines
     speed: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
     keyboard: '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>', // Lucide Keyboard
     chat: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>',
@@ -633,6 +634,52 @@ function playerControls(env, media) {
     media.setMuted(false)
   })
 
+  // ---- Compressor: evens out loud and quiet sound ---------------------------------------------
+  // Loud parts are turned down, then the whole is raised (the browser's compressor adds its own
+  // gain), so quiet talk comes up. Web Audio takes over the video's sound for good once connected,
+  // so that only happens the first time it's turned on; off then sends the sound straight out.
+  // The video's volume is applied before the sound reaches us: it's undone before the compressor
+  // and applied again after it, so it compresses the same at any volume.
+  const COMPRESSOR = { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25 }
+  const COMPRESSOR_GAIN = 0.5 // after it: about −6 dB, so normal talk stays about as loud as without
+  let sound = null // { context, source, before, compressor, after }
+  let compressing = false
+  function setSoundLevel() {
+    if (!sound) return
+    const volume = video.muted ? 0 : video.volume
+    sound.before.gain.value = 1 / Math.max(volume, 0.01)
+    sound.after.gain.value = volume * COMPRESSOR_GAIN
+  }
+  function setCompressor(on) {
+    compressing = on
+    if (on && !sound) {
+      try {
+        const context = new AudioContext()
+        const source = context.createMediaElementSource(video)
+        const before = context.createGain()
+        const compressor = context.createDynamicsCompressor()
+        for (const [name, value] of Object.entries(COMPRESSOR)) compressor[name].value = value
+        const after = context.createGain()
+        before.connect(compressor).connect(after).connect(context.destination)
+        sound = { context, source, before, compressor, after }
+        video.addEventListener('volumechange', setSoundLevel)
+        setSoundLevel()
+      } catch {
+        compressing = false
+        return
+      }
+    }
+    if (!sound) return
+    sound.source.disconnect()
+    sound.source.connect(on ? sound.before : sound.context.destination)
+    // The browser may hold it until a click or key
+    if (sound.context.state === 'suspended') sound.context.resume().catch(() => {})
+  }
+  function toggleCompressor() {
+    setCompressor(!compressing)
+    flash(compressing ? labels.compressorOn : labels.compressorOff, 800)
+  }
+
   function toggleFull() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     else document.documentElement.requestFullscreen().catch(() => {})
@@ -844,6 +891,16 @@ function playerControls(env, media) {
     panel('speed', labels.speed, speedName(media.rate()), (side) => {
       for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
     }, 'speed')
+    if (labels.compressor) {
+      panel('compressor', labels.compressor, compressing ? labels.on : labels.off, ({ pick, element }) => {
+        pick(labels.off, !compressing, () => setCompressor(false))
+        pick(labels.on, compressing, () => setCompressor(true))
+        const hint = document.createElement('div')
+        hint.className = 'menu-note'
+        hint.textContent = labels.compressorHint
+        element.append(hint)
+      }, 'compressor')
+    }
     const tracks = subtitles?.tracks() || []
     if (tracks.length) {
       const current = subtitles.track()
@@ -887,6 +944,7 @@ function playerControls(env, media) {
     if (next) line([`${labels.keyShift}+N`], labels.nextVideo)
     line(['0–9'], labels.jumpTenths)
     if (!help.c && subtitles?.tracks().length) line(['C'], labels.subtitles)
+    if (labels.compressor) line(['A'], labels.compressor)
     for (const [key, text] of Object.entries(help)) line([key.toUpperCase()], text)
     line([labels.keyEscape], labels.closeMenu)
     side.title(labels.mouse)
@@ -1137,9 +1195,10 @@ function playerControls(env, media) {
     f: toggleFull,
     N: playNext, // Shift+N, as on YouTube
     ...(subtitles ? { c: toggleSubtitles } : {}),
+    ...(labels.compressor ? { a: toggleCompressor } : {}),
     ...hooks.keys,
   }
-  const NO_REPEAT = [' ', 'k', 'm', 'f', 'c', 'N', ...Object.keys(hooks.keys || {})]
+  const NO_REPEAT = [' ', 'k', 'm', 'f', 'c', 'a', 'N', ...Object.keys(hooks.keys || {})]
   addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.altKey || event.metaKey) return
     if (typing()) {
