@@ -230,7 +230,8 @@ function controlsData() {
       // when to use it (each short enough for one row)
       compressorAsIs: t('The sound as it is'),
       compressorDetail: t('Quiet talk {quiet} dB · loud parts {loud} dB'),
-      compressorPick: t('Pick a strength'),
+      // Under the switch while no step is ticked or hovered
+      compressorUntouched: t('Original, untouched sound'),
       compressorStrength: t('Strength|compressor'),
       compressorAdvice: {
         1: t('Barely noticeable: fine for any video'),

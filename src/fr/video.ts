@@ -203,7 +203,7 @@ export const video = {
   '10 dB ≈ twice as loud or quiet': '10 dB ≈ deux fois plus fort ou faible',
   'The sound as it is': 'Le son tel quel',
   'Quiet talk {quiet} dB · loud parts {loud} dB': 'Voix faibles {quiet} dB · passages forts {loud} dB',
-  'Pick a strength': 'Choisissez une force',
+  'Original, untouched sound': 'Son d’origine, intact',
   'Strength|compressor': 'Force',
   'Barely noticeable: fine for any video': 'Presque imperceptible : pour toutes les vidéos',
   'Calm streams with a few loud moments': 'Streams calmes avec quelques moments forts',

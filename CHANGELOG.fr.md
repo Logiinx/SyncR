@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** le compresseur affiche +0 / −0 et « son intact » avant de choisir une force
+
 ## [1.2.13] - 2026-11-24
 
 **Vidéo** (PC uniquement)

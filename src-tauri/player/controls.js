@@ -1116,12 +1116,14 @@ function playerControls(env, media) {
         const detailAdvice = document.createElement('div')
         detailAdvice.className = 'menu-advice'
         detail.append(detailNumbers, detailAdvice)
-        const setNumbers = steady(detailNumbers, [...steps.map(numbersOf), labels.compressorPick])
-        const setAdvice = steady(detailAdvice, steps.map(adviceOf)) // empty under "Pick a strength", same height
+        // No step ticked or hovered: zero on both, and the sound left as it is
+        const untouchedNumbers = labels.compressorDetail.replace('{quiet}', '+0').replace('{loud}', '−0')
+        const setNumbers = steady(detailNumbers, [...steps.map(numbersOf), untouchedNumbers])
+        const setAdvice = steady(detailAdvice, [...steps.map(adviceOf), labels.compressorUntouched])
         const showDetail = (name) => {
           const shown = name || (compressing && isStep(strength) ? strength : null)
-          setNumbers(shown ? numbersOf(shown) : labels.compressorPick)
-          setAdvice(shown ? adviceOf(shown) : '')
+          setNumbers(shown ? numbersOf(shown) : untouchedNumbers)
+          setAdvice(shown ? adviceOf(shown) : labels.compressorUntouched)
         }
         let customParts = [] // Custom's sliders and Clearer voices, gone when a step is picked
         title(labels.compressorStrength, labels.compressorScale)
