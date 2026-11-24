@@ -641,12 +641,12 @@ function playerControls(env, media) {
   // The video's volume is applied before the sound reaches us: it's undone before the compressor
   // and applied again after it, so it compresses the same at any volume.
   // Strengths, measured with a steady tone (normal talk at −20 dB stays as loud: `after`, in dB,
-  // undoes the browser's own gain): light = quiet +1 dB, loud −6 · medium = +4, −10 · strong =
-  // +12, −12 (raises background noise the most).
+  // undoes the browser's own gain). shown: what ⚙️ → Compressor says under each (dB for quiet
+  // talk and loud parts; noise: it raises background noise the most). Retuned: measure again.
   const COMPRESSOR = {
-    light: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4 },
-    medium: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6 },
-    strong: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4 },
+    light: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4, shown: { quiet: 1, loud: -6 } },
+    medium: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6, shown: { quiet: 4, loud: -10 } },
+    strong: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12, noise: true } },
   }
   // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
   // { on, strength }, none for a video without a channel (a trailer: off, nothing remembered)
@@ -661,7 +661,7 @@ function playerControls(env, media) {
     sound.after.gain.value = volume * Math.pow(10, COMPRESSOR[strength].after / 20)
   }
   function setStrength() {
-    const { after, ...values } = COMPRESSOR[strength]
+    const { after, shown, ...values } = COMPRESSOR[strength]
     for (const [name, value] of Object.entries(values)) sound.compressor[name].value = value
     setSoundLevel()
   }
@@ -941,10 +941,27 @@ function playerControls(env, media) {
     }, 'speed')
     if (labels.compressor) {
       panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ pick, element }) => {
-        pick(labels.off, !compressing, () => chooseCompressor(false))
-        for (const name of Object.keys(COMPRESSOR)) {
-          pick(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name))
+        // Each choice with what it changes on a second line, dim
+        const detailed = (button, text) => {
+          const top = document.createElement('span')
+          top.className = 'menu-top'
+          top.append(...button.childNodes)
+          const under = document.createElement('span')
+          under.className = 'menu-under'
+          under.textContent = text
+          button.classList.add('two-lines')
+          button.append(top, under)
         }
+        const signed = (dB) => `${dB > 0 ? '+' : dB < 0 ? '−' : ''}${numbers.format(Math.abs(dB))}`
+        detailed(pick(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
+        for (const [name, { shown }] of Object.entries(COMPRESSOR)) {
+          const detail = labels.compressorDetail.replace('{quiet}', signed(shown.quiet)).replace('{loud}', signed(shown.loud))
+          detailed(pick(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name)), shown.noise ? labels.compressorNoise.replace('{detail}', detail) : detail)
+        }
+        // About the whole list, not the last choice
+        const line = document.createElement('div')
+        line.className = 'menu-separator'
+        element.append(line)
         const hint = document.createElement('div')
         hint.className = 'menu-note'
         hint.textContent = labels.compressorHint
@@ -1546,6 +1563,10 @@ const CONTROLS_CSS = `
   .menu-size svg { width: 16px; height: 16px; }
   .menu-size-value { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
   .menu-note { padding: 2px 12px 6px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
+  /* A choice with a dim line under it (⚙️ → Compressor) */
+  .menu-item.two-lines { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-top: 5px; padding-bottom: 5px; }
+  .menu-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .menu-under { font-size: 12px; line-height: 16px; color: var(--text-dim, #9a9a9a); }
   /* ⚙️ → Keyboard shortcuts: the keys in small boxes in a column, then what they do */
   .menu-key { display: flex; align-items: center; gap: 12px; min-height: 30px; padding: 0 12px; }
   .menu-key > span:first-child { display: flex; gap: 4px; min-width: 96px; flex-shrink: 0; }

@@ -184,7 +184,11 @@ function controlsData() {
       speed: t('Speed'),
       normal: t('Normal'),
       compressor: t('Compressor'),
-      compressorHint: t('Evens out loud and quiet sounds'),
+      compressorHint: t('Evens out loud and quiet sounds. 10 dB ≈ twice as loud or quiet.'),
+      // Under each strength in ⚙️ → Compressor ({quiet}, {loud}: "+4", "−10")
+      compressorAsIs: t('The sound as it is'),
+      compressorDetail: t('Quiet talk {quiet} dB · loud parts {loud} dB'),
+      compressorNoise: t('{detail} · more background noise'),
       compressorLevel: t('Compressor: {level}'),
       compressorOff: t('Compressor off'),
       strengths: { light: t('Light|compressor'), medium: t('Medium|compressor'), strong: t('Strong|compressor') },
