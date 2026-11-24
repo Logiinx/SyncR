@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.9] - 2026-11-24
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** compresseur (⚙️ ou touche A), léger à fort : équilibre sons forts et faibles
 - **Nouveau :** compresseur gardé par chaîne, sur Léger pour une chaîne jamais réglée

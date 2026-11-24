@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.9] - 2026-11-24
+
 **Video** (PC only)
 - **New:** compressor (⚙️ or A key), light to strong: evens out loud and quiet sound
 - **New:** compressor kept per channel, on Light for a channel never set
