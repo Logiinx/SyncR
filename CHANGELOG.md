@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.13] - 2026-11-24
+
 **Video** (PC only)
 - **Better:** each compressor choice shows its numbers and when to use it
 
