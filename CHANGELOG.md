@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **Better:** ±5 s jumps in a Twitch video show the new picture right away
+- **Fixed:** app freezing when folding a big folder in grid view
 
 ## [1.2.15] - 2026-11-25
 

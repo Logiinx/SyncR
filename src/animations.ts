@@ -233,6 +233,10 @@ export function usePage(ref: RefObject<HTMLElement | null>) {
 // item grows in when its list (its parent) was already showing items, and shrinks out when its
 // list stays. reset: when it changes, the list changes all at once (a search, a filter): none.
 // glows: items sync brought or deleted get its green / red tint (the sidebar's notes).
+// More items than this arriving or leaving at once: they just appear or go (each animated one
+// measures the page; hundreds froze the app, a big Video folder folding)
+const MANY_AT_ONCE = 40
+
 interface Tracked {
   el: HTMLElement
   parent: HTMLElement | null
@@ -251,22 +255,28 @@ export function useListItems(ref: RefObject<HTMLElement | null>, reset?: unknown
     if (!prev || !root || prev.reset !== reset || !animationsOn()) return
 
     const parents = new Set([...prev.items.values()].map((item) => item.parent))
-    for (const [key, { el, parent }] of items) {
-      if (!prev.items.has(key) && parent && (parents.has(parent) || parent === root)) {
-        itemIn(el, parent)
-        if (glows && takeGlow(key, 'added')) syncTint(el, 'added')
-      } else if (glows && prev.items.has(key) && takeGlow(key, 'edited')) syncTint(el, 'edited')
+    const arriving = [...items].filter(([key, { parent }]) => !prev.items.has(key) && parent && (parents.has(parent) || parent === root))
+    const animateIn = arriving.length <= MANY_AT_ONCE
+    for (const [key, { el, parent }] of arriving) {
+      if (animateIn) itemIn(el, parent!)
+      if (glows && takeGlow(key, 'added')) syncTint(el, 'added')
     }
+    if (glows) for (const [key, { el }] of items) if (prev.items.has(key) && takeGlow(key, 'edited')) syncTint(el, 'edited')
     const order = [...prev.items.keys()]
-    order.forEach((key, index) => {
+    const leaving = order.filter((key) => {
       const { el, parent } = prev.items.get(key)!
-      if (items.has(key) || el.isConnected || !parent?.isConnected) return
+      return !items.has(key) && !el.isConnected && !!parent?.isConnected
+    })
+    // Many at once (a big folder folding): they just go, like a reset
+    if (leaving.length > MANY_AT_ONCE) return
+    leaving.forEach((key) => {
+      const { el, parent } = prev.items.get(key)!
       // Back where it was: before the next item that's still in the same list
       const next = order
-        .slice(index + 1)
+        .slice(order.indexOf(key) + 1)
         .map((after) => items.get(after)?.el)
         .find((after) => after?.parentElement === parent)
-      itemOut(el, parent, next ?? null, glows && takeGlow(key, 'removed'))
+      itemOut(el, parent!, next ?? null, glows && takeGlow(key, 'removed'))
     })
   })
 }
@@ -343,22 +353,36 @@ function shrinkAway(copy: HTMLElement, list: Element) {
   animation.finished.finally(() => {
     if (!grid) return copy.remove()
     // The other tiles glide from where they were to their new places: by their position, on whole
-    // screen pixels (.gliding, index.css), never a transform (soft text, then a 1px snap)
-    const others = [...list.children].filter((child) => child !== copy)
-    const before = others.map((child) => child.getBoundingClientRect())
+    // screen pixels (.gliding, index.css), never a transform (soft text, then a 1px snap). Tiles
+    // leaving together glide the others once (each glide measures the whole grid).
+    if (!glideBatches.has(list)) {
+      glideBatches.set(list, new Map([...list.children].map((child) => [child, child.getBoundingClientRect()])))
+      queueMicrotask(() => glideAll(list)) // after the other tiles that finished in this frame
+    }
     copy.remove()
-    // A glide still running (two removed quickly) stops, so "after" is the tile's real place
-    others.forEach((child) => {
-      child.getAnimations().forEach((glide) => glide.id === GLIDE_ID && glide.cancel())
-      child.classList.remove('gliding')
-    })
-    const zoom = currentZoom()
-    others.forEach((child, i) => {
-      const after = child.getBoundingClientRect()
-      const dx = (before[i].left - after.left) / zoom
-      const dy = (before[i].top - after.top) / zoom
-      if (dx || dy) glide(child, dx, dy)
-    })
+  })
+}
+
+const glideBatches = new Map<Element, Map<Element, DOMRect>>()
+
+function glideAll(list: Element) {
+  const before = glideBatches.get(list)!
+  glideBatches.delete(list)
+  const others = [...before.keys()].filter((child) => child.parentElement === list)
+  // A glide still running (two removed quickly) stops, so "after" is the tile's real place
+  others.forEach((child) => {
+    child.getAnimations().forEach((glide) => glide.id === GLIDE_ID && glide.cancel())
+    child.classList.remove('gliding')
+  })
+  const zoom = currentZoom()
+  const offScreen = (box: DOMRect) => box.bottom < 0 || box.top > innerHeight
+  others.forEach((child) => {
+    const from = before.get(child)!
+    const after = child.getBoundingClientRect()
+    if (offScreen(from) && offScreen(after)) return
+    const dx = (from.left - after.left) / zoom
+    const dy = (from.top - after.top) / zoom
+    if (dx || dy) glide(child, dx, dy)
   })
 }
 
