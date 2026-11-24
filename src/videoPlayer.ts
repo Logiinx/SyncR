@@ -100,7 +100,7 @@ function saveSubtitles(video: PlayableVideo, on: boolean) {
 // strength 1 (Light); turned off, it keeps its strength for the A key. Changed in the player
 // (controls.js). Saved before the 1–7 steps: Light, Medium, Strong = 1, 3, 6 (the same sound).
 const COMPRESSOR_KEY = 'syncr.videoCompressor'
-const STRENGTHS = ['1', '2', '3', '4', '5', '6', '7']
+const STRENGTHS = ['1', '2', '3', '4', '5', '6', '7', 'peaks', 'voice'] // i18n-ok
 const OLD_STRENGTHS: Record<string, string> = { light: '1', medium: '3', strong: '6' } // i18n-ok
 interface CompressorChoice {
   on: boolean
@@ -198,10 +198,12 @@ function controlsData() {
       compressorNight: t('Everything about as loud, for low volume · most background noise'),
       compressorPick: t('Pick a strength'),
       compressorStrength: t('Strength|compressor'),
+      compressorPeaks: t('Only shouts and bangs go down ({loud} dB), talk untouched'),
+      compressorVoice: t('Like {level}, plus clearer voices and less low rumble'),
       compressorLevel: t('Compressor: {level}'),
       compressorOff: t('Compressor off'),
-      // The steps with a name (the others show their number only)
-      strengths: { 1: t('Light|compressor'), 3: t('Medium|compressor'), 6: t('Strong|compressor'), 7: t('Night|compressor') },
+      // The steps with a name (the others show their number only), then the ones beside them
+      strengths: { 1: t('Light|compressor'), 3: t('Medium|compressor'), 6: t('Strong|compressor'), 7: t('Night|compressor'), peaks: t('Peaks only|compressor'), voice: t('Voice|compressor') },
       off: t('Off|compressor'),
       menuBack: t('Back'),
       auto: t('Auto'),

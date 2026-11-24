@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** compressor Peaks only (only shouts and bangs) and Voice
 - **Better:** compressor in 7 strengths, from Light to Night, on a 1–7 switch
 
 ## [1.2.10] - 2026-11-24

@@ -652,13 +652,20 @@ function playerControls(env, media) {
     5: { threshold: -32, knee: 10, ratio: 7.5, attack: 0.004, release: 0.22, after: -5.5, shown: { quiet: 9, loud: -12, noise: 1 } },
     6: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12, noise: 2 } },
     7: { threshold: -39, knee: 10, ratio: 17, attack: 0.003, release: 0.2, after: -5, shown: { quiet: 15, loud: -15, noise: 3 } },
+    // Beside the steps: only loud bursts go down (talk up to −15 dB untouched), and step 3 with
+    // clearer voices (voice: less low rumble before the compressor, a lift around 3 kHz after it)
+    peaks: { threshold: -16, knee: 6, ratio: 20, attack: 0.002, release: 0.15, after: -8, shown: { loud: -10 } },
+    voice: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6, voice: true, shown: { like: '3' } },
   }
-  // "3 · Medium", or just "4" for a step without a name
-  const strengthName = (name) => (labels.strengths[name] ? `${name} · ${labels.strengths[name]}` : name)
+  const isStep = (name) => /^\d$/.test(name)
+  // "3 · Medium", or just "4" for a step without a name; "Voice" beside the steps
+  const strengthName = (name) => (!isStep(name) ? labels.strengths[name] : labels.strengths[name] ? `${name} · ${labels.strengths[name]}` : name)
+  // Clearer voices (voice above), and nothing changed otherwise
+  const VOICE = { rumble: 100, lift: 2800, liftQ: 1, liftDb: 3 } // Hz, Hz, width, dB
   // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
   // { on, strength }, none for a video without a channel (a trailer: off, nothing remembered)
   const known = (name) => Object.hasOwn(COMPRESSOR, name)
-  let sound = null // { context, source (once connected), before, compressor, after }
+  let sound = null // { context, source (once connected), before, rumble, compressor, lift, after }
   let compressing = false
   let strength = '1' // the last one picked, which A turns back on
   function setSoundLevel() {
@@ -668,8 +675,10 @@ function playerControls(env, media) {
     sound.after.gain.value = volume * Math.pow(10, COMPRESSOR[strength].after / 20)
   }
   function setStrength() {
-    const { after, shown, ...values } = COMPRESSOR[strength]
+    const { after, shown, voice, ...values } = COMPRESSOR[strength]
     for (const [name, value] of Object.entries(values)) sound.compressor[name].value = value
+    sound.rumble.frequency.value = voice ? VOICE.rumble : 10 // 10 Hz: below hearing, so no change
+    sound.lift.gain.value = voice ? VOICE.liftDb : 0
     setSoundLevel()
   }
   // The sound is taken only once the browser lets it run (it may wait for a click or key, more so
@@ -698,10 +707,16 @@ function playerControls(env, media) {
       try {
         const context = new AudioContext()
         const before = context.createGain()
+        const rumble = context.createBiquadFilter()
+        rumble.type = 'highpass'
         const compressor = context.createDynamicsCompressor()
+        const lift = context.createBiquadFilter()
+        lift.type = 'peaking'
+        lift.frequency.value = VOICE.lift
+        lift.Q.value = VOICE.liftQ
         const after = context.createGain()
-        before.connect(compressor).connect(after).connect(context.destination)
-        sound = { context, source: null, before, compressor, after }
+        before.connect(rumble).connect(compressor).connect(lift).connect(after).connect(context.destination)
+        sound = { context, source: null, before, rumble, compressor, lift, after }
         context.onstatechange = connectSound
       } catch {
         compressing = false
@@ -960,16 +975,24 @@ function playerControls(env, media) {
     }, 'speed')
     if (labels.compressor) {
       panel('compressor', labels.compressor, compressing ? strengthName(strength) : labels.off, ({ title, row, choices, element }) => { // the menu stays open, to compare them
-        // Off with what it does on a second line, dim
-        const off = row(labels.off, !compressing, () => chooseCompressor(false))
-        const top = document.createElement('span')
-        top.className = 'menu-top'
-        top.append(...off.childNodes)
-        const under = document.createElement('span')
-        under.className = 'menu-under'
-        under.textContent = labels.compressorAsIs
-        off.classList.add('two-lines')
-        off.append(top, under)
+        // A row with what it does on a second line, dim
+        const detailed = (button, text) => {
+          const top = document.createElement('span')
+          top.className = 'menu-top'
+          top.append(...button.childNodes)
+          const under = document.createElement('span')
+          under.className = 'menu-under'
+          under.textContent = text
+          button.classList.add('two-lines')
+          button.append(top, under)
+          return button
+        }
+        const separator = () => {
+          const line = document.createElement('div')
+          line.className = 'menu-separator'
+          element.append(line)
+        }
+        detailed(row(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
         // Then the 1–7 switch, the names of 1, 3, 6, 7 under it, and a line saying what the step
         // under the mouse does (the ticked one otherwise). A click doesn't redraw: the fill slides.
         const signed = (dB) => `${dB > 0 ? '+' : dB < 0 ? '−' : ''}${numbers.format(Math.abs(dB))}`
@@ -979,15 +1002,17 @@ function playerControls(env, media) {
           const detail = labels.compressorDetail.replace('{quiet}', signed(shown.quiet)).replace('{loud}', signed(shown.loud))
           return shown.noise ? (shown.noise === 1 ? labels.compressorSomeNoise : labels.compressorNoise).replace('{detail}', detail) : detail
         }
-        const steps = Object.keys(COMPRESSOR)
+        const steps = Object.keys(COMPRESSOR).filter(isStep)
         const detail = document.createElement('div')
-        const showDetail = (name) => { detail.textContent = name ? detailOf(name) : compressing ? detailOf(strength) : labels.compressorPick }
+        const showDetail = (name) => { detail.textContent = name ? detailOf(name) : compressing && isStep(strength) ? detailOf(strength) : labels.compressorPick }
         title(labels.compressorStrength)
         choices(steps.map((name) => ({ value: name, text: numbers.format(Number(name)) })), compressing ? strength : null, (name) => {
           chooseCompressor(name)
           showDetail(name)
-          off.classList.remove('on')
-          off.querySelector('svg')?.remove()
+          for (const ticked of element.querySelectorAll('.menu-item.on')) {
+            ticked.classList.remove('on')
+            ticked.querySelector('svg')?.remove()
+          }
           const value = $('menu').querySelector('[data-panel="compressor"] .menu-value span')
           if (value) value.textContent = strengthName(name)
         }, showDetail)
@@ -1002,10 +1027,12 @@ function playerControls(env, media) {
         detail.className = 'menu-note'
         showDetail(null)
         element.append(names, detail)
+        // Then the ones beside the steps
+        separator()
+        detailed(row(labels.strengths.peaks, compressing && strength === 'peaks', () => chooseCompressor('peaks')), labels.compressorPeaks.replace('{loud}', signed(COMPRESSOR.peaks.shown.loud)))
+        detailed(row(labels.strengths.voice, compressing && strength === 'voice', () => chooseCompressor('voice')), labels.compressorVoice.replace('{level}', strengthName(COMPRESSOR.voice.shown.like)))
         // About the whole list, not the last choice
-        const line = document.createElement('div')
-        line.className = 'menu-separator'
-        element.append(line)
+        separator()
         const hint = document.createElement('div')
         hint.className = 'menu-note'
         hint.textContent = labels.compressorHint

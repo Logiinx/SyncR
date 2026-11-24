@@ -230,6 +230,19 @@ test('the compressor: step 1 for a new channel, then what was picked for that ch
   expect(compressorGiven()).toEqual({ on: true, strength: '1' })
 })
 
+test('the compressor: Peaks only and Voice are kept too', async () => {
+  playVideo(video())
+  await settle()
+  send('video-compressor', { on: true, strength: 'voice', video: 'youtube-abcdefghijk' })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: 'voice' })
+  send('video-compressor', { on: false, strength: 'peaks', video: 'youtube-abcdefghijk' })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: false, strength: 'peaks' })
+})
+
 test('the compressor: Light, Medium and Strong saved before the 1–7 steps become 1, 3 and 6', async () => {
   store.set('syncr.videoCompressor', { 'youtube c': { on: true, strength: 'medium' }, 'youtube d': { on: false, strength: 'strong' }, 'youtube e': { on: true, strength: 'odd' } })
   playVideo(video())
