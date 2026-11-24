@@ -1075,11 +1075,11 @@ button {
 
 /* Mouse over a card that isn't being edited: it can be dragged. Same look as a section
    (dragSections.ts): two gray corner brackets like the app icon, a slightly lighter tile,
-   a grab hand. Not while a card is being dragged. */
+   a plain arrow (no grab hand: user, 2026-11-24). Not while a card is being dragged. */
 @media (hover: hover) {
   .board-cards:not(.dragging) .card:not(.editing):hover {
     background: color-mix(in srgb, var(--tint) var(--tile-hi), var(--bg));
-    cursor: grab;
+    cursor: default;
   }
 
   .board-cards:not(.dragging) .card:not(.editing):hover::before,

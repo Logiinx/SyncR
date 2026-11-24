@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Board**
+- **Small fixes:** plain arrow over cards
+
 ## [1.2.9] - 2026-11-24
 
 **Video** (PC only)

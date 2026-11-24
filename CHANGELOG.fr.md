@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Board**
+- **Petites corrections :** flèche normale sur les cartes
+
 ## [1.2.9] - 2026-11-24
 
 **Vidéo** (PC uniquement)
