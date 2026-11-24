@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.11] - 2026-11-24
+
 **Video** (PC only)
 - **New:** compressor Peaks only (only shouts and bangs) and Voice
 - **New:** compressor Custom: your own levels with two sliders, per channel

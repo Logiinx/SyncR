@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.11] - 2026-11-24
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** compresseur Pics seulement (cris et bruits forts) et Voix
 - **Nouveau :** compresseur Personnalisé : vos propres niveaux, deux curseurs, par chaîne
