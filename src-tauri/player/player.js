@@ -164,6 +164,7 @@ const controls = playerControls({
     compressorChosen: (on, strength, every) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&every=${every ? 1 : 0}&video=twitch-${encodeURIComponent(videoId)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
     besideTime: (seconds) => dayAt(seconds),
     skimming: (seconds, forward) => skimTo(seconds, forward),
+    keyframe: (seconds) => nearestKeyframe(seconds),
     besideOnHover: true, // the time of day: only while the time is hovered
     menu: (menu) => {
       chatMenu(menu)
@@ -746,7 +747,10 @@ function fetchPiece(address, start, size) {
     .then((result) => {
       entry.running = false
       entry.at = performance.now()
-      if (result.data) entry.size = result.data.byteLength
+      if (result.data) {
+        entry.size = result.data.byteLength
+        learnKeyframes(address, result.data)
+      }
       else if (fetched.get(address) === entry) fetched.delete(address) // asked again: a new try
       trimFetched()
       preloadMore()
@@ -815,6 +819,136 @@ function trimFetched() {
 }
 setInterval(trimFetched, 10000)
 
+// ---- Full pictures (keyframes) ----------------------------------------------------------------
+// A jump between two full pictures rebuilds every frame from the one before (~100 ms per second at
+// 1440p60), so quick jumps land on the nearest one (controls.js). Twitch's pieces are fMP4: each
+// piece read (preloaded or hls.js's) tells where its full pictures are. Pieces not read yet follow
+// the pattern the read ones share (each starts with one, then every 2 s: measured on real videos
+// 2026-11-25); none known, or the nearest one more than KEY_REACH away: the exact spot.
+const KEY_REACH = 1 // seconds
+const KEY_AFTER = 0.005 // seconds: less than a frame
+const inits = new Map() // quality's folder → { timescale, trackId, duration, flags } of its video track
+const keyframes = new Map() // piece address → seconds of its full pictures from its start
+let keyPattern = null // seconds every read piece has its full pictures at, or 'mixed'
+
+function mp4Boxes(view, from, to) {
+  const found = []
+  for (let at = from; at + 8 <= to;) {
+    let size = view.getUint32(at)
+    let head = 8
+    if (size === 1) { size = Number(view.getBigUint64(at + 8)); head = 16 }
+    if (size === 0) size = to - at
+    if (size < head) break
+    found.push({ type: String.fromCharCode(view.getUint8(at + 4), view.getUint8(at + 5), view.getUint8(at + 6), view.getUint8(at + 7)), start: at + head, end: Math.min(at + size, to) })
+    at += size
+  }
+  return found
+}
+const mp4Box = (view, box, type) => mp4Boxes(view, box.start, box.end).find((one) => one.type === type)
+const mp4All = (view, box, type) => mp4Boxes(view, box.start, box.end).filter((one) => one.type === type)
+
+// The start piece of a quality (ftyp + moov): its video track's clock and defaults
+function readInit(view, moov) {
+  const defaults = {}
+  const mvex = mp4Box(view, moov, 'mvex')
+  for (const trex of mvex ? mp4All(view, mvex, 'trex') : []) defaults[view.getUint32(trex.start + 4)] = { duration: view.getUint32(trex.start + 12), flags: view.getUint32(trex.start + 20) }
+  for (const trak of mp4All(view, moov, 'trak')) {
+    const tkhd = mp4Box(view, trak, 'tkhd')
+    const mdia = mp4Box(view, trak, 'mdia')
+    const hdlr = mdia && mp4Box(view, mdia, 'hdlr')
+    const mdhd = mdia && mp4Box(view, mdia, 'mdhd')
+    if (!tkhd || !hdlr || !mdhd || view.getUint32(hdlr.start + 8) !== 0x76696465) continue // 'vide'
+    const trackId = view.getUint32(tkhd.start + (view.getUint8(tkhd.start) === 1 ? 20 : 12))
+    const timescale = view.getUint32(mdhd.start + (view.getUint8(mdhd.start) === 1 ? 20 : 12))
+    return { timescale, trackId, ...(defaults[trackId] ?? { duration: 0, flags: 0 }) }
+  }
+  return null
+}
+
+// A piece's full pictures, in seconds from its first picture shown (null: can't tell)
+function readKeyframes(view, init) {
+  const times = []
+  let first = null
+  for (const moof of mp4Boxes(view, 0, view.byteLength).filter((one) => one.type === 'moof')) {
+    for (const traf of mp4All(view, moof, 'traf')) {
+      const tfhd = mp4Box(view, traf, 'tfhd')
+      if (!tfhd || view.getUint32(tfhd.start + 4) !== init.trackId) continue
+      const has = view.getUint32(tfhd.start) & 0xffffff
+      let at = tfhd.start + 8 + (has & 0x1 ? 8 : 0) + (has & 0x2 ? 4 : 0)
+      let duration = init.duration
+      let flags = init.flags
+      if (has & 0x8) { duration = view.getUint32(at); at += 4 }
+      if (has & 0x10) at += 4
+      if (has & 0x20) flags = view.getUint32(at)
+      const tfdt = mp4Box(view, traf, 'tfdt')
+      if (!tfdt) return null
+      let decoded = view.getUint8(tfdt.start) === 1 ? Number(view.getBigUint64(tfdt.start + 4)) : view.getUint32(tfdt.start + 4)
+      for (const trun of mp4All(view, traf, 'trun')) {
+        const signed = view.getUint8(trun.start) === 1
+        const runHas = view.getUint32(trun.start) & 0xffffff
+        const count = view.getUint32(trun.start + 4)
+        let r = trun.start + 8 + (runHas & 0x1 ? 4 : 0)
+        let firstFlags = null
+        if (runHas & 0x4) { firstFlags = view.getUint32(r); r += 4 }
+        for (let i = 0; i < count; i++) {
+          let length = duration
+          let sampleFlags = i === 0 && firstFlags !== null ? firstFlags : flags
+          let shift = 0
+          if (runHas & 0x100) { length = view.getUint32(r); r += 4 }
+          if (runHas & 0x200) r += 4
+          if (runHas & 0x400) { sampleFlags = view.getUint32(r); r += 4 }
+          if (runHas & 0x800) { shift = signed ? view.getInt32(r) : view.getUint32(r); r += 4 }
+          const shown = decoded + shift
+          if (first === null || shown < first) first = shown
+          if (!(sampleFlags & 0x10000)) times.push(shown) // not marked "needs earlier frames"
+          decoded += length
+        }
+      }
+    }
+  }
+  if (first === null || !init.timescale) return null
+  return times.map((one) => (one - first) / init.timescale).sort((a, b) => a - b)
+}
+
+// Each downloaded piece (fetchPiece, hls.js's own); a failure only means "can't tell"
+function learnKeyframes(address, data) {
+  if (!data?.byteLength || keyframes.has(address)) return
+  try {
+    const view = new DataView(data)
+    const top = mp4Boxes(view, 0, Math.min(view.byteLength, 1e6))
+    const moov = top.find((one) => one.type === 'moov')
+    if (moov) return void inits.set(address.slice(0, address.lastIndexOf('/') + 1), readInit(view, moov))
+    const init = inits.get(address.slice(0, address.lastIndexOf('/') + 1))
+    if (!init || !top.some((one) => one.type === 'moof')) return
+    const times = readKeyframes(view, init)
+    if (!times) return
+    keyframes.set(address, times)
+    const same = keyPattern && keyPattern !== 'mixed' && keyPattern.length === times.length && keyPattern.every((one, i) => Math.abs(one - times[i]) < 0.01)
+    if (!keyPattern) keyPattern = times
+    else if (!same) keyPattern = 'mixed'
+  } catch (error) {
+    console.warn('keyframes', error)
+  }
+}
+
+// The nearest full picture to a quick jump's spot (controls.js), or the spot itself
+function nearestKeyframe(seconds) {
+  const pieces = playingLevel()?.details?.fragments ?? []
+  let best = null
+  for (const piece of pieces) {
+    if (piece.start + piece.duration < seconds - KEY_REACH || piece.start > seconds + KEY_REACH) continue
+    const times = keyframes.get(piece.url) ?? (Array.isArray(keyPattern) ? keyPattern : null)
+    const start = Number.isFinite(piece.startPTS) ? piece.startPTS : piece.start
+    for (const one of times ?? []) {
+      if (one >= piece.duration) continue
+      const at = start + one
+      if (best === null || Math.abs(at - seconds) < Math.abs(best - seconds)) best = at
+    }
+  }
+  // A hair after it: a spot even slightly before shows the frame before, rebuilt from 2 s earlier
+  return best !== null && Math.abs(best - seconds) <= KEY_REACH + 0.01 ? best + KEY_AFTER : seconds
+}
+
 class PieceLoader extends Hls.DefaultConfig.loader {
   constructor(config) {
     super(config)
@@ -862,9 +996,11 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   // are asked (WAYS); a refused one is done, one that failed in passing is asked again, with longer
   // pauses, as long as the piece isn't needed yet (UNCUT_MARGIN before it plays, within
   // UNCUT_PATIENCE). Then the muted one plays.
-  load(context, config, callbacks) {
+  load(context, config, givenCallbacks) {
+    // Its full pictures are read before hls.js takes the bytes (they're gone by FRAG_LOADED)
+    const callbacks = { ...givenCallbacks, onSuccess: (response, ...rest) => { learnKeyframes(context.url, response.data); givenCallbacks.onSuccess(response, ...rest) } }
     if (!MUTED_PIECE.test(context.url)) {
-      if (context.rangeEnd) return super.load(context, config, callbacks) // a part of one: only hls.js's own way
+      if (context.rangeEnd) return super.load(context, config, givenCallbacks) // a part of one: only hls.js's own way
       return this.fromFetched(context, config, callbacks)
     }
     this.stopped = false

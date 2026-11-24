@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Better:** ±5 s jumps in a Twitch video show the new picture right away
+
 ## [1.2.15] - 2026-11-25
 
 **Video** (PC only)

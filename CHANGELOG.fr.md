@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** les sauts de ±5 s dans une vidéo Twitch affichent l’image tout de suite
+
 ## [1.2.15] - 2026-11-25
 
 **Vidéo** (PC uniquement)

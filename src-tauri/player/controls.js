@@ -133,6 +133,12 @@ function playerControls(env, media) {
   let gatherTimer = null
   let lastJump = 0
   const target = () => pending ?? media.time()
+  // A quick jump lands on the nearest full picture (hooks.keyframe: Twitch has one every 2 s), so
+  // it shows at once instead of rebuilding the frames up to the exact spot. The next 5 s step counts
+  // from where the exact one would be (landed − exact, while skimming), so presses never add up wrong.
+  const AIM_LASTS = 10000 // ms after the last quick jump
+  let aim = { off: 0, at: 0 }
+  const exactTarget = () => target() - (Date.now() - aim.at < AIM_LASTS ? aim.off : 0)
   function drawTime() {
     const length = media.duration() || 0
     const shown = dragging !== null ? dragging * length : target()
@@ -150,7 +156,10 @@ function playerControls(env, media) {
   function jumpTo(seconds, gathered) {
     const length = media.duration()
     if (!length) return
-    const place = Math.min(Math.max(seconds, 0), length - 0.5)
+    const clamp = (at) => Math.min(Math.max(at, 0), length - 0.5)
+    const exact = clamp(seconds)
+    const place = gathered ? clamp(hooks.keyframe?.(exact) ?? exact) : exact
+    aim = gathered ? { off: place - exact, at: Date.now() } : { off: 0, at: 0 }
     const wait = gathered ? lastJump + JUMP_GAP - Date.now() : 0
     if (gathered) hooks.skimming?.(place, place >= target())
     clearTimeout(gatherTimer)
@@ -389,8 +398,8 @@ function playerControls(env, media) {
 
   $('play').onclick = togglePlay
   $('big').onclick = togglePlay
-  $('back').onclick = () => jumpTo(target() - JUMP, true)
-  $('forward').onclick = () => jumpTo(target() + JUMP, true)
+  $('back').onclick = () => jumpTo(exactTarget() - JUMP, true)
+  $('forward').onclick = () => jumpTo(exactTarget() + JUMP, true)
   $('back').title = labels.back
   $('forward').title = labels.forward
 
@@ -1495,8 +1504,8 @@ function playerControls(env, media) {
     changeVolume(wheeled < 0 ? 0.05 : -0.05)
     wheeled = 0
   }, { passive: false })
-  const jumpBack = () => { jumpTo(target() - JUMP, true); flash(`−${JUMP} s`) }
-  const jumpForward = () => { jumpTo(target() + JUMP, true); flash(`+${JUMP} s`) }
+  const jumpBack = () => { jumpTo(exactTarget() - JUMP, true); flash(`−${JUMP} s`) }
+  const jumpForward = () => { jumpTo(exactTarget() + JUMP, true); flash(`+${JUMP} s`) }
   const KEYS = {
     ' ': togglePlay,
     k: togglePlay,
