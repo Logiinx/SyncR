@@ -163,6 +163,7 @@ const controls = playerControls({
     // The app keeps it for the channel (video_window.rs /compressor)
     compressorChosen: (on, strength, every) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&every=${every ? 1 : 0}&video=twitch-${encodeURIComponent(videoId)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
     besideTime: (seconds) => dayAt(seconds),
+    skimming: (seconds, forward) => skimTo(seconds, forward),
     besideOnHover: true, // the time of day: only while the time is hovered
     menu: (menu) => {
       chatMenu(menu)
@@ -705,10 +706,156 @@ function mutedText() {
   return why.length ? labels.infoMutedWhy.replace('{why}', why.join(', ')) : labels.infoMuted
 }
 
+// ---- Pieces downloaded ahead while skimming ---------------------------------------------------
+// Twitch limits each download's speed, not the total: a 1440p piece (10 s, ~13 MB) takes ~1.3 s,
+// 3 at once about the same (measured 2026-11-24). hls.js downloads one at a time and keeps ~40 s
+// ready at 1440p (its 60 MB limit), so quick 5 s jumps in a row ran out of it and waited ~1 s.
+// Now while jumping quickly (skimTo), the pieces around where the jumps head download SKIM.atOnce
+// at a time and wait here, in memory, until hls.js asks for them. Every ordinary piece comes
+// through here, hls.js's own too: one it drops on a jump (the app still fetches it to the end) is
+// kept for when it's asked again, never downloaded twice. Muted pieces keep their own way below.
+// 3 at once kept up with presses (5 a second); a held key (6.6 jumps a second) needed 6 (~1.7 s for 6).
+const SKIM = {
+  ahead: 80, behind: 30, // seconds around the jumps' target: ahead going forward, behind going back
+  atOnce: 6,
+  lasts: 10000, // ms after the last quick jump
+  keep: 120000, // ms a piece waits for hls.js at most
+  most: 160e6, // bytes waiting at most
+}
+// address → { done: Promise of { data, start, first, end } (ms) or { code, text } when it failed,
+//             start: its second in the video, size: bytes (an estimate while running), running, at: ms it arrived }
+const fetched = new Map()
+// address → ms it was handed to hls.js: not in the buffer yet for a moment, so not fetched again meanwhile
+const handedOver = new Map()
+const HANDING = 20000 // ms
+let skim = null // { at: seconds, forward, until: ms }
+
+function fetchPiece(address, start, size) {
+  const known = fetched.get(address)
+  if (known) return known
+  const entry = { start, size, running: true, at: 0 }
+  const began = performance.now()
+  entry.done = fetch(address)
+    .then(async (answer) => {
+      if (!answer.ok) return { code: answer.status, text: answer.statusText }
+      const first = performance.now()
+      const data = await answer.arrayBuffer()
+      return { data, start: began, first, end: performance.now() }
+    })
+    .catch((error) => ({ code: 0, text: String(error) }))
+    .then((result) => {
+      entry.running = false
+      entry.at = performance.now()
+      if (result.data) entry.size = result.data.byteLength
+      else if (fetched.get(address) === entry) fetched.delete(address) // asked again: a new try
+      trimFetched()
+      preloadMore()
+      return result
+    })
+  fetched.set(address, entry)
+  return entry
+}
+
+// A quick jump heads there (controls.js)
+function skimTo(seconds, forward) {
+  skim = { at: seconds, forward, until: performance.now() + SKIM.lasts }
+  preloadMore()
+}
+
+const pieceBytes = (piece) => ((playingLevel()?.bitrate || 0) / 8) * piece.duration
+const waitingBytes = () => [...fetched.values()].reduce((sum, one) => sum + one.size, 0)
+function inBuffer(piece) {
+  for (let i = 0; i < video.buffered.length; i++) {
+    if (video.buffered.start(i) <= piece.start + 0.2 && video.buffered.end(i) >= piece.start + piece.duration - 0.2) return true
+  }
+  return false
+}
+
+// The next pieces around the target, nearest first (behind it first going back)
+function preloadMore() {
+  if (skim && performance.now() > skim.until) skim = null
+  if (!skim || !hls) return
+  const { at, forward } = skim
+  let running = [...fetched.values()].filter((one) => one.running).length
+  if (running >= SKIM.atOnce) return
+  const from = forward ? at : at - SKIM.behind
+  const to = forward ? at + SKIM.ahead : at + 10
+  const distance = (one) => Math.max(one.start - at, at - one.start - one.duration, 0) + (!forward && one.start > at ? SKIM.behind : 0)
+  const now = performance.now()
+  const handed = (one) => now - (handedOver.get(one.url) ?? -Infinity) < HANDING
+  const pieces = (playingLevel()?.details?.fragments ?? [])
+    .filter((one) => one.start + one.duration > from && one.start < to && !MUTED_PIECE.test(one.url) && !fetched.has(one.url) && !handed(one) && !inBuffer(one))
+    .sort((a, b) => distance(a) - distance(b))
+  let bytes = waitingBytes()
+  for (const piece of pieces) {
+    if (running >= SKIM.atOnce || bytes + pieceBytes(piece) > SKIM.most) break
+    fetchPiece(piece.url, piece.start, pieceBytes(piece))
+    bytes += pieceBytes(piece)
+    running++
+  }
+}
+
+// Pieces hls.js won't ask for soon: too old, another quality's, or far from where it plays
+function trimFetched() {
+  const folder = playingFolder()
+  const at = skim?.at ?? video.currentTime
+  const now = performance.now()
+  const far = (one) => one.start < at - SKIM.behind - 10 || one.start > at + SKIM.ahead + 30
+  for (const [address, when] of handedOver) if (now - when > HANDING) handedOver.delete(address)
+  const done = [...fetched].filter(([, one]) => !one.running)
+  for (const [address, one] of done) {
+    if (now - one.at > SKIM.keep || !address.startsWith(folder) || far(one)) fetched.delete(address)
+  }
+  // Still too much: the farthest first
+  const left = done.filter(([address]) => fetched.has(address)).sort(([, a], [, b]) => Math.abs(b.start - at) - Math.abs(a.start - at))
+  for (const [address] of left) {
+    if (waitingBytes() <= SKIM.most) break
+    fetched.delete(address)
+  }
+}
+setInterval(trimFetched, 10000)
+
 class PieceLoader extends Hls.DefaultConfig.loader {
   constructor(config) {
     super(config)
     this.hlsConfig = config
+  }
+  // An ordinary piece, from the pieces above (downloaded now if it isn't). Its download's own
+  // times go to hls.js, ending now, as if it had just downloaded it: its speed guess stays true.
+  fromFetched(context, config, callbacks) {
+    this.context = context
+    this.config = config
+    this.callbacks = callbacks // so abort() tells hls.js, as its own loader does
+    const stats = this.stats
+    stats.loading.start = performance.now()
+    const ticket = (this.ticket = {})
+    const entry = fetchPiece(context.url, context.frag?.start ?? 0, context.frag ? pieceBytes(context.frag) : 0)
+    const limit = config.loadPolicy?.maxLoadTimeMs
+    if (limit) {
+      this.limitTimer = setTimeout(() => {
+        if (this.ticket !== ticket) return
+        this.ticket = null
+        if (fetched.get(context.url) === entry) fetched.delete(context.url) // its next try starts again
+        callbacks.onTimeout(stats, context, null)
+      }, limit)
+    }
+    entry.done.then((result) => {
+      if (this.ticket !== ticket) return
+      this.ticket = null
+      clearTimeout(this.limitTimer)
+      if (!result.data) return callbacks.onError({ code: result.code, text: result.text }, context, null, stats)
+      if (fetched.get(context.url) === entry) fetched.delete(context.url) // hls.js has it now
+      handedOver.set(context.url, performance.now())
+      // Already handed over (asked twice at once): hls.js took the bytes, so a download of its own
+      if (!result.data.byteLength) return super.load(context, config, callbacks)
+      const now = performance.now()
+      stats.loading.start = now - (result.end - result.start)
+      stats.loading.first = stats.loading.start + (result.first - result.start)
+      stats.loading.end = now
+      stats.loaded = stats.total = result.data.byteLength
+      callbacks.onSuccess({ url: context.url, data: result.data }, stats, context, null)
+      preloadMore()
+    })
   }
   // A muted piece always tries its original sound first, whatever its check said: only the download
   // itself is sure (Twitch can delete it while you watch). Its answer corrects the bar. Both copies
@@ -716,7 +863,10 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   // pauses, as long as the piece isn't needed yet (UNCUT_MARGIN before it plays, within
   // UNCUT_PATIENCE). Then the muted one plays.
   load(context, config, callbacks) {
-    if (!MUTED_PIECE.test(context.url)) return super.load(context, config, callbacks)
+    if (!MUTED_PIECE.test(context.url)) {
+      if (context.rangeEnd) return super.load(context, config, callbacks) // a part of one: only hls.js's own way
+      return this.fromFetched(context, config, callbacks)
+    }
     this.stopped = false
     const ahead = context.frag ? ((context.frag.start - video.currentTime) / (video.playbackRate || 1)) * 1000 : 0
     const patience = Math.min(Math.max(ahead - UNCUT_MARGIN, UNCUT_PATIENCE[0]), UNCUT_PATIENCE[1])
@@ -818,6 +968,9 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   }
   abort() {
     this.stopped = true
+    if (this.ticket) this.stats.aborted = true // its download goes on, kept above
+    this.ticket = null
+    clearTimeout(this.limitTimer)
     clearTimeout(this.retry)
     this.borrowing?.abort()
     this.inner?.abort()
@@ -825,6 +978,8 @@ class PieceLoader extends Hls.DefaultConfig.loader {
   }
   destroy() {
     this.stopped = true
+    this.ticket = null
+    clearTimeout(this.limitTimer)
     clearTimeout(this.retry)
     this.borrowing?.abort()
     this.inner?.destroy()

@@ -10,7 +10,8 @@
 //   labels, locale, stopKeys: true to keep every plain key from the page under it,
 //   hooks: { fillTip, besideTime: (seconds) => text after the time, besideOnHover: it slides out only while the time is hovered, menu({ title, row, pick, choices, panel, element }): its part of the ⚙️ menu,
 //            keys: { key: action }, keyHelp: { key: its text in ⚙️ → Keyboard shortcuts }, keepShowing,
-//            beforeMenu, pictureClick: () => true when it did something }
+//            beforeMenu, pictureClick: () => true when it did something,
+//            skimming(seconds, forward): a quick jump (5 s buttons, arrows, number keys) heads there }
 // }
 // media: {
 //   element: the <video> (its events), paused(), time(), duration(), bufferedEnd(),
@@ -151,6 +152,7 @@ function playerControls(env, media) {
     if (!length) return
     const place = Math.min(Math.max(seconds, 0), length - 0.5)
     const wait = gathered ? lastJump + JUMP_GAP - Date.now() : 0
+    if (gathered) hooks.skimming?.(place, place >= target())
     clearTimeout(gatherTimer)
     gatherTimer = null
     pending = place
