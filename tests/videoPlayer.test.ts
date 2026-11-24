@@ -28,6 +28,7 @@ vi.mock('../src/video', () => ({
     return () => {}
   },
   followOfChannel: () => undefined,
+  channelKey: (of: { platform: string; channelId: string }) => `${of.platform} ${of.channelId}`,
   loadFollowsNow: async () => {},
   setFollowStartSkip: async () => {},
 }))
@@ -205,4 +206,25 @@ test('the window closed while waiting at the end: nothing plays', async () => {
   await vi.waitFor(() => expect(calls.some((call) => call.command === 'video_player_upcoming')).toBe(true))
   await settle()
   expect(played()).toBeUndefined()
+})
+
+// The compressor's choice for the video's channel, given to the player (controls.js)
+const compressorGiven = () => {
+  const address = calls.filter((call) => call.command === 'open_video_player').at(-1)!.args.address as string
+  return JSON.parse(new URLSearchParams(address.split('?')[1]).get('data')!).compressor
+}
+
+test('the compressor: Light for a new channel, then what was picked for that channel only', async () => {
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: 'light' })
+  send('video-compressor', { on: false, strength: 'strong', video: 'youtube-abcdefghijk' })
+  send('video-compressor', { on: true, strength: 'medium', video: 'youtube-another' }) // not the open video: ignored
+  send('video-compressor', { on: true, strength: 'loud', video: 'youtube-abcdefghijk' }) // not a strength: ignored
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: false, strength: 'strong' })
+  playVideo({ ...video(), id: 'youtube-otherchannel', channelId: 'd', url: 'https://youtu.be/otherchannel' })
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: 'light' })
 })

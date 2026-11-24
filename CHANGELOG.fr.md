@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** compresseur (⚙️ ou touche A), léger à fort : équilibre sons forts et faibles
+- **Nouveau :** compresseur gardé par chaîne, sur Léger pour une chaîne jamais réglée
 - **Nouveau :** supprimer plusieurs vidéos sélectionnées d’un coup, avec la corbeille de la barre
 - **Nouveau :** sélectionner plusieurs vidéos dans Vues aussi
 

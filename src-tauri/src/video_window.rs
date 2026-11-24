@@ -242,6 +242,16 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
       }
       return answer(204, "text/plain", Vec::new());
     }
+    // The compressor picked by hand (controls.js). Also open to any site in the window: the app
+    // only takes it for the video that's open, and it only changes that channel's compressor.
+    "/compressor" => {
+      let strength = query_value(&uri, "strength").filter(|name| ["light", "medium", "strong"].contains(name));
+      let video = query_value(&uri, "video").filter(|id| id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+      if let (Some(on), Some(strength), Some(video)) = (query_value(&uri, "on"), strength, video) {
+        let _ = app.emit_to("main", "video-compressor", serde_json::json!({ "on": on == "1", "strength": strength, "video": video }));
+      }
+      return answer(204, "text/plain", Vec::new());
+    }
     // The channel's waiting screen, learned (startSkip.js): up to 8 tiny pictures as text (base64 with
     // - and _, joined with dots: nothing to unescape). Also open
     // to any site in the window: only that exact shape passes, and the app only keeps it for the
@@ -1007,10 +1017,10 @@ pub fn video_player_note(app: tauri::AppHandle, via: String, note: String) -> Re
 // as this one (our own YouTube page), so the bar's "via" stays true.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-// upcoming: what the new video's ⏭ shows (controls.js) and start_skip its waiting screen's search
-// (video-watch.js), for a page that plays it in place. site: the new video's, for the taskbar
+// upcoming: what the new video's ⏭ shows (controls.js), start_skip its waiting screen's search
+// (video-watch.js) and compressor its channel's choice, for a page that plays it in place. site: the new video's, for the taskbar
 // button's icon (a next video can be from the other site).
-pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, upcoming: serde_json::Value, start_skip: serde_json::Value, site: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
+pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, start: u64, subtitles: bool, in_place: bool, upcoming: serde_json::Value, start_skip: serde_json::Value, compressor: serde_json::Value, site: String, title: String, via: String, note: String, note_stays: bool) -> Result<(), String> {
   let (Some(window), Some(page), Some(bar)) = (app.get_window(VIDEO_WINDOW), app.get_webview(VIDEO_SITE), app.get_webview(VIDEO_BAR)) else {
     return Ok(()); // closed in the meantime
   };
@@ -1024,7 +1034,7 @@ pub fn video_player_next(app: tauri::AppHandle, address: String, video: String, 
   if in_place && window.is_fullscreen().unwrap_or(false) {
     let video = serde_json::to_string(&video).map_err(|e| e.to_string())?;
     let url = serde_json::to_string(url.as_str()).map_err(|e| e.to_string())?;
-    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles}, {upcoming}, {start_skip})) location.href = {url}")).map_err(|e| e.to_string())?;
+    site.eval(format!("if (!window.syncrNextVideo?.({video}, {start}, {subtitles}, {upcoming}, {start_skip}, {compressor})) location.href = {url}")).map_err(|e| e.to_string())?;
   } else {
     site.navigate(url).map_err(|e| e.to_string())?;
   }

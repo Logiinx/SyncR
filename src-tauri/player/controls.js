@@ -648,9 +648,12 @@ function playerControls(env, media) {
     medium: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6 },
     strong: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4 },
   }
-  let sound = null // { context, source, before, compressor, after }
+  // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
+  // { on, strength }, none for a video without a channel (a trailer: off, nothing remembered)
+  const known = (name) => Object.hasOwn(COMPRESSOR, name)
+  let sound = null // { context, source (once connected), before, compressor, after }
   let compressing = false
-  let strength = 'medium' // the last one picked, which A turns back on
+  let strength = 'light' // the last one picked, which A turns back on
   function setSoundLevel() {
     if (!sound) return
     const volume = video.muted ? 0 : video.volume
@@ -662,36 +665,68 @@ function playerControls(env, media) {
     for (const [name, value] of Object.entries(values)) sound.compressor[name].value = value
     setSoundLevel()
   }
+  // The sound is taken only once the browser lets it run (it may wait for a click or key, more so
+  // when it starts on with the page): until then the video plays as it is, never silent
+  function connectSound() {
+    if (!sound || sound.source || sound.context.state !== 'running') return
+    try {
+      sound.source = sound.context.createMediaElementSource(video)
+    } catch {
+      return
+    }
+    video.addEventListener('volumechange', setSoundLevel)
+    routeSound()
+  }
+  function routeSound() {
+    if (!sound?.source) return
+    setStrength()
+    sound.source.disconnect()
+    sound.source.connect(compressing ? sound.before : sound.context.destination)
+  }
   // on: false, or a strength (true = the last one)
   function setCompressor(on) {
-    if (on && on !== true) strength = on
+    if (on && on !== true && known(on)) strength = on
     compressing = !!on
     if (on && !sound) {
       try {
         const context = new AudioContext()
-        const source = context.createMediaElementSource(video)
         const before = context.createGain()
         const compressor = context.createDynamicsCompressor()
         const after = context.createGain()
         before.connect(compressor).connect(after).connect(context.destination)
-        sound = { context, source, before, compressor, after }
-        video.addEventListener('volumechange', setSoundLevel)
+        sound = { context, source: null, before, compressor, after }
+        context.onstatechange = connectSound
       } catch {
         compressing = false
         return
       }
     }
     if (!sound) return
-    setStrength()
-    sound.source.disconnect()
-    sound.source.connect(on ? sound.before : sound.context.destination)
-    // The browser may hold it until a click or key
-    if (sound.context.state === 'suspended') sound.context.resume().catch(() => {})
+    if (sound.context.state === 'suspended') {
+      sound.context.resume().catch(() => {})
+      const retry = () => sound.context.resume().catch(() => {})
+      window.addEventListener('pointerdown', retry, { capture: true, once: true })
+      window.addEventListener('keydown', retry, { capture: true, once: true })
+    }
+    connectSound()
+    routeSound()
+  }
+  // Picked by hand (⚙️ or A): the app keeps it for the channel
+  function chooseCompressor(on) {
+    setCompressor(on)
+    if (env.compressor) hooks.compressorChosen?.(compressing, strength)
   }
   function toggleCompressor() {
-    setCompressor(!compressing)
+    chooseCompressor(!compressing)
     flash(compressing ? labels.compressorLevel.replace('{level}', labels.strengths[strength]) : labels.compressorOff, 800)
   }
+  // A video's start (and the next one playing in the same page: video-watch.js)
+  function setChannelCompressor(choice) {
+    env.compressor = choice || null
+    if (choice && known(choice.strength)) strength = choice.strength
+    setCompressor(choice?.on ? strength : false)
+  }
+  setChannelCompressor(env.compressor)
 
   function toggleFull() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -906,9 +941,9 @@ function playerControls(env, media) {
     }, 'speed')
     if (labels.compressor) {
       panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ pick, element }) => {
-        pick(labels.off, !compressing, () => setCompressor(false))
+        pick(labels.off, !compressing, () => chooseCompressor(false))
         for (const name of Object.keys(COMPRESSOR)) {
-          pick(labels.strengths[name], compressing && name === strength, () => setCompressor(name))
+          pick(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name))
         }
         const hint = document.createElement('div')
         hint.className = 'menu-note'
@@ -1286,7 +1321,7 @@ function playerControls(env, media) {
   drawFull()
   wake()
 
-  return { refresh, setNext, setHeader, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, markedAt, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
+  return { refresh, setNext, setHeader, setChannelCompressor, setStartSkip, setStartBack, $, icon, clock, percentText, openParts, closeParts, partsOpen, drawPartsList, numbers, wake, flash, loading, drawTime, drawSettings, drawMenu, closeMenu, jumpTo, typing, setGaps, setMarked, markedAt, setHeat, showPicture, pictureRoom, tipLines, userPaused: () => userPaused, dragging: () => dragging !== null }
 }
 
 // The controls' looks, the same in both players. Text in the app's font ('SyncR UI', which each

@@ -6,7 +6,7 @@ import { currentZoom } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
-import { addOrFindVideo, followOfChannel, loadFollowsNow, markOpened, setFollowStartSkip, setWatched, watchWatched } from './video'
+import { addOrFindVideo, channelKey, followOfChannel, loadFollowsNow, markOpened, setFollowStartSkip, setWatched, watchWatched } from './video'
 import { askNextPart, knownNextPart, PART_GAP } from './videoParts'
 import { nextInPlaylist } from './videoPlaylists'
 import { nearlyDone, resumePosition, savePosition, videoClock } from './videoPositions'
@@ -94,6 +94,23 @@ const subtitlesOn = (video: PlayableVideo) => read<string[]>(SUBTITLES_KEY, []).
 function saveSubtitles(video: PlayableVideo, on: boolean) {
   const others = read<string[]>(SUBTITLES_KEY, []).filter((channel) => channel !== video.channelId)
   write(SUBTITLES_KEY, on ? [...others, video.channelId] : others)
+}
+
+// The compressor's choice per channel (Twitch and YouTube), on this PC: a channel never set gets
+// Light; turned off, it keeps its strength for the A key. Changed in the player (controls.js).
+const COMPRESSOR_KEY = 'syncr.videoCompressor'
+const STRENGTHS = ['light', 'medium', 'strong'] // i18n-ok
+interface CompressorChoice {
+  on: boolean
+  strength: string
+}
+function compressorData(video: PlayableVideo): CompressorChoice | null {
+  if (!video.channelId) return null // nothing to remember it for: off
+  return read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})[channelKey(video)] ?? { on: true, strength: 'light' }
+}
+function saveCompressor(video: PlayableVideo, choice: CompressorChoice) {
+  if (!video.channelId || !STRENGTHS.includes(choice.strength)) return
+  write(COMPRESSOR_KEY, { ...read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {}), [channelKey(video)]: choice })
 }
 
 const BAR_HEIGHT = 36
@@ -263,6 +280,7 @@ function twitchPlayerAddress(video: PlayableVideo) {
     ...shared,
     startSkip: startSkipData(video),
     header: headerData(video),
+    compressor: compressorData(video),
     labels: {
       ...shared.labels,
       skipMuted: t('Skip muted part'),
@@ -347,7 +365,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
   if (way === 'muitube.com') return `https://www.muitube.com/watch?v=${id}` // ignores any start time
   if (way === 'own') {
     const { quality, subtitleLanguage } = loadPlayerSettings()
-    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify({ ...controlsData(), startSkip: startSkipData(video), header: headerData(video) }))}`
+    return `video-forward.html?v=${id}${start ? `&start=${start}` : ''}&quality=${quality}&subtitles=${subtitlesOn(video) ? 1 : 0}&language=${subtitleLanguage}&data=${encodeURIComponent(JSON.stringify({ ...controlsData(), startSkip: startSkipData(video), header: headerData(video), compressor: compressorData(video) }))}`
   }
   const data = {
     message: t("This video can't play in the player window"),
@@ -537,6 +555,10 @@ function listenToBar() {
   // Subtitles turned on or off by hand. The video's own id, as a site could send this too.
   void listen<{ on: boolean; video: string }>('video-subtitles', ({ payload: { on, video } }) => {
     if (current?.id === `youtube-${video}`) saveSubtitles(current, on)
+  })
+  // The compressor picked by hand (controls.js, video_window.rs /compressor). Only for the open video.
+  void listen<{ on: boolean; strength: string; video: string }>('video-compressor', ({ payload: { on, strength, video } }) => {
+    if (current?.id === video) saveCompressor(current, { on, strength })
   })
   // Our own Twitch player found something worth saying (player.js). A site could fake this
   // signal, so it only counts for our player's current video.
@@ -729,6 +751,7 @@ function goNext(from: PlayableVideo, atEnd: boolean) {
         inPlace: way === 'own' && currentWay === 'own' && next.platform === 'youtube' && from.platform === 'youtube',
         upcoming: shownNext, // for a page that plays it in place
         startSkip: startSkipData(next), // the same
+        compressor: compressorData(next), // the same
         site: next.platform, // the taskbar button's icon
         title: next.title,
         via: viaText(way),

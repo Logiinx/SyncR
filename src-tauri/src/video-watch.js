@@ -211,6 +211,7 @@
   let data = {}
   try { data = JSON.parse(wanted.get('syncr-data') || '{}') } catch {}
   let setNextShown = () => {} // what ⏭ plays, once our controls are there (syncrNextVideo)
+  let setCompressor = (choice) => { data.compressor = choice } // the same for the channel's compressor
   // The waiting screen's search for this video (startSkip.js, below): { off: a music video, looks: the
   // channel's learned ones } (videoPlayer.ts), and where it was opened (?start=, seconds)
   let startSkip = data.startSkip || {}
@@ -616,6 +617,7 @@
       html: (text) => policy.createHTML(text),
       next: data.next,
       header: data.header,
+      compressor: data.compressor,
       labels: data.labels,
       locale: data.locale,
       stopKeys: true,
@@ -629,6 +631,8 @@
           controls.tipLines(chapterAt(seconds), part && { color: SPONSOR_COLORS[part.category], text: labels.sponsorParts?.[part.category] || part.category })
         },
         besideTime: (seconds) => chapterAt(seconds),
+        // The app keeps it for the channel (video_window.rs /compressor)
+        compressorChosen: (on, strength) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&video=youtube-${encodeURIComponent(player.getVideoData().video_id)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
         rememberStart: () => rememberStart(),
         // Like the Twitch player's Miscellaneous panel (timeline.js)
         menu: ({ panel }) => panel('misc', labels.miscTitle, '', ({ row, title }) => {
@@ -639,6 +643,7 @@
     }, media)
     root.getElementById('chat-button').hidden = true
     setNextShown = controls.setNext
+    setCompressor = controls.setChannelCompressor
     // A click on the time (and the chapter after it) lists the chapters, like the Twitch player's games
     const timeButton = root.getElementById('time')
     const chaptersList = () => ({ button: timeButton, title: labels.chapters, parts: chapters, picture: chapterPictureBox })
@@ -826,8 +831,9 @@
   // The next video of a playlist while in full screen (video_window.rs, video_player_next): this same page
   // plays it, as a new page would leave full screen. The address changes too, as extensions read
   // the video from it. Says whether it could.
-  // upcoming: what its ⏭ plays in turn (controls.js); skip: its waiting screen's search (startSkip above)
-  window.syncrNextVideo = (id, start, subtitles, upcoming, skip) => {
+  // upcoming: what its ⏭ plays in turn (controls.js); skip: its waiting screen's search (startSkip
+  // above); compressor: its channel's choice (controls.js)
+  window.syncrNextVideo = (id, start, subtitles, upcoming, skip, compressor) => {
     const player = document.querySelector('#movie_player')
     if (!document.fullscreenElement || !player?.loadVideoById || !/^[\w-]{6,20}$/.test(id)) return false
     history.replaceState(history.state, '', `/embed/${id}${location.search}${location.hash}`)
@@ -835,6 +841,7 @@
     openedAt = start || 0
     player.loadVideoById({ videoId: id, startSeconds: start })
     setNextShown(upcoming)
+    setCompressor(compressor || null)
     qualityFrom = QUALITIES.indexOf(wanted.get('syncr-quality'))
     chosenQuality = null
     chosenTrack = null
