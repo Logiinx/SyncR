@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
-- **New:** compressor in the player (⚙️ or A key): evens out loud and quiet sound
+- **New:** compressor (⚙️ or A key), light to strong: evens out loud and quiet sound
 - **New:** delete several selected videos at once, with the bin in the selection bar
 - **New:** select several videos in Watched too
 

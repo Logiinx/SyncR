@@ -640,36 +640,49 @@ function playerControls(env, media) {
   // so that only happens the first time it's turned on; off then sends the sound straight out.
   // The video's volume is applied before the sound reaches us: it's undone before the compressor
   // and applied again after it, so it compresses the same at any volume.
-  const COMPRESSOR = { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25 }
-  const COMPRESSOR_GAIN = 0.5 // after it: about −6 dB, so normal talk stays about as loud as without
+  // Strengths, measured with a steady tone (normal talk at −20 dB stays as loud: `after`, in dB,
+  // undoes the browser's own gain): light = quiet +1 dB, loud −6 · medium = +4, −10 · strong =
+  // +12, −12 (raises background noise the most).
+  const COMPRESSOR = {
+    light: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4 },
+    medium: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6 },
+    strong: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4 },
+  }
   let sound = null // { context, source, before, compressor, after }
   let compressing = false
+  let strength = 'medium' // the last one picked, which A turns back on
   function setSoundLevel() {
     if (!sound) return
     const volume = video.muted ? 0 : video.volume
     sound.before.gain.value = 1 / Math.max(volume, 0.01)
-    sound.after.gain.value = volume * COMPRESSOR_GAIN
+    sound.after.gain.value = volume * Math.pow(10, COMPRESSOR[strength].after / 20)
   }
+  function setStrength() {
+    const { after, ...values } = COMPRESSOR[strength]
+    for (const [name, value] of Object.entries(values)) sound.compressor[name].value = value
+    setSoundLevel()
+  }
+  // on: false, or a strength (true = the last one)
   function setCompressor(on) {
-    compressing = on
+    if (on && on !== true) strength = on
+    compressing = !!on
     if (on && !sound) {
       try {
         const context = new AudioContext()
         const source = context.createMediaElementSource(video)
         const before = context.createGain()
         const compressor = context.createDynamicsCompressor()
-        for (const [name, value] of Object.entries(COMPRESSOR)) compressor[name].value = value
         const after = context.createGain()
         before.connect(compressor).connect(after).connect(context.destination)
         sound = { context, source, before, compressor, after }
         video.addEventListener('volumechange', setSoundLevel)
-        setSoundLevel()
       } catch {
         compressing = false
         return
       }
     }
     if (!sound) return
+    setStrength()
     sound.source.disconnect()
     sound.source.connect(on ? sound.before : sound.context.destination)
     // The browser may hold it until a click or key
@@ -677,7 +690,7 @@ function playerControls(env, media) {
   }
   function toggleCompressor() {
     setCompressor(!compressing)
-    flash(compressing ? labels.compressorOn : labels.compressorOff, 800)
+    flash(compressing ? labels.compressorLevel.replace('{level}', labels.strengths[strength]) : labels.compressorOff, 800)
   }
 
   function toggleFull() {
@@ -892,9 +905,11 @@ function playerControls(env, media) {
       for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
     }, 'speed')
     if (labels.compressor) {
-      panel('compressor', labels.compressor, compressing ? labels.on : labels.off, ({ pick, element }) => {
+      panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ pick, element }) => {
         pick(labels.off, !compressing, () => setCompressor(false))
-        pick(labels.on, compressing, () => setCompressor(true))
+        for (const name of Object.keys(COMPRESSOR)) {
+          pick(labels.strengths[name], compressing && name === strength, () => setCompressor(name))
+        }
         const hint = document.createElement('div')
         hint.className = 'menu-note'
         hint.textContent = labels.compressorHint
