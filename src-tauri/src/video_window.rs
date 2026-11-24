@@ -243,9 +243,10 @@ pub async fn player_answer(app: tauri::AppHandle, from: String, uri: tauri::http
       return answer(204, "text/plain", Vec::new());
     }
     // The compressor picked by hand (controls.js). Also open to any site in the window: the app
-    // only takes it for the video that's open, and it only changes that channel's compressor.
+    // only takes it for the video that's open, and it only changes that channel's compressor. The
+    // strength is only a short plain word here: the app checks it against its own list.
     "/compressor" => {
-      let strength = query_value(&uri, "strength").filter(|name| ["light", "medium", "strong"].contains(name));
+      let strength = query_value(&uri, "strength").filter(|name| !name.is_empty() && name.len() <= 24 && name.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-'));
       let video = query_value(&uri, "video").filter(|id| id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
       if let (Some(on), Some(strength), Some(video)) = (query_value(&uri, "on"), strength, video) {
         let _ = app.emit_to("main", "video-compressor", serde_json::json!({ "on": on == "1", "strength": strength, "video": video }));

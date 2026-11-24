@@ -97,16 +97,21 @@ function saveSubtitles(video: PlayableVideo, on: boolean) {
 }
 
 // The compressor's choice per channel (Twitch and YouTube), on this PC: a channel never set gets
-// Light; turned off, it keeps its strength for the A key. Changed in the player (controls.js).
+// strength 1 (Light); turned off, it keeps its strength for the A key. Changed in the player
+// (controls.js). Saved before the 1–7 steps: Light, Medium, Strong = 1, 3, 6 (the same sound).
 const COMPRESSOR_KEY = 'syncr.videoCompressor'
-const STRENGTHS = ['light', 'medium', 'strong'] // i18n-ok
+const STRENGTHS = ['1', '2', '3', '4', '5', '6', '7']
+const OLD_STRENGTHS: Record<string, string> = { light: '1', medium: '3', strong: '6' } // i18n-ok
 interface CompressorChoice {
   on: boolean
   strength: string
 }
 function compressorData(video: PlayableVideo): CompressorChoice | null {
   if (!video.channelId) return null // nothing to remember it for: off
-  return read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})[channelKey(video)] ?? { on: true, strength: 'light' }
+  const saved = read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})[channelKey(video)]
+  if (!saved) return { on: true, strength: '1' }
+  const strength = OLD_STRENGTHS[saved.strength] ?? saved.strength
+  return { on: saved.on, strength: STRENGTHS.includes(strength) ? strength : '1' }
 }
 function saveCompressor(video: PlayableVideo, choice: CompressorChoice) {
   if (!video.channelId || !STRENGTHS.includes(choice.strength)) return
@@ -189,9 +194,14 @@ function controlsData() {
       compressorAsIs: t('The sound as it is'),
       compressorDetail: t('Quiet talk {quiet} dB · loud parts {loud} dB'),
       compressorNoise: t('{detail} · more background noise'),
+      compressorSomeNoise: t('{detail} · a bit more background noise'),
+      compressorNight: t('Everything about as loud, for low volume · most background noise'),
+      compressorPick: t('Pick a strength'),
+      compressorStrength: t('Strength|compressor'),
       compressorLevel: t('Compressor: {level}'),
       compressorOff: t('Compressor off'),
-      strengths: { light: t('Light|compressor'), medium: t('Medium|compressor'), strong: t('Strong|compressor') },
+      // The steps with a name (the others show their number only)
+      strengths: { 1: t('Light|compressor'), 3: t('Medium|compressor'), 6: t('Strong|compressor'), 7: t('Night|compressor') },
       off: t('Off|compressor'),
       menuBack: t('Back'),
       auto: t('Auto'),

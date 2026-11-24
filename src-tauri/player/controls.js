@@ -640,20 +640,27 @@ function playerControls(env, media) {
   // so that only happens the first time it's turned on; off then sends the sound straight out.
   // The video's volume is applied before the sound reaches us: it's undone before the compressor
   // and applied again after it, so it compresses the same at any volume.
-  // Strengths, measured with a steady tone (normal talk at −20 dB stays as loud: `after`, in dB,
-  // undoes the browser's own gain). shown: what ⚙️ → Compressor says under each (dB for quiet
-  // talk and loud parts; noise: it raises background noise the most). Retuned: measure again.
+  // Strengths 1 to 7, measured with a steady tone: quiet talk = a sound at −45 dB, loud parts one
+  // at −3 dB, normal talk at −20 dB stays about as loud (`after`, in dB, undoes the browser's own
+  // gain). shown: what ⚙️ → Compressor says under the switch (noise: 1 a bit more background
+  // noise, 2 more, 3 the most). 1, 3 and 6 were Light, Medium and Strong. Retuned: measure again.
   const COMPRESSOR = {
-    light: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4, shown: { quiet: 1, loud: -6 } },
-    medium: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6, shown: { quiet: 4, loud: -10 } },
-    strong: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12, noise: true } },
+    1: { threshold: -26, knee: 12, ratio: 1.8, attack: 0.005, release: 0.25, after: -4, shown: { quiet: 1, loud: -6 } },
+    2: { threshold: -24, knee: 12, ratio: 3.25, attack: 0.005, release: 0.25, after: -5.5, shown: { quiet: 2, loud: -8 } },
+    3: { threshold: -28, knee: 12, ratio: 4, attack: 0.005, release: 0.25, after: -6, shown: { quiet: 4, loud: -10 } },
+    4: { threshold: -30, knee: 11, ratio: 5, attack: 0.004, release: 0.22, after: -6, shown: { quiet: 6, loud: -11 } },
+    5: { threshold: -32, knee: 10, ratio: 7.5, attack: 0.004, release: 0.22, after: -5.5, shown: { quiet: 9, loud: -12, noise: 1 } },
+    6: { threshold: -36, knee: 10, ratio: 6, attack: 0.003, release: 0.2, after: -4, shown: { quiet: 12, loud: -12, noise: 2 } },
+    7: { threshold: -39, knee: 10, ratio: 17, attack: 0.003, release: 0.2, after: -5, shown: { quiet: 15, loud: -15, noise: 3 } },
   }
+  // "3 · Medium", or just "4" for a step without a name
+  const strengthName = (name) => (labels.strengths[name] ? `${name} · ${labels.strengths[name]}` : name)
   // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
   // { on, strength }, none for a video without a channel (a trailer: off, nothing remembered)
   const known = (name) => Object.hasOwn(COMPRESSOR, name)
   let sound = null // { context, source (once connected), before, compressor, after }
   let compressing = false
-  let strength = 'light' // the last one picked, which A turns back on
+  let strength = '1' // the last one picked, which A turns back on
   function setSoundLevel() {
     if (!sound) return
     const volume = video.muted ? 0 : video.volume
@@ -718,7 +725,7 @@ function playerControls(env, media) {
   }
   function toggleCompressor() {
     chooseCompressor(!compressing)
-    flash(compressing ? labels.compressorLevel.replace('{level}', labels.strengths[strength]) : labels.compressorOff, 800)
+    flash(compressing ? labels.compressorLevel.replace('{level}', strengthName(strength)) : labels.compressorOff, 800)
   }
   // A video's start (and the next one playing in the same page: video-watch.js)
   function setChannelCompressor(choice) {
@@ -853,8 +860,9 @@ function playerControls(env, media) {
     const row = (text, on, action) => item(text, on, () => { action(); drawMenu() })
     const pick = (text, on, action) => item(text, on, () => { action(); closeMenu(); drawSettings() })
     // The app's sliding switch: equal buttons, the blue fill and a faint one under the mouse slide
-    // between them. choose(value) mustn't redraw the menu, or nothing slides.
-    const choices = (items, current, choose) => {
+    // between them. choose(value) mustn't redraw the menu, or nothing slides. Nothing chosen (current
+    // not among them): no fill until a click. hover(value, or null on leaving), if given.
+    const choices = (items, current, choose, hover) => {
       const line = document.createElement('div')
       line.className = 'menu-switch'
       line.style.setProperty('--count', items.length)
@@ -862,14 +870,25 @@ function playerControls(env, media) {
       const ghost = document.createElement('i')
       ghost.className = 'ghost'
       line.append(ghost, fill)
+      // Like the app's switches (tabLines.tsx): shown in its place when it appears, sliding between
+      // buttons, and the faint one fades where it was when the mouse leaves
       const moveTo = (part, index) => {
-        part.hidden = index < 0
-        if (index >= 0) part.style.transform = `translateX(calc(${index} * (100% + 2px)))` // its width + the gap
+        const appearing = index >= 0 && (part.hidden || part.classList.contains('leaving'))
+        if (appearing) {
+          part.style.transition = 'none'
+          requestAnimationFrame(() => { part.style.transition = '' })
+        }
+        part.classList.remove('leaving')
+        if (index >= 0) {
+          part.hidden = false
+          part.style.transform = `translateX(calc(${index} * (100% + 2px)))` // its width + the gap
+        } else if (part === ghost && !part.hidden) part.classList.add('leaving')
+        else part.hidden = true
       }
       const buttons = items.map((choice, index) => {
         const button = document.createElement('button')
         button.textContent = choice.text
-        button.onpointerenter = () => moveTo(ghost, index)
+        button.onpointerenter = () => { moveTo(ghost, index); hover?.(choice.value) }
         button.onclick = () => {
           buttons.forEach((other) => other.classList.toggle('on', other === button))
           moveTo(fill, index)
@@ -877,13 +896,13 @@ function playerControls(env, media) {
         }
         return button
       })
-      line.onpointerleave = () => moveTo(ghost, -1)
+      line.onpointerleave = () => { moveTo(ghost, -1); hover?.(null) }
       const chosen = items.findIndex((choice) => choice.value === current)
       buttons[chosen]?.classList.add('on')
       // Placed at once, then sliding from there
       fill.style.transition = ghost.style.transition = 'none'
       moveTo(fill, chosen)
-      moveTo(ghost, -1)
+      ghost.hidden = true
       requestAnimationFrame(() => { fill.style.transition = ghost.style.transition = '' })
       line.append(...buttons)
       target.append(line)
@@ -940,24 +959,49 @@ function playerControls(env, media) {
       for (const speed of SPEEDS) side.pick(speedName(speed), speed === media.rate(), () => media.setRate(speed))
     }, 'speed')
     if (labels.compressor) {
-      panel('compressor', labels.compressor, compressing ? labels.strengths[strength] : labels.off, ({ row, element }) => { // row: the menu stays open, to compare them
-        // Each choice with what it changes on a second line, dim
-        const detailed = (button, text) => {
-          const top = document.createElement('span')
-          top.className = 'menu-top'
-          top.append(...button.childNodes)
-          const under = document.createElement('span')
-          under.className = 'menu-under'
-          under.textContent = text
-          button.classList.add('two-lines')
-          button.append(top, under)
-        }
+      panel('compressor', labels.compressor, compressing ? strengthName(strength) : labels.off, ({ title, row, choices, element }) => { // the menu stays open, to compare them
+        // Off with what it does on a second line, dim
+        const off = row(labels.off, !compressing, () => chooseCompressor(false))
+        const top = document.createElement('span')
+        top.className = 'menu-top'
+        top.append(...off.childNodes)
+        const under = document.createElement('span')
+        under.className = 'menu-under'
+        under.textContent = labels.compressorAsIs
+        off.classList.add('two-lines')
+        off.append(top, under)
+        // Then the 1–7 switch, the names of 1, 3, 6, 7 under it, and a line saying what the step
+        // under the mouse does (the ticked one otherwise). A click doesn't redraw: the fill slides.
         const signed = (dB) => `${dB > 0 ? '+' : dB < 0 ? '−' : ''}${numbers.format(Math.abs(dB))}`
-        detailed(row(labels.off, !compressing, () => chooseCompressor(false)), labels.compressorAsIs)
-        for (const [name, { shown }] of Object.entries(COMPRESSOR)) {
+        const detailOf = (name) => {
+          const { shown } = COMPRESSOR[name]
+          if (shown.noise === 3) return labels.compressorNight
           const detail = labels.compressorDetail.replace('{quiet}', signed(shown.quiet)).replace('{loud}', signed(shown.loud))
-          detailed(row(labels.strengths[name], compressing && name === strength, () => chooseCompressor(name)), shown.noise ? labels.compressorNoise.replace('{detail}', detail) : detail)
+          return shown.noise ? (shown.noise === 1 ? labels.compressorSomeNoise : labels.compressorNoise).replace('{detail}', detail) : detail
         }
+        const steps = Object.keys(COMPRESSOR)
+        const detail = document.createElement('div')
+        const showDetail = (name) => { detail.textContent = name ? detailOf(name) : compressing ? detailOf(strength) : labels.compressorPick }
+        title(labels.compressorStrength)
+        choices(steps.map((name) => ({ value: name, text: numbers.format(Number(name)) })), compressing ? strength : null, (name) => {
+          chooseCompressor(name)
+          showDetail(name)
+          off.classList.remove('on')
+          off.querySelector('svg')?.remove()
+          const value = $('menu').querySelector('[data-panel="compressor"] .menu-value span')
+          if (value) value.textContent = strengthName(name)
+        }, showDetail)
+        const names = document.createElement('div')
+        names.className = 'menu-switch-names'
+        names.style.setProperty('--count', steps.length)
+        for (const name of steps) {
+          const cell = document.createElement('span')
+          cell.textContent = labels.strengths[name] || ''
+          names.append(cell)
+        }
+        detail.className = 'menu-note'
+        showDetail(null)
+        element.append(names, detail)
         // About the whole list, not the last choice
         const line = document.createElement('div')
         line.className = 'menu-separator'
@@ -1583,6 +1627,8 @@ const CONTROLS_CSS = `
   .menu-switch button:hover, .menu-switch button.on { color: var(--text, #e4e4e4); }
   .menu-switch i { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px - (var(--count) - 1) * 2px) / var(--count)); border-radius: 4px; background: var(--accent, #2d4f7c); transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none; } /* like FillSwitch */
   .menu-switch i.ghost { background: color-mix(in srgb, var(--accent, #2d4f7c) 30%, transparent); }
+  .menu-switch-names { display: grid; grid-template-columns: repeat(var(--count), 1fr); margin: -2px 6px 2px; font-size: 11px; line-height: 15px; color: var(--text-dim, #9a9a9a); text-align: center; white-space: nowrap; } /* under ⚙️ → Compressor's switch */
+  .menu-switch i.ghost.leaving { opacity: 0; transition: opacity 0.15s; } /* the app's FADE_MS */
 
   #spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   #spinner span { width: 44px; height: 44px; box-sizing: border-box; border: 4px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; border-radius: 50%; animation: turn 0.8s linear infinite; }

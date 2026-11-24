@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Amélioré :** compresseur en 7 forces, de Léger à Nuit, sur un sélecteur 1–7
+
 ## [1.2.10] - 2026-11-24
 
 **Vidéo** (PC uniquement)

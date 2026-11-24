@@ -214,17 +214,31 @@ const compressorGiven = () => {
   return JSON.parse(new URLSearchParams(address.split('?')[1]).get('data')!).compressor
 }
 
-test('the compressor: Light for a new channel, then what was picked for that channel only', async () => {
+test('the compressor: step 1 for a new channel, then what was picked for that channel only', async () => {
   playVideo(video())
   await settle()
-  expect(compressorGiven()).toEqual({ on: true, strength: 'light' })
-  send('video-compressor', { on: false, strength: 'strong', video: 'youtube-abcdefghijk' })
-  send('video-compressor', { on: true, strength: 'medium', video: 'youtube-another' }) // not the open video: ignored
+  expect(compressorGiven()).toEqual({ on: true, strength: '1' })
+  send('video-compressor', { on: false, strength: '6', video: 'youtube-abcdefghijk' })
+  send('video-compressor', { on: true, strength: '3', video: 'youtube-another' }) // not the open video: ignored
   send('video-compressor', { on: true, strength: 'loud', video: 'youtube-abcdefghijk' }) // not a strength: ignored
+  send('video-compressor', { on: true, strength: '8', video: 'youtube-abcdefghijk' }) // no step 8: ignored
   playVideo(video())
   await settle()
-  expect(compressorGiven()).toEqual({ on: false, strength: 'strong' })
+  expect(compressorGiven()).toEqual({ on: false, strength: '6' })
   playVideo({ ...video(), id: 'youtube-otherchannel', channelId: 'd', url: 'https://youtu.be/otherchannel' })
   await settle()
-  expect(compressorGiven()).toEqual({ on: true, strength: 'light' })
+  expect(compressorGiven()).toEqual({ on: true, strength: '1' })
+})
+
+test('the compressor: Light, Medium and Strong saved before the 1–7 steps become 1, 3 and 6', async () => {
+  store.set('syncr.videoCompressor', { 'youtube c': { on: true, strength: 'medium' }, 'youtube d': { on: false, strength: 'strong' }, 'youtube e': { on: true, strength: 'odd' } })
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '3' })
+  playVideo({ ...video(), id: 'youtube-otherchannel', channelId: 'd', url: 'https://youtu.be/otherchannel' })
+  await settle()
+  expect(compressorGiven()).toEqual({ on: false, strength: '6' })
+  playVideo({ ...video(), id: 'youtube-thirdchannl', channelId: 'e', url: 'https://youtu.be/thirdchannl' })
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '1' })
 })
