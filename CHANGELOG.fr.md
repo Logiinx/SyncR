@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.15] - 2026-11-25
+
 **Vidéo** (PC uniquement)
 - **Amélioré :** appuyer sur ±5 s plusieurs fois de suite dans une vidéo Twitch ne charge plus
 

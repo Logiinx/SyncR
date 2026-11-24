@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.15] - 2026-11-25
+
 **Video** (PC only)
 - **Better:** pressing ±5 s again and again in a Twitch video no longer waits to load
 
