@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.10] - 2026-11-24
+
 **Video** (PC only)
 - **Better:** ⚙️ → Compressor stays open after a pick, to compare strengths
 
