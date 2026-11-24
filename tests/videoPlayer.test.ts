@@ -281,3 +281,26 @@ test('the compressor: Custom saved without valid numbers falls back to step 1', 
   await settle()
   expect(compressorGiven()).toEqual({ on: true, strength: '1' })
 })
+
+test('the compressor: "Use on every channel" shares one choice, each channel keeps its own', async () => {
+  const other = { ...video(), id: 'youtube-otherchannel', channelId: 'd', url: 'https://youtu.be/otherchannel' }
+  playVideo(video())
+  await settle()
+  send('video-compressor', { on: true, strength: '4', video: 'youtube-abcdefghijk' }) // this channel's own
+  send('video-compressor', { on: true, strength: 'custom-9-3-0', every: true, video: 'youtube-abcdefghijk' }) // ticked
+  playVideo(other)
+  await settle()
+  const shared = { on: true, strength: 'custom', custom: { quiet: 9, loud: 3, voice: false }, every: true }
+  expect(compressorGiven()).toEqual({ ...shared, own: { on: true, strength: '1' } })
+  send('video-compressor', { on: false, strength: '7', every: true, video: 'youtube-otherchannel' }) // changed while ticked
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: false, strength: '7', custom: { quiet: 9, loud: 3, voice: false }, every: true, own: { on: true, strength: '4' } })
+  send('video-compressor', { on: true, strength: '4', every: false, video: 'youtube-abcdefghijk' }) // unticked: its own again
+  playVideo(other)
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '1' }) // never set: still step 1
+  playVideo(video())
+  await settle()
+  expect(compressorGiven()).toEqual({ on: true, strength: '4' })
+})

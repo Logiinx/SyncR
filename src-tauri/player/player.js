@@ -161,7 +161,7 @@ const controls = playerControls({
   hooks: {
     fillTip: (seconds) => fillTip(seconds),
     // The app keeps it for the channel (video_window.rs /compressor)
-    compressorChosen: (on, strength) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&video=twitch-${encodeURIComponent(videoId)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
+    compressorChosen: (on, strength, every) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&every=${every ? 1 : 0}&video=twitch-${encodeURIComponent(videoId)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
     besideTime: (seconds) => dayAt(seconds),
     besideOnHover: true, // the time of day: only while the time is hovered
     menu: (menu) => {

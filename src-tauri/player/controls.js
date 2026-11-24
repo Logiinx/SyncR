@@ -719,7 +719,8 @@ function playerControls(env, media) {
   // What the app saves: the strength's name, Custom with its numbers ("custom-7-9-1")
   const savedName = () => (strength === 'custom' ? `custom-${custom.quiet}-${custom.loud}-${custom.voice ? 1 : 0}` : strength)
   // The channel's choice, remembered by the app on this PC (videoPlayer.ts): env.compressor =
-  // { on, strength, custom }, none for a video without a channel (a trailer: off, nothing remembered)
+  // { on, strength, custom }, none for a video without a channel (a trailer: off, nothing remembered);
+  // while every channel shares one: that one, plus every: true and own: the channel's own choice
   const known = (name) => Object.hasOwn(COMPRESSOR, name) || (name === 'custom' && !!custom)
   let sound = null // { context, source (once connected), before, rumble, compressor, lift, after }
   let compressing = false
@@ -789,10 +790,24 @@ function playerControls(env, media) {
     connectSound()
     routeSound()
   }
-  // Picked by hand (⚙️ or A): the app keeps it for the channel
+  // Picked by hand (⚙️ or A): the app keeps it for the channel, or for every channel while
+  // "Use on every channel" is ticked (everyChannel; own: the channel's own choice meanwhile)
+  let everyChannel = false
+  let own = null
   function chooseCompressor(on) {
     setCompressor(on)
-    if (env.compressor) hooks.compressorChosen?.(compressing, savedName())
+    if (env.compressor) hooks.compressorChosen?.(compressing, savedName(), everyChannel)
+  }
+  // Ticked: what plays now becomes every channel's choice. Unticked: back to the channel's own.
+  function toggleEveryChannel() {
+    if (!everyChannel) {
+      own = { on: compressing, strength, ...(custom ? { custom: { ...custom } } : {}) }
+      everyChannel = true
+      chooseCompressor(compressing && strength)
+    } else {
+      setChannelCompressor(own || { on: true, strength: '1' })
+      chooseCompressor(compressing && strength)
+    }
   }
   function toggleCompressor() {
     chooseCompressor(!compressing)
@@ -801,6 +816,8 @@ function playerControls(env, media) {
   // A video's start (and the next one playing in the same page: video-watch.js)
   function setChannelCompressor(choice) {
     env.compressor = choice || null
+    everyChannel = !!choice?.every
+    own = choice?.own || null
     custom = choice?.custom ? { ...choice.custom } : null
     if (choice && known(choice.strength)) strength = choice.strength
     else if (strength === 'custom' && !custom) strength = '1'
@@ -1138,8 +1155,9 @@ function playerControls(env, media) {
             chooseCompressor('custom')
           })]
         }
-        // About the whole list, not the last choice
+        // About the whole list, not the last choice (every channel: only for a video with one)
         separator()
+        if (env.compressor) detailed(row(labels.compressorEvery, everyChannel, toggleEveryChannel), everyChannel ? labels.compressorEveryOn : labels.compressorEveryOff)
         const hint = document.createElement('div')
         hint.className = 'menu-note'
         hint.textContent = labels.compressorHint

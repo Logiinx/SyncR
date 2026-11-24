@@ -100,7 +100,10 @@ function saveSubtitles(video: PlayableVideo, on: boolean) {
 // strength 1 (Light); turned off, it keeps its strength for the A key. Changed in the player
 // (controls.js). Saved before the 1–7 steps: Light, Medium, Strong = 1, 3, 6 (the same sound).
 // Custom's numbers stay saved when another strength is picked, for the next time it's picked.
+// "Use on every channel" (COMPRESSOR_EVERY_KEY): while set, every channel uses that one choice
+// instead of its own; each channel's own stays saved and comes back once it's unset.
 const COMPRESSOR_KEY = 'syncr.videoCompressor'
+const COMPRESSOR_EVERY_KEY = 'syncr.videoCompressorEvery'
 const STRENGTHS = ['1', '2', '3', '4', '5', '6', '7', 'peaks', 'voice', 'custom'] // i18n-ok
 const OLD_STRENGTHS: Record<string, string> = { light: '1', medium: '3', strong: '6' } // i18n-ok
 interface CustomCompressor {
@@ -119,24 +122,35 @@ function validCustom(custom: CustomCompressor | undefined): CustomCompressor | u
   const loud = customNumber(custom?.loud)
   return quiet !== null && loud !== null ? { quiet, loud, voice: custom?.voice === true } : undefined
 }
-function compressorData(video: PlayableVideo): CompressorChoice | null {
-  if (!video.channelId) return null // nothing to remember it for: off
-  const saved = read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})[channelKey(video)]
+function cleanChoice(saved: CompressorChoice | undefined | null): CompressorChoice {
   if (!saved) return { on: true, strength: '1' }
   const custom = validCustom(saved.custom)
   let strength = OLD_STRENGTHS[saved.strength] ?? saved.strength
   if (!STRENGTHS.includes(strength) || (strength === 'custom' && !custom)) strength = '1'
-  return { on: saved.on, strength, ...(custom ? { custom } : {}) }
+  return { on: saved.on === true, strength, ...(custom ? { custom } : {}) }
 }
-// strength: a strength's name, or Custom with its numbers as "custom-7-9-1" (quiet, loud, voice)
-function saveCompressor(video: PlayableVideo, on: boolean, strength: string) {
+// For the player: the choice to use, plus while "every channel" is set (every) the channel's own
+// (own), which the player goes back to when it's unset
+function compressorData(video: PlayableVideo): (CompressorChoice & { every?: true; own?: CompressorChoice }) | null {
+  if (!video.channelId) return null // nothing to remember it for: off
+  const own = cleanChoice(read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})[channelKey(video)])
+  const every = read<CompressorChoice | null>(COMPRESSOR_EVERY_KEY, null)
+  return every ? { ...cleanChoice(every), every: true, own } : own
+}
+// strength: a strength's name, or Custom with its numbers as "custom-7-9-1" (quiet, loud, voice).
+// every: saved as every channel's choice; otherwise for this channel, and "every channel" unset.
+function saveCompressor(video: PlayableVideo, on: boolean, strength: string, every: boolean) {
   if (!video.channelId) return
   const all = read<Record<string, CompressorChoice>>(COMPRESSOR_KEY, {})
   const key = channelKey(video)
+  const before = every ? read<CompressorChoice | null>(COMPRESSOR_EVERY_KEY, null) : all[key]
   const given = /^custom-(\d+)-(\d+)-([01])$/.exec(strength)
-  const custom = given ? validCustom({ quiet: Number(given[1]), loud: Number(given[2]), voice: given[3] === '1' }) : validCustom(all[key]?.custom)
+  const custom = given ? validCustom({ quiet: Number(given[1]), loud: Number(given[2]), voice: given[3] === '1' }) : validCustom(before?.custom ?? all[key]?.custom)
   if (given ? !custom : !STRENGTHS.includes(strength) || strength === 'custom') return
-  write(COMPRESSOR_KEY, { ...all, [key]: { on, strength: given ? 'custom' : strength, ...(custom ? { custom } : {}) } })
+  const choice = { on, strength: given ? 'custom' : strength, ...(custom ? { custom } : {}) }
+  if (every) return write(COMPRESSOR_EVERY_KEY, choice)
+  write(COMPRESSOR_EVERY_KEY, null)
+  write(COMPRESSOR_KEY, { ...all, [key]: choice })
 }
 
 const BAR_HEIGHT = 36
@@ -227,6 +241,9 @@ function controlsData() {
       compressorLoudDown: t('Loud parts down'),
       compressorDb: t('{value} dB'),
       compressorClearer: t('Clearer voices'),
+      compressorEvery: t('Use on every channel'),
+      compressorEveryOff: t('Each channel keeps its own choice'),
+      compressorEveryOn: t("Each channel's own choice comes back when unticked"),
       compressorLevel: t('Compressor: {level}'),
       compressorOff: t('Compressor off'),
       // The steps with a name (the others show their number only), then the ones beside them
@@ -600,8 +617,8 @@ function listenToBar() {
     if (current?.id === `youtube-${video}`) saveSubtitles(current, on)
   })
   // The compressor picked by hand (controls.js, video_window.rs /compressor). Only for the open video.
-  void listen<{ on: boolean; strength: string; video: string }>('video-compressor', ({ payload: { on, strength, video } }) => {
-    if (current?.id === video) saveCompressor(current, on, strength)
+  void listen<{ on: boolean; strength: string; every: boolean; video: string }>('video-compressor', ({ payload: { on, strength, every, video } }) => {
+    if (current?.id === video) saveCompressor(current, on, strength, every)
   })
   // Our own Twitch player found something worth saying (player.js). A site could fake this
   // signal, so it only counts for our player's current video.

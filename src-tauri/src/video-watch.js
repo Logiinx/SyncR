@@ -632,7 +632,7 @@
         },
         besideTime: (seconds) => chapterAt(seconds),
         // The app keeps it for the channel (video_window.rs /compressor)
-        compressorChosen: (on, strength) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&video=youtube-${encodeURIComponent(player.getVideoData().video_id)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
+        compressorChosen: (on, strength, every) => fetch(`https://syncr-video.localhost/compressor?on=${on ? 1 : 0}&strength=${strength}&every=${every ? 1 : 0}&video=youtube-${encodeURIComponent(player.getVideoData().video_id)}`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}),
         rememberStart: () => rememberStart(),
         // Like the Twitch player's Miscellaneous panel (timeline.js)
         menu: ({ panel }) => panel('misc', labels.miscTitle, '', ({ row, title }) => {

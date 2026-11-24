@@ -7,6 +7,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Nouveau :** compresseur Pics seulement (cris et bruits forts) et Voix
 - **Nouveau :** compresseur Personnalisé : vos propres niveaux, deux curseurs, par chaîne
+- **Nouveau :** compresseur « Utiliser sur toutes les chaînes » : un seul choix pour toutes
 - **Amélioré :** compresseur en 7 forces, de Léger à Nuit, sur un sélecteur 1–7
 
 ## [1.2.10] - 2026-11-24
