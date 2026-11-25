@@ -40,14 +40,15 @@ export const useSectionColors = () => useLiveQuery(load, [])
 // A section's color for its rows' CSS (--video-<name>, set below; the defaults are in index.css)
 export const sectionColor = (name: SectionName) => `var(--video-${name})` // i18n-ok
 
-// Sets --video-<name> and the line's --video-section-line (none: in the section's color)
+// Sets --video-<name> and the line's --video-section-line (none: in the section's color; set: the
+// same faded mix in gray, as --border barely shows on the background)
 function apply({ on, line, colors }: SectionColors) {
   const root = document.documentElement
   for (const [name, color] of Object.entries(colors)) {
     root.style.setProperty(`--video-${name}`, on ? `var(--text-${color})` : 'var(--text-dim)')
   }
   if (on && line) root.style.removeProperty('--video-section-line')
-  else root.style.setProperty('--video-section-line', 'var(--border)')
+  else root.style.setProperty('--video-section-line', 'color-mix(in srgb, var(--text-dim) 40%, transparent)') // i18n-ok
 }
 
 export async function saveSectionColors(change: Partial<SectionColors>) {

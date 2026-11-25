@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Petites corrections :** ligne grise des sections trop pâle
+
 ## [1.2.16] - 2026-11-25
 
 **Vidéo** (PC uniquement)
