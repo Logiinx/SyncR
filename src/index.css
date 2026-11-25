@@ -9655,8 +9655,15 @@ button.history-row.selected {
   --queue-top: calc(12px + var(--video-bar-height, 33px) + 16px);
   position: sticky;
   top: var(--queue-top);
-  max-height: calc(var(--video-page-height, 100vh) - var(--queue-top) - 24px);
+  --queue-room: calc(var(--video-page-height, 100vh) - var(--queue-top) - 24px);
+  max-height: var(--queue-room);
   overflow-y: auto;
+}
+
+/* While dragging (videoDrag.ts), as tall as it can be: a row dragged under its last one, or the gap
+   a new video opens, isn't cut off by its scrolling box */
+.video-queue-column.dragging {
+  min-height: var(--queue-room);
 }
 
 .video-row {

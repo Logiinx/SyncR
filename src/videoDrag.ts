@@ -93,9 +93,21 @@ export function dragPlaylist(event: ReactPointerEvent<HTMLElement>, playlistId: 
   })
 }
 
+// Side by side (VideoView's useSplitWidth): the Queue is a list of its own on the left, pinned, with
+// its own scrollbar
+const QUEUE_COLUMN = 'video-queue-column'
+
+// Scrolls a box when the mouse is near its top or bottom edge (top: from there)
+function edgeScroll(box: HTMLElement, pointerY: number, top = box.getBoundingClientRect().top) {
+  const { bottom } = box.getBoundingClientRect()
+  if (pointerY < top + EDGE) box.scrollTop -= SCROLL_STEP
+  else if (pointerY > bottom - EDGE) box.scrollTop += SCROLL_STEP
+}
+
 // Press and drag a Queue row up or down to change its place, among its own group's rows
 // (data-queue-group): the ones it passes slide one place to make room, like the Board's cards.
 // With the mouse under the Queue's last row it leaves the Queue: dimmed, the others close up.
+// Side by side, the Queue's own column scrolls, and the mouse over the right column also takes it out.
 export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
   if (event.button !== 0 || event.pointerType !== 'mouse' || (event.target as HTMLElement).closest('.video-row-action')) return
   const row = event.currentTarget
@@ -104,6 +116,7 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
   const rows = list ? [...list.querySelectorAll<HTMLElement>(`[data-queue-group="${row.dataset.queueGroup}"]`)] : []
   if (!list || !page) return
 
+  const split = list.classList.contains(QUEUE_COLUMN)
   const index = rows.indexOf(row)
   const others = rows.filter((el) => el !== row)
   const grid = isGrid(list)
@@ -122,9 +135,7 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
   // list's own pixels (offsetTop: no scroll, no transforms), the mouse in the screen's (zoom).
   function tick() {
     if (!row.isConnected) return end()
-    const box = page!.getBoundingClientRect()
-    if (pointerY < box.top + EDGE) page!.scrollTop -= SCROLL_STEP
-    else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
+    edgeScroll(split ? list! : page!, pointerY)
     row.style.transform = ''
     const { top, left } = row.getBoundingClientRect()
     const dy = (pointerY - grab - top) / currentZoom()
@@ -132,7 +143,7 @@ export function dragInQueue(event: ReactPointerEvent<HTMLElement>) {
     const at = listPoint(row, pointerX, pointerY)
     row.style.transform = `translate(${dx}px, ${dy}px)`
     const last = rows[rows.length - 1]
-    out = at.y > last.offsetTop + last.offsetHeight
+    out = at.y > last.offsetTop + last.offsetHeight || (split && pointerX > list!.getBoundingClientRect().right)
     row.classList.toggle('leaving', out)
     if (grid) place = tileBefore(others, at)
     else {
@@ -224,6 +235,12 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
   // No row it can go to on screen (or one channel chosen), and not for the Queue: nowhere to go
   if (!list || !page || (!queue && ![...list.querySelectorAll<HTMLElement>('[data-drop-channel]')].some(accepts))) return
 
+  // Side by side, from the right column: the Queue is the list on the left, its gap opens there,
+  // and the row follows the mouse sideways to reach it
+  const queueList = queue ? page.querySelector<HTMLElement>(`.${QUEUE_COLUMN}`) : null
+  const across = !!queueList && queueList !== list
+  const gapList: HTMLElement = (across && queueList) || list
+  const lists = across ? [list, gapList] : [list]
   const grid = isGrid(list)
   const startX = event.clientX
   const startY = event.clientY
@@ -243,34 +260,41 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
 
   // Where it would go in the Queue (its row data-queue-head, its videos data-queue-group), measured
   // in the list's own pixels: the Queue's row itself when folded, else before the video
-  // whose middle is under the mouse (over the Queue's row: first; a little under the last: last)
+  // whose middle is under the mouse (over the Queue's row: first; a little under the last: last).
+  // Across (the mouse over the Queue's column): anywhere in it, measured from the Queue's row.
   function queueSpot(point: { x: number; y: number }): QueueSpot | null {
-    const at = point.y
-    const head = list!.querySelector<HTMLElement>('[data-queue-head]')
+    const head = gapList.querySelector<HTMLElement>('[data-queue-head]')
     if (!queue || !head) return null
-    const rows = [...list!.querySelectorAll<HTMLElement>('[data-queue-group]')]
+    const at = across ? listPoint(head, pointerX, pointerY).y : point.y
+    const rows = [...gapList.querySelectorAll<HTMLElement>('[data-queue-group]')]
     const last = rows[rows.length - 1]
-    if (head.classList.contains('folded') || !last) return at >= head.offsetTop && at < head.offsetTop + head.offsetHeight ? { head } : null
-    if (at < head.offsetTop || at > last.offsetTop + last.offsetHeight + head.offsetHeight / 2) return null
+    if (head.classList.contains('folded') || !last) return across || (at >= head.offsetTop && at < head.offsetTop + head.offsetHeight) ? { head } : null
+    if (!across && (at < head.offsetTop || at > last.offsetTop + last.offsetHeight + head.offsetHeight / 2)) return null
     // Grid: before the tile it's over, in reading order
     const place = grid ? tileBefore(rows, point) : rows.findIndex((el) => at < el.offsetTop + el.offsetHeight / 2)
     return { rows, place: place === -1 ? rows.length : place }
   }
 
   // The gap: the rows from there move down by its height, down to its own place when it leaves it
-  // (they close up behind it), all of them when it stays (a copy joins the Queue)
+  // (they close up behind it), all of them when it stays (a copy joins the Queue). Across, the
+  // Queue's rows from there all move down, and when it leaves its place, the rows under it in the
+  // right column close up.
   function openGap(next: QueueSpot | null) {
-    const items = [...list!.children] as HTMLElement[]
+    const items = [...gapList.children] as HTMLElement[]
     const at = !next || 'head' in next ? -1 : next.place < next.rows.length ? items.indexOf(next.rows[next.place]) : items.indexOf(next.rows[next.rows.length - 1]) + 1
     if (at === gapAt) return
     gapAt = at
-    const own = items.indexOf(row)
+    const own = items.indexOf(row) // -1: across
     if (grid) return gridGap(items, next && 'rows' in next ? next : null)
     items.forEach((el, k) => {
       if (el === row) return
-      const by = at >= 0 && k >= at && (!queue!.leaves || k < own)
+      const by = at >= 0 && k >= at && (!queue!.leaves || own < 0 || k < own)
       el.style.transform = by ? `translateY(${row.offsetHeight}px)` : ''
     })
+    if (!across || !queue!.leaves) return
+    const mine = [...list!.children] as HTMLElement[]
+    const from = mine.indexOf(row)
+    mine.forEach((el, k) => k > from && (el.style.transform = at >= 0 ? `translateY(${-row.offsetHeight}px)` : ''))
   }
 
   // Grid: the Queue's tiles from there move one place on (the last may start a new line: then
@@ -305,16 +329,17 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     // scrolls up just under it instead
     const strip = queue ? page!.querySelector<HTMLElement>('.video-queue-strip') : null
     const onStrip = !!strip && pointerY < strip.getBoundingClientRect().bottom
-    const box = page!.getBoundingClientRect()
-    const topEdge = strip ? strip.getBoundingClientRect().bottom : box.top
-    if (!onStrip && pointerY < topEdge + EDGE) page!.scrollTop -= SCROLL_STEP
-    else if (pointerY > box.bottom - EDGE) page!.scrollTop += SCROLL_STEP
+    // Across: over the Queue's column once past the middle of the gap between the columns; it
+    // scrolls that column instead of the page
+    const overQueue = across && !onStrip && pointerX < (queueList!.getBoundingClientRect().right + list!.getBoundingClientRect().left) / 2
+    if (overQueue) edgeScroll(queueList!, pointerY)
+    else if (!onStrip) edgeScroll(page!, pointerY, strip ? strip.getBoundingClientRect().bottom : undefined)
     row.style.transform = ''
     const { top, left } = row.getBoundingClientRect()
     const at = listPoint(row, pointerX, pointerY)
-    const dx = grid ? (pointerX - grabX - left) / currentZoom() : 0
+    const dx = grid || across ? (pointerX - grabX - left) / currentZoom() : 0
     row.style.transform = `translate(${dx}px, ${(pointerY - grab - top) / currentZoom()}px)`
-    spot = onStrip ? { head: strip } : queueSpot(at)
+    spot = onStrip ? { head: strip } : across && !overQueue ? null : queueSpot(at)
     openGap(spot)
     if (spot) setOver('head' in spot ? spot.head : null)
     else {
@@ -331,7 +356,7 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     if (started || Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
     started = true
     row.classList.add('lifted')
-    list!.classList.add('dragging', 'reordering')
+    for (const el of lists) el.classList.add('dragging', 'reordering')
     // The bar's strip shows at once, to be measured
     if (queue) flushSync(() => changed({ lifted: true }))
     tick()
@@ -355,7 +380,7 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
     const into = e?.type === 'pointerup' ? spot : null
     setOver(null)
     row.classList.remove('lifted')
-    list!.classList.remove('dragging')
+    for (const el of lists) el.classList.remove('dragging')
     row.style.transform = ''
     if (into) {
       // Drawn in the Queue at once, then the gap goes without sliding (already in place)
@@ -365,14 +390,16 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
         else placeInQueue(queue!.id, id(into.rows[into.place]), id(into.rows[into.place - 1]))
         changed({ lifted: false, dropped: true })
       })
-      list!.classList.add('settling')
-      for (const el of list!.children) (el as HTMLElement).style.transform = ''
-      requestAnimationFrame(() => list!.classList.remove('settling', 'reordering'))
+      for (const el of lists) {
+        el.classList.add('settling')
+        for (const item of el.children) (item as HTMLElement).style.transform = ''
+      }
+      requestAnimationFrame(() => lists.forEach((el) => el.classList.remove('settling', 'reordering')))
       return
     }
     openGap(null)
     if (queue) changed({ lifted: false })
-    window.setTimeout(() => list!.classList.remove('reordering'), 200)
+    window.setTimeout(() => lists.forEach((el) => el.classList.remove('reordering')), 200)
     if (e?.type === 'pointerup' && target && changesPlace(target)) void moveTo(folderOf(target))
     else if (animationsOn()) {
       // Not moved: it slides back. Its end is taken off, or it would hold the row still next time.
