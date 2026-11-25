@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **Better:** Queue, From your follows and Rewatch get colored headers
 - **Better:** ±5 s jumps in a Twitch video show the new picture right away
 - **Changed:** selected videos’ actions float at the bottom, with names
 - **Fixed:** app freezing when folding a big folder in grid view

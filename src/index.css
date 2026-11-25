@@ -9889,6 +9889,69 @@ button.history-row.selected {
   opacity: 0.4;
 }
 
+/* A section's header (Queue, From your follows, Rewatch; user's pick 4, 2026-11-25): a colored bar
+   on the left, a soft tint fading out, its icon in color without a circle, a bigger title */
+.video-row.video-section {
+  margin: 16px 0 4px;
+  border-bottom: none;
+  border-left: 3px solid var(--section);
+  border-radius: 2px 6px 6px 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--section) 12%, var(--bg)), var(--bg) 70%);
+}
+
+.video-list > .video-section:first-child {
+  margin-top: 0;
+}
+
+.video-section > .video-row-open {
+  padding: 8px 10px 8px 9px; /* 12 px on the left, minus the bar */
+}
+
+/* Its tint shows through under the mouse */
+.video-section > .video-row-open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.video-section-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--section);
+}
+
+.video-section .video-title {
+  font-size: 1.13em;
+}
+
+/* What's inside a section: indented, with a thin line on the left in its color (faded). Drawn by
+   each row, as the list is flat; it covers the row's bottom line so it runs on unbroken */
+.video-row.in-section {
+  position: relative;
+  margin-left: calc(var(--depth, 0) * 24px + 32px);
+}
+
+.video-row.in-section::before {
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  left: calc(var(--depth, 0) * -24px - 14px);
+  width: 2px;
+  background: color-mix(in srgb, var(--section) 40%, transparent);
+  content: '';
+}
+
+.video-row.in-section.lifted::before {
+  display: none;
+}
+
+/* Grid: tiles can't move right one by one, so sections show by their header only */
+.video-list.grid > .video-row.in-section {
+  margin-left: calc(var(--depth, 0) * 24px);
+}
+
+.video-list.grid > .video-row.in-section::before {
+  display: none;
+}
+
 .video-thumb {
   position: relative;
   flex-shrink: 0;
