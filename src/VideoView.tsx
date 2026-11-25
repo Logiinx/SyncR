@@ -1114,8 +1114,8 @@ function VideoView() {
 
   return (
     <main className="page games-page" ref={pageRef}>
-      {/* Grid: wider, like Reminders' month grid; the bar is that wide in both, so the switch stays put */}
-      <div className={`${layout === 'grid' ? 'games wide' : 'games'} video-column`}>
+      {/* As wide as Reminders' month grid in both layouts (the list too, unlike the calendars' lists) */}
+      <div className="games wide video-column">
         <div className={`games-views reminders-toolbar video-toolbar calendar-head pinned-bar${videoLifted ? ' over-list' : ''}`}>
           <FillSwitch
             className="video-list-switch"

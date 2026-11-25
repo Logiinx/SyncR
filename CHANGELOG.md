@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **Better:** list view as wide as the bar, no more empty space on the left
 - **Small fixes:** gray section line too faint
 
 ## [1.2.16] - 2026-11-25
