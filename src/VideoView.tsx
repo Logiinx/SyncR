@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
@@ -7,7 +7,7 @@ import { CountBadge } from './CountBadge'
 import { type VideoFolder, type VideoFollow, type VideoPlaylist } from './db'
 import { dayTime, lastWatchedText, nearDay, shortDate, twitchDeletionText } from './dates'
 import Dialog from './Dialog'
-import { plural, t } from './i18n'
+import { decimal, plural, t } from './i18n'
 import { openLink } from './links'
 import { useLocalState } from './localState'
 import { useListScroll } from './videoScroll'
@@ -1042,6 +1042,28 @@ function VideoView() {
       ? t('Songs and other videos have different folders')
       : undefined
   // A bar button: the action on the picked videos, then they drop
+  // The pick bar too narrow for its buttons' names (a small window, French, many buttons): icons
+  // only, names in tooltips. Measured with the names, whenever the window or the buttons change.
+  const pickBar = useRef<HTMLDivElement>(null)
+  const [pickCompact, setPickCompact] = useState(false)
+  const pickButtons = [picked.length > 0, pickedUnwatched.length > 0, pickedToQueue.length > 0, pickedInQueue.length > 0, !pickedFolders, list, t('Delete')].join() // i18n-ok
+  useLayoutEffect(() => {
+    const bar = pickBar.current
+    const place = bar?.parentElement
+    if (!bar || !place) return
+    const fit = () => {
+      const was = bar.classList.contains('compact')
+      bar.classList.remove('compact')
+      const tooWide = bar.scrollWidth > place.clientWidth - 32 // 16 px free on each side
+      if (was) bar.classList.add('compact')
+      setPickCompact(tooWide)
+    }
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(place)
+    return () => watch.disconnect()
+  }, [pickButtons])
+  const pickName = (name: string) => (pickCompact ? name : undefined)
   const pickAction = (action: () => unknown) => () => {
     void action()
     dropPicks()
@@ -1059,7 +1081,7 @@ function VideoView() {
   return (
     <main className="page games-page" ref={pageRef}>
       {/* Grid: wider, like Reminders' month grid; the bar is that wide in both, so the switch stays put */}
-      <div className={layout === 'grid' ? 'games wide' : 'games'}>
+      <div className={`${layout === 'grid' ? 'games wide' : 'games'} video-column`}>
         <div className={`games-views reminders-toolbar video-toolbar calendar-head pinned-bar${videoLifted ? ' over-list' : ''}`}>
           <FillSwitch
             className="video-list-switch"
@@ -1144,65 +1166,6 @@ function VideoView() {
               <ListPlus size={15} /> {t('Drop here to add to the Queue')}
             </div>
           )}
-          {/* Videos picked: the bar is their actions, icons only (user, 2026-11-18, from mockups) */}
-          {picked.length > 0 && !videoLifted && (
-            <div className="video-pick-bar">
-              <span className="video-pick-count">{plural(picked.length, '{n} video selected', '{n} videos selected')}</span>
-              <div className="reminders-tools">
-                <button
-                  className="reminders-refresh"
-                  disabled={!pickedUnwatched.length}
-                  title={pickedUnwatched.length ? (list === 'music' ? t('Done: remove from Music') : t('Mark as watched')) : plural(picked.length, 'Already watched', 'All already watched')}
-                  onClick={pickAction(() => {
-                    const songs = pickedUnwatched.filter((video) => video.music)
-                    if (songs.length) void clearWatched(pickedIds(songs))
-                    const others = pickedUnwatched.filter((video) => !video.music)
-                    if (others.length) void markAllWatched(pickedIds(others))
-                  })}
-                >
-                  <Check size={15} />
-                </button>
-                <button
-                  className="reminders-refresh"
-                  disabled={!pickedToQueue.length}
-                  title={pickedToQueue.length ? t('Add to queue') : t('Already in the queue, or watched')}
-                  onClick={pickAction(() => pickedToQueue.forEach((video) => addToQueue(video.id)))}
-                >
-                  <ListPlus size={15} />
-                </button>
-                <button
-                  className="reminders-refresh"
-                  disabled={!pickedInQueue.length}
-                  title={pickedInQueue.length ? t('Remove from queue') : t('None of them is in the queue')}
-                  onClick={pickAction(() => leaveQueue(pickedIds(pickedInQueue)))}
-                >
-                  <ListX size={15} />
-                </button>
-                <button
-                  className="reminders-refresh"
-                  disabled={!!pickedFolders}
-                  title={pickedFolders ?? t('Move to folder')}
-                  onClick={(e) => {
-                    const box = e.currentTarget.getBoundingClientRect()
-                    setPickFolders({ x: box.right, y: box.bottom + 4 })
-                  }}
-                >
-                  <FolderInput size={15} />
-                </button>
-                <button
-                  className="reminders-refresh"
-                  disabled={!pickedDeletable.length}
-                  title={pickedDeletable.length ? t('Delete') : t('A playlist’s videos stay in it')}
-                  onClick={() => setDeletingPicks({ videos: pickedDeletable, skipped: pickedDeletable.length < picked.length })}
-                >
-                  <Trash2 size={15} />
-                </button>
-                <button className="reminders-refresh" title={t('Deselect all')} onClick={dropPicks}>
-                  <X size={15} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
         {pasted && (
           <p className={`games-empty${pasted.busy || pasted.done ? '' : ' error'}`}>
@@ -1236,6 +1199,66 @@ function VideoView() {
         {/* Switching grid / list: it fades in, like Games' (a new list, so nothing else animates) */}
         <ul key={layout} className={`${listClass} games-tab-in`} ref={listRef}>{rows}</ul>
       </div>
+      {/* Videos picked: their actions in a bar floating at the bottom of the list, named buttons,
+          only those that fit one of them at least; Delete in red, apart (user, 2026-11-25, from mockups) */}
+      {picked.length > 0 && !videoLifted && (
+        <div className="video-pick-place">
+          <div ref={pickBar} className={pickCompact ? 'video-pick-bar compact' : 'video-pick-bar'}>
+            <span className="video-pick-count">
+              <span className="video-pick-number">{decimal(picked.length, 0)}</span>
+              <span className="video-pick-label">{plural(picked.length, 'selected|one video', 'selected|several videos')}</span>
+            </span>
+            <span className="video-pick-divider" />
+            {pickedUnwatched.length > 0 && (
+              <button
+                title={list === 'music' ? t('Done: remove from Music') : pickName(t('Mark as watched'))}
+                onClick={pickAction(() => {
+                  const songs = pickedUnwatched.filter((video) => video.music)
+                  if (songs.length) void clearWatched(pickedIds(songs))
+                  const others = pickedUnwatched.filter((video) => !video.music)
+                  if (others.length) void markAllWatched(pickedIds(others))
+                })}
+              >
+                <Check size={15} /> <span className="video-pick-label">{list === 'music' ? t('Done') : t('Mark as watched')}</span>
+              </button>
+            )}
+            {pickedToQueue.length > 0 && (
+              <button title={pickName(t('Add to queue'))} onClick={pickAction(() => pickedToQueue.forEach((video) => addToQueue(video.id)))}>
+                <ListPlus size={15} /> <span className="video-pick-label">{t('Add to queue')}</span>
+              </button>
+            )}
+            {pickedInQueue.length > 0 && (
+              <button title={pickName(t('Remove from queue'))} onClick={pickAction(() => leaveQueue(pickedIds(pickedInQueue)))}>
+                <ListX size={15} /> <span className="video-pick-label">{t('Remove from queue')}</span>
+              </button>
+            )}
+            {!pickedFolders && (
+              <button
+                title={pickName(t('Move to folder'))}
+                onClick={(e) => {
+                  // Over the bar, starting at the button
+                  const bar = pickBar.current!.getBoundingClientRect()
+                  setPickFolders({ x: e.currentTarget.getBoundingClientRect().left, y: bar.top - 6 })
+                }}
+              >
+                <FolderInput size={15} /> <span className="video-pick-label">{t('Move to folder')}</span>
+              </button>
+            )}
+            <button
+              className="video-pick-delete"
+              disabled={!pickedDeletable.length}
+              title={pickedDeletable.length ? pickName(t('Delete')) : t('A playlist’s videos stay in it')}
+              onClick={() => setDeletingPicks({ videos: pickedDeletable, skipped: pickedDeletable.length < picked.length })}
+            >
+              <Trash2 size={15} /> <span className="video-pick-label">{t('Delete')}</span>
+            </button>
+            <span className="video-pick-divider" />
+            <button className="video-pick-close" title={t('Deselect all')} onClick={dropPicks}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
       {adding !== null && <FollowDialog startLink={adding} onClose={() => setAdding(null)} />}
       {addingVideo && <AddVideoDialog onAdded={showAdded} onClose={() => setAddingVideo(false)} />}
       {addingPlaylist && <AddPlaylistDialog onAdded={showAdded} onClose={() => setAddingPlaylist(false)} />}
@@ -1392,7 +1415,7 @@ function VideoView() {
         <ContextMenu
           x={pickFolders.x}
           y={pickFolders.y}
-          alignRight
+          above
           onClose={() => setPickFolders(null)}
           header={{ title: plural(picked.length, '{n} video', '{n} videos') }}
           items={[

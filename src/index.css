@@ -9606,7 +9606,7 @@ button.history-row.selected {
 }
 
 /* The search row (Games' search box look): a line of its own under the bar's controls (user,
-   2026-11-19). A fixed height, so the pick bar and the drop strip stop above it (its height + the
+   2026-11-19). A fixed height, so the drop strip stops above it (its height + the
    bar's 12 px gap). */
 .video-search {
   flex-basis: 100%;
@@ -9619,7 +9619,6 @@ button.history-row.selected {
   padding: 0;
 }
 
-.video-toolbar:has(> .video-search) > .video-pick-bar,
 .video-toolbar:has(> .video-search) > .video-queue-strip {
   bottom: 48px;
 }
@@ -9740,25 +9739,110 @@ button.history-row.selected {
   cursor: grabbing;
 }
 
-/* Videos picked (Ctrl/Shift+click): the bar is their actions, over the list switch like the strip;
-   picked rows in the same soft blue (user, 2026-11-18, from mockups) */
+/* While videos are picked, the page's column reaches the pick bar's place at the window's bottom
+   (the bar's 62 px + 16 under it), so the bar floats there even under a short list. A min-height:
+   sizes in % inside it stay as they are. */
+.games-page:has(> .video-pick-place) > .video-column {
+  box-sizing: border-box;
+  min-height: calc(100% - 78px);
+}
+
+/* Videos picked (Ctrl/Shift+click): their actions float at the bottom of the list, centered, named
+   buttons, Delete in red (user, 2026-11-25, from mockups); picked rows in a soft blue. The place
+   around it keeps 16 px from the list when scrolled to the end; clicks go through it. */
+.video-pick-place {
+  position: sticky;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding-top: 16px;
+  pointer-events: none;
+}
+
 .video-pick-bar {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-left: 12px;
-  border-radius: 6px; /* the bar's switch */
-  background: color-mix(in srgb, var(--text-blue) 16%, var(--bg));
+  gap: 2px;
+  max-width: 100%;
+  padding: 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-raised);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 60%);
+  pointer-events: auto;
 }
 
 .video-pick-count {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 3px;
   white-space: nowrap;
+}
+
+.video-pick-number {
+  min-width: 12px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.video-pick-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 5px 4px;
+  background: var(--border-strong);
+}
+
+.video-pick-bar button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.video-pick-bar button svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.video-pick-bar button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.video-pick-bar .video-pick-delete,
+.video-pick-bar .video-pick-delete svg {
+  color: var(--text-red);
+}
+
+.video-pick-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Too narrow for the names (VideoView measures it): icons only, the number alone */
+.video-pick-bar.compact .video-pick-label {
+  display: none;
+}
+
+.video-pick-bar.compact button {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.video-pick-bar .video-pick-close {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
 }
 
 .video-row.picked,

@@ -28,6 +28,7 @@ interface Props {
   items: MenuItem[]
   header?: { title: string; subtitle?: string } // what was right-clicked (e.g. a mail), above a line
   alignRight?: boolean // x is where the menu ends, not where it starts (a menu under a button on the right)
+  above?: boolean // y is where the menu ends, not where it starts (a menu over a button at the bottom)
   onClose: () => void
 }
 
@@ -38,7 +39,7 @@ const hasMouse = () => window.matchMedia('(hover: hover) and (pointer: fine)').m
 
 // Right-click menu (long press on a phone). Closes on any click elsewhere, Escape or Back
 // (backStack.ts; a list shown in the menu's place goes back to the menu first).
-function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
+function ContextMenu({ x, y, items, header, alignRight, above, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -64,7 +65,8 @@ function ContextMenu({ x, y, items, header, alignRight, onClose }: Props) {
     const { width, height } = el.getBoundingClientRect()
     const left = alignRight ? x - width : x
     el.style.left = `${Math.max(EDGE, Math.min(left, window.innerWidth - width - EDGE)) / zoom}px`
-    el.style.top = `${Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE)) / zoom}px`
+    const start = above ? y - height : y
+    el.style.top = `${Math.max(EDGE, Math.min(start, window.innerHeight - height - EDGE)) / zoom}px`
     // The side list: right of the menu (left when there's no room), its first line level with the open line
     const list = side.current
     const line = open === null ? null : el.querySelector<HTMLElement>(`[data-line="${open}"]`)

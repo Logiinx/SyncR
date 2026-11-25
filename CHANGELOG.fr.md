@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** les sauts de ±5 s dans une vidéo Twitch affichent l’image tout de suite
+- **Changé :** les actions des vidéos sélectionnées flottent en bas, avec leurs noms
 - **Corrigé :** l’app qui se figeait en repliant un gros dossier en grille
 
 **Application**
