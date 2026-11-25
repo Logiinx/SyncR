@@ -9640,6 +9640,25 @@ button.history-row.selected {
   list-style: none;
 }
 
+/* List view, wide window (VideoView's useSplitWidth): the Queue on the left, the rest on the right,
+   two equal halves (user, 2026-11-25, mockup C). The Queue stays in view under the pinned bar
+   (12 px from the page's top, 16 px above the list) and scrolls on its own when taller than the
+   page; 24 px free under it, like the page's end. */
+.video-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 28px;
+  align-items: start;
+}
+
+.video-queue-column {
+  --queue-top: calc(12px + var(--video-bar-height, 33px) + 16px);
+  position: sticky;
+  top: var(--queue-top);
+  max-height: calc(var(--video-page-height, 100vh) - var(--queue-top) - 24px);
+  overflow-y: auto;
+}
+
 .video-row {
   display: flex;
   align-items: center;

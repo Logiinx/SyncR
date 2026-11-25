@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
@@ -378,10 +378,39 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
   )
 }
 
+// List view, wide window: the Queue on the left, pinned, the rest on the right, once two columns of
+// ~540 px fit (user, 2026-11-25). Also gives CSS the bar's and the page's heights for the pinned
+// column. Measured before the list loads, so its scroll is put back in the right layout.
+const SPLIT_WIDTH = 2 * 540 + 28 // 28 = the gap between the columns
+function useSplitWidth(pageRef: RefObject<HTMLElement | null>, columnRef: RefObject<HTMLDivElement | null>) {
+  const [wide, setWide] = useState(false)
+  useLayoutEffect(() => {
+    const page = pageRef.current
+    const column = columnRef.current
+    if (!page || !column) return
+    const bar = column.querySelector<HTMLElement>('.video-toolbar')
+    const fit = () => {
+      const style = getComputedStyle(column)
+      setWide(column.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) >= SPLIT_WIDTH)
+      column.style.setProperty('--video-bar-height', `${bar?.offsetHeight ?? 0}px`)
+      column.style.setProperty('--video-page-height', `${page.clientHeight}px`)
+    }
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(page)
+    watch.observe(column)
+    if (bar) watch.observe(bar)
+    return () => watch.disconnect()
+  }, [pageRef, columnRef])
+  return wide
+}
+
 // The Video tab (video.ts). Uses the Games tab's page layout (.games).
 function VideoView() {
   const pageRef = useRef<HTMLElement>(null)
   usePage(pageRef)
+  const columnRef = useRef<HTMLDivElement>(null)
+  const wide = useSplitWidth(pageRef, columnRef)
   const feed = useVideoFeed()
   const newIds = useNewVideos(feed)
   const { checking, errors } = useChecking()
@@ -462,7 +491,7 @@ function VideoView() {
   useListScroll(pageRef, list, !!feed, shownChannel)
   // Rewatch's videos are only in its folders (videosIn)
   const videos = (list === 'towatch' ? feed?.toWatch : list === 'watched' ? feed?.watched : list === 'music' ? feed?.music : [])?.filter((video) => shownChannel === 'all' || video.followId === shownChannel)
-  const listRef = useRef<HTMLUListElement>(null)
+  const listRef = useRef<HTMLElement>(null) // the list, or both columns side by side
   // One channel chosen: there's nothing to group. Watched is one plain list, watched last on top.
   const grouping = grouped && shownChannel === 'all' && (list === 'towatch' || list === 'music')
   // The list loading counts as a change all at once too: its rows don't grow in when the tab opens
@@ -470,7 +499,7 @@ function VideoView() {
   // A drop into or out of the Queue too: its rows are already in place (videoDrag.ts)
   const queueDrops = useQueueDrops()
   const videoLifted = useVideoLifted()
-  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops} ${layout} ${query}`) // a search shows its rows at once
+  useListItems(listRef, `${list} ${shownChannel} ${grouping} ${!!feed} ${queueDrops} ${layout} ${wide} ${query}`) // a search shows its rows at once
   const tagNew = (video: FeedVideo) => (newIds.has(video.id) || isRecent(video)) && !video.opened && !video.gone && !video.watched
   const toggleGroup = (id: string) => (searching ? foldForSearch(id) : setOpenGroups((now) => (now.includes(id) ? now.filter((other) => other !== id) : [...now, id])))
   const anyVideos = !!feed?.toWatch.length || !!feed?.watched.length
@@ -1059,7 +1088,10 @@ function VideoView() {
     ? [...allIn(rewatch).filter((video) => found(video)), ...foundLists(allPlaylistsIn(rewatch)).flatMap(({ videos: episodes }) => episodes)]
     : (videos ?? []).filter((video) => !inQueueOnly.has(video.id) && found(video))
   // Rewatch as a section: its own, after From your follows (not inside it, user 2026-11-25)
-  const rows = [...queueRows(), ...partRows(listRows, partVideos), ...rewatchRows]
+  const queuePart = queueRows()
+  const restPart = [...partRows(listRows, partVideos), ...rewatchRows]
+  // Side by side (useSplitWidth): only in list view with the Queue shown; else one list, as before
+  const split = wide && layout === 'list' && queuePart.length > 0
   // The picked videos still shown, each once (in the Queue and below: once), in the order shown
   const picked = [...new Map([...pickRows].filter(([key]) => picks.has(key)).map(([, row]) => [row.video.id, row])).values()]
   const pickedVideos = picked.map(({ video }) => video)
@@ -1115,7 +1147,7 @@ function VideoView() {
   return (
     <main className="page games-page" ref={pageRef}>
       {/* As wide as Reminders' month grid in both layouts (the list too, unlike the calendars' lists) */}
-      <div className="games wide video-column">
+      <div className="games wide video-column" ref={columnRef}>
         <div className={`games-views reminders-toolbar video-toolbar calendar-head pinned-bar${videoLifted ? ' over-list' : ''}`}>
           <FillSwitch
             className="video-list-switch"
@@ -1231,7 +1263,14 @@ function VideoView() {
           feed && nothingShown && <p className="games-empty">{empty}</p>
         )}
         {/* Switching grid / list: it fades in, like Games' (a new list, so nothing else animates) */}
-        <ul key={layout} className={`${listClass} games-tab-in`} ref={listRef}>{rows}</ul>
+        {split ? (
+          <div key="split" className="video-split games-tab-in" ref={listRef as RefObject<HTMLDivElement>}>
+            <ul className={`${listClass} video-queue-column`}>{queuePart}</ul>
+            <ul className={listClass}>{restPart}</ul>
+          </div>
+        ) : (
+          <ul key={layout} className={`${listClass} games-tab-in`} ref={listRef as RefObject<HTMLUListElement>}>{[...queuePart, ...restPart]}</ul>
+        )}
       </div>
       {/* Videos picked: their actions in a bar floating at the bottom of the list, named buttons,
           only those that fit one of them at least; Delete in red, apart (user, 2026-11-25, from mockups) */}

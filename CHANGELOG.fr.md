@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** fenêtre large : la file d’attente à gauche, toujours visible, les vidéos à droite
 - **Amélioré :** la vue en liste est aussi large que la barre, plus de vide à gauche
 - **Petites corrections :** ligne grise des sections trop pâle
 

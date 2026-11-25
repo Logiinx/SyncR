@@ -16,7 +16,8 @@ const pagePx = (screen: number) => screen / currentZoom()
 const KEY = 'syncr.video.scroll'
 const SAVE_AFTER = 300 // ms after the last scroll
 
-const rowsIn = (page: HTMLElement) => page.querySelectorAll<HTMLElement>('.video-list [data-item]')
+// Not the pinned Queue's (side by side): it doesn't move with the page
+const rowsIn = (page: HTMLElement) => page.querySelectorAll<HTMLElement>('.video-list:not(.video-queue-column) [data-item]')
 
 function spotOf(page: HTMLElement): Spot {
   const pageTop = page.getBoundingClientRect().top
