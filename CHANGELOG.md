@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.18] - 2026-11-25
+
 **Notes**
 - **Fixed:** tapping a section title no longer jumps the cursor to the top
 
