@@ -63,10 +63,7 @@ export const DragSections = Extension.create({
         const { $head } = state.selection
         if ($head.parent.type.name !== 'detailsSummary') return false
         const section = view.nodeDOM($head.before($head.depth - 1))
-        if (section instanceof HTMLElement && !section.classList.contains('is-open')) {
-          const toggle = section.querySelector(':scope > button')
-          if (toggle instanceof HTMLButtonElement) toggle.click()
-        }
+        if (section instanceof HTMLElement) toggleSection(section, true)
         // Read the state again: opening may have changed it
         const tr = view.state.tr
         tr.setSelection(Selection.near(tr.doc.resolve($head.after() + 1)))
@@ -94,6 +91,24 @@ export const DragSections = Extension.create({
     ]
   },
 })
+
+// Open or close a section on screen, without focusing the editor. The arrow's own click also
+// focuses it at the cursor it last had: on a phone that opened the keyboard, often with the
+// cursor at the top of the note (user, 2026-11-25). What the click does in
+// @tiptap/extension-details 3.31 (toggleDetailsContent), minus the focus.
+export function toggleSection(section: HTMLElement, open = !section.classList.contains('is-open')) {
+  if (section.classList.contains('is-open') === open) return
+  section.classList.toggle('is-open', open)
+  section.querySelector(':scope > button')?.setAttribute('aria-label', open ? t('Close section') : t('Open section'))
+  // The content switches its "hidden" at each event
+  section.querySelector(':scope > div > [data-type="detailsContent"]')?.dispatchEvent(new Event('toggleDetailsContent'))
+}
+
+// The arrow button of a section, if the event happened on it
+function sectionArrow(target: EventTarget | null): HTMLButtonElement | null {
+  const button = target instanceof Element ? target.closest('button') : null
+  return button?.parentElement?.matches('[data-type="details"]') ? button : null
+}
 
 // The cursor never stays where it can't be seen or typed (user, 2026-11-23: on a phone it then
 // jumped to the top of the note):
@@ -169,6 +184,24 @@ class SectionDragger {
     // A section folded or unfolded (screen only, no change to the note): its content gets
     // "hidden" right after this event, at its target, so check the cursor just after
     view.dom.addEventListener('toggleDetailsContent', this.onToggle, true)
+    view.dom.addEventListener('pointerdown', this.onArrowPress, true)
+    view.dom.addEventListener('click', this.onArrowClick, true)
+  }
+
+  // ---------- The arrow ----------
+
+  // Like a title: a click or tap on the arrow only folds/unfolds. The press would focus the
+  // editor and put the cursor in the title (keyboard on the phone), the arrow's own click
+  // would focus it at its last cursor: both stopped. Clicks from code (.click()) still pass.
+  onArrowPress = (e: PointerEvent) => {
+    if (sectionArrow(e.target)) e.preventDefault()
+  }
+
+  onArrowClick = (e: MouseEvent) => {
+    const arrow = sectionArrow(e.target)
+    if (!arrow || !e.isTrusted) return
+    e.stopPropagation()
+    toggleSection(arrow.parentElement!)
   }
 
   // ---------- Framing the section under the mouse ----------
@@ -271,11 +304,9 @@ class SectionDragger {
     if (editTitle) this.editTitle(press.summary)
   }
 
-  // A click (or tap) on a title: only open/close the section
+  // A click (or tap) on a title: only open/close the section (the cursor and focus stay)
   clickTitle(press: Press) {
-    // Layout: <div data-type="details"><button>(arrow)</button><div><summary>…
-    const toggle = press.section.querySelector(':scope > button')
-    if (toggle instanceof HTMLButtonElement) toggle.click()
+    toggleSection(press.section)
   }
 
   // Right-click on a title: edit it. (A phone's long press never gets here: blockMenu stops it
@@ -429,8 +460,7 @@ class SectionDragger {
 
     // Open/closed isn't part of the document, so the moved copy is drawn closed: reopen it
     const dom = view.nodeDOM(insertAt)
-    const toggle = dom instanceof HTMLElement ? dom.querySelector(':scope > button') : null
-    if (wasOpen && toggle instanceof HTMLButtonElement) toggle.click()
+    if (wasOpen && dom instanceof HTMLElement) toggleSection(dom, true)
     // Then the cursor can go back inside (Details keeps it out of closed sections)
     if (cursorInside) {
       const shift = insertAt - from
@@ -449,6 +479,8 @@ class SectionDragger {
     this.view.dom.removeEventListener('contextmenu', this.onContextMenu)
     this.view.dom.removeEventListener('touchmove', this.blockScroll)
     this.view.dom.removeEventListener('toggleDetailsContent', this.onToggle, true)
+    this.view.dom.removeEventListener('pointerdown', this.onArrowPress, true)
+    this.view.dom.removeEventListener('click', this.onArrowClick, true)
     this.wrapper.classList.remove('has-section-drag', 'dragging-section')
   }
 }

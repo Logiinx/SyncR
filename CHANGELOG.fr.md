@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Notes**
+- **Corrigé :** toucher le titre d’une section n’envoie plus le curseur en haut
+
 ## [1.2.17] - 2026-11-25
 
 **Vidéo** (PC uniquement)

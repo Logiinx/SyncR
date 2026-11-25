@@ -1,6 +1,7 @@
 import { Extension, type Editor, type JSONContent } from '@tiptap/react'
 import { t } from './i18n'
 import { showAppMessage } from './appMessage'
+import { toggleSection } from './dragSections'
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model'
@@ -321,16 +322,9 @@ function openSectionsAround(editor: Editor, pos: number, focus = true) {
     if ($pos.node(d).type.name !== 'details') continue
     const section = view.nodeDOM($pos.before(d)) as HTMLElement | null
     if (!section || section.classList.contains('is-open')) continue
-    const toggle = section.querySelector<HTMLButtonElement>(':scope > button')
-    if (focus) {
-      toggle?.click()
-      continue
-    }
-    // The toggle's click also focuses the editor (keyboard on the phone). Without it: what the
-    // click does in @tiptap/extension-details 3.31 (toggleDetailsContent), minus the focus.
-    section.classList.add('is-open')
-    toggle?.setAttribute('aria-label', t('Close section'))
-    section.querySelector(':scope > div > [data-type="detailsContent"]')?.dispatchEvent(new Event('toggleDetailsContent'))
+    // The arrow's click also focuses the editor (keyboard on the phone)
+    if (focus) section.querySelector<HTMLButtonElement>(':scope > button')?.click()
+    else toggleSection(section, true)
   }
 }
 
