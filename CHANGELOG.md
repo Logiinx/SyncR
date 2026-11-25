@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.17] - 2026-11-25
+
 **Video** (PC only)
 - **New:** wide window: the Queue on the left, staying in view, videos on the right
 - **Better:** list view as wide as the bar, no more empty space on the left
