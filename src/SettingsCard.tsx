@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import InfoTip from './InfoTip'
 import Spinner from './Spinner'
+import { t } from './i18n'
 
 // The pieces of Settings
+
+// Shared by all devices (synced through Dropbox); everything else is for this device only
+export function Synced() {
+  return <span className="tag-dim">{t('synced')}</span>
+}
 
 // After a window on top of Settings closed (a question, a warning): the focus back in Settings, so
 // Escape closes it. `inside`: any element of the section.

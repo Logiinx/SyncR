@@ -15,6 +15,7 @@ import KeyMissing from './KeyMissing'
 import LockScreen from './LockScreen'
 import { followLanguageChoice, startTrayTexts } from './language'
 import { followTabColors } from './tabColors'
+import { followSectionColors } from './videoSections'
 import { followLinkSites } from './linkPreviews'
 import { startMouseBattery } from './mouseBattery'
 import { startHardware } from './hardware'
@@ -53,6 +54,7 @@ void loadSecrets().then(() => prepareLocalDb(isPopup)).then(async (state) => {
   const showApp = () => {
     followLanguageChoice()
     followTabColors()
+    followSectionColors()
     followLinkSites()
     root.render(<StrictMode><App /></StrictMode>)
     ready()

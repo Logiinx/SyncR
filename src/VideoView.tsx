@@ -19,6 +19,7 @@ import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from '
 import { openSettings } from './openSettings'
 import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
+import { sectionColor } from './videoSections'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
@@ -68,10 +69,7 @@ const depthStyle = (depth: number) => (depth ? { marginLeft: depth * 24 } : unde
 
 // Sections (Queue, From your follows, Rewatch; user 2026-11-25): a header with a colored mark, and
 // what's inside indented with a thin line on the left. Rows learn their section from here, so the
-// list stays one flat list (dragging moves its children)
-type SectionName = 'queue' | 'follows' | 'rewatch'
-const SECTION_COLORS: Record<SectionName, string> = { queue: 'blue', follows: 'purple', rewatch: 'green' }
-const sectionColor = (name: SectionName) => `var(--text-${SECTION_COLORS[name]})` // i18n-ok
+// list stays one flat list (dragging moves its children). Their colors: videoSections.ts
 const InSection = createContext<string | null>(null)
 function useRowPlace(depth: number) {
   const section = useContext(InSection)

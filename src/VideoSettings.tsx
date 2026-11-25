@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { Puzzle, RefreshCw, Settings, Trash2 } from 'lucide-react'
+import { ListStart, Puzzle, Repeat, RefreshCw, Settings, Trash2, Users } from 'lucide-react'
 import Dialog from './Dialog'
-import { focusSettings, ModuleSwitch, SettingRow } from './SettingsCard'
+import ContextMenu from './ContextMenu'
+import { colorMenuItems } from './cardColors'
+import { focusSettings, ModuleSwitch, SettingRow, Synced } from './SettingsCard'
 import { setModuleOn, useModuleOn } from './modules'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
@@ -13,6 +15,7 @@ import { setDeArrow, useDeArrow } from './videoTitles'
 import { clearVideoAlerts, setPopupCardSize, usePopupCardSize, type PopupCardSize } from './videoAlerts'
 import { deleteMutedSound, mutedSoundSpace } from './mutedSound'
 import { fileSize } from './mailFiles'
+import { saveSectionColors, sectionColor, useSectionColors, type SectionName } from './videoSections'
 
 // As video_extensions.rs sends them
 type ExtensionRow = {
@@ -45,6 +48,10 @@ export default function VideoSection() {
   const autoRewatch = useAutoRewatch()
   const shows = useCardPieces()
   const popupCards = usePopupCardSize()
+  const sections = useSectionColors()
+  const [sectionMenu, setSectionMenu] = useState<{ name: SectionName; x: number; y: number } | null>(null)
+  const sectionNames: Record<SectionName, string> = { queue: t('Queue'), follows: t('From your follows'), rewatch: t('Rewatch') }
+  const sectionIcons: Record<SectionName, ReactNode> = { queue: <ListStart size={16} />, follows: <Users size={16} />, rewatch: <Repeat size={16} /> }
   // One checkbox per piece of the hover cards (videoCards.ts)
   const pieceRow = (piece: CardPiece, label: string) => (
     <SettingRow key={piece} label={label}>
@@ -131,6 +138,33 @@ export default function VideoSection() {
         >
           <input type="checkbox" checked={deArrow} onChange={(e) => setDeArrow(e.target.checked)} />
         </SettingRow>
+        {sections && (
+          <>
+            <SettingRow label={<>{t('Colored sections')} <Synced /></>} title={t('Queue, From your follows and Rewatch. Off: in gray.')}>
+              <input type="checkbox" checked={sections.on} onChange={(e) => void saveSectionColors({ on: e.target.checked })} />
+            </SettingRow>
+            <SettingRow label={t('Section colors')}>
+              <span className="tab-color-buttons">
+                {(Object.keys(sectionNames) as SectionName[]).map((name) => (
+                  <button
+                    key={name}
+                    className="tab-color-button"
+                    style={{ color: sectionColor(name) }}
+                    title={sectionNames[name]}
+                    aria-label={sectionNames[name]}
+                    disabled={!sections.on}
+                    onClick={(e) => setSectionMenu({ name, x: e.clientX, y: e.clientY })}
+                  >
+                    {sectionIcons[name]}
+                  </button>
+                ))}
+              </span>
+            </SettingRow>
+            <SettingRow label={t('Line in the section’s color')} title={t('The thin line beside what’s in a section. Off: gray.')}>
+              <input type="checkbox" checked={sections.line} disabled={!sections.on} onChange={(e) => void saveSectionColors({ line: e.target.checked })} />
+            </SettingRow>
+          </>
+        )}
         <h4 className="settings-card-sub">{t('Hover cards: videos')}</h4>
         {pieceRow('videoPicture', t('Bigger picture'))}
         {pieceRow('videoDetails', t('Title, channel and date'))}
@@ -258,6 +292,19 @@ export default function VideoSection() {
           </>
         )}
       </fieldset>
+      {sectionMenu && sections && (
+        <ContextMenu
+          x={sectionMenu.x}
+          y={sectionMenu.y}
+          onClose={() => setSectionMenu(null)}
+          header={{ title: sectionNames[sectionMenu.name] }}
+          items={colorMenuItems(
+            sections.colors[sectionMenu.name],
+            (color) => color && void saveSectionColors({ colors: { ...sections.colors, [sectionMenu.name]: color } }),
+            false,
+          )}
+        />
+      )}
       {removing && (
         <Dialog
           request={{

@@ -9890,7 +9890,14 @@ button.history-row.selected {
 }
 
 /* A section's header (Queue, From your follows, Rewatch; user's pick 4, 2026-11-25): a colored bar
-   on the left, a soft tint fading out, its icon in color without a circle, a bigger title */
+   on the left, a soft tint fading out, its icon in color without a circle, a bigger title. Their
+   colors: Settings → Video (videoSections.ts sets these, the defaults until it has) */
+:root {
+  --video-queue: var(--text-blue);
+  --video-follows: var(--text-purple);
+  --video-rewatch: var(--text-green);
+}
+
 .video-row.video-section {
   margin: 16px 0 4px;
   border-bottom: none;
@@ -9922,8 +9929,9 @@ button.history-row.selected {
   font-size: 1.13em;
 }
 
-/* What's inside a section: indented, with a thin line on the left in its color (faded). Drawn by
-   each row, as the list is flat; it covers the row's bottom line so it runs on unbroken */
+/* What's inside a section: indented, with a thin line on the left in its color (faded; or gray, in
+   Settings). Drawn by each row, as the list is flat; it covers the row's bottom line so it runs on
+   unbroken */
 .video-row.in-section {
   position: relative;
   margin-left: calc(var(--depth, 0) * 24px + 32px);
@@ -9935,7 +9943,7 @@ button.history-row.selected {
   bottom: -1px;
   left: calc(var(--depth, 0) * -24px - 14px);
   width: 2px;
-  background: color-mix(in srgb, var(--section) 40%, transparent);
+  background: var(--video-section-line, color-mix(in srgb, var(--section) 40%, transparent)); /* set: gray */
   content: '';
 }
 

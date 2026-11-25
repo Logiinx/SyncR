@@ -3,7 +3,7 @@ import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, 
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { useBack } from './backStack'
-import { RowStatus, SettingRow } from './SettingsCard'
+import { RowStatus, SettingRow, Synced } from './SettingsCard'
 import { SettingsResults, SettingsSearchBox } from './SettingsSearch'
 import InfoTip from './InfoTip'
 import ColorRulesDialog from './ColorRulesDialog'
@@ -848,11 +848,6 @@ function Status({ ok, text }: { ok: boolean; text: string }) {
       {text}
     </span>
   )
-}
-
-// Shared by all devices (synced through Dropbox); everything else is for this device only
-function Synced() {
-  return <span className="tag-dim">{t('synced')}</span>
 }
 
 // Game search: the address and password of SyncR's IGDB proxy (igdb.ts), synced to all devices.

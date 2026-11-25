@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** couleur de chaque section au choix, ou en gris, dans les réglages Vidéo
 - **Amélioré :** File d’attente, De vos chaînes suivies et À revoir ont des en-têtes colorés
 - **Amélioré :** les sauts de ±5 s dans une vidéo Twitch affichent l’image tout de suite
 - **Changé :** les actions des vidéos sélectionnées flottent en bas, avec leurs noms

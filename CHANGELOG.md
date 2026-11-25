@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **Video** (PC only)
+- **New:** pick each section’s color, or gray, in Video settings
 - **Better:** Queue, From your follows and Rewatch get colored headers
 - **Better:** ±5 s jumps in a Twitch video show the new picture right away
 - **Changed:** selected videos’ actions float at the bottom, with names
