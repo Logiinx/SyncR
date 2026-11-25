@@ -7,6 +7,9 @@ All notable changes to SyncR. Newest version first.
 **Notes**
 - **Fixed:** tapping a section title no longer jumps the cursor to the top
 
+**Video** (PC only)
+- **Fixed:** chapter gaps on the player's bar looking blurry
+
 ## [1.2.17] - 2026-11-25
 
 **Video** (PC only)

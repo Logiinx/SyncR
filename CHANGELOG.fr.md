@@ -7,6 +7,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Notes**
 - **Corrigé :** toucher le titre d’une section n’envoie plus le curseur en haut
 
+**Vidéo** (PC uniquement)
+- **Corrigé :** séparations des chapitres floues sur la barre du lecteur
+
 ## [1.2.17] - 2026-11-25
 
 **Vidéo** (PC uniquement)

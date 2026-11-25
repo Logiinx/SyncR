@@ -186,25 +186,51 @@ function playerControls(env, media) {
   let marked = [] // { start, end, color }
   const GAP = 2 // px
   const MARKED_MIN = 3 // px: a few seconds in a long video would be thinner than a pixel
-  const at = (seconds) => `${(seconds / media.duration()) * 100}%`
+  // Every edge lands on a whole screen pixel (one between two is drawn grey and soft): places are
+  // worked out in the screen's pixels (app scale and Windows scaling included), then given as a
+  // percent of the bar. Redrawn when the bar's width on screen changes (the observer below).
   function drawParts() {
+    const track = $('track')
     const length = media.duration()
+    const area = track.getBoundingClientRect()
+    if (!area.width) return // hidden: drawn once shown
+    const ratio = window.devicePixelRatio || 1
+    const left = area.left * ratio
+    const width = area.width * ratio
+    const screenPx = (area.width / (track.offsetWidth || area.width)) * ratio // one CSS px on screen
+    // seconds → screen pixels from the bar's left, on a whole pixel (shift: moves the place first)
+    const pixel = (seconds, shift = 0) => Math.round(left + (seconds / length) * width + shift) - left
+    const percent = (pixels) => `${(pixels / width) * 100}%`
+    const gap = Math.max(1, Math.round(GAP * screenPx))
     const cuts = []
     for (const seconds of [...gaps].sort((a, b) => a - b)) {
       if (!length || seconds <= 0 || seconds >= length) continue
-      const place = at(seconds)
-      cuts.push(`#000 calc(${place} - ${GAP / 2}px)`, `transparent calc(${place} - ${GAP / 2}px)`, `transparent calc(${place} + ${GAP / 2}px)`, `#000 calc(${place} + ${GAP / 2}px)`)
+      const start = pixel(seconds, -gap / 2)
+      const from = percent(start)
+      const to = percent(start + gap)
+      cuts.push(`#000 ${from}`, `transparent ${from}`, `transparent ${to}`, `#000 ${to}`)
     }
-    $('track').style.setProperty('--gaps', cuts.length ? `linear-gradient(to right, ${cuts.join(', ')})` : 'none')
+    track.style.setProperty('--gaps', cuts.length ? `linear-gradient(to right, ${cuts.join(', ')})` : 'none')
+    const least = Math.max(1, Math.round(MARKED_MIN * screenPx))
     const colors = []
     for (const part of [...marked].sort((a, b) => a.start - b.start)) {
       if (!length) break
-      const from = at(part.start)
-      const to = `max(${at(Math.min(part.end, length))}, calc(${from} + ${MARKED_MIN}px))`
+      const start = pixel(part.start)
+      const from = percent(start)
+      const to = percent(Math.max(pixel(Math.min(part.end, length)), start + least))
       colors.push(`transparent ${from}`, `${part.color} ${from}`, `${part.color} ${to}`, `transparent ${to}`)
     }
-    $('track').style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
+    track.style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
   }
+  // The bar's width in screen pixels changes with the window, the app scale and Windows scaling
+  // (its height grows on hover, which moves no edge: skipped)
+  let drawnWidth = 0
+  new ResizeObserver(([entry]) => {
+    const width = entry.devicePixelContentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width
+    if (width === drawnWidth) return
+    drawnWidth = width
+    drawParts()
+  }).observe($('track'), { box: 'device-pixel-content-box' })
   // YouTube's "most replayed" curve over the bar (video-watch.js): [{ start, end, value 0-1 }] in
   // seconds, or none. A soft area, each part's value at its middle.
   let heat = []
