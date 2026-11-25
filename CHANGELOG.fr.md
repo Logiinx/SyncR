@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.19] - 2026-11-25
+
 **Vidéo** (PC uniquement)
 - **Corrigé :** séparations des chapitres encore floues sur la barre du lecteur
 
