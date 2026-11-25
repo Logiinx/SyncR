@@ -8,6 +8,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** les sauts de ±5 s dans une vidéo Twitch affichent l’image tout de suite
 - **Corrigé :** l’app qui se figeait en repliant un gros dossier en grille
 
+**Application**
+- **Corrigé :** fenêtre qui grandissait à chaque démarrage (PC uniquement)
+- **Corrigé :** fenêtre qui oubliait sa place après une mise à jour ou un plantage (PC uniquement)
+
 ## [1.2.15] - 2026-11-25
 
 **Vidéo** (PC uniquement)

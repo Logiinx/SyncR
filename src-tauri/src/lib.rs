@@ -7,6 +7,8 @@ mod muted_sound;
 mod trailer_player;
 mod video_extensions;
 mod video_window;
+#[cfg(desktop)]
+mod window_place;
 
 // Brings the main window back (from the tray, minimized, or behind other windows)
 #[cfg(desktop)]
@@ -389,7 +391,8 @@ pub fn run() {
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
-  // saved when the app closes and restored at the next start.
+  // saved when the app closes and a second after each move (window_place.rs), restored at the
+  // next start.
   // Must be registered here, before the window exists: it only looks after windows created
   // after it (registered in setup(), it missed the main window and remembered nothing).
   // Visibility isn't managed by it: the window starts hidden (tauri.conf.json) and the page
@@ -399,10 +402,10 @@ pub fn run() {
   // Hardware widget's menu (hardware_widget.rs).
   #[cfg(desktop)]
   let builder = {
-    use tauri_plugin_window_state::StateFlags;
     builder.plugin(
       tauri_plugin_window_state::Builder::default()
-        .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+        .with_state_flags(window_place::flags())
+        .skip_initial_state("main") // put back by window_place::restore (setup below)
         .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP, video_window::VIDEO_WINDOW, hardware::widget::MENU])
         .build(),
     )
@@ -413,6 +416,11 @@ pub fn run() {
       #[cfg(desktop)]
       {
         app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
+        // Back to its saved size and place, still hidden (the page shows it)
+        if let Some(window) = app.get_webview_window("main") {
+          window_place::restore(&window);
+        }
 
         // Safety net: if the page never shows the window (e.g. it failed to load),
         // show it after 3 seconds anyway, so the app can't run invisibly.
@@ -476,6 +484,10 @@ pub fn run() {
     .on_window_event(|window, event| {
       if window.label() == "main" {
         trailer_player::follow_window(window, event);
+      }
+      #[cfg(desktop)]
+      if window.label() == "main" && matches!(event, tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)) {
+        window_place::save_soon(window.app_handle());
       }
       if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
         window.app_handle().exit(0);
