@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.2.16] - 2026-11-25
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** couleur de chaque section au choix, ou en gris, dans les réglages Vidéo
 - **Amélioré :** File d’attente, De vos chaînes suivies et À revoir ont des en-têtes colorés

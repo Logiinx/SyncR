@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.2.16] - 2026-11-25
+
 **Video** (PC only)
 - **New:** pick each section’s color, or gray, in Video settings
 - **Better:** Queue, From your follows and Rewatch get colored headers
