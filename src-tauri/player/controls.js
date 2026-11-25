@@ -187,8 +187,25 @@ function playerControls(env, media) {
   const GAP = 2 // px
   const MARKED_MIN = 3 // px: a few seconds in a long video would be thinner than a pixel
   // Every edge lands on a whole screen pixel (one between two is drawn grey and soft): places are
-  // worked out in the screen's pixels (app scale and Windows scaling included), then given as a
-  // percent of the bar. Redrawn when the bar's width on screen changes (the observer below).
+  // worked out in the screen's pixels (app scale and Windows scaling included). Redrawn when the
+  // bar's width on screen changes (the observer below).
+  // Each part is its own plain box (one image layer each), never one long gradient with many hard
+  // stops: past a few stops the browser squeezes a gradient into 256 steps, so on a wide bar every
+  // edge smears over ~10 px and a thin gap can fade away.
+  // boxes: [{ from, to, color }] in screen pixels from the bar's left → the three CSS lists
+  function layers(boxes, screenPx) {
+    const px = (pixels) => `${pixels / screenPx}px`
+    return {
+      image: boxes.map(({ color }) => `linear-gradient(${color}, ${color})`).join(', ') || 'none',
+      size: boxes.map(({ from, to }) => `${px(to - from)} 100%`).join(', ') || 'auto',
+      position: boxes.map(({ from }) => `${px(from)} 0`).join(', ') || '0 0',
+    }
+  }
+  function setLayers(track, name, { image, size, position }) {
+    track.style.setProperty(`--${name}-image`, image)
+    track.style.setProperty(`--${name}-size`, size)
+    track.style.setProperty(`--${name}-position`, position)
+  }
   function drawParts() {
     const track = $('track')
     const length = media.duration()
@@ -200,27 +217,29 @@ function playerControls(env, media) {
     const screenPx = (area.width / (track.offsetWidth || area.width)) * ratio // one CSS px on screen
     // seconds → screen pixels from the bar's left, on a whole pixel (shift: moves the place first)
     const pixel = (seconds, shift = 0) => Math.round(left + (seconds / length) * width + shift) - left
-    const percent = (pixels) => `${(pixels / width) * 100}%`
+    const end = Math.round(left + width) - left
+    // The pieces between the gaps (the mask shows only them); none without gaps: the whole bar
     const gap = Math.max(1, Math.round(GAP * screenPx))
-    const cuts = []
+    const pieces = []
+    let pieceStart = 0
+    let cut = false
     for (const seconds of [...gaps].sort((a, b) => a - b)) {
       if (!length || seconds <= 0 || seconds >= length) continue
       const start = pixel(seconds, -gap / 2)
-      const from = percent(start)
-      const to = percent(start + gap)
-      cuts.push(`#000 ${from}`, `transparent ${from}`, `transparent ${to}`, `#000 ${to}`)
+      if (start > pieceStart) pieces.push({ from: pieceStart, to: start, color: '#000' })
+      pieceStart = start + gap
+      cut = true
     }
-    track.style.setProperty('--gaps', cuts.length ? `linear-gradient(to right, ${cuts.join(', ')})` : 'none')
+    if (cut && end > pieceStart) pieces.push({ from: pieceStart, to: end, color: '#000' })
+    setLayers(track, 'gaps', layers(pieces, screenPx))
     const least = Math.max(1, Math.round(MARKED_MIN * screenPx))
-    const colors = []
+    const parts = []
     for (const part of [...marked].sort((a, b) => a.start - b.start)) {
       if (!length) break
-      const start = pixel(part.start)
-      const from = percent(start)
-      const to = percent(Math.max(pixel(Math.min(part.end, length)), start + least))
-      colors.push(`transparent ${from}`, `${part.color} ${from}`, `${part.color} ${to}`, `transparent ${to}`)
+      const from = pixel(part.start)
+      parts.push({ from, to: Math.max(pixel(Math.min(part.end, length)), from + least), color: part.color })
     }
-    track.style.setProperty('--marked-parts', colors.length ? `linear-gradient(to right, ${colors.join(', ')})` : 'none')
+    setLayers(track, 'marked', layers(parts, screenPx))
   }
   // The bar's width in screen pixels changes with the window, the app scale and Windows scaling
   // (its height grows on hover, which moves no edge: skipped)
@@ -1670,7 +1689,11 @@ const CONTROLS_CSS = `
   /* Above the chat in full screen, for the tip's picture */
   #bottom { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; pointer-events: auto; }
   #progress { position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
-  #track { position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s; mask-image: var(--gaps, none); }
+  #track {
+    position: relative; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.25); transition: height 0.15s;
+    /* Lists (one layer per piece, drawParts): only the separate properties take them */
+    mask-image: var(--gaps-image, none); mask-size: var(--gaps-size, auto); mask-position: var(--gaps-position, 0 0); mask-repeat: no-repeat;
+  }
   #progress:hover #track, #player.dragging #track { height: 6px; }
   /* "Most replayed" (YouTube): a soft area just over the bar with a light top edge, so it still
      shows over a bright picture where most of it is low */
@@ -1681,7 +1704,10 @@ const CONTROLS_CSS = `
   #buffer { background: rgba(255, 255, 255, 0.35); }
   #played { background: var(--text-blue, #6ea8fe); }
   /* Marked parts: dimmer ahead, full color once played, so the position still shows inside one */
-  #marked, #marked-played { position: absolute; inset: 0; background: var(--marked-parts, none); }
+  #marked, #marked-played {
+    position: absolute; inset: 0;
+    background-image: var(--marked-image, none); background-size: var(--marked-size, auto); background-position: var(--marked-position, 0 0); background-repeat: no-repeat;
+  }
   #marked { opacity: 0.6; }
   #marked-played { clip-path: inset(0 calc(100% - var(--played, 0%)) 0 0); }
   /* Where you are: a thin line, always shown (a dot only on hover was hard to find), with a dark

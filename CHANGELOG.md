@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Fixed:** chapter gaps on the player's bar still blurry
+
 ## [1.2.18] - 2026-11-25
 
 **Notes**
