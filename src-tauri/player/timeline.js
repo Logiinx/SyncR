@@ -3,7 +3,7 @@
 // answer about the video. If one of them can't be had, only that extra is missing: the video isn't affected.
 // The title, game and game changes: also asked again while the stream is still live (LIVE_QUERY)
 const GAMES_PART = 'title game { displayName boxArtURL(width: 54, height: 72) } moments(first: 100, types: [GAME_CHANGE], momentRequestType: VIDEO_CHAPTER_MARKERS) { edges { node { positionMilliseconds details { ... on GameChangeMomentDetails { game { displayName boxArtURL(width: 54, height: 72) } } } } } }'
-const DETAILS_QUERY = `query($id: ID!) { video(id: $id) { recordedAt seekPreviewsURL owner { displayName profileImageURL(width: 70) } ${GAMES_PART} } }`
+const DETAILS_QUERY = `query($id: ID!) { video(id: $id) { recordedAt ${WHERE} owner { displayName profileImageURL(width: 70) } ${GAMES_PART} } }`
 const LIVE_QUERY = `query($id: ID!) { video(id: $id) { ${GAMES_PART} } }`
 const LIVE_AGAIN = 120000 // ms: a stream still live, for its title and new games (the header, the bar)
 const DETAILS_TRIES = 3
@@ -269,7 +269,7 @@ function streamOver() {
     setTimeout(async () => {
       if (previews) return
       try {
-        const url = previewsAddress || (await askTwitch('query($id: ID!) { video(id: $id) { seekPreviewsURL } }'))?.seekPreviewsURL
+        const url = previewsAddress || (await previewsAddressOf(await askTwitch(`query($id: ID!) { video(id: $id) { ${WHERE} } }`)))
         if (url) await askPreviews(url)
       } catch (error) {
         console.error(error)
@@ -407,19 +407,14 @@ function timelineMenu({ panel }) {
 // ---- Asking Twitch -------------------------------------------------------------------------------
 async function askDetails(tries) {
   try {
-    const response = await fetch('https://gql.twitch.tv/gql', {
-      method: 'POST',
-      headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: DETAILS_QUERY, variables: { id: videoId } }),
-    })
-    if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
-    const details = (await response.json()).data?.video
+    const details = await askTwitch(DETAILS_QUERY) // a removed field is left out (player.js)
     if (!details) return void (previewsKnown = true)
     noteStart(details.recordedAt)
     noteGames(details.moments?.edges || [], details.game)
     noteHeader(details)
     setTimeout(askLiveDetails, LIVE_AGAIN)
-    if (details.seekPreviewsURL) await askPreviews(details.seekPreviewsURL)
+    const url = await previewsAddressOf(details)
+    if (url) await askPreviews(url)
     previewsKnown = true
   } catch (error) {
     console.error(error)

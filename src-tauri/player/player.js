@@ -233,7 +233,8 @@ function giveUp() {
 }
 
 // All of Twitch's answer. field: the part wanted; an error instead of it is a hiccup on Twitch's
-// side, not a missing video: tried again.
+// side, not a missing video: tried again. A field Twitch has removed makes it refuse the whole
+// question (the access pass with it): asked again without it.
 async function askTwitchAll(query, field) {
   const response = await fetch('https://gql.twitch.tv/gql', {
     method: 'POST',
@@ -242,18 +243,58 @@ async function askTwitchAll(query, field) {
   })
   if (!response.ok) throw new Error(`Twitch answered ${response.status}`)
   const answer = await response.json()
-  if (!answer.data?.[field] && answer.errors?.length) throw new Error(`Twitch answered ${JSON.stringify(answer.errors).slice(0, 200)}`)
+  if (!answer.data?.[field] && answer.errors?.length) {
+    const fewer = withoutRemoved(query, answer.errors)
+    if (fewer) return askTwitchAll(fewer, field)
+    throw new Error(`Twitch answered ${JSON.stringify(answer.errors).slice(0, 200)}`)
+  }
   return answer.data ?? {}
+}
+// The question without the plain fields Twitch says don't exist ('Cannot query field "x"'), or null
+// when there's none. Fields with parts of their own stay: taking those out would break the question.
+// Same in video_window.rs (without_removed).
+function withoutRemoved(query, errors) {
+  let fewer = query
+  for (const error of errors) {
+    const name = String(error?.message).match(/^Cannot query field "(\w+)"/)?.[1]
+    if (name) fewer = fewer.replace(new RegExp(`\\b${name}(\\([^)]*\\))?(?![\\w(]|\\s*\\{)`, 'g'), '')
+  }
+  return fewer === query ? null : fewer
 }
 // The video's part only (also timeline.js)
 const askTwitch = async (query) => (await askTwitchAll(query, 'video')).video ?? null
+
+// ---- Where the video's files are ---------------------------------------------------------------
+// Next to its preview pictures (seekPreviewsURL). Should Twitch stop giving that address: the
+// animated preview's (the same files), else the thumbnail's. Its folder is the video's, and its
+// server too, unless it's the streamer's own picture (kept on another server: the others are asked
+// then). Just-ended videos have no thumbnail yet (probe 2026-11-26). Same in muted_sound.rs.
+const WHERE = 'seekPreviewsURL animatedPreviewURL previewThumbnailURL(width: 320, height: 180)'
+// Twitch's servers for video files, seen 2026-11-26 (also in muted_sound.rs)
+const SERVERS = ['d2vi6trrdongqn', 'd1m7jfoe9zdc1j', 'd2nvs31859zcd8', 'd3stzm2eumvgb4'].map((one) => `${one}.cloudfront.net`)
+// The preview pictures' address from Twitch's answer about the video (WHERE): given, or made from
+// the other two. Null when none of them is there (also timeline.js).
+async function previewsAddressOf(video) {
+  if (video?.seekPreviewsURL) return video.seekPreviewsURL
+  const strip = video?.animatedPreviewURL?.match(/^(https:\/\/[^/]+\/[^/]+\/storyboards\/)/)
+  if (strip) return `${strip[1]}${videoId}-info.json`
+  const thumb = video?.previewThumbnailURL?.match(/\/cf_vods\/([\w-]+)\/(\w+)\/+thumb\//)
+  if (!thumb) return null
+  const own = `${thumb[1]}.cloudfront.net`
+  const hosts = [own, ...SERVERS.filter((one) => one !== own)]
+  const path = `${thumb[2]}/storyboards/${encodeURIComponent(videoId)}-info.json`
+  // All asked at once (only whether it's there); none answering yes: the thumbnail's own server
+  const there = await Promise.all(hosts.map((host) => fetch(`/has/${host}/${path}`, { cache: 'no-store' }).then((response) => response.ok, () => false)))
+  return `https://${hosts[Math.max(there.indexOf(true), 0)]}/${path}`
+}
+
 // The access pass, plus where the video's files are and what kind of video it is (their list's
 // name) in the same question: needed when Twitch says no (subscribers only, rebuild), saving a
 // second question then. Same in video_window.rs (early_list).
-const FILES = 'video(id: $id) { seekPreviewsURL broadcastType }'
+const FILES = `video(id: $id) { ${WHERE} broadcastType }`
 const TOKEN_QUERY = `query($id: ID!) { token: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } ${FILES} }`
-// That answer ({ seekPreviewsURL, broadcastType }), when Twitch gave it. Missing (deleted or
-// private, or only the pass came): rebuild asks for it again.
+// That answer (WHERE's fields and broadcastType), when Twitch gave it. Missing (deleted or private,
+// or only the pass came): rebuild asks for it again.
 let filesKnown
 
 // ---- Videos Twitch refuses (subscribers only) ---------------------------------------------------
@@ -269,8 +310,9 @@ let refused = false // Twitch refused the video: its list was rebuilt from its f
 
 async function rebuild() {
   const files = filesKnown || await askTwitch(`query($id: ID!) { ${FILES} }`)
-  if (!files?.seekPreviewsURL) return null // deleted or private
-  const address = new URL(files.seekPreviewsURL)
+  const previews = await previewsAddressOf(files)
+  if (!previews) return null // deleted or private
+  const address = new URL(previews)
   const parts = address.pathname.split('/')
   const folder = parts[parts.indexOf('storyboards') - 1]
   if (!folder) return null
