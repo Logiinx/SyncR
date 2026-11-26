@@ -17,6 +17,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Amélioré :** une playlist en panne est réessayée de moins en moins souvent (quota)
+- **Amélioré :** le son sauvegardé d'un très long live s'arrête à 1 Go, les autres vidéos gardent le leur
 - **Corrigé :** les vidéos disparues de leur site sont marquées même si une chaîne échoue sans cesse
 - **Corrigé :** « Seulement les streams avec ces jeux » voit un changement de jeu en plein live
 - **Corrigé :** un live reçoit sa carte dans le pop-up dès qu’il correspond au suivi, pas seulement au début

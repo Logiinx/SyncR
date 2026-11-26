@@ -21,13 +21,15 @@ export function soundKept(follows: VideoFollow[], videos: VideoRow[], added: Add
   return [...new Set(listed.filter((video) => !video.gone && !cleared.has(alertMarkId(video.id))).map((video) => video.id.slice('twitch-'.length)))]
 }
 
-// Twitch's video ids of the streams to save now (keep: soundKept's)
+// Twitch's video ids of the streams to save now (keep: soundKept's), newest first: above the cap the
+// oldest videos' sound goes first (muted_sound.rs), so older ones only get what room is left
 export function videosToSave(follows: VideoFollow[], videos: VideoRow[], keep: Set<string>, now: number) {
   const channels = new Set(follows.filter((follow) => !follow.deleted && follow.platform === 'twitch' && follow.saveMuted).map((follow) => follow.channelId))
   return videos
     .filter((video) => video.platform === 'twitch' && channels.has(video.channelId) && !video.live && !video.gone && now - (video.published + video.duration * 1000) < SAVE_FOR)
     .map((video) => video.id.slice('twitch-'.length))
     .filter((id) => keep.has(id))
+    .sort((a, b) => b.length - a.length || (b > a ? 1 : b < a ? -1 : 0))
 }
 
 let saving = false

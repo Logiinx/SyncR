@@ -28,7 +28,12 @@ test('only finished streams of channels with the option on, for 48 h', () => {
     video('9', 'other', 1),
     { ...video('10', 'on', 1), id: 'youtube-10', platform: 'youtube' } as VideoRow,
   ]
-  expect(videosToSave(follows, videos, all(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']), now)).toEqual(['1', '2'])
+  expect(videosToSave(follows, videos, all(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']), now)).toEqual(['2', '1'])
+})
+
+test('newest first (Twitch ids grow with time, also past a digit)', () => {
+  const videos = [video('999', 'on', 1), video('1000', 'on', 1), video('2940500640', 'on', 1), video('998', 'on', 1)]
+  expect(videosToSave([follow('on')], videos, all(['999', '1000', '2940500640', '998']), now)).toEqual(['2940500640', '1000', '999', '998'])
 })
 
 test('a stream no longer in the Video list is never saved', () => {
