@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Games**
+- **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only
+
 **App**
 - **Small fixes:** error lines alike in every window
 

@@ -234,6 +234,7 @@ export const games = {
   Skipped: 'Ignoré',
   'Add {n} to Library': 'Ajouter {n} à la Bibliothèque',
   'Skip all': 'Tout ignorer',
+  'Adding…': 'Ajout…',
   'Steam failed ({status})': 'Échec de Steam ({status})',
 
   // Game search connection

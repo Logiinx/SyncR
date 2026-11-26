@@ -6115,6 +6115,11 @@ button {
   font-size: 0.9em;
 }
 
+/* In place of the window's content (Steam import): no field to tuck under */
+.dialog h2 + .dialog-error {
+  margin-top: 0;
+}
+
 .dialog-buttons button:disabled {
   opacity: 0.6;
   cursor: default;

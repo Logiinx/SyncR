@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { t } from './i18n'
-import CloseButton from './CloseButton'
+import SubmitButton from './SubmitButton'
 import Window from './Window'
 import Cover from './GameCover'
 import Spinner from './Spinner'
@@ -105,12 +105,10 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
 
   return (
     <Window className="dialog steam-import" label={t('Import from Steam')} onClose={onClose} ref={dialogRef}>
-      <div className="dialog-head">
-        <h2>{t('Import from Steam')}</h2>
-        <CloseButton onClick={onClose} />
-      </div>
+      {/* A window that asks something: Cancel at the bottom, no ✕ (user, 2026-11-26) */}
+      <h2>{t('Import from Steam')}</h2>
       {error ? (
-        <p className="steam-import-note">{error}</p>
+        <p className="dialog-error">{error}</p>
       ) : !rows ? (
         <p className="steam-import-note">
           <Spinner size={14} /> {t('Loading your Steam games…')}
@@ -164,9 +162,12 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
       <div className="dialog-buttons">
         <button onClick={onClose}>{t('Cancel')}</button>
         {!error && rows && shown.length > 0 && (
-          <button className="primary" onClick={confirm} disabled={busy}>
-            {chosen.length > 0 ? t('Add {n} to Library', { n: chosen.length }) : t('Skip all')}
-          </button>
+          <SubmitButton
+            busy={busy}
+            label={chosen.length > 0 ? t('Add {n} to Library', { n: chosen.length }) : t('Skip all')}
+            busyLabel={t('Adding…')}
+            onClick={() => void confirm()}
+          />
         )}
       </div>
     </Window>
