@@ -1,4 +1,4 @@
-import { Fragment, useContext, useEffect, useRef } from 'react'
+import { Fragment, useContext } from 'react'
 import { t, textKey, type TextKey } from './i18n'
 import { ArrowRight, ChevronRight, Flame, Hourglass, KeyRound, Play, TriangleAlert, Trophy } from 'lucide-react'
 import type { Game } from './db'
@@ -433,8 +433,6 @@ export function TrailerTheater(props: {
 }) {
   const extras = useGameExtras(props.igdbId)
   const ownPlayer = playerHere() // our player where the Video tab shows (TrailerPlayer)
-  const theaterRef = useRef<HTMLDivElement>(null)
-  useEffect(() => theaterRef.current?.focus({ preventScroll: true }), []) // so Escape works
   const trailer = extras?.trailer
   if (!trailer) return null
   const details = [props.release, props.platforms, extras.modes.join(', ')].filter(Boolean)
@@ -444,7 +442,7 @@ export function TrailerTheater(props: {
   ].filter(Boolean)
   return (
     // A click outside or Escape goes back to the game; ✕ closes it
-    <Window className="trailer-theater" label={`${props.title}: ${trailer.name}`} onClose={props.onBack} ref={theaterRef}>
+    <Window className="trailer-theater" label={`${props.title}: ${trailer.name}`} onClose={props.onBack}>
       <header className="trailer-theater-bar">
         <BackButton onClick={props.onBack} title={t('Back to the game')} />
         <div className="trailer-theater-info">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { t } from './i18n'
 import SubmitButton from './SubmitButton'
 import Window from './Window'
@@ -30,8 +30,6 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
   const [ticked, setTicked] = useState<Set<number>>(new Set())
   const [showSkipped, setShowSkipped] = useState(false)
   const [busy, setBusy] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), []) // so Escape works
 
   useEffect(() => {
     let current = true
@@ -104,7 +102,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Window className="dialog steam-import" label={t('Import from Steam')} onClose={onClose} ref={dialogRef}>
+    <Window className="dialog steam-import" label={t('Import from Steam')} onClose={onClose}>
       {/* A window that asks something: Cancel at the bottom, no ✕ (user, 2026-11-26) */}
       <h2>{t('Import from Steam')}</h2>
       {error ? (

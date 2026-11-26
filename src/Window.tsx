@@ -1,4 +1,4 @@
-import { useRef, type FormEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
+import { useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import { useBack } from './backStack'
 
 // The frame of every window (Settings, game window, questions…): the dark backdrop (a click on
@@ -21,6 +21,21 @@ function Window(props: {
 }) {
   const boxRef = useRef<HTMLElement | null>(null)
   useBack(props.onClose, true, boxRef)
+  // On opening the box takes the focus, so Escape works at once, unless something inside already
+  // took it (a field, the main button: the content's effects run before this one)
+  // On closing, a window still open under it (a question over Settings or a game window) gets the
+  // focus back when it was lost, so Escape closes that one next. The window itself, not the button
+  // that opened the question: on a phone a field getting the focus would bring the keyboard up.
+  useEffect(() => {
+    const box = boxRef.current
+    if (box && !box.contains(document.activeElement)) box.focus({ preventScroll: true })
+    return () => {
+      const focused = document.activeElement
+      if (focused && focused !== document.body && focused.isConnected && !box?.contains(focused)) return
+      const under = [...document.querySelectorAll<HTMLElement>('.dialog-backdrop:not(.closing) [role="dialog"]')].filter((el) => el !== box && el.isConnected)
+      under.at(-1)?.focus({ preventScroll: true })
+    }
+  }, [])
   // The box to the window's `ref`, whether it's a <div> or a <form>
   const setBox = (box: HTMLElement | null) => {
     boxRef.current = box

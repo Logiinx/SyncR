@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { ListStart, Puzzle, Repeat, RefreshCw, Settings, Trash2, Users } from 'lucide-react'
 import Dialog from './Dialog'
 import ContextMenu from './ContextMenu'
 import { colorMenuItems } from './cardColors'
-import { focusSettings, ModuleSwitch, SettingRow, Synced } from './SettingsCard'
+import { ModuleSwitch, SettingRow, Synced } from './SettingsCard'
 import { setModuleOn, useModuleOn } from './modules'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
@@ -66,7 +66,6 @@ export default function VideoSection() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [removing, setRemoving] = useState<ExtensionRow | null>(null)
-  const headRef = useRef<HTMLHeadingElement>(null)
   const on = useModuleOn('video')
   // Twitch muted parts' saved sound (mutedSound.ts): its space in bytes, null until known
   const [soundSpace, setSoundSpace] = useState<number | null>(null)
@@ -116,7 +115,7 @@ export default function VideoSection() {
         }}
       />
       <fieldset className="settings-part" disabled={!on}>
-        <h4 className="settings-card-sub" ref={headRef}>{t('List')}</h4>
+        <h4 className="settings-card-sub">{t('List')}</h4>
         <SettingRow label={t('Rewatch as a section in To watch')} title={t('At the bottom of To watch, instead of its own button between To watch and Watched')}>
           <input type="checkbox" checked={rewatchSection} onChange={(e) => setRewatchSection(e.target.checked)} />
         </SettingRow>
@@ -316,7 +315,6 @@ export default function VideoSection() {
           }}
           onClose={() => {
             setRemoving(null)
-            focusSettings(headRef.current)
           }}
         />
       )}
@@ -331,7 +329,6 @@ export default function VideoSection() {
           }}
           onClose={() => {
             setDeletingSound(false)
-            focusSettings(headRef.current)
           }}
         />
       )}

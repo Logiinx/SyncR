@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
-import { focusSettings, SettingRow } from './SettingsCard'
+import { SettingRow } from './SettingsCard'
 import { clockTime } from './dates'
 import { loadBackground } from './desktop'
 import { percentText, t } from './i18n'
@@ -15,7 +15,6 @@ export default function MouseBatteryPart() {
   const settings = useMouseBattery()
   // Turning it on while ✕ quits SyncR warns once: the battery only shows while SyncR runs
   const [quitWarning, setQuitWarning] = useState(false)
-  const headRef = useRef<HTMLHeadingElement>(null)
   function toggle(on: boolean) {
     const warn = on && !settings.warned && !loadBackground().closeToTray
     saveMouseBattery(warn ? { on, warned: true } : { on })
@@ -29,7 +28,7 @@ export default function MouseBatteryPart() {
 
   return (
     <>
-      <h4 className="settings-card-sub mouse-battery-part" ref={headRef}>{t('Mouse battery')}</h4>
+      <h4 className="settings-card-sub mouse-battery-part">{t('Mouse battery')}</h4>
       <SettingRow
         label={
           <>
@@ -90,7 +89,6 @@ export default function MouseBatteryPart() {
           }}
           onClose={() => {
             setQuitWarning(false)
-            focusSettings(headRef.current)
           }}
         />
       )}

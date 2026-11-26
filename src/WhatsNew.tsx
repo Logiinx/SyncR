@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { currentLanguage, frenchSpaces, t } from './i18n'
 import changelog from '../CHANGELOG.md?raw'
 import changelogFr from '../CHANGELOG.fr.md?raw'
@@ -146,11 +146,9 @@ export function WhatsNewDialog(props: {
   onClose: () => void
 }) {
   const { releases, onUpdate, onClose } = props
-  const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), []) // so Escape works
 
   return (
-    <Window className="dialog whats-new" label={t("What's new")} onClose={onClose} ref={dialogRef}>
+    <Window className="dialog whats-new" label={t("What's new")} onClose={onClose}>
       <div className="dialog-head">
         <h2>{t("What's new in v{version}", { version: props.version ?? __APP_VERSION__ })}</h2>
         <CloseButton onClick={onClose} />

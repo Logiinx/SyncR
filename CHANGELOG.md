@@ -8,7 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only
 
 **App**
-- **Small fixes:** error lines alike in every window
+- **Small fixes:** error lines alike in every window, Escape after a question
 
 ## [1.2.19] - 2026-11-25
 

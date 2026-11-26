@@ -8,7 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Petites corrections :** Importer depuis Steam : erreurs en rouge, roue pendant l’ajout, Annuler seul
 
 **Application**
-- **Petites corrections :** lignes d’erreur pareilles dans chaque fenêtre
+- **Petites corrections :** lignes d’erreur pareilles dans chaque fenêtre, Échap après une question
 
 ## [1.2.19] - 2026-11-25
 

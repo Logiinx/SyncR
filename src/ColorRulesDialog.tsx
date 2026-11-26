@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { t } from './i18n'
 import { Trash2 } from 'lucide-react'
 import { loadRuleGroups, saveRuleGroups, type ColorRule, type RuleGroup } from './colorRules'
@@ -13,11 +13,9 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
   const [groups, setGroups] = useState<RuleGroup[] | null>(null)
   const [colorsFor, setColorsFor] = useState<string | null>(null) // rule whose palette is open
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // group id
-  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadRuleGroups().then(setGroups)
-    dialogRef.current?.focus({ preventScroll: true }) // so Escape works
   }, [])
 
   function update(next: RuleGroup[]) {
@@ -34,7 +32,7 @@ function ColorRulesDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Window className="dialog color-rules" label={t('Color rules')} onClose={onClose} ref={dialogRef}>
+    <Window className="dialog color-rules" label={t('Color rules')} onClose={onClose}>
       <div className="dialog-head">
         <h2>{t('Color rules')}</h2>
         <CloseButton onClick={onClose} />

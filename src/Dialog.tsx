@@ -14,7 +14,8 @@ export interface DialogRequest {
   onConfirm: (value: string, checked: boolean) => void
 }
 
-// A small centered box. Enter confirms, Escape or clicking outside cancels.
+// A small question window (92 px from the top, like every window). Enter confirms, Escape or
+// clicking outside cancels.
 function Dialog({ request, onClose }: { request: DialogRequest; onClose: () => void }) {
   const [value, setValue] = useState(request.input?.initial ?? '')
   const [checked, setChecked] = useState(false)
