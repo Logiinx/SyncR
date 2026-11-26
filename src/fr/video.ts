@@ -362,7 +362,7 @@ export const video = {
   'No preview pictures for this video': 'Pas d’images d’aperçu pour cette vidéo',
   'Skip the waiting screen by itself': 'Passer l’écran d’attente tout seul',
   'About skipping the waiting screen': 'À propos du passage de l’écran d’attente',
-  'Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the ⏩ button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).': 'Saute l’écran « ça commence bientôt » au début de ses vidéos, une fois qu’il a appris celui de cette chaîne : en attendant, le bouton ⏩ s’affiche, et l’utiliser une fois le lui apprend (tout comme « Retenir comme écran d’attente », dans le menu du clic droit sur la vidéo).',
+  'Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the {skip} button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).': 'Saute l’écran « ça commence bientôt » au début de ses vidéos, une fois qu’il a appris celui de cette chaîne : en attendant, le bouton {skip} s’affiche, et l’utiliser une fois le lui apprend (tout comme « Retenir comme écran d’attente », dans le menu du clic droit sur la vidéo).',
   'Save the sound of muted parts': 'Garder le son des parties muettes',
   'About saving the sound of muted parts': 'À propos du son gardé des parties muettes',
   'Saved sound of Twitch muted parts': 'Son gardé des parties muettes Twitch',
@@ -372,7 +372,7 @@ export const video = {
   'Muted parts of those videos play muted again, unless Twitch still has their sound. New streams are still saved.':
     'Les parties muettes de ces vidéos seront de nouveau sans son, sauf si Twitch l’a encore. Celui des nouveaux lives sera toujours gardé.',
   'Twitch deletes the sound of the parts it mutes, often within hours. While SyncR is open, it saves that sound from this channel’s new videos once the stream is over, so those parts keep their sound. Kept on this PC until the video leaves your list.': 'Twitch supprime le son des parties qu’il rend muettes, souvent en quelques heures. Tant que SyncR est ouvert, il garde ce son pour les nouvelles vidéos de cette chaîne une fois le live fini, pour que ces parties gardent leur son. Gardé sur ce PC jusqu’à ce que la vidéo quitte votre liste.',
-  'Once it has learned the waiting screen: until then the ⏩ button shows': 'Une fois l’écran d’attente appris : en attendant, le bouton ⏩ s’affiche',
+  'Once it has learned the waiting screen: until then the skip button shows': 'Une fois l’écran d’attente appris : en attendant, le bouton pour le passer s’affiche',
   'Forget waiting screen': 'Oublier l’écran d’attente',
   'Nothing learned yet': 'Rien d’appris pour l’instant',
   'The next one of its playlist, or of the list you opened it from': 'La suivante de sa playlist, ou de la liste d’où vous l’avez ouverte',

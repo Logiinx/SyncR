@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { ChevronsRight, Pencil, Trash2, X } from 'lucide-react'
 import PopupBell from './PopupBell'
 import CloseButton from './CloseButton'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
+import { withIcon } from './richText'
 import SubmitButton from './SubmitButton'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import Window from './Window'
@@ -125,7 +126,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
         <input type="checkbox" checked={autoSkip} disabled={youtube && music} onChange={(e) => setAutoSkip(e.target.checked)} />
         {t('Skip the waiting screen by itself')}
         <InfoTip label={t('About skipping the waiting screen')}>
-          {t('Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the ⏩ button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).')}
+          {withIcon(t('Jumps past the “starting soon” screen at the start of its videos, once it has learned this channel’s screen: until then the {skip} button shows, and using it once teaches it (so does “Remember as waiting screen”, in the video’s right-click menu).'), 'skip', <ChevronsRight size={13} aria-label={t('Skip the waiting screen')} />)}
         </InfoTip>
       </label>
       {!youtube && (

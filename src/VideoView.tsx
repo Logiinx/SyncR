@@ -1032,7 +1032,7 @@ function VideoView() {
       divider: true,
       checked: !!follow?.autoSkip,
       disabled: !follow || !!follow.music,
-      hint: !follow ? t('Only for followed channels') : follow.music ? t('Not for music videos') : !follow.startLooks?.length ? t('Once it has learned the waiting screen: until then the ⏩ button shows') : undefined,
+      hint: !follow ? t('Only for followed channels') : follow.music ? t('Not for music videos') : !follow.startLooks?.length ? t('Once it has learned the waiting screen: until then the skip button shows') : undefined,
       onClick: () => follow && void setFollowStartSkip(follow.id, { autoSkip: !follow.autoSkip }),
     },
     {
