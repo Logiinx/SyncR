@@ -544,7 +544,6 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
   const shownPlain = !card && settings.plain.includes(href)
   if (!card && !shownPlain && !plays) return null
   const items: MenuItem[] = [{ label: t('Copy link'), icon: Copy, onClick: () => void navigator.clipboard.writeText(href) }]
-  if (plays) items.unshift({ label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(href) })
   if (card) {
     const end = editor.view.posAtDOM(card, 0) // the card sits at its link's end
     items.push({
@@ -555,6 +554,8 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
       onClick: () => editLink(editor, end, href),
     })
   }
+  // Opening elsewhere after its own actions, like every menu's "Open in …"
+  if (plays) items.push({ label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(href) })
   if (card || shownPlain) items.push(
     card
       ? { label: t('Show as plain link'), icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }

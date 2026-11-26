@@ -1396,16 +1396,16 @@ function VideoView() {
           y={playlistMenu.y}
           onClose={() => setPlaylistMenu(null)}
           items={[
-            // Moving first, then the order (the second line's name depends on the first), checking, then elsewhere
+            // Moving first, then the order (the second line's name depends on the first), checking, starting over, then elsewhere
             { label: t('Move to folder'), icon: FolderInput, submenu: { title: t('Move to folder'), items: playlistFolderItems(playlistMenu.playlist) } },
             { label: t('YouTube’s order'), icon: ListOrdered, divider: true, checked: !!playlistMenu.playlist.youtubeOrder, onClick: () => void changePlaylist(playlistMenu.playlist.id, { youtubeOrder: !playlistMenu.playlist.youtubeOrder }) },
             { label: playlistMenu.playlist.youtubeOrder ? t('Reverse the order') : t('Newest first'), icon: ArrowDownUp, checked: !!playlistMenu.playlist.newestFirst, onClick: () => void changePlaylist(playlistMenu.playlist.id, { newestFirst: !playlistMenu.playlist.newestFirst }) },
             { label: t('Check for new videos once a day'), icon: CalendarClock, divider: true, checked: playlistMenu.playlist.keepChecking, onClick: () => void changePlaylist(playlistMenu.playlist.id, { keepChecking: !playlistMenu.playlist.keepChecking }) },
-            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             ...(playlistMenu.playlist.folderId && rewatchIds.has(playlistMenu.playlist.folderId)
               ? [{ ...startOverItem(startOverIds(playlists.find(({ playlist }) => playlist.id === playlistMenu.playlist.id)?.videos ?? [])), divider: true }]
               : []),
-            { label: t('Remove'), icon: Trash2, danger: true, divider: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
+            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            { label: t('Remove'), icon: Trash2, danger: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
           ]}
         />
       )}
@@ -1434,14 +1434,14 @@ function VideoView() {
                   startOverItem(folderStartOver(folderMenu.folder)),
                 ]
               : [
-                  { label: t('New sub-folder'), icon: FolderPlus, onClick: () => setNaming({ parentId: folderMenu.folder.id, sub: true }) },
-                  { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
-                  // Only a folder at the top or right in Rewatch: a sub-folder stays with its parent
+                  // Moving first. Only a folder at the top or right in Rewatch: a sub-folder stays with its parent
                   ...(!folderMenu.folder.parentId && !folderMenu.folder.channel
-                    ? [{ label: t('Move to Rewatch'), icon: Repeat, divider: true, onClick: () => void moveFolder(folderMenu.folder.id, REWATCH) }]
+                    ? [{ label: t('Move to Rewatch'), icon: Repeat, onClick: () => void moveFolder(folderMenu.folder.id, REWATCH) }]
                     : folderMenu.folder.parentId === REWATCH
-                      ? [{ label: t('Out of Rewatch'), icon: FolderOutput, divider: true, onClick: () => void moveFolder(folderMenu.folder.id, null) }]
+                      ? [{ label: t('Out of Rewatch'), icon: FolderOutput, onClick: () => void moveFolder(folderMenu.folder.id, null) }]
                       : []),
+                  { label: t('New sub-folder'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: folderMenu.folder.id, sub: true }) },
+                  { label: t('Rename'), icon: Pencil, onClick: () => setNaming({ folder: folderMenu.folder }) },
                   ...(rewatchIds.has(folderMenu.folder.id) ? [startOverItem(folderStartOver(folderMenu.folder))] : []),
                   { label: t('Delete'), icon: Trash2, danger: true, onClick: () => setDeleting(folderMenu.folder) },
                 ]

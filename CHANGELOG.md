@@ -10,6 +10,9 @@ All notable changes to SyncR. Newest version first.
 **Board**
 - **Small fixes:** Move to group shows the card's own group with a ✓
 
+**Video** (PC only)
+- **Small fixes:** playlist, folder and video link menus in the usual order
+
 **Games**
 - **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only
 

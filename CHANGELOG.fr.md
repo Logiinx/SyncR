@@ -10,6 +10,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Board**
 - **Petites corrections :** Déplacer vers un groupe montre le groupe de la carte avec un ✓
 
+**Vidéo** (PC uniquement)
+- **Petites corrections :** menus des playlists, dossiers et liens vidéo dans l’ordre habituel
+
 **Jeux**
 - **Petites corrections :** Importer depuis Steam : erreurs en rouge, roue pendant l’ajout, Annuler seul
 
