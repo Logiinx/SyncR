@@ -331,15 +331,17 @@ function Board({ onClose }: Props) {
     if (touch) window.addEventListener('contextmenu', blockMenu, true)
   }
 
-  // "Move to group": the other groups, a new one, or out of its group
+  // "Move to group": every group (✓ on its own, like Video's Move to folder), a new one, or out of its group
   function groupMenuItems(cardId: string) {
     const card = rows?.find((row) => row.id === cardId)
     if (!card) return []
     return [
-      ...groups
-        .filter((group) => group.id !== card.groupId)
-        .sort(byPart)
-        .map((group) => ({ label: group.title ?? t('Group'), icon: Folder, onClick: () => moveToGroup(card.id, group.id) })),
+      ...[...groups].sort(byPart).map((group) => ({
+        label: group.title ?? t('Group'),
+        icon: Folder,
+        checked: group.id === card.groupId,
+        onClick: () => group.id !== card.groupId && moveToGroup(card.id, group.id),
+      })),
       {
         label: t('New group…'),
         icon: FolderPlus,
