@@ -308,6 +308,7 @@ function RemindersView() {
           x={eventMenu.x}
           y={eventMenu.y}
           onClose={() => setEventMenu(null)}
+          header={{ title: eventMenu.event.title, subtitle: formatDue(eventMenu.event.start, eventMenu.event.allDay) }} // what was right-clicked, like Mail's
           items={[
             { label: t('Edit'), icon: Pencil, onClick: () => setEditingEvent(eventMenu.event) },
             { label: t('Open in Google Calendar'), icon: ExternalLink, onClick: () => openLink(eventMenu.event.link) },

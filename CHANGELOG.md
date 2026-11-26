@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Reminders**
 - **Fixed:** a game moved from Playing to Library now asks how it ended
+- **Small fixes:** an event's right-click menu shows its title and date
 
 **Board**
 - **Small fixes:** Move to group shows the card's own group with a ✓
