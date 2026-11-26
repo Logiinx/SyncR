@@ -481,7 +481,7 @@ function setSound(url, state) {
 // old video had lost it in 55 of its original's 234 muted pieces, all 55 still had it in another
 // quality), and the same piece starts at the same moment in every quality. So a piece whose own
 // sound is gone keeps its picture and takes the sound of the same piece in another quality.
-// Older videos (.ts) only: newer ones (.mp4) are harder to put together, and lost it all sooner.
+// Older videos (.ts) only: newer ones (.mp4) lose it in every quality at once (probe 2026-11-26).
 // Full sound first (audio_only's pieces are tiny, ~0.3 MB), the weaker sound of the small
 // qualities (~64 kb/s instead of ~160) last. Not 1080p and the original: big downloads.
 const DONORS = ['audio_only', '480p30', '720p30', '720p60', '360p30', '160p30']
@@ -499,67 +499,19 @@ function donorsFor(url) {
 // ---- Sound saved ahead --------------------------------------------------------------------------
 // For channels with "Save the sound of muted parts" on, the app downloads the audio-only sound of a
 // finished stream's muted pieces before Twitch deletes it (muted_sound.rs). On this PC's disk, so
-// it's the first borrowed sound tried: instant, and never deleted by Twitch. Older videos (.ts)
-// only, like the rest of the borrowing. The list is asked once; the app may save more while you
-// watch, so a piece missing from it is still asked for when it plays.
+// it's the first borrowed sound tried: instant, and never deleted by Twitch. Older videos (.ts) and
+// newer ones (.mp4: the only borrowed sound they get, as theirs goes from every quality at once).
+// The list is asked once; the app may save more while you watch, so a piece missing from it is
+// still asked for when it plays.
 const savedNumbers = new Set()
 const savedReady = fetch(`/saved/${encodeURIComponent(videoId)}`)
   .then((answer) => (answer.ok ? answer.text() : ''))
   .then((text) => { for (const line of text.split('\n')) if (/^\d+$/.test(line)) savedNumbers.add(line) }, () => {})
-// A muted piece's number, if it's an older video's (.ts)
-const pieceNumber = (url) => { const [, , number, kind] = url.match(MUTED_PIECE) || []; return kind === 'ts' ? number : null }
-const isSaved = (url) => savedNumbers.has(pieceNumber(url))
+// A muted piece's number and kind ('ts' or 'mp4')
+const pieceOf = (url) => { const [, , number, kind] = url.match(MUTED_PIECE) || []; return { number, kind } }
+const isSaved = (url) => savedNumbers.has(pieceOf(url).number)
 const SAVED = 'saved' // askHas's answer when only the saved sound has it
 
-// MPEG-TS pieces are 188-byte packets, each tagged with the number of its stream (PID). A table
-// (PMT, found through the PAT, stream 0) tells which stream is the sound (AAC, type 0x0F).
-const PACKET = 188
-function soundStream(bytes) {
-  let table = -1
-  for (let at = 0; at + PACKET <= bytes.length; at += PACKET) {
-    if (bytes[at] !== 0x47) return -1
-    if (!(bytes[at + 1] & 0x40)) continue // not the start of something
-    const stream = ((bytes[at + 1] & 0x1f) << 8) | bytes[at + 2]
-    const field = (bytes[at + 3] >> 4) & 3
-    if (field === 2) continue // no content
-    let p = at + 4 + (field === 3 ? 1 + bytes[at + 4] : 0)
-    p += 1 + bytes[p] // where the table starts
-    if (stream === 0) table = ((bytes[p + 10] & 0x1f) << 8) | bytes[p + 11]
-    else if (stream === table) {
-      const end = p + 3 + (((bytes[p + 1] & 0x0f) << 8) | bytes[p + 2]) - 4
-      for (let q = p + 12 + (((bytes[p + 10] & 0x0f) << 8) | bytes[p + 11]); q + 5 <= end; q += 5 + (((bytes[q + 3] & 0x0f) << 8) | bytes[q + 4])) {
-        if (bytes[q] === 0x0f) return ((bytes[q + 1] & 0x1f) << 8) | bytes[q + 2]
-      }
-      return -1
-    }
-  }
-  return -1
-}
-// The muted piece without its sound, then the other quality's sound renamed to its stream: hls.js
-// reads each stream on its own, so their order doesn't matter. null if either can't be read.
-function withSoundOf(picture, sound) {
-  const a = new Uint8Array(picture)
-  const b = new Uint8Array(sound)
-  const keep = soundStream(a)
-  const take = soundStream(b)
-  if (keep < 0 || take < 0 || a.length % PACKET || b.length % PACKET) return null
-  const out = new Uint8Array(a.length + b.length)
-  let size = 0
-  const streamAt = (bytes, at) => ((bytes[at + 1] & 0x1f) << 8) | bytes[at + 2]
-  for (let at = 0; at < a.length; at += PACKET) {
-    if (streamAt(a, at) === keep) continue
-    out.set(a.subarray(at, at + PACKET), size)
-    size += PACKET
-  }
-  for (let at = 0; at < b.length; at += PACKET) {
-    if (streamAt(b, at) !== take) continue
-    out.set(b.subarray(at, at + PACKET), size)
-    out[size + 1] = (out[size + 1] & 0xe0) | (keep >> 8)
-    out[size + 2] = keep & 0xff
-    size += PACKET
-  }
-  return out.buffer.slice(0, size)
-}
 // Muted piece played muted → why: { why: 'refused' (both copies refused) or 'slow' (no answer in
 // time, Twitch busy), codes: Twitch's answers, 'timeout' when none came }
 const mutedWhy = new Map()
@@ -831,22 +783,6 @@ const inits = new Map() // quality's folder → { timescale, trackId, duration, 
 const keyframes = new Map() // piece address → seconds of its full pictures from its start
 let keyPattern = null // seconds every read piece has its full pictures at, or 'mixed'
 
-function mp4Boxes(view, from, to) {
-  const found = []
-  for (let at = from; at + 8 <= to;) {
-    let size = view.getUint32(at)
-    let head = 8
-    if (size === 1) { size = Number(view.getBigUint64(at + 8)); head = 16 }
-    if (size === 0) size = to - at
-    if (size < head) break
-    found.push({ type: String.fromCharCode(view.getUint8(at + 4), view.getUint8(at + 5), view.getUint8(at + 6), view.getUint8(at + 7)), start: at + head, end: Math.min(at + size, to) })
-    at += size
-  }
-  return found
-}
-const mp4Box = (view, box, type) => mp4Boxes(view, box.start, box.end).find((one) => one.type === type)
-const mp4All = (view, box, type) => mp4Boxes(view, box.start, box.end).filter((one) => one.type === type)
-
 // The start piece of a quality (ftyp + moov): its video track's clock and defaults
 function readInit(view, moov) {
   const defaults = {}
@@ -1059,8 +995,8 @@ class PieceLoader extends Hls.DefaultConfig.loader {
       const answer = await fetch(address, { signal: stop.signal }).catch(() => null)
       return answer?.ok ? answer.arrayBuffer().catch(() => null) : null
     }
-    const number = pieceNumber(context.url)
-    const saved = number && (await sound(`/saved/${encodeURIComponent(videoId)}/${number}.ts`))
+    const { number, kind } = pieceOf(context.url)
+    const saved = number && (await sound(`/saved/${encodeURIComponent(videoId)}/${number}.${kind}`))
     if (this.stopped) return
     if (saved) return this.mix(context, config, callbacks, why, saved, 'saved')
     const donors = soundNowhere.has(context.url) || why.why !== 'refused' ? [] : donorsFor(context.url)
@@ -1078,12 +1014,13 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     this.heard(context, 'muted', why)
     super.load(context, config, callbacks)
   }
-  // The muted piece, with the sound put in once it's downloaded (state: 'saved' or 'borrowed')
+  // The muted piece, with the sound put in once it's downloaded (state: 'saved' or 'borrowed';
+  // soundMix.js)
   mix(context, config, callbacks, why, sound, state) {
     super.load(context, config, {
       ...callbacks,
       onSuccess: (response, stats, loaded, details) => {
-        const mixed = withSoundOf(response.data, sound)
+        const mixed = pieceOf(context.url).kind === 'mp4' ? withSoundOfMp4(response.data, sound) : withSoundOf(response.data, sound)
         this.heard(context, mixed ? state : 'muted', why)
         callbacks.onSuccess(mixed ? { ...response, data: mixed } : response, stats, loaded, details)
       },

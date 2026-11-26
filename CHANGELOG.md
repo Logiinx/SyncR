@@ -16,6 +16,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** table menu fits on screen, one line per item
 
 **Video** (PC only)
+- **Better:** "Save the sound of muted parts" now works for every Twitch video
 - **Better:** a broken playlist is tried again less and less often, to save the quota
 - **Better:** a very long stream's saved sound stops at 1 GB, other videos keep theirs
 - **Fixed:** videos gone from their site still marked when one channel keeps failing
