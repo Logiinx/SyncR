@@ -462,7 +462,6 @@ export async function checkVideos(only?: string[]) {
     checkAgain = false
     stoppedOffline = false
     let offlineMessage: string | null = null
-    let failed = false
     const follows = await db.videoFollows.filter((follow) => !follow.deleted).toArray()
     const every = checkEvery(follows, read<ListMarks>(LIST_MARKS_KEY, {}))
     for (const follow of follows.filter((follow) => !only || only.includes(follow.id))) {
@@ -476,7 +475,6 @@ export async function checkVideos(only?: string[]) {
           offlineMessage = (e as Error).message
           break
         }
-        failed = true
         const count = (failures.get(follow.id)?.count ?? 0) + 1
         failures.set(follow.id, {
           count,
@@ -492,7 +490,9 @@ export async function checkVideos(only?: string[]) {
     }
     if (offlineMessage) stoppedOffline = true
     if (!stoppedOffline && !only) await refreshLiveAdded().catch((e) => console.warn('Video check failed', e))
-    if (!failed && !stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
+    // Even when a follow failed (a deleted channel fails every time): checkGone stops by itself
+    // at the first unclear answer
+    if (!stoppedOffline) await checkGone().catch((e) => console.warn('Video check failed', e))
     // In the background: downloads can take minutes, the list doesn't wait for them
     if (!stoppedOffline) void saveMutedAhead(videoKept)
     // Also what failed earlier and is waiting for its retry

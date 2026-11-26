@@ -16,6 +16,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Petites corrections :** le menu des tableaux tient à l’écran, une ligne par action
 
 **Vidéo** (PC uniquement)
+- **Corrigé :** les vidéos disparues de leur site sont marquées même si une chaîne échoue sans cesse
 - **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides
 
 **Jeux**

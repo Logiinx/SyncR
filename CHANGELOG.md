@@ -16,6 +16,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** table menu fits on screen, one line per item
 
 **Video** (PC only)
+- **Fixed:** videos gone from their site still marked when one channel keeps failing
 - **Small fixes:** playlist, folder, video link menus in order, skip icon in hints
 
 **Games**
