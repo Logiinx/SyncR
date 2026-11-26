@@ -29,15 +29,18 @@ interface SiteVideos {
   user: { videos: { pageInfo: { hasNextPage: boolean }; edges: { cursor: string; node: { id: string; game: SiteGame | null; moments: { edges: { node: { details: { game?: SiteGame } | null } }[] } | null } }[] } } | null
 }
 
-// Fills in the games of this follow's videos that don't have them yet: a page of 100 at a time,
-// newest first, until none is missing. A problem leaves them for the next check. Those Twitch
-// doesn't list anymore (deleted, or older than the pages read) get none, so they aren't looked for
-// at every check. Only the games are written: the rows may have changed during the wait (New
-// taken off by the tab).
-export async function addTwitchGames(follow: VideoFollow) {
-  const missing = new Set(
-    (await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && !video.games).primaryKeys()) as string[],
-  )
+// Fills in the games of this follow's videos that don't have them yet, and reads them again while
+// live (the streamer changes game) and once more right after the end (ended: from this check). A
+// page of 100 at a time, newest first, until none is missing. A problem leaves them for the next
+// check. Those Twitch doesn't list anymore (deleted, or older than the pages read) get none, so
+// they aren't looked for at every check (one that had some keeps them). Only changed games are
+// written: every save redraws the list, and the rows may have changed during the wait (New taken
+// off by the tab).
+export async function addTwitchGames(follow: VideoFollow, ended: string[] = []) {
+  const again = new Set(ended)
+  const rows = await db.videos.filter((video) => video.platform === 'twitch' && video.channelId === follow.channelId && (!video.games || !!video.live || again.has(video.id))).toArray()
+  const before = new Map(rows.map((row) => [row.id, row.games]))
+  const missing = new Set(before.keys())
   const saveGames = (found: { key: string; changes: Partial<VideoRow> }[]) => (found.length ? db.videos.bulkUpdate(found) : 0)
   let cursor = ''
   for (let page = 0; page < GAME_PAGES && missing.size; page++) {
@@ -56,14 +59,14 @@ export async function addTwitchGames(follow: VideoFollow) {
       for (const game of [node.game, ...(node.moments?.edges ?? []).map((edge) => edge.node.details?.game)]) {
         if (game?.name && !games.has(game.name)) games.set(game.name, { name: game.name, shown: game.displayName || game.name })
       }
-      found.push({ key: id, changes: { games: [...games.values()] } })
       missing.delete(id)
+      if (JSON.stringify(before.get(id)) !== JSON.stringify([...games.values()])) found.push({ key: id, changes: { games: [...games.values()] } })
     }
     await saveGames(found)
     if (!videos.pageInfo.hasNextPage || !videos.edges.length) break
     cursor = videos.edges[videos.edges.length - 1].cursor
   }
-  await saveGames([...missing].map((key) => ({ key, changes: { games: [] } })))
+  await saveGames([...missing].filter((key) => !before.get(key)).map((key) => ({ key, changes: { games: [] } })))
 }
 
 // Suggestions while typing a game for a follow: the games this channel played, newest first,

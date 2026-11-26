@@ -31,11 +31,15 @@ vi.mock('../src/igdb', () => ({
   },
 }))
 
-// Twitch's website: every video plays Elden Ring, or it fails
+// Twitch's website: every video plays Elden Ring (or its game in playing), or it fails
 let twitchFails = false
+const playing = new Map<string, string>()
 globalThis.fetch = (async () => {
   if (twitchFails) return new Response('', { status: 500 })
-  const edges = listed.map((video) => ({ cursor: video.id, node: { id: video.id, game: { name: 'Elden Ring', displayName: 'Elden Ring' }, moments: null } }))
+  const edges = listed.map((video) => {
+    const name = playing.get(video.id) ?? 'Elden Ring'
+    return { cursor: video.id, node: { id: video.id, game: { name, displayName: name }, moments: null } }
+  })
   return json({ data: { user: { videos: { pageInfo: { hasNextPage: false }, edges } } } })
 }) as typeof fetch
 
@@ -51,6 +55,7 @@ beforeEach(async () => {
   store.clear()
   alerted.length = 0
   twitchFails = false
+  playing.clear()
   listed = [{ id: '1', title: 'Old stream' }]
   await db.videoFollows.put({
     id: FOLLOW, platform: 'twitch', channelId: '42', name: 'Streamer', icon: null, startAt: 0, deleted: false, updatedAt: 1,
@@ -82,4 +87,33 @@ test("Twitch's website failing leaves the games for later, not the follow failed
   await checkVideos()
   expect((store.get('syncr.videoChecked') as Record<string, number>)[FOLLOW]).toBeGreaterThan(before)
   expect((await db.videos.get('twitch-2'))?.games).toBeUndefined() // asked again next check
+})
+
+test('a live stream’s games are read again while live and once after its end, then no more', async () => {
+  const games = async () => (await db.videos.get('twitch-2'))?.games?.map((game) => game.name)
+  playing.set('2', 'Just Chatting')
+  listed = [{ id: '2', title: 'Subathon', live: true }, ...listed]
+  await checkVideos()
+  expect(await games()).toEqual(['Just Chatting'])
+  playing.set('2', 'Elden Ring') // changed game while live
+  await checkVideos()
+  expect(await games()).toEqual(['Elden Ring'])
+  playing.set('2', 'Hades') // changed in its last minutes: read right after the end
+  listed = [{ id: '2', title: 'Subathon' }, ...listed.slice(1)]
+  await checkVideos()
+  expect(await games()).toEqual(['Hades'])
+  playing.set('2', 'Celeste') // over: not read again
+  await checkVideos()
+  expect(await games()).toEqual(['Hades'])
+})
+
+test('games read again but unchanged are not saved again (every save redraws the list)', async () => {
+  listed = [{ id: '2', title: 'Subathon', live: true }, ...listed]
+  await checkVideos()
+  let saves = 0
+  const count = () => void saves++
+  db.videos.hook('updating', count)
+  await checkVideos()
+  db.videos.hook('updating').unsubscribe(count)
+  expect(saves).toBe(0)
 })

@@ -301,7 +301,8 @@ export function useChecking() {
 // Twitch only streams (no highlights or clips), also those still live (user: catch up on a weeks-long
 // stream; each check gives its new length, the one after its end takes the live mark off). All of
 // them, also those the word lists leave out: changing the lists then shows them at once, without
-// asking the site again. Gives back the videos seen for the first time (none on its first check).
+// asking the site again. Gives back the videos seen for the first time (none on its first check),
+// and those whose live just ended (their games are read one last time).
 async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck: boolean) {
   const rows: VideoRow[] = listed
     // i18n-ok
@@ -331,7 +332,10 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
       return !old || old.gone || old.title !== row.title || old.thumbnail !== row.thumbnail || old.duration !== row.duration || !!old.live !== !!row.live || old.keep !== row.keep
     })
   if (changes.length) await db.videos.bulkPut(changes)
-  return firstCheck ? [] : rows.filter((_, i) => !saved[i]).map((row) => row.id)
+  return {
+    fresh: firstCheck ? [] : rows.filter((_, i) => !saved[i]).map((row) => row.id),
+    ended: rows.filter((row, i) => saved[i]?.live && !row.live).map((row) => row.id),
+  }
 }
 
 // The new videos the follow's rules keep. Read again from the database: a Twitch video's games
@@ -374,9 +378,9 @@ async function checkFollow(follow: VideoFollow) {
   const answer = await response.json().catch(() => null)
   if (!response.ok || !(answer?.unchanged || Array.isArray(answer?.videos))) throw new Error(String(answer?.error ?? response.status))
   if (!answer.unchanged) {
-    const fresh = await saveVideos(follow, answer.videos, !lastChecked)
+    const { fresh, ended } = await saveVideos(follow, answer.videos, !lastChecked)
     // Twitch's website failing only leaves the games for the next check: the list itself was read
-    if (follow.platform === 'twitch') await addTwitchGames(follow).catch((e) => console.warn('Twitch games failed', e))
+    if (follow.platform === 'twitch') await addTwitchGames(follow, ended).catch((e) => console.warn('Twitch games failed', e))
     found = await keptNewVideos(follow, fresh)
     const marks = read<ListMarks>(LIST_MARKS_KEY, {})
     if (answer.mark) marks[follow.id] = { mark: answer.mark, at: Date.now() }

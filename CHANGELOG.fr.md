@@ -17,6 +17,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Vidéo** (PC uniquement)
 - **Corrigé :** les vidéos disparues de leur site sont marquées même si une chaîne échoue sans cesse
+- **Corrigé :** « Seulement les streams avec ces jeux » voit un changement de jeu en plein live
 - **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides
 
 **Jeux**
