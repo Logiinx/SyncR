@@ -6,7 +6,7 @@ import { ArrowDownUp, ArrowRight, CalendarCheck, CalendarClock, ChevronDown, Dow
 import { openSettings } from './openSettings'
 import { canWatch, db, isWatched, updateGame, type Game, type GameStatus } from './db'
 import { addGame, formatRelease, gameId, isPlayed, isReleased, libraryGames, LIBRARY_SHOWS, LIBRARY_SORTS, releaseText, removeGameQuestion, saleDiscount, shortPlatforms, sortGames, statusLabel, tabOf, TABS, type GamesTab, type LibraryShow, type LibrarySort } from './games'
-import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
+import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { GamePriceLine, PlaytimeShort, useShortTime } from './GameExtrasView'
 import { PlaytimesContext, usePlaytimes } from './playtimes'
 import { useJoinTimes, usePricesRight } from './gamesOptions'
@@ -19,6 +19,7 @@ import Cover from './GameCover'
 import AddOrInList from './AddOrInList'
 import GameCalendar, { calendarLayouts, DEFAULT_TOP, TOP_LEVELS, type CalendarLayout } from './GameCalendar'
 import ContextMenu, { type MenuItem } from './ContextMenu'
+import EndingMenu from './EndingMenu'
 import GameDialog, { AchievementBar, GameBadge, gameClass, GameRated, showsRated } from './GameDialog'
 import Dialog, { type DialogRequest } from './Dialog'
 import { useLocalState } from './localState'
@@ -308,15 +309,7 @@ function GamesView() {
         />
       )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
-      {endingMenu && (
-        <ContextMenu
-          x={endingMenu.x}
-          y={endingMenu.y}
-          header={endingHeader()}
-          items={endingMenuItems(endingMenu.game)}
-          onClose={() => setEndingMenu(null)}
-        />
-      )}
+      {endingMenu && <EndingMenu game={endingMenu.game} x={endingMenu.x} y={endingMenu.y} onClose={() => setEndingMenu(null)} />}
       {dialog && <Dialog request={dialog} onClose={() => setDialog(null)} />}
     </main>
     </PlaytimesContext.Provider>

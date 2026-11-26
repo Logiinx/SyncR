@@ -10,7 +10,7 @@ import {
   PanelTop,
   Trash2,
 } from 'lucide-react'
-import { currentZoom } from './appearance'
+import { placeMenu } from './menuPlace'
 import { COLORS } from './cardColors'
 import { highlightColor } from './ColorPicker'
 import { useBack } from './backStack'
@@ -21,8 +21,6 @@ interface Props {
   y: number
   onClose: () => void
 }
-
-const EDGE = 8 // px kept free between the menu and the window's edge (like ContextMenu)
 
 // Right-click (long press on a phone) in a table: rows, columns, header row, cell color.
 // Works on the cell under the mouse, or on all selected cells. Escape or Back (backStack.ts) closes it.
@@ -45,13 +43,7 @@ function TableMenu({ editor, x, y, onClose }: Props) {
   // Screen pixels (mouse position) → zoomed page, kept inside the window from its real size (like ContextMenu)
   const box = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
-    const el = box.current
-    if (!el) return
-    const zoom = currentZoom()
-    el.style.left = el.style.top = '0'
-    const { width, height } = el.getBoundingClientRect()
-    el.style.left = `${Math.max(EDGE, Math.min(x, window.innerWidth - width - EDGE)) / zoom}px`
-    el.style.top = `${Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE)) / zoom}px`
+    if (box.current) placeMenu(box.current, x, y)
   }, [x, y])
 
   return (

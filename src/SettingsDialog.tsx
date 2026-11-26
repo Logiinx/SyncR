@@ -99,12 +99,15 @@ import { saveLanguageChoice, useLanguageChoice } from './language'
 // start: opens on that section instead of the last one (a module's ⚙️, the taskbar battery, the
 // Hardware widget's menu: openSettings.ts)
 function SettingsDialog({ onClose, start }: { onClose: () => void; start?: SettingsStart }) {
-  // Focused when it opens (so Escape works), without scrolling: it opens at the top. On the PC
-  // the cursor goes in the search box, to type right away (a phone would pop up its keyboard).
+  // Window focuses the box when it opens (so Escape works). On the PC the cursor goes in the
+  // search box, to type right away (a phone would pop up its keyboard).
   const dialogRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const narrow = useNarrow()
-  useEffect(() => (narrow ? dialogRef : searchRef).current?.focus({ preventScroll: true }), [])
+  useEffect(() => {
+    if (!narrow) searchRef.current?.focus({ preventScroll: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Search (SettingsSearch.tsx): while it has text, the results take the section's place (phone:
   // the list's place)
   const [query, setQuery] = useState('')

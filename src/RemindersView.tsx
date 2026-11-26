@@ -3,6 +3,7 @@ import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ExternalLink, Pencil, Plus, RefreshCw, Repeat, Trash2 } from 'lucide-react'
 import ContextMenu from './ContextMenu'
+import EndingMenu from './EndingMenu'
 import Dialog, { type DialogRequest } from './Dialog'
 import GameDialog from './GameDialog'
 import Cover from './GameCover'
@@ -11,7 +12,7 @@ import { calendarLayouts, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
-import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
+import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, eventColor, useCalendarEvents } from './calendarEvents'
 import EventDialog, { startOnDay } from './EventDialog'
@@ -343,15 +344,7 @@ function RemindersView() {
           })}
         />
       )}
-      {endingMenu && (
-        <ContextMenu
-          x={endingMenu.x}
-          y={endingMenu.y}
-          header={endingHeader()}
-          items={endingMenuItems(endingMenu.game)}
-          onClose={() => setEndingMenu(null)}
-        />
-      )}
+      {endingMenu && <EndingMenu game={endingMenu.game} x={endingMenu.x} y={endingMenu.y} onClose={() => setEndingMenu(null)} />}
       {openGame && (
         <GameDialog
           id={openGame}

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, type LucideIcon } from 'lucide-react'
 import { currentZoom } from './appearance'
 import { useBack } from './backStack'
+import { MENU_EDGE, placeMenu } from './menuPlace'
 
 export interface MenuItem {
   label: string
@@ -32,7 +33,7 @@ interface Props {
   onClose: () => void
 }
 
-const EDGE = 8 // px kept free between the menu and the window's edge
+const EDGE = MENU_EDGE
 const GAP = 2 // px between the menu and its side list
 const SWITCH_AFTER = 120 // ms over another line before an open side list gives way (the mouse crossing it)
 const hasMouse = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches
@@ -60,13 +61,8 @@ function ContextMenu({ x, y, items, header, alignRight, above, onClose }: Props)
   useLayoutEffect(() => {
     const el = box.current
     if (!el) return
+    placeMenu(el, x, y, alignRight, above)
     const zoom = currentZoom()
-    el.style.left = el.style.top = '0'
-    const { width, height } = el.getBoundingClientRect()
-    const left = alignRight ? x - width : x
-    el.style.left = `${Math.max(EDGE, Math.min(left, window.innerWidth - width - EDGE)) / zoom}px`
-    const start = above ? y - height : y
-    el.style.top = `${Math.max(EDGE, Math.min(start, window.innerHeight - height - EDGE)) / zoom}px`
     // The side list: right of the menu (left when there's no room), its first line level with the open line
     const list = side.current
     const line = open === null ? null : el.querySelector<HTMLElement>(`[data-line="${open}"]`)

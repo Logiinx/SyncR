@@ -163,7 +163,7 @@ export default function SteamImport({ onClose }: { onClose: () => void }) {
           <SubmitButton
             busy={busy}
             label={chosen.length > 0 ? t('Add {n} to Library', { n: chosen.length }) : t('Skip all')}
-            busyLabel={t('Adding…')}
+            busyLabel={chosen.length > 0 ? t('Adding…') : undefined}
             onClick={() => void confirm()}
           />
         )}

@@ -6,8 +6,8 @@ import CloseButton from './CloseButton'
 import Window from './Window'
 import { canWatch, db, setGameStatus, setPreordered, updateGame, type CalendarEvent, type Game, type SteamStats } from './db'
 import { allPlatforms, releaseAndPlatforms, endingChange, endingOf, isFavoriteTab, isPlayed, priorityLabel, releaseEventId, releaseText, STATUSES } from './games'
-import { endingHeader, endingMenuItems, ENDINGS, upcomingClosed } from './gameMenu'
-import ContextMenu from './ContextMenu'
+import { ENDINGS, upcomingClosed } from './gameMenu'
+import EndingMenu from './EndingMenu'
 import { openLink } from './links'
 import { formatDue } from './reminders'
 import { GameExtrasInfo, GamePlaytimeInfo, GamePricesInfo, GameSaleRow, TrailerButton, TrailerPanel, TrailerTheater } from './GameExtrasView'
@@ -40,9 +40,8 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
   const [trailerOpen, setTrailerOpen] = useState(false) // PC: the trailer view; phone: a panel below
   const [endingAt, setEndingAt] = useState<{ x: number; y: number } | null>(null) // "How did it end?" (Playing → Library)
   const narrow = useNarrow()
-  // Focused when it opens (so Escape works), without scrolling; again after the trailer view
+  // The box (Window focuses it on opening, also back from the trailer view: a new window)
   const dialogRef = useRef<HTMLDivElement>(null)
-  useEffect(() => dialogRef.current?.focus({ preventScroll: true }), [trailerOpen])
   // Fresh hours and achievements from Steam when it opens (steam.ts)
   useEffect(() => {
     if (played) updateSteamStats([game])
@@ -141,7 +140,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
           label={t('Status')}
         />
         {endingAt && (
-          <ContextMenu x={endingAt.x} y={endingAt.y} header={endingHeader()} items={endingMenuItems(game)} onClose={() => setEndingAt(null)} />
+          <EndingMenu game={game} x={endingAt.x} y={endingAt.y} onClose={() => setEndingAt(null)} />
         )}
 
         {/* Upcoming: a pre-order is owned (no price alerts; Not started on release day) */}

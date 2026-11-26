@@ -23,9 +23,9 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null) // "Add to list"
   const narrow = useNarrow() // PC: the trailer opens in its own view; phone: below the window
   const popupRef = useRef<HTMLDivElement>(null)
-  // So Escape works (again after coming back from the trailer view, or once added: the clicked
-  // button is gone)
-  useEffect(() => popupRef.current?.focus({ preventScroll: true }), [trailerOpen, status])
+  // So Escape still works once added: the clicked button is gone (Window focuses it on opening,
+  // also back from the trailer view: a new window)
+  useEffect(() => popupRef.current?.focus({ preventScroll: true }), [status])
 
   // Only the list's own fields are saved (not the calendar's rank etc.). Its release date follows
   // the usual rule (PC first); a vague date keeps its label ("Q1 2027") and sorts last.

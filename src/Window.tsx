@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import { useBack } from './backStack'
 
 // The frame of every window (Settings, game window, questions…): the dark backdrop (a click on
@@ -23,18 +23,25 @@ function Window(props: {
   useBack(props.onClose, true, boxRef)
   // On opening the box takes the focus, so Escape works at once, unless something inside already
   // took it (a field, the main button: the content's effects run before this one)
-  // On closing, a window still open under it (a question over Settings or a game window) gets the
-  // focus back when it was lost, so Escape closes that one next. The window itself, not the button
-  // that opened the question: on a phone a field getting the focus would bring the keyboard up.
+  // On closing, the window it was opened from (a question over Settings or a game window) gets the
+  // focus back when it was lost, so Escape closes that one next; else the last one still open. The
+  // window itself, not the button that opened the question: on a phone a field getting the focus
+  // would bring the keyboard up.
+  const [opener] = useState(() => document.activeElement?.closest<HTMLElement>('[role="dialog"]') ?? null)
   useEffect(() => {
     const box = boxRef.current
     if (box && !box.contains(document.activeElement)) box.focus({ preventScroll: true })
     return () => {
       const focused = document.activeElement
+      // Still open (React's development mode runs effects twice): nothing to give back
+      if (box?.isConnected && box.contains(focused)) return
       if (focused && focused !== document.body && focused.isConnected && !box?.contains(focused)) return
-      const under = [...document.querySelectorAll<HTMLElement>('.dialog-backdrop:not(.closing) [role="dialog"]')].filter((el) => el !== box && el.isConnected)
-      under.at(-1)?.focus({ preventScroll: true })
+      const open = (el: HTMLElement | null): el is HTMLElement =>
+        !!el && el !== box && el.isConnected && !el.closest('.dialog-backdrop.closing')
+      const under = open(opener) ? opener : [...document.querySelectorAll<HTMLElement>('.dialog-backdrop [role="dialog"]')].filter(open).at(-1)
+      under?.focus({ preventScroll: true })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // The box to the window's `ref`, whether it's a <div> or a <form>
   const setBox = (box: HTMLElement | null) => {
