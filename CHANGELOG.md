@@ -20,7 +20,7 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** videos gone from their site still marked when one channel keeps failing
 - **Fixed:** "Only streams with these games" sees a game change during a live
 - **Fixed:** a live stream gets its pop-up card once it matches the follow, not only at first
-- **Small fixes:** playlist, folder, video link menus in order, skip icon in hints
+- **Small fixes:** playlist, folder, link menus in order, skip icon in hints, Music’s New tag
 
 **Games**
 - **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only

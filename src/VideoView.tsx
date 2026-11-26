@@ -36,7 +36,7 @@ type List = 'towatch' | 'rewatch' | 'watched' | 'music'
 function useNewVideos(feed: ReturnType<typeof useVideoFeed>) {
   const [newIds, setNewIds] = useState<ReadonlySet<string>>(new Set())
   useEffect(() => {
-    const fresh = [...(feed?.toWatch ?? []), ...(feed?.rewatch ?? []), ...(feed?.watched ?? []), ...(feed?.playlists ?? []).flatMap((list) => list.videos)].filter((video) => video.fresh).map((video) => video.id)
+    const fresh = [...(feed?.toWatch ?? []), ...(feed?.rewatch ?? []), ...(feed?.watched ?? []), ...(feed?.music ?? []), ...(feed?.playlists ?? []).flatMap((list) => list.videos)].filter((video) => video.fresh).map((video) => video.id)
     if (!fresh.length) return
     void clearFresh(fresh)
     setNewIds((now) => new Set([...now, ...fresh]))

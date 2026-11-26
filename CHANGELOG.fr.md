@@ -20,7 +20,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** les vidéos disparues de leur site sont marquées même si une chaîne échoue sans cesse
 - **Corrigé :** « Seulement les streams avec ces jeux » voit un changement de jeu en plein live
 - **Corrigé :** un live reçoit sa carte dans le pop-up dès qu’il correspond au suivi, pas seulement au début
-- **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides
+- **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides, tag Nouvelle dans Musique
 
 **Jeux**
 - **Petites corrections :** Importer depuis Steam : erreurs en rouge, roue pendant l’ajout, Annuler seul
