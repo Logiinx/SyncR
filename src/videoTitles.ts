@@ -51,8 +51,10 @@ async function askGroup(start: string): Promise<Record<string, { titles?: Submit
 const asking = new Set<string>()
 let pausedUntil = 0
 
-// Asks DeArrow about the YouTube videos among these whose answer is missing or old. Answers are
-// saved in small batches: each save redraws the Video tab.
+// Asks DeArrow about the YouTube videos among these whose answer is missing or old. Each save
+// redraws the Video tab: a changed title is saved at most every few seconds (they show while it
+// works), the others (only when they were asked) all at the end.
+const SAVE_EVERY = 3000
 export async function checkTitles(videos: { id: string; title: string; published?: number }[]) {
   if (!deArrow.get() || Date.now() < pausedUntil) return
   const youtube = videos.filter((video) => video.id.startsWith('youtube-') && !asking.has(video.id))
@@ -66,12 +68,17 @@ export async function checkTitles(videos: { id: string; title: string; published
   })
   if (!due.length) return
   for (const video of due) asking.add(video.id)
+  const savedTitle = new Map(rows.map((row, i) => [youtube[i].id, row?.title]))
   const groups = new Map<string, ReturnType<typeof askGroup>>()
   let pending: VideoTitle[] = []
+  let changedTitle = false
+  let savedAt = 0 // the first changed title shows at once
   const save = async () => {
     if (!pending.length) return
     const rows = pending
     pending = []
+    changedTitle = false
+    savedAt = Date.now()
     await db.videoTitles.bulkPut(rows)
   }
   let next = 0
@@ -85,7 +92,8 @@ export async function checkTitles(videos: { id: string; title: string; published
         const answer = await groups.get(start)!
         const title = betterTitle(answer[siteId]?.titles, video.title)
         pending.push({ id: video.id, checkedAt: Date.now(), ...(title && { title }) })
-        if (pending.length >= 20) await save()
+        if (title !== savedTitle.get(video.id)) changedTitle = true
+        if (changedTitle && Date.now() - savedAt >= SAVE_EVERY) await save()
       } catch {
         pausedUntil = Date.now() + PAUSE_AFTER_FAIL // offline or DeArrow down: later
       }
