@@ -14,10 +14,10 @@ import { moveInPlayOrder, playOrderPlace } from './playOrder'
 // down in the play order (the PC drags instead) | Library: how it ended | priority, price alert,
 // Board (priority first), HowLongToBeat's page (open it, or paste another one: view.onAsk shows the
 // box) | Remove. "Watch price…" and "Remove from list" are up to the view (they open its windows).
-// With onAskEnding, "Move to Library" from Playing asks how it ended first (endingMenuItems).
+// "Move to Library" from Playing asks how it ended first (onAskEnding shows endingMenuItems).
 export function gameMenuItems(
   game: Game,
-  view: { pinned: boolean; hltbId?: number | null; place?: PlayPlace; onWatch: () => void; onRemove: () => void; onAsk: (request: DialogRequest) => void; onAskEnding?: () => void },
+  view: { pinned: boolean; hltbId?: number | null; place?: PlayPlace; onWatch: () => void; onRemove: () => void; onAsk: (request: DialogRequest) => void; onAskEnding: () => void },
 ): MenuItem[] {
   return [
     ...STATUSES.filter((s) => s.status !== game.status).map(({ status, label }) => ({
@@ -25,7 +25,7 @@ export function gameMenuItems(
       icon: status === 'playing' ? Play : ArrowRight,
       ...(upcomingClosed(game, status) && { disabled: true, hint: t('Already out') }),
       onClick: () =>
-        status === 'library' && game.status === 'playing' && view.onAskEnding
+        status === 'library' && game.status === 'playing'
           ? view.onAskEnding()
           : setGameStatus(game.id, status),
     })),

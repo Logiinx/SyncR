@@ -11,7 +11,7 @@ import { calendarLayouts, type CalendarLayout } from './GameCalendar'
 import { FillSwitch } from './tabLines'
 import { useNarrow } from './useNarrow'
 import { releaseCountdown, releaseEventId, removeGameQuestion } from './games'
-import { gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
+import { endingHeader, endingMenuItems, gameMenuAt, gameMenuItems, type GameMenu } from './gameMenu'
 import { db, type CalendarEvent, type Game } from './db'
 import { deleteEvent, deleteSeries, eventColor, useCalendarEvents } from './calendarEvents'
 import EventDialog, { startOnDay } from './EventDialog'
@@ -69,6 +69,7 @@ function RemindersView() {
   // closed another way, e.g. by Remove, mustn't pass it on to the next game opened)
   const [openWatch, setOpenWatch] = useState<string | null>(null)
   const [gameMenu, setGameMenu] = useState<GameMenu | null>(null)
+  const [endingMenu, setEndingMenu] = useState<GameMenu | null>(null) // "How did it end?" (Playing → Library)
   const openGameMenu = (game: Game, x: number, y: number) => gameMenuAt(game, x, y).then(setGameMenu)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | 'new' | null>(null)
   const [newEventStart, setNewEventStart] = useState<number | undefined>() // added from a day in the grid
@@ -332,12 +333,22 @@ function RemindersView() {
             hltbId: gameMenu.hltbId,
             place: gameMenu.place,
             onAsk: setDialog,
+            onAskEnding: () => setEndingMenu(gameMenu),
             onWatch: () => {
               setOpenWatch(gameMenu.game.id)
               setOpenGame(gameMenu.game.id)
             },
             onRemove: () => askRemoveGame(gameMenu.game.id),
           })}
+        />
+      )}
+      {endingMenu && (
+        <ContextMenu
+          x={endingMenu.x}
+          y={endingMenu.y}
+          header={endingHeader()}
+          items={endingMenuItems(endingMenu.game)}
+          onClose={() => setEndingMenu(null)}
         />
       )}
       {openGame && (

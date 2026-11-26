@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Rappels**
+- **Corrigé :** un jeu passé de En cours à Bibliothèque demande comment ça s’est terminé
+
 **Jeux**
 - **Petites corrections :** Importer depuis Steam : erreurs en rouge, roue pendant l’ajout, Annuler seul
 

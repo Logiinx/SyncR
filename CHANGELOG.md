@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Fixed:** a game moved from Playing to Library now asks how it ended
+
 **Games**
 - **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only
 
