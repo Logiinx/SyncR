@@ -16,7 +16,8 @@ vi.mock('../src/localState', () => ({
 const alerted: string[][] = []
 vi.mock('../src/videoAlerts', () => ({ addVideoAlerts: (ids: string[]) => void alerted.push(ids), removeVideoAlerts: () => {} }))
 
-// What the Worker lists for the channel now
+// What the Worker lists for the channel now; how many times a playlist was read (it always fails)
+let playlistReads = 0
 let listed: { id: string; title: string; live?: boolean; duration?: number }[] = []
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 vi.mock('../src/igdb', () => ({
@@ -27,6 +28,7 @@ vi.mock('../src/igdb', () => ({
       return json({ videos: listed.map((video) => ({ kind: 'archive', url: '', thumbnail: null, published: new Date().toISOString(), duration: 3600, live: false, ...video })) })
     }
     if (endpoint === 'video/exists') return json({ existing: JSON.parse(body).ids })
+    if (endpoint === 'video/playlist') playlistReads++ // and fails
     return new Response('{}', { status: 404 })
   },
 }))
@@ -138,4 +140,17 @@ test('a live stream too short at first gets its pop-up card once long enough; an
   listed = [{ id: '2', title: 'Subathon', live: true, duration: 5400 }, ...listed.slice(1)]
   await checkVideos()
   expect(alerted).toEqual([['twitch-2']])
+})
+
+test('a failing playlist waits longer before each new try, unless Check for new videos is clicked', async () => {
+  const { checkVideosNow } = await import('../src/video')
+  await db.videoPlaylists.put({ id: 'list-1', listId: 'PL1', name: 'Playlist', keepChecking: true, deleted: false, updatedAt: 1 })
+  playlistReads = 0
+  await checkVideos()
+  expect(playlistReads).toBe(1)
+  await checkVideos() // a check soon after: still waiting
+  expect(playlistReads).toBe(1)
+  await checkVideosNow()
+  expect(playlistReads).toBe(2)
+  await db.videoPlaylists.clear()
 })

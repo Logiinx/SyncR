@@ -16,6 +16,7 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** table menu fits on screen, one line per item
 
 **Video** (PC only)
+- **Better:** a broken playlist is tried again less and less often, to save the quota
 - **Fixed:** videos gone from their site still marked when one channel keeps failing
 - **Fixed:** "Only streams with these games" sees a game change during a live
 - **Fixed:** a live stream gets its pop-up card once it matches the follow, not only at first

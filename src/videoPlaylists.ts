@@ -11,6 +11,9 @@ import type { ListedVideo } from './video'
 const DAY = 24 * 60 * 60 * 1000
 // Like the follows' in video.ts, for the playlists: what went wrong, by playlist id
 export const playlistFailures = new Map<string, { count: number; retryAt: number; message: string }>()
+// A failing playlist waits longer each time (each read uses YouTube's quota), up to the day a
+// working one waits. Check for new videos reads it at once.
+const FIRST_RETRY = 15 * 60 * 1000
 const PLAYLISTS_CHECKED_KEY = 'syncr.videoPlaylistsChecked' // playlist id → when its videos were last read
 
 export const playlistAddress = (playlist: VideoPlaylist) => `https://www.youtube.com/playlist?list=${playlist.listId}`
@@ -81,6 +84,8 @@ export async function checkPlaylists(force: boolean) {
   for (const playlist of live) {
     const first = !have.has(playlist.id)
     if (!first && (!playlist.keepChecking || (!force && Date.now() - (checked[playlist.id] ?? 0) < DAY))) continue
+    const failure = playlistFailures.get(playlist.id)
+    if (failure && !force && Date.now() < failure.retryAt) continue
     try {
       await saveEpisodes(playlist.id, (await readPlaylist(playlistAddress(playlist))).videos, first)
       playlistChecked(playlist.id)
@@ -93,7 +98,8 @@ export async function checkPlaylists(force: boolean) {
         playlistFailures.delete(playlist.id)
         continue
       }
-      playlistFailures.set(playlist.id, { count: 1, retryAt: 0, message: t('{name}: {error}', { name: playlist.name, error: e instanceof Error ? e.message : String(e) }) })
+      const count = (failure?.count ?? 0) + 1
+      playlistFailures.set(playlist.id, { count, retryAt: Date.now() + Math.min(FIRST_RETRY * 2 ** (count - 1), DAY), message: t('{name}: {error}', { name: playlist.name, error: e instanceof Error ? e.message : String(e) }) })
     }
   }
   return null
