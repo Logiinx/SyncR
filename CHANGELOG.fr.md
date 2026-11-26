@@ -4,16 +4,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
-**Rappels**
-- **Corrigé :** un jeu passé de En cours à Bibliothèque demande comment ça s’est terminé
-- **Petites corrections :** le menu d’un événement (clic droit) montre son titre et sa date
-
-**Board**
-- **Changé :** les couleurs (carte, groupe, texte) s’ouvrent à côté du menu, comme les groupes
-- **Petites corrections :** Déplacer vers un groupe montre le groupe de la carte avec un ✓
-
-**Notes**
-- **Petites corrections :** le menu des tableaux tient à l’écran, une ligne par action
+## [1.3.0] - 2026-11-26
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** la molette sur la barre de temps recule ou avance de 10 s
@@ -28,6 +19,17 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** « Seulement les streams avec ces jeux » voit un changement de jeu en plein live
 - **Corrigé :** un live reçoit sa carte dans le pop-up dès qu’il correspond au suivi, pas seulement au début
 - **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides, tag Nouvelle dans Musique
+
+**Board**
+- **Changé :** les couleurs (carte, groupe, texte) s’ouvrent à côté du menu, comme les groupes
+- **Petites corrections :** Déplacer vers un groupe montre le groupe de la carte avec un ✓
+
+**Rappels**
+- **Corrigé :** un jeu passé de En cours à Bibliothèque demande comment ça s’est terminé
+- **Petites corrections :** le menu d’un événement (clic droit) montre son titre et sa date
+
+**Notes**
+- **Petites corrections :** le menu des tableaux tient à l’écran, une ligne par action
 
 **Jeux**
 - **Petites corrections :** Importer depuis Steam : erreurs en rouge, roue pendant l’ajout, Annuler seul

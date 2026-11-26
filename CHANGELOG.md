@@ -4,16 +4,7 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
-**Reminders**
-- **Fixed:** a game moved from Playing to Library now asks how it ended
-- **Small fixes:** an event's right-click menu shows its title and date
-
-**Board**
-- **Changed:** card, group and text colors open beside the menu, like Move to group
-- **Small fixes:** Move to group shows the card's own group with a ✓
-
-**Notes**
-- **Small fixes:** table menu fits on screen, one line per item
+## [1.3.0] - 2026-11-26
 
 **Video** (PC only)
 - **New:** mouse wheel on the time bar jumps back or forward 10 s
@@ -28,6 +19,17 @@ All notable changes to SyncR. Newest version first.
 - **Fixed:** "Only streams with these games" sees a game change during a live
 - **Fixed:** a live stream gets its pop-up card once it matches the follow, not only at first
 - **Small fixes:** playlist, folder, link menus in order, skip icon in hints, Music’s New tag
+
+**Board**
+- **Changed:** card, group and text colors open beside the menu, like Move to group
+- **Small fixes:** Move to group shows the card's own group with a ✓
+
+**Reminders**
+- **Fixed:** a game moved from Playing to Library now asks how it ended
+- **Small fixes:** an event's right-click menu shows its title and date
+
+**Notes**
+- **Small fixes:** table menu fits on screen, one line per item
 
 **Games**
 - **Small fixes:** Import from Steam: red errors, spinner while adding, Cancel only
