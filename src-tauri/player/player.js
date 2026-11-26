@@ -503,12 +503,27 @@ function donorsFor(url) {
 // finished stream's muted pieces before Twitch deletes it (muted_sound.rs). On this PC's disk, so
 // it's the first borrowed sound tried: instant, and never deleted by Twitch. Older videos (.ts) and
 // newer ones (.mp4: the only borrowed sound they get, as theirs goes from every quality at once).
-// The list is asked once; the app may save more while you watch, so a piece missing from it is
-// still asked for when it plays.
+// The app saves more after each Video check and deletes it (Settings → Video's Delete, the 2 GB
+// cap, the video leaving the list), so the list is read again while you watch (savedAgain), and a
+// piece missing from it is still asked for when it plays.
 const savedNumbers = new Set()
-const savedReady = fetch(`/saved/${encodeURIComponent(videoId)}`)
-  .then((answer) => (answer.ok ? answer.text() : ''))
-  .then((text) => { for (const line of text.split('\n')) if (/^\d+$/.test(line)) savedNumbers.add(line) }, () => {})
+let savedReading = null
+// Reads the list (one at a time); true when it changed. A failed read keeps the last one.
+function readSaved() {
+  savedReading ??= fetch(`/saved/${encodeURIComponent(videoId)}`, { cache: 'no-store' })
+    .then((answer) => (answer.ok ? answer.text() : null), () => null)
+    .then((text) => {
+      savedReading = null
+      if (text === null) return false
+      const numbers = text.split('\n').filter((line) => /^\d+$/.test(line))
+      const changed = numbers.length !== savedNumbers.size || numbers.some((one) => !savedNumbers.has(one))
+      savedNumbers.clear()
+      for (const one of numbers) savedNumbers.add(one)
+      return changed
+    })
+  return savedReading
+}
+const savedReady = readSaved()
 // A muted piece's number and kind ('ts' or 'mp4')
 const pieceOf = (url) => { const [, , number, kind] = url.match(MUTED_PIECE) || []; return { number, kind } }
 const isSaved = (url) => savedNumbers.has(pieceOf(url).number)
@@ -727,6 +742,32 @@ function drawMuted() {
     tellBar('sound')
   }
 }
+
+// The saved list read again: every minute while the quality playing has muted parts, paused too
+// (the bar is where you pick where to go; it's this PC's disk, not Twitch), and at once when a
+// piece's saved sound wasn't where the list said. Pieces asked already change with it: muted or
+// borrowed ones now saved turn saved (it's tried first when they play), saved ones whose sound was
+// deleted are asked again (their own sound was gone, another quality's may not be). Not those
+// downloaded already (their sound is decided) or being asked (they read the new list).
+const SAVED_AGAIN = 60000 // ms
+async function savedAgain() {
+  if (!(await readSaved())) return
+  const pieces = (hls?.levels ?? []).flatMap((level) => level.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
+  for (const { url } of pieces) {
+    if (playedPieces.has(url) || piecesAsking.has(url) || !pieceChecks.has(url)) continue
+    const state = soundOf(url)
+    if (isSaved(url) && (state === 'muted' || state === 'borrowed')) {
+      setSound(url, 'saved')
+      soundNowhere.delete(url)
+      soundSeen.set(url, performance.now())
+    } else if (!isSaved(url) && state === 'saved') {
+      setSound(url, 'muted')
+      pieceChecks.delete(url)
+    }
+  }
+  checkUncut(playingLevel()?.details?.fragments ?? [])
+}
+setInterval(() => { if (mutedSound) savedAgain() }, SAVED_AGAIN)
 
 // The ⚙️ menu's info: why the quality playing's pieces played muted, once some did, with Twitch's
 // answers ("muted parts: 2 refused (403), 1 too slow (timeout/502)"). Counts are 1 or more, where
@@ -1082,6 +1123,7 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     const { number, kind } = pieceOf(context.url)
     const saved = number && (await sound(`/saved/${encodeURIComponent(videoId)}/${number}.${kind}`))
     if (this.stopped) return
+    if (Boolean(saved) !== isSaved(context.url)) savedAgain() // the list is behind
     if (saved) return this.mix(context, config, callbacks, why, saved, 'saved')
     const donors = soundNowhere.has(context.url) || why.why !== 'refused' ? [] : donorsFor(context.url)
     const known = donorOf.get(context.url)
