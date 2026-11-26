@@ -429,7 +429,9 @@ static VIDEO_SIZE: std::sync::Mutex<(u32, u32)> = std::sync::Mutex::new((0, 0));
 static VIDEO_BAR_HEIGHT: std::sync::Mutex<f64> = std::sync::Mutex::new(0.0);
 // The screen the video window was last on (its corner), to see when it lands on another one
 static VIDEO_SCREEN: std::sync::Mutex<Option<(i32, i32)>> = std::sync::Mutex::new(None);
-static VIDEO_RESIZES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+// While an edge is being dragged: when the last resize came. Some = a thread is waiting for the
+// end of the drag (one for the whole drag, not one per resize).
+static VIDEO_LAST_RESIZE: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
 #[cfg(windows)]
 fn left_button_down() -> bool {
@@ -494,21 +496,31 @@ fn fit_video_window(window: &tauri::Window, change_width: bool) {
   }
 }
 
-// A size that isn't the one fitted: someone is dragging an edge. Fits once it's been let go.
+// A size that isn't the one fitted: someone is dragging an edge. Fits once it's been let go and
+// no resize came for 300 ms.
 fn settle_video_window(window: &tauri::Window, now: tauri::PhysicalSize<u32>) {
-  use std::sync::atomic::Ordering;
+  use std::time::{Duration, Instant};
   if now.width == 0 || now.height == 0 || (now.width, now.height) == *VIDEO_SIZE.lock().unwrap() {
     return;
   }
-  let this = VIDEO_RESIZES.fetch_add(1, Ordering::SeqCst) + 1;
+  // Already waiting: it sees this resize
+  if VIDEO_LAST_RESIZE.lock().unwrap().replace(Instant::now()).is_some() {
+    return;
+  }
   let window = window.clone();
   std::thread::spawn(move || {
-    std::thread::sleep(std::time::Duration::from_millis(300));
-    while left_button_down() && VIDEO_RESIZES.load(Ordering::SeqCst) == this {
-      std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-    if VIDEO_RESIZES.load(Ordering::SeqCst) != this {
-      return;
+    loop {
+      std::thread::sleep(Duration::from_millis(50));
+      if left_button_down() {
+        continue;
+      }
+      // Checked and cleared under the lock: a resize right after starts a new wait
+      let mut last = VIDEO_LAST_RESIZE.lock().unwrap();
+      if last.is_some_and(|at| at.elapsed() < Duration::from_millis(300)) {
+        continue;
+      }
+      *last = None;
+      break;
     }
     let Ok(size) = window.inner_size() else {
       return;
@@ -605,21 +617,27 @@ fn restore_video_place(app: &tauri::AppHandle, window: &tauri::Window) -> bool {
   maximized
 }
 
-fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
+// Waits until it's gone, up to 2 s: on the threads meant for waiting, not on one of the few that
+// run the app's commands
+async fn close_video_window(app: &tauri::AppHandle) -> Result<(), String> {
   let Some(current) = app.get_window(VIDEO_WINDOW) else {
     return Ok(());
   };
   current.close().map_err(|e| e.to_string())?;
-  for tries in 0..40 {
-    if app.get_window(VIDEO_WINDOW).is_none() {
-      break;
+  let app = app.clone();
+  tauri::async_runtime::spawn_blocking(move || {
+    for tries in 0..40 {
+      if app.get_window(VIDEO_WINDOW).is_none() {
+        break;
+      }
+      if tries == 30 {
+        let _ = current.destroy(); // a site asking "leave this page?"
+      }
+      std::thread::sleep(std::time::Duration::from_millis(50));
     }
-    if tries == 30 {
-      let _ = current.destroy(); // a site asking "leave this page?"
-    }
-    std::thread::sleep(std::time::Duration::from_millis(50));
-  }
-  Ok(())
+  })
+  .await
+  .map_err(|e| e.to_string())
 }
 
 // bar: what the bar shows, already encoded for an address. bar_height: in the app's scale.
@@ -704,7 +722,7 @@ pub async fn open_video_player(
     }
     WebviewUrl::External(url)
   };
-  close_video_window(&app)?;
+  close_video_window(&app).await?;
   let folder = video_extensions::player_folder(&app)?;
   let requests = app.clone();
   // With its border for now, removed below before its size is set
@@ -1070,5 +1088,5 @@ pub fn video_player_upcoming(app: tauri::AppHandle, upcoming: serde_json::Value)
 
 #[tauri::command]
 pub async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
-  close_video_window(&app)
+  close_video_window(&app).await
 }
