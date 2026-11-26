@@ -4121,22 +4121,6 @@ button {
   cursor: col-resize;
 }
 
-.table-menu {
-  width: 230px;
-}
-
-.menu-separator {
-  height: 1px;
-  margin: 4px 2px;
-  background: var(--border);
-}
-
-.menu-label {
-  padding: 6px 10px 2px;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
 .table-menu .color-picker {
   padding: 0 4px 2px;
 }
