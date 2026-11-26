@@ -60,7 +60,7 @@ function GamePreview(props: { game: FoundGame; release: string; status?: GameSta
       <div className="calendar-popup-head">
         <WindowCover coverId={game.coverId} className="calendar-popup-cover" />
         <div className="calendar-popup-main">
-          <div className="gd-head">
+          <div className="dialog-head gd-head">
             <h2>{game.name}</h2>
             <CloseButton onClick={onClose} />
           </div>

@@ -7438,7 +7438,6 @@ h3.games-group-title {
 }
 
 .dialog .calendar-popup-head h2 {
-  flex: 1;
   margin: 0 0 8px;
   overflow-wrap: anywhere;
 }
@@ -7910,12 +7909,7 @@ img[data-fade] {
   min-width: 0;
 }
 
-.gd-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
+/* .gd-head = the shared .dialog-head (title + ✕), placed in a grid on the phone */
 .gd-title {
   flex: 1;
   min-width: 0;

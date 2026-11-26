@@ -106,7 +106,7 @@ function GameDetails(props: { game: Game; releaseEvent?: CalendarEvent; focusWat
       </div>
 
       <div className="gd-main">
-        <div className="gd-head">
+        <div className="dialog-head gd-head">
           <div className="gd-title">
             <h2>{game.name}</h2>
             <p>{releaseAndPlatforms(releaseText(game, 'full'), game.platforms)}</p>
