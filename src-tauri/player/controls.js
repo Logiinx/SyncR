@@ -1560,10 +1560,18 @@ function playerControls(env, media) {
     if (!onBar) changeVolume(up ? 0.05 : -0.05)
     else if (dragging === null) jumpBy(up ? WHEEL_JUMP : -WHEEL_JUMP)
   }, { passive: false })
-  // A quick jump of seconds (below 0: back), with its flash
+  // A quick jump of seconds (below 0: back), with its flash. Jumps in a row (while the flash still
+  // shows) add up in it: +10, +20, then +10 after one back. It counts from where the row started,
+  // so at the start or end of the video it shows how far it really went.
+  let jumpsFrom = 0
+  let jumpsText = null
   const jumpBy = (seconds) => {
+    const shown = $('flash')
+    if (!shown.classList.contains('show') || shown.textContent !== jumpsText) jumpsFrom = exactTarget()
     jumpTo(exactTarget() + seconds, true)
-    flash(`${seconds < 0 ? '−' : '+'}${Math.abs(seconds)} s`)
+    const total = Math.round(exactTarget() - jumpsFrom)
+    jumpsText = `${total < 0 ? '−' : total > 0 ? '+' : ''}${Math.abs(total)} s`
+    flash(jumpsText)
   }
   const jumpBack = () => jumpBy(-JUMP)
   const jumpForward = () => jumpBy(JUMP)
