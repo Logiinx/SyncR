@@ -11,7 +11,6 @@
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
-const CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // the one Twitch's own website uses (as player.js)
 const GONE: &str = "gone.txt";
 const STOPPED: &str = "stopped.txt";
 const CAP: u64 = 2 * 1024 * 1024 * 1024; // bytes
@@ -143,31 +142,16 @@ async fn save(root: PathBuf, video: String) -> Result<SavedSound, String> {
   if root.join(&video).join(STOPPED).exists() {
     return Ok(report);
   }
-  // Where its files are (next to its preview pictures, as player.js's rebuild), which also works
-  // for subscriber-only videos
-  let query = r#"query($id: ID!) { video(id: $id) { seekPreviewsURL broadcastType } }"#;
-  let body = serde_json::json!({ "query": query, "variables": { "id": video } }).to_string();
-  let client = super::video_window::player_client();
-  let response = client.post("https://gql.twitch.tv/gql").header("Client-ID", CLIENT_ID).header("Content-Type", "application/json").body(body).send().await.map_err(|e| e.to_string())?;
-  if !response.status().is_success() {
-    return Err(format!("Twitch answered {}", response.status().as_u16()));
-  }
-  let answer: serde_json::Value = serde_json::from_slice(&response.bytes().await.map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+  // Where its files are (as player.js's rebuild), which also works for subscriber-only videos
+  let query = format!("query($id: ID!) {{ video(id: $id) {{ {WHERE} broadcastType }} }}");
+  let answer = super::video_window::ask_twitch(&query, &video, "video").await?;
   let files = &answer["data"]["video"];
   // Deleted or private (nothing to save), or a highlight or upload (Twitch mutes past streams)
   if files.is_null() || files["broadcastType"] != "ARCHIVE" {
     return Ok(report);
   }
-  let address = reqwest::Url::parse(files["seekPreviewsURL"].as_str().ok_or("no files address")?).map_err(|e| e.to_string())?;
-  let host = address.host_str().filter(|host| super::video_window::twitch_host(host)).ok_or("not Twitch's address")?;
-  let parts: Vec<&str> = address.path_segments().ok_or("no files address")?.collect();
-  let folder = parts.iter().position(|part| *part == "storyboards").filter(|at| *at > 0).map(|at| parts[at - 1]).ok_or("no files folder")?;
-  let base = format!("https://{host}/{folder}/audio_only/");
-  let response = client.get(format!("{base}index-dvr.m3u8")).send().await.map_err(|e| e.to_string())?;
-  if !response.status().is_success() {
-    return Err(format!("audio-only list: {}", response.status().as_u16()));
-  }
-  let (kind, numbers) = muted_numbers(&response.text().await.map_err(|e| e.to_string())?);
+  let (base, list) = audio_list(files).await?;
+  let (kind, numbers) = muted_numbers(&list);
   report.muted = numbers.len();
   if numbers.is_empty() {
     return Ok(report);
@@ -224,6 +208,57 @@ async fn save(root: PathBuf, video: String) -> Result<SavedSound, String> {
     }
   }
   Ok(report)
+}
+
+// Twitch's fields saying where a video's files are (as player.js's WHERE; also video_window.rs's
+// early list). Read by files_places.
+pub(crate) const WHERE: &str = "seekPreviewsURL animatedPreviewURL previewThumbnailURL(width: 320, height: 180)";
+// Twitch's servers for video files, seen 2026-11-26 (also in player.js)
+const SERVERS: [&str; 4] = ["d2vi6trrdongqn", "d1m7jfoe9zdc1j", "d2nvs31859zcd8", "d3stzm2eumvgb4"];
+
+// Where a video's files are, from Twitch's answer about it (WHERE), as player.js's
+// previewsAddressOf: (the servers to try, in order; its folder). Next to its preview pictures, else
+// the animated preview's (the same files), else the thumbnail's folder: on the thumbnail's server,
+// unless it's the streamer's own picture (kept on another server), then on one of Twitch's others.
+// Just-ended videos have no thumbnail yet (probe 2026-11-26).
+fn files_places(video: &serde_json::Value) -> Option<(Vec<String>, String)> {
+  // https://<server>/<folder>/storyboards/…
+  let beside = |field: &str| {
+    let address = reqwest::Url::parse(video[field].as_str()?).ok()?;
+    let host = address.host_str().filter(|host| super::video_window::twitch_host(host))?.to_owned();
+    let parts: Vec<&str> = address.path_segments()?.collect();
+    let at = parts.iter().position(|part| *part == "storyboards").filter(|at| *at > 0)?;
+    Some((vec![host], parts[at - 1].to_owned()))
+  };
+  // https://static-cdn.jtvnw.net/cf_vods/<server>/<folder>//thumb/…
+  let thumbnail = || {
+    let address = reqwest::Url::parse(video["previewThumbnailURL"].as_str()?).ok()?;
+    let parts: Vec<&str> = address.path_segments()?.collect();
+    let at = parts.iter().position(|part| *part == "cf_vods")?;
+    let (server, folder) = (*parts.get(at + 1)?, *parts.get(at + 2)?);
+    let word = |text: &str, dash: bool| !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || (dash && byte == b'-'));
+    if !word(server, true) || !word(folder, false) || parts[at + 3..].iter().find(|part| !part.is_empty()) != Some(&"thumb") {
+      return None;
+    }
+    let others = SERVERS.iter().filter(|one| **one != server).map(|one| format!("{one}.cloudfront.net"));
+    Some((std::iter::once(format!("{server}.cloudfront.net")).chain(others).collect(), folder.to_owned()))
+  };
+  beside("seekPreviewsURL").or_else(|| beside("animatedPreviewURL")).or_else(thumbnail)
+}
+
+// The video's audio-only list from the first server that has it: (its folder's address, the list)
+async fn audio_list(video: &serde_json::Value) -> Result<(String, String), String> {
+  let (hosts, folder) = files_places(video).ok_or("no files address")?;
+  let mut refused = String::new();
+  for host in hosts {
+    let base = format!("https://{host}/{folder}/audio_only/");
+    let response = super::video_window::player_client().get(format!("{base}index-dvr.m3u8")).send().await.map_err(|e| e.to_string())?;
+    if response.status().is_success() {
+      return Ok((base, response.text().await.map_err(|e| e.to_string())?));
+    }
+    refused = format!("audio-only list: {}", response.status().as_u16());
+  }
+  Err(refused)
 }
 
 enum Saved {
@@ -426,6 +461,52 @@ mod tests {
 "), (Kind::Ts, vec![]));
     assert_eq!(Kind::Mp4.original(12), "12-unmuted.mp4");
     assert_eq!(Kind::Ts.original(12), "12.ts");
+  }
+
+  #[test]
+  fn finds_files_places() {
+    use serde_json::json;
+    let (seek, strip) = ("https://d2nvs31859zcd8.cloudfront.net/a1b2_knut_123_456/storyboards/99-info.json", "https://d2nvs31859zcd8.cloudfront.net/a1b2_knut_123_456/storyboards/99-strip-0.jpg");
+    let thumb = "https://static-cdn.jtvnw.net/cf_vods/d1m7jfoe9zdc1j/a1b2_knut_123_456//thumb/thumb0-320x180.jpg";
+    let one = |host: &str| (vec![host.to_owned()], "a1b2_knut_123_456".to_owned());
+    assert_eq!(super::files_places(&json!({ "seekPreviewsURL": seek, "animatedPreviewURL": strip, "previewThumbnailURL": thumb })), Some(one("d2nvs31859zcd8.cloudfront.net")));
+    assert_eq!(super::files_places(&json!({ "seekPreviewsURL": null, "animatedPreviewURL": strip, "previewThumbnailURL": thumb })), Some(one("d2nvs31859zcd8.cloudfront.net")));
+    // Thumbnail only: its server first, then the others
+    let (hosts, folder) = super::files_places(&json!({ "previewThumbnailURL": thumb })).unwrap();
+    assert_eq!(folder, "a1b2_knut_123_456");
+    assert_eq!(hosts, ["d1m7jfoe9zdc1j", "d2vi6trrdongqn", "d2nvs31859zcd8", "d3stzm2eumvgb4"].map(|one| format!("{one}.cloudfront.net")));
+    // A server not in the list goes first all the same
+    assert_eq!(super::files_places(&json!({ "previewThumbnailURL": thumb.replace("d1m7jfoe9zdc1j", "dnew-1") })).unwrap().0.len(), 5);
+    // Nothing usable: just ended ("processing" picture), another site, no folder, or no fields
+    assert_eq!(super::files_places(&json!({ "previewThumbnailURL": "https://vod-secure.twitch.tv/_404/404_processing_320x180.png" })), None);
+    assert_eq!(super::files_places(&json!({ "seekPreviewsURL": "https://example.com/f/storyboards/99-info.json" })), None);
+    assert_eq!(super::files_places(&json!({ "seekPreviewsURL": "https://d2nvs31859zcd8.cloudfront.net/storyboards/99-info.json" })), None);
+    assert_eq!(super::files_places(&json!({ "previewThumbnailURL": "https://static-cdn.jtvnw.net/cf_vods/d1m7jfoe9zdc1j/a1b2_knut_123_456/other/x.jpg" })), None);
+    assert_eq!(super::files_places(&json!(null)), None);
+  }
+
+  // Against Twitch: SYNCR_TEST_VIDEO as above. Each way to find the files gives the same folder,
+  // also when the thumbnail lies on another server (a streamer's own picture).
+  #[test]
+  #[ignore]
+  fn finds_files_on_twitch() {
+    let video = std::env::var("SYNCR_TEST_VIDEO").expect("SYNCR_TEST_VIDEO");
+    let query = format!("query($id: ID!) {{ video(id: $id) {{ {} }} }}", super::WHERE);
+    let answer = tauri::async_runtime::block_on(crate::video_window::ask_twitch(&query, &video, "video")).unwrap();
+    let mut files = answer["data"]["video"].clone();
+    println!("{files:#}");
+    let base = |files: &serde_json::Value| tauri::async_runtime::block_on(super::audio_list(files)).map(|(base, _)| base);
+    let whole = base(&files).unwrap();
+    files["seekPreviewsURL"] = serde_json::Value::Null;
+    assert_eq!(base(&files).unwrap(), whole, "animated preview");
+    files["animatedPreviewURL"] = serde_json::Value::Null;
+    assert_eq!(base(&files).unwrap(), whole, "thumbnail");
+    let thumb = files["previewThumbnailURL"].as_str().unwrap().to_owned();
+    let own = super::SERVERS.iter().find(|one| thumb.contains(*one)).expect("a known server");
+    let wrong = super::SERVERS.iter().find(|one| *one != own).unwrap();
+    files["previewThumbnailURL"] = thumb.replace(own, wrong).into();
+    assert_eq!(base(&files).unwrap(), whole, "thumbnail on another server");
+    println!("all: {whole}");
   }
 
   #[test]

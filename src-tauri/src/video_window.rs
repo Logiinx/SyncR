@@ -111,19 +111,81 @@ fn start_early_list(address: &str) {
   *EARLY_LIST.lock().unwrap() = video.map(|video| (video.clone(), start(video)));
 }
 
+const CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // the one Twitch's own website uses (as player.js)
+
+// Twitch's whole answer to a question about a video ($id). field: the part wanted. A field Twitch has
+// removed makes it refuse the whole question: asked again without it (as player.js's askTwitchAll).
+// An error still there is for the caller (a hiccup on Twitch's side).
+pub(crate) async fn ask_twitch(query: &str, video: &str, field: &str) -> Result<serde_json::Value, String> {
+  let mut query = query.to_owned();
+  loop {
+    let body = serde_json::json!({ "query": query, "variables": { "id": video } }).to_string();
+    let response = player_client().post("https://gql.twitch.tv/gql").header("Client-ID", CLIENT_ID).header("Content-Type", "application/json").body(body).send().await.map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+      return Err(format!("Twitch answered {}", response.status().as_u16()));
+    }
+    let answer: serde_json::Value = serde_json::from_slice(&response.bytes().await.map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    match without_removed(&query, &answer["errors"]) {
+      Some(fewer) if answer["data"][field].is_null() => query = fewer,
+      _ => return Ok(answer),
+    }
+  }
+}
+
+// The question without the plain fields Twitch says don't exist ('Cannot query field "x"'), or None
+// when there's none. Fields with parts of their own stay: taking those out would break the question.
+// Same in player.js (withoutRemoved).
+fn without_removed(query: &str, errors: &serde_json::Value) -> Option<String> {
+  let mut fewer = query.to_owned();
+  for error in errors.as_array()? {
+    let name = error["message"].as_str().and_then(|text| text.strip_prefix("Cannot query field \"")).and_then(|text| text.split_once('"')).map(|(name, _)| name);
+    if let Some(name) = name.filter(|name| !name.is_empty() && name.bytes().all(word_sign)) {
+      fewer = without_field(&fewer, name);
+    }
+  }
+  (fewer != query).then_some(fewer)
+}
+
+fn word_sign(byte: u8) -> bool {
+  byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+// text with every plain name or name(…) taken out (not one followed by { … }: it has parts)
+fn without_field(text: &str, name: &str) -> String {
+  let bytes = text.as_bytes();
+  let (mut kept, mut copied, mut from) = (String::new(), 0, 0);
+  while let Some(found) = text[from..].find(name).map(|at| from + at) {
+    from = found + 1;
+    let mut end = found + name.len();
+    if found > 0 && word_sign(bytes[found - 1]) {
+      continue; // inside a longer word
+    }
+    if bytes.get(end) == Some(&b'(') {
+      match text[end..].find(')') {
+        Some(close) => end += close + 1,
+        None => continue,
+      }
+    }
+    if bytes.get(end).is_some_and(|&byte| word_sign(byte) || byte == b'(') || text[end..].trim_start().starts_with('{') {
+      continue;
+    }
+    kept.push_str(&text[copied..found]);
+    (copied, from) = (end, end);
+  }
+  kept.push_str(&text[copied..]);
+  kept
+}
+
 // The same questions as player.js's load. 200: the list · 403: Twitch says no (deleted, private,
-// subscribers only), the page rebuilds it from the video's folders, found from the address of its
-// preview pictures and its kind, asked in the same question: { "video": { seekPreviewsURL,
+// subscribers only), the page rebuilds it from the video's folders, found from where its files are
+// and its kind, asked in the same question: { "video": { <muted_sound::WHERE's fields>,
 // broadcastType } or null }
 async fn early_list(video: String) -> Option<(u16, Vec<u8>)> {
-  const CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // the one Twitch's own website uses (as player.js)
-  let query = r#"query($id: ID!) { token: videoPlaybackAccessToken(id: $id, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } video(id: $id) { seekPreviewsURL broadcastType } }"#;
-  let body = serde_json::json!({ "query": query, "variables": { "id": video } }).to_string();
-  let response = player_client().post("https://gql.twitch.tv/gql").header("Client-ID", CLIENT_ID).header("Content-Type", "application/json").body(body).send().await.ok()?;
-  if !response.status().is_success() {
-    return None;
-  }
-  let answer: serde_json::Value = serde_json::from_slice(&response.bytes().await.ok()?).ok()?;
+  let query = format!(
+    r#"query($id: ID!) {{ token: videoPlaybackAccessToken(id: $id, params: {{platform: "web", playerBackend: "mediaplayer", playerType: "site"}}) {{ value signature }} video(id: $id) {{ {} broadcastType }} }}"#,
+    super::muted_sound::WHERE
+  );
+  let answer = ask_twitch(&query, &video, "token").await.ok()?;
   let token = &answer["data"]["token"];
   let refused = Some((403, serde_json::json!({ "video": answer["data"]["video"] }).to_string().into_bytes()));
   if token.is_null() {
@@ -1090,4 +1152,42 @@ pub fn video_player_upcoming(app: tauri::AppHandle, upcoming: serde_json::Value)
 #[tauri::command]
 pub async fn close_video_player(app: tauri::AppHandle) -> Result<(), String> {
   close_video_window(&app).await
+}
+
+#[cfg(test)]
+mod tests {
+  use serde_json::json;
+
+  #[test]
+  fn leaves_out_removed_fields() {
+    let query = "query($id: ID!) { video(id: $id) { seekPreviewsURL animatedPreviewURL previewThumbnailURL(width: 320, height: 180) broadcastType } }";
+    let error = |name: &str| json!([{ "message": format!("Cannot query field \"{name}\" on type \"Video\".") }]);
+    let without = |name: &str| super::without_removed(query, &error(name));
+    assert_eq!(without("seekPreviewsURL").unwrap(), query.replace("seekPreviewsURL ", " "));
+    assert_eq!(without("previewThumbnailURL").unwrap(), query.replace("previewThumbnailURL(width: 320, height: 180)", ""));
+    // A field with parts of its own stays (taking it out would break the question), as does a
+    // longer name, other errors and no errors
+    assert_eq!(without("video"), None);
+    assert_eq!(without("Previews"), None);
+    assert_eq!(super::without_removed(query, &json!([{ "message": "service timeout" }])), None);
+    assert_eq!(super::without_removed(query, &json!(null)), None);
+    // Two at once
+    let both = json!([{ "message": "Cannot query field \"seekPreviewsURL\" on type \"Video\"." }, { "message": "Cannot query field \"animatedPreviewURL\" on type \"Video\"." }]);
+    assert_eq!(super::without_removed(query, &both).unwrap(), query.replace("seekPreviewsURL animatedPreviewURL ", "  "));
+  }
+
+  // Against Twitch: cargo test --lib video_window -- --ignored --nocapture, with SYNCR_TEST_VIDEO=<a
+  // public video's id>. A made-up field is left out and asked again; the early list comes.
+  #[test]
+  #[ignore]
+  fn asks_twitch_without_removed_fields() {
+    let video = std::env::var("SYNCR_TEST_VIDEO").expect("SYNCR_TEST_VIDEO");
+    let query = "query($id: ID!) { video(id: $id) { madeUpField broadcastType madeUpToo(width: 1) } }";
+    let answer = tauri::async_runtime::block_on(super::ask_twitch(query, &video, "video")).unwrap();
+    println!("{answer}");
+    assert!(answer["data"]["video"]["broadcastType"].is_string());
+    let (status, list) = tauri::async_runtime::block_on(super::early_list(video)).unwrap();
+    println!("early list: {status}, {} bytes", list.len());
+    assert_eq!(status, 200);
+  }
 }
