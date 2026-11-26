@@ -283,7 +283,7 @@ export default function VideoSection() {
                 </li>
               ))}
             </ul>
-            {error && <p className="event-error">{error}</p>}
+            {error && <p className="dialog-error">{error}</p>}
             <div className="video-extensions-foot">
               <button className="setting-button" disabled={busy} onClick={() => void pick()}>
                 {t('Add from a folder…')}

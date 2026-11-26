@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Small fixes:** error lines alike in every window
+
 ## [1.2.19] - 2026-11-25
 
 **Video** (PC only)

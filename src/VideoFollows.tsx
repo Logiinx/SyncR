@@ -148,7 +148,7 @@ export function FollowDialog({ follow, startLink, onClose }: { follow?: VideoFol
           </select>
         </label>
       )}
-      {error && <p className="event-error">{error}</p>}
+      {error && <p className="dialog-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
         <SubmitButton busy={busy} disabled={!follow && !link.trim()} label={follow ? t('Save') : t('Add')} />
@@ -344,7 +344,7 @@ export function AddVideoDialog({ onAdded, onClose }: { onAdded: (followId: strin
         {t('Video link')}
         <input autoFocus value={link} placeholder={t('Paste a YouTube or Twitch video’s link')} onChange={(e) => setLink(e.target.value)} />
       </label>
-      {error && <p className="event-error">{error}</p>}
+      {error && <p className="dialog-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
         <SubmitButton busy={busy} disabled={!link.trim()} label={t('Add')} />
@@ -384,7 +384,7 @@ export function AddPlaylistDialog({ onAdded, onClose }: { onAdded: (playlistId: 
         <input type="checkbox" checked={keepChecking} onChange={(e) => setKeepChecking(e.target.checked)} />
         {t('Check for new videos once a day')}
       </label>
-      {error && <p className="event-error">{error}</p>}
+      {error && <p className="dialog-error">{error}</p>}
       <div className="dialog-buttons">
         <button type="button" onClick={onClose}>{t('Cancel')}</button>
         <SubmitButton busy={busy} disabled={!link.trim()} label={t('Add')} />

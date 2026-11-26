@@ -217,7 +217,7 @@ function EventDialog(props: {
           {t('+ Add notes')}
         </button>
       )}
-      {error && <p className="event-error">{error}</p>}
+      {error && <p className="dialog-error">{error}</p>}
       <div className="dialog-buttons">
         {event && (
           <button className="danger event-delete" disabled={saving} onClick={() => props.onDelete(event)}>

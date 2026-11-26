@@ -6107,8 +6107,12 @@ button {
   margin-top: 8px;
 }
 
+/* A window's error line (every window: PIN, new event, add a follow…): small red text, close to
+   the field above it (user, 2026-11-26) */
 .dialog .dialog-error {
+  margin: -4px 0 16px;
   color: var(--error);
+  font-size: 0.9em;
 }
 
 .dialog-buttons button:disabled {
@@ -8547,12 +8551,6 @@ button.history-row.selected {
 
 .event-add-notes:hover {
   color: var(--text);
-}
-
-.dialog .event-error {
-  margin: -4px 0 16px;
-  color: var(--error);
-  font-size: 0.9em;
 }
 
 /* Delete on the left, away from Save */
