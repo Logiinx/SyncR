@@ -305,6 +305,7 @@ function controlsData() {
       keyShift: t('Shift|key'),
       keyEscape: t('Esc|key'),
       wheel: t('Wheel|mouse'),
+      wheelOnBar: t('On the bar: −{seconds} s or +{seconds} s', { seconds: 10 }), // WHEEL_JUMP in controls.js
       doubleClick: t('Double-click'),
       playPause: t('Play or pause'),
       muteToggle: t('Mute or unmute'),

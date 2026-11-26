@@ -1318,6 +1318,7 @@ function playerControls(env, media) {
     line([labels.keyEscape], labels.closeMenu)
     side.title(labels.mouse)
     line([labels.wheel], labels.volume)
+    line([labels.wheel], labels.wheelOnBar)
     line([labels.doubleClick], labels.fullscreen)
   }
 
@@ -1536,21 +1537,36 @@ function playerControls(env, media) {
     media.setVolume(level)
     flash(percentText(level))
   }
-  // The mouse wheel anywhere over the video: 5% a notch, like the arrows. A list that scrolls
-  // (an open menu) keeps the wheel for itself. A touchpad's small moves add up to a notch.
+  // The mouse wheel over the time bar: WHEEL_JUMP a notch (up = forward), the same quick jumps as
+  // the 5 s buttons. Anywhere else over the video: 5% volume a notch, like the arrows. Faded
+  // controls take no mouse, so the wheel changes the volume then (never a jump you can't see). A
+  // list that scrolls (an open menu) keeps the wheel for itself. A touchpad's small moves add up to
+  // a notch, counted again when the mouse moves between the bar and the rest.
+  const WHEEL_JUMP = 10 // seconds
   let wheeled = 0
+  let wheeledOnBar = false
   box.addEventListener('wheel', (event) => {
     for (let at = event.target; at && at !== box; at = at.parentElement) {
       if (at.scrollHeight > at.clientHeight && /auto|scroll/.test(getComputedStyle(at).overflowY)) return
     }
     event.preventDefault()
+    const onBar = $('progress').contains(event.target)
+    if (onBar !== wheeledOnBar) wheeled = 0
+    wheeledOnBar = onBar
     wheeled += event.deltaMode === 1 ? event.deltaY * 40 : event.deltaY
     if (Math.abs(wheeled) < 50) return
-    changeVolume(wheeled < 0 ? 0.05 : -0.05)
+    const up = wheeled < 0
     wheeled = 0
+    if (!onBar) changeVolume(up ? 0.05 : -0.05)
+    else if (dragging === null) jumpBy(up ? WHEEL_JUMP : -WHEEL_JUMP)
   }, { passive: false })
-  const jumpBack = () => { jumpTo(exactTarget() - JUMP, true); flash(`−${JUMP} s`) }
-  const jumpForward = () => { jumpTo(exactTarget() + JUMP, true); flash(`+${JUMP} s`) }
+  // A quick jump of seconds (below 0: back), with its flash
+  const jumpBy = (seconds) => {
+    jumpTo(exactTarget() + seconds, true)
+    flash(`${seconds < 0 ? '−' : '+'}${Math.abs(seconds)} s`)
+  }
+  const jumpBack = () => jumpBy(-JUMP)
+  const jumpForward = () => jumpBy(JUMP)
   const KEYS = {
     ' ': togglePlay,
     k: togglePlay,

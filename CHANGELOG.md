@@ -16,10 +16,12 @@ All notable changes to SyncR. Newest version first.
 - **Small fixes:** table menu fits on screen, one line per item
 
 **Video** (PC only)
+- **New:** mouse wheel on the time bar jumps back or forward 10 s
 - **New:** the ⚙️ menu shows a Twitch video's file type, .ts or .mp4
 - **Better:** "Save the sound of muted parts" now works for every Twitch video
 - **Better:** sound saved while you watch shows on the bar within a minute
 - **Better:** the bar marks all muted parts of .mp4 videos at once
+- **Better:** subscriber-only videos and saved sound keep working if Twitch changes
 - **Better:** a broken playlist is tried again less and less often, to save the quota
 - **Better:** a very long stream's saved sound stops at 1 GB, other videos keep theirs
 - **Fixed:** videos gone from their site still marked when one channel keeps failing

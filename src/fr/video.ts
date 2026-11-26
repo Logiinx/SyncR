@@ -257,6 +257,7 @@ export const video = {
   'Shift|key': 'Maj',
   'Esc|key': 'Échap',
   'Wheel|mouse': 'Molette',
+  'On the bar: −{seconds} s or +{seconds} s': 'Sur la barre : −{seconds} s ou +{seconds} s', // one line in the panel (a wording with words wrapped)
   'Double-click': 'Double-clic',
   'Play or pause': 'Lecture ou pause',
   'Mute or unmute': 'Couper ou remettre le son',
