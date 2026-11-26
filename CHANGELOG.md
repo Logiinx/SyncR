@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-26
+
 **Video** (PC only)
 - **Better:** quick jumps in a row add up in the middle of the player: +10 s, +20 s…
 

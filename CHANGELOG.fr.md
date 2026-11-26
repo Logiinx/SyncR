@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-26
+
 **Vidéo** (PC uniquement)
 - **Amélioré :** les sauts rapides à la suite s'additionnent au milieu du lecteur : +10 s, +20 s…
 
