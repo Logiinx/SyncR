@@ -338,11 +338,26 @@ async function saveVideos(follow: VideoFollow, listed: ListedVideo[], firstCheck
   }
 }
 
-// The new videos the follow's rules keep. Read again from the database: a Twitch video's games
-// come after it's saved (addTwitchGames), and "only these games" needs them.
+// New videos the rules don't keep yet, but may later (per follow, this run only): a stream still
+// live (too short yet for "at least … minutes", or not on the chosen game yet), or whose games
+// Twitch's website hasn't given yet. Asked again at each check, until kept (then a card) or over.
+const keptLater = new Map<string, Set<string>>()
+
+// The new videos the follow's rules keep, and those that just came to be kept. Read again from
+// the database: a Twitch video's games come after it's saved (addTwitchGames), and "only these
+// games" needs them.
 async function keptNewVideos(follow: VideoFollow, ids: string[]) {
-  const rows = await db.videos.bulkGet(ids)
-  return rows.flatMap((row) => (row && videoKept(follow, row) ? [row.id] : []))
+  const rows = await db.videos.bulkGet([...new Set([...ids, ...(keptLater.get(follow.id) ?? [])])])
+  const waiting = new Set<string>()
+  const kept = rows.flatMap((row) => {
+    if (!row) return []
+    if (videoKept(follow, row)) return [row.id]
+    if (row.live || (row.platform === 'twitch' && !row.games)) waiting.add(row.id)
+    return []
+  })
+  if (waiting.size) keptLater.set(follow.id, waiting)
+  else keptLater.delete(follow.id)
+  return kept
 }
 
 // These videos have been shown. One found before foundAt existed counts its week from now.

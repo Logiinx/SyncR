@@ -17,7 +17,7 @@ const alerted: string[][] = []
 vi.mock('../src/videoAlerts', () => ({ addVideoAlerts: (ids: string[]) => void alerted.push(ids), removeVideoAlerts: () => {} }))
 
 // What the Worker lists for the channel now
-let listed: { id: string; title: string; live?: boolean }[] = []
+let listed: { id: string; title: string; live?: boolean; duration?: number }[] = []
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 vi.mock('../src/igdb', () => ({
   isComplete: () => true,
@@ -116,4 +116,26 @@ test('games read again but unchanged are not saved again (every save redraws the
   await checkVideos()
   db.videos.hook('updating').unsubscribe(count)
   expect(saves).toBe(0)
+})
+
+test('a live stream that only later plays a chosen game gets its pop-up card then, once', async () => {
+  playing.set('2', 'Just Chatting')
+  listed = [{ id: '2', title: 'Subathon', live: true }, ...listed]
+  await checkVideos()
+  expect(alerted).toEqual([])
+  playing.set('2', 'Elden Ring')
+  await checkVideos()
+  expect(alerted).toEqual([['twitch-2']])
+  await checkVideos()
+  expect(alerted).toEqual([['twitch-2']])
+})
+
+test('a live stream too short at first gets its pop-up card once long enough; an ended one never', async () => {
+  await db.videoFollows.update(FOLLOW, { minMinutes: 60 })
+  listed = [{ id: '2', title: 'Subathon', live: true, duration: 600 }, { id: '3', title: 'Short one', duration: 600 }, ...listed]
+  await checkVideos()
+  expect(alerted).toEqual([])
+  listed = [{ id: '2', title: 'Subathon', live: true, duration: 5400 }, ...listed.slice(1)]
+  await checkVideos()
+  expect(alerted).toEqual([['twitch-2']])
 })
