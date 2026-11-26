@@ -14,7 +14,7 @@ export const COLORS = [
   { id: 'gray', name: textKey('Gray') },
 ]
 
-// Background colors for Board cards and groups ("Card color…" / "Group color…" in their menu). A card stores the
+// Background colors for Board cards and groups ("Card color" / "Group color" in their menu). A card stores the
 // name; the tint comes from the same palette as text colors (--text-red…, index.css), so it
 // follows palette changes. Synced with the card.
 

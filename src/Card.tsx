@@ -62,14 +62,13 @@ interface Props {
 function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
   // Set while a save is waiting; cleared once it's done.
   const saveTimer = useRef<number | undefined>(undefined)
-  // colors: a color list instead of the menu. editing: as it was when the menu opened, so
+  // editing: as it was when the menu opened, so
   // the items don't move when pressing one ends editing ("Edit" appeared above and the click
   // landed on the wrong item)
   // link: right-clicked on a link card (its items come first, linkPreviews.ts)
   const [menu, setMenu] = useState<{
     x: number
     y: number
-    colors?: 'card' | 'text'
     editing?: boolean
     link?: ReturnType<typeof linkMenu>
   } | null>(null)
@@ -317,7 +316,7 @@ function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
           {/* Phone only (CSS): opens the card's menu (right-click on the PC) */}
           <button
             className="card-more"
-            // This card is being edited: keep editing, the menu's "Text color…" needs the selection
+            // This card is being edited: keep editing, the menu's "Text color" needs the selection
             // or cursor (another card's "⋯" ends that editing, like any click elsewhere)
             onMouseDown={(event) => editing && event.preventDefault()}
             onClick={(event) => {
@@ -335,8 +334,8 @@ function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: menu.colors === 'text' ? t('Text color') : t('Card color') } : menu.link?.header}
-          items={menu.colors === 'text' && editor ? textColorItems(editor) : menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
+          header={menu.link?.header}
+          items={[
             ...(menu.link?.items ?? []),
             // Edit: phone only (on the PC a double-click edits; a double tap is unreliable)
             ...(menu.editing || !window.matchMedia('(pointer: coarse)').matches
@@ -344,15 +343,15 @@ function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
               : [{ label: t('Edit'), icon: Pencil, onClick: () => startEditing() }]),
             { label: card.title ? t('Edit title') : t('Add title'), icon: Heading, divider: true, onClick: () => setEditingTitle(true) },
             {
-              label: t('Text color…'),
+              label: t('Text color'),
               icon: Baseline,
               divider: true,
-              disabled: !menu.editing,
+              disabled: !menu.editing || !editor,
               hint: menu.editing ? undefined : t('While editing'),
               keepFocus: true,
-              onClick: () => setMenu({ ...menu, colors: 'text' }),
+              submenu: { title: t('Text color'), items: editor ? textColorItems(editor) : [] },
             },
-            { label: t('Card color…'), icon: Palette, onClick: () => setMenu({ ...menu, colors: 'card' }) },
+            { label: t('Card color'), icon: Palette, submenu: { title: t('Card color'), items: colorMenuItems(card.color, (color) => setCardColor(card.id, color)) } },
             {
               label: card.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,
@@ -368,7 +367,7 @@ function Card({ card, autoFocus, onDelete, onPress, moveToGroupItems }: Props) {
   )
 }
 
-// The menu's "Text color…" list: like the card's list, but Default is the text's own color, and
+// The menu's "Text color" side list: like the card's list, but Default is the text's own color, and
 // the cursor stays in the text
 function textColorItems(editor: Editor) {
   return colorMenuItems(currentTextColor(editor), (color) => pickTextColor(editor, color)).map((item) => ({

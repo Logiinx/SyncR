@@ -8,11 +8,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Corrigé :** un jeu passé de En cours à Bibliothèque demande comment ça s’est terminé
 - **Petites corrections :** le menu d’un événement (clic droit) montre son titre et sa date
 
+**Board**
+- **Changé :** les couleurs (carte, groupe, texte) s’ouvrent à côté du menu, comme les groupes
+- **Petites corrections :** Déplacer vers un groupe montre le groupe de la carte avec un ✓
+
 **Notes**
 - **Petites corrections :** le menu des tableaux tient à l’écran, une ligne par action
-
-**Board**
-- **Petites corrections :** Déplacer vers un groupe montre le groupe de la carte avec un ✓
 
 **Vidéo** (PC uniquement)
 - **Petites corrections :** menus des playlists, dossiers, liens vidéo dans l’ordre, icône pour passer dans les aides

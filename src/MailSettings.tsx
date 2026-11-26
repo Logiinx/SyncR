@@ -81,7 +81,7 @@ function GmailPart() {
           label={
             <span className="gmail-account-name">
               {/* The account's color (its pop-ups' strip, its dot in the Mail tab): a click
-                  opens the color list, like Board cards' "Card color…" */}
+                  opens the color list, like Board cards' "Card color" */}
               <button
                 className="color-dot-button"
                 title={t('Color')}

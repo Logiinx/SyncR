@@ -13,9 +13,7 @@ export const board = {
   Edit: 'Modifier',
   'Edit title': 'Modifier le titre',
   'Add title': 'Ajouter un titre',
-  'Text color…': 'Couleur du texte…',
   'Card color': 'Couleur de la carte',
-  'Card color…': 'Couleur de la carte…',
   'Remove priority': 'Retirer la priorité',
   'Mark as priority': 'Marquer comme prioritaire',
   'Move to group': 'Déplacer vers un groupe',
@@ -35,9 +33,7 @@ export const board = {
   'Delete its card too': 'Supprimer aussi sa carte',
   'Delete its {n} cards too': 'Supprimer aussi ses {n} cartes',
   'Color with its cards': 'Couleur avec ses cartes',
-  'Color with its cards…': 'Couleur avec ses cartes…',
   'Group color': 'Couleur du groupe',
-  'Group color…': 'Couleur du groupe…',
   'No cards': 'Aucune carte',
 
   // Color rules

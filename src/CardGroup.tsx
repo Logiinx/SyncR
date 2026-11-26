@@ -23,8 +23,7 @@ interface Props {
 // so it can't be mistaken for a folded card with a title.
 // Its menu (right-click on the header; "⋯" on the phone): new card, rename, priority, delete.
 function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, children }: Props) {
-  // colors: one of the color lists instead of the menu (the group only, or with its cards)
-  const [menu, setMenu] = useState<{ x: number; y: number; colors?: 'group' | 'all' } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const count = cards.length
   const name = group.title ?? ''
 
@@ -108,8 +107,7 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: menu.colors === 'all' ? t('Color with its cards') : t('Group color') } : undefined}
-          items={menu.colors ? colorItems(menu.colors === 'all') : [
+          items={[
             {
               label: t('New card'),
               icon: Plus,
@@ -119,8 +117,8 @@ function CardGroup({ group, cards, onPress, onDialog, onDeleted, onNewCard, chil
               },
             },
             { label: t('Rename'), icon: Pencil, onClick: rename },
-            { label: t('Group color…'), icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: 'group' }) },
-            { label: t('Color with its cards…'), icon: PaintBucket, onClick: () => setMenu({ ...menu, colors: 'all' }) },
+            { label: t('Group color'), icon: Palette, divider: true, submenu: { title: t('Group color'), items: colorItems(false) } },
+            { label: t('Color with its cards'), icon: PaintBucket, submenu: { title: t('Color with its cards'), items: colorItems(true) } },
             {
               label: group.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,

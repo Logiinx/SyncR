@@ -21,7 +21,7 @@ interface Props {
 // (only while the game is in your list). Shows the game's current name and cover, and keeps
 // its own copy of them up to date, so the card still shows if the game is removed later.
 function GameCard({ card, onDelete, onPress, onOpen, moveToGroupItems }: Props) {
-  const [menu, setMenu] = useState<{ x: number; y: number; colors?: boolean } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   useListItem(ref)
   const game = useLiveQuery(() => db.games.get(card.game.id), [card.game.id])
@@ -79,10 +79,9 @@ function GameCard({ card, onDelete, onPress, onOpen, moveToGroupItems }: Props) 
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          header={menu.colors ? { title: t('Card color') } : undefined}
-          items={menu.colors ? colorMenuItems(card.color, (color) => setCardColor(card.id, color)) : [
+          items={[
             ...(inList ? [{ label: t('Open'), icon: Gamepad2, onClick: () => onOpen(card.game.id) }] : []),
-            { label: t('Card color…'), icon: Palette, divider: true, onClick: () => setMenu({ ...menu, colors: true }) },
+            { label: t('Card color'), icon: Palette, divider: true, submenu: { title: t('Card color'), items: colorMenuItems(card.color, (color) => setCardColor(card.id, color)) } },
             {
               label: card.priority ? t('Remove priority') : t('Mark as priority'),
               icon: Sparkles,
