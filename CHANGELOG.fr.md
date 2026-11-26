@@ -16,7 +16,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Petites corrections :** le menu des tableaux tient à l’écran, une ligne par action
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** le menu ⚙️ montre le type de fichier d'une vidéo Twitch, .ts ou .mp4
 - **Amélioré :** « Garder le son des parties muettes » marche pour toutes les vidéos Twitch
+- **Amélioré :** la barre marque d'un coup toutes les parties muettes des vidéos .mp4
 - **Amélioré :** une playlist en panne est réessayée de moins en moins souvent (quota)
 - **Amélioré :** le son sauvegardé d'un très long live s'arrête à 1 Go, les autres vidéos gardent le leur
 - **Corrigé :** les vidéos disparues de leur site sont marquées même si une chaîne échoue sans cesse

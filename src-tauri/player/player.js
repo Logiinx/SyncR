@@ -127,17 +127,19 @@ const media = {
     const name = playing ? levelName(playing) : ''
     return chosen === 'auto' ? (name ? `${labels.auto} (${name})` : labels.auto) : name
   },
-  // For the ⚙️ menu's last line (controls.js): the picture's codec, which folder it comes from, and
-  // the sound of muted parts when the video has some
+  // For the ⚙️ menu's last line (controls.js): the picture's codec, its pieces' format (.ts or .mp4,
+  // the same in every quality), which folder it comes from, and the sound of muted parts when the
+  // video has some
   info() {
     const level = hls?.levels[hls.currentLevel]
+    const format = level?.details?.fragments?.[0]?.url.match(/\.(ts|mp4)$/)?.[0] ?? ''
     const extra = []
     if (level) extra.push(level.url[0]?.includes('/chunked/') ? labels.infoOriginal : labels.infoCopy)
     if (someSaved) extra.push(labels.infoSaved)
     if (someBorrowed) extra.push(labels.infoBorrowed)
     if (mutedSound === 'muted') extra.push(mutedText())
     else if (mutedSound === 'uncut' && !someBorrowed && !someSaved) extra.push(labels.infoUncut)
-    return { codec: level?.videoCodec || playingCodec, extra: extra.filter(Boolean) }
+    return { codec: level?.videoCodec || playingCodec, format, extra: extra.filter(Boolean) }
   },
   switchingTo: () => (stillSwitching() ? levelName(hls.levels[switchingTo]) : ''),
   setQuality(value) {
@@ -528,17 +530,26 @@ let playingCodec = '' // as hls.js found it in the pieces (Twitch's copies don't
 const checkAddress = (url, way) => wayAddress(url, way).replace(/\/v(-plain)?\//, '/has$1/') // the first one: the route (full addresses)
 const CHECK_RETRIES = 2
 const CHECK_AGAIN_AFTER = 10000 // ms
+// A piece's original, both copies: { way } of the one that has it, else { again } when one failed
+// in passing
+async function askCopies(piece) {
+  let again = false
+  for (const way of waysFor(piece)) {
+    const status = await fetch(checkAddress(piece, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
+    if (status >= 200 && status < 300) return { way }
+    if (passing(status)) again = true
+  }
+  return { again }
+}
 // Its own sound first, then the saved one, then the other qualities' (DONORS)
 async function askHas(url) {
   let again = false
   await savedReady
   const saved = isSaved(url)
   for (const piece of [url, ...(saved ? [] : donorsFor(url))]) {
-    for (const way of waysFor(piece)) {
-      const status = await fetch(checkAddress(piece, way), { cache: 'no-store' }).then((response) => response.status, () => 0)
-      if (status >= 200 && status < 300) return { piece, way }
-      if (passing(status)) again = true
-    }
+    const answer = await askCopies(piece)
+    if (answer.way !== undefined) return { piece, way: answer.way }
+    if (answer.again) again = true
   }
   return saved ? { piece: SAVED } : { again }
 }
@@ -600,14 +611,87 @@ function recheckAhead(from, all = false) {
 }
 setInterval(() => { if (!video.paused) recheckAhead(video.currentTime) }, RECHECK_AFTER)
 
+// ---- .mp4 videos: a few pieces asked for all ----------------------------------------------------
+// An .mp4 video keeps the sound of all its muted pieces or of none, in every quality together
+// (probe 2026-11-26: 41 videos, never some). So a few of the pieces to ask, spread from the first
+// to the last (like the saver, muted_sound.rs), answer for all of them, colored at once: a 24 h
+// stream's thousands of pieces cost a few questions. Gone is final, for every quality (only the
+// saved sound is left); "there" goes stale like a piece's answer (recheckAhead asks again). Answers
+// that disagree (never seen): each piece asked by itself from then on, like .ts.
+const SAMPLE = 5
+let mp4Answer = null // the video's last answer: { sound: 'there' or 'gone', at } (performance.now())
+let mp4Asking = null // the sample being asked: its answer's promise (shared, one at a time)
+let mp4Mixed = false
+// count pieces spread from the first to the last (all of them when there are no more)
+const spread = (pieces, count) => (pieces.length <= count ? pieces : Array.from({ length: count }, (_, index) => pieces[Math.floor((index * (pieces.length - 1)) / (count - 1))]))
+// The sample's answer: 'there', 'gone', 'mixed', or '' when only passing failures came (asked again
+// like a piece's check, then left as they are)
+async function askSample(pieces) {
+  for (let tries = 0; ; tries++) {
+    const sample = spread(pieces, SAMPLE)
+    const answers = await Promise.all(sample.map((one) => askCopies(one.url)))
+    answers.forEach((answer, index) => { if (answer.way !== undefined) noteWay(sample[index].url, answer.way) })
+    const there = answers.some((answer) => answer.way !== undefined)
+    const gone = answers.some((answer) => answer.way === undefined && !answer.again)
+    if (there || gone) return there && gone ? 'mixed' : there ? 'there' : 'gone'
+    if (tries >= CHECK_RETRIES) return ''
+    await new Promise((done) => setTimeout(done, CHECK_AGAIN_AFTER))
+  }
+}
+// The video's answer: the last one while fresh, else a sample's
+function mp4Sound(pieces) {
+  const last = mp4Answer
+  if (last && (last.sound === 'gone' || performance.now() - last.at < RECHECK_AFTER - RECHECK_MARGIN)) return Promise.resolve(last)
+  mp4Asking ??= askSample(pieces).then((sound) => {
+    mp4Asking = null
+    const answer = { sound, at: performance.now() }
+    if (sound === 'there' || sound === 'gone') mp4Answer = answer
+    return answer
+  })
+  return mp4Asking
+}
+function checkMp4(queue) {
+  const done = Promise.all([mp4Sound(queue), savedReady]).then(([answer]) => {
+    for (const one of queue) piecesAsking.delete(one.url)
+    if (answer.sound === 'mixed') {
+      mp4Mixed = true
+      for (const one of queue) pieceChecks.delete(one.url)
+      return checkUncut(queue)
+    }
+    // Gone: the muted pieces of every quality read so far too
+    const everyMuted = () => (hls?.levels ?? []).flatMap((level) => level.details?.fragments ?? []).filter((one) => MUTED_PIECE.test(one.url))
+    const pieces = answer.sound === 'gone' ? [...queue, ...everyMuted()] : answer.sound === 'there' ? queue : []
+    for (const { url } of pieces) {
+      if (playedPieces.has(url)) continue // its download answered, which outranks a check
+      pieceChecks.set(url, done)
+      soundNowhere.delete(url)
+      if (answer.sound === 'there' || isSaved(url)) {
+        setSound(url, answer.sound === 'there' ? 'uncut' : 'saved')
+        soundSeen.set(url, answer.at)
+      } else {
+        setSound(url, 'muted')
+        soundNowhere.add(url)
+      }
+    }
+    drawMuted()
+  })
+  for (const one of queue) {
+    pieceChecks.set(one.url, done)
+    piecesAsking.add(one.url)
+  }
+  return done
+}
+
 // When a quality's list loads or it starts playing: all its muted pieces not asked yet, a few at a
 // time, the bar redrawn as answers come. Only the quality playing (hls.js reads others' lists too).
+// .mp4 videos: a few of them for all (checkMp4).
 let mutedTimer = null
 const drawMutedSoon = () => { mutedTimer ??= setTimeout(() => { mutedTimer = null; drawMuted() }, 300) }
 function checkUncut(pieces) {
   const queue = pieces.filter((one) => MUTED_PIECE.test(one.url) && !pieceChecks.has(one.url))
   drawMuted()
   if (!queue.length) return
+  if (pieceOf(queue[0].url).kind === 'mp4' && !mp4Mixed) return checkMp4(queue)
   const now = video.currentTime
   const distance = (one) => (one.start + one.duration < now ? now - one.start - one.duration : Math.max(one.start - now, 0))
   queue.sort((a, b) => distance(a) - distance(b))
@@ -1037,7 +1121,11 @@ class PieceLoader extends Hls.DefaultConfig.loader {
     setSound(context.url, state)
     drawMutedSoon()
     // Its check said there was sound, and its own is gone: the next pieces' checks are stale too
-    if (before !== 'muted' && why?.why === 'refused' && context.frag) recheckAhead(context.frag.start, true)
+    // (an .mp4 video's answer for all of them too)
+    if (before !== 'muted' && why?.why === 'refused' && context.frag) {
+      if (pieceOf(context.url).kind === 'mp4' && mp4Answer?.sound === 'there') mp4Answer = null
+      recheckAhead(context.frag.start, true)
+    }
   }
   abort() {
     this.stopped = true

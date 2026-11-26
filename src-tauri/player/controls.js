@@ -1595,8 +1595,8 @@ function playerControls(env, media) {
   // Everything drawn again, for a player whose video events don't tell about every change
   // ---- What's playing: a dim last line in the ⚙️ menu --------------------------------------------
   // The size from the picture itself; frames and video data per second measured over the last few
-  // seconds played (per second of video, so pauses and speed don't change them); the codec and
-  // the source from the player (media.info).
+  // seconds played (per second of video, so pauses and speed don't change them); the codec, the
+  // pieces' format (Twitch: .ts or .mp4) and the source from the player (media.info).
   const CODECS = { avc1: 'H.264', avc3: 'H.264', hvc1: 'HEVC', hev1: 'HEVC', vp09: 'VP9', vp9: 'VP9', vp8: 'VP8', av01: 'AV1' }
   const codecName = (codec) => (codec ? CODECS[codec.split('.')[0]] || codec.split('.')[0] : '')
   let samples = []
@@ -1621,6 +1621,7 @@ function playerControls(env, media) {
     const info = media.info?.() || {}
     const codec = codecName(info.codec)
     if (codec) parts.push(codec)
+    if (info.format) parts.push(info.format)
     if (span >= 1 && last.bytes > first.bytes) parts.push(`${numbers.format(Math.round(((last.bytes - first.bytes) * 8) / span / 1e5) / 10)} Mb/s`)
     return [...parts, ...(info.extra || [])].join(' · ')
   }
