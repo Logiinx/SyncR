@@ -1,5 +1,5 @@
 // Opening Settings on one section from elsewhere: a module's ⚙️ (Video, Games), the Hardware
-// widget's menu, the taskbar battery ('mouse-battery': Hardware, scrolled to it). App.tsx listens.
+// widget's menu, the taskbar battery. App.tsx listens.
 export type SettingsStart = 'video' | 'games' | 'hardware' | 'mouse-battery' | 'spotify'
 
 export function openSettings(start: SettingsStart) {

@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import Dialog from './Dialog'
 import InfoTip from './InfoTip'
-import { SettingRow } from './SettingsCard'
+import { ModuleSwitch, SettingRow } from './SettingsCard'
 import { clockTime } from './dates'
 import { loadBackground } from './desktop'
 import { percentText, t } from './i18n'
 import { withIcon } from './richText'
 import { LOW_LEVELS, saveMouseBattery, useMouseBattery, useMouseBatteryStatus } from './mouseBattery'
 
-// The bottom of Settings → Hardware (a click on the taskbar strip scrolls there): on or off, what
-// it shows now, and the low level (mouseBattery.ts). Usable while the Hardware widget is off.
-export default function MouseBatteryPart() {
+// Settings → Mouse battery (a click on the taskbar strip opens it): on or off, what it shows now,
+// and the low level (mouseBattery.ts)
+export default function MouseBatterySection() {
   const settings = useMouseBattery()
   // Turning it on while ✕ quits SyncR warns once: the battery only shows while SyncR runs
   const [quitWarning, setQuitWarning] = useState(false)
@@ -28,19 +28,13 @@ export default function MouseBatteryPart() {
 
   return (
     <>
-      <h4 className="settings-card-sub mouse-battery-part">{t('Mouse battery')}</h4>
-      <SettingRow
-        label={
-          <>
-            {t('Show in the taskbar')}
-            <InfoTip label={t('About the mouse battery')}>
-              {t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.')}
-            </InfoTip>
-          </>
-        }
-      >
-        <input type="checkbox" checked={settings.on} onChange={(e) => toggle(e.target.checked)} />
-      </SettingRow>
+      <ModuleSwitch
+        name={t('Mouse battery')}
+        aboutLabel={t('About the mouse battery')}
+        about={t('Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.')}
+        on={settings.on}
+        onChange={toggle}
+      />
       <fieldset className="settings-part" disabled={!settings.on}>
         <SettingRow
           label={

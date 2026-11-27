@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import InfoTip from './InfoTip'
-import MouseBatteryPart from './MouseBatterySettings'
 import { ModuleSwitch, SettingRow } from './SettingsCard'
 import { decimal, percentText, t } from './i18n'
 import {
@@ -93,7 +92,7 @@ export default function HardwareSection() {
         on={settings.on}
         onChange={toggleHardware}
       />
-      {/* Off: everything about the widget grayed (the mouse battery stays usable) */}
+      {/* Off: everything about the widget grayed */}
       <fieldset className="settings-part" disabled={!settings.on}>
         <h4 className="settings-card-sub">{t('Readings')}</h4>
         <SettingRow
@@ -242,7 +241,6 @@ export default function HardwareSection() {
         <h4 className="settings-card-sub">{groupName('memory')}</h4>
         {row('ram')}
       </fieldset>
-      <MouseBatteryPart />
     </>
   )
 }

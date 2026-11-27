@@ -199,7 +199,7 @@ export const settings = {
   // Modules: Mouse battery (MouseBatterySettings.tsx, mouseBattery.ts)
   Modules: 'Modules',
   'Mouse battery': 'Batterie de la souris',
-  'Show in the taskbar': 'Afficher dans la barre des tâches',
+  'Mouse battery|sidebar': 'Batterie souris',
   'About the mouse battery': 'À propos de la batterie de la souris',
   'Shows the battery of a Teevolution Terra Pro mouse (8K receiver) in the taskbar, next to the clock.':
     'Affiche la batterie d’une souris Teevolution Terra Pro (récepteur 8K) dans la barre des tâches, près de l’horloge.',

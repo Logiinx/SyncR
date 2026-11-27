@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, Music, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, Mouse, Music, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { useBack } from './backStack'
@@ -38,6 +38,7 @@ import VideoSection from './VideoSettings'
 import GamesSection from './GamesSettings'
 import HardwareSection from './HardwareSettings'
 import SpotifySection from './SpotifySettings'
+import MouseBatterySection from './MouseBatterySettings'
 import MailSection from './MailSettings'
 import { useModuleOn } from './modules'
 import { useMouseBattery } from './mouseBattery'
@@ -120,16 +121,14 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   }
   // The section shown on the right of the sidebar: the last one looked at on this device (PC).
   // On a phone the list shows first and a section opens in its place (phoneOpen).
-  const startSection = start === 'mouse-battery' ? 'hardware' : start
   const [section, setSection] = useState(() => {
-    if (startSection) write(SECTION_KEY, startSection)
-    return startSection ?? read(SECTION_KEY, 'notes')
+    if (start) write(SECTION_KEY, start)
+    return start ?? read(SECTION_KEY, 'notes')
   })
-  const [phoneOpen, setPhoneOpen] = useState(!!startSection)
+  const [phoneOpen, setPhoneOpen] = useState(!!start)
   const pageRef = useRef<HTMLDivElement>(null)
-  // part: a selector inside the section to scroll to (Accounts' rows: Steam, Google Calendar; the
-  // taskbar battery: Hardware's mouse battery, at the bottom)
-  const partToShow = useRef<string | null>(start === 'mouse-battery' ? '.mouse-battery-part' : null)
+  // part: a selector inside the section to scroll to (Accounts' rows: Steam, Google Calendar)
+  const partToShow = useRef<string | null>(null)
   function openSection(id: string, part?: string) {
     setQuery('')
     setSection(id)
@@ -755,7 +754,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   )
   // The sidebar's sections, in the user's order (Window, Mail and Hardware: PC only; Video where
   // the Worker allows it), the modules under their heading; Accounts sits at the bottom. off: a
-  // module turned off, grayed (Hardware: the widget and the mouse battery both off).
+  // module turned off, grayed.
   const sections = [
     { id: 'notes', icon: NotebookPen, name: t('Notes'), content: notesCard },
     { id: 'links', icon: Link, name: t('Links'), content: linksCard },
@@ -765,7 +764,8 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     { id: 'games', icon: Gamepad2, name: t('Games'), content: <GamesSection proxyReady={proxyStatus.ok} />, module: true, off: !gamesOn },
     { id: 'mail', icon: Mail, name: t('Mail'), content: (isTauri() || import.meta.env.DEV) && <MailSection />, module: true, off: !mailOn },
     { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true, off: !videoModuleOn },
-    { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
+    { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on },
+    { id: 'mouse-battery', icon: Mouse, name: t('Mouse battery|sidebar'), content: isTauri() && <MouseBatterySection />, module: true, off: !mouseBattery.on },
     { id: 'spotify', icon: Music, name: t('Spotify'), content: isTauri() && <SpotifySection />, module: true, off: !spotify.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)
