@@ -257,7 +257,7 @@ fn widget_locked() -> bool {
   lock(&CONFIG).as_ref().is_some_and(|config| config.locked)
 }
 
-// Dragged there (or moved off a monitor that went): kept here too, so a widget made again (Explorer
+// Dragged there: kept here too, so a widget made again (Explorer
 // restarted, "on top" switched) comes back there before the page sends its settings again
 fn widget_moved(place: (i32, i32)) {
   if let Some(config) = lock(&CONFIG).as_mut() {

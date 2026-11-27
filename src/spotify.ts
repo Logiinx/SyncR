@@ -114,7 +114,7 @@ export function startSpotify() {
     const size = nextSize(current.size, step)
     if (size !== current.size) saveSpotify({ size })
   })
-  // The widget was dragged (or its monitor went): kept here; Rust knows it already
+  // The widget was dragged: kept here; Rust knows it already
   void listen<[number, number]>('spotify-widget-moved', ({ payload: place }) => {
     current = { ...current, place }
     write(KEY, current)

@@ -11,6 +11,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** long song and artist names scroll in the Spotify strip and widget (PC only)
 - **Changed:** Mouse battery has its own place in Settings → Modules (PC only)
 - **Fixed:** no browser menu on right-click, no restart with Ctrl+R or F5 (PC only)
+- **Fixed:** the Hardware widget back in its spot when a monitor wakes up (PC only)
 
 **Video** (PC only)
 - **New:** a black player for OLED screens, in Settings → Video

@@ -7,7 +7,8 @@
 // every window, never comes to the front, and stays on Win+D. "Always on top": a window of its own
 // instead, above the others. Dragged anywhere to move it (not when locked); where it's left goes
 // back to the page, which saves it. Right-click: its menu (widget_menu.rs). First time: top left of the 2nd monitor (the
-// main one if there's only one); a saved place on no monitor any more: top left of the main one.
+// main one if there's only one); while the saved place's monitor is gone, that same corner, then
+// back where it was once the monitor returns (widget_place::place_now).
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
@@ -15,7 +16,7 @@
 use super::lock;
 use crate::mouse_battery::gdi::Canvas;
 use crate::widget_menu::{self, Owner};
-use crate::widget_place::{desktop, dpi_at, main_monitor, margin, on_a_monitor, to_parent, window_place, work_area};
+use crate::widget_place::{desktop, dpi_at, keep_inside, main_monitor, margin, place_now, to_parent, window_place, work_area, Placed};
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicU8, Ordering};
@@ -328,6 +329,10 @@ thread_local! {
   };
   // A right-click caught by the hook over the widget: its release opens the menu
   static RIGHT_PRESSED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+  // Waiting in the first-time corner while the saved place's monitor is gone (place_now)
+  static AWAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+  // Where a drag started (a click starts one too)
+  static DRAG_FROM: std::cell::Cell<Option<(i32, i32)>> = const { std::cell::Cell::new(None) };
 }
 
 fn run(start: u64) {
@@ -407,13 +412,8 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
       }
       0
     }
-    // A monitor came or went: a widget left on no monitor goes to the main one
+    // A monitor came or went: away from it, or back to it, at once (place_now; else the next second)
     WM_DISPLAYCHANGE => {
-      LOCAL.with(|local| {
-        if let Ok(mut local) = local.try_borrow_mut() {
-          rescue(&mut local);
-        }
-      });
       show();
       0
     }
@@ -464,15 +464,22 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
     // Click-through: a drag started with Ctrl held goes on after Ctrl is let go (follow_mouse)
     WM_ENTERSIZEMOVE => {
       DRAGGING.store(true, Ordering::SeqCst);
+      DRAG_FROM.set(window_place(window));
       0
     }
-    // Let go after a drag: the page saves the new place; another monitor may need another scale
+    // Let go after a drag: kept here and saved by the page; another monitor may need another
+    // scale. A plain click (Windows starts a drag on it too) isn't a new place: one waiting away
+    // from its gone monitor (place_now) stays away.
     WM_EXITSIZEMOVE => {
       DRAGGING.store(false, Ordering::SeqCst);
-      let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-      if unsafe { GetWindowRect(window, &mut rect) } != 0 {
+      let from = DRAG_FROM.take();
+      if let Some(place) = keep_inside(window).filter(|&place| Some(place) != from) {
+        if let Some(content) = lock(&CONTENT).as_mut() {
+          content.place = Some(place); // a widget made again before the page sends it comes back here
+        }
+        AWAY.set(false);
         if let Some(app) = lock(&APP).clone() {
-          let _ = app.emit("hardware-widget-moved", (rect.left, rect.top));
+          let _ = app.emit("hardware-widget-moved", place);
         }
       }
       let controller = *lock(&CONTROLLER);
@@ -693,9 +700,14 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
       hide(local);
     }
   }
-  // Where it goes (screen pixels): where it is, else the saved place, else the first-time corner
+  // Where it goes (screen pixels): where it is, the saved place, or the first-time corner while the
+  // saved place's monitor is gone (place_now). Not while it's being dragged.
   let here = if local.widget.is_null() { None } else { window_place(local.widget) };
-  let place = here.or(content.place.filter(|&(x, y)| on_a_monitor(x, y))).unwrap_or_else(first_place);
+  let placed = match here {
+    Some(at) if DRAGGING.load(Ordering::SeqCst) => Placed { at, moved: false, away: AWAY.get() },
+    _ => place_now(here, content.place, AWAY.get(), first_place),
+  };
+  let place = placed.at;
   let scale = dpi_at(place.0, place.1) as f32 / 96.0 * content.size.clamp(50, 200) as f32 / 100.0;
   if local.painter.is_none() {
     local.painter = Painter::new();
@@ -768,10 +780,11 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
         return false;
       }
     }
-    // Above the desktop's icons; placed only when new or moved by a monitor change (rescue)
-    if local.drawn.is_none() || here.is_none() {
+    // Above the desktop's icons; placed only when new, or moved away from or back to a monitor
+    if local.drawn.is_none() || placed.moved {
       SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
+    AWAY.set(placed.away);
     // On top: Windows keeps all "on top" windows in one layer, where the latest shown wins, so it
     // goes back to the top of that layer every second. Not while its menu is open over it.
     if parent.is_null() && !widget_menu::is_open() {
@@ -780,26 +793,6 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   }
   local.drawn = Some(Drawn { groups: content.groups.clone(), style, scale, width, height });
   true
-}
-
-// Its monitor is gone: to the main monitor's corner (drawn again there, at its scale)
-fn rescue(local: &mut Local) {
-  if local.widget.is_null() {
-    return;
-  }
-  let Some((x, y)) = window_place(local.widget) else { return };
-  if on_a_monitor(x, y) {
-    return;
-  }
-  let (x, y) = corner_of(main_monitor());
-  let corner = to_parent(local.parent, (x, y));
-  unsafe {
-    SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
-  }
-  local.drawn = None;
-  if let Some(app) = lock(&APP).clone() {
-    let _ = app.emit("hardware-widget-moved", (x, y));
-  }
 }
 
 // The first time: the 2nd monitor's corner, or the main one's if there's only one

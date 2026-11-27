@@ -11,6 +11,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** les titres et artistes trop longs défilent dans la barre et le widget Spotify (PC uniquement)
 - **Changé :** la batterie de la souris a sa propre place dans Paramètres → Modules (PC uniquement)
 - **Corrigé :** plus de menu du navigateur au clic droit, ni de redémarrage par Ctrl+R ou F5 (PC uniquement)
+- **Corrigé :** le widget Matériel revient à sa place quand un écran se rallume (PC uniquement)
 
 **Vidéo** (PC uniquement)
 - **Nouveau :** un lecteur noir pour les écrans OLED, dans Paramètres → Vidéo

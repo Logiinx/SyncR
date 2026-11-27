@@ -14,7 +14,8 @@
 // child of its icon view: under every window, stays on Win+D). Press and move a few pixels to drag
 // it (not when locked); press and let go without moving: a click. Where it's left goes back to
 // the page, which saves it. First time: bottom right of the main monitor, just above the taskbar;
-// a saved place on no monitor any more, or a monitor that goes: the same corner.
+// while the saved place's monitor is gone, the same corner, then back where it was once the monitor
+// returns (widget_place::place_now).
 // "Colors from the cover" (on by default): the box takes a dark tint of the cover's main color
 // behind the cover, fading into the plain dark box under the text (look C,
 // .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
@@ -34,7 +35,7 @@ use crate::hardware::widget::{color, text_baseline};
 use crate::mouse_battery::gdi::Canvas;
 use crate::taskbar::Tooltip;
 use crate::widget_menu::{self, Owner};
-use crate::widget_place::{desktop, dpi_at, main_monitor, margin, monitor_dpi, on_a_monitor, to_parent, window_place, work_area};
+use crate::widget_place::{desktop, dpi_at, keep_inside, main_monitor, margin, monitor_dpi, place_now, to_parent, window_place, work_area};
 use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -267,6 +268,8 @@ thread_local! {
   static PRESS: Cell<Option<Press>> = const { Cell::new(None) };
   static DRAGGING: Cell<bool> = const { Cell::new(false) };
   static HOVER: Cell<bool> = const { Cell::new(false) };
+  // Waiting in the main monitor's corner while the saved place's monitor is gone (place_now)
+  static AWAY: Cell<bool> = const { Cell::new(false) };
   static SHAPE: Cell<(f32, f32)> = const { Cell::new((1.0, 0.0)) }; // the drawn scale and side, for the clicks
   // The volume shows in the artist's place; the part of a notch turned so far (fine-turning mice)
   static VOLUME_SHOWN: Cell<bool> = const { Cell::new(false) };
@@ -345,13 +348,8 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
       show(tick);
       0
     }
-    // A monitor came or went: a widget left on no monitor goes to the main one
+    // A monitor came or went: away from it, or back to it, at once (place_now; else the next second)
     WM_DISPLAYCHANGE => {
-      LOCAL.with(|local| {
-        if let Ok(mut local) = local.try_borrow_mut() {
-          rescue(&mut local);
-        }
-      });
       show(true);
       0
     }
@@ -486,9 +484,11 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
   }
 }
 
-// Left after a drag: kept, the page saves it; another monitor may need another scale
+// Left after a drag (pushed back inside a monitor if its corner is on none): kept, the page saves
+// it; another monitor may need another scale
 fn moved(window: HWND) {
-  let Some(place) = window_place(window) else { return };
+  let Some(place) = keep_inside(window) else { return };
+  AWAY.set(false);
   widget_moved(place);
   if let Some(app) = lock(&APP).clone() {
     let _ = app.emit_to("main", "spotify-widget-moved", place);
@@ -589,16 +589,15 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     }
   }
   let side = side_for(now.buttons);
-  // Where it goes (screen pixels): where it is, else the saved place, else the main monitor's corner
+  // Where it goes (screen pixels): where it is, the saved place, or the main monitor's corner while
+  // the saved place's monitor is gone (place_now)
   let here = if local.widget.is_null() { None } else { window_place(local.widget) };
-  let (place, scale) = match here.or(now.place.filter(|&(x, y)| on_a_monitor(x, y))) {
-    Some(place) => (place, dpi_at(place.0, place.1) as f32 / 96.0 * size_scale(now.size)),
-    None => {
-      let monitor = main_monitor();
-      let scale = monitor_dpi(monitor) as f32 / 96.0 * size_scale(now.size);
-      (corner(monitor, pixels(scale, side)), scale)
-    }
-  };
+  let placed = place_now(here, now.place, AWAY.get(), || {
+    let monitor = main_monitor();
+    corner(monitor, pixels(monitor_dpi(monitor) as f32 / 96.0 * size_scale(now.size), side))
+  });
+  let place = placed.at;
+  let scale = dpi_at(place.0, place.1) as f32 / 96.0 * size_scale(now.size);
   if local.painter.is_none() {
     local.painter = Painter::new();
   }
@@ -714,10 +713,11 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
         return false;
       }
     }
-    // Above the desktop's icons; placed only when new or moved by a monitor change (rescue)
-    if local.drawn.is_none() || here.is_none() {
+    // Above the desktop's icons; placed only when new, or moved away from or back to a monitor
+    if local.drawn.is_none() || placed.moved {
       SetWindowPos(local.widget, HWND_TOP, corner.x, corner.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
+    AWAY.set(placed.away);
     // On top: Windows keeps all "on top" windows in one layer, where the latest shown wins, so it
     // goes back to the top of that layer every second. Not while its menu is open over it.
     if parent.is_null() && tick && !widget_menu::is_open() {
@@ -730,29 +730,6 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   SHAPE.set((scale, side));
   local.drawn = Some(look);
   true
-}
-
-// Its monitor is gone: to the main monitor's bottom right (drawn again there, at its scale)
-fn rescue(local: &mut Local) {
-  if local.widget.is_null() {
-    return;
-  }
-  let Some((x, y)) = window_place(local.widget) else { return };
-  if on_a_monitor(x, y) {
-    return;
-  }
-  let monitor = main_monitor();
-  let now = widget_shown();
-  let size = size_scale(now.as_ref().map_or(100, |now| now.size));
-  let side = side_for(now.as_ref().is_some_and(|now| now.buttons));
-  let place = corner(monitor, pixels(monitor_dpi(monitor) as f32 / 96.0 * size, side));
-  let point = to_parent(local.parent, place);
-  unsafe { SetWindowPos(local.widget, HWND_TOP, point.x, point.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE) };
-  local.drawn = None;
-  widget_moved(place);
-  if let Some(app) = lock(&APP).clone() {
-    let _ = app.emit_to("main", "spotify-widget-moved", place);
-  }
 }
 
 fn wide(text: &str) -> Vec<u16> {
