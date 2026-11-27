@@ -42,6 +42,22 @@ const COVER_SIDE: u32 = 128;
 pub struct Config {
   on: bool,
   show_as: String, // "strip" (in the taskbar) · "widget" (floating)
+  #[serde(default)]
+  room: String, // the strip's room for ⏮ ⏭: "grow" (made on hover, to the left) · "keep" (always kept)
+  #[serde(default = "yes")]
+  animations: bool, // the app's Animations setting: ⏮ ⏭ and the cover's ⏯ fade in
+}
+
+fn yes() -> bool {
+  true
+}
+
+// What the reading thread is asked: read again (something changed), or a button was clicked
+pub enum Ask {
+  Check,
+  Toggle,
+  Previous,
+  Next,
 }
 
 // Sent to the page (event "spotify", and by spotify_status): None = Spotify closed or not playing
@@ -68,7 +84,7 @@ static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static SONG: Mutex<Option<Song>> = Mutex::new(None);
 static COVER: Mutex<Option<Arc<Cover>>> = Mutex::new(None);
 static TIP: Mutex<String> = Mutex::new(String::new());
-static WORKER: Mutex<Option<Sender<()>>> = Mutex::new(None);
+static WORKER: Mutex<Option<Sender<Ask>>> = Mutex::new(None);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
   mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -80,12 +96,24 @@ struct Shown {
   artist: String,
   playing: bool,
   cover: Option<Arc<Cover>>,
+  keep_room: bool,
+  animations: bool,
 }
 
 fn strip_shown() -> Option<Shown> {
-  let as_strip = lock(&CONFIG).as_ref().is_some_and(|config| config.show_as == "strip");
-  let song = lock(&SONG).clone().filter(|_| as_strip)?;
-  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover: lock(&COVER).clone() })
+  let (keep_room, animations) = match lock(&CONFIG).as_ref() {
+    Some(config) if config.show_as == "strip" => (config.room == "keep", config.animations),
+    _ => return None,
+  };
+  let song = lock(&SONG).clone()?;
+  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover: lock(&COVER).clone(), keep_room, animations })
+}
+
+// A button on the strip (or the widget) was clicked: the reading thread asks Spotify
+fn ask(what: Ask) {
+  if let Some(worker) = lock(&WORKER).as_ref() {
+    let _ = worker.send(what);
+  }
 }
 
 fn tip() -> String {
@@ -147,7 +175,7 @@ impl Drop for Followed {
   }
 }
 
-fn run(app: AppHandle, receiver: Receiver<()>, wake: Sender<()>) {
+fn run(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
   let Some(manager) = Manager::RequestAsync().and_then(|op| op.join()).ok() else {
     log::warn!("Spotify: Windows' media info isn't available");
     return;
@@ -156,7 +184,7 @@ fn run(app: AppHandle, receiver: Receiver<()>, wake: Sender<()>) {
   // they only send a message; the reading is done here.
   let signal = wake.clone();
   let sessions_token = manager.SessionsChanged(&TypedEventHandler::new(move |_, _| {
-    let _ = signal.send(());
+    let _ = signal.send(Ask::Check);
     Ok(())
   }));
   let mut followed: Option<Followed> = None;
@@ -207,11 +235,18 @@ fn run(app: AppHandle, receiver: Receiver<()>, wake: Sender<()>) {
       strip::refresh();
       let _ = app.emit("spotify", song);
     }
-    // A message: something changed (Windows' signals); closed: the module was turned off
-    match receiver.recv_timeout(CHECK_EVERY) {
-      Ok(()) => while receiver.try_recv().is_ok() {}, // several signals at once: one read
-      Err(RecvTimeoutError::Timeout) => {}
+    // A message: something changed (Windows' signals) or a button was clicked; closed: the
+    // module was turned off. Several at once: each click done, then one read.
+    let mut next = match receiver.recv_timeout(CHECK_EVERY) {
+      Ok(what) => Some(what),
+      Err(RecvTimeoutError::Timeout) => None,
       Err(RecvTimeoutError::Disconnected) => break,
+    };
+    while let Some(what) = next {
+      if let Some(session) = followed.as_ref().map(|followed| &followed.session) {
+        control(session, what);
+      }
+      next = receiver.try_recv().ok();
     }
   }
   drop(followed);
@@ -229,16 +264,29 @@ fn spotify_session(manager: &Manager) -> Option<Session> {
   })
 }
 
-fn follow(session: &Session, wake: &Sender<()>) -> Option<Followed> {
+// Spotify does it (like the media keys); its new state comes back through its change signals
+fn control(session: &Session, what: Ask) {
+  let done = match what {
+    Ask::Check => return,
+    Ask::Toggle => session.TryTogglePlayPauseAsync(),
+    Ask::Previous => session.TrySkipPreviousAsync(),
+    Ask::Next => session.TrySkipNextAsync(),
+  };
+  if !done.and_then(|op| op.join()).unwrap_or(false) {
+    log::warn!("Spotify: the button wasn't taken");
+  }
+}
+
+fn follow(session: &Session, wake: &Sender<Ask>) -> Option<Followed> {
   let (first, second) = (wake.clone(), wake.clone());
   let properties = session
     .MediaPropertiesChanged(&TypedEventHandler::new(move |_, _| {
-      let _ = first.send(());
+      let _ = first.send(Ask::Check);
       Ok(())
     }))
     .ok()?;
   let playback = session.PlaybackInfoChanged(&TypedEventHandler::new(move |_, _| {
-    let _ = second.send(());
+    let _ = second.send(Ask::Check);
     Ok(())
   }));
   match playback {

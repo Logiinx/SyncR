@@ -5,11 +5,17 @@ import { ModuleSwitch, SettingRow } from './SettingsCard'
 import { loadBackground } from './desktop'
 import { t } from './i18n'
 import { withIcon } from './richText'
-import { type ShowAs, saveSpotify, useSpotify, useSpotifySong } from './spotify'
+import { type Room, type ShowAs, saveSpotify, useSpotify, useSpotifySong } from './spotify'
 
 const SHOW_AS: [ShowAs, () => string][] = [
   ['strip', () => t('Taskbar strip')],
   ['widget', () => t('Floating widget')],
+]
+
+// ⏮ ⏭ on the strip: its right edge is held by the battery, so their room comes from the left
+const ROOM: [Room, () => string][] = [
+  ['grow', () => t('Strip grows')],
+  ['keep', () => t('Room kept')],
 ]
 
 // Settings → Spotify (spotify.ts): on or off, strip or widget, and what's playing now
@@ -37,6 +43,15 @@ export default function SpotifySection() {
         <SettingRow label={t('Show as')}>
           <select value={settings.showAs} onChange={(e) => saveSpotify({ showAs: e.target.value as ShowAs })}>
             {SHOW_AS.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name()}
+              </option>
+            ))}
+          </select>
+        </SettingRow>
+        <SettingRow label={t('Buttons on hover')} title={t('Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves.')}>
+          <select value={settings.room} disabled={settings.showAs !== 'strip'} onChange={(e) => saveSpotify({ room: e.target.value as Room })}>
+            {ROOM.map(([id, name]) => (
               <option key={id} value={id}>
                 {name()}
               </option>

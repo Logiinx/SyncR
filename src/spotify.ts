@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { animationsOn } from './animations'
 import { read, write } from './localState'
 import { subscribe as onLanguageChange, t } from './i18n'
 
@@ -10,15 +11,17 @@ import { subscribe as onLanguageChange, t } from './i18n'
 // and on every change. Off: Rust reads nothing.
 
 export type ShowAs = 'strip' | 'widget'
+export type Room = 'grow' | 'keep'
 
 export interface SpotifySettings {
   on: boolean
   showAs: ShowAs // in the taskbar, left of the mouse battery, or floating on the desktop
+  room: Room // the strip's room for ⏮ ⏭: made on hover (it grows to the left) or always kept
   warned: boolean // "✕ quits SyncR, and Spotify's song with it" was shown once
 }
 
 const KEY = 'syncr.spotify'
-const DEFAULTS: SpotifySettings = { on: false, showAs: 'strip', warned: false }
+const DEFAULTS: SpotifySettings = { on: false, showAs: 'strip', room: 'grow', warned: false }
 
 let current: SpotifySettings = { ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) }
 const listeners = new Set<() => void>()
@@ -43,8 +46,8 @@ export function useSpotify() {
 
 function send() {
   if (!isTauri()) return
-  const { on, showAs } = current
-  invoke('spotify_config', { config: { on, showAs } }).catch(console.error)
+  const { on, showAs, room } = current
+  invoke('spotify_config', { config: { on, showAs, room, animations: animationsOn() } }).catch(console.error)
 }
 
 // Main window only (main.tsx), once at start
@@ -61,6 +64,13 @@ export function startSpotify() {
     sendTip()
   }).then(() => current.on && send())
   onLanguageChange(sendTip)
+  // Settings → Animations changed (appearance.ts sets a class on the page): the buttons' fade too
+  let animations = animationsOn()
+  new MutationObserver(() => {
+    if (animationsOn() === animations) return
+    animations = animationsOn()
+    if (current.on) send()
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 }
 
 // "Title / Artist / Album: …", one per line (Windows' tooltip)

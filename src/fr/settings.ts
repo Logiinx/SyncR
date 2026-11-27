@@ -214,6 +214,11 @@ export const settings = {
   'Show as': 'Affichage',
   'Taskbar strip': 'Barre des tâches',
   'Floating widget': 'Widget flottant',
+  'Buttons on hover': 'Boutons au survol',
+  'Strip grows': 'La barre s’élargit',
+  'Room kept': 'Place gardée',
+  'Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves.':
+    'La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge.',
   'Now playing': 'En cours de lecture',
   'Nothing playing in Spotify': 'Rien en lecture dans Spotify',
   'Paused · {artist}': 'En pause · {artist}',
