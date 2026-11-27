@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-27
+
 **Video** (PC only)
 - **Changed:** chat's Black background and Softer text are now under "Look", next to Size
 
