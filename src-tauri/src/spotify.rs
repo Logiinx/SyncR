@@ -46,7 +46,7 @@ pub struct Config {
   on: bool,
   show_as: String, // "strip" (in the taskbar) · "widget" (floating)
   #[serde(default)]
-  room: String, // the strip's room for ⏮ ⏭: "grow" (made on hover, to the left) · "keep" (always kept)
+  room: String, // the strip's room for ⏮ ⏭: "grow" (made on hover, to the left) · "keep" (always kept) · "none" (no ⏮ ⏭)
   #[serde(default = "yes")]
   animations: bool, // the app's Animations setting: ⏮ ⏭ and the cover's ⏯ fade in
 }
@@ -112,18 +112,33 @@ struct Shown {
   playing: bool,
   cover: Option<Arc<Cover>>,
   volume: Option<u8>,
-  keep_room: bool,
+  room: Room,
   animations: bool,
 }
 
+// The strip's room for ⏮ ⏭
+#[derive(Clone, Copy, PartialEq)]
+pub enum Room {
+  Grow, // made on hover, to the left
+  Keep, // always there
+  None, // no ⏮ ⏭ at all
+}
+
 fn strip_shown() -> Option<Shown> {
-  let (keep_room, animations) = match lock(&CONFIG).as_ref() {
-    Some(config) if config.show_as == "strip" => (config.room == "keep", config.animations),
+  let (room, animations) = match lock(&CONFIG).as_ref() {
+    Some(config) if config.show_as == "strip" => {
+      let room = match config.room.as_str() {
+        "keep" => Room::Keep,
+        "none" => Room::None,
+        _ => Room::Grow,
+      };
+      (room, config.animations)
+    }
     _ => return None,
   };
   let song = lock(&SONG).clone()?;
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
-  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, keep_room, animations })
+  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, room, animations })
 }
 
 // A button on the strip (or the widget) was clicked: the reading thread asks Spotify

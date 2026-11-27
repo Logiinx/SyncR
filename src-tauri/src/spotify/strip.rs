@@ -4,7 +4,8 @@
 // cover and text at half strength. Spotify closed, or shown as the widget: no strip.
 // Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the page),
 // ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil. Their room: made on hover (the strip grows
-// to the left, as its right edge is held by the battery) or always kept (Settings → Spotify).
+// to the left, as its right edge is held by the battery) or always kept, or no ⏮ ⏭ at all
+// (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
 // Wheel: Spotify's volume (the reading thread changes it), shown in the artist's place until
 // 1.5 s after the last notch; the strip never gets narrower meanwhile.
@@ -13,7 +14,7 @@
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
 // each frame of the buttons' fade.
 
-use super::{ask, strip_shown, tip, volume_line, Ask, Cover};
+use super::{ask, strip_shown, tip, volume_line, Ask, Cover, Room};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
@@ -105,10 +106,14 @@ struct Layout {
 }
 
 impl Layout {
-  fn new(dpi: u32, text_width: i32, keep_room: bool, open: f32) -> Layout {
+  fn new(dpi: u32, text_width: i32, room: Room, open: f32) -> Layout {
     let size = |px: i32| scaled(px, dpi);
     let full_side = size(26);
-    let side = if keep_room { full_side } else { (full_side as f32 * open).round() as i32 };
+    let side = match room {
+      Room::Keep => full_side,
+      Room::Grow => (full_side as f32 * open).round() as i32,
+      Room::None => 0,
+    };
     let cover_left = size(4) + side;
     let cover_side = size(32);
     let text_left = cover_left + cover_side + size(8);
@@ -182,7 +187,8 @@ struct Local {
   tooltip: Option<Tooltip>,
   drawn: Option<Drawn>,
   measured: Option<Measured>,
-  open: f32, // ⏮ ⏭ coming in: 0 (gone) to 1 (there)
+  buttons: bool, // ⏮ ⏭ come in on hover (not when they're off)
+  open: f32,     // ⏮ ⏭ coming in: 0 (gone) to 1 (there)
   veil: f32, // the cover's veil and ⏯, 0 to 1
   last_frame: Option<Instant>,
   moving: bool, // the frame timer runs
@@ -196,6 +202,7 @@ thread_local! {
       tooltip: None,
       drawn: None,
       measured: None,
+      buttons: true,
       open: 0.0,
       veil: 0.0,
       last_frame: None,
@@ -355,7 +362,7 @@ fn place() {
     if !shown {
       hide(&mut local);
     }
-    let moving = local.drawn.is_some() && (local.open != target(HOVER.get()) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| drawn.look.part == Some(Part::Cover))));
+    let moving = local.drawn.is_some() && (local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| drawn.look.part == Some(Part::Cover))));
     if moving != local.moving {
       unsafe {
         if moving {
@@ -416,7 +423,8 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
   let seconds = local.last_frame.map_or(FRAME_MS as f32 / 1000.0, |last| frame.duration_since(last).as_secs_f32()).min(0.033);
   local.last_frame = Some(frame);
   let hover = HOVER.get();
-  local.open = fade(local.open, target(hover), seconds, now.animations);
+  local.buttons = now.room != Room::None;
+  local.open = fade(local.open, target(hover && local.buttons), seconds, now.animations);
   // The text's width, measured again only for a new song or scale
   let known = local.measured.as_ref().is_some_and(|measured| measured.title == now.title && measured.artist == now.artist && measured.dpi == spot.dpi);
   if !known {
@@ -430,7 +438,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     let Some(volume_width) = measure(&now.title, volume, spot.dpi) else { return false };
     text_width = text_width.max(volume_width);
   }
-  let layout = Layout::new(spot.dpi, text_width, now.keep_room, ease(local.open));
+  let layout = Layout::new(spot.dpi, text_width, now.room, ease(local.open));
   let width = layout.width;
   let x = spot.left_of_battery() - width;
   // The part under the mouse, where the strip is now (it may have just grown under it)

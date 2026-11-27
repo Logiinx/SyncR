@@ -11,12 +11,12 @@ import { subscribe as onLanguageChange, t } from './i18n'
 // and on every change. Off: Rust reads nothing.
 
 export type ShowAs = 'strip' | 'widget'
-export type Room = 'grow' | 'keep'
+export type Room = 'grow' | 'keep' | 'none'
 
 export interface SpotifySettings {
   on: boolean
   showAs: ShowAs // in the taskbar, left of the mouse battery, or floating on the desktop
-  room: Room // the strip's room for ⏮ ⏭: made on hover (it grows to the left) or always kept
+  room: Room // the strip's room for ⏮ ⏭: made on hover (it grows to the left), always kept, or no ⏮ ⏭ at all (just ⏯)
   warned: boolean // "✕ quits SyncR, and Spotify's song with it" was shown once
 }
 
