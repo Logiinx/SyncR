@@ -53,11 +53,15 @@ function send() {
 // Main window only (main.tsx), once at start
 export function startSpotify() {
   if (!isTauri()) return
-  // The taskbar strip's tooltip, in the app's language: after each song change and when the
-  // language changes (listening before the settings go: the first song comes as an event)
+  // The taskbar strip's words, in the app's language: its tooltip, and the volume as its tooltip
+  // line and as the strip shows it while the wheel turns (Rust puts the number in). After each
+  // song change and when the language changes (listening before the settings go: the first song
+  // comes as an event).
   let latest: Song | null = null
   const sendTip = () => {
-    if (latest) invoke('spotify_tip', { text: tipText(latest) }).catch(console.error)
+    if (!latest) return
+    const words = { text: tipText(latest), volumeTip: t('Volume: {percent}%'), volumeLine: t('Volume {percent}%') }
+    invoke('spotify_tip', words).catch(console.error)
   }
   void listen<Song | null>('spotify', (event) => {
     latest = event.payload

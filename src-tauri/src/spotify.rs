@@ -4,8 +4,9 @@
 // One thread while on: it reads the song when Windows says something changed (song, play/pause,
 // apps opening or closing) and every second anyway, then tells the page ("spotify" event) only
 // when something differs. Off: no thread, nothing is read.
-// Shown as a strip in the taskbar (strip.rs, its own thread, drawn from CONFIG, SONG, COVER and
-// TIP) or, later, a floating widget.
+// Its volume in Windows' mixer (volume.rs) is read at each check too, and changed by the wheel.
+// Shown as a strip in the taskbar (strip.rs, its own thread, drawn from CONFIG, SONG, COVER,
+// VOLUME and TIP) or, later, a floating widget.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
 use base64::Engine;
@@ -24,8 +25,10 @@ use windows::Graphics::Imaging::{
   ExifOrientationMode,
 };
 use windows::Storage::Streams::{DataReader, IRandomAccessStream};
+use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_MULTITHREADED};
 
 mod strip;
+mod volume;
 
 const CHECK_EVERY: Duration = Duration::from_secs(1);
 // Spotify may give the new song's words before its cover: the cover is read again this many times
@@ -52,12 +55,14 @@ fn yes() -> bool {
   true
 }
 
-// What the reading thread is asked: read again (something changed), or a button was clicked
+// What the reading thread is asked: read again (something changed), a button was clicked, or the
+// wheel turned (notches, up above 0)
 pub enum Ask {
   Check,
   Toggle,
   Previous,
   Next,
+  Volume(i32),
 }
 
 // Sent to the page (event "spotify", and by spotify_status): None = Spotify closed or not playing
@@ -78,12 +83,22 @@ pub struct Cover {
   side: usize,
 }
 
-// The settings while on (None: off), the song now, its cover's pixels, the strip's tooltip (made
-// by the page, in its language) and the reading thread's channel (dropping it ends the thread)
+// The page's words, in its language: the strip's tooltip, and the volume as its tooltip line and
+// as the strip shows it while the wheel turns ("{percent}" stands for the number)
+#[derive(Default)]
+struct Words {
+  tip: String,
+  volume_tip: String,
+  volume_line: String,
+}
+
+// The settings while on (None: off), the song now, its cover's pixels, Spotify's volume (None:
+// unknown), the page's words and the reading thread's channel (dropping it ends the thread)
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static SONG: Mutex<Option<Song>> = Mutex::new(None);
 static COVER: Mutex<Option<Arc<Cover>>> = Mutex::new(None);
-static TIP: Mutex<String> = Mutex::new(String::new());
+static VOLUME: Mutex<Option<u8>> = Mutex::new(None);
+static WORDS: Mutex<Words> = Mutex::new(Words { tip: String::new(), volume_tip: String::new(), volume_line: String::new() });
 static WORKER: Mutex<Option<Sender<Ask>>> = Mutex::new(None);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -96,6 +111,7 @@ struct Shown {
   artist: String,
   playing: bool,
   cover: Option<Arc<Cover>>,
+  volume: Option<u8>,
   keep_room: bool,
   animations: bool,
 }
@@ -106,7 +122,8 @@ fn strip_shown() -> Option<Shown> {
     _ => return None,
   };
   let song = lock(&SONG).clone()?;
-  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover: lock(&COVER).clone(), keep_room, animations })
+  let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
+  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, keep_room, animations })
 }
 
 // A button on the strip (or the widget) was clicked: the reading thread asks Spotify
@@ -116,8 +133,19 @@ fn ask(what: Ask) {
   }
 }
 
+// The tooltip, with a volume line when it's known
 fn tip() -> String {
-  lock(&TIP).clone()
+  let words = lock(&WORDS);
+  match *lock(&VOLUME) {
+    Some(volume) if !words.tip.is_empty() => format!("{}
+{}", words.tip, words.volume_tip.replace("{percent}", &volume.to_string())),
+    _ => words.tip.clone(),
+  }
+}
+
+// "Volume 72%", shown in the artist's place while the wheel turns
+fn volume_line(volume: u8) -> String {
+  lock(&WORDS).volume_line.replace("{percent}", &volume.to_string())
 }
 
 // The battery strip moved (taskbar.rs): Spotify's goes along
@@ -133,6 +161,7 @@ pub fn spotify_config(app: AppHandle, config: Config) {
     *lock(&CONFIG) = None;
     *lock(&SONG) = None;
     *lock(&COVER) = None;
+    *lock(&VOLUME) = None;
     if worker.take().is_some() {
       strip::stop(); // the reading thread ends at its next wait
     }
@@ -150,10 +179,10 @@ pub fn spotify_config(app: AppHandle, config: Config) {
   *worker = Some(sender);
 }
 
-// The strip's tooltip, sent by the page after each song change and when the language changes
+// The page's words, sent after each song change and when the language changes
 #[tauri::command]
-pub fn spotify_tip(text: String) {
-  *lock(&TIP) = text;
+pub fn spotify_tip(text: String, volume_tip: String, volume_line: String) {
+  *lock(&WORDS) = Words { tip: text, volume_tip, volume_line };
   strip::refresh();
 }
 
@@ -176,6 +205,15 @@ impl Drop for Followed {
 }
 
 fn run(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
+  // COM for the volume (Windows' mixer); undone when the thread ends
+  let com = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_ok();
+  read_loop(app, receiver, wake);
+  if com {
+    unsafe { CoUninitialize() };
+  }
+}
+
+fn read_loop(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
   let Some(manager) = Manager::RequestAsync().and_then(|op| op.join()).ok() else {
     log::warn!("Spotify: Windows' media info isn't available");
     return;
@@ -231,9 +269,13 @@ fn run(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
       *shown = song.clone();
       changed
     };
+    let volume = if session.is_some() { volume::read() } else { None };
+    let volume_changed = set_volume(volume);
     if changed {
-      strip::refresh();
       let _ = app.emit("spotify", song);
+    }
+    if changed || volume_changed {
+      strip::refresh();
     }
     // A message: something changed (Windows' signals) or a button was clicked; closed: the
     // module was turned off. Several at once: each click done, then one read.
@@ -243,8 +285,18 @@ fn run(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
       Err(RecvTimeoutError::Disconnected) => break,
     };
     while let Some(what) = next {
-      if let Some(session) = followed.as_ref().map(|followed| &followed.session) {
-        control(session, what);
+      match what {
+        Ask::Volume(notches) => {
+          if let Some(volume) = volume::change(notches) {
+            set_volume(Some(volume));
+            strip::refresh();
+          }
+        }
+        what => {
+          if let Some(session) = followed.as_ref().map(|followed| &followed.session) {
+            control(session, what);
+          }
+        }
       }
       next = receiver.try_recv().ok();
     }
@@ -253,6 +305,14 @@ fn run(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
   if let Ok(token) = sessions_token {
     let _ = manager.RemoveSessionsChanged(token);
   }
+}
+
+// true: it differs from the last one
+fn set_volume(volume: Option<u8>) -> bool {
+  let mut known = lock(&VOLUME);
+  let changed = *known != volume;
+  *known = volume;
+  changed
 }
 
 // Spotify's session among the apps Windows knows are playing something (its id is "Spotify.exe",
@@ -267,7 +327,7 @@ fn spotify_session(manager: &Manager) -> Option<Session> {
 // Spotify does it (like the media keys); its new state comes back through its change signals
 fn control(session: &Session, what: Ask) {
   let done = match what {
-    Ask::Check => return,
+    Ask::Check | Ask::Volume(_) => return,
     Ask::Toggle => session.TryTogglePlayPauseAsync(),
     Ask::Previous => session.TrySkipPreviousAsync(),
     Ask::Next => session.TrySkipNextAsync(),

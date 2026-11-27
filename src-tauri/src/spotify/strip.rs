@@ -6,12 +6,14 @@
 // ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil. Their room: made on hover (the strip grows
 // to the left, as its right edge is held by the battery) or always kept (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
+// Wheel: Spotify's volume (the reading thread changes it), shown in the artist's place until
+// 1.5 s after the last notch; the strip never gets narrower meanwhile.
 // Its own thread, like the battery's: once inside the taskbar it shares Windows' input with it, so
 // it never waits on anything slow (the reading thread decodes the cover and talks to Spotify).
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
 // each frame of the buttons' fade.
 
-use super::{ask, strip_shown, tip, Ask, Cover};
+use super::{ask, strip_shown, tip, volume_line, Ask, Cover};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
@@ -28,12 +30,14 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, KillTimer, PostMessageW,
   PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CLOSE, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
-  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_SETTINGCHANGE, WM_TIMER, WS_EX_TOOLWINDOW, WS_POPUP,
+  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_SETTINGCHANGE, WM_TIMER, WHEEL_DELTA, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
 const PLACE_TIMER: usize = 1;
 const MOTION_TIMER: usize = 2; // the buttons' fade: one frame each time
+const VOLUME_TIMER: usize = 3; // the volume goes back to the artist
+const VOLUME_MS: u32 = 1500;
 const FRAME_MS: u32 = 15;
 const FADE_SECONDS: f32 = 0.12;
 const CONTROLLER_CLASS: &str = "SyncRSpotifyControl";
@@ -202,6 +206,9 @@ thread_local! {
   static HOVER: Cell<bool> = const { Cell::new(false) };
   static LAYOUT: Cell<Layout> = const { Cell::new(Layout { side: 0, cover_left: 0, cover_side: 0, text_left: 0, text_right: 0, width: 0 }) };
   static PRESSED: Cell<Option<Part>> = const { Cell::new(None) };
+  // The volume shows in the artist's place; the part of a notch turned so far (fine-turning mice)
+  static VOLUME_SHOWN: Cell<bool> = const { Cell::new(false) };
+  static WHEEL_REST: Cell<i32> = const { Cell::new(0) };
 }
 
 fn run(start: u64) {
@@ -245,6 +252,10 @@ fn run(start: u64) {
 unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
   match message {
     WM_TIMER | WM_REFRESH => {
+      if message == WM_TIMER && wparam == VOLUME_TIMER {
+        unsafe { KillTimer(window, VOLUME_TIMER) };
+        VOLUME_SHOWN.set(false);
+      }
       place();
       0
     }
@@ -316,6 +327,22 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
       }
       0
     }
+    // Each notch: 2 % (the reading thread changes it, then the strip is drawn again)
+    WM_MOUSEWHEEL => {
+      let turned = WHEEL_REST.get() + ((wparam >> 16) & 0xFFFF) as u16 as i16 as i32;
+      let notches = turned / WHEEL_DELTA as i32;
+      WHEEL_REST.set(turned - notches * WHEEL_DELTA as i32);
+      if notches != 0 {
+        ask(Ask::Volume(notches));
+      }
+      VOLUME_SHOWN.set(true);
+      let controller = *lock(&CONTROLLER);
+      if controller != 0 {
+        unsafe { SetTimer(controller as HWND, VOLUME_TIMER, VOLUME_MS, None) }; // again from now
+      }
+      refresh();
+      0
+    }
     _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
   }
 }
@@ -357,6 +384,8 @@ fn hide(local: &mut Local) {
   local.veil = 0.0;
   HOVER.set(false);
   PRESSED.set(None);
+  VOLUME_SHOWN.set(false);
+  WHEEL_REST.set(0);
   LAYOUT.set(Layout::default());
 }
 
@@ -394,7 +423,13 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     let Some(text_width) = measure(&now.title, &now.artist, spot.dpi) else { return false };
     local.measured = Some(Measured { title: now.title.clone(), artist: now.artist.clone(), dpi: spot.dpi, width: text_width });
   }
-  let text_width = local.measured.as_ref().map_or(0, |measured| measured.width);
+  let mut text_width = local.measured.as_ref().map_or(0, |measured| measured.width);
+  // The volume in the artist's place while the wheel turns: as wide as it needs, never narrower
+  let volume = now.volume.filter(|_| VOLUME_SHOWN.get()).map(volume_line);
+  if let Some(volume) = &volume {
+    let Some(volume_width) = measure(&now.title, volume, spot.dpi) else { return false };
+    text_width = text_width.max(volume_width);
+  }
   let layout = Layout::new(spot.dpi, text_width, now.keep_room, ease(local.open));
   let width = layout.width;
   let x = spot.left_of_battery() - width;
@@ -406,7 +441,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     height: spot.height,
     layout,
     title: now.title,
-    artist: now.artist,
+    artist: volume.unwrap_or(now.artist),
     playing: now.playing,
     cover: now.cover,
     hover,
