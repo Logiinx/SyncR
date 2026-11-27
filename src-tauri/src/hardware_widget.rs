@@ -15,6 +15,7 @@
 use super::lock;
 use crate::mouse_battery::gdi::Canvas;
 use crate::widget_menu::{self, Owner};
+use crate::widget_place::{desktop, dpi_at, main_monitor, margin, on_a_monitor, to_parent, window_place, work_area};
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicU8, Ordering};
@@ -38,15 +39,11 @@ use windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_B8G8R8A8_UNORM;
 use windows::Win32::UI::Shell::SHCreateMemStream;
 use windows_numerics::Matrix3x2;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
-use windows_sys::Win32::Graphics::Gdi::{
-  EnumDisplayMonitors, GetMonitorInfoW, MonitorFromPoint, ScreenToClient, AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, HDC,
-  HMONITOR, MONITORINFO, MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL, MONITOR_DEFAULTTOPRIMARY,
-};
+use windows_sys::Win32::Graphics::Gdi::{EnumDisplayMonitors, AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, HDC, HMONITOR};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetAncestor,
+  CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetAncestor,
   GetCursorPos, GetMessageW, GetParent, GetWindow, GetWindowLongPtrW, GetWindowRect, IsWindow, KillTimer, LoadCursorW, PostMessageW, PostQuitMessage,
   RegisterClassExW, SetTimer, SetWindowLongPtrW, SetWindowPos, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
   UpdateLayeredWindow, WindowFromPoint, GA_ROOT, GWL_EXSTYLE, GW_HWNDPREV, HC_ACTION, HHOOK, MSLLHOOKSTRUCT, HTCAPTION,
@@ -118,7 +115,6 @@ impl Look {
     }
   }
 }
-const MARGIN: f32 = 16.0; // from the monitor's corner, the first time
 
 // The widget's colors (index.css), per theme and frame line (hardware.ts); the same as the
 // mockups in design/hardware-looks.html
@@ -684,33 +680,6 @@ fn hide(local: &mut Local) {
   }
 }
 
-// The desktop's icon view, which the widget lives in: inside "Progman", or on older Windows (after
-// a wallpaper change) inside one of the "WorkerW" windows
-fn desktop() -> HWND {
-  unsafe {
-    let view_class = wide("SHELLDLL_DefView");
-    let progman = FindWindowW(wide("Progman").as_ptr(), null());
-    if !progman.is_null() {
-      let view = FindWindowExW(progman, null_mut(), view_class.as_ptr(), null());
-      if !view.is_null() {
-        return view;
-      }
-    }
-    let worker_class = wide("WorkerW");
-    let mut worker: HWND = null_mut();
-    loop {
-      worker = FindWindowExW(null_mut(), worker, worker_class.as_ptr(), null());
-      if worker.is_null() {
-        return null_mut();
-      }
-      let view = FindWindowExW(worker, null_mut(), view_class.as_ptr(), null());
-      if !view.is_null() {
-        return view;
-      }
-    }
-  }
-}
-
 // false: it couldn't be drawn or put on the desktop
 fn draw_and_place(local: &mut Local, content: &Content) -> bool {
   // "Always on top": a window of its own (no parent); else inside the desktop
@@ -833,26 +802,6 @@ fn rescue(local: &mut Local) {
   }
 }
 
-// Screen pixels → inside the desktop (no parent: the screen's own)
-fn to_parent(parent: HWND, (x, y): (i32, i32)) -> POINT {
-  let mut point = POINT { x, y };
-  if !parent.is_null() {
-    unsafe { ScreenToClient(parent, &mut point) };
-  }
-  point
-}
-
-fn window_place(window: HWND) -> Option<(i32, i32)> {
-  let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-  (unsafe { GetWindowRect(window, &mut rect) } != 0).then_some((rect.left, rect.top))
-}
-
-// A point just inside the widget's corner is on a monitor (a few pixels, so a widget pushed to an
-// edge still counts)
-fn on_a_monitor(x: i32, y: i32) -> bool {
-  !unsafe { MonitorFromPoint(POINT { x: x + 8, y: y + 8 }, MONITOR_DEFAULTTONULL) }.is_null()
-}
-
 // The first time: the 2nd monitor's corner, or the main one's if there's only one
 fn first_place() -> (i32, i32) {
   let mut monitors: Vec<HMONITOR> = Vec::new();
@@ -868,39 +817,11 @@ fn first_place() -> (i32, i32) {
   corner_of(second.unwrap_or(main))
 }
 
-fn main_monitor() -> HMONITOR {
-  unsafe { MonitorFromPoint(POINT { x: 0, y: 0 }, MONITOR_DEFAULTTOPRIMARY) }
-}
-
 // A monitor's top left, inside its work area (not under a taskbar), MARGIN in from the edges
 fn corner_of(monitor: HMONITOR) -> (i32, i32) {
-  let mut info = MONITORINFO {
-    cbSize: size_of::<MONITORINFO>() as u32,
-    rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
-    rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 },
-    dwFlags: 0,
-  };
-  // info has its size set, as Windows asks
-  if unsafe { GetMonitorInfoW(monitor, &mut info) } == 0 {
-    return (0, 0);
-  }
-  let margin = (MARGIN * monitor_dpi(monitor) as f32 / 96.0).round() as i32;
-  (info.rcWork.left + margin, info.rcWork.top + margin)
-}
-
-fn dpi_at(x: i32, y: i32) -> u32 {
-  monitor_dpi(unsafe { MonitorFromPoint(POINT { x: x + 8, y: y + 8 }, MONITOR_DEFAULTTONEAREST) })
-}
-
-fn monitor_dpi(monitor: HMONITOR) -> u32 {
-  let (mut x, mut y) = (0u32, 0u32);
-  // monitor comes from MonitorFrom…, which never gives an invalid one with these flags
-  let ok = unsafe { GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut x, &mut y) } == 0;
-  if ok && x > 0 {
-    x
-  } else {
-    96
-  }
+  let Some(work) = work_area(monitor) else { return (0, 0) };
+  let margin = margin(monitor);
+  (work.left + margin, work.top + margin)
 }
 
 fn wide(text: &str) -> Vec<u16> {
@@ -1009,16 +930,7 @@ impl Painter {
     // rounded, a row gets the room left halved and rounded down (CSS half-leading); the line
     // starts on the whole pixel at or above it (`at`). At 175 % the browser paints ½ pixel higher
     // than that, which isn't copied.
-    let baseline = |size: f32, height: f32, centered: bool| {
-      let font = size * scale;
-      let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
-      let room = height * scale - ascent - descent;
-      if centered {
-        (ascent + room / 2.0).round()
-      } else {
-        ascent + (room / 2.0).floor()
-      }
-    };
+    let baseline = |size: f32, height: f32, centered: bool| text_baseline(size, height, scale, centered);
     // A line's top (DIPs) plus an offset in pixels → DIPs, on a whole pixel; the tiny amount keeps
     // a top like 74 × 1.25 = 92.5 from landing just under a whole pixel by float error
     let at = |top: f32, offset: f32| ((top * scale + 0.001).floor() + offset) / scale;
@@ -1243,7 +1155,20 @@ impl Painter {
   }
 }
 
-fn color(rgb: u32, alpha: f32) -> D2D1_COLOR_F {
+// Where the browser paints a line's baseline (pixels from the line's top), for a font of `size`
+// DIPs on a line `height` DIPs tall, at `scale` (see Painter::draw). Also the Spotify widget's.
+pub fn text_baseline(size: f32, height: f32, scale: f32, centered: bool) -> f32 {
+  let font = size * scale;
+  let (ascent, descent) = ((ASCENT * font).round(), (DESCENT * font).round());
+  let room = height * scale - ascent - descent;
+  if centered {
+    (ascent + room / 2.0).round()
+  } else {
+    ascent + (room / 2.0).floor()
+  }
+}
+
+pub fn color(rgb: u32, alpha: f32) -> D2D1_COLOR_F {
   let channel = |shift: u32| ((rgb >> shift) & 0xff) as f32 / 255.0;
   D2D1_COLOR_F { r: channel(16), g: channel(8), b: channel(0), a: alpha }
 }

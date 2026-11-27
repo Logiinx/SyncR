@@ -15,7 +15,7 @@
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
 // each frame of the buttons' fade.
 
-use super::{ask, strip_shown, volume_line, Ask, Cover, Room};
+use super::{ask, shrink, strip_shown, volume_line, Ask, Cover, Room};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
@@ -636,33 +636,4 @@ fn draw(look: &Look) -> Option<Canvas> {
     pixel[3] = (out[3] * 255.0).round().clamp(1.0, 255.0) as u8;
   }
   Some(canvas)
-}
-
-// The cover made `side` pixels square: each new pixel is the average of the ones it covers.
-// Premultiplied blue, green, red as 0–255, alpha as 0–1.
-fn shrink(cover: &Cover, side: usize) -> Vec<f32> {
-  let mut out = vec![0f32; side * side * 4];
-  let from = cover.side;
-  for y in 0..side {
-    let (top, bottom) = (y * from / side, ((y + 1) * from / side).max(y * from / side + 1).min(from));
-    for x in 0..side {
-      let (left, right) = (x * from / side, ((x + 1) * from / side).max(x * from / side + 1).min(from));
-      let mut sum = [0f32; 4];
-      for row in top..bottom {
-        for column in left..right {
-          let at = (row * from + column) * 4;
-          for part in 0..4 {
-            sum[part] += cover.pixels[at + part] as f32;
-          }
-        }
-      }
-      let count = ((bottom - top) * (right - left)) as f32;
-      let at = (y * side + x) * 4;
-      for part in 0..3 {
-        out[at + part] = sum[part] / count;
-      }
-      out[at + 3] = sum[3] / count / 255.0;
-    }
-  }
-  out
 }

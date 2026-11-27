@@ -18,6 +18,13 @@ export interface SpotifySettings {
   showAs: ShowAs // in the taskbar, left of the mouse battery, or floating on the desktop
   room: Room // the strip's room for ⏮ ⏭: made on hover (it grows to the left), always kept, or no ⏮ ⏭ at all (just ⏯)
   warned: boolean // "✕ quits SyncR, and Spotify's song with it" was shown once
+  // The floating widget's: its top left on screen (pixels) once moved, above other windows or on
+  // the desktop, can't be dragged, size (%) and how solid its box is (%)
+  place: [number, number] | null
+  onTop: boolean
+  locked: boolean
+  size: number
+  background: number
 }
 
 // Names of the choices, for Settings → Spotify and the strip's right-click menu (spotifyMenu.tsx)
@@ -27,7 +34,17 @@ export const SHOW_AS: [ShowAs, () => string][] = [
 ]
 
 const KEY = 'syncr.spotify'
-const DEFAULTS: SpotifySettings = { on: false, showAs: 'strip', room: 'grow', warned: false }
+const DEFAULTS: SpotifySettings = {
+  on: false,
+  showAs: 'strip',
+  room: 'grow',
+  warned: false,
+  place: null,
+  onTop: true,
+  locked: false,
+  size: 100,
+  background: 60,
+}
 
 // As saved on this device, also for the right-click menu (its own page, spotifyMenu.tsx)
 export const storedSpotify = (): SpotifySettings => ({ ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) })
@@ -55,8 +72,9 @@ export function useSpotify() {
 
 function send() {
   if (!isTauri()) return
-  const { on, showAs, room } = current
-  invoke('spotify_config', { config: { on, showAs, room, animations: animationsOn() } }).catch(console.error)
+  const { on, showAs, room, place, onTop, locked, size, background } = current
+  const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background }
+  invoke('spotify_config', { config }).catch(console.error)
 }
 
 // Main window only (main.tsx), once at start
@@ -72,6 +90,11 @@ export function startSpotify() {
   // (listenSpotifyOpen).
   void listen<SpotifyMenuChoice>('spotify-menu', ({ payload }) => {
     if (payload.change) saveSpotify(payload.change)
+  })
+  // The widget was dragged (or its monitor went): kept here; Rust knows it already
+  void listen<[number, number]>('spotify-widget-moved', ({ payload: place }) => {
+    current = { ...current, place }
+    write(KEY, current)
   })
   // Settings → Animations changed (appearance.ts sets a class on the page): the buttons' fade too
   let animations = animationsOn()

@@ -5,8 +5,9 @@ import { t } from './i18n'
 import { SHOW_AS, type SpotifyMenuChoice, type SpotifySettings, storedSpotify } from './spotify'
 import type { MenuProps } from './widgetMenu'
 
-// The Spotify strip's right-click menu, in the widgets' menu page (widgetMenu.tsx): Show as, and
-// Spotify settings…. Each change goes to the main window, which saves it (spotify.ts).
+// The Spotify strip's and widget's right-click menu, in the widgets' menu page (widgetMenu.tsx):
+// Show as, and Spotify settings… (the widget's own options come later). Each change goes to the
+// main window, which saves it (spotify.ts).
 export default function SpotifyMenu({ x, y, send, onClose }: MenuProps<SpotifyMenuChoice>) {
   const [settings, setSettings] = useState<SpotifySettings>(storedSpotify)
   const change = (part: Partial<SpotifySettings>) => {

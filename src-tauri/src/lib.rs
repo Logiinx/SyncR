@@ -10,6 +10,7 @@ mod trailer_player;
 mod video_extensions;
 mod video_window;
 mod widget_menu;
+mod widget_place;
 #[cfg(desktop)]
 mod window_place;
 

@@ -6,7 +6,7 @@
 // when something differs. Off: no thread, nothing is read.
 // Its volume in Windows' mixer (volume.rs) is read at each check too, and changed by the wheel.
 // Shown as a strip in the taskbar (strip.rs, its own thread, drawn from CONFIG, SONG, COVER,
-// VOLUME and VOLUME_LINE) or, later, a floating widget.
+// VOLUME and VOLUME_LINE) or a floating widget (widget.rs, its own thread too).
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
 use base64::Engine;
@@ -29,6 +29,7 @@ use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_MULTITH
 
 mod strip;
 mod volume;
+mod widget;
 
 const CHECK_EVERY: Duration = Duration::from_secs(1);
 // Spotify may give the new song's words before its cover: the cover is read again this many times
@@ -49,10 +50,31 @@ pub struct Config {
   room: String, // the strip's room for ⏮ ⏭: "grow" (made on hover, to the left) · "keep" (always kept) · "none" (no ⏮ ⏭)
   #[serde(default = "yes")]
   animations: bool, // the app's Animations setting: ⏮ ⏭ and the cover's ⏯ fade in
+  // The widget's: its saved top left on screen (pixels; None: never moved), above other windows
+  // or on the desktop, can't be dragged, size (%, on top of Windows' scaling) and how solid its
+  // box is (%)
+  #[serde(default)]
+  place: Option<(i32, i32)>,
+  #[serde(default = "yes")]
+  on_top: bool,
+  #[serde(default)]
+  locked: bool,
+  #[serde(default = "full")]
+  size: u32,
+  #[serde(default = "see_through")]
+  background: u32,
 }
 
 fn yes() -> bool {
   true
+}
+
+fn full() -> u32 {
+  100
+}
+
+fn see_through() -> u32 {
+  60
 }
 
 // What the reading thread is asked: read again (something changed), a button was clicked, or the
@@ -134,6 +156,46 @@ fn strip_shown() -> Option<Shown> {
   Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, room, animations })
 }
 
+// What the widget shows (None: nothing, or it's shown as the strip)
+pub struct WidgetShown {
+  title: String,
+  artist: String,
+  album: String,
+  playing: bool,
+  cover: Option<Arc<Cover>>,
+  place: Option<(i32, i32)>,
+  on_top: bool,
+  size: u32,
+  background: u32,
+}
+
+fn widget_shown() -> Option<WidgetShown> {
+  let config = lock(&CONFIG).clone().filter(|config| config.show_as == "widget")?;
+  let song = lock(&SONG).clone()?;
+  let cover = lock(&COVER).clone();
+  let Config { place, on_top, size, background, .. } = config;
+  Some(WidgetShown { title: song.title, artist: song.artist, album: song.album, playing: song.playing, cover, place, on_top, size, background })
+}
+
+fn widget_locked() -> bool {
+  lock(&CONFIG).as_ref().is_some_and(|config| config.locked)
+}
+
+// Dragged there (or moved off a monitor that went): kept here too, so a widget made again (Explorer
+// restarted, "on top" switched) comes back there before the page sends its settings again
+fn widget_moved(place: (i32, i32)) {
+  if let Some(config) = lock(&CONFIG).as_mut() {
+    config.place = Some(place);
+  }
+}
+
+// A new song, cover, volume or settings: the strip and the widget draw again (each shows only when
+// it's the chosen look)
+fn refresh() {
+  strip::refresh();
+  widget::refresh();
+}
+
 // A button on the strip (or the widget) was clicked: the reading thread asks Spotify
 fn ask(what: Ask) {
   if let Some(worker) = lock(&WORKER).as_ref() {
@@ -162,17 +224,19 @@ pub fn spotify_config(app: AppHandle, config: Config) {
     *lock(&VOLUME) = None;
     if worker.take().is_some() {
       strip::stop(); // the reading thread ends at its next wait
+      widget::stop();
     }
     return;
   }
   *lock(&CONFIG) = Some(config);
   if worker.is_some() {
-    strip::refresh();
+    refresh();
     return;
   }
   let (sender, receiver) = mpsc::channel();
   let wake = sender.clone();
   strip::start();
+  widget::start(app.clone());
   std::thread::spawn(move || run(app, receiver, wake));
   *worker = Some(sender);
 }
@@ -273,7 +337,7 @@ fn read_loop(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
       let _ = app.emit("spotify", song);
     }
     if changed || volume_changed {
-      strip::refresh();
+      refresh();
     }
     // A message: something changed (Windows' signals) or a button was clicked; closed: the
     // module was turned off. Several at once: each click done, then one read.
@@ -287,7 +351,7 @@ fn read_loop(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
         Ask::Volume(notches) => {
           if let Some(volume) = volume::change(notches) {
             set_volume(Some(volume));
-            strip::refresh();
+            refresh();
           }
         }
         what => {
@@ -428,4 +492,33 @@ fn decode(stream: &IRandomAccessStream) -> Option<Cover> {
   let pixels = data.DetachPixelData().ok()?.to_vec();
   let side = COVER_SIDE as usize;
   (pixels.len() == side * side * 4).then_some(Cover { pixels, side })
+}
+
+// The cover made `side` pixels square (the strip's and the widget's size): each new pixel is the
+// average of the ones it covers. Premultiplied blue, green, red as 0–255, alpha as 0–1.
+fn shrink(cover: &Cover, side: usize) -> Vec<f32> {
+  let mut out = vec![0f32; side * side * 4];
+  let from = cover.side;
+  for y in 0..side {
+    let (top, bottom) = (y * from / side, ((y + 1) * from / side).max(y * from / side + 1).min(from));
+    for x in 0..side {
+      let (left, right) = (x * from / side, ((x + 1) * from / side).max(x * from / side + 1).min(from));
+      let mut sum = [0f32; 4];
+      for row in top..bottom {
+        for column in left..right {
+          let at = (row * from + column) * 4;
+          for part in 0..4 {
+            sum[part] += cover.pixels[at + part] as f32;
+          }
+        }
+      }
+      let count = ((bottom - top) * (right - left)) as f32;
+      let at = (y * side + x) * 4;
+      for part in 0..3 {
+        out[at + part] = sum[part] / count;
+      }
+      out[at + 3] = sum[3] / count / 255.0;
+    }
+  }
+  out
 }

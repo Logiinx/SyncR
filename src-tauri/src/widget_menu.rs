@@ -1,5 +1,5 @@
-// The right-click menu of SyncR's windows outside the app (the Hardware widget, the Spotify strip,
-// later the Spotify widget): a page of its own (widget-menu.html) in a see-through window over the
+// The right-click menu of SyncR's windows outside the app (the Hardware widget, the Spotify strip
+// and the Spotify widget): a page of its own (widget-menu.html) in a see-through window over the
 // whole monitor, so the menu and its side lists can open anywhere on it, and a click elsewhere
 // lands on it and closes the menu, like the app's own menus. Making that window and loading its
 // page takes ~0.1 s (measured), which showed as a pause before the menu, so it's made hidden as
@@ -24,6 +24,7 @@ pub const MENU: &str = "widget-menu";
 pub enum Owner {
   Hardware,
   SpotifyStrip,
+  SpotifyWidget,
 }
 
 impl Owner {
@@ -32,13 +33,14 @@ impl Owner {
     match self {
       Owner::Hardware => "hardware",
       Owner::SpotifyStrip => "spotify-strip",
+      Owner::SpotifyWidget => "spotify-widget",
     }
   }
   // For the main window: "<module>-menu" (a choice) and "<module>-open" (its settings…)
   fn module(self) -> &'static str {
     match self {
       Owner::Hardware => "hardware",
-      Owner::SpotifyStrip => "spotify",
+      Owner::SpotifyStrip | Owner::SpotifyWidget => "spotify",
     }
   }
 }

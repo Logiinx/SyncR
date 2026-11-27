@@ -9,7 +9,7 @@ import HardwareMenu from './hardwareMenu'
 import SpotifyMenu from './spotifyMenu'
 
 // The right-click menu of SyncR's windows outside the app (the Hardware widget, the Spotify
-// strip): a page of its own in a see-through window over the whole monitor (widget_menu.rs). The
+// strip and widget): a page of its own in a see-through window over the whole monitor (widget_menu.rs). The
 // window is made hidden as soon as the mouse is over one of them, so a right-click shows the menu
 // at once; it's removed when the menu closes, or a few seconds after the mouse leaves without a
 // right-click. The app's own menu (ContextMenu), so it looks and behaves the same. Whose menu it
@@ -17,7 +17,7 @@ import SpotifyMenu from './spotifyMenu'
 
 // Whose menu, where to open: the mouse, and the window's size, in screen pixels
 interface OpenAt {
-  for: 'hardware' | 'spotify-strip'
+  for: 'hardware' | 'spotify-strip' | 'spotify-widget'
   x: number
   y: number
   w: number
