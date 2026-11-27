@@ -19,10 +19,13 @@
 // behind the cover, fading into the plain dark box under the text (look C,
 // .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
 // Right-click: its menu (widget_menu.rs).
+// A line too long for its room scrolls (scroll.rs): drawn whole, slid left, cut to the text's room
+// with soft ends.
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
+use super::scroll::{Scroll, Slid};
 use super::{
   ask, ease, fade, lock, shrink, target, to_byte, volume_line, wheel_notches, widget_locked, widget_moved, widget_shown, Ask, Cover, WidgetShown,
   FRAME_MS, ICON_FONTS, NEXT, PAUSE, PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
@@ -44,7 +47,7 @@ use windows::Win32::Graphics::Direct2D::{
   D2D1CreateFactory, ID2D1Factory, ID2D1RenderTarget, D2D1_BITMAP_BRUSH_PROPERTIES, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
   D2D1_BITMAP_PROPERTIES, D2D1_BRUSH_PROPERTIES, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_EXTEND_MODE_CLAMP, D2D1_FACTORY_TYPE_SINGLE_THREADED,
   D2D1_FEATURE_LEVEL_DEFAULT, D2D1_GAMMA_2_2, D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE,
-  D2D1_ROUNDED_RECT, D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+  D2D1_ANTIALIAS_MODE_ALIASED, D2D1_ROUNDED_RECT, D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 };
 use windows::Win32::Graphics::DirectWrite::{
   DWriteCreateFactory, IDWriteFactory, IDWriteFontCollection, IDWriteTextFormat, IDWriteTextLayout, DWRITE_FACTORY_TYPE_SHARED,
@@ -85,6 +88,8 @@ const COVER: f32 = 56.0;
 const COVER_RADIUS: f32 = 4.0;
 const GAP: f32 = 10.0; // between the cover and the text
 const TEXT_WIDTH: f32 = 170.0; // cut with "…" past it
+const EDGE: f32 = 10.0; // a scrolling line's soft ends
+const WHOLE: f32 = 100_000.0; // a line laid out this wide is never cut
 const LINE: f32 = 18.0;
 const TITLE_SIZE: f32 = 13.0;
 const LINE_SIZE: f32 = 12.0; // the artist and the album
@@ -179,6 +184,7 @@ struct Look {
   part: Option<Part>, // under the mouse (⏮ ⏭ get a box)
   open: u8,           // ⏮ ⏭ faded in, 0 to 255
   veil: u8,           // the cover's veil and ⏯, 0 to 255
+  slid: [Slid; 3],    // title, artist, album: None = cut with "…", else scrolling (on whole pixels)
 }
 
 impl PartialEq for Look {
@@ -189,6 +195,7 @@ impl PartialEq for Look {
       _ => false,
     };
     same_cover
+      && self.slid == other.slid
       && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.tint, self.part, self.open, self.veil)
         == (
           other.scale,
@@ -212,11 +219,14 @@ struct Local {
   widget: HWND,
   parent: HWND,
   tooltip: Option<Tooltip>,
-  tip: Option<(String, String)>, // the song it was made for (title, artist, album) and its words ("": none)
+  // The song it was made for (title, artist, album), its words ("": none) and the lines' widths
+  // (DIPs)
+  tip: Option<(String, String, [f32; 3])>,
   painter: Option<Painter>,
   drawn: Option<Look>,
   open: f32, // ⏮ ⏭ coming in: 0 (gone) to 1 (there)
   veil: f32, // the cover's veil and ⏯, 0 to 1
+  scroll: Scroll,
   // The tint fading from one color to the next (BG: none): how far, 0 to 1
   tint_from: u32,
   tint_to: u32,
@@ -245,6 +255,7 @@ thread_local! {
       drawn: None,
       open: 0.0,
       veil: 0.0,
+      scroll: Scroll::new(),
       tint_from: BG,
       tint_to: BG,
       tint_done: 1.0,
@@ -502,7 +513,7 @@ fn show(tick: bool) {
     let cover_hovered = local.drawn.as_ref().is_some_and(|drawn| drawn.part == Some(Part::Cover));
     let buttons = local.drawn.as_ref().is_some_and(|drawn| drawn.side > 0.0);
     let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(cover_hovered) || local.tint_done < 1.0;
-    let moving = local.drawn.is_some() && fading;
+    let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
         if moving {
@@ -529,6 +540,7 @@ fn hide(local: &mut Local) {
   local.drawn = None;
   local.open = 0.0;
   local.veil = 0.0;
+  local.scroll.reset();
   PRESS.set(None);
   DRAGGING.set(false);
   HOVER.set(false);
@@ -620,17 +632,27 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   let tint = mix(local.tint_from, local.tint_to, ease(local.tint_done));
 
   // The tooltip: the full title, artist and album, only when one of them is cut (made again only
-  // for a new song; "": Windows shows none)
+  // for a new song, with the lines' widths; "": Windows shows none)
   let song = format!("{}\n{}\n{}", now.title, now.artist, now.album);
-  if local.tip.as_ref().is_none_or(|(made_for, _)| *made_for != song) {
-    let lines = [(&now.title, &painter.title), (&now.artist, &painter.line), (&now.album, &painter.line)];
-    let cut = lines.iter().any(|(text, format)| painter.cut(text, format));
+  if local.tip.as_ref().is_none_or(|(made_for, ..)| *made_for != song) {
+    let lines = [(&now.title, &painter.title_whole), (&now.artist, &painter.line_whole), (&now.album, &painter.line_whole)];
+    let widths = lines.map(|(text, format)| painter.width(text, format));
+    let cut = widths.iter().any(|&width| width > TEXT_WIDTH);
     let words = if cut { lines.iter().map(|(text, _)| text.as_str()).filter(|text| !text.is_empty()).collect::<Vec<_>>().join("\n") } else { String::new() };
-    local.tip = Some((song, words));
+    local.tip = Some((song.clone(), words, widths));
   }
 
   // The volume in the artist's place while the wheel turns
   let volume = now.volume.filter(|_| VOLUME_SHOWN.get()).map(volume_line);
+  // Long lines scroll (the volume never does), on whole pixels
+  let widths = local.tip.as_ref().map_or([0.0; 3], |(.., widths)| *widths);
+  let mut past = widths.map(|width| (width - TEXT_WIDTH).max(0.0));
+  if volume.is_some() {
+    past[1] = 0.0;
+  }
+  let allowed = now.scroll && now.animations && now.playing;
+  let snap = |dips: f32| (dips * scale).round() / scale;
+  let slid = local.scroll.step(&song, past, hover, allowed, seconds).map(|slid| slid.map(|(offset, past)| (snap(offset), past)));
   let look = Look {
     scale,
     side,
@@ -644,6 +666,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     part,
     open: to_byte(ease(local.open)),
     veil: to_byte(ease(local.veil)),
+    slid,
   };
   let picture = if local.drawn.as_ref() == Some(&look) {
     None
@@ -701,7 +724,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
       SetWindowPos(local.widget, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
   }
-  if let (Some(tooltip), Some((_, words))) = (local.tooltip.as_mut(), local.tip.as_ref()) {
+  if let (Some(tooltip), Some((_, words, _))) = (local.tooltip.as_mut(), local.tip.as_ref()) {
     tooltip.update(words, false);
   }
   SHAPE.set((scale, side));
@@ -742,6 +765,8 @@ struct Painter {
   write: IDWriteFactory,
   title: IDWriteTextFormat,
   line: IDWriteTextFormat, // the artist and the album
+  title_whole: IDWriteTextFormat, // the same, never cut (measured, or scrolling)
+  line_whole: IDWriteTextFormat,
   icon: IDWriteTextFormat, // ⏮ ⏭, centered in their room
   play: IDWriteTextFormat, // ⏯, centered on the cover
 }
@@ -766,10 +791,14 @@ impl Painter {
           )
           .ok()
       };
-      // One line, cut with "…" at its width
-      let cut_line = |weight: DWRITE_FONT_WEIGHT, size: f32| -> Option<IDWriteTextFormat> {
+      // One line, whole, or cut with "…" at its width
+      let whole_line = |weight: DWRITE_FONT_WEIGHT, size: f32| -> Option<IDWriteTextFormat> {
         let format = format(FONT, weight, size)?;
         format.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP).ok()?;
+        Some(format)
+      };
+      let cut_line = |weight: DWRITE_FONT_WEIGHT, size: f32| -> Option<IDWriteTextFormat> {
+        let format = whole_line(weight, size)?;
         let sign = write.CreateEllipsisTrimmingSign(&format).ok()?;
         let trimming = DWRITE_TRIMMING { granularity: DWRITE_TRIMMING_GRANULARITY_CHARACTER, delimiter: 0, delimiterCount: 0 };
         format.SetTrimming(&trimming, &sign).ok()?;
@@ -785,17 +814,19 @@ impl Painter {
       };
       let title = cut_line(DWRITE_FONT_WEIGHT_SEMI_BOLD, TITLE_SIZE)?;
       let line = cut_line(DWRITE_FONT_WEIGHT_NORMAL, LINE_SIZE)?;
+      let title_whole = whole_line(DWRITE_FONT_WEIGHT_SEMI_BOLD, TITLE_SIZE)?;
+      let line_whole = whole_line(DWRITE_FONT_WEIGHT_NORMAL, LINE_SIZE)?;
       let icon = centered(ICON_SIZE)?;
       let play = centered(PLAY_SIZE)?;
-      Some(Painter { d2d, write, title, line, icon, play })
+      Some(Painter { d2d, write, title, line, title_whole, line_whole, icon, play })
     }
   }
 
-  // A line laid out TEXT_WIDTH wide, and where its baseline sits from its top (DIPs)
-  fn text(&self, text: &str, format: &IDWriteTextFormat) -> Option<(IDWriteTextLayout, f32)> {
+  // A line laid out `width` wide, and where its baseline sits from its top (DIPs)
+  fn text(&self, text: &str, format: &IDWriteTextFormat, width: f32) -> Option<(IDWriteTextLayout, f32)> {
     let text: Vec<u16> = text.encode_utf16().collect();
     unsafe {
-      let layout = self.write.CreateTextLayout(&text, format, TEXT_WIDTH, LINE).ok()?;
+      let layout = self.write.CreateTextLayout(&text, format, width, LINE).ok()?;
       let mut lines = [DWRITE_LINE_METRICS::default(); 1];
       let mut count = 0;
       // One line (no wrapping): the first line's metrics are enough
@@ -804,16 +835,17 @@ impl Painter {
     }
   }
 
-  // Wider than TEXT_WIDTH, so it's drawn cut with "…"
-  fn cut(&self, text: &str, format: &IDWriteTextFormat) -> bool {
+  // A line's whole width (DIPs; 0 when empty or not measured). Past TEXT_WIDTH it's drawn cut with
+  // "…", or scrolls.
+  fn width(&self, text: &str, format: &IDWriteTextFormat) -> f32 {
     if text.is_empty() {
-      return false;
+      return 0.0;
     }
     let text: Vec<u16> = text.encode_utf16().collect();
     unsafe {
-      let Ok(layout) = self.write.CreateTextLayout(&text, format, 100_000.0, LINE) else { return false };
+      let Ok(layout) = self.write.CreateTextLayout(&text, format, WHOLE, LINE) else { return 0.0 };
       let mut metrics = DWRITE_TEXT_METRICS::default();
-      layout.GetMetrics(&mut metrics).is_ok() && metrics.width > TEXT_WIDTH
+      if layout.GetMetrics(&mut metrics).is_ok() { metrics.width } else { 0.0 }
     }
   }
 
@@ -835,10 +867,12 @@ impl Painter {
     let veil = look.veil as f32 / 255.0;
     let side = look.side;
     // The lines there are (no artist or album: fewer), centered on the cover together
-    let lines: Vec<(&str, &IDWriteTextFormat, f32, u32)> = [
-      (look.title.as_str(), &self.title, TITLE_SIZE, TEXT),
-      (look.artist.as_str(), &self.line, LINE_SIZE, DIM),
-      (look.album.as_str(), &self.line, LINE_SIZE, DIM),
+    // Each: its words, its format cut with "…" and whole, size, color, and how far it slid
+    type Line<'a> = (&'a str, &'a IDWriteTextFormat, &'a IDWriteTextFormat, f32, u32, Slid);
+    let lines: Vec<Line> = [
+      (look.title.as_str(), &self.title, &self.title_whole, TITLE_SIZE, TEXT, look.slid[0]),
+      (look.artist.as_str(), &self.line, &self.line_whole, LINE_SIZE, DIM, look.slid[1]),
+      (look.album.as_str(), &self.line, &self.line_whole, LINE_SIZE, DIM, look.slid[2]),
     ]
     .into_iter()
     .filter(|(text, ..)| !text.is_empty())
@@ -959,14 +993,38 @@ impl Painter {
         }
       }
 
-      // The lines, each on its baseline as the page would paint it; across, on a whole pixel too
-      for (index, (text, format, size, ink)) in lines.into_iter().enumerate() {
-        let Some((layout, baseline)) = self.text(text, format) else { continue };
+      // The lines, each on its baseline as the page would paint it; across, on a whole pixel too.
+      // A scrolling one: whole, slid left, cut to the text's room, its ends fading where more of
+      // it is hidden (over EDGE at most, less while less is hidden, so the fade comes in smoothly).
+      let text_right = text_left + TEXT_WIDTH;
+      for (index, (text, cut, whole, size, ink, slid)) in lines.into_iter().enumerate() {
         let line_top = text_top + index as f32 * LINE;
         let y = at(line_top, text_baseline(size, LINE, scale, false));
-        let brush = target.CreateSolidColorBrush(&color(ink, strength), None).ok()?;
-        let origin = windows_numerics::Vector2 { X: text_left, Y: y - baseline };
-        target.DrawTextLayout(origin, &layout, &brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+        let Some((offset, past)) = slid else {
+          let Some((layout, baseline)) = self.text(text, cut, TEXT_WIDTH) else { continue };
+          let brush = target.CreateSolidColorBrush(&color(ink, strength), None).ok()?;
+          target.DrawTextLayout(windows_numerics::Vector2 { X: text_left, Y: y - baseline }, &layout, &brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+          continue;
+        };
+        let Some((layout, baseline)) = self.text(text, whole, WHOLE) else { continue };
+        let (left_fade, right_fade) = (offset.min(EDGE) / TEXT_WIDTH, (past - offset).max(0.0).min(EDGE) / TEXT_WIDTH);
+        let faded = |at_end: f32| color(ink, if at_end > 0.0 { 0.0 } else { strength });
+        let stops = [
+          D2D1_GRADIENT_STOP { position: 0.0, color: faded(left_fade) },
+          D2D1_GRADIENT_STOP { position: left_fade, color: color(ink, strength) },
+          D2D1_GRADIENT_STOP { position: 1.0 - right_fade, color: color(ink, strength) },
+          D2D1_GRADIENT_STOP { position: 1.0, color: faded(right_fade) },
+        ];
+        let stops = target.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP).ok()?;
+        let across = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES {
+          startPoint: windows_numerics::Vector2 { X: text_left, Y: 0.0 },
+          endPoint: windows_numerics::Vector2 { X: text_right, Y: 0.0 },
+        };
+        let brush = target.CreateLinearGradientBrush(&across, None, &stops).ok()?;
+        let room = D2D_RECT_F { left: text_left, top: 0.0, right: text_right, bottom: height };
+        target.PushAxisAlignedClip(&room, D2D1_ANTIALIAS_MODE_ALIASED);
+        target.DrawTextLayout(windows_numerics::Vector2 { X: text_left - offset, Y: y - baseline }, &layout, &brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+        target.PopAxisAlignedClip();
       }
       target.EndDraw(None, None).ok()?;
     }

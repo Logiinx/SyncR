@@ -8,6 +8,7 @@ All notable changes to SyncR. Newest version first.
 - **New:** Spotify in Settings → Modules: the song in the taskbar or a floating widget (PC only)
 - **New:** Spotify's ⏯ ⏮ ⏭ under the mouse, and the wheel for its volume (PC only)
 - **New:** the Spotify widget takes its colors from the song's cover (PC only)
+- **New:** long song and artist names scroll in the Spotify strip and widget (PC only)
 - **Changed:** Mouse battery has its own place in Settings → Modules (PC only)
 - **Fixed:** no browser menu on right-click, no restart with Ctrl+R or F5 (PC only)
 

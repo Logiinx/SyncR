@@ -221,6 +221,9 @@ export const settings = {
     'Précédent et suivant. La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge (toujours ainsi pour le widget). Aucun : seulement lecture/pause sur la pochette.',
   'Colors from the cover': 'Couleurs de la pochette',
   "The floating widget takes a dark tint of the album cover's main color.": 'Le widget flottant prend une teinte sombre de la couleur principale de la pochette.',
+  'Scroll long names': 'Faire défiler les noms longs',
+  'A name too long for its room slides to show all of it: once when the song changes, then while the mouse is over it.':
+    'Un nom trop long pour sa place défile pour se montrer en entier : une fois au changement de morceau, puis tant que la souris est dessus.',
   'Now playing': 'En cours de lecture',
   'Nothing playing in Spotify': 'Rien en lecture dans Spotify',
   'Paused · {artist}': 'En pause · {artist}',

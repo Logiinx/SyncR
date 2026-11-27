@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Blend, EyeOff, Lock, Palette, Pin, Scaling, Settings } from 'lucide-react'
+import { AppWindow, Blend, EyeOff, Lock, MoveHorizontal, Palette, Pin, Scaling, Settings } from 'lucide-react'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { SIZES } from './hardware'
 import { percentText, t } from './i18n'
@@ -55,6 +55,7 @@ export default function SpotifyMenu({ x, y, send, onClose, widget }: MenuProps<S
           },
         },
         { label: t('Colors from the cover'), icon: Palette, checked: settings.coverColors, onClick: () => change({ coverColors: !settings.coverColors }) },
+        { label: t('Scroll long names'), icon: MoveHorizontal, checked: settings.scrollNames, onClick: () => change({ scrollNames: !settings.scrollNames }) },
         {
           label: t('Size'),
           icon: Scaling,

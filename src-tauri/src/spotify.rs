@@ -27,6 +27,7 @@ use windows::Graphics::Imaging::{
 use windows::Storage::Streams::{DataReader, IRandomAccessStream};
 use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_MULTITHREADED};
 
+mod scroll;
 mod strip;
 mod volume;
 mod widget;
@@ -66,6 +67,9 @@ pub struct Config {
   // The widget's box takes a dark tint of the cover's main color (look C, spotify-cover-colors.html)
   #[serde(default = "yes")]
   cover_colors: bool,
+  // A line too long for its room scrolls, on the strip and the widget (scroll.rs)
+  #[serde(default = "yes")]
+  scroll_names: bool,
 }
 
 fn yes() -> bool {
@@ -178,6 +182,7 @@ struct Shown {
   volume: Option<u8>,
   room: Room,
   animations: bool,
+  scroll: bool, // "Scroll long names"
 }
 
 // The strip's room for ⏮ ⏭
@@ -189,20 +194,20 @@ pub enum Room {
 }
 
 fn strip_shown() -> Option<Shown> {
-  let (room, animations) = match lock(&CONFIG).as_ref() {
+  let (room, animations, scroll) = match lock(&CONFIG).as_ref() {
     Some(config) if config.show_as == "strip" => {
       let room = match config.room.as_str() {
         "keep" => Room::Keep,
         "none" => Room::None,
         _ => Room::Grow,
       };
-      (room, config.animations)
+      (room, config.animations, config.scroll_names)
     }
     _ => return None,
   };
   let song = lock(&SONG).clone()?;
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
-  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, room, animations })
+  Some(Shown { title: song.title, artist: song.artist, playing: song.playing, cover, volume, room, animations, scroll })
 }
 
 // What the widget shows (None: nothing, or it's shown as the strip)
@@ -220,6 +225,7 @@ pub struct WidgetShown {
   size: u32,
   background: u32,
   tint: Option<u32>, // the cover's tint, when "Colors from the cover" is on
+  scroll: bool,      // "Scroll long names"
 }
 
 fn widget_shown() -> Option<WidgetShown> {
@@ -228,7 +234,7 @@ fn widget_shown() -> Option<WidgetShown> {
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
   let buttons = config.room != "none";
   let tint = cover.as_ref().and_then(|cover| cover.tint).filter(|_| config.cover_colors);
-  let Config { animations, place, on_top, size, background, .. } = config;
+  let Config { animations, place, on_top, size, background, scroll_names: scroll, .. } = config;
   Some(WidgetShown {
     title: song.title,
     artist: song.artist,
@@ -243,6 +249,7 @@ fn widget_shown() -> Option<WidgetShown> {
     size,
     background,
     tint,
+    scroll,
   })
 }
 

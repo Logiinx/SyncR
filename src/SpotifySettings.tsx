@@ -59,6 +59,9 @@ export default function SpotifySection() {
         <SettingRow label={t('Colors from the cover')} title={t("The floating widget takes a dark tint of the album cover's main color.")}>
           <input type="checkbox" checked={settings.coverColors} disabled={settings.showAs !== 'widget'} onChange={(e) => saveSpotify({ coverColors: e.target.checked })} />
         </SettingRow>
+        <SettingRow label={t('Scroll long names')} title={t('A name too long for its room slides to show all of it: once when the song changes, then while the mouse is over it.')}>
+          <input type="checkbox" checked={settings.scrollNames} onChange={(e) => saveSpotify({ scrollNames: e.target.checked })} />
+        </SettingRow>
         <SettingRow label={t('Now playing')}>
           {!settings.on ? (
             <span className="settings-status">—</span>

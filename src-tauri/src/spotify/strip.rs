@@ -10,11 +10,14 @@
 // Right-click: the shared menu (widget_menu.rs).
 // Wheel: Spotify's volume (the reading thread changes it), shown in the artist's place until
 // 1.5 s after the last notch; the strip never gets narrower meanwhile.
+// A line too long for its room scrolls (scroll.rs): drawn whole, slid left, cut to the text's room
+// with soft edges.
 // Its own thread, like the battery's: once inside the taskbar it shares Windows' input with it, so
 // it never waits on anything slow (the reading thread decodes the cover and talks to Spotify).
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
-// each frame of the buttons' fade.
+// each frame of the buttons' fade or a line's scrolling.
 
+use super::scroll::Scroll;
 use super::{
   ask, ease, fade, shrink, strip_shown, target, to_byte, volume_line, wheel_notches, Ask, Cover, Room, FRAME_MS, ICON_FONTS, NEXT, PAUSE,
   PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
@@ -48,6 +51,7 @@ const STRIP_CLASS: &str = "SyncRSpotifyStrip";
 const TEXT_FONTS: &[&str] = &["Segoe UI Variable Text", "Segoe UI"]; // the clock's, Windows 11 then 10
 const ARTIST_STRENGTH: f32 = 0.62; // the artist line, against the title's full white (or black)
 const TEXT_MAX: i32 = 150; // the text's width before it's cut with "…" (at 100%)
+const EDGE: i32 = 10; // a scrolling line's soft ends (at 100%)
 
 // The running strip thread's hidden window (0: none) and the number of the latest start or stop
 // (an older thread that comes up late closes itself)
@@ -148,6 +152,9 @@ struct Look {
   open: u8,           // ⏮ ⏭ faded in, 0 to 255
   veil: u8,           // the cover's veil and ⏯, 0 to 255
   light: bool,
+  // The title and the artist: None = cut with "…", else scrolling (how far it slid, how much is
+  // past its room; pixels)
+  slid: [Option<(i32, i32)>; 2],
 }
 
 impl PartialEq for Look {
@@ -158,8 +165,8 @@ impl PartialEq for Look {
       _ => false,
     };
     same_cover
-      && (self.dpi, self.height, self.layout, &self.title, &self.artist, self.playing, self.hover, self.part, self.open, self.veil, self.light)
-        == (other.dpi, other.height, other.layout, &other.title, &other.artist, other.playing, other.hover, other.part, other.open, other.veil, other.light)
+      && (self.dpi, self.height, self.layout, &self.title, &self.artist, self.playing, self.hover, self.part, self.open, self.veil, self.light, self.slid)
+        == (other.dpi, other.height, other.layout, &other.title, &other.artist, other.playing, other.hover, other.part, other.open, other.veil, other.light, other.slid)
   }
 }
 
@@ -168,12 +175,12 @@ struct Drawn {
   x: i32,
 }
 
-// The text's width (the longer line), kept for the song and scale it was measured for
+// The lines' widths (title, artist), kept for the song and scale they were measured for
 struct Measured {
   title: String,
   artist: String,
   dpi: u32,
-  width: i32,
+  widths: (i32, i32),
 }
 
 // This thread's own state (only the strip thread touches it)
@@ -186,6 +193,7 @@ struct Local {
   buttons: bool, // ⏮ ⏭ come in on hover (not when they're off)
   open: f32,     // ⏮ ⏭ coming in: 0 (gone) to 1 (there)
   veil: f32, // the cover's veil and ⏯, 0 to 1
+  scroll: Scroll,
   last_frame: Option<Instant>,
   moving: bool, // the frame timer runs
 }
@@ -201,6 +209,7 @@ thread_local! {
       buttons: true,
       open: 0.0,
       veil: 0.0,
+      scroll: Scroll::new(),
       last_frame: None,
       moving: false,
     })
@@ -368,7 +377,8 @@ fn place() {
     if !shown {
       hide(&mut local);
     }
-    let moving = local.drawn.is_some() && (local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| drawn.look.part == Some(Part::Cover))));
+    let fading = local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| drawn.look.part == Some(Part::Cover)));
+    let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
         if moving {
@@ -391,6 +401,7 @@ fn hide(local: &mut Local) {
   local.drawn = None;
   local.open = 0.0;
   local.veil = 0.0;
+  local.scroll.reset();
   HOVER.set(false);
   PRESSED.set(None);
   VOLUME_SHOWN.set(false);
@@ -412,10 +423,11 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
   // The text's width, measured again only for a new song or scale
   let known = local.measured.as_ref().is_some_and(|measured| measured.title == now.title && measured.artist == now.artist && measured.dpi == spot.dpi);
   if !known {
-    let Some(text_width) = measure(&now.title, &now.artist, spot.dpi) else { return false };
-    local.measured = Some(Measured { title: now.title.clone(), artist: now.artist.clone(), dpi: spot.dpi, width: text_width });
+    let Some(widths) = measure(&now.title, &now.artist, spot.dpi) else { return false };
+    local.measured = Some(Measured { title: now.title.clone(), artist: now.artist.clone(), dpi: spot.dpi, widths });
   }
-  let mut text_width = local.measured.as_ref().map_or(0, |measured| measured.width);
+  let (title_width, artist_width) = local.measured.as_ref().map_or((0, 0), |measured| measured.widths);
+  let mut text_width = title_width.max(artist_width);
   // The tooltip: only when the title or the artist is cut (empty: Windows shows none)
   let tip = if text_width <= scaled(TEXT_MAX, spot.dpi) {
     String::new()
@@ -427,9 +439,18 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
   // The volume in the artist's place while the wheel turns: as wide as it needs, never narrower
   let volume = now.volume.filter(|_| VOLUME_SHOWN.get()).map(volume_line);
   if let Some(volume) = &volume {
-    let Some(volume_width) = measure(&now.title, volume, spot.dpi) else { return false };
+    let Some((_, volume_width)) = measure(&now.title, volume, spot.dpi) else { return false };
     text_width = text_width.max(volume_width);
   }
+  // Long lines scroll (the volume never does): how far each goes past the text's room, in DIPs
+  let room = text_width.min(scaled(TEXT_MAX, spot.dpi));
+  let dips = spot.dpi as f32 / 96.0;
+  let past = |width: i32| (width - room).max(0) as f32 / dips;
+  let artist_past = if volume.is_some() { 0.0 } else { past(artist_width) };
+  let song = format!("{}\n{}", now.title, now.artist);
+  let allowed = now.scroll && now.animations && now.playing;
+  let slid = local.scroll.step(&song, [past(title_width), artist_past, 0.0], hover, allowed, seconds);
+  let to_pixels = |slid: Option<(f32, f32)>| slid.map(|(offset, past)| ((offset * dips).round() as i32, (past * dips).round() as i32));
   let layout = Layout::new(spot.dpi, text_width, now.room, ease(local.open));
   let width = layout.width;
   let x = spot.left_of_battery() - width;
@@ -449,6 +470,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     open: to_byte(ease(local.open)),
     veil: to_byte(ease(local.veil)),
     light: theme::light_taskbar(),
+    slid: [to_pixels(slid[0]), to_pixels(slid[1])],
   };
   if taskbar::stale(local.strip, spot) {
     hide(local);
@@ -491,13 +513,22 @@ fn mouse_in_taskbar(taskbar: HWND) -> Option<(i32, i32)> {
   unsafe { (GetCursorPos(&mut point) != 0 && ScreenToClient(taskbar, &mut point) != 0).then_some((point.x, point.y)) }
 }
 
-// The longer of the title (semibold) and the artist, in pixels
-fn measure(title: &str, artist: &str, dpi: u32) -> Option<i32> {
+// The title's (semibold) and the artist's widths, in pixels
+fn measure(title: &str, artist: &str, dpi: u32) -> Option<(i32, i32)> {
   let text_px = scaled(12, dpi);
   let ruler = Canvas::new(1, 1)?;
   let title_width = ruler.with_font(TEXT_FONTS, text_px, FW_SEMIBOLD, |canvas| canvas.measure(title).0)?;
   let artist_width = ruler.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.measure(artist).0)?;
-  Some(title_width.max(artist_width))
+  Some((title_width, artist_width))
+}
+
+// A scrolling line's strength at `x` (0 to 1): each end fades where more of it is hidden, over
+// EDGE at most (less while less is hidden, so the fade comes and goes smoothly)
+fn edge(slid: Option<(i32, i32)>, x: f32, text_left: i32, text_right: i32, dpi: u32) -> f32 {
+  let Some((offset, past)) = slid else { return 1.0 };
+  let most = scaled(EDGE, dpi);
+  let end = |hidden: i32, inside: f32| if hidden > 0 { (inside / hidden.min(most) as f32).clamp(0.0, 1.0) } else { 1.0 };
+  end(offset, x - text_left as f32).min(end(past - offset, text_right as f32 - x))
 }
 
 // A color with its strength, premultiplied (blue, green, red as 0–255, then alpha 0–1)
@@ -525,10 +556,23 @@ fn draw(look: &Look) -> Option<Canvas> {
   let title_top = if two_lines { (height - 2 * line) / 2 } else { (height - line) / 2 };
   let artist_top = title_top + line;
   let mut canvas = Canvas::new(width.max(1) as usize, height.max(1) as usize)?;
-  let align = DT_LEFT | DT_END_ELLIPSIS;
-  canvas.with_font(TEXT_FONTS, text_px, FW_SEMIBOLD, |canvas| canvas.text(&look.title, text_left, title_top, text_right, title_top + line, align))?;
+  // Cut with "…", or whole and slid left while it scrolls (then cut to the text's room below)
+  let line_text = |canvas: &Canvas, text: &str, top: i32, slid: Option<(i32, i32)>| match slid {
+    None => canvas.text(text, text_left, top, text_right, top + line, DT_LEFT | DT_END_ELLIPSIS),
+    Some((offset, past)) => canvas.text(text, text_left - offset, top, text_right - offset + past + 1, top + line, DT_LEFT),
+  };
+  canvas.with_font(TEXT_FONTS, text_px, FW_SEMIBOLD, |canvas| line_text(canvas, &look.title, title_top, look.slid[0]))?;
   if two_lines {
-    canvas.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| canvas.text(&look.artist, text_left, artist_top, text_right, artist_top + line, align))?;
+    canvas.with_font(TEXT_FONTS, text_px, FW_NORMAL, |canvas| line_text(canvas, &look.artist, artist_top, look.slid[1]))?;
+  }
+  if look.slid.iter().any(Option::is_some) {
+    let columns = canvas.width;
+    for (index, pixel) in canvas.pixels().chunks_exact_mut(4).enumerate() {
+      let x = (index % columns) as i32;
+      if x < text_left || x >= text_right {
+        pixel.fill(0);
+      }
+    }
   }
   // ⏮ ⏭ in their room (cut to it while it grows). Room kept: they also come in from the middle.
   let open = look.open as f32 / 255.0;
@@ -592,8 +636,10 @@ fn draw(look: &Look) -> Option<Canvas> {
     } else if x < cover_left || x >= text_right {
       out = over(tint(color, coverage * open), out); // ⏮ ⏭
     } else {
-      let line_strength = if y >= artist_top && two_lines { ARTIST_STRENGTH } else { 1.0 };
-      out = over(tint(color, coverage * strength * line_strength), out);
+      let artist_line = y >= artist_top && two_lines;
+      let line_strength = if artist_line { ARTIST_STRENGTH } else { 1.0 };
+      let soft = edge(look.slid[usize::from(artist_line)], px, text_left, text_right, look.dpi);
+      out = over(tint(color, coverage * strength * line_strength * soft), out);
     }
     if out[3] < 1.0 / 255.0 {
       pixel.copy_from_slice(&[0, 0, 0, 1]);

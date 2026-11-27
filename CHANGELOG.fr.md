@@ -8,6 +8,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** Spotify dans Paramètres → Modules : le morceau dans la barre des tâches ou un widget flottant (PC uniquement)
 - **Nouveau :** les boutons ⏯ ⏮ ⏭ de Spotify sous la souris, et la molette pour son volume (PC uniquement)
 - **Nouveau :** le widget Spotify prend ses couleurs de la pochette du morceau (PC uniquement)
+- **Nouveau :** les titres et artistes trop longs défilent dans la barre et le widget Spotify (PC uniquement)
 - **Changé :** la batterie de la souris a sa propre place dans Paramètres → Modules (PC uniquement)
 - **Corrigé :** plus de menu du navigateur au clic droit, ni de redémarrage par Ctrl+R ou F5 (PC uniquement)
 
