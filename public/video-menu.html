@@ -75,6 +75,8 @@
   for (const [name, color] of Object.entries(data.colors || {})) document.documentElement.style.setProperty(name, color)
   // The app's scale, as in the main window
   if (data.zoom) document.documentElement.style.zoom = data.zoom
+  // Black player (Settings → Video): a touch lighter than the black bar, so it stands out over a dark video
+  if (data.black) document.body.style.background = 'var(--bg-raised)'
 
   for (const id of ['another-way', 'browser']) {
     const row = document.getElementById(id)

@@ -2,6 +2,8 @@
   interpolate-size: allow-keywords; /* heights can grow from 0 to "auto" (animations.ts) */
   --bg: #161616;
   --bg-raised: #202020;
+  --oled: #000; /* the video player window with Settings → Video → Black player: an OLED screen's pixels are off */
+  --oled-raised: #121212; /* its ⋯ menu: a touch lighter, so it still stands out over a dark video */
   --bg-sunken: #101010; /* sliding switches' track on a page: darker than it (in a window: --bg) */
   --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
   --border: #2a2a2a;

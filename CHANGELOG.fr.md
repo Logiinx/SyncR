@@ -9,6 +9,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** les boutons ⏯ ⏮ ⏭ de Spotify sous la souris, et la molette pour son volume (PC uniquement)
 - **Corrigé :** plus de menu du navigateur au clic droit, ni de redémarrage par Ctrl+R ou F5 (PC uniquement)
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** un lecteur noir pour les écrans OLED, dans Paramètres → Vidéo
+
 ## [1.3.1] - 2026-11-26
 
 **Vidéo** (PC uniquement)

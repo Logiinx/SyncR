@@ -187,6 +187,9 @@ export default function VideoSection() {
             <option value="play">{t('Plays at once')}</option>
           </select>
         </SettingRow>
+        <SettingRow label={t('Black player')} title={t('The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.')}>
+          <input type="checkbox" checked={player.black} onChange={(e) => updatePlayer({ black: e.target.checked })} />
+        </SettingRow>
         <SettingRow label={t('Mark as watched closes the video player')}>
           <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />
         </SettingRow>

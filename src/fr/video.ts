@@ -345,6 +345,8 @@ export const video = {
   'Ctrl+V in the Video tab, or Ctrl+Alt+Shift+V anywhere in Windows': 'Ctrl+V dans l’onglet Vidéo, ou Ctrl+Alt+Maj+V partout dans Windows',
   'Goes in the queue': 'Va dans la file',
   'Plays at once': 'Se lit tout de suite',
+  'Black player': 'Lecteur noir',
+  'The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.': 'La barre, son menu ⋯ et l’écran affiché quand une vidéo ne peut pas être lue, en noir : les pixels d’un écran OLED y sont éteints. À partir de la prochaine vidéo ouverte.',
   'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
   'Close the video player when a video ends': 'Fermer le lecteur vidéo à la fin d’une vidéo',
   'When no next video plays after it': 'Quand aucune vidéo suivante n’est lue après elle',

@@ -70,6 +70,7 @@ export interface PlayerSettings {
   quality: (typeof YOUTUBE_QUALITIES)[number][0]
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
   copiedLink: 'queue' | 'play' // a copied video (Ctrl+V in the tab, the global shortcut): added to the Queue or played at once
+  black: boolean // the window's bar, its menu and the "can't play" screen in black (OLED screens)
 }
 const KEY = 'syncr.videoPlayer'
 export const loadPlayerSettings = (): PlayerSettings => ({
@@ -79,6 +80,7 @@ export const loadPlayerSettings = (): PlayerSettings => ({
   autoNext: 'playlists',
   watchedNearEnd: true,
   copiedLink: 'queue',
+  black: false,
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
   ...read<Partial<PlayerSettings>>(KEY, {}),
@@ -200,6 +202,17 @@ function forgetFails(video: PlayableVideo) {
 function pageColors(names: string[]) {
   const css = getComputedStyle(document.documentElement)
   return Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
+}
+
+// The bar, its menu and the "can't play" screen: black with the Black player setting. The player
+// controls over the video keep their own colors.
+function windowColors(names: string[]) {
+  const colors = pageColors(names)
+  if (!loadPlayerSettings().black) return colors
+  const black = pageColors(['--oled', '--oled-raised'])
+  if (colors['--bg']) colors['--bg'] = black['--oled']
+  if (colors['--bg-raised']) colors['--bg-raised'] = black['--oled-raised']
+  return colors
 }
 
 // What our own players' controls show (src-tauri/player/controls.js), on Twitch and YouTube. Like
@@ -442,7 +455,7 @@ function playerAddress(video: PlayableVideo, way: Way) {
     message: t("This video can't play in the player window"),
     browser: t('Open in browser'),
     zoom: currentZoom(),
-    colors: pageColors(['--bg', '--text', '--accent']),
+    colors: windowColors(['--bg', '--text', '--accent']),
   }
   return `video-stopped.html?data=${encodeURIComponent(JSON.stringify(data))}`
 }
@@ -481,7 +494,7 @@ function noteFor(video: PlayableVideo, way: Way) {
 // What the bar shows (public/video-bar.html): it has its own storage and no access to the app's
 // translations or colors, so it gets them in its address.
 function barData(video: PlayableVideo, way: Way) {
-  const colors = pageColors(['--bg', '--bg-raised', '--border', '--hover', '--text', '--text-dim', '--text-green', '--text-blue'])
+  const colors = windowColors(['--bg', '--bg-raised', '--border', '--hover', '--text', '--text-dim', '--text-green', '--text-blue'])
   const data = {
     title: video.title,
     via: viaText(way),
@@ -490,6 +503,7 @@ function barData(video: PlayableVideo, way: Way) {
     onTop: loadPlayerSettings().alwaysOnTop,
     zoom: currentZoom(),
     colors,
+    black: loadPlayerSettings().black,
     labels: {
       watched: t('Watched'),
       watch: t('Mark as watched'),
