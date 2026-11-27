@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-27
+
 **App**
 - **New:** Spotify in Settings → Modules: the song in the taskbar or a floating widget (PC only)
 - **New:** Spotify's ⏯ ⏮ ⏭ under the mouse, and the wheel for its volume (PC only)
