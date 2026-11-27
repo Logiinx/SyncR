@@ -56,6 +56,9 @@ export default function SpotifySection() {
             ))}
           </select>
         </SettingRow>
+        <SettingRow label={t('Colors from the cover')} title={t("The floating widget takes a dark tint of the album cover's main color.")}>
+          <input type="checkbox" checked={settings.coverColors} disabled={settings.showAs !== 'widget'} onChange={(e) => saveSpotify({ coverColors: e.target.checked })} />
+        </SettingRow>
         <SettingRow label={t('Now playing')}>
           {!settings.on ? (
             <span className="settings-status">—</span>

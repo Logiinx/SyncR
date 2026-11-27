@@ -26,6 +26,7 @@ export interface SpotifySettings {
   locked: boolean
   size: number
   background: number
+  coverColors: boolean // the widget's box takes a dark tint of the cover's main color
 }
 
 // Names of the choices, for Settings → Spotify and the strip's right-click menu (spotifyMenu.tsx)
@@ -48,6 +49,7 @@ const DEFAULTS: SpotifySettings = {
   locked: false,
   size: 100,
   background: 60,
+  coverColors: true,
 }
 
 // As saved on this device, also for the right-click menu (its own page, spotifyMenu.tsx)
@@ -77,8 +79,8 @@ export function useSpotify() {
 
 function send() {
   if (!isTauri()) return
-  const { on, showAs, room, place, onTop, locked, size, background } = { ...current, ...preview }
-  const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background }
+  const { on, showAs, room, place, onTop, locked, size, background, coverColors } = { ...current, ...preview }
+  const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background, coverColors }
   invoke('spotify_config', { config }).catch(console.error)
 }
 
