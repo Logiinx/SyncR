@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { read, write } from './localState'
+import { subscribe as onLanguageChange, t } from './i18n'
 
 // Spotify module (PC, Settings → Spotify): what Spotify plays, as a strip in the taskbar or a
 // floating widget. Its settings are kept on this device, never synced. The reading is in Rust
@@ -48,7 +49,26 @@ function send() {
 
 // Main window only (main.tsx), once at start
 export function startSpotify() {
-  if (isTauri() && current.on) send()
+  if (!isTauri()) return
+  // The taskbar strip's tooltip, in the app's language: after each song change and when the
+  // language changes (listening before the settings go: the first song comes as an event)
+  let latest: Song | null = null
+  const sendTip = () => {
+    if (latest) invoke('spotify_tip', { text: tipText(latest) }).catch(console.error)
+  }
+  void listen<Song | null>('spotify', (event) => {
+    latest = event.payload
+    sendTip()
+  }).then(() => current.on && send())
+  onLanguageChange(sendTip)
+}
+
+// "Title / Artist / Album: …", one per line (Windows' tooltip)
+export function tipText({ title, artist, album }: Song) {
+  const lines = [title]
+  if (artist) lines.push(artist)
+  if (album) lines.push(t('Album: {album}', { album }))
+  return lines.join('\n')
 }
 
 // As spotify.rs sends it (null: Spotify closed, or nothing loaded)

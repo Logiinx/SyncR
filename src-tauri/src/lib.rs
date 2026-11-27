@@ -5,6 +5,7 @@ mod link_shortcut;
 mod mouse_battery;
 mod muted_sound;
 mod spotify;
+mod taskbar;
 mod trailer_player;
 mod video_extensions;
 mod video_window;
@@ -385,6 +386,7 @@ pub fn run() {
       mouse_battery::mouse_battery_tip,
       spotify::spotify_config,
       spotify::spotify_status,
+      spotify::spotify_tip,
       hardware::hardware_config,
       hardware::hardware_readings,
       hardware::helper::hardware_helper_setup,

@@ -217,6 +217,7 @@ export const settings = {
   'Now playing': 'En cours de lecture',
   'Nothing playing in Spotify': 'Rien en lecture dans Spotify',
   'Paused · {artist}': 'En pause · {artist}',
+  'Album: {album}': 'Album : {album}',
   'The song only shows while SyncR runs': 'Le morceau ne s’affiche que pendant que SyncR tourne',
   '{close} quits SyncR, and the song goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.':
     '{close} quitte SyncR, et le morceau disparaît avec. Pour le garder, activez « {close} masque SyncR dans la zone de notification » dans Fenêtre.',

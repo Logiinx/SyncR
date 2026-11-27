@@ -12,27 +12,21 @@
 
 use super::gdi::Canvas;
 use super::{check_now, config, lock, shown, theme, tip, wide};
+use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
 use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
-use windows_sys::Win32::Graphics::Gdi::{AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION, DT_LEFT, FW_NORMAL, FW_SEMIBOLD};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows_sys::Win32::Graphics::Gdi::{DT_LEFT, FW_NORMAL, FW_SEMIBOLD};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::UI::Controls::{
-  InitCommonControlsEx, SetWindowTheme, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, TOOLTIPS_CLASSW, TTF_IDISHWND, TTF_SUBCLASS,
-  TTM_ADDTOOLW, TTM_SETMAXTIPWIDTH, TTM_UPDATETIPTEXTW, TTS_ALWAYSTIP, TTS_NOPREFIX, TTTOOLINFOW, WM_MOUSELEAVE,
-};
-use windows_sys::Win32::UI::HiDpi::GetDpiForWindow;
+use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, WM_MOUSELEAVE};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, FindWindowExW, FindWindowW, GetMessageW, GetParent,
-  GetWindowRect, IsWindow, KillTimer, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SendMessageW, SetTimer,
-  SetWindowPos, TranslateMessage, UpdateLayeredWindow, HWND_TOP, IDC_ARROW, MA_NOACTIVATE, MSG, PBT_APMRESUMEAUTOMATIC,
-  SWP_NOACTIVATE, SWP_SHOWWINDOW, ULW_ALPHA, WM_APP, WM_CLOSE, WM_DESTROY, WM_DEVICECHANGE, WM_LBUTTONUP,
-  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW, WNDPROC, WS_CHILD,
-  WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+  CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW, KillTimer, PostMessageW, PostQuitMessage, SetTimer,
+  TranslateMessage, MA_NOACTIVATE, MSG, PBT_APMRESUMEAUTOMATIC, WM_APP, WM_CLOSE, WM_DESTROY, WM_DEVICECHANGE, WM_LBUTTONUP,
+  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
@@ -98,9 +92,7 @@ struct Drawn {
 struct Local {
   controller: HWND,
   strip: HWND,
-  tooltip: HWND,
-  tip: String,             // the tooltip's text now
-  tip_light: Option<bool>, // the tooltip's look now (light or dark, like the taskbar)
+  tooltip: Option<Tooltip>,
   drawn: Option<Drawn>,
 }
 
@@ -109,9 +101,7 @@ thread_local! {
     RefCell::new(Local {
       controller: null_mut(),
       strip: null_mut(),
-      tooltip: null_mut(),
-      tip: String::new(),
-      tip_light: None,
+      tooltip: None,
       drawn: None,
     })
   };
@@ -168,25 +158,6 @@ fn run(start: u64) {
       DispatchMessageW(&message);
     }
   }
-}
-
-// Fails harmlessly when an earlier start already registered it
-unsafe fn register(instance: windows_sys::Win32::Foundation::HMODULE, class: &[u16], procedure: WNDPROC) {
-  let info = WNDCLASSEXW {
-    cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
-    style: 0,
-    lpfnWndProc: procedure,
-    cbClsExtra: 0,
-    cbWndExtra: 0,
-    hInstance: instance,
-    hIcon: null_mut(),
-    hCursor: unsafe { LoadCursorW(null_mut(), IDC_ARROW) },
-    hbrBackground: null_mut(),
-    lpszMenuName: null(),
-    lpszClassName: class.as_ptr(),
-    hIconSm: null_mut(),
-  };
-  unsafe { RegisterClassExW(&info) };
 }
 
 unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -274,7 +245,7 @@ fn place() {
   LOCAL.with(|local| {
     // Busy already (Windows can call in while the strip is being moved): the next second does it
     let Ok(mut local) = local.try_borrow_mut() else { return };
-    let shown = config().is_some() && taskbar_spot().is_some_and(|spot| show(&mut local, &spot));
+    let shown = config().is_some() && taskbar::spot().is_some_and(|spot| show(&mut local, &spot));
     if !shown {
       hide(&mut local);
     }
@@ -282,53 +253,11 @@ fn place() {
 }
 
 fn hide(local: &mut Local) {
-  let tooltip = std::mem::replace(&mut local.tooltip, null_mut());
-  let strip = std::mem::replace(&mut local.strip, null_mut());
+  local.tooltip = None;
+  taskbar::remove(std::mem::replace(&mut local.strip, null_mut()));
   local.drawn = None;
-  local.tip = String::new();
-  local.tip_light = None;
   HOVER.set(false);
-  unsafe {
-    if !tooltip.is_null() && IsWindow(tooltip) != 0 {
-      DestroyWindow(tooltip);
-    }
-    if !strip.is_null() && IsWindow(strip) != 0 {
-      DestroyWindow(strip);
-    }
-  }
-}
-
-// Where it goes: the main screen's taskbar, the left edge of its notification area (in the
-// taskbar's own pixels), its height and scale
-struct Spot {
-  taskbar: HWND,
-  right: i32,
-  height: i32,
-  dpi: u32,
-}
-
-fn taskbar_spot() -> Option<Spot> {
-  unsafe {
-    let taskbar = FindWindowW(wide("Shell_TrayWnd").as_ptr(), null());
-    if taskbar.is_null() {
-      return None;
-    }
-    let notify = FindWindowExW(taskbar, null_mut(), wide("TrayNotifyWnd").as_ptr(), null());
-    if notify.is_null() {
-      return None;
-    }
-    let mut bar = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-    let mut area = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-    if GetWindowRect(taskbar, &mut bar) == 0 || GetWindowRect(notify, &mut area) == 0 {
-      return None;
-    }
-    let (width, height) = (bar.right - bar.left, bar.bottom - bar.top);
-    if height <= 0 || width <= height {
-      return None; // on a side of the screen
-    }
-    let dpi = GetDpiForWindow(taskbar);
-    Some(Spot { taskbar, right: area.left - bar.left, height, dpi: if dpi == 0 { 96 } else { dpi } })
-  }
+  taskbar::set_battery_left(None);
 }
 
 // false: it couldn't be drawn or put in the taskbar
@@ -344,133 +273,45 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     hover: HOVER.get(),
     light: theme::light_taskbar(),
   };
-  unsafe {
-    // Gone with an Explorer restart, or inside an old taskbar: a new one
-    if !local.strip.is_null() && (IsWindow(local.strip) == 0 || GetParent(local.strip) != spot.taskbar) {
-      hide(local);
-    }
-    let picture = match &local.drawn {
-      Some(drawn) if drawn.look == look => None,
-      _ => match draw(&look) {
-        Some(picture) => Some(picture),
-        None => return false,
-      },
-    };
-    let width = match (&picture, &local.drawn) {
-      (Some(picture), _) => picture.width as i32,
-      (None, Some(drawn)) => drawn.width,
-      (None, None) => return false,
-    };
-    let x = spot.right - width - scaled(4, spot.dpi);
-    if local.strip.is_null() {
-      let class = wide(STRIP_CLASS);
-      let strip = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_NOPARENTNOTIFY,
-        class.as_ptr(),
-        null(),
-        WS_CHILD | WS_CLIPSIBLINGS,
-        x,
-        0,
-        width,
-        spot.height,
-        spot.taskbar,
-        null_mut(),
-        GetModuleHandleW(null()),
-        null(),
-      );
-      if strip.is_null() {
-        return false;
-      }
-      local.strip = strip;
-      local.tooltip = add_tooltip(local.controller, strip);
-    }
-    if let Some(picture) = &picture {
-      let size = SIZE { cx: width, cy: spot.height };
-      let source = POINT { x: 0, y: 0 };
-      let blend = BLENDFUNCTION {
-        BlendOp: AC_SRC_OVER as u8,
-        BlendFlags: 0,
-        SourceConstantAlpha: 255,
-        AlphaFormat: AC_SRC_ALPHA as u8,
-      };
-      if UpdateLayeredWindow(local.strip, null_mut(), null(), &size, picture.dc, &source, 0, &blend, ULW_ALPHA) == 0 {
-        return false;
-      }
-    }
-    let moved = local.drawn.as_ref().is_none_or(|drawn| drawn.x != x || drawn.width != width);
-    if moved || picture.is_some() {
-      SetWindowPos(local.strip, HWND_TOP, x, 0, width, spot.height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-    }
-    update_tooltip(local, look.light);
-    local.drawn = Some(Drawn { look, x, width });
+  if taskbar::stale(local.strip, spot) {
+    hide(local);
   }
+  let picture = match &local.drawn {
+    Some(drawn) if drawn.look == look => None,
+    _ => match draw(&look) {
+      Some(picture) => Some(picture),
+      None => return false,
+    },
+  };
+  let width = match (&picture, &local.drawn) {
+    (Some(picture), _) => picture.width as i32,
+    (None, Some(drawn)) => drawn.width,
+    (None, None) => return false,
+  };
+  let x = spot.right - width - scaled(taskbar::GAP, spot.dpi);
+  if local.strip.is_null() {
+    let strip = taskbar::new_strip(STRIP_CLASS, spot, x, width);
+    if strip.is_null() {
+      return false;
+    }
+    local.strip = strip;
+    local.tooltip = Tooltip::new(local.controller, strip);
+  }
+  if let Some(picture) = &picture {
+    if !taskbar::paint(local.strip, picture) {
+      return false;
+    }
+  }
+  let moved = local.drawn.as_ref().is_none_or(|drawn| drawn.x != x || drawn.width != width);
+  if moved || picture.is_some() {
+    taskbar::move_strip(local.strip, spot, x, width);
+  }
+  if let Some(tooltip) = local.tooltip.as_mut() {
+    tooltip.update(&tip(), look.light);
+  }
+  local.drawn = Some(Drawn { look, x, width });
+  taskbar::set_battery_left(Some((spot.taskbar, x)));
   true
-}
-
-// Windows' own tooltip for the strip (it follows the mouse over the strip by itself). Owned by the
-// hidden window, which is ours, not by the taskbar.
-fn add_tooltip(owner: HWND, strip: HWND) -> HWND {
-  unsafe {
-    let tooltip = CreateWindowExW(
-      WS_EX_TOPMOST,
-      TOOLTIPS_CLASSW,
-      null(),
-      WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
-      0,
-      0,
-      0,
-      0,
-      owner,
-      null_mut(),
-      GetModuleHandleW(null()),
-      null(),
-    );
-    if tooltip.is_null() {
-      return null_mut();
-    }
-    let mut text = wide("");
-    let info = tool(strip, &mut text);
-    SendMessageW(tooltip, TTM_ADDTOOLW, 0, &info as *const TTTOOLINFOW as LPARAM);
-    SendMessageW(tooltip, TTM_SETMAXTIPWIDTH, 0, 600); // lets "\n" start new lines
-    tooltip
-  }
-}
-
-fn tool(strip: HWND, text: &mut [u16]) -> TTTOOLINFOW {
-  TTTOOLINFOW {
-    cbSize: std::mem::size_of::<TTTOOLINFOW>() as u32,
-    uFlags: TTF_IDISHWND | TTF_SUBCLASS,
-    hwnd: strip,
-    uId: strip as usize,
-    lpszText: text.as_mut_ptr(),
-    ..Default::default()
-  }
-}
-
-// New words from the page, or the taskbar turned light/dark
-fn update_tooltip(local: &mut Local, light: bool) {
-  if local.tooltip.is_null() {
-    return;
-  }
-  let text = tip();
-  unsafe {
-    if text != local.tip {
-      let mut words = wide(&text);
-      let info = tool(local.strip, &mut words);
-      SendMessageW(local.tooltip, TTM_UPDATETIPTEXTW, 0, &info as *const TTTOOLINFOW as LPARAM);
-      local.tip = text;
-    }
-    if local.tip_light != Some(light) {
-      let theme = wide(if light { "Explorer" } else { "DarkMode_Explorer" });
-      SetWindowTheme(local.tooltip, theme.as_ptr(), null());
-      local.tip_light = Some(light);
-    }
-  }
-}
-
-// Sizes in the taskbar's pixels: `px` at 100% scale
-fn scaled(px: i32, dpi: u32) -> i32 {
-  (px * dpi as i32 + 48) / 96
 }
 
 // [space][mouse][gap][93%][space], as tall as the taskbar. Premultiplied colors (as Windows wants
@@ -493,7 +334,7 @@ fn draw(look: &Look) -> Option<Canvas> {
   let (plain, number) = (theme::paint(look.light, false), theme::paint(look.light, look.low));
   let strength = if look.dim { 0.5 } else { 1.0 };
   // The hover highlight: like the taskbar's own, a little inside its height, rounded
-  let (highlight, highlight_alpha) = if look.light { ([0u8, 0, 0], 0.06) } else { ([255u8, 255, 255], 0.08) };
+  let (highlight, highlight_alpha) = taskbar::highlight(look.light);
   let inset = size(4) as f32;
   let corner = size(4) as f32;
   // A badge on the mouse's bottom right corner, at full strength, with a thin gap cut around it like
@@ -648,13 +489,4 @@ fn from_shape(x: f32, y: f32, points: &[(f32, f32)]) -> f32 {
     previous = point;
   }
   if inside { -nearest.sqrt() } else { nearest.sqrt() }
-}
-
-// How much of a pixel (its center) is inside a box with rounded corners: 0 to 1, soft at the edge
-fn rounded_box(x: f32, y: f32, left: f32, top: f32, right: f32, bottom: f32, corner: f32) -> f32 {
-  let (center_x, center_y) = ((left + right) / 2.0, (top + bottom) / 2.0);
-  let (half_x, half_y) = ((right - left) / 2.0 - corner, (bottom - top) / 2.0 - corner);
-  let (qx, qy) = ((x - center_x).abs() - half_x, (y - center_y).abs() - half_y);
-  let outside = (qx.max(0.0).powi(2) + qy.max(0.0).powi(2)).sqrt() + qx.max(qy).min(0.0) - corner;
-  (0.5 - outside).clamp(0.0, 1.0)
 }

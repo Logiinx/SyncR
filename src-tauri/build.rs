@@ -44,6 +44,7 @@ fn main() {
     "mouse_battery_tip",
     "spotify_config",
     "spotify_status",
+    "spotify_tip",
     "hardware_config",
     "hardware_readings",
     "hardware_helper_setup",

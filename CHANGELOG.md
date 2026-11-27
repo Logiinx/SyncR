@@ -5,7 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
-- **New:** Spotify in Settings → Modules: the song Spotify is playing (PC only)
+- **New:** Spotify in Settings → Modules: the song playing, in the taskbar (PC only)
 
 ## [1.3.1] - 2026-11-26
 

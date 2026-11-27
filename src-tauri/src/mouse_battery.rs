@@ -206,7 +206,7 @@ fn pointer() -> Option<(i32, i32)> {
   (unsafe { GetCursorPos(&mut point) } != 0).then_some((point.x, point.y))
 }
 
-fn wide(text: &str) -> Vec<u16> {
+pub(crate) fn wide(text: &str) -> Vec<u16> {
   text.encode_utf16().chain(Some(0)).collect()
 }
 
@@ -580,7 +580,7 @@ pub(crate) mod gdi {
 
 
 // The taskbar's colors: Windows' own light/dark setting, red for a low number
-mod theme {
+pub(crate) mod theme {
   use super::wide;
   use std::ptr::null_mut;
   use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
