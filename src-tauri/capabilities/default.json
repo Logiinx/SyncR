@@ -30,6 +30,8 @@
     "allow-mouse-battery-config",
     "allow-mouse-battery-status",
     "allow-mouse-battery-tip",
+    "allow-spotify-config",
+    "allow-spotify-status",
     "allow-hardware-config",
     "allow-hardware-readings",
     "allow-hardware-helper-setup",

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Nouveau :** Spotify dans Paramètres → Modules : le morceau que joue Spotify (PC uniquement)
+
 ## [1.3.1] - 2026-11-26
 
 **Vidéo** (PC uniquement)

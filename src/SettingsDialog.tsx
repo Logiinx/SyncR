@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
+import { AppWindow, Bell, ChevronLeft, ChevronRight, Cpu, Gamepad2, Link, Mail, Music, NotebookPen, Palette, Play, Plug, Video, X } from 'lucide-react'
 import { loadRuleGroups } from './colorRules'
 import Window from './Window'
 import { useBack } from './backStack'
@@ -37,10 +37,12 @@ import { useVideoEnabled } from './video'
 import VideoSection from './VideoSettings'
 import GamesSection from './GamesSettings'
 import HardwareSection from './HardwareSettings'
+import SpotifySection from './SpotifySettings'
 import MailSection from './MailSettings'
 import { useModuleOn } from './modules'
 import { useMouseBattery } from './mouseBattery'
 import { useHardware } from './hardware'
+import { useSpotify } from './spotify'
 import type { SettingsStart } from './openSettings'
 import { useGmailAccounts } from './gmail'
 import { useInstantStatus } from './instantMail'
@@ -214,6 +216,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
   const [showRules, setShowRules] = useState(false)
   const mouseBattery = useMouseBattery()
   const hardware = useHardware()
+  const spotify = useSpotify()
   const [rulesSummary, setRulesSummary] = useState('')
   const language = useLanguage()
   useEffect(() => {
@@ -763,6 +766,7 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
     { id: 'mail', icon: Mail, name: t('Mail'), content: (isTauri() || import.meta.env.DEV) && <MailSection />, module: true, off: !mailOn },
     { id: 'video', icon: Video, name: t('Video'), content: videoOn && <VideoSection />, module: true, off: !videoModuleOn },
     { id: 'hardware', icon: Cpu, name: t('Hardware'), content: isTauri() && <HardwareSection />, module: true, off: !hardware.on && !mouseBattery.on },
+    { id: 'spotify', icon: Music, name: t('Spotify'), content: isTauri() && <SpotifySection />, module: true, off: !spotify.on },
     { id: 'accounts', icon: Plug, name: t('Accounts'), content: accountsCard },
   ].filter((s) => s.content)
   const firstModule = sections.find((s) => s.module)?.id

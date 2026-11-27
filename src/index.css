@@ -5603,6 +5603,50 @@ button {
   color: var(--text-green); /* like the details' status lines */
 }
 
+/* Spotify: the song now (Settings → Spotify): cover, then title over artist, cut with … */
+.spotify-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.spotify-now.paused {
+  opacity: 0.5; /* like the strip and the widget while paused */
+}
+
+.spotify-now-cover {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  background: var(--border);
+  object-fit: cover;
+}
+
+.spotify-now-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.spotify-now-title,
+.spotify-now-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.spotify-now-title {
+  font-weight: 600;
+}
+
+.spotify-now-artist {
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
 /* Hardware: a temperature past its limits (hot colors), as the widget shows it */
 .settings-status.warm,
 .settings-limit.warm input {

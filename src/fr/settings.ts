@@ -207,6 +207,19 @@ export const settings = {
   '{close} quits SyncR, and the battery goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.':
     '{close} quitte SyncR, et la batterie disparaît avec. Pour la garder, activez « {close} masque SyncR dans la zone de notification » dans Fenêtre.',
   'Teevolution Terra Pro': 'Teevolution Terra Pro',
+  Spotify: 'Spotify',
+  'About the Spotify module': 'À propos du module Spotify',
+  'Shows the song the Spotify app is playing, in the taskbar or in a small widget on your desktop. Read from Windows, so no Spotify sign-in.':
+    'Affiche le morceau que joue l’application Spotify, dans la barre des tâches ou dans un petit widget sur votre bureau. Lu depuis Windows, donc sans connexion à Spotify.',
+  'Show as': 'Affichage',
+  'Taskbar strip': 'Barre des tâches',
+  'Floating widget': 'Widget flottant',
+  'Now playing': 'En cours de lecture',
+  'Nothing playing in Spotify': 'Rien en lecture dans Spotify',
+  'Paused · {artist}': 'En pause · {artist}',
+  'The song only shows while SyncR runs': 'Le morceau ne s’affiche que pendant que SyncR tourne',
+  '{close} quits SyncR, and the song goes with it. To keep it, turn on “{close} hides SyncR in the tray” in Window.':
+    '{close} quitte SyncR, et le morceau disparaît avec. Pour le garder, activez « {close} masque SyncR dans la zone de notification » dans Fenêtre.',
   Battery: 'Batterie',
   'About the battery check': 'À propos de la lecture de la batterie',
   'Asked every minute, through the mouse’s 8K receiver, and shown in the taskbar left of the icons next to the clock. While the mouse sleeps, the last answer stays.':

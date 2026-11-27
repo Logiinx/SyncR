@@ -19,6 +19,7 @@ import { followSectionColors } from './videoSections'
 import { followLinkSites } from './linkPreviews'
 import { startMouseBattery } from './mouseBattery'
 import { startHardware } from './hardware'
+import { startSpotify } from './spotify'
 import { showTray } from './desktop'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
@@ -36,6 +37,7 @@ if (!isPopup) startTrayTexts()
 if (!isPopup) showTray()
 if (!isPopup) startMouseBattery()
 if (!isPopup) startHardware()
+if (!isPopup) startSpotify()
 // The sign-ins are decrypted first, both windows read them. On the PC that can take a moment
 // at start (Windows), so the side panels' second without animation counts from the first draw.
 // Then the PC's local database gets its key, or is moved into the encrypted one (localDb.ts).

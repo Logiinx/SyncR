@@ -56,8 +56,9 @@ windows-sys = { version = "0.61", features = ["Win32_Devices_DeviceAndDriverInst
 # whether it worked. The same versions as Tauri's own, so nothing new gets built.
 webview2-com = "0.39"
 # Also gives the video window its own taskbar button (lib.rs, own_taskbar_button), and draws the
-# Hardware widget (Direct2D + DirectWrite, hardware_widget.rs); windows-numerics: its points (already in the build, the same version)
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_DirectWrite", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_Storage_EnhancedStorage", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell_PropertiesSystem"] }
+# Hardware widget (Direct2D + DirectWrite, hardware_widget.rs); windows-numerics: its points (already in the build, the same version).
+# Also what Spotify plays, from Windows' media info (spotify.rs: Media_Control, Storage_Streams for the cover).
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_DirectWrite", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_Storage_EnhancedStorage", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell_PropertiesSystem", "Media_Control", "Storage_Streams"] }
 windows-numerics = "0.3.1"
 
 # A smaller app (installer and updates): optimized for size, no debug symbols, stop at once on a
