@@ -34,6 +34,7 @@ import { useModuleOn } from './modules'
 import { isTauri } from '@tauri-apps/api/core'
 import { listenMouseBatteryOpen } from './mouseBattery'
 import { listenHardwareOpen } from './hardware'
+import { listenSpotifyOpen } from './spotify'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useMissed } from './mailAlerts'
 import MailView from './MailView'
@@ -170,6 +171,7 @@ function App() {
       listenOpenSettings(openOn),
       listenMouseBatteryOpen(() => openOn('mouse-battery')),
       listenHardwareOpen(() => openOn('hardware')),
+      listenSpotifyOpen(() => openOn('spotify')),
     ]
     return () => stops.forEach((stop) => stop())
   }, [])

@@ -309,6 +309,7 @@ export const settings = {
   'Fahrenheit (°F)': 'Fahrenheit (°F)',
   'What to show': 'Mesures affichées',
   'Hardware settings…': 'Paramètres Matériel…',
+  'Spotify settings…': 'Paramètres Spotify…',
   'Hide widget': 'Masquer le widget',
   Rows: 'Lignes',
   'Rows with bars': 'Lignes avec barres',

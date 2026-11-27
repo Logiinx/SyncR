@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "widget-menu",
+  "description": "the right-click menu of the Hardware widget and the Spotify strip (widget-menu.html): its own command, nothing else.",
+  "windows": [
+    "widget-menu"
+  ],
+  "permissions": [
+    "allow-widget-menu"
+  ]
+}

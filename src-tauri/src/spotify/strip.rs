@@ -7,6 +7,7 @@
 // to the left, as its right edge is held by the battery) or always kept, or no ⏮ ⏭ at all
 // (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
+// Right-click: the shared menu (widget_menu.rs).
 // Wheel: Spotify's volume (the reading thread changes it), shown in the artist's place until
 // 1.5 s after the last notch; the strip never gets narrower meanwhile.
 // Its own thread, like the battery's: once inside the taskbar it shares Windows' input with it, so
@@ -18,6 +19,7 @@ use super::{ask, strip_shown, volume_line, Ask, Cover, Room};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
+use crate::widget_menu::{self, Owner};
 use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,8 +32,8 @@ use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_WIN95_CLASSES, 
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, KillTimer, PostMessageW,
-  PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CLOSE, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
-  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_SETTINGCHANGE, WM_TIMER, WHEEL_DELTA, WS_EX_TOOLWINDOW, WS_POPUP,
+  PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
+  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER, WHEEL_DELTA, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
@@ -260,6 +262,10 @@ fn run(start: u64) {
 unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
   match message {
     WM_TIMER | WM_REFRESH => {
+      if message == WM_TIMER && wparam == PLACE_TIMER {
+        let strip = LOCAL.with(|local| local.try_borrow().map(|local| local.strip).unwrap_or(null_mut()));
+        widget_menu::away(Owner::SpotifyStrip, strip);
+      }
       if message == WM_TIMER && wparam == VOLUME_TIMER {
         unsafe { KillTimer(window, VOLUME_TIMER) };
         VOLUME_SHOWN.set(false);
@@ -310,6 +316,7 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
         };
         unsafe { TrackMouseEvent(&mut track) };
       }
+      widget_menu::prepare(Owner::SpotifyStrip, window);
       refresh();
       0
     }
@@ -335,6 +342,13 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
       }
       0
     }
+    // Right-click: its menu (Show as, Spotify settings…), where the mouse is. The taskbar's own
+    // menu never shows.
+    WM_RBUTTONUP => {
+      widget_menu::open(Owner::SpotifyStrip, window);
+      0
+    }
+    WM_RBUTTONDOWN | WM_CONTEXTMENU => 0,
     // Each notch: 2 % (the reading thread changes it, then the strip is drawn again)
     WM_MOUSEWHEEL => {
       let turned = WHEEL_REST.get() + ((wparam >> 16) & 0xFFFF) as u16 as i16 as i32;

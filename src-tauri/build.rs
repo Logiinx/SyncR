@@ -50,7 +50,7 @@ fn main() {
     "hardware_helper_setup",
     "hardware_helper_remove",
     "hardware_widget",
-    "hardware_menu",
+    "widget_menu",
   ])))
   .expect("failed to build");
 }

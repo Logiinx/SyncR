@@ -5,12 +5,7 @@ import { ModuleSwitch, SettingRow } from './SettingsCard'
 import { loadBackground } from './desktop'
 import { t } from './i18n'
 import { withIcon } from './richText'
-import { type Room, type ShowAs, saveSpotify, useSpotify, useSpotifySong } from './spotify'
-
-const SHOW_AS: [ShowAs, () => string][] = [
-  ['strip', () => t('Taskbar strip')],
-  ['widget', () => t('Floating widget')],
-]
+import { type Room, SHOW_AS, type ShowAs, saveSpotify, useSpotify, useSpotifySong } from './spotify'
 
 // ⏮ ⏭ on the strip: its right edge is held by the battery, so their room comes from the left.
 // None: no ⏮ ⏭ (the widget too, once it exists), ⏯ on the cover stays.

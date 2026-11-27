@@ -9,6 +9,7 @@ mod taskbar;
 mod trailer_player;
 mod video_extensions;
 mod video_window;
+mod widget_menu;
 #[cfg(desktop)]
 mod window_place;
 
@@ -392,7 +393,7 @@ pub fn run() {
       hardware::helper::hardware_helper_setup,
       hardware::helper::hardware_helper_remove,
       hardware::widget::hardware_widget,
-      hardware::widget::hardware_menu
+      widget_menu::widget_menu
     ]);
 
   // Remembers the window's size, position (also on another monitor) and maximized state,
@@ -404,14 +405,14 @@ pub fn run() {
   // shows it once it has drawn its first screen (WindowControls.tsx), so it appears in place.
   // The reminder pop-up places itself (ReminderPopup.tsx), so it's left out, and so does the video
   // window (video_window.rs: this plugin only writes to disk when the app quits cleanly), and the
-  // Hardware widget's menu (hardware_widget.rs).
+  // widgets' right-click menu (widget_menu.rs).
   #[cfg(desktop)]
   let builder = {
     builder.plugin(
       tauri_plugin_window_state::Builder::default()
         .with_state_flags(window_place::flags())
         .skip_initial_state("main") // put back by window_place::restore (setup below)
-        .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP, video_window::VIDEO_WINDOW, hardware::widget::MENU])
+        .with_denylist(&["reminder-popup", video_extensions::HOST, video_extensions::POPUP, video_window::VIDEO_WINDOW, widget_menu::MENU])
         .build(),
     )
   };
@@ -421,6 +422,7 @@ pub fn run() {
       #[cfg(desktop)]
       {
         app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+        widget_menu::init(app.handle().clone());
 
         // Back to its saved size and place, still hidden (the page shows it)
         if let Some(window) = app.get_webview_window("main") {

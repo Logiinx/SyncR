@@ -6,7 +6,7 @@
 // It lives inside the desktop: a child of the desktop's icon view (Explorer's), so it sits under
 // every window, never comes to the front, and stays on Win+D. "Always on top": a window of its own
 // instead, above the others. Dragged anywhere to move it (not when locked); where it's left goes
-// back to the page, which saves it. Right-click: its menu (open_menu). First time: top left of the 2nd monitor (the
+// back to the page, which saves it. Right-click: its menu (widget_menu.rs). First time: top left of the 2nd monitor (the
 // main one if there's only one); a saved place on no monitor any more: top left of the main one.
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
@@ -14,11 +14,12 @@
 
 use super::lock;
 use crate::mouse_battery::gdi::Canvas;
+use crate::widget_menu::{self, Owner};
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicU8, Ordering};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct2D::Common::{
   D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F, D2D_SIZE_F,
@@ -242,7 +243,6 @@ static CONTROLLER: Mutex<isize> = Mutex::new(0); // the running thread's hidden 
 static STARTS: AtomicU64 = AtomicU64::new(0); // an older thread that comes up late closes itself
 static APP: Mutex<Option<AppHandle>> = Mutex::new(None);
 static LOCKED: AtomicBool = AtomicBool::new(false);
-pub const MENU: &str = "hardware-menu";
 // Click-through (follow_mouse): which clicks go through, the app's Animations setting, the widget
 // (for the mouse hook), whether clicks go through it right now, and whether it's being dragged
 const THROUGH_OFF: u8 = 0;
@@ -407,7 +407,7 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
       show();
       follow(window);
       if message == WM_TIMER {
-        menu_away(WIDGET.load(Ordering::SeqCst) as HWND);
+        widget_menu::away(Owner::Hardware, WIDGET.load(Ordering::SeqCst) as HWND);
       }
       0
     }
@@ -443,9 +443,9 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
   match message {
     // Anywhere on it counts as its title bar: dragging it moves it (Windows does the moving).
     // Locked: a plain window part, which doesn't move
-    // The mouse over it also gets its right-click menu ready (prepare_menu).
+    // The mouse over it also gets its right-click menu ready (widget_menu::prepare).
     WM_NCHITTEST => {
-      prepare_menu();
+      widget_menu::prepare(Owner::Hardware, window);
       (if LOCKED.load(Ordering::SeqCst) { HTCLIENT } else { HTCAPTION }) as LRESULT
     }
     // Ctrl + mouse wheel: one size up or down per notch, chosen by the page (hardware.ts), which
@@ -459,7 +459,7 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
     // Right-click (on the "title bar", or anywhere when locked): its menu, where the mouse is.
     // Windows' own title bar menu never shows.
     WM_NCRBUTTONUP | WM_RBUTTONUP => {
-      open_menu();
+      widget_menu::open(Owner::Hardware, window);
       0
     }
     WM_NCRBUTTONDOWN | WM_RBUTTONDOWN | WM_CONTEXTMENU => 0,
@@ -544,7 +544,7 @@ fn follow_mouse(local: &mut Local) -> u32 {
   // Clicks going through it bring no moves over it: "left clicks only" readies the menu from here
   // (with "all clicks", Ctrl makes it a normal widget, which gets the moves)
   if over && through == THROUGH_LEFT {
-    prepare_menu();
+    widget_menu::prepare(Owner::Hardware, local.widget);
   }
   let dragging = DRAGGING.load(Ordering::SeqCst);
   set_passing(local.widget, through != THROUGH_OFF && !(over && ctrl) && !dragging);
@@ -640,299 +640,17 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
       let widget = WIDGET.load(Ordering::SeqCst) as HWND;
       // lparam is the event, as Windows sends it for this hook
       let mouse = unsafe { (*(lparam as *const MSLLHOOKSTRUCT)).pt };
-      let ours = !widget.is_null() && PASSING.load(Ordering::SeqCst) && !menu_open() && mouse_over(widget, mouse);
+      let ours = !widget.is_null() && PASSING.load(Ordering::SeqCst) && !widget_menu::is_open() && mouse_over(widget, mouse);
       RIGHT_PRESSED.with(|pressed| pressed.set(ours));
       if ours {
         return 1;
       }
     } else if message == WM_RBUTTONUP && RIGHT_PRESSED.with(|pressed| pressed.replace(false)) {
-      open_menu();
+      widget_menu::open(Owner::Hardware, WIDGET.load(Ordering::SeqCst) as HWND);
       return 1;
     }
   }
   unsafe { CallNextHookEx(null_mut(), code, wparam, lparam) }
-}
-
-// The right-click menu: a page of its own (hardware-menu.html) in a see-through window over the
-// whole monitor, so the menu and its side lists can open anywhere on it, and a click elsewhere
-// lands on it and closes the menu, like the app's own menus. Making that window and loading its
-// page takes ~0.1 s (measured), which showed as a pause before the menu, so it's made hidden as
-// soon as the mouse is over the widget (prepare_menu), and a right-click only has to show it
-// (open_menu). Not right-clicked: removed a few seconds after the mouse leaves (menu_away), so
-// nothing stays loaded while unused. Closed: removed too.
-#[derive(Clone, Copy, PartialEq)]
-enum Stage {
-  None,
-  Making,  // its window and page are loading
-  Waiting, // ready, hidden, for a right-click
-  Open,
-  Closing,
-}
-struct MenuState {
-  stage: Stage,
-  area: RECT,             // the monitor it covers (screen pixels)
-  open_at: Option<POINT>, // right-clicked while it was being made: opened there once its page is in
-  away: u32,              // seconds the mouse has been off the widget while it waits
-  making: u32,            // seconds it has been loading
-  made: u64,              // which menu (each one made gets the next number): a late one knows it's not wanted
-}
-const NO_AREA: RECT = RECT { left: 0, top: 0, right: 0, bottom: 0 };
-static MENU_STATE: Mutex<MenuState> = Mutex::new(MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0, making: 0, made: 0 });
-const MENU_KEPT: u32 = 5; // seconds a waiting menu stays after the mouse leaves the widget
-// A page that hasn't said "loaded" by then never will (it failed): the menu goes, and the next
-// time the mouse comes it's made again (else no right-click would open it until SyncR restarts)
-const MENU_LOAD_LIMIT: u32 = 10;
-
-// No menu any more: the next mouse over the widget makes one again
-fn menu_gone(state: &mut MenuState) {
-  *state = MenuState { stage: Stage::None, area: NO_AREA, open_at: None, away: 0, making: 0, made: state.made };
-}
-
-// "On top" then leaves the menu above the widget, and a right-click on it isn't the widget's
-fn menu_open() -> bool {
-  lock(&MENU_STATE).stage == Stage::Open
-}
-
-// The mouse, and the monitor it's on
-fn mouse_monitor() -> Option<(POINT, RECT)> {
-  let mut mouse = POINT { x: 0, y: 0 };
-  let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, rcMonitor: NO_AREA, rcWork: NO_AREA, dwFlags: 0 };
-  // info has its size set, as Windows asks
-  let found = unsafe { GetCursorPos(&mut mouse) != 0 && GetMonitorInfoW(MonitorFromPoint(mouse, MONITOR_DEFAULTTONEAREST), &mut info) != 0 };
-  found.then_some((mouse, info.rcMonitor))
-}
-
-// The mouse is over the widget (a move over it, or click-through's look at the mouse): its menu
-// gets ready, hidden, if it isn't yet
-fn prepare_menu() {
-  let making = {
-    let mut state = lock(&MENU_STATE);
-    state.away = 0;
-    state.stage == Stage::None
-  };
-  if making {
-    if let Some((_, area)) = mouse_monitor() {
-      make_menu(area, None);
-    }
-  }
-}
-
-// Right-click on the widget: its menu where the mouse is. Waiting: shown now; still being made:
-// once its page is in; not made (a right-click without a move over it first): made now.
-fn open_menu() {
-  let Some((mouse, area)) = mouse_monitor() else { return };
-  let made_for = {
-    let mut state = lock(&MENU_STATE);
-    match state.stage {
-      Stage::None => None,
-      Stage::Making => {
-        state.open_at = Some(mouse);
-        return;
-      }
-      Stage::Waiting => {
-        state.stage = Stage::Open;
-        Some(state.area)
-      }
-      Stage::Open | Stage::Closing => return,
-    }
-  };
-  match made_for {
-    Some(made_for) => show_menu(mouse, area, made_for),
-    None => make_menu(area, Some(mouse)),
-  }
-}
-
-fn make_menu(area: RECT, open_at: Option<POINT>) {
-  let Some(app) = lock(&APP).clone() else { return };
-  let made = {
-    let mut state = lock(&MENU_STATE);
-    if state.stage != Stage::None {
-      return;
-    }
-    *state = MenuState { stage: Stage::Making, area, open_at, away: 0, making: 0, made: state.made + 1 };
-    state.made
-  };
-  // Making a window waits for the app's main thread: not on this one, which draws the widget
-  std::thread::spawn(move || {
-    let mine = move |state: &MenuState| state.made == made;
-    let built = WebviewWindowBuilder::new(&app, MENU, WebviewUrl::App("hardware-menu.html".into()))
-      .title("SyncR")
-      .decorations(false)
-      .transparent(true)
-      .shadow(false)
-      .always_on_top(true)
-      .skip_taskbar(true)
-      .resizable(false)
-      .maximizable(false)
-      .minimizable(false)
-      .visible(false)
-      .focused(false)
-      // Same origin as the main window, so it reads the same saved settings and language
-      .use_https_scheme(true)
-      .on_navigation(|url| url.path() == "/hardware-menu.html")
-      // Its file-drop listener is let go only after the window is gone, which Windows refuses:
-      // each menu then kept 2 handles (shared memory) until SyncR closed. The menu takes no files.
-      .disable_drag_drop_handler()
-      .build();
-    let Ok(menu) = built else {
-      let mut state = lock(&MENU_STATE);
-      if mine(&state) {
-        menu_gone(&mut state);
-      }
-      return;
-    };
-    // Given up on while it was being made (it took too long): not wanted any more
-    {
-      let state = lock(&MENU_STATE);
-      if !mine(&state) || state.stage != Stage::Making {
-        drop(state);
-        let _ = menu.destroy();
-        return;
-      }
-    }
-    // Gone in any way: a look shown from it goes back to the saved one
-    let handle = app.clone();
-    menu.on_window_event(move |event| {
-      if matches!(event, tauri::WindowEvent::Destroyed) {
-        let mut state = lock(&MENU_STATE);
-        if mine(&state) {
-          menu_gone(&mut state);
-        }
-        drop(state);
-        let _ = handle.emit_to("main", "hardware-menu", serde_json::json!({ "preview": null }));
-      }
-    });
-    place_menu(&menu, area);
-  });
-}
-
-// Over the whole monitor (placed first: on another monitor's scale, Windows resizes it)
-fn place_menu(menu: &tauri::WebviewWindow, area: RECT) {
-  let _ = menu.set_position(tauri::PhysicalPosition::new(area.left, area.top));
-  let _ = menu.set_size(tauri::PhysicalSize::new((area.right - area.left).max(1) as u32, (area.bottom - area.top).max(1) as u32));
-}
-
-// Tells its page where the mouse is and the window's size in screen pixels (moved first if the
-// right-click is on another monitor than the one it was made for); the page draws the menu once
-// the window has that size, then asks to be shown (hardware_menu "ready")
-fn show_menu(mouse: POINT, area: RECT, made_for: RECT) {
-  let Some(app) = lock(&APP).clone() else { return };
-  std::thread::spawn(move || {
-    let Some(menu) = app.get_webview_window(MENU) else { return };
-    let same = (area.left, area.top, area.right, area.bottom) == (made_for.left, made_for.top, made_for.right, made_for.bottom);
-    if !same {
-      lock(&MENU_STATE).area = area;
-      place_menu(&menu, area);
-    }
-    let at = serde_json::json!({
-      "x": mouse.x - area.left,
-      "y": mouse.y - area.top,
-      "w": (area.right - area.left).max(1),
-      "h": (area.bottom - area.top).max(1),
-    });
-    // Called in its page (hardwareMenu.tsx), which then needs no right to listen to the app's events
-    let _ = menu.eval(format!("window.openHardwareMenu?.({at})"));
-  });
-}
-
-// Every second: a waiting menu goes once the mouse has been off the widget for MENU_KEPT seconds
-// (no widget: at once); one still loading after MENU_LOAD_LIMIT seconds goes too
-fn menu_away(widget: HWND) {
-  let mut state = lock(&MENU_STATE);
-  if state.stage == Stage::Making {
-    state.making += 1;
-    if state.making >= MENU_LOAD_LIMIT {
-      state.stage = Stage::Closing;
-      drop(state);
-      close_menu();
-    }
-    return;
-  }
-  if state.stage != Stage::Waiting {
-    return;
-  }
-  let mut mouse = POINT { x: 0, y: 0 };
-  let mut rect = NO_AREA;
-  let over = !widget.is_null()
-    && unsafe { GetCursorPos(&mut mouse) != 0 && GetWindowRect(widget, &mut rect) != 0 }
-    && (rect.left..rect.right).contains(&mouse.x)
-    && (rect.top..rect.bottom).contains(&mouse.y);
-  state.away = if over { 0 } else { state.away + 1 };
-  if state.away >= MENU_KEPT || widget.is_null() {
-    state.stage = Stage::Closing;
-    drop(state);
-    close_menu();
-  }
-}
-
-// Its window goes, and with it (Destroyed, make_menu) the stage. No window (already gone, or not
-// built yet: make_menu then drops it when it comes): back to no menu here, else it would stay
-// "closing" and no right-click would open it again.
-fn close_menu() {
-  let gone = || {
-    let mut state = lock(&MENU_STATE);
-    if state.stage == Stage::Closing {
-      menu_gone(&mut state);
-    }
-  };
-  let Some(app) = lock(&APP).clone() else { return gone() };
-  std::thread::spawn(move || match app.get_webview_window(MENU) {
-    Some(menu) => {
-      if menu.destroy().is_err() {
-        gone();
-      }
-    }
-    None => gone(),
-  });
-}
-
-// From the menu's page: "loaded" (its page is in, hidden), "ready" (the menu is drawn: show it),
-// "choice" (a changed option or Hide widget, for the main window: hardware.ts), "settings"
-// (Hardware settings…), "close"
-#[tauri::command]
-pub fn hardware_menu(app: AppHandle, action: String, choice: Option<serde_json::Value>) {
-  match action.as_str() {
-    "loaded" => {
-      let mut state = lock(&MENU_STATE);
-      if state.stage != Stage::Making {
-        return;
-      }
-      match state.open_at.take() {
-        Some(mouse) => {
-          state.stage = Stage::Open;
-          let made_for = state.area;
-          drop(state);
-          let area = mouse_monitor().map(|(_, area)| area).unwrap_or(made_for);
-          show_menu(mouse, area, made_for);
-        }
-        // The widget went meanwhile (module off, nothing to show): not needed
-        None if WIDGET.load(Ordering::SeqCst) == 0 => {
-          state.stage = Stage::Closing;
-          drop(state);
-          close_menu();
-        }
-        None => state.stage = Stage::Waiting,
-      }
-    }
-    "ready" => {
-      if let Some(menu) = app.get_webview_window(MENU) {
-        let _ = menu.show();
-        let _ = menu.set_focus();
-      }
-    }
-    "choice" => {
-      let _ = app.emit_to("main", "hardware-menu", choice);
-    }
-    "settings" => {
-      let _ = app.emit_to("main", "hardware-open", ());
-      crate::show_main(&app);
-    }
-    "close" => {
-      lock(&MENU_STATE).stage = Stage::Closing;
-      close_menu();
-    }
-    _ => {}
-  }
 }
 
 fn show() {
@@ -952,7 +670,7 @@ fn hide(local: &mut Local) {
   // Only if the shared state is still this widget's: a thread being closed (widget off, then on
   // again at once) may get here after the new widget is up
   if WIDGET.compare_exchange(widget as isize, 0, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
-    menu_away(null_mut()); // a waiting menu goes with it
+    widget_menu::away(Owner::Hardware, null_mut()); // a waiting menu goes with it
     PASSING.store(false, Ordering::SeqCst);
   }
   unhook(local);
@@ -1087,7 +805,7 @@ fn draw_and_place(local: &mut Local, content: &Content) -> bool {
     }
     // On top: Windows keeps all "on top" windows in one layer, where the latest shown wins, so it
     // goes back to the top of that layer every second. Not while its menu is open over it.
-    if parent.is_null() && !menu_open() {
+    if parent.is_null() && !widget_menu::is_open() {
       SetWindowPos(local.widget, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
   }

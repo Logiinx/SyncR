@@ -20,10 +20,19 @@ export interface SpotifySettings {
   warned: boolean // "✕ quits SyncR, and Spotify's song with it" was shown once
 }
 
+// Names of the choices, for Settings → Spotify and the strip's right-click menu (spotifyMenu.tsx)
+export const SHOW_AS: [ShowAs, () => string][] = [
+  ['strip', () => t('Taskbar strip')],
+  ['widget', () => t('Floating widget')],
+]
+
 const KEY = 'syncr.spotify'
 const DEFAULTS: SpotifySettings = { on: false, showAs: 'strip', room: 'grow', warned: false }
 
-let current: SpotifySettings = { ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) }
+// As saved on this device, also for the right-click menu (its own page, spotifyMenu.tsx)
+export const storedSpotify = (): SpotifySettings => ({ ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) })
+
+let current: SpotifySettings = storedSpotify()
 const listeners = new Set<() => void>()
 
 export function saveSpotify(change: Partial<SpotifySettings>) {
@@ -59,6 +68,11 @@ export function startSpotify() {
   sendWords()
   onLanguageChange(sendWords)
   if (current.on) send()
+  // The strip's right-click menu (widget_menu.rs): a changed option. "Spotify settings…" is App's
+  // (listenSpotifyOpen).
+  void listen<SpotifyMenuChoice>('spotify-menu', ({ payload }) => {
+    if (payload.change) saveSpotify(payload.change)
+  })
   // Settings → Animations changed (appearance.ts sets a class on the page): the buttons' fade too
   let animations = animationsOn()
   new MutationObserver(() => {
@@ -66,6 +80,18 @@ export function startSpotify() {
     animations = animationsOn()
     if (current.on) send()
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+}
+
+export interface SpotifyMenuChoice {
+  change?: Partial<SpotifySettings>
+  preview?: null // sent when the menu goes (for the Hardware widget's looks), nothing to undo here
+}
+
+// "Spotify settings…" in the strip's menu: App opens Settings on the Spotify section
+export function listenSpotifyOpen(open: () => void) {
+  if (!isTauri()) return () => {}
+  const stop = listen('spotify-open', open)
+  return () => void stop.then((unlisten) => unlisten())
 }
 
 // As spotify.rs sends it (null: Spotify closed, or nothing loaded)

@@ -1,101 +1,15 @@
-import { StrictMode, useEffect, useRef, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-import { invoke, isTauri } from '@tauri-apps/api/core'
+import { useEffect, useRef, useState } from 'react'
 import { Blend, EyeOff, Flame, RotateCcw, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
-import './index.css'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import { animationsOn, startClosingAnimations, TIMING } from './animations'
-import { applyAppearance, loadAppearance } from './appearance'
-import { decimal, percentText, t, useLanguage } from './i18n'
+import { decimal, percentText, t } from './i18n'
 import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, groupName, peaksAbout, sensorLabel, storedHardware } from './hardware'
+import type { MenuProps } from './widgetMenu'
 
-// The Hardware widget's right-click menu: a page of its own in a see-through window over the
-// whole monitor (hardware_widget.rs). The window is made hidden as soon as the mouse is over the
-// widget, so a right-click shows the menu at once; it's removed when the menu closes, or a few
-// seconds after the mouse leaves the widget without a right-click. The app's own menu
-// (ContextMenu), so it looks and behaves the same. It reads the settings saved on this device
-// (same origin as the main window) and sends each change to the main window, which saves it
-// (hardware.ts).
-
-// Where to open: the mouse, and the window's size, in screen pixels
-interface OpenAt {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-declare global {
-  interface Window {
-    openHardwareMenu?: (at: OpenAt) => void // called by Rust on a right-click (show_menu)
-  }
-}
-
-const send = async (action: string, choice?: MenuChoice) => {
-  if (isTauri()) await invoke('hardware_menu', { action, choice }).catch(console.error)
-}
-
-// The window may still be getting the monitor's size: the menu is placed once it has it (it keeps
-// itself inside the window), or after a second whatever happens, so it always shows
-const sized = (at: OpenAt) => Math.abs(innerWidth * devicePixelRatio - at.w) <= 2 && Math.abs(innerHeight * devicePixelRatio - at.h) <= 2
-
-function HardwareMenu() {
-  useLanguage()
+// The Hardware widget's right-click menu, in the widgets' menu page (widgetMenu.tsx). It reads the
+// settings saved on this device (same origin as the main window) and sends each change to the
+// main window, which saves it (hardware.ts).
+export default function HardwareMenu({ x, y, send, onClose }: MenuProps<MenuChoice>) {
   const [settings, setSettings] = useState<HardwareSettings>(storedHardware)
-  const [at, setAt] = useState<OpenAt | null>(null)
-  const [ready, setReady] = useState(false)
-
-  // Loaded and waiting, hidden. Right-clicked: the settings and the app's look are read again
-  // (they may have changed while it waited)
-  useEffect(() => {
-    window.openHardwareMenu = (next) => {
-      applyAppearance(loadAppearance())
-      setSettings(storedHardware())
-      setAt(next)
-    }
-    void send('loaded')
-    return () => {
-      window.openHardwareMenu = undefined
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!at || ready) return
-    const check = () => sized(at) && setReady(true)
-    check()
-    const late = setTimeout(() => setReady(true), 1000)
-    addEventListener('resize', check)
-    return () => {
-      clearTimeout(late)
-      removeEventListener('resize', check)
-    }
-  }, [at, ready])
-  // Shown once drawn (the next frame; a hidden page may get none, so at most 100 ms later)
-  useEffect(() => {
-    if (!ready) return
-    let shown = false
-    const show = () => {
-      if (!shown) void send('ready')
-      shown = true
-    }
-    requestAnimationFrame(show)
-    const late = setTimeout(show, 100)
-    return () => clearTimeout(late)
-  }, [ready])
-
-  // Closing: the menu's closing animation, then the window goes. Another window taking the
-  // focus (a click on another monitor, Alt+Tab) closes it too.
-  const [closing, setClosing] = useState(false)
-  useEffect(() => {
-    if (!closing) return
-    const done = setTimeout(() => void send('close'), animationsOn() ? TIMING.closeSmall : 0)
-    return () => clearTimeout(done)
-  }, [closing])
-  useEffect(() => {
-    if (!at) return
-    const close = () => setClosing(true)
-    addEventListener('blur', close)
-    return () => removeEventListener('blur', close)
-  }, [at])
 
   const change = (part: Partial<HardwareSettings>) => {
     setSettings((now) => ({ ...now, ...part }))
@@ -234,14 +148,5 @@ function HardwareMenu() {
     { label: t('Hide widget'), icon: EyeOff, onClick: () => void send('choice', { hide: true }) },
   ]
 
-  if (!at || !ready || closing) return null
-  return <ContextMenu x={at.x / devicePixelRatio} y={at.y / devicePixelRatio} items={items} onClose={() => setClosing(true)} />
+  return <ContextMenu x={x} y={y} items={items} onClose={onClose} />
 }
-
-applyAppearance(loadAppearance()) // the app's scale, font and animations setting
-startClosingAnimations()
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HardwareMenu />
-  </StrictMode>,
-)
