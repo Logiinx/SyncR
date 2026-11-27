@@ -15,6 +15,9 @@
 // it (not when locked); press and let go without moving: a click. Where it's left goes back to
 // the page, which saves it. First time: bottom right of the main monitor, just above the taskbar;
 // a saved place on no monitor any more, or a monitor that goes: the same corner.
+// "Colors from the cover" (on by default): the box takes a dark tint of the cover's main color
+// behind the cover, fading into the plain dark box under the text (look C,
+// .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
 // Right-click: its menu (widget_menu.rs).
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
@@ -36,11 +39,11 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use windows::core::BOOL;
-use windows::Win32::Graphics::Direct2D::Common::{D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT, D2D_RECT_F, D2D_SIZE_U};
+use windows::Win32::Graphics::Direct2D::Common::{D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_GRADIENT_STOP, D2D1_PIXEL_FORMAT, D2D_RECT_F, D2D_SIZE_U};
 use windows::Win32::Graphics::Direct2D::{
   D2D1CreateFactory, ID2D1Factory, ID2D1RenderTarget, D2D1_BITMAP_BRUSH_PROPERTIES, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
   D2D1_BITMAP_PROPERTIES, D2D1_BRUSH_PROPERTIES, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_EXTEND_MODE_CLAMP, D2D1_FACTORY_TYPE_SINGLE_THREADED,
-  D2D1_FEATURE_LEVEL_DEFAULT, D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE,
+  D2D1_FEATURE_LEVEL_DEFAULT, D2D1_GAMMA_2_2, D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE,
   D2D1_ROUNDED_RECT, D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 };
 use windows::Win32::Graphics::DirectWrite::{
@@ -97,6 +100,11 @@ const TEXT: u32 = 0xe4e4e4;
 const DIM: u32 = 0x808080;
 const PAUSED: f32 = 0.5; // cover and text, paused
 const EMPTY: f32 = 0.12; // no cover yet: a faint white square
+// The cover's tint (look C): full from the box's left edge to this far past the cover's left, then
+// fading into the dark box until TINT_FADED past it (the mockup's 30 and 230 px)
+const TINT_FULL: f32 = 22.0;
+const TINT_FADED: f32 = 222.0;
+const TINT_SECONDS: f32 = 0.5; // a new song's tint fades in
 
 static CONTROLLER: Mutex<isize> = Mutex::new(0); // the running thread's hidden window (0: none)
 static STARTS: AtomicU64 = AtomicU64::new(0); // an older thread that comes up late closes itself
@@ -167,6 +175,7 @@ struct Look {
   playing: bool,
   cover: Option<Arc<Cover>>, // held here, so a new cover can't reuse the old one's place and look the same
   background: u32,
+  tint: u32, // the cover's tint as drawn now (mid-fade too); BG: none
   part: Option<Part>, // under the mouse (⏮ ⏭ get a box)
   open: u8,           // ⏮ ⏭ faded in, 0 to 255
   veil: u8,           // the cover's veil and ⏯, 0 to 255
@@ -180,8 +189,20 @@ impl PartialEq for Look {
       _ => false,
     };
     same_cover
-      && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.part, self.open, self.veil)
-        == (other.scale, other.side, &other.title, &other.artist, &other.album, other.playing, other.background, other.part, other.open, other.veil)
+      && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.tint, self.part, self.open, self.veil)
+        == (
+          other.scale,
+          other.side,
+          &other.title,
+          &other.artist,
+          &other.album,
+          other.playing,
+          other.background,
+          other.tint,
+          other.part,
+          other.open,
+          other.veil,
+        )
   }
 }
 
@@ -196,6 +217,10 @@ struct Local {
   drawn: Option<Look>,
   open: f32, // ⏮ ⏭ coming in: 0 (gone) to 1 (there)
   veil: f32, // the cover's veil and ⏯, 0 to 1
+  // The tint fading from one color to the next (BG: none): how far, 0 to 1
+  tint_from: u32,
+  tint_to: u32,
+  tint_done: f32,
   last_frame: Option<Instant>,
   moving: bool, // the frame timer runs
 }
@@ -220,6 +245,9 @@ thread_local! {
       drawn: None,
       open: 0.0,
       veil: 0.0,
+      tint_from: BG,
+      tint_to: BG,
+      tint_done: 1.0,
       last_frame: None,
       moving: false,
     })
@@ -473,7 +501,8 @@ fn show(tick: bool) {
     // The fades go on while something isn't where it's going
     let cover_hovered = local.drawn.as_ref().is_some_and(|drawn| drawn.part == Some(Part::Cover));
     let buttons = local.drawn.as_ref().is_some_and(|drawn| drawn.side > 0.0);
-    let moving = local.drawn.is_some() && (local.open != target(HOVER.get() && buttons) || local.veil != target(cover_hovered));
+    let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(cover_hovered) || local.tint_done < 1.0;
+    let moving = local.drawn.is_some() && fading;
     if moving != local.moving {
       unsafe {
         if moving {
@@ -580,6 +609,15 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     None
   };
   local.veil = fade(local.veil, target(part == Some(Part::Cover)), seconds, now.animations);
+  // A new tint fades in from the one shown now; none shown yet (just appeared): at once
+  let tint = now.tint.unwrap_or(BG);
+  if tint != local.tint_to {
+    local.tint_from = local.drawn.as_ref().map_or(tint, |drawn| drawn.tint);
+    local.tint_to = tint;
+    local.tint_done = 0.0;
+  }
+  local.tint_done = if now.animations && local.drawn.is_some() { (local.tint_done + seconds / TINT_SECONDS).min(1.0) } else { 1.0 };
+  let tint = mix(local.tint_from, local.tint_to, ease(local.tint_done));
 
   // The tooltip: the full title, artist and album, only when one of them is cut (made again only
   // for a new song; "": Windows shows none)
@@ -602,6 +640,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     playing: now.playing,
     cover: now.cover,
     background: now.background,
+    tint,
     part,
     open: to_byte(ease(local.open)),
     veil: to_byte(ease(local.veil)),
@@ -825,11 +864,29 @@ impl Painter {
       // Never quite 0: Windows lets clicks through fully clear pixels, and the box must stay draggable
       let bg_alpha = (look.background.min(100) as f32 / 100.0).max(1.0 / 255.0);
       let bg = target.CreateSolidColorBrush(&color(BG, bg_alpha), None).ok()?;
+      // The cover's tint behind the cover, fading into the dark box (two stops, drawn as the page
+      // would mix them)
+      let tinted = if look.tint == BG {
+        None
+      } else {
+        let stops = [D2D1_GRADIENT_STOP { position: 0.0, color: color(look.tint, bg_alpha) }, D2D1_GRADIENT_STOP { position: 1.0, color: color(BG, bg_alpha) }];
+        let stops = target.CreateGradientStopCollection(&stops, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP).ok()?;
+        let cover_left = PAD + side;
+        let line = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES {
+          startPoint: windows_numerics::Vector2 { X: cover_left + TINT_FULL, Y: 0.0 },
+          endPoint: windows_numerics::Vector2 { X: cover_left + TINT_FADED, Y: 0.0 },
+        };
+        Some(target.CreateLinearGradientBrush(&line, None, &stops).ok()?)
+      };
       target.BeginDraw();
       target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
       target.Clear(Some(&D2D1_COLOR_F { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }));
       let rounded = |rect: D2D_RECT_F, radius: f32| D2D1_ROUNDED_RECT { rect, radiusX: radius, radiusY: radius };
-      target.FillRoundedRectangle(&rounded(D2D_RECT_F { left: 0.0, top: 0.0, right: width, bottom: height }, RADIUS), &bg);
+      let box_rect = rounded(D2D_RECT_F { left: 0.0, top: 0.0, right: width, bottom: height }, RADIUS);
+      match &tinted {
+        Some(tinted) => target.FillRoundedRectangle(&box_rect, tinted),
+        None => target.FillRoundedRectangle(&box_rect, &bg),
+      }
 
       // The cover, on whole pixels, one picture pixel per screen pixel
       let (left, top) = (snap(PAD + side), snap(PAD));
@@ -915,6 +972,15 @@ impl Painter {
     }
     Some(canvas)
   }
+}
+
+// Between two colors (0xRRGGBB), `done` of the way (0 to 1)
+fn mix(from: u32, to: u32, done: f32) -> u32 {
+  let part = |shift: u32| {
+    let (a, b) = (((from >> shift) & 0xff) as f32, ((to >> shift) & 0xff) as f32);
+    ((a + (b - a) * done).round() as u32) << shift
+  };
+  part(16) | part(8) | part(0)
 }
 
 // The first icon font Windows has (Windows 11's, else Windows 10's)

@@ -63,6 +63,9 @@ pub struct Config {
   size: u32,
   #[serde(default = "see_through")]
   background: u32,
+  // The widget's box takes a dark tint of the cover's main color (look C, spotify-cover-colors.html)
+  #[serde(default = "yes")]
+  cover_colors: bool,
 }
 
 fn yes() -> bool {
@@ -103,6 +106,7 @@ pub struct Song {
 pub struct Cover {
   pixels: Vec<u8>,
   side: usize,
+  tint: Option<u32>, // the widget's tint from it (0xRRGGBB; None: hardly any color in it)
 }
 
 // The settings while on (None: off), the song now, its cover's pixels, Spotify's volume (None:
@@ -215,6 +219,7 @@ pub struct WidgetShown {
   on_top: bool,
   size: u32,
   background: u32,
+  tint: Option<u32>, // the cover's tint, when "Colors from the cover" is on
 }
 
 fn widget_shown() -> Option<WidgetShown> {
@@ -222,6 +227,7 @@ fn widget_shown() -> Option<WidgetShown> {
   let song = lock(&SONG).clone()?;
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
   let buttons = config.room != "none";
+  let tint = cover.as_ref().and_then(|cover| cover.tint).filter(|_| config.cover_colors);
   let Config { animations, place, on_top, size, background, .. } = config;
   Some(WidgetShown {
     title: song.title,
@@ -236,6 +242,7 @@ fn widget_shown() -> Option<WidgetShown> {
     on_top,
     size,
     background,
+    tint,
   })
 }
 
@@ -553,7 +560,78 @@ fn decode(stream: &IRandomAccessStream) -> Option<Cover> {
     .ok()?;
   let pixels = data.DetachPixelData().ok()?.to_vec();
   let side = COVER_SIDE as usize;
-  (pixels.len() == side * side * 4).then_some(Cover { pixels, side })
+  (pixels.len() == side * side * 4).then(|| Cover { tint: tint(&pixels), pixels, side })
+}
+
+// The cover's main vivid color, made a dark tint for the widget's box (None: hardly any color, so
+// the plain dark box). The most common vivid hue, not the average (which turns most covers brown):
+// pixels grouped by hue (36 groups of 10°), each counting more the more vivid it is; near-black
+// and gray pixels don't count. The winning group's average color, then its lightness set to 22 %
+// and its saturation kept under 55 % (calm, the dark theme stays).
+fn tint(pixels: &[u8]) -> Option<u32> {
+  let mut groups = [[0f32; 4]; 36]; // weight, red, green, blue (red… times weight)
+  let mut count = 0f32;
+  for pixel in pixels.chunks_exact(4) {
+    let alpha = pixel[3] as f32;
+    if alpha < 128.0 {
+      continue; // mostly see-through: not part of the picture
+    }
+    count += 1.0;
+    // Premultiplied blue, green, red: back to plain 0–255
+    let plain = |value: u8| (value as f32 * 255.0 / alpha).min(255.0);
+    let (blue, green, red) = (plain(pixel[0]), plain(pixel[1]), plain(pixel[2]));
+    let (max, min) = (red.max(green).max(blue), red.min(green).min(blue));
+    let (value, saturation) = (max / 255.0, if max > 0.0 { (max - min) / max } else { 0.0 });
+    if value < 0.15 || saturation < 0.25 {
+      continue;
+    }
+    let group = &mut groups[(hue(red, green, blue) / 10.0) as usize % 36];
+    let weight = saturation * value;
+    group[0] += weight;
+    group[1] += red * weight;
+    group[2] += green * weight;
+    group[3] += blue * weight;
+  }
+  let best = groups.iter().max_by(|a, b| a[0].total_cmp(&b[0]))?;
+  if count == 0.0 || best[0] / count < 0.03 {
+    return None;
+  }
+  let (red, green, blue) = (best[1] / best[0], best[2] / best[0], best[3] / best[0]);
+  // Its hue and saturation (HSL), with the tint's lightness, back to red, green, blue
+  let (max, min) = (red.max(green).max(blue) / 255.0, red.min(green).min(blue) / 255.0);
+  let lightness = (max + min) / 2.0;
+  let saturation = if max > min { (max - min) / (1.0 - (2.0 * lightness - 1.0).abs()) } else { 0.0 };
+  let (hue, saturation, lightness) = (hue(red, green, blue), saturation.min(0.55), 0.22);
+  let chroma = (1.0 - (2.0 * lightness - 1.0f32).abs()) * saturation;
+  let second = chroma * (1.0 - ((hue / 60.0) % 2.0 - 1.0).abs());
+  let (r, g, b) = match (hue / 60.0) as u32 {
+    0 => (chroma, second, 0.0),
+    1 => (second, chroma, 0.0),
+    2 => (0.0, chroma, second),
+    3 => (0.0, second, chroma),
+    4 => (second, 0.0, chroma),
+    _ => (chroma, 0.0, second),
+  };
+  let floor = lightness - chroma / 2.0;
+  let byte = |part: f32| (((part + floor) * 255.0).round().clamp(0.0, 255.0)) as u32;
+  Some(byte(r) << 16 | byte(g) << 8 | byte(b))
+}
+
+// A color's hue, 0 to 360 (0: red, 120: green, 240: blue)
+fn hue(red: f32, green: f32, blue: f32) -> f32 {
+  let (max, min) = (red.max(green).max(blue), red.min(green).min(blue));
+  let range = max - min;
+  if range <= 0.0 {
+    return 0.0;
+  }
+  let sixth = if max == red {
+    ((green - blue) / range).rem_euclid(6.0)
+  } else if max == green {
+    (blue - red) / range + 2.0
+  } else {
+    (red - green) / range + 4.0
+  };
+  sixth * 60.0
 }
 
 // The cover made `side` pixels square (the strip's and the widget's size): each new pixel is the
@@ -583,4 +661,50 @@ fn shrink(cover: &Cover, side: usize) -> Vec<f32> {
     }
   }
   out
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{hue, tint};
+
+  // A 128 px cover: `paint` gives each pixel's red, green, blue from its x and y
+  fn cover(paint: impl Fn(usize, usize) -> (u8, u8, u8)) -> Vec<u8> {
+    (0..128 * 128).flat_map(|at| {
+      let (red, green, blue) = paint(at % 128, at / 128);
+      [blue, green, red, 255]
+    }).collect()
+  }
+
+  fn hue_of(rgb: u32) -> f32 {
+    hue(((rgb >> 16) & 0xff) as f32, ((rgb >> 8) & 0xff) as f32, (rgb & 0xff) as f32)
+  }
+
+  #[test]
+  fn black_with_pink_text_gets_pink() {
+    let pixels = cover(|x, y| if (20..100).contains(&x) && (50..80).contains(&y) { (255, 47, 160) } else { (10, 10, 10) });
+    let rgb = tint(&pixels).expect("a color");
+    assert!((hue_of(rgb) - 325.0).abs() < 8.0, "hue {}", hue_of(rgb));
+  }
+
+  #[test]
+  fn most_common_color_wins() {
+    // dark blue, with a smaller yellow sun
+    let pixels = cover(|x, y| if (x as i32 - 64).pow(2) + (y as i32 - 64).pow(2) < 26 * 26 { (244, 196, 48) } else { (26, 58, 122) });
+    let rgb = tint(&pixels).expect("a color");
+    assert!((hue_of(rgb) - 220.0).abs() < 10.0, "hue {}", hue_of(rgb));
+  }
+
+  #[test]
+  fn gray_and_see_through_give_none() {
+    assert_eq!(tint(&cover(|x, _| (x as u8 * 2, x as u8 * 2, x as u8 * 2))), None);
+    assert_eq!(tint(&vec![0; 128 * 128 * 4]), None);
+  }
+
+  #[test]
+  fn tint_stays_dark_and_calm() {
+    let rgb = tint(&cover(|_, _| (255, 0, 0))).expect("a color");
+    let (red, green, blue) = ((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+    // lightness 22 %, saturation 55 %: about (87, 25, 25)
+    assert!(red.abs_diff(87) <= 2 && green.abs_diff(25) <= 2 && blue.abs_diff(25) <= 2, "{red} {green} {blue}");
+  }
 }
