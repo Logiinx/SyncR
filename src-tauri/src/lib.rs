@@ -386,7 +386,7 @@ pub fn run() {
       mouse_battery::mouse_battery_tip,
       spotify::spotify_config,
       spotify::spotify_status,
-      spotify::spotify_tip,
+      spotify::spotify_words,
       hardware::hardware_config,
       hardware::hardware_readings,
       hardware::helper::hardware_helper_setup,

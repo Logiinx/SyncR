@@ -2,8 +2,8 @@
 // left of the mouse battery's strip (or in its place when that one is off), 4 px apart. The cover,
 // then the title (semibold) over the artist (a little dimmer), cut with "…" past 150 px. Paused:
 // cover and text at half strength. Spotify closed, or shown as the widget: no strip.
-// Hover: a soft highlight like the taskbar's own icons and a tooltip (its words come from the page),
-// ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil. Their room: made on hover (the strip grows
+// Hover: a soft highlight like the taskbar's own icons, a tooltip with the full title and artist
+// only when one of them is cut, ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil. Their room: made on hover (the strip grows
 // to the left, as its right edge is held by the battery) or always kept, or no ⏮ ⏭ at all
 // (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
@@ -14,7 +14,7 @@
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
 // each frame of the buttons' fade.
 
-use super::{ask, strip_shown, tip, volume_line, Ask, Cover, Room};
+use super::{ask, strip_shown, volume_line, Ask, Cover, Room};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
@@ -51,6 +51,7 @@ const PLAY: &str = "\u{E768}";
 const PAUSE: &str = "\u{E769}";
 const ARTIST_STRENGTH: f32 = 0.62; // the artist line, against the title's full white (or black)
 const VEIL: f32 = 0.55; // the cover's dark veil under ⏯
+const TEXT_MAX: i32 = 150; // the text's width before it's cut with "…" (at 100%)
 const SLIDE: f32 = 6.0; // room kept: ⏮ ⏭ come this far in from the middle as they fade in (at 100%)
 
 // The running strip thread's hidden window (0: none) and the number of the latest start or stop
@@ -117,7 +118,7 @@ impl Layout {
     let cover_left = size(4) + side;
     let cover_side = size(32);
     let text_left = cover_left + cover_side + size(8);
-    let text_right = text_left + text_width.min(size(150));
+    let text_right = text_left + text_width.min(size(TEXT_MAX));
     Layout { side, cover_left, cover_side, text_left, text_right, width: text_right + side + size(6) }
   }
 
@@ -432,6 +433,14 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     local.measured = Some(Measured { title: now.title.clone(), artist: now.artist.clone(), dpi: spot.dpi, width: text_width });
   }
   let mut text_width = local.measured.as_ref().map_or(0, |measured| measured.width);
+  // The tooltip: only when the title or the artist is cut (empty: Windows shows none)
+  let tip = if text_width <= scaled(TEXT_MAX, spot.dpi) {
+    String::new()
+  } else if now.artist.is_empty() {
+    now.title.clone()
+  } else {
+    format!("{}\n{}", now.title, now.artist)
+  };
   // The volume in the artist's place while the wheel turns: as wide as it needs, never narrower
   let volume = now.volume.filter(|_| VOLUME_SHOWN.get()).map(volume_line);
   if let Some(volume) = &volume {
@@ -486,7 +495,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     taskbar::move_strip(local.strip, spot, x, width);
   }
   if let Some(tooltip) = local.tooltip.as_mut() {
-    tooltip.update(&tip(), look.light);
+    tooltip.update(&tip, look.light);
   }
   LAYOUT.set(layout);
   local.drawn = Some(Drawn { look, x });

@@ -53,21 +53,12 @@ function send() {
 // Main window only (main.tsx), once at start
 export function startSpotify() {
   if (!isTauri()) return
-  // The taskbar strip's words, in the app's language: its tooltip, and the volume as its tooltip
-  // line and as the strip shows it while the wheel turns (Rust puts the number in). After each
-  // song change and when the language changes (listening before the settings go: the first song
-  // comes as an event).
-  let latest: Song | null = null
-  const sendTip = () => {
-    if (!latest) return
-    const words = { text: tipText(latest), volumeTip: t('Volume: {percent}%'), volumeLine: t('Volume {percent}%') }
-    invoke('spotify_tip', words).catch(console.error)
-  }
-  void listen<Song | null>('spotify', (event) => {
-    latest = event.payload
-    sendTip()
-  }).then(() => current.on && send())
-  onLanguageChange(sendTip)
+  // The taskbar strip's words, in the app's language: the volume as it shows while the wheel turns
+  // (Rust puts the number in). Its tooltip is the song's own title and artist, made in Rust.
+  const sendWords = () => void invoke('spotify_words', { volumeLine: t('Volume {percent}%') }).catch(console.error)
+  sendWords()
+  onLanguageChange(sendWords)
+  if (current.on) send()
   // Settings → Animations changed (appearance.ts sets a class on the page): the buttons' fade too
   let animations = animationsOn()
   new MutationObserver(() => {
@@ -75,14 +66,6 @@ export function startSpotify() {
     animations = animationsOn()
     if (current.on) send()
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-}
-
-// "Title / Artist / Album: …", one per line (Windows' tooltip)
-export function tipText({ title, artist, album }: Song) {
-  const lines = [title]
-  if (artist) lines.push(artist)
-  if (album) lines.push(t('Album: {album}', { album }))
-  return lines.join('\n')
 }
 
 // As spotify.rs sends it (null: Spotify closed, or nothing loaded)

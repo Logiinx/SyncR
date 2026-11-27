@@ -6,7 +6,7 @@
 // when something differs. Off: no thread, nothing is read.
 // Its volume in Windows' mixer (volume.rs) is read at each check too, and changed by the wheel.
 // Shown as a strip in the taskbar (strip.rs, its own thread, drawn from CONFIG, SONG, COVER,
-// VOLUME and TIP) or, later, a floating widget.
+// VOLUME and VOLUME_LINE) or, later, a floating widget.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
 use base64::Engine;
@@ -83,22 +83,15 @@ pub struct Cover {
   side: usize,
 }
 
-// The page's words, in its language: the strip's tooltip, and the volume as its tooltip line and
-// as the strip shows it while the wheel turns ("{percent}" stands for the number)
-#[derive(Default)]
-struct Words {
-  tip: String,
-  volume_tip: String,
-  volume_line: String,
-}
-
 // The settings while on (None: off), the song now, its cover's pixels, Spotify's volume (None:
-// unknown), the page's words and the reading thread's channel (dropping it ends the thread)
+// unknown), the volume as the strip shows it while the wheel turns (the page's words, in its
+// language: "{percent}" stands for the number) and the reading thread's channel (dropping it ends
+// the thread)
 static CONFIG: Mutex<Option<Config>> = Mutex::new(None);
 static SONG: Mutex<Option<Song>> = Mutex::new(None);
 static COVER: Mutex<Option<Arc<Cover>>> = Mutex::new(None);
 static VOLUME: Mutex<Option<u8>> = Mutex::new(None);
-static WORDS: Mutex<Words> = Mutex::new(Words { tip: String::new(), volume_tip: String::new(), volume_line: String::new() });
+static VOLUME_LINE: Mutex<String> = Mutex::new(String::new());
 static WORKER: Mutex<Option<Sender<Ask>>> = Mutex::new(None);
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -148,19 +141,9 @@ fn ask(what: Ask) {
   }
 }
 
-// The tooltip, with a volume line when it's known
-fn tip() -> String {
-  let words = lock(&WORDS);
-  match *lock(&VOLUME) {
-    Some(volume) if !words.tip.is_empty() => format!("{}
-{}", words.tip, words.volume_tip.replace("{percent}", &volume.to_string())),
-    _ => words.tip.clone(),
-  }
-}
-
 // "Volume 72%", shown in the artist's place while the wheel turns
 fn volume_line(volume: u8) -> String {
-  lock(&WORDS).volume_line.replace("{percent}", &volume.to_string())
+  lock(&VOLUME_LINE).replace("{percent}", &volume.to_string())
 }
 
 // The battery strip moved (taskbar.rs): Spotify's goes along
@@ -194,10 +177,10 @@ pub fn spotify_config(app: AppHandle, config: Config) {
   *worker = Some(sender);
 }
 
-// The page's words, sent after each song change and when the language changes
+// The page's words, sent at start and when the language changes
 #[tauri::command]
-pub fn spotify_tip(text: String, volume_tip: String, volume_line: String) {
-  *lock(&WORDS) = Words { tip: text, volume_tip, volume_line };
+pub fn spotify_words(volume_line: String) {
+  *lock(&VOLUME_LINE) = volume_line;
   strip::refresh();
 }
 
