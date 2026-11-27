@@ -12,6 +12,7 @@ All notable changes to SyncR. Newest version first.
 **Video** (PC only)
 - **New:** a black player for OLED screens, in Settings → Video
 - **New:** the player's bar can fade dark when the mouse is away, in Settings → Video
+- **New:** a black chat and softer chat text, in the Twitch player's ⚙️ → Chat
 
 ## [1.3.1] - 2026-11-26
 

@@ -12,6 +12,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Vidéo** (PC uniquement)
 - **Nouveau :** un lecteur noir pour les écrans OLED, dans Paramètres → Vidéo
 - **Nouveau :** la barre du lecteur peut s’assombrir quand la souris est ailleurs, dans Paramètres → Vidéo
+- **Nouveau :** un chat noir et un texte de chat plus doux, dans ⚙️ → Chat du lecteur Twitch
 
 ## [1.3.1] - 2026-11-26
 

@@ -320,6 +320,8 @@ export const video = {
   'Hide bots and !commands': 'Masquer les bots et les !commandes',
   'More bot names, separated by spaces': 'Autres bots, séparés par des espaces',
   'Message times': 'Heure des messages',
+  'Black background|chat': 'Fond noir',
+  'Softer text|chat': 'Texte plus doux',
   'Timing|chat': 'Décalage',
   '+ shows the chat earlier, − later. Kept for this channel.': '+ affiche le chat plus tôt, − plus tard. Gardé pour cette chaîne.',
   '{n} s|chat timing': '{n} s',

@@ -176,6 +176,13 @@ function findEmote(word) {
 // ---- What to show -------------------------------------------------------------------------------
 let hideBots = stored('player.hideBots', 1) === 1
 let showTimes = stored('player.chatTimes', 0) === 1
+// OLED care, each its own switch: a black panel, and less bright text (names keep their colors)
+let chatBlack = stored('player.chatBlack', 0) === 1
+let chatSoft = stored('player.chatSoft', 0) === 1
+function drawChatLook() {
+  chatPanel.classList.toggle('black', chatBlack)
+  chatPanel.classList.toggle('soft', chatSoft)
+}
 const CHAT_SIZES = [1, 1.1, 1.25, 1.5]
 let chatSize = CHAT_SIZES.includes(stored('player.chatSize', 1)) ? stored('player.chatSize', 1) : 1
 let ownBots = localStorage.getItem('player.botNames') || ''
@@ -572,6 +579,7 @@ function placeChat() {
   const was = chatShowing()
   chatPanel.hidden = !showing
   chatPanel.className = over ? `over ${chatSpot}` : `side ${chatSide}`
+  drawChatLook() // the line above wiped its classes
   const own = over && chatSpot === 'custom'
   const at = own ? placeCustom() : chatSpot // which preset's room rules apply (null: none)
   if (!own) {
@@ -823,7 +831,8 @@ function drawGlass() {
   glassPen.drawImage(glassSource, -GLASS_MARGIN, -GLASS_MARGIN)
   glassPen.filter = 'none'
   glassPen.globalAlpha = GLASS_TINT
-  glassTint ??= getComputedStyle(chatPanel).getPropertyValue('--bg').trim() || '#161616'
+  // The page's, not the panel's: the chat's black switch leaves the glass as it is
+  glassTint ??= getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#161616'
   glassPen.fillStyle = glassTint
   glassPen.fillRect(0, 0, width, height)
   glassPen.globalAlpha = 1
@@ -873,6 +882,16 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     showTimes = !showTimes
     localStorage.setItem('player.chatTimes', showTimes ? 1 : 0)
     redrawChat()
+  })
+  row(labels.chatBlack, chatBlack, () => {
+    chatBlack = !chatBlack
+    localStorage.setItem('player.chatBlack', chatBlack ? 1 : 0)
+    drawChatLook()
+  })
+  row(labels.chatSoft, chatSoft, () => {
+    chatSoft = !chatSoft
+    localStorage.setItem('player.chatSoft', chatSoft ? 1 : 0)
+    drawChatLook()
   })
   drawTiming(title, menu)
   title(labels.chatWindowTitle)

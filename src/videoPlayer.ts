@@ -408,6 +408,8 @@ function twitchPlayerAddress(video: PlayableVideo) {
       chatHideBots: t('Hide bots and !commands'),
       chatBotNames: t('More bot names, separated by spaces'),
       chatTimes: t('Message times'),
+      chatBlack: t('Black background|chat'),
+      chatSoft: t('Softer text|chat'),
       chatTiming: t('Timing|chat'),
       chatTimingHint: t('+ shows the chat earlier, − later. Kept for this channel.'),
       chatSeconds: t('{n} s|chat timing'),
