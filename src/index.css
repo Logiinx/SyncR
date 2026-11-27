@@ -4213,7 +4213,7 @@ button {
   max-width: 260px;
   padding: 6px 10px 2px;
   overflow: hidden;
-  color: var(--text-dim);
+  color: var(--text-blue); /* group titles blue, like the players' ⚙️ menus */
   font-size: 0.85em;
   white-space: nowrap;
   text-overflow: ellipsis;

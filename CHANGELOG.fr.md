@@ -4,6 +4,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Vidéo** (PC uniquement)
+- **Changé :** le fond noir et le texte plus doux du chat sont sous « Apparence », près de la taille
+
+**Application**
+- **Amélioré :** les petits titres de groupe dans les menus sont en bleu, plus visibles
+
 ## [1.4.0] - 2026-11-27
 
 **Application**

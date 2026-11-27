@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **Changed:** chat's Black background and Softer text are now under "Look", next to Size
+
+**App**
+- **Better:** small group titles in menus are blue, easier to spot
+
 ## [1.4.0] - 2026-11-27
 
 **App**

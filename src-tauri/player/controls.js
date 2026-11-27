@@ -1881,7 +1881,7 @@ const CONTROLS_CSS = `
   .menu-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .menu-name svg { flex-shrink: 0; color: var(--text-dim, #9a9a9a); }
   .menu-item.menu-back { justify-content: flex-start; gap: 6px; padding-left: 8px; }
-  .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-dim, #9a9a9a); }
+  .menu-title { padding: 8px 12px 4px; font-size: 12px; color: var(--text-blue, #6ea8fe); } /* group titles blue, like the app menus (user, 2026-11-27) */
   .menu-separator { height: 1px; margin: 4px 2px; background: var(--border, #2a2a2a); } /* like the app's menus */
   /* What's playing: wraps within the menu's width instead of widening it */
   #menu-info { width: 0; min-width: calc(100% - 24px); padding: 6px 12px 4px; color: var(--text-dim, #9a9a9a); font-size: 11px; line-height: 15px; font-variant-numeric: tabular-nums; user-select: text; }

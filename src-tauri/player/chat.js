@@ -851,12 +851,24 @@ function chatMenu({ panel }) {
   panel('chat', labels.chatTitle, '', (side) => drawChatPanel(side), 'chat')
 }
 function drawChatPanel({ title, row, choices, element: menu }) {
-  title(labels.chatSize)
+  // How it looks (size, background, text), then which messages show
+  title(labels.chatLook)
   choices(CHAT_SIZES.map((size) => ({ value: size, text: percentText(size) })), chatSize, (size) => {
     chatSize = size
     localStorage.setItem('player.chatSize', size)
     drawChatSize()
   })
+  row(labels.chatBlack, chatBlack, () => {
+    chatBlack = !chatBlack
+    localStorage.setItem('player.chatBlack', chatBlack ? 1 : 0)
+    drawChatLook()
+  })
+  row(labels.chatSoft, chatSoft, () => {
+    chatSoft = !chatSoft
+    localStorage.setItem('player.chatSoft', chatSoft ? 1 : 0)
+    drawChatLook()
+  })
+  title(labels.chatMessages)
   row(labels.chatHideBots, hideBots, () => {
     hideBots = !hideBots
     localStorage.setItem('player.hideBots', hideBots ? 1 : 0)
@@ -882,16 +894,6 @@ function drawChatPanel({ title, row, choices, element: menu }) {
     showTimes = !showTimes
     localStorage.setItem('player.chatTimes', showTimes ? 1 : 0)
     redrawChat()
-  })
-  row(labels.chatBlack, chatBlack, () => {
-    chatBlack = !chatBlack
-    localStorage.setItem('player.chatBlack', chatBlack ? 1 : 0)
-    drawChatLook()
-  })
-  row(labels.chatSoft, chatSoft, () => {
-    chatSoft = !chatSoft
-    localStorage.setItem('player.chatSoft', chatSoft ? 1 : 0)
-    drawChatLook()
   })
   drawTiming(title, menu)
   title(labels.chatWindowTitle)
