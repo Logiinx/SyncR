@@ -159,8 +159,8 @@ pub fn remove(strip: HWND) {
   }
 }
 
-// Windows' own tooltip for a strip (it follows the mouse over the strip by itself). Owned by the
-// strip thread's hidden window, which is ours, not by the taskbar. Removed with it.
+// Windows' own tooltip for a strip or the Spotify widget (it follows the mouse over it by itself).
+// Owned by that thread's hidden window, which is ours, not by the taskbar. Removed with it.
 pub struct Tooltip {
   window: HWND,
   strip: HWND,

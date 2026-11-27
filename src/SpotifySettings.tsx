@@ -8,7 +8,8 @@ import { withIcon } from './richText'
 import { type Room, SHOW_AS, type ShowAs, saveSpotify, useSpotify, useSpotifySong } from './spotify'
 
 // ⏮ ⏭ on the strip: its right edge is held by the battery, so their room comes from the left.
-// None: no ⏮ ⏭ (the widget too, once it exists), ⏯ on the cover stays.
+// On the widget, "Strip grows" acts as "Room kept" (nothing moves under the mouse). None: no ⏮ ⏭
+// on either, ⏯ on the cover stays.
 const ROOM: [Room, () => string][] = [
   ['grow', () => t('Strip grows')],
   ['keep', () => t('Room kept')],
@@ -46,8 +47,8 @@ export default function SpotifySection() {
             ))}
           </select>
         </SettingRow>
-        <SettingRow label={t('Buttons on hover')} title={t('Previous and next. Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves. None: only play/pause on the cover.')}>
-          <select value={settings.room} disabled={settings.showAs !== 'strip'} onChange={(e) => saveSpotify({ room: e.target.value as Room })}>
+        <SettingRow label={t('Buttons on hover')} title={t('Previous and next. Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves (the widget always does this). None: only play/pause on the cover.')}>
+          <select value={settings.room} onChange={(e) => saveSpotify({ room: e.target.value as Room })}>
             {ROOM.map(([id, name]) => (
               <option key={id} value={id}>
                 {name()}

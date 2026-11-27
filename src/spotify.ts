@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { animationsOn } from './animations'
 import { read, write } from './localState'
 import { subscribe as onLanguageChange, t } from './i18n'
+import { nextSize } from './hardware'
 
 // Spotify module (PC, Settings → Spotify): what Spotify plays, as a strip in the taskbar or a
 // floating widget. Its settings are kept on this device, never synced. The reading is in Rust
@@ -33,6 +34,9 @@ export const SHOW_AS: [ShowAs, () => string][] = [
   ['widget', () => t('Floating widget')],
 ]
 
+// The widget's Background › list (its menu); Size › is the Hardware widget's (SIZES)
+export const BACKGROUNDS = [100, 80, 60, 40, 20, 0]
+
 const KEY = 'syncr.spotify'
 const DEFAULTS: SpotifySettings = {
   on: false,
@@ -50,6 +54,7 @@ const DEFAULTS: SpotifySettings = {
 export const storedSpotify = (): SpotifySettings => ({ ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) })
 
 let current: SpotifySettings = storedSpotify()
+let preview: Partial<SpotifySettings> | null = null // a background or size under the mouse in the widget's menu
 const listeners = new Set<() => void>()
 
 export function saveSpotify(change: Partial<SpotifySettings>) {
@@ -72,7 +77,7 @@ export function useSpotify() {
 
 function send() {
   if (!isTauri()) return
-  const { on, showAs, room, place, onTop, locked, size, background } = current
+  const { on, showAs, room, place, onTop, locked, size, background } = { ...current, ...preview }
   const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background }
   invoke('spotify_config', { config }).catch(console.error)
 }
@@ -86,10 +91,24 @@ export function startSpotify() {
   sendWords()
   onLanguageChange(sendWords)
   if (current.on) send()
-  // The strip's right-click menu (widget_menu.rs): a changed option. "Spotify settings…" is App's
-  // (listenSpotifyOpen).
+  // The strip's and the widget's right-click menu (widget_menu.rs): a changed option, a background
+  // or size shown while pointed at, or "Hide widget" (the module off). "Spotify settings…" is
+  // App's (listenSpotifyOpen). A choice draws the widget once, with it: not first with the saved
+  // setting, which would flash it between the preview and the choice.
   void listen<SpotifyMenuChoice>('spotify-menu', ({ payload }) => {
-    if (payload.change) saveSpotify(payload.change)
+    if (payload.change) {
+      preview = null
+      saveSpotify(payload.change)
+    } else if (payload.preview !== undefined) {
+      preview = payload.preview ?? null
+      if (current.on) send()
+    }
+    if (payload.hide) saveSpotify({ on: false })
+  })
+  // Ctrl + mouse wheel over the widget: one size up or down per notch (Rust ignores it when locked)
+  void listen<number>('spotify-widget-zoom', ({ payload: step }) => {
+    const size = nextSize(current.size, step)
+    if (size !== current.size) saveSpotify({ size })
   })
   // The widget was dragged (or its monitor went): kept here; Rust knows it already
   void listen<[number, number]>('spotify-widget-moved', ({ payload: place }) => {
@@ -107,10 +126,11 @@ export function startSpotify() {
 
 export interface SpotifyMenuChoice {
   change?: Partial<SpotifySettings>
-  preview?: null // sent when the menu goes (for the Hardware widget's looks), nothing to undo here
+  hide?: boolean
+  preview?: Partial<SpotifySettings> | null // shown on the widget, not saved (null: back to the saved one)
 }
 
-// "Spotify settings…" in the strip's menu: App opens Settings on the Spotify section
+// "Spotify settings…" in the strip's and the widget's menu: App opens Settings on the Spotify section
 export function listenSpotifyOpen(open: () => void) {
   if (!isTauri()) return () => {}
   const stop = listen('spotify-open', open)

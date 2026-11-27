@@ -1,30 +1,74 @@
-import { useState } from 'react'
-import { AppWindow, Settings } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AppWindow, Blend, EyeOff, Lock, Pin, Scaling, Settings } from 'lucide-react'
 import ContextMenu, { type MenuItem } from './ContextMenu'
-import { t } from './i18n'
-import { SHOW_AS, type SpotifyMenuChoice, type SpotifySettings, storedSpotify } from './spotify'
+import { SIZES } from './hardware'
+import { percentText, t } from './i18n'
+import { BACKGROUNDS, SHOW_AS, type SpotifyMenuChoice, type SpotifySettings, storedSpotify } from './spotify'
 import type { MenuProps } from './widgetMenu'
 
-// The Spotify strip's and widget's right-click menu, in the widgets' menu page (widgetMenu.tsx):
-// Show as, and Spotify settings… (the widget's own options come later). Each change goes to the
-// main window, which saves it (spotify.ts).
-export default function SpotifyMenu({ x, y, send, onClose }: MenuProps<SpotifyMenuChoice>) {
+// The Spotify strip's and widget's right-click menu, in the widgets' menu page (widgetMenu.tsx).
+// The strip's: Show as, and Spotify settings…. The widget's adds its own options, with the Hardware
+// widget's words where they match. Each change goes to the main window, which saves it
+// (spotify.ts).
+export default function SpotifyMenu({ x, y, send, onClose, widget }: MenuProps<SpotifyMenuChoice> & { widget: boolean }) {
   const [settings, setSettings] = useState<SpotifySettings>(storedSpotify)
   const change = (part: Partial<SpotifySettings>) => {
     setSettings((now) => ({ ...now, ...part }))
     void send('choice', { change: part })
   }
+  // A background or size under the mouse shows on the widget at once. Leaving waits a moment, so
+  // going from one to the next doesn't flash the saved one in between.
+  const back = useRef<number | undefined>(undefined)
+  const preview = (part: Partial<SpotifySettings>) => (on: boolean) => {
+    clearTimeout(back.current)
+    if (on) void send('choice', { preview: part })
+    else back.current = window.setTimeout(() => void send('choice', { preview: null }), 100)
+  }
+  useEffect(() => () => clearTimeout(back.current), [])
 
-  const items: MenuItem[] = [
-    {
-      label: t('Show as'),
-      icon: AppWindow,
-      submenu: {
-        title: t('Show as'),
-        items: SHOW_AS.map(([showAs, name]) => ({ label: name(), checked: settings.showAs === showAs, onClick: () => change({ showAs }) })),
-      },
+  const showAs: MenuItem = {
+    label: t('Show as'),
+    icon: AppWindow,
+    submenu: {
+      title: t('Show as'),
+      items: SHOW_AS.map(([showAs, name]) => ({ label: name(), checked: settings.showAs === showAs, onClick: () => change({ showAs }) })),
     },
-    { label: t('Spotify settings…'), icon: Settings, divider: true, onClick: () => void send('settings') },
-  ]
+  }
+  const spotifySettings: MenuItem = { label: t('Spotify settings…'), icon: Settings, divider: true, onClick: () => void send('settings') }
+  const items: MenuItem[] = !widget
+    ? [showAs, spotifySettings]
+    : [
+        showAs,
+        { label: t('Always on top'), icon: Pin, divider: true, checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
+        { label: t('Lock position and size'), icon: Lock, checked: settings.locked, onClick: () => change({ locked: !settings.locked }) },
+        {
+          label: t('Background'),
+          icon: Blend,
+          submenu: {
+            title: t('Background'),
+            items: BACKGROUNDS.map((background) => ({
+              label: percentText(background),
+              checked: settings.background === background,
+              onPreview: preview({ background }),
+              onClick: () => change({ background }),
+            })),
+          },
+        },
+        {
+          label: t('Size'),
+          icon: Scaling,
+          submenu: {
+            title: t('Size'),
+            items: SIZES.map((size) => ({
+              label: percentText(size),
+              checked: settings.size === size,
+              onPreview: preview({ size }),
+              onClick: () => change({ size }),
+            })),
+          },
+        },
+        spotifySettings,
+        { label: t('Hide widget'), icon: EyeOff, onClick: () => void send('choice', { hide: true }) },
+      ]
   return <ContextMenu x={x} y={y} items={items} onClose={onClose} />
 }

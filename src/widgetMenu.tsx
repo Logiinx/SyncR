@@ -105,7 +105,7 @@ function WidgetMenu() {
 
   if (!at || !ready || closing) return null
   const props = { x: at.x / devicePixelRatio, y: at.y / devicePixelRatio, send, onClose: () => setClosing(true) }
-  return at.for === 'hardware' ? <HardwareMenu {...props} /> : <SpotifyMenu {...props} />
+  return at.for === 'hardware' ? <HardwareMenu {...props} /> : <SpotifyMenu {...props} widget={at.for === 'spotify-widget'} />
 }
 
 applyAppearance(loadAppearance()) // the app's scale, font and animations setting

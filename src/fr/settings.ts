@@ -217,8 +217,8 @@ export const settings = {
   'Buttons on hover': 'Boutons au survol',
   'Strip grows': 'La barre s’élargit',
   'Room kept': 'Place gardée',
-  'Previous and next. Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves. None: only play/pause on the cover.':
-    'Précédent et suivant. La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge. Aucun : seulement lecture/pause sur la pochette.',
+  'Previous and next. Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves (the widget always does this). None: only play/pause on the cover.':
+    'Précédent et suivant. La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge (toujours ainsi pour le widget). Aucun : seulement lecture/pause sur la pochette.',
   'Now playing': 'En cours de lecture',
   'Nothing playing in Spotify': 'Rien en lecture dans Spotify',
   'Paused · {artist}': 'En pause · {artist}',

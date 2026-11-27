@@ -15,7 +15,10 @@
 // Placed again every second, whenever the song, the mouse or the battery strip changes, and on
 // each frame of the buttons' fade.
 
-use super::{ask, shrink, strip_shown, volume_line, Ask, Cover, Room};
+use super::{
+  ask, ease, fade, shrink, strip_shown, target, to_byte, volume_line, wheel_notches, Ask, Cover, Room, FRAME_MS, ICON_FONTS, NEXT, PAUSE,
+  PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
+};
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
 use crate::taskbar::{self, register, rounded_box, scaled, Spot, Tooltip};
@@ -33,28 +36,18 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, KillTimer, PostMessageW,
   PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
-  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER, WHEEL_DELTA, WS_EX_TOOLWINDOW, WS_POPUP,
+  WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 const WM_REFRESH: u32 = WM_APP + 1;
 const PLACE_TIMER: usize = 1;
 const MOTION_TIMER: usize = 2; // the buttons' fade: one frame each time
 const VOLUME_TIMER: usize = 3; // the volume goes back to the artist
-const VOLUME_MS: u32 = 1500;
-const FRAME_MS: u32 = 15;
-const FADE_SECONDS: f32 = 0.12;
 const CONTROLLER_CLASS: &str = "SyncRSpotifyControl";
 const STRIP_CLASS: &str = "SyncRSpotifyStrip";
 const TEXT_FONTS: &[&str] = &["Segoe UI Variable Text", "Segoe UI"]; // the clock's, Windows 11 then 10
-const ICON_FONTS: &[&str] = &["Segoe Fluent Icons", "Segoe MDL2 Assets"]; // Windows 11's, then 10's
-const PREVIOUS: &str = "\u{E892}";
-const NEXT: &str = "\u{E893}";
-const PLAY: &str = "\u{E768}";
-const PAUSE: &str = "\u{E769}";
 const ARTIST_STRENGTH: f32 = 0.62; // the artist line, against the title's full white (or black)
-const VEIL: f32 = 0.55; // the cover's dark veil under ⏯
 const TEXT_MAX: i32 = 150; // the text's width before it's cut with "…" (at 100%)
-const SLIDE: f32 = 6.0; // room kept: ⏮ ⏭ come this far in from the middle as they fade in (at 100%)
 
 // The running strip thread's hidden window (0: none) and the number of the latest start or stop
 // (an older thread that comes up late closes itself)
@@ -351,9 +344,7 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
     WM_RBUTTONDOWN | WM_CONTEXTMENU => 0,
     // Each notch: 2 % (the reading thread changes it, then the strip is drawn again)
     WM_MOUSEWHEEL => {
-      let turned = WHEEL_REST.get() + ((wparam >> 16) & 0xFFFF) as u16 as i16 as i32;
-      let notches = turned / WHEEL_DELTA as i32;
-      WHEEL_REST.set(turned - notches * WHEEL_DELTA as i32);
+      let notches = WHEEL_REST.with(|rest| wheel_notches(rest, wparam));
       if notches != 0 {
         ask(Ask::Volume(notches));
       }
@@ -394,10 +385,6 @@ fn place() {
   });
 }
 
-fn target(on: bool) -> f32 {
-  if on { 1.0 } else { 0.0 }
-}
-
 fn hide(local: &mut Local) {
   local.tooltip = None;
   taskbar::remove(std::mem::replace(&mut local.strip, null_mut()));
@@ -409,24 +396,6 @@ fn hide(local: &mut Local) {
   VOLUME_SHOWN.set(false);
   WHEEL_REST.set(0);
   LAYOUT.set(Layout::default());
-}
-
-// One step of a fade toward `to`, `seconds` after the last frame (all at once: animations off)
-fn fade(now: f32, to: f32, seconds: f32, animations: bool) -> f32 {
-  if !animations {
-    return to;
-  }
-  let step = seconds / FADE_SECONDS;
-  if now < to { (now + step).min(to) } else { (now - step).max(to) }
-}
-
-// Slow start and end, like the page's fades
-fn ease(progress: f32) -> f32 {
-  progress * progress * (3.0 - 2.0 * progress)
-}
-
-fn to_byte(progress: f32) -> u8 {
-  (progress * 255.0).round().clamp(0.0, 255.0) as u8
 }
 
 // false: nothing to show, or it couldn't be drawn or put in the taskbar

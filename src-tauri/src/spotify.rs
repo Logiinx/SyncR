@@ -120,6 +120,51 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
   mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+// Shared by the strip and the widget: the buttons' icons (Windows' own icon font), their fade, the
+// volume shown while the wheel turns
+const ICON_FONTS: &[&str] = &["Segoe Fluent Icons", "Segoe MDL2 Assets"]; // Windows 11's, then 10's
+const PREVIOUS: &str = "\u{E892}";
+const NEXT: &str = "\u{E893}";
+const PLAY: &str = "\u{E768}";
+const PAUSE: &str = "\u{E769}";
+const VEIL: f32 = 0.55; // the cover's dark veil under ⏯
+const SLIDE: f32 = 6.0; // room kept: ⏮ ⏭ come this far in from the middle as they fade in (at 100%)
+const FRAME_MS: u32 = 15; // the fades: one frame each time
+const FADE_SECONDS: f32 = 0.12;
+const VOLUME_MS: u32 = 1500; // the volume goes back to the artist this long after the last notch
+
+fn target(on: bool) -> f32 {
+  if on { 1.0 } else { 0.0 }
+}
+
+// One step of a fade toward `to`, `seconds` after the last frame (all at once: animations off)
+fn fade(now: f32, to: f32, seconds: f32, animations: bool) -> f32 {
+  if !animations {
+    return to;
+  }
+  let step = seconds / FADE_SECONDS;
+  if now < to { (now + step).min(to) } else { (now - step).max(to) }
+}
+
+// Slow start and end, like the page's fades
+fn ease(progress: f32) -> f32 {
+  progress * progress * (3.0 - 2.0 * progress)
+}
+
+fn to_byte(progress: f32) -> u8 {
+  (progress * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+// Whole notches turned, from a wheel message; the rest is kept for the next one (a smooth wheel
+// sends small steps). Up: above 0.
+fn wheel_notches(rest: &std::cell::Cell<i32>, wparam: usize) -> i32 {
+  let delta = windows_sys::Win32::UI::WindowsAndMessaging::WHEEL_DELTA as i32;
+  let turned = rest.get() + ((wparam >> 16) & 0xFFFF) as u16 as i16 as i32;
+  let notches = turned / delta;
+  rest.set(turned - notches * delta);
+  notches
+}
+
 // What the strip shows (None: nothing, or it's shown as the widget)
 struct Shown {
   title: String,
@@ -163,6 +208,9 @@ pub struct WidgetShown {
   album: String,
   playing: bool,
   cover: Option<Arc<Cover>>,
+  volume: Option<u8>,
+  buttons: bool, // ⏮ ⏭ on hover, in room always kept ("Strip grows" too: nothing moves on a widget)
+  animations: bool,
   place: Option<(i32, i32)>,
   on_top: bool,
   size: u32,
@@ -172,9 +220,23 @@ pub struct WidgetShown {
 fn widget_shown() -> Option<WidgetShown> {
   let config = lock(&CONFIG).clone().filter(|config| config.show_as == "widget")?;
   let song = lock(&SONG).clone()?;
-  let cover = lock(&COVER).clone();
-  let Config { place, on_top, size, background, .. } = config;
-  Some(WidgetShown { title: song.title, artist: song.artist, album: song.album, playing: song.playing, cover, place, on_top, size, background })
+  let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
+  let buttons = config.room != "none";
+  let Config { animations, place, on_top, size, background, .. } = config;
+  Some(WidgetShown {
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    playing: song.playing,
+    cover,
+    volume,
+    buttons,
+    animations,
+    place,
+    on_top,
+    size,
+    background,
+  })
 }
 
 fn widget_locked() -> bool {
@@ -245,7 +307,7 @@ pub fn spotify_config(app: AppHandle, config: Config) {
 #[tauri::command]
 pub fn spotify_words(volume_line: String) {
   *lock(&VOLUME_LINE) = volume_line;
-  strip::refresh();
+  refresh();
 }
 
 #[tauri::command]
