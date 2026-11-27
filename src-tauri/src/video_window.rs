@@ -828,6 +828,7 @@ pub async fn open_video_player(
   bar: String,
   bar_height: f64,
   always_on_top: bool,
+  black: bool,
 ) -> Result<(), String> {
   use std::sync::atomic::{AtomicBool, Ordering};
   use tauri::utils::config::Color;
@@ -861,11 +862,14 @@ pub async fn open_video_player(
   own_taskbar_button(&window, &site);
   #[cfg(not(windows))]
   let _ = site;
+  // The pages' color until they're drawn: --bg and --bg-raised, or --oled and --oled-raised with
+  // Settings → Video → Black player (index.css), so the window doesn't flash gray while it opens
+  let (bar_color, menu_color) = if black { (Color(0, 0, 0, 255), Color(0x12, 0x12, 0x12, 255)) } else { (Color(0x16, 0x16, 0x16, 255), Color(0x20, 0x20, 0x20, 255)) };
   let size = window.inner_size().map_err(|e| e.to_string())?;
   window
     .add_child(
       WebviewBuilder::new(VIDEO_BAR, WebviewUrl::App(format!("video-bar.html?data={bar}").into()))
-        .background_color(Color(0x16, 0x16, 0x16, 255))
+        .background_color(bar_color)
         .use_https_scheme(true)
         .additional_browser_args(VIDEO_ARGS)
         .browser_extensions_enabled(true)
@@ -906,7 +910,7 @@ pub async fn open_video_player(
   let menu = window
     .add_child(
       WebviewBuilder::new(VIDEO_MENU, WebviewUrl::App(format!("video-menu.html?data={bar}").into()))
-        .background_color(Color(0x20, 0x20, 0x20, 255))
+        .background_color(menu_color)
         .use_https_scheme(true)
         .additional_browser_args(VIDEO_ARGS)
         .browser_extensions_enabled(true)

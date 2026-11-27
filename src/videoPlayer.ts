@@ -883,6 +883,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string, start?: num
         bar: barData(video, currentWay),
         barHeight: BAR_HEIGHT * currentZoom(),
         alwaysOnTop: loadPlayerSettings().alwaysOnTop,
+        black: loadPlayerSettings().black,
       })
       followWatched(video)
     })
