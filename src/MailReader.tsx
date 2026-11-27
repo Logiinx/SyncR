@@ -12,6 +12,7 @@ import { fetchMailBody, type MailAction, type MailAlert, type MailBody } from '.
 import { darkenMail } from './mailDark'
 import { addSafeSender, isSafeSender, isTracker, trustFor } from './safeSenders'
 import Spinner from './Spinner'
+import { blockBrowserMenu } from './browserMenu'
 
 // A mail opened to read, in the desktop pop-up (which grows into a bigger window meanwhile,
 // ReminderPopup.tsx). Head: ‹ Back (to the list), when + account, sender, subject, ✕ (= Done).
@@ -82,6 +83,7 @@ function MailReader({ alert, onAction, onBack, loadBody = fetchMailBody, fitWidt
   function onFrameLoad() {
     const frameDoc = frameRef.current?.contentDocument
     if (!frameDoc) return
+    blockBrowserMenu(frameDoc) // Refresh, Back… in the email too (browserMenu.ts)
     if (dark) {
       const changed = darkenMail(frameDoc)
       // A mail with its own dark version still differs from its original

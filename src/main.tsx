@@ -21,6 +21,7 @@ import { startMouseBattery } from './mouseBattery'
 import { startHardware } from './hardware'
 import { startSpotify } from './spotify'
 import { showTray } from './desktop'
+import { blockBrowserMenu } from './browserMenu'
 
 // The desktop reminder pop-up window loads this same page (popupWindow.ts)
 const isPopup = isPopupPage()
@@ -30,6 +31,7 @@ const isPopup = isPopupPage()
 if (!isPopup) applyAppearance(loadAppearance())
 else document.documentElement.classList.add('popup-page')
 setUpScrollbars()
+blockBrowserMenu()
 setUpBoardTab()
 // Not in the pop-up: it sizes its window from its cards, a closing one would still count
 if (!isPopup) startClosingAnimations()

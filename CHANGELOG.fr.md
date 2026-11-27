@@ -6,6 +6,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 **Application**
 - **Nouveau :** Spotify dans Paramètres → Modules : le morceau dans la barre des tâches, ⏯ ⏮ ⏭, molette pour le volume (PC uniquement)
+- **Corrigé :** plus de menu du navigateur au clic droit, ni de redémarrage par Ctrl+R ou F5 (PC uniquement)
 
 ## [1.3.1] - 2026-11-26
 
