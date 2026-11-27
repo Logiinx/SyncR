@@ -347,6 +347,8 @@ export const video = {
   'Plays at once': 'Se lit tout de suite',
   'Black player': 'Lecteur noir',
   'The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.': 'La barre, son menu ⋯ et l’écran affiché quand une vidéo ne peut pas être lue, en noir : les pixels d’un écran OLED y sont éteints. À partir de la prochaine vidéo ouverte.',
+  'Dim the bar when the mouse is away': 'Assombrir la barre quand la souris est ailleurs',
+  '3 seconds after the mouse leaves the window or rests on the video, the bar fades dark: on an OLED screen, what stays lit in one place wears it. From the next video opened.': '3 secondes après que la souris quitte la fenêtre ou reste immobile sur la vidéo, la barre s’assombrit : sur un écran OLED, ce qui reste allumé au même endroit l’use. À partir de la prochaine vidéo ouverte.',
   'Mark as watched closes the video player': 'Marquer comme vue ferme le lecteur vidéo',
   'Close the video player when a video ends': 'Fermer le lecteur vidéo à la fin d’une vidéo',
   'When no next video plays after it': 'Quand aucune vidéo suivante n’est lue après elle',

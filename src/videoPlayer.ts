@@ -71,6 +71,7 @@ export interface PlayerSettings {
   subtitleLanguage: (typeof SUBTITLE_LANGUAGES)[number][0]
   copiedLink: 'queue' | 'play' // a copied video (Ctrl+V in the tab, the global shortcut): added to the Queue or played at once
   black: boolean // the window's bar, its menu and the "can't play" screen in black (OLED screens)
+  dimBar: boolean // the bar fades dark when the mouse is away (OLED screens' burn-in): video_window.rs, watch_mouse
 }
 const KEY = 'syncr.videoPlayer'
 export const loadPlayerSettings = (): PlayerSettings => ({
@@ -81,6 +82,7 @@ export const loadPlayerSettings = (): PlayerSettings => ({
   watchedNearEnd: true,
   copiedLink: 'queue',
   black: false,
+  dimBar: false,
   quality: 'hd1440',
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
   ...read<Partial<PlayerSettings>>(KEY, {}),
@@ -504,6 +506,8 @@ function barData(video: PlayableVideo, way: Way) {
     zoom: currentZoom(),
     colors,
     black: loadPlayerSettings().black,
+    dim: loadPlayerSettings().dimBar,
+    animations: animationsOn(),
     labels: {
       watched: t('Watched'),
       watch: t('Mark as watched'),

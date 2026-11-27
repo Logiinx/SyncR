@@ -190,6 +190,9 @@ export default function VideoSection() {
         <SettingRow label={t('Black player')} title={t('The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.')}>
           <input type="checkbox" checked={player.black} onChange={(e) => updatePlayer({ black: e.target.checked })} />
         </SettingRow>
+        <SettingRow label={t('Dim the bar when the mouse is away')} title={t('3 seconds after the mouse leaves the window or rests on the video, the bar fades dark: on an OLED screen, what stays lit in one place wears it. From the next video opened.')}>
+          <input type="checkbox" checked={player.dimBar} onChange={(e) => updatePlayer({ dimBar: e.target.checked })} />
+        </SettingRow>
         <SettingRow label={t('Mark as watched closes the video player')}>
           <input type="checkbox" checked={player.watchedCloses} onChange={(e) => updatePlayer({ watchedCloses: e.target.checked })} />
         </SettingRow>

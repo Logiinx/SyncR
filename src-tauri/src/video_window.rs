@@ -456,6 +456,65 @@ fn hide_pointer(app: &tauri::AppHandle, window: &str, page: &str) {
   });
 }
 
+// Settings → Video → Dim the bar when the mouse is away (OLED screens' burn-in): the bar is told
+// "away" (setAway in video-bar.html) once the mouse has been outside the window, or still on the
+// video, for MOUSE_AWAY_AFTER. Over the bar, or with the ⋯ menu or a popup open, it never is. Each
+// new bar starts a new watch, which stops the one before; it also stops once the window is gone.
+static MOUSE_TURN: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+const MOUSE_AWAY_AFTER: std::time::Duration = std::time::Duration::from_secs(3);
+
+fn watch_mouse(app: tauri::AppHandle, on: bool) {
+  use std::sync::atomic::Ordering;
+  use std::time::{Duration, Instant};
+  let turn = MOUSE_TURN.fetch_add(1, Ordering::SeqCst) + 1;
+  if !on {
+    return;
+  }
+  std::thread::spawn(move || {
+    let (mut last_point, mut active, mut away) = (None, Instant::now(), false);
+    while MOUSE_TURN.load(Ordering::SeqCst) == turn {
+      std::thread::sleep(Duration::from_millis(250));
+      let Some(window) = app.get_window(VIDEO_WINDOW) else { break };
+      let Some(bar) = window.get_webview(VIDEO_BAR) else { break };
+      let Some((point, over_window, over_bar)) = mouse_spot(&window, &bar) else { continue };
+      let moved = last_point.is_some_and(|last| last != point);
+      last_point = Some(point);
+      if over_bar || (over_window && moved) || video_extensions::menu_or_popup_open(&app) {
+        active = Instant::now();
+      }
+      let now_away = active.elapsed() >= MOUSE_AWAY_AFTER;
+      if now_away != away {
+        away = now_away;
+        let _ = bar.eval(format!("window.setAway?.({away})"));
+      }
+    }
+  });
+}
+
+// Where the mouse is, whether it's over the video window (not another window in front of it), and
+// whether it's over the bar
+#[cfg(windows)]
+fn mouse_spot(window: &tauri::Window, bar: &tauri::Webview) -> Option<((i32, i32), bool, bool)> {
+  use windows_sys::Win32::{
+    Foundation::POINT,
+    UI::WindowsAndMessaging::{GetAncestor, GetCursorPos, WindowFromPoint, GA_ROOT},
+  };
+  let (hwnd, client, size) = (window.hwnd().ok()?, window.inner_position().ok()?, bar.size().ok()?);
+  let mut point = POINT { x: 0, y: 0 };
+  if unsafe { GetCursorPos(&mut point) } == 0 {
+    return None;
+  }
+  let over_window = unsafe { GetAncestor(WindowFromPoint(point), GA_ROOT) } as isize == hwnd.0 as isize;
+  let (x, y) = (point.x - client.x, point.y - client.y);
+  let over_bar = over_window && x >= 0 && y >= 0 && x < size.width as i32 && y < size.height as i32;
+  Some(((point.x, point.y), over_window, over_bar))
+}
+
+#[cfg(not(windows))]
+fn mouse_spot(_window: &tauri::Window, _bar: &tauri::Webview) -> Option<((i32, i32), bool, bool)> {
+  None
+}
+
 // Bar on top and the site below. In full screen (the player's button: Tauri does it by itself)
 // only the site.
 fn place_video_pages(window: &tauri::Window, bar_height: f64) {
@@ -966,8 +1025,10 @@ pub fn video_bar(
   }
   let window = webview.window();
   let result = match action.as_str() {
+    // on: Settings → Video → Dim the bar when the mouse is away
     "ready" => {
       let maximized = window.is_maximized().unwrap_or(false);
+      watch_mouse(app.clone(), on == Some(true));
       video_extensions::bar_ready(app);
       show_screens(&window, &webview);
       return webview.eval(format!("window.setMaximized({maximized})")).map_err(|e| e.to_string());

@@ -485,6 +485,11 @@ static MENU_STATE: Mutex<MenuState> = Mutex::new(MenuState { open: false, closed
 // A click on the button first takes the keyboard away from what it should close, which closes it
 const JUST_CLOSED: Duration = Duration::from_millis(400);
 
+// The ⋯ menu or an extension's popup is open: the bar doesn't dim meanwhile (watch_mouse)
+pub fn menu_or_popup_open(app: &AppHandle) -> bool {
+  MENU_STATE.lock().map(|state| state.open).unwrap_or(false) || app.get_webview_window(POPUP).is_some()
+}
+
 // A new video window starts with a new, hidden menu
 pub fn menu_is_new() {
   if let Ok(mut state) = MENU_STATE.lock() {
