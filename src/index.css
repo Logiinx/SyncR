@@ -5,6 +5,10 @@
   --oled: #000; /* the video player window with Settings → Video → Black player: an OLED screen's pixels are off */
   --oled-raised: #121212; /* its ⋯ menu: a touch lighter, so it still stands out over a dark video */
   --bg-sunken: #101010; /* sliding switches' track on a page: darker than it (in a window: --bg) */
+  /* What floats over the page (windows, menus, pop-up, tooltips, banners). --bg-raised stays for
+     things in the page (a tab under the mouse, code blocks, covers loading), so with All black
+     those keep a touch of gray and don't vanish. */
+  --bg-overlay: var(--bg-raised);
   --hover: rgb(255 255 255 / 8%); /* small icon buttons under the mouse, on any background */
   --border: #2a2a2a;
   --border-strong: #3a3a3a; /* where --border barely shows (raised backgrounds), table cells, slider track */
@@ -37,6 +41,20 @@
   --hl-purple: rgb(181 144 242 / 30%);
   --hl-pink: rgb(242 142 196 / 30%);
   --hl-gray: rgb(154 154 154 / 30%);
+}
+
+/* Settings → Appearance → Background (appearance.ts), for OLED screens: their pixels are off on
+   black. Black: what floats over the page stays a touch lighter (like the black player's menu).
+   All black: that too, only its border shows it. Same values as --oled / --oled-raised. */
+:root.oled-black,
+:root.oled-all-black {
+  --bg: #000;
+  --bg-raised: #121212;
+  --bg-sunken: #0a0a0a;
+}
+
+:root.oled-all-black {
+  --bg-overlay: #000;
 }
 
 /* Scrollbars (mouse screens): thin, invisible until you scroll (scrollbars.ts sets
@@ -387,7 +405,7 @@ button {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   font-size: 13px;
   white-space: nowrap;
   pointer-events: none;
@@ -415,7 +433,7 @@ button {
   padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
   font-size: 13px;
   margin-right: calc(-1 * round(var(--away), var(--device-px, 1px)));
@@ -953,7 +971,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-right: none;
   border-radius: 6px 0 0 6px;
@@ -1601,7 +1619,7 @@ button {
   margin: 0 12px 12px;
   padding: 6px 6px 6px 12px;
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   font-size: 13px;
   color: var(--text-dim);
@@ -1844,7 +1862,7 @@ button {
   border: 1px solid var(--border);
   border-left: 4px solid var(--link);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 6px 20px rgb(0 0 0 / 45%);
 }
 
@@ -1980,8 +1998,8 @@ button {
   height: 18px;
   border-radius: 50%;
   background: var(--queued-color);
-  box-shadow: 0 0 0 2px var(--bg-raised);
-  color: var(--bg-raised);
+  box-shadow: 0 0 0 2px var(--bg-overlay);
+  color: var(--bg-overlay);
 }
 
 .queued-heading {
@@ -2533,7 +2551,7 @@ button {
   padding: 6px 8px 6px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   color: var(--text-dim);
   font-size: 12px;
 }
@@ -2580,7 +2598,7 @@ button {
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
 }
 
 .reminder-popup .reminder-alert,
@@ -2602,7 +2620,7 @@ button {
 }
 
 .reminder-popup .drag-card {
-  --drag-bg: var(--bg-raised);
+  --drag-bg: var(--bg-overlay);
   border-radius: 0;
 }
 
@@ -2678,7 +2696,7 @@ button {
   height: 40px;
   border: 1px solid var(--border-strong);
   border-radius: 50%;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   color: var(--text);
   opacity: 0;
   pointer-events: none;
@@ -3066,7 +3084,7 @@ button {
   z-index: 100;
   max-width: 400px;
   padding: 4px 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-dim);
@@ -3906,7 +3924,7 @@ button {
   z-index: 3;
   padding: 2px 10px;
   border-radius: 6px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
   font-weight: 600;
@@ -3964,7 +3982,7 @@ button {
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
@@ -4027,7 +4045,7 @@ button {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
@@ -4151,7 +4169,7 @@ button {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
@@ -4262,7 +4280,7 @@ button {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
@@ -5020,7 +5038,7 @@ button {
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
 }
 
 /* A dialog focused as a whole (Settings, so Escape works): no focus outline */
@@ -5327,7 +5345,7 @@ button {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
   color: var(--text);
   font-size: 0.85em;
@@ -6001,7 +6019,7 @@ button {
   border-radius: 2px;
   background: var(--text);
   /* A thin gap in the dialog's color around the bar, so it stands out from the track */
-  box-shadow: 0 0 0 2px var(--bg-raised);
+  box-shadow: 0 0 0 2px var(--bg-overlay);
   -webkit-appearance: none;
 }
 
@@ -9822,7 +9840,7 @@ button.history-row.selected {
   padding: 5px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
-  background: var(--bg-raised);
+  background: var(--bg-overlay);
   box-shadow: 0 10px 30px rgb(0 0 0 / 60%);
   pointer-events: auto;
 }

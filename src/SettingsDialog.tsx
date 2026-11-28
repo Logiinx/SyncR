@@ -78,6 +78,7 @@ import {
   SCALE_MAX,
   SCALE_MIN,
   type Appearance,
+  type Background as AppBackground,
   type FontId,
   type SyncSign,
 } from './appearance'
@@ -578,6 +579,22 @@ function SettingsDialog({ onClose, start }: { onClose: () => void; start?: Setti
           onKeyUp={applyScale}
           onBlur={applyScale}
         />
+      </SettingRow>
+      <SettingRow
+        label={
+          <>
+            {t('Background')}
+            <InfoTip label={t('About the background')}>
+              {t('For OLED screens: their pixels are off where it’s black. Black keeps menus and windows a touch lighter, All black makes them black too.')}
+            </InfoTip>
+          </>
+        }
+      >
+        <select value={appearance.background} onChange={(e) => update({ background: e.target.value as AppBackground })}>
+          <option value="gray">{t('Dark gray')}</option>
+          <option value="black">{t('Black')}</option>
+          <option value="all-black">{t('All black')}</option>
+        </select>
       </SettingRow>
       <SettingRow label={t('Animations')}>
         <input type="checkbox" checked={appearance.animations} onChange={(e) => update({ animations: e.target.checked })} />

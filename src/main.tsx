@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './fonts.css'
 import './index.css'
 import App from './App.tsx'
-import { applyAppearance, loadAppearance } from './appearance'
+import { applyAppearance, applyBackground, loadAppearance } from './appearance'
 import { isPopupPage } from './popupWindow'
 import ReminderPopup from './ReminderPopup'
 import { setUpScrollbars } from './scrollbars'
@@ -27,9 +27,12 @@ import { blockBrowserMenu } from './browserMenu'
 const isPopup = isPopupPage()
 
 // Before the first paint, so the app never shows at the wrong size.
-// Not in the pop-up: it measures itself in plain pixels to size its window.
+// Not in the pop-up: it measures itself in plain pixels to size its window (only the background).
 if (!isPopup) applyAppearance(loadAppearance())
-else document.documentElement.classList.add('popup-page')
+else {
+  document.documentElement.classList.add('popup-page')
+  applyBackground(loadAppearance())
+}
 setUpScrollbars()
 blockBrowserMenu()
 setUpBoardTab()

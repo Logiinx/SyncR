@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **New:** black background for OLED screens: Settings → Appearance → Background
+
 ## [1.4.1] - 2026-11-27
 
 **Video** (PC only)

@@ -160,6 +160,12 @@ export const settings = {
   'Search settings': 'Rechercher un paramètre',
   'No settings match': 'Aucun paramètre trouvé',
   'App scaling': 'Échelle',
+  'About the background': 'À propos du fond',
+  'For OLED screens: their pixels are off where it’s black. Black keeps menus and windows a touch lighter, All black makes them black too.':
+    'Pour les écrans OLED : leurs pixels sont éteints là où c’est noir. Noir garde les menus et fenêtres un peu plus clairs, Tout noir les met en noir aussi.',
+  'Dark gray': 'Gris foncé',
+  Black: 'Noir',
+  'All black': 'Tout noir',
   Animations: 'Animations',
   'Sync sign': 'Signe de synchro',
   'About the sync sign': 'À propos du signe de synchronisation',

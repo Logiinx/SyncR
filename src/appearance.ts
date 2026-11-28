@@ -14,7 +14,12 @@ export interface Appearance {
   // tabs, a glow around the edge, or none. Never with animations off.
   syncSign: SyncSign
   syncSignColor: string // a palette color id (cardColors.ts COLORS): var(--text-<id>)
+  // Black for OLED screens (their pixels are off there): the page black with menus and windows a
+  // touch lighter, or those black too (index.css, .oled-black / .oled-all-black)
+  background: Background
 }
+
+export type Background = 'gray' | 'black' | 'all-black'
 
 export type SyncSign = 'off' | 'sweep' | 'edge'
 
@@ -37,13 +42,14 @@ export const FONT_SIZE_MIN = 12
 export const FONT_SIZE_MAX = 24
 
 const KEY = 'syncr.appearance'
-export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true, animations: true, syncSign: 'off', syncSignColor: 'green' }
+export const DEFAULTS: Appearance = { scale: 100, font: 'system', fontSize: 16, showDates: true, animations: true, syncSign: 'off', syncSignColor: 'green', background: 'gray' }
 
 export function loadAppearance(): Appearance {
   const saved = { ...DEFAULTS, ...read<Partial<Appearance>>(KEY, {}) }
   if (!(saved.font in FONTS)) saved.font = DEFAULTS.font
   if (!['off', 'sweep', 'edge'].includes(saved.syncSign)) saved.syncSign = DEFAULTS.syncSign // i18n-ok
   if (!COLORS.some(({ id }) => id === saved.syncSignColor)) saved.syncSignColor = DEFAULTS.syncSignColor
+  if (!['gray', 'black', 'all-black'].includes(saved.background)) saved.background = DEFAULTS.background // i18n-ok
   return saved
 }
 
@@ -76,7 +82,19 @@ function followDevicePixel() {
 }
 followDevicePixel()
 
-export function applyAppearance({ scale, font, fontSize, showDates, animations }: Appearance) {
+// The background (also in the pop-up, which takes nothing else from here). The phone's status bar
+// follows through theme-color; index.html reads the setting too, so the start is black already.
+export function applyBackground({ background }: Appearance) {
+  const root = document.documentElement
+  root.classList.toggle('oled-black', background === 'black')
+  root.classList.toggle('oled-all-black', background === 'all-black')
+  const color = getComputedStyle(root).getPropertyValue('--bg').trim()
+  if (color) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
+}
+
+export function applyAppearance(appearance: Appearance) {
+  const { scale, font, fontSize, showDates, animations } = appearance
+  applyBackground(appearance)
   const root = document.documentElement
   // Scaling: CSS zoom on the whole page. --zoom lets heights based on the window (100vh)
   // be divided back, otherwise the app would be taller than the window (see index.css).

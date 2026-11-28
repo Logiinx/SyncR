@@ -17,7 +17,23 @@
       body {
         background: #161616;
       }
+      html.oled-black,
+      html.oled-all-black,
+      html.oled-black body,
+      html.oled-all-black body {
+        background: #000;
+      }
     </style>
+    <!-- Settings → Appearance → Background black: black from the start too (appearance.ts) -->
+    <script>
+      try {
+        var background = JSON.parse(localStorage.getItem('syncr.appearance') || '{}').background
+        if (background === 'black' || background === 'all-black') {
+          document.documentElement.classList.add('oled-' + background)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000')
+        }
+      } catch {}
+    </script>
     <title>SyncR</title>
   </head>
   <body>
