@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { ListStart, Puzzle, Repeat, RefreshCw, Settings, Trash2, Users } from 'lucide-react'
+import { Link as LinkIcon, ListStart, Puzzle, Repeat, RefreshCw, Settings, Trash2, Users } from 'lucide-react'
 import Dialog from './Dialog'
 import ContextMenu from './ContextMenu'
 import { colorMenuItems } from './cardColors'
@@ -53,8 +53,8 @@ export default function VideoSection() {
   const popupCards = usePopupCardSize()
   const sections = useSectionColors()
   const [sectionMenu, setSectionMenu] = useState<{ name: SectionName; x: number; y: number } | null>(null)
-  const sectionNames: Record<SectionName, string> = { queue: t('Queue'), follows: t('From your follows'), rewatch: t('Rewatch') }
-  const sectionIcons: Record<SectionName, ReactNode> = { queue: <ListStart size={16} />, follows: <Users size={16} />, rewatch: <Repeat size={16} /> }
+  const sectionNames: Record<SectionName, string> = { queue: t('Queue'), follows: t('From your follows'), added: t('Added by you'), rewatch: t('Rewatch') }
+  const sectionIcons: Record<SectionName, ReactNode> = { queue: <ListStart size={16} />, follows: <Users size={16} />, added: <LinkIcon size={16} />, rewatch: <Repeat size={16} /> }
   // One checkbox per piece of the hover cards (videoCards.ts)
   const pieceRow = (piece: CardPiece, label: string) => (
     <SettingRow key={piece} label={label}>
@@ -142,7 +142,7 @@ export default function VideoSection() {
         </SettingRow>
         {sections && (
           <>
-            <SettingRow label={<>{t('Colored sections')} <Synced /></>} title={t('Queue, From your follows and Rewatch. Off: in gray.')}>
+            <SettingRow label={<>{t('Colored sections')} <Synced /></>} title={t('Queue, From your follows, Added by you and Rewatch. Off: in gray.')}>
               <input type="checkbox" checked={sections.on} onChange={(e) => void saveSectionColors({ on: e.target.checked })} />
             </SettingRow>
             <SettingRow label={t('Section colors')}>

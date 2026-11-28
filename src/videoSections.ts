@@ -3,12 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { COLORS } from './cardColors'
 import { changed, db } from './db'
 
-// The Video tab's sections (Queue, From your follows, Rewatch; Settings → Video, user 2026-11-25):
-// each one's color from the note palette, synced. Colors off: the same header (bar, tint, icon) in
-// neutral gray. line: the thin line beside what's in a section in its color (faded), else gray.
+// The Video tab's sections (Queue, From your follows, Rewatch; Settings → Video, user 2026-11-25;
+// Added by you, user 2026-11-28): each one's color from the note palette, synced. Colors off: the
+// same header (bar, tint, icon) in neutral gray. line: the thin line beside what's in a section in
+// its color (faded), else gray.
 const SETTING = 'videosections' // lower case: Dropbox lists file names in lower case
 
-export type SectionName = 'queue' | 'follows' | 'rewatch'
+export type SectionName = 'queue' | 'follows' | 'added' | 'rewatch'
 
 export interface SectionColors {
   on: boolean
@@ -19,7 +20,7 @@ export interface SectionColors {
 const DEFAULTS: SectionColors = {
   on: true,
   line: true,
-  colors: { queue: 'blue', follows: 'purple', rewatch: 'green' },
+  colors: { queue: 'blue', follows: 'purple', added: 'orange', rewatch: 'green' },
 }
 
 // What was saved, with the defaults for anything missing or unknown (an older or newer version)

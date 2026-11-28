@@ -4,6 +4,11 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Video** (PC only)
+- **New:** “Added by you” section in To watch, for videos added by their link
+- **Changed:** your folders and playlists no longer sit under “From your follows”
+- **Changed:** empty sections stay visible, folded and dimmed
+
 ## [1.6.2] - 2026-11-28
 
 **App**

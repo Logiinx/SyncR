@@ -645,6 +645,7 @@ export interface FeedVideo extends VideoRow {
   watchedAt?: number // last marked as watched
   music: boolean // of a follow marked as music: in the Music list only
   originalTitle?: string // YouTube's title, when DeArrow's better one is shown (videoTitles.ts)
+  added?: boolean // added by its link (its own section in To watch), even of a followed channel
 }
 
 // Older marks don't have watchedAt: their last change was the tick
@@ -813,6 +814,7 @@ export function useVideoFeed() {
           followId: addedFollowId(follow, video.platform, video.channelId),
           channel: follow?.name ?? video.channel,
           channelIcon: follow ? follow.icon : video.channelIcon,
+          added: true,
           sortAt: updatedAt,
         }
       }),

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownUp, CalendarClock, Check, CheckCheck, ChevronDown, ChevronsRight, Ellipsis, Eraser, ExternalLink, Folder, FolderInput, FolderOutput, FolderPlus, LayoutGrid, List as ListIcon, ListOrdered, ListStart, ListPlus, ListTree, ListVideo, ListX, Link as LinkIcon, Music, Pencil, Play, Plus, RefreshCw, Repeat, RotateCcw, Search, Settings, Trash2, Undo2, UserPlus, Users, X } from 'lucide-react'
 import { useListItems, usePage } from './animations'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { FillSwitch } from './tabLines'
@@ -19,7 +19,7 @@ import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from '
 import { openSettings } from './openSettings'
 import { dragInQueue, dragPlaylist, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
-import { sectionColor } from './videoSections'
+import { sectionColor, type SectionName } from './videoSections'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
@@ -104,6 +104,7 @@ function FoldRow(props: {
   card?: ListCardContent // its card on hover; none: no card (Started)
   queueHead?: boolean // the Queue's row: videos dragged onto it join the Queue (videoDrag.ts)
   section?: string // a section's header, in that color
+  empty?: boolean // a section with nothing in it: dimmed, can't open
 }) {
   const { drop, icon, title, logo, count, countText, actions, newest, newCount, open, depth = 0, onToggle, onMenu, onPointerDown, card } = props
   const rowRef = useRef<HTMLLIElement>(null)
@@ -111,12 +112,13 @@ function FoldRow(props: {
   const shows = useCardPieces()
   const withCard = !!card && LIST_PIECES.some(shows)
   const place = useRowPlace(depth)
-  const section = props.section
+  const { section, empty } = props
+  const color = section && empty ? `color-mix(in srgb, ${section} 45%, var(--bg))` : section // i18n-ok
   return (
     <li
       ref={rowRef}
-      className={`video-row video-group${section ? ' video-section' : place.inSection}${open ? '' : ' folded'}`}
-      style={section ? ({ '--section': section } as CSSProperties) : place.style}
+      className={`video-row video-group${section ? ' video-section' : place.inSection}${open ? '' : ' folded'}${empty ? ' empty' : ''}`}
+      style={section ? ({ '--section': color } as CSSProperties) : place.style}
       data-item={props.id}
       data-drop-folder={drop ? drop.folder ?? '' : undefined}
       data-drop-channel={drop ? drop.channel ?? '' : undefined}
@@ -131,7 +133,7 @@ function FoldRow(props: {
         })
       }
     >
-      <button className="video-row-open" aria-expanded={open} onClick={onToggle} {...(withCard && hover.props)}>
+      <button className="video-row-open" aria-expanded={open} onClick={empty ? undefined : onToggle} {...(withCard && hover.props)}>
         <ChevronDown size={14} className="video-group-chevron" />
         {icon}
         <span className="video-text">
@@ -454,7 +456,8 @@ function VideoView() {
   const [showQueue, setShowQueue] = useLocalState('syncr.video.showQueue', true)
   const [queueRewatch, setQueueRewatch] = useLocalState('syncr.video.queueRewatch', true)
   const [queueFolded, setQueueFolded] = useLocalState('syncr.video.queueFolded', false)
-  const [partFolded, setPartFolded] = useLocalState('syncr.video.partFolded', false) // what's under the Queue
+  const [partFolded, setPartFolded] = useLocalState('syncr.video.partFolded', false) // From your follows, or Rewatch's list
+  const [addedFolded, setAddedFolded] = useLocalState('syncr.video.addedFolded', false) // Added by you
   // The search row (null: closed; 🔍 or Ctrl+F opens it). While searching, every group with a match
   // shows open; a click folds one for this search only (searchFolded), what's remembered stays.
   const [search, setSearch] = useState<string | null>(null)
@@ -472,6 +475,7 @@ function VideoView() {
   const isOpen = (id: string) => (searching ? !foldedNow(id) : openGroups.includes(id))
   const queueOpen = searching ? !foldedNow('queue') : !queueFolded
   const partOpen = searching ? !foldedNow('part') : !partFolded
+  const addedOpen = searching ? !foldedNow('added') : !addedFolded
 
   const queue = useQueue()
   const follows = feed?.follows
@@ -509,12 +513,13 @@ function VideoView() {
     const box = button.getBoundingClientRect()
     setBarMenu({ kind, x: box.right, y: box.bottom + 4 })
   }
-  // Shows where it went: To watch, all follows, its group open
+  // Shows where it went: To watch, all follows, its group open (a video: Added by you too)
   const openRow = (id: string) => (id === 'queue' ? setQueueFolded(false) : setOpenGroups((now) => (now.includes(id) ? now : [...now, id])))
-  function showAdded(followId: string) {
+  function showAdded(id: string) {
     setList('towatch')
     setChannel('all')
-    openRow(followId)
+    openRow(id)
+    if (!feed?.playlists.some(({ playlist }) => playlist.id === id)) setAddedFolded(false)
   }
   // A link pasted with Ctrl+V anywhere in the tab but a text field or a window, or copied before
   // the shortcut (videoPaste.ts): its line under the bar, then what to show once it's read
@@ -750,7 +755,9 @@ function VideoView() {
     const countText = lists.length
       ? [inside.length ? plural(inside.length, '{n} video', '{n} videos') : '', plural(lists.length, '{n} playlist', '{n} playlists')].filter(Boolean).join(' · ')
       : undefined
-    const open = isOpen(folder.id)
+    // Rewatch as a section with nothing in it: still shown, folded and dimmed
+    const empty = !!section && !inside.length && !lists.length && !foldersIn(folder.id).length
+    const open = isOpen(folder.id) && !empty
     return [
       <FoldRow
         key={folder.id}
@@ -779,6 +786,7 @@ function VideoView() {
         onMenu={(x, y) => setFolderMenu({ folder, x, y })}
         card={{ videos: [...inside, ...lists.flatMap(({ videos: episodes }) => episodes)], playlists: lists.length }}
         section={section}
+        empty={empty}
       />,
       ...(section ? [<Section key={`${folder.id}-in`} color={section}>{open && contents(depth)}</Section>] : open ? contents(depth + 1) : []),
     ]
@@ -920,73 +928,58 @@ function VideoView() {
   // ⏭ from a Queue row goes on in the order shown once it plays: opened, it goes first (the others
   // after it as they are), except music, which keeps its place (videoPlayer.ts)
   const queueAfter = (video: FeedVideo) => (video.music ? queued.slice(queued.findIndex((entry) => entry.video === video) + 1) : queued.filter((entry) => entry.video !== video))
-  // No row when it's empty (a dragged video goes in by the bar's strip then); its videos at the
-  // list's left edge, like the part below
-  function queueRows(): ReactNode[] {
-    const id = 'queue'
-    if (!queuedShown.length) return []
+  // A section's header, then what's in it when it's open (user, 2026-11-18; each its own, 2026-11-28).
+  // Empty: still shown, folded and dimmed, somewhere to drop (the Queue's header takes videos);
+  // searching: only with a match. counted: the videos its header counts. inside: only called when
+  // open, so folded rows can't be picked.
+  function sectionRows(id: string, name: SectionName, icon: ReactNode, title: string, empty: boolean, inside: () => ReactNode[], counted: FeedVideo[], fold: { open: boolean; toggle: () => void }): ReactNode[] {
+    if (searching && empty) return []
+    const color = sectionColor(name)
+    const open = fold.open && !empty
     return [
       <FoldRow
         key={id}
         id={id}
-        icon={<span className="video-section-icon"><ListStart size={20} /></span>}
-        title={t('Queue')}
-        count={queuedShown.length}
-        newCount={0}
-        open={queueOpen}
-        onToggle={() => (searching ? foldForSearch(id) : setQueueFolded(!queueFolded))}
-        queueHead
-        section={sectionColor('queue')}
+        icon={<span className="video-section-icon">{icon}</span>}
+        title={title}
+        count={counted.length}
+        newCount={id === 'queue' ? 0 : counted.filter(tagNew).length}
+        open={open}
+        onToggle={() => (searching ? foldForSearch(id) : fold.toggle())}
+        queueHead={id === 'queue'}
+        section={color}
+        empty={empty}
       />,
-      <Section key="queue-in" color={sectionColor('queue')}>
-        {queueOpen &&
-          queuedShown.map(({ video, playlist, rewatch: ofRewatch }) => (
-            <VideoRow
-              key={`${id} ${video.id}`}
-              video={video}
-              isNew={false}
-              playlistId={playlist?.id}
-              queued={id}
-              ofRewatch={ofRewatch}
-              from={playlist?.name}
-              after={queueAfter(video).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
-              pick={pickOf(video, playlist?.id, id)}
-              onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
-              onOpenRow={openRow}
-            />
-          ))}
+      <Section key={`${id}-in`} color={color}>
+        {open ? inside() : null}
       </Section>,
     ]
   }
-  // While the Queue shows, what's under it gets a header of its own, so it's clear where the Queue
-  // ends (user, 2026-11-18): To watch's "From your follows", or "Rewatch"; folded or not
-  function partRows(inside: ReactNode[], videosIn: FeedVideo[]): ReactNode[] {
-    const inRewatch = list === 'rewatch'
-    const color = sectionColor(inRewatch ? 'rewatch' : 'follows')
-    const header = !!queuedShown.length && !!inside.length
-    return [
-      header && (
-        <FoldRow
-          key="part"
-          id="part"
-          icon={<span className="video-section-icon">{inRewatch ? <Repeat size={20} /> : <Users size={20} />}</span>}
-          title={inRewatch ? t('Rewatch') : t('From your follows')}
-          count={videosIn.length}
-          newCount={videosIn.filter(tagNew).length}
-          open={partOpen}
-          onToggle={() => (searching ? foldForSearch('part') : setPartFolded(!partFolded))}
-          section={color}
-        />
-      ),
-      <Section key="part-in" color={header ? color : null}>
-        {!header || partOpen ? inside : null}
-      </Section>,
-    ]
+  // Its videos at the list's left edge, like the sections below. Switched off (⋯): no section.
+  function queueRows(): ReactNode[] {
+    const id = 'queue'
+    if (!showQueue || (list !== 'towatch' && list !== 'rewatch')) return []
+    const inside = () => queuedShown.map(({ video, playlist, rewatch: ofRewatch }) => (
+      <VideoRow
+        key={`${id} ${video.id}`}
+        video={video}
+        isNew={false}
+        playlistId={playlist?.id}
+        queued={id}
+        ofRewatch={ofRewatch}
+        from={playlist?.name}
+        after={queueAfter(video).map((entry) => ({ video: entry.video, playlistId: entry.playlist?.id }))}
+        pick={pickOf(video, playlist?.id, id)}
+        onMenu={(x, y) => setMoving({ video, x, y, episode: !!playlist })}
+        onOpenRow={openRow}
+      />
+    ))
+    return sectionRows(id, 'queue', <ListStart size={20} />, t('Queue'), !queuedShown.length, inside, queuedShown.map(({ video }) => video), { open: queueOpen, toggle: () => setQueueFolded(!queueFolded) })
   }
-  // As a section: what's in Rewatch, folded at the bottom of To watch; no row when it's empty
-  // (menus reach it). As a list: what's in it, like an open folder's.
+  // As a section: what's in Rewatch, folded at the bottom of To watch; empty: dimmed (user,
+  // 2026-11-28). As a list: what's in it, like an open folder's.
   const rewatch = folders.find((folder) => folder.id === REWATCH)
-  const rewatchRows = asSection && list === 'towatch' && rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length)
+  const rewatchRows = asSection && list === 'towatch' && rewatch
     ? folderRows(rewatch, 0, sectionColor('rewatch')) // its videos only when open (none: searching found nothing in it)
     : []
   const rewatchList = list === 'rewatch' && rewatch
@@ -1060,8 +1053,8 @@ function VideoView() {
   // A loose video in To watch's Queue shows only there (user: not twice); in a folder or playlist it
   // stays in place too (their order matters)
   const inQueueOnly = new Set(list === 'towatch' ? queued.flatMap(({ video, playlist, rewatch: ofRewatch }) => (playlist || ofRewatch || video.folderId ? [] : [video.id])) : [])
-  function videoRows() {
-    const shown = mainVideos.filter((video) => !inQueueOnly.has(video.id))
+  function videoRows(source: FeedVideo[]) {
+    const shown = source.filter((video) => !inQueueOnly.has(video.id))
     const groups = (grouping ? byChannel(shown) : shown.map((video) => [video]))
       .map((group) => ({ group, subs: grouping && list !== 'music' ? channelFolders(channelKey(group[0])) : [] }))
     // The videos shown on their own row (not in a channel's): one list for ⏭
@@ -1074,29 +1067,55 @@ function VideoView() {
     const { followId, channel: name, channelIcon: icon, platform } = group[0]
     return channelRows(followId, key, { name, icon, platform }, group, subs, list !== 'music')
   }
-  const musicList = list === 'music' ? [...foldersIn(MUSIC).flatMap((folder) => folderRows(folder, 0)), ...videoRows()] : []
-  const listRows = list === 'rewatch' ? rewatchList : list === 'music' ? musicList : [
-    ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
-    ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
-    ...videoRows(),
+  const musicList = list === 'music' ? [...foldersIn(MUSIC).flatMap((folder) => folderRows(folder, 0)), ...videoRows(mainVideos)] : []
+  const watchedList = list === 'watched' ? videoRows(mainVideos) : []
+  // To watch's sections (user, 2026-11-28): From your follows, Added by you (videos added by their
+  // link, not in a folder: in one, a channel's too, they stay there), then your folders and the
+  // playlists in none, between the sections, then Rewatch as a section (not inside the others,
+  // user 2026-11-25)
+  const addedLoose = (video: FeedVideo) => !!video.added && !video.folderId
+  const followVideos = list === 'towatch' ? mainVideos.filter((video) => !addedLoose(video)) : []
+  const followRows = list === 'towatch' ? [
+    ...videoRows(followVideos),
     // Followed channels with sub-folders, and no videos to watch right now
     ...(grouping ? follows ?? [] : []).flatMap((follow) => {
       const key = channelKey(follow)
       const subs = channelFolders(key)
-      if (!subs.length || mainVideos.some((video) => channelKey(video) === key)) return []
+      if (!subs.length || followVideos.some((video) => channelKey(video) === key)) return []
       return channelRows(follow.id, key, follow, [], subs)
     }),
-  ]
-  // The videos counted on the part's header: Rewatch's all, To watch's those not only in the Queue
-  // (searching: the matches)
-  const partVideos = list === 'rewatch' && rewatch
+  ] : []
+  const addedVideos = list === 'towatch' ? mainVideos.filter((video) => addedLoose(video) && !inQueueOnly.has(video.id)) : []
+  const addedFound = addedVideos.filter((video) => found(video))
+  const ownRows = list === 'towatch' ? [
+    ...playlistsIn(null).flatMap((entry) => playlistRows(entry, 0)),
+    ...foldersIn(null).flatMap((folder) => folderRows(folder, 0)),
+  ] : []
+  // The videos counted on a header: those not only in the Queue (searching: the matches); Rewatch's all
+  const followsCounted = followVideos.filter((video) => !inQueueOnly.has(video.id) && found(video))
+  const rewatchCounted = list === 'rewatch' && rewatch
     ? [...allIn(rewatch).filter((video) => found(video)), ...foundLists(allPlaylistsIn(rewatch)).flatMap(({ videos: episodes }) => episodes)]
-    : (videos ?? []).filter((video) => !inQueueOnly.has(video.id) && found(video))
-  // Rewatch as a section: its own, after From your follows (not inside it, user 2026-11-25)
-  const queuePart = queueRows()
-  const restPart = [...partRows(listRows, partVideos), ...rewatchRows]
-  // Side by side (useSplitWidth): only in list view with the Queue shown; else one list, as before
-  const split = wide && layout === 'list' && queuePart.length > 0
+    : []
+  // Rewatch as a section doesn't count: To watch can say it's empty above it (searching, it does)
+  const nothingShown = !queuedShown.length && !(searching && rewatchRows.length) && (list === 'towatch'
+    ? !followRows.length && !addedFound.length && !ownRows.length
+    : !(list === 'rewatch' ? rewatchList : list === 'music' ? musicList : watchedList).length)
+  const partFold = { open: partOpen, toggle: () => setPartFolded(!partFolded) }
+  const restRows = list === 'towatch'
+    ? [
+        ...sectionRows('part', 'follows', <Users size={20} />, t('From your follows'), !followRows.length, () => followRows, followsCounted, partFold),
+        ...sectionRows('added', 'added', <LinkIcon size={20} />, t('Added by you'), !addedFound.length, () => addedFound.map((video) => videoRow(video, addedVideos)), addedFound, { open: addedOpen, toggle: () => setAddedFolded(!addedFolded) }),
+        ...ownRows,
+        ...rewatchRows,
+      ]
+    : list === 'rewatch'
+      ? sectionRows('part', 'rewatch', <Repeat size={20} />, t('Rewatch'), !rewatchList.length, () => rewatchList, rewatchCounted, partFold)
+      : list === 'music' ? musicList : watchedList
+  // Nothing at all: only the message, and Rewatch as a section when it has something
+  const queuePart = nothingShown ? [] : queueRows()
+  const restPart = !nothingShown ? restRows : rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length) ? rewatchRows : []
+  // Side by side (useSplitWidth): only in list view with something in the Queue; else one list
+  const split = wide && layout === 'list' && queuedShown.length > 0
   // The picked videos still shown, each once (in the Queue and below: once), in the order shown
   const picked = [...new Map([...pickRows].filter(([key]) => picks.has(key)).map(([, row]) => [row.video.id, row])).values()]
   const pickedVideos = picked.map(({ video }) => video)
@@ -1139,8 +1158,6 @@ function VideoView() {
     void action()
     dropPicks()
   }
-  // Rewatch as a section doesn't count: To watch can say it's empty above it (searching, it does)
-  const nothingShown = !queuedShown.length && !listRows.length && !(searching && rewatchRows.length)
   const empty = searching
     ? t('No videos match')
     : list === 'rewatch'

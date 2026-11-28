@@ -9971,6 +9971,7 @@ button.history-row.selected {
 :root {
   --video-queue: var(--text-blue);
   --video-follows: var(--text-purple);
+  --video-added: var(--text-orange);
   --video-rewatch: var(--text-green);
 }
 
@@ -10003,6 +10004,12 @@ button.history-row.selected {
 
 .video-section .video-title {
   font-size: 1.13em;
+}
+
+/* An empty section stays, folded and dimmed (user, 2026-11-28): somewhere to drop. Dimmed by its
+   colors (FoldRow mixes its color with the background), not opacity: text stays sharp */
+.video-section.empty .video-title {
+  color: var(--text-dim);
 }
 
 /* What's inside a section: indented, with a thin line on the left in its color (faded; or gray, in
