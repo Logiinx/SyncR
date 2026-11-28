@@ -163,6 +163,7 @@ class SectionDragger {
   ghost: HTMLElement | null = null // copy of the title that follows the pointer
   press: Press | null = null
   hovered: HTMLElement | null = null // the framed section (mouse over its title)
+  rightPress: { summary: HTMLElement; editing: boolean } | null = null // the title under the right button
 
   constructor(view: EditorView) {
     this.view = view
@@ -245,8 +246,9 @@ class SectionDragger {
   // ---------- Pressing a title ----------
 
   onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 || this.press || !this.view.editable) return
     const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
+    if (e.button === 2) this.rightPress = summary && { summary, editing: this.editingTitle(summary) }
+    if (e.button !== 0 || this.press || !this.view.editable) return
     const section = summary?.closest<HTMLElement>('[data-type="details"]')
     if (!summary || !section || !this.view.dom.contains(section)) return
     const touch = e.pointerType === 'touch'
@@ -311,9 +313,15 @@ class SectionDragger {
 
   // Right-click on a title: edit it. (A phone's long press never gets here: blockMenu stops it
   // while the finger is down; there, hold and let go does it.)
+  // "Already editing" is checked when the button went down: the browser moves the cursor
+  // into the title on that press, and on Windows this event only comes when the button is
+  // released, after the editor has seen the cursor there (then the normal menu opened).
   onContextMenu = (e: MouseEvent) => {
     const summary = (e.target as HTMLElement).closest<HTMLElement>('summary')
-    if (!summary || !this.view.editable || this.editingTitle(summary)) return
+    const press = this.rightPress
+    this.rightPress = null
+    const editing = press?.summary === summary ? press.editing : !!summary && this.editingTitle(summary)
+    if (!summary || !this.view.editable || editing) return
     e.preventDefault()
     this.editTitle(summary)
   }

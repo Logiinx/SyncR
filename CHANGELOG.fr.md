@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Notes**
+- **Corrigé :** le clic droit sur un titre de section ouvrait le menu au lieu de le modifier (PC uniquement)
+
 ## [1.5.0] - 2026-11-28
 
 **Application**
