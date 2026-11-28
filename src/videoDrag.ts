@@ -6,7 +6,6 @@ import { channelKey, type FeedVideo } from './video'
 import { moveToFolder } from './videoFolders'
 import { changePlaylist } from './videoPlaylists'
 import { leaveQueue, placeInQueue } from './videoQueue'
-import { saveSectionOrder } from './videoSections'
 
 const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach what's inside
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls
@@ -422,17 +421,24 @@ type QueueSpot = { head: HTMLElement } | { rows: HTMLElement[]; place: number }
 // Its whole part (header and what's under it, up to the next data-top) stays as a faint copy, a copy
 // of the header follows the mouse, a blue line shows where it lands. order: the whole order (with
 // what's hidden), saved with it moved. into: a playlist can also go into a folder, dropped onto its
-// row (a header at the top: on its middle half, else the line).
-export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, order: string[], into?: {
-  from: string | null
-  move: (folderId: string) => Promise<void>
-  open: (id: string) => void
+// row (a header at the top: on its middle half, else the line). group: a level inside a block (the
+// Rewatch list's folders and playlists, step 3: data-top-group), each part its head and the rows
+// deeper than it (data-depth), so the loose videos after them stay where they are.
+export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, order: string[], { save, group, into }: {
+  save: (next: string[]) => Promise<void>
+  group?: string
+  into?: {
+    from: string | null
+    move: (folderId: string) => Promise<void>
+    open: (id: string) => void
+  }
 }) {
   if (event.button !== 0 || event.pointerType !== 'mouse' || (event.target as HTMLElement).closest('.video-row-action')) return
   const row = event.currentTarget
   const page = row.closest<HTMLElement>('.page')
   if (!page) return
-  const heads = [...page.querySelectorAll<HTMLElement>('[data-top]')]
+  const isHead = (el: HTMLElement) => el.dataset.top !== undefined && el.dataset.topGroup === group
+  const heads = [...page.querySelectorAll<HTMLElement>('[data-top]')].filter(isHead)
   const own = heads.indexOf(row)
   const lists = [...new Set(heads.map((el) => el.parentElement as HTMLElement))]
   const split = lists.length > 1
@@ -448,10 +454,11 @@ export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, orde
   let copy: HTMLElement | null = null
   let line: HTMLElement | null = null
 
-  // A part's rows: its head, then the rows after it up to the next head
+  // A part's rows: its head, then the rows after it up to the next head (in a group: while deeper)
+  const inPart = (el: HTMLElement) => (group === undefined ? !isHead(el) : el.dataset.depth !== undefined)
   function partOf(head: HTMLElement) {
     const rows = [head]
-    for (let el = head.nextElementSibling as HTMLElement | null; el && el.dataset.top === undefined; el = el.nextElementSibling as HTMLElement | null) rows.push(el)
+    for (let el = head.nextElementSibling as HTMLElement | null; el && inPart(el); el = el.nextElementSibling as HTMLElement | null) rows.push(el)
     return rows
   }
   const ghost = partOf(row)
@@ -471,7 +478,7 @@ export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, orde
       const top = head.getBoundingClientRect().top
       return { place: heads.indexOf(head), y: prev ? (prev.getBoundingClientRect().bottom + top) / 2 : top - 3 * currentZoom() }
     })
-    const last = list.lastElementChild as HTMLElement
+    const last = partOf(inList[inList.length - 1]).pop()!
     spots.push({ place: heads.indexOf(inList[inList.length - 1]) + 1, y: last.getBoundingClientRect().bottom + 2 * currentZoom() })
     const spot = spots.reduce((best, s) => (Math.abs(s.y - pointerY) < Math.abs(best.y - pointerY) ? s : best))
     return { ...spot, list }
@@ -579,7 +586,7 @@ export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, orde
       next.splice(at < 0 ? next.length : at, 0, key)
       // Drawn in the new order at once; the list skips its animations (moved, not added)
       flushSync(() => {
-        void saveSectionOrder(next)
+        void save(next)
         changed({ dropped: true })
       })
     }

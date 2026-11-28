@@ -19,7 +19,7 @@ import { AddPlaylistDialog, AddVideoDialog, FollowDialog, FollowsWindow } from '
 import { openSettings } from './openSettings'
 import { dragInQueue, dragPlaylist, dragTop, dragVideo, useQueueDrops, useVideoLifted } from './videoDrag'
 import { createFolder, deleteFolder, inRewatch, moveFolder, moveToFolder, MUSIC, renameFolder, REWATCH, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
-import { inOrder, sectionColor, useSectionOrder, type SectionName } from './videoSections'
+import { inOrder, saveSectionOrder, sectionColor, useSectionOrder, type SectionName } from './videoSections'
 import VideoLogo, { ChannelPicture } from './VideoLogo'
 import { playVideo, type UpNext } from './videoPlayer'
 import { linkIn, pasteAction, pasteActionDone, pasteLine, pasteLink, subscribePaste } from './videoPaste'
@@ -102,6 +102,7 @@ function FoldRow(props: {
   onMenu?: (x: number, y: number) => void
   onPointerDown?: (e: React.PointerEvent<HTMLElement>) => void // dragging the row itself (a playlist)
   top?: string // at To watch's top level: its key in the order (videoDrag.ts dragTop)
+  topGroup?: string // inside a block instead (the Rewatch list's folders and playlists)
   card?: ListCardContent // its card on hover; none: no card (Started)
   queueHead?: boolean // the Queue's row: videos dragged onto it join the Queue (videoDrag.ts)
   section?: string // a section's header, in that color
@@ -121,7 +122,9 @@ function FoldRow(props: {
       className={`video-row video-group${section ? ' video-section' : place.inSection}${open ? '' : ' folded'}${empty ? ' empty' : ''}`}
       style={section ? ({ '--section': color } as CSSProperties) : place.style}
       data-item={props.id}
+      data-depth={depth || undefined}
       data-top={props.top}
+      data-top-group={props.topGroup}
       data-drop-folder={drop ? drop.folder ?? '' : undefined}
       data-drop-channel={drop ? drop.channel ?? '' : undefined}
       data-open={drop?.open ?? (props.queueHead ? props.id : undefined)}
@@ -310,6 +313,7 @@ function VideoRow({ video, isNew, depth = 0, playlistId, kept = !!playlistId, la
       className={`video-row${place.inSection}${video.gone ? ' gone' : ''}${kept && video.watched ? ' seen' : ''}${pick?.on ? ' picked' : ''}`}
       style={place.style}
       data-item={key}
+      data-depth={depth || undefined}
       data-pick={pick ? key : undefined}
       data-queue-group={queued}
       data-queue-id={queued && video.id}
@@ -423,7 +427,8 @@ function VideoView() {
   const pickedList: List = ['towatch', 'rewatch', 'watched', 'music'].includes(storedList) ? storedList : 'towatch' // i18n-ok
   // Rewatch is its own list, or a section at the bottom of To watch (Settings → Video)
   const asSection = useRewatchSection()
-  const savedOrder = useSectionOrder()
+  const savedOrder = useSectionOrder('towatch')
+  const savedRewatchOrder = useSectionOrder('rewatch')
   const musicName = useMusicName()
   const [layout, setLayout] = useLocalState<ListLayout>('syncr.video.layout', 'list')
   const listClass = `video-list${useBigPictures() ? ' big-pictures' : ''}${layout === 'grid' ? ' grid' : ''}` // i18n-ok
@@ -939,10 +944,20 @@ function VideoView() {
   const topOrder = inOrder(savedOrder, list === 'towatch'
     ? ['queue', 'follows', 'added', ...playlistsIn(null).map(({ playlist }) => playlist.id), ...foldersIn(null).map((folder) => folder.id), REWATCH] // i18n-ok
     : [])
+  // The Rewatch list's (step 3, user: Rewatch stays one block): the Queue and Rewatch, then inside
+  // Rewatch its folders and playlists (its loose videos stay at its bottom). One saved order for both.
+  const rewatchTop = inOrder(savedRewatchOrder, list === 'rewatch' ? ['queue', 'rewatch'] : []) // i18n-ok
+  const rewatchInner = inOrder(savedRewatchOrder, list === 'rewatch'
+    ? [...foldersIn(REWATCH).map((folder) => folder.id), ...playlistsIn(REWATCH).map(({ playlist }) => playlist.id)]
+    : [])
   // Pressed and dragged to another place there (videoDrag.ts); into: a playlist into a folder
-  const topDrag = (key: string, into?: Parameters<typeof dragTop>[3]) => (list === 'towatch'
-    ? { top: key, onPointerDown: (e: React.PointerEvent<HTMLElement>) => dragTop(e, key, topOrder, into) }
-    : {})
+  function topDrag(key: string, into?: Parameters<typeof dragTop>[3]['into']) {
+    const onPointerDown = (order: string[], options: Parameters<typeof dragTop>[3]) => (e: React.PointerEvent<HTMLElement>) => dragTop(e, key, order, options)
+    if (list === 'towatch') return { top: key, onPointerDown: onPointerDown(topOrder, { save: (next) => saveSectionOrder('towatch', next), into }) }
+    if (list !== 'rewatch') return {}
+    const topGroup = rewatchInner.includes(key) ? 'rewatch' : undefined // i18n-ok
+    return { top: key, topGroup, onPointerDown: onPointerDown([...rewatchTop, ...rewatchInner], { save: (next) => saveSectionOrder('rewatch', next), group: topGroup, into }) }
+  }
   // A section's header, then what's in it when it's open (user, 2026-11-18; each its own, 2026-11-28).
   // Empty: still shown, folded and dimmed, somewhere to drop (the Queue's header takes videos);
   // searching: only with a match. counted: the videos its header counts. inside: only called when
@@ -1000,8 +1015,11 @@ function VideoView() {
     : []
   const rewatchList = list === 'rewatch' && rewatch
     ? [
-        ...foldersIn(REWATCH).flatMap((folder) => folderRows(folder, 0)),
-        ...playlistsIn(REWATCH).flatMap((entry) => playlistRows(entry, 0)),
+        ...rewatchInner.flatMap((key) => {
+          const folder = foldersIn(REWATCH).find(({ id }) => id === key)
+          const entry = playlistsIn(REWATCH).find(({ playlist }) => playlist.id === key)
+          return folder ? folderRows(folder, 0, undefined, true) : entry ? playlistRows(entry, 0, true) : []
+        }),
         ...foundRows(videosIn(REWATCH).reverse(), 0),
       ]
     : []
@@ -1121,8 +1139,14 @@ function VideoView() {
   // Nothing at all: only the message, and Rewatch as a section when it has something
   const rewatchShown = !nothingShown || (rewatch && (allIn(rewatch).length || allPlaylistsIn(rewatch).length || foldersIn(REWATCH).length)) ? rewatchRows : []
   const queuePart = nothingShown ? [] : queueRows()
-  // To watch: its parts in the order dragged (topOrder), those with rows
-  const parts = new Map<string, ReactNode[]>(list === 'towatch'
+  // To watch: its parts in the order dragged (topOrder), those with rows; the Rewatch list: the
+  // Queue and Rewatch (rewatchTop)
+  const parts = new Map<string, ReactNode[]>(list === 'rewatch'
+    ? [
+        ['queue', queuePart],
+        ['rewatch', sectionRows('part', 'rewatch', <Repeat size={20} />, t('Rewatch'), !rewatchList.length, () => rewatchList, rewatchCounted, partFold)],
+      ]
+    : list === 'towatch'
     ? [
         ['queue', queuePart],
         ...(nothingShown ? [] : [
@@ -1133,15 +1157,15 @@ function VideoView() {
         [REWATCH, rewatchShown],
       ]
     : [])
-  const shownOrder = topOrder.filter((key) => parts.get(key)?.length)
-  const restRows = list === 'towatch'
+  const ordered = list === 'towatch' || list === 'rewatch'
+  const shownOrder = (list === 'rewatch' ? rewatchTop : topOrder).filter((key) => parts.get(key)?.length)
+  const restRows = ordered
     ? shownOrder.filter((key) => key !== 'queue').flatMap((key) => parts.get(key)!)
-    : list === 'rewatch'
-      ? sectionRows('part', 'rewatch', <Repeat size={20} />, t('Rewatch'), !rewatchList.length, () => rewatchList, rewatchCounted, partFold)
-      : list === 'music' ? musicList : watchedList
+    : list === 'music' ? musicList : watchedList
   // Side by side (useSplitWidth): only in list view with something in the Queue, and in To watch
-  // only with the Queue first (user, 2026-11-28); else one list, the Queue in its place (queueAt)
-  const queueFirst = list !== 'towatch' || shownOrder[0] === 'queue'
+  // and Rewatch only with the Queue first (user, 2026-11-28); else one list, the Queue in its place
+  // (queueAt)
+  const queueFirst = !ordered || shownOrder[0] === 'queue'
   const split = wide && layout === 'list' && queuedShown.length > 0 && queueFirst
   const queueIndex = shownOrder.indexOf('queue')
   const queueAt = queueIndex > 0 ? shownOrder.slice(0, queueIndex).flatMap((key) => parts.get(key)!).length : 0

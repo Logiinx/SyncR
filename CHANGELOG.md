@@ -6,6 +6,7 @@ All notable changes to SyncR. Newest version first.
 
 **Video** (PC only)
 - **New:** drag To watch’s sections, folders and playlists into any order
+- **New:** in Rewatch too: drag the Queue, folders and playlists into any order
 - **New:** “Added by you” section in To watch, for videos added by their link
 - **Changed:** your folders and playlists no longer sit under “From your follows”
 - **Changed:** empty sections stay visible, folded and dimmed
