@@ -1006,6 +1006,11 @@ function VideoView() {
     const why = video.watched ? t('Already watched') : video.gone ? t('No longer available') : undefined
     return { label: t('Add to queue'), icon: ListPlus, disabled: !!why, hint: why, onClick: () => addToQueue(video.id) }
   }
+  // A video's "Open in browser", like its row's end button (none once it's gone from the site)
+  function openVideoItem(video: FeedVideo): MenuItem[] {
+    if (video.gone) return []
+    return [{ label: t('Open in browser'), icon: ExternalLink, onClick: () => { openLink(video.url); void markOpened(video.id) } }]
+  }
   // One switch for both lists (grayed in Watched and Music)
   const queueItem = (inList: boolean): MenuItem => ({
     label: t('Queue'),
@@ -1404,7 +1409,7 @@ function VideoView() {
             ...(playlistMenu.playlist.folderId && rewatchIds.has(playlistMenu.playlist.folderId)
               ? [{ ...startOverItem(startOverIds(playlists.find(({ playlist }) => playlist.id === playlistMenu.playlist.id)?.videos ?? [])), divider: true }]
               : []),
-            { label: t('Open in browser'), icon: ExternalLink, divider: true, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
+            { label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(playlistAddress(playlistMenu.playlist)) },
             { label: t('Remove'), icon: Trash2, danger: true, onClick: () => setRemovingPlaylist(playlistMenu.playlist) },
           ]}
         />
@@ -1465,20 +1470,33 @@ function VideoView() {
           y={moving.y}
           onClose={() => setMoving(null)}
           header={{ title: moving.video.title, subtitle: moving.video.channel }} // what was right-clicked, like Mail's
-          items={moving.episode ? [queueVideoItem(moving.video)] : [
+          // Queue, the move to a folder as a side list (like a playlist's and the Board's), then
+          // "Open in …" just above the red one, like every menu
+          items={moving.episode ? [queueVideoItem(moving.video), ...openVideoItem(moving.video)] : [
             queueVideoItem(moving.video),
-            ...videoFolderItems([moving.video]).map((item, index) => (index === 0 ? { ...item, divider: true } : item)),
-            { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: moving.video.music ? MUSIC : null, videoIds: [moving.video.id] }) },
-            ...(grouping && !moving.video.music
-              ? [{
-                  label: t('New folder in {name}…', { name: moving.video.channel }),
-                  icon: FolderPlus,
-                  onClick: () => setNaming({ parentId: null, channel: channelKey(moving.video), openId: moving.video.followId, videoIds: [moving.video.id] }),
-                }]
-              : []),
-            ...(moving.video.folderId
-              ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void moveToFolder(moving.video.id, null) }]
-              : []),
+            {
+              label: t('Move to folder'),
+              icon: FolderInput,
+              divider: true,
+              submenu: {
+                title: t('Move to folder'),
+                items: [
+                  ...videoFolderItems([moving.video]),
+                  { label: t('New folder…'), icon: FolderPlus, divider: true, onClick: () => setNaming({ parentId: moving.video.music ? MUSIC : null, videoIds: [moving.video.id] }) },
+                  ...(grouping && !moving.video.music
+                    ? [{
+                        label: t('New folder in {name}…', { name: moving.video.channel }),
+                        icon: FolderPlus,
+                        onClick: () => setNaming({ parentId: null, channel: channelKey(moving.video), openId: moving.video.followId, videoIds: [moving.video.id] }),
+                      }]
+                    : []),
+                  ...(moving.video.folderId
+                    ? [{ label: t('Remove from folder'), icon: FolderOutput, divider: true, onClick: () => void moveToFolder(moving.video.id, null) }]
+                    : []),
+                ],
+              },
+            },
+            ...openVideoItem(moving.video),
             // Gone for good, on every device, like Clear (adding it again by link brings it back)
             { label: t('Delete'), icon: Trash2, danger: true, onClick: () => void clearWatched([moving.video.id]) },
           ]}

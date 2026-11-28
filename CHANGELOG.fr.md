@@ -12,6 +12,16 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Amélioré :** menus du clic droit des widgets classés en groupes titrés (PC uniquement)
 - **Corrigé :** les longs menus dans une petite fenêtre perdaient leurs lignes et titres de groupe
 
+**Vidéo** (PC uniquement)
+- **Nouveau :** Ouvrir dans le navigateur dans le menu du clic droit d’une vidéo
+- **Changé :** les dossiers d’une vidéo passent dans une liste « Déplacer vers un dossier » de son menu
+
+**Jeux**
+- **Petites corrections :** l’élément HowLongToBeat du menu dit pourquoi il est grisé
+
+**Notes**
+- **Petites corrections :** ordre du menu des liens
+
 ## [1.5.1] - 2026-11-28
 
 **Notes**

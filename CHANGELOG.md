@@ -12,6 +12,16 @@ All notable changes to SyncR. Newest version first.
 - **Better:** widget right-click menus sorted into titled groups (PC only)
 - **Fixed:** long menus in a small window losing their lines and group titles
 
+**Video** (PC only)
+- **New:** Open in browser in a video's right-click menu
+- **Changed:** a video's folders moved to a "Move to folder" side list in its menu
+
+**Games**
+- **Small fixes:** HowLongToBeat menu item says why it's grayed
+
+**Notes**
+- **Small fixes:** link menu order
+
 ## [1.5.1] - 2026-11-28
 
 **Notes**
