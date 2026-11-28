@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-28
+
 **App**
 - **Better:** Spotify fades in and out as it opens or closes, widget and taskbar (PC only)
 

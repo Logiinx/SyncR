@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-28
+
 **Application**
 - **Amélioré :** Spotify apparaît et disparaît en fondu, widget et barre des tâches (PC uniquement)
 
