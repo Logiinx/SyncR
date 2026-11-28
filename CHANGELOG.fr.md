@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Corrigé :** widgets Spotify et Matériel qui disparaissaient pendant leur menu (PC uniquement)
+
 ## [1.6.1] - 2026-11-28
 
 **Application**

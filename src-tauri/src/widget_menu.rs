@@ -14,7 +14,9 @@ use std::sync::{Mutex, MutexGuard};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use windows_sys::Win32::Foundation::{HWND, POINT, RECT};
 use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
-use windows_sys::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowRect, IsWindowVisible};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+  GetCursorPos, GetWindowLongPtrW, GetWindowRect, IsWindowVisible, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
+};
 
 pub const MENU: &str = "widget-menu";
 
@@ -225,6 +227,16 @@ fn make(area: RECT, open_at: Option<POINT>) {
         let _ = handle.emit_to("main", &format!("{}-menu", owner.module()), serde_json::json!({ "preview": null }));
       }
     });
+    // A tool window (still hidden, so it takes now): over the whole monitor it would otherwise
+    // pass for a full-screen app, and "Hide during full screen" hid its owner while it was open
+    if let Ok(hwnd) = menu.hwnd() {
+      let window = hwnd.0 as HWND;
+      // window is the menu's, alive: it's only destroyed from this app's own calls
+      unsafe {
+        let style = GetWindowLongPtrW(window, GWL_EXSTYLE);
+        SetWindowLongPtrW(window, GWL_EXSTYLE, style | WS_EX_TOOLWINDOW as isize);
+      }
+    }
     place(&menu, area);
   });
 }
