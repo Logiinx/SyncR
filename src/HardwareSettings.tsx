@@ -166,7 +166,7 @@ export default function HardwareSection() {
             <option value="f">{t('Fahrenheit (°F)')}</option>
           </select>
         </SettingRow>
-        <SettingRow label={t('Look')}>
+        <SettingRow label={t('Look|widget layout')}>
           <select value={settings.look} onChange={(e) => saveHardware({ look: e.target.value as HardwareSettingsType['look'] })}>
             {LOOKS.map(([look, label]) => (
               <option key={look} value={look}>{label()}</option>

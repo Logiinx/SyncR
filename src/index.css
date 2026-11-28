@@ -4173,6 +4173,11 @@ button {
   box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
 }
 
+/* Scrolling: rows keep their height (lines and group titles would be squashed to nothing) */
+.context-menu > * {
+  flex-shrink: 0;
+}
+
 .context-menu button {
   display: flex;
   align-items: center;

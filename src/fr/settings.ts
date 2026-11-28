@@ -155,6 +155,8 @@ export const settings = {
 
   Links: 'Liens',
   Look: 'Apparence',
+  'Look|widget layout': 'Disposition',
+  Appearance: 'Apparence',
   Window: 'Fenêtre',
   'Settings sections': 'Sections des paramètres',
   'Search settings': 'Rechercher un paramètre',
@@ -227,6 +229,9 @@ export const settings = {
     'Précédent et suivant. La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge (toujours ainsi pour le widget). Aucun : seulement lecture/pause sur la pochette.',
   'Colors from the cover': 'Couleurs de la pochette',
   'Hide during full screen': 'Masquer en plein écran',
+  'Fade when paused': 'Estomper en pause',
+  'The floating widget fades after 2 minutes paused, and comes back when the mouse is over it or the music plays.':
+    'Le widget flottant s’estompe après 2 minutes en pause, et revient quand la souris passe dessus ou que la musique reprend.',
   'About hiding during full screen': 'À propos du masquage en plein écran',
   'Only when it’s always on top': 'Seulement s’il est toujours au premier plan',
   'The widget steps aside while a game or a video is full screen on its monitor. Only when it’s always on top.': 'Le widget s’efface quand un jeu ou une vidéo est en plein écran sur le même écran. Seulement s’il est toujours au premier plan.',

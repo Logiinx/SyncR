@@ -21,6 +21,9 @@
 // .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
 // "Hide during full screen" (on by default, only when always on top): gone while a full-screen app
 // is in front on its monitor (widget_place::full_screen_near), checked each second.
+// "Fade when paused" (on by default): paused for 2 min, it fades down to faint over a second; the
+// mouse over it, its menu open or the song playing: back to full at once (a quick fade). The wait
+// starts again each time it plays or comes back (Spotify reopened, after a full-screen app).
 // Right-click: its menu (widget_menu.rs).
 // Progress line (.claude/mockups/spotify-progress.html, the chosen look): under the text, 3 px above
 // the bottom, 2 px (4 px while the mouse is over the widget). The mouse on the bottom edge under it
@@ -124,6 +127,9 @@ const EMPTY: f32 = 0.12; // no cover yet: a faint white square
 const TINT_FULL: f32 = 22.0;
 const TINT_FADED: f32 = 222.0;
 const TINT_SECONDS: f32 = 0.5; // a new song's tint fades in
+const PAUSED_WAIT: u64 = 120; // "Fade when paused": seconds paused before it fades
+const FAINT: f32 = 0.15; // how solid it is, faded
+const FAINT_SECONDS: f32 = 1.0; // the fade down (back up: the quick fade)
 
 static CONTROLLER: Mutex<isize> = Mutex::new(0); // the running thread's hidden window (0: none)
 static STARTS: AtomicU64 = AtomicU64::new(0); // an older thread that comes up late closes itself
@@ -227,6 +233,7 @@ struct Look {
   open: u8,           // ⏮ ⏭ faded in, 0 to 255
   veil: u8,           // the cover's veil and ⏯, 0 to 255
   slid: [Slid; 3],    // title, artist, album: None = cut with "…", else scrolling (on whole pixels)
+  alpha: u8,          // the whole widget's strength (faded when paused), 255: solid
 }
 
 impl PartialEq for Look {
@@ -239,7 +246,7 @@ impl PartialEq for Look {
     same_cover
       && self.slid == other.slid
       && self.bar == other.bar
-      && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.tint, self.part, self.open, self.veil)
+      && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.tint, self.part, self.open, self.veil, self.alpha)
         == (
           other.scale,
           other.side,
@@ -252,6 +259,7 @@ impl PartialEq for Look {
           other.part,
           other.open,
           other.veil,
+          other.alpha,
         )
   }
 }
@@ -276,6 +284,11 @@ struct Local {
   tint_done: f32,
   last_frame: Option<Instant>,
   moving: bool, // the frame timer runs
+  // "Fade when paused": paused since when (None: playing, or not shown), how faded (0 to 1) and
+  // where it's going
+  paused_since: Option<Instant>,
+  faint: f32,
+  faint_wanted: bool,
 }
 
 // A press on the widget: where the mouse and the widget were (screen pixels), and on which part
@@ -304,6 +317,9 @@ thread_local! {
       tint_done: 1.0,
       last_frame: None,
       moving: false,
+      paused_since: None,
+      faint: 0.0,
+      faint_wanted: false,
     })
   };
   // Apart from LOCAL: the widget's own messages change or read them, also while LOCAL is busy
@@ -591,7 +607,8 @@ fn show(tick: bool) {
     // The fades go on while something isn't where it's going
     let veiled = local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.part));
     let buttons = local.drawn.as_ref().is_some_and(|drawn| drawn.side > 0.0);
-    let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(veiled) || local.tint_done < 1.0;
+    let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(veiled) || local.tint_done < 1.0
+      || local.faint != target(local.faint_wanted);
     let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
@@ -619,6 +636,9 @@ fn hide(local: &mut Local) {
   local.drawn = None;
   local.open = 0.0;
   local.veil = 0.0;
+  local.paused_since = None;
+  local.faint = 0.0;
+  local.faint_wanted = false;
   local.scroll.reset();
   PRESS.set(None);
   SEEKING.set(None);
@@ -691,6 +711,15 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   local.last_frame = Some(frame);
   let hover = HOVER.get() && !local.widget.is_null();
   local.open = fade(local.open, target(hover && side > 0.0), seconds, now.animations);
+  // Faint after a while paused: slowly down, quickly back
+  local.paused_since = if now.playing { None } else { Some(local.paused_since.unwrap_or(frame)) };
+  let waited = local.paused_since.is_some_and(|since| frame.duration_since(since).as_secs() >= PAUSED_WAIT);
+  local.faint_wanted = now.fade_paused && waited && !hover && SEEKING.get().is_none() && !widget_menu::is_open();
+  local.faint = if local.faint_wanted && now.animations {
+    (local.faint + seconds / FAINT_SECONDS).min(1.0)
+  } else {
+    fade(local.faint, target(local.faint_wanted), seconds, now.animations)
+  };
   // The part under the mouse, where the widget is now
   let timeline = timeline();
   LINE_ON.set(timeline.is_some_and(|timeline| timeline.seekable()));
@@ -767,6 +796,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     open: to_byte(ease(local.open)),
     veil: to_byte(ease(local.veil)),
     slid,
+    alpha: to_byte(1.0 - (1.0 - FAINT) * ease(local.faint)),
   };
   let picture = if local.drawn.as_ref() == Some(&look) {
     None
@@ -809,7 +839,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     if let Some(picture) = &picture {
       let size = SIZE { cx: width, cy: height };
       let source = POINT { x: 0, y: 0 };
-      let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: 255, AlphaFormat: AC_SRC_ALPHA as u8 };
+      let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: look.alpha, AlphaFormat: AC_SRC_ALPHA as u8 };
       if UpdateLayeredWindow(local.widget, null_mut(), null(), &size, picture.dc, &source, 0, &blend, ULW_ALPHA) == 0 {
         return false;
       }

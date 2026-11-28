@@ -63,6 +63,9 @@ export default function SpotifySection() {
         <SettingRow label={t('Hide during full screen')} title={fullScreenAbout()}>
           <input type="checkbox" checked={settings.hideFullScreen} disabled={settings.showAs !== 'widget' || !settings.onTop} onChange={(e) => saveSpotify({ hideFullScreen: e.target.checked })} />
         </SettingRow>
+        <SettingRow label={t('Fade when paused')} title={t('The floating widget fades after 2 minutes paused, and comes back when the mouse is over it or the music plays.')}>
+          <input type="checkbox" checked={settings.fadePaused} disabled={settings.showAs !== 'widget'} onChange={(e) => saveSpotify({ fadePaused: e.target.checked })} />
+        </SettingRow>
         <SettingRow label={t('Scroll long names')} title={t('A name too long for its room slides to show all of it: once when the song changes, then while the mouse is over it.')}>
           <input type="checkbox" checked={settings.scrollNames} onChange={(e) => saveSpotify({ scrollNames: e.target.checked })} />
         </SettingRow>

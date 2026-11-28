@@ -75,6 +75,9 @@ pub struct Config {
   // "Always on top" only: the widget steps aside while a full-screen app is in front on its monitor
   #[serde(default = "yes")]
   hide_full_screen: bool,
+  // The widget fades to faint after a while paused, back on hover or when it plays
+  #[serde(default = "yes")]
+  fade_paused: bool,
 }
 
 fn yes() -> bool {
@@ -307,6 +310,7 @@ pub struct WidgetShown {
   tint: Option<u32>, // the cover's tint, when "Colors from the cover" is on
   scroll: bool,      // "Scroll long names"
   hide_full_screen: bool,
+  fade_paused: bool,
 }
 
 fn widget_shown() -> Option<WidgetShown> {
@@ -315,7 +319,7 @@ fn widget_shown() -> Option<WidgetShown> {
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
   let buttons = config.room != "none";
   let tint = cover.as_ref().and_then(|cover| cover.tint).filter(|_| config.cover_colors);
-  let Config { animations, place, on_top, size, background, scroll_names: scroll, hide_full_screen, .. } = config;
+  let Config { animations, place, on_top, size, background, scroll_names: scroll, hide_full_screen, fade_paused, .. } = config;
   Some(WidgetShown {
     title: song.title,
     artist: song.artist,
@@ -332,6 +336,7 @@ fn widget_shown() -> Option<WidgetShown> {
     tint,
     scroll,
     hide_full_screen,
+    fade_paused,
   })
 }
 

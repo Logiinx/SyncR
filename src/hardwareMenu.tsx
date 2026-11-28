@@ -37,7 +37,7 @@ export default function HardwareMenu({ x, y, send, onClose }: MenuProps<MenuChoi
     })),
   )
   const items: MenuItem[] = [
-    { label: t('Always on top'), icon: Pin, checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
+    { label: t('Always on top'), icon: Pin, section: t('Window'), checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
     { label: t('Hide during full screen'), icon: Fullscreen, disabled: !settings.onTop, hint: settings.onTop ? undefined : t('Only when it’s always on top'), checked: settings.hideFullScreen, onClick: () => change({ hideFullScreen: !settings.hideFullScreen }) },
     { label: t('Lock position and size'), icon: Lock, checked: settings.locked, onClick: () => change({ locked: !settings.locked }) },
     {
@@ -53,7 +53,7 @@ export default function HardwareMenu({ x, y, send, onClose }: MenuProps<MenuChoi
         })),
       },
     },
-    { label: t('What to show'), icon: ListChecks, divider: true, submenu: { title: t('What to show'), items: shown } },
+    { label: t('What to show'), icon: ListChecks, divider: true, section: t('Readings'), submenu: { title: t('What to show'), items: shown } },
     {
       label: t('Update every'),
       icon: Timer,
@@ -80,11 +80,12 @@ export default function HardwareMenu({ x, y, send, onClose }: MenuProps<MenuChoi
     { label: t('Hot colors'), icon: Flame, checked: settings.hot, onClick: () => change({ hot: !settings.hot }) },
     { label: t('Reset peaks'), icon: RotateCcw, hint: peaksAbout(), onClick: () => void send('choice', { resetPeaks: true }) },
     {
-      label: t('Look'),
+      label: t('Look|widget layout'),
       icon: LayoutList,
       divider: true,
+      section: t('Appearance'),
       submenu: {
-        title: t('Look'),
+        title: t('Look|widget layout'),
         items: LOOKS.map(([look, label]) => ({
           label: label(),
           checked: settings.look === look,

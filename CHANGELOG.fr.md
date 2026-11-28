@@ -7,7 +7,10 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 **Application**
 - **Nouveau :** ligne de progression Spotify, cliquez ou glissez pour avancer dans le titre (PC uniquement)
 - **Nouveau :** les widgets flottants se masquent pendant les jeux et vidéos en plein écran (PC uniquement)
+- **Nouveau :** le widget Spotify s’estompe après 2 minutes en pause, revient au survol (PC uniquement)
 - **Amélioré :** ⏯ s’affiche sur la pochette Spotify aussi en survolant le titre (PC uniquement)
+- **Amélioré :** menus du clic droit des widgets classés en groupes titrés (PC uniquement)
+- **Corrigé :** les longs menus dans une petite fenêtre perdaient leurs lignes et titres de groupe
 
 ## [1.5.1] - 2026-11-28
 
