@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-28
+
 **Application**
 - **Nouveau :** ligne de progression Spotify, cliquez ou glissez pour avancer dans le titre (PC uniquement)
 - **Nouveau :** les widgets flottants se masquent pendant les jeux et vidéos en plein écran (PC uniquement)
