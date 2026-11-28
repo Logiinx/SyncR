@@ -76,5 +76,6 @@ export const reminders = {
   'Not connected to Google Calendar': 'Non connecté à Google Agenda',
   'Google Calendar sign-in expired. Please connect again.': 'La connexion à Google Agenda a expiré. Veuillez vous reconnecter.',
   'Google Calendar error ({status})': 'Erreur Google Agenda ({status})',
+  'No connection to Google Calendar (offline?)': 'Pas de connexion à Google Agenda (hors ligne ?)',
   'Google Calendar {path} failed ({status}): {details}': 'Échec de Google Agenda {path} ({status}) : {details}',
 }

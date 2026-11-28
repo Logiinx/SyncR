@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t } from './i18n'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, removeOldAlertMarks, type CalendarEvent } from './db'
 import { isConnected as dropboxConnected } from './dropbox'
-import { calendarApi, isConnected } from './google'
+import { calendarApi, calendarErrorPasses, isConnected } from './google'
 
 // The main Google Calendar's events, shown in the Reminders tab (see DECISIONS.md, "Reminders
 // become Google Calendar events"). Loaded from Google and kept on this device (db.events), so
@@ -12,6 +12,9 @@ import { calendarApi, isConnected } from './google'
 const MONTHS_AHEAD = 11 // like the grid's MAX_MONTHS (RemindersView.tsx): 12 months in all
 const REFRESH_MS = 5 * 60 * 1000 // while the Reminders tab is open
 const MIN_SPIN_MS = 600 // the refresh button's ring, at least
+// After a refresh that failed for a passing reason (no network yet after sleep, Google busy): tried
+// again by itself, soon at first, then every minute, and as soon as the PC is back online (like Mail)
+const RETRY_MS = [5000, 15_000, 60_000]
 
 // Google Calendar's event colors (colorId "1" to "11"): the alert card's strip, the Reminders
 // list's dot and the month grid's stripe. No color (the calendar's own): undefined, each
@@ -388,17 +391,20 @@ export function startCalendarChecks() {
   }
   check()
   window.setInterval(check, BACKGROUND_REFRESH_MS)
+  window.addEventListener('online', check)
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check())
 }
 
 // For the Reminders tab: the stored events (soonest first), refreshed when the tab opens, every
-// 5 minutes while it's open, and when the app comes back to the front. error: the last refresh
+// 5 minutes while it's open, when the app comes back to the front or the PC back online, and soon
+// after a refresh that failed for a passing reason (RETRY_MS). error: the last refresh
 // failed (the stored events still show). refresh: the refresh button (refreshing: running).
 export function useCalendarEvents() {
   const events = useLiveQuery(async () => (await db.events.toArray()).sort((a, b) => a.start - b.start), [])
   const [connected, setConnected] = useState(isConnected)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const retry = useRef({ on: false, timer: 0, count: 0 })
 
   useEffect(() => {
     const onChange = () => setConnected(isConnected())
@@ -409,23 +415,38 @@ export function useCalendarEvents() {
   useEffect(() => {
     if (!connected) return
     const onVisible = () => document.visibilityState === 'visible' && refresh()
+    retry.current.on = true
     refresh()
     const timer = setInterval(refresh, REFRESH_MS)
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', refresh)
     return () => {
+      retry.current.on = false
       clearInterval(timer)
+      clearTimeout(retry.current.timer)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', refresh)
     }
   }, [connected])
 
   // The ring stays at least MIN_SPIN_MS: a refresh often takes a fraction of a second, and
   // a ring that only flashes looks like a glitch
   function refresh() {
+    clearTimeout(retry.current.timer)
+    retry.current.timer = 0
     setRefreshing(true)
     const minSpin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
     return Promise.all([refreshEvents(), minSpin])
-      .then(() => setError(null))
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .then(() => {
+        retry.current.count = 0
+        setError(null)
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e))
+        // Overlapping refreshes share one load (refreshEvents): its failure counts once
+        if (!retry.current.on || !calendarErrorPasses(e) || retry.current.timer) return
+        retry.current.timer = window.setTimeout(refresh, RETRY_MS[Math.min(retry.current.count++, RETRY_MS.length - 1)])
+      })
       .finally(() => setRefreshing(false))
   }
 

@@ -4,6 +4,12 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**Reminders**
+- **Fixed:** calendar error staying after a short connection drop
+
+**Video** (PC only)
+- **Fixed:** time bar's loaded part not showing on long videos
+
 ## [1.6.0] - 2026-11-28
 
 **App**

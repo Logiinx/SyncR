@@ -193,7 +193,7 @@ async function accessToken() {
       saveAuth(null)
       throw new Error(t('Google Calendar sign-in expired. Please connect again.'))
     }
-    throw new Error(t('Google Calendar error ({status})', { status: res.status }))
+    throw Object.assign(new Error(t('Google Calendar error ({status})', { status: res.status })), { status: res.status })
   }
   const data = await res.json()
   saveAuth({ ...auth, accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 })
@@ -201,25 +201,43 @@ async function accessToken() {
 }
 
 // Calls the Calendar API (JSON in, JSON out), e.g. calendarApi('calendars/primary/events').
-// If Google rejects the access token, gets a fresh one and tries once more.
+// If Google rejects the access token, gets a fresh one and tries once more. Errors carry the HTTP
+// status, or offline when no answer came at all (calendarErrorPasses).
 export async function calendarApi(path: string, init: RequestInit = {}) {
-  const send = async () =>
-    fetch(`https://www.googleapis.com/calendar/v3/${path}`, {
-      ...init,
-      cache: 'no-store', // events never kept in the browser's cache files (Google doesn't forbid it)
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        Authorization: `Bearer ${await accessToken()}`, // i18n-ok
-      },
-    })
+  const send = async () => {
+    const token = await accessToken()
+    try {
+      return await fetch(`https://www.googleapis.com/calendar/v3/${path}`, {
+        ...init,
+        cache: 'no-store', // events never kept in the browser's cache files (Google doesn't forbid it)
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: {
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+          Authorization: `Bearer ${token}`, // i18n-ok
+        },
+      })
+    } catch {
+      // No answer at all (no network yet after sleep, timed out): the browser only says "Failed to fetch"
+      throw Object.assign(new Error(t('No connection to Google Calendar (offline?)')), { offline: true })
+    }
+  }
   let res = await send()
   if (res.status === 401) {
     const auth = loadAuth()
     if (auth) saveAuth({ refreshToken: auth.refreshToken, name: auth.name }) // forget the access token
     res = await send()
   }
-  if (!res.ok) throw new Error(t('Google Calendar {path} failed ({status}): {details}', { path, status: res.status, details: await res.text() }))
+  if (!res.ok) {
+    const details = await res.text()
+    throw Object.assign(new Error(t('Google Calendar {path} failed ({status}): {details}', { path, status: res.status, details })), { status: res.status })
+  }
   const text = await res.text()
   return text ? JSON.parse(text) : null
+}
+
+// Whether trying again soon can help: no answer at all (also from the proxy renewing the
+// sign-in), or Google busy. Not a refused request or an expired sign-in.
+export function calendarErrorPasses(error: unknown) {
+  const { offline, status = 0 } = (error ?? {}) as { offline?: boolean; status?: number }
+  return !!offline || status === 429 || status >= 500
 }

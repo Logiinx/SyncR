@@ -4,6 +4,12 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Rappels**
+- **Corrigé :** erreur de l’agenda qui restait après une courte coupure de connexion
+
+**Vidéo** (PC uniquement)
+- **Corrigé :** partie chargée de la barre de temps invisible sur les longues vidéos
+
 ## [1.6.0] - 2026-11-28
 
 **Application**
