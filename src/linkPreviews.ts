@@ -554,13 +554,13 @@ export function linkMenu(editor: Editor, target: HTMLElement, canEdit: boolean) 
       onClick: () => editLink(editor, end, href),
     })
   }
-  // Opening elsewhere after its own actions, like every menu's "Open in …"
-  if (plays) items.push({ label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(href) })
   if (card || shownPlain) items.push(
     card
       ? { label: t('Show as plain link'), icon: Link2Off, divider: true, onClick: () => saveLinkPreviewSettings({ plain: [...settings.plain, href] }) }
       : { label: t('Show as card'), icon: RectangleHorizontal, divider: true, onClick: () => saveLinkPreviewSettings({ plain: settings.plain.filter((h) => h !== href) }) },
   )
+  // Opening elsewhere last, after its own actions, like every menu's "Open in …" (no line of its own)
+  if (plays) items.push({ label: t('Open in browser'), icon: ExternalLink, onClick: () => openLink(href) })
   const preview = previews.get(href)
   return { items, header: { title: (preview && parts(href, preview).title) || href, subtitle: preview ? href : undefined } }
 }
