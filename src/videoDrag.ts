@@ -6,6 +6,7 @@ import { channelKey, type FeedVideo } from './video'
 import { moveToFolder } from './videoFolders'
 import { changePlaylist } from './videoPlaylists'
 import { leaveQueue, placeInQueue } from './videoQueue'
+import { saveSectionOrder } from './videoSections'
 
 const OPEN_AFTER_MS = 600 // over a folded row this long: it opens, to reach what's inside
 const EDGE = 30 // px from the page's top or bottom edge where it scrolls
@@ -415,3 +416,183 @@ function dragToFolder(event: ReactPointerEvent<HTMLElement>, { from, accepts, mo
 }
 
 type QueueSpot = { head: HTMLElement } | { rows: HTMLElement[]; place: number }
+
+// To watch's top level (user, 2026-11-28, mockup video-section-order.html): a section's header, or a
+// folder or playlist at the top (data-top), pressed and dragged to another place among the others.
+// Its whole part (header and what's under it, up to the next data-top) stays as a faint copy, a copy
+// of the header follows the mouse, a blue line shows where it lands. order: the whole order (with
+// what's hidden), saved with it moved. into: a playlist can also go into a folder, dropped onto its
+// row (a header at the top: on its middle half, else the line).
+export function dragTop(event: ReactPointerEvent<HTMLElement>, key: string, order: string[], into?: {
+  from: string | null
+  move: (folderId: string) => Promise<void>
+  open: (id: string) => void
+}) {
+  if (event.button !== 0 || event.pointerType !== 'mouse' || (event.target as HTMLElement).closest('.video-row-action')) return
+  const row = event.currentTarget
+  const page = row.closest<HTMLElement>('.page')
+  if (!page) return
+  const heads = [...page.querySelectorAll<HTMLElement>('[data-top]')]
+  const own = heads.indexOf(row)
+  const lists = [...new Set(heads.map((el) => el.parentElement as HTMLElement))]
+  const split = lists.length > 1
+  const startX = event.clientX
+  const startY = event.clientY
+  let pointerX = startX
+  let pointerY = startY
+  let started = false
+  let frame = 0
+  let openTimer = 0
+  let over: HTMLElement | null = null
+  let place = -1 // the head it goes before (heads.length: after them all; -1: nowhere new)
+  let copy: HTMLElement | null = null
+  let line: HTMLElement | null = null
+
+  // A part's rows: its head, then the rows after it up to the next head
+  function partOf(head: HTMLElement) {
+    const rows = [head]
+    for (let el = head.nextElementSibling as HTMLElement | null; el && el.dataset.top === undefined; el = el.nextElementSibling as HTMLElement | null) rows.push(el)
+    return rows
+  }
+  const ghost = partOf(row)
+
+  // The places between the parts in the list under the mouse, and the nearest (side by side: the
+  // Queue's column holds before and after the Queue). Screen pixels.
+  function nearestPlace() {
+    const distance = (el: HTMLElement) => {
+      const { left, right } = el.getBoundingClientRect()
+      return pointerX < left ? left - pointerX : pointerX > right ? pointerX - right : 0
+    }
+    const list = lists.reduce((best, el) => (distance(el) < distance(best) ? el : best), lists[0])
+    const inList = heads.filter((el) => el.parentElement === list)
+    if (!inList.length) return null
+    const spots = inList.map((head) => {
+      const prev = head.previousElementSibling as HTMLElement | null
+      const top = head.getBoundingClientRect().top
+      return { place: heads.indexOf(head), y: prev ? (prev.getBoundingClientRect().bottom + top) / 2 : top - 3 * currentZoom() }
+    })
+    const last = list.lastElementChild as HTMLElement
+    spots.push({ place: heads.indexOf(inList[inList.length - 1]) + 1, y: last.getBoundingClientRect().bottom + 2 * currentZoom() })
+    const spot = spots.reduce((best, s) => (Math.abs(s.y - pointerY) < Math.abs(best.y - pointerY) ? s : best))
+    return { ...spot, list }
+  }
+
+  const accepts = (el: HTMLElement) => !!into && el.dataset.dropChannel === '' && !!el.dataset.dropFolder && el.dataset.dropFolder !== into.from && !ghost.includes(el)
+
+  // A playlist over a folder's row: into it (a head at the top: only on its middle half)
+  function folderUnder() {
+    const under = document.elementFromPoint(pointerX, pointerY)?.closest<HTMLElement>('[data-drop-channel]')
+    if (!under || !accepts(under)) return null
+    if (under.dataset.top === undefined) return under
+    const { top, height } = under.getBoundingClientRect()
+    return pointerY > top + height / 4 && pointerY < top + (height * 3) / 4 ? under : null
+  }
+
+  function setOver(el: HTMLElement | null) {
+    if (el !== over) {
+      over?.classList.remove('drop-into')
+      window.clearTimeout(openTimer)
+      over = el
+      if (el?.classList.contains('folded')) openTimer = window.setTimeout(() => into?.open(el.dataset.open!), OPEN_AFTER_MS)
+    }
+    // Again each time: opening rewrites the row's classes
+    over?.classList.add('drop-into')
+  }
+
+  function tick() {
+    if (!row.isConnected) return end()
+    edgeScroll(page!, pointerY)
+    const zoom = currentZoom()
+    // Side by side it follows the mouse sideways too, to reach the other column
+    const dx = split ? (pointerX - startX) / zoom : 0
+    copy!.style.transform = `translate(${dx}px, ${(pointerY - startY) / zoom}px)`
+    const folder = folderUnder()
+    setOver(folder)
+    const spot = folder ? null : nearestPlace()
+    // Its own place (before or just after itself) changes nothing: no line
+    place = spot && spot.place !== own && spot.place !== own + 1 ? spot.place : -1
+    line!.hidden = place < 0
+    if (spot && place >= 0) {
+      const { left, width } = spot.list.getBoundingClientRect()
+      line!.style.left = `${left / zoom + 6}px`
+      line!.style.width = `${width / zoom - 12}px`
+      line!.style.top = `${spot.y / zoom - 1}px`
+    }
+    frame = requestAnimationFrame(tick)
+  }
+
+  // The copy in a list of its own, so the list's looks apply; fixed, so it stays under the mouse as
+  // the page scrolls
+  function lift() {
+    const zoom = currentZoom()
+    const box = row.getBoundingClientRect()
+    const holder = document.createElement('ul')
+    holder.className = `${(row.parentElement as HTMLElement).className} video-top-copy`
+    Object.assign(holder.style, { left: `${box.left / zoom}px`, top: `${box.top / zoom}px`, width: `${box.width / zoom}px` })
+    const li = row.cloneNode(true) as HTMLElement
+    li.classList.remove('drop-into')
+    li.classList.add('lifted')
+    holder.append(li)
+    copy = holder
+    line = document.createElement('div')
+    line.className = 'video-drop-line'
+    line.hidden = true
+    page!.append(holder, line)
+    for (const el of ghost) el.classList.add('ghost')
+    for (const el of lists) el.classList.add('dragging')
+  }
+
+  const move = (e: PointerEvent) => {
+    pointerX = e.clientX
+    pointerY = e.clientY
+    if (started || Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
+    started = true
+    lift()
+    tick()
+  }
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && end()
+  // The browser's own dragging (selected text, a folder's picture) would cancel this one
+  const noNativeDrag = (e: DragEvent) => e.preventDefault()
+
+  function end(e?: Event) {
+    cancelAnimationFrame(frame)
+    window.clearTimeout(openTimer)
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', end)
+    window.removeEventListener('pointercancel', end)
+    window.removeEventListener('keydown', onKey)
+    window.removeEventListener('dragstart', noNativeDrag, true)
+    if (!started) return
+    // The click that ends a drag mustn't also open or fold it
+    const swallow = (c: Event) => c.stopPropagation()
+    window.addEventListener('click', swallow, { capture: true, once: true })
+    window.setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+    const dropped = e?.type === 'pointerup'
+    const target = dropped ? over : null
+    setOver(null)
+    if (dropped && !target && place >= 0) {
+      // In the whole order: before the head it lands before, or just after the last one
+      const before = heads[place]?.dataset.top
+      const after = heads[place - 1]?.dataset.top
+      const next = order.filter((k) => k !== key)
+      const at = before !== undefined ? next.indexOf(before) : next.indexOf(after!) + 1
+      next.splice(at < 0 ? next.length : at, 0, key)
+      // Drawn in the new order at once; the list skips its animations (moved, not added)
+      flushSync(() => {
+        void saveSectionOrder(next)
+        changed({ dropped: true })
+      })
+    }
+    copy?.remove()
+    line?.remove()
+    for (const el of ghost) el.classList.remove('ghost')
+    for (const el of lists) el.classList.remove('dragging')
+    if (target) void into!.move(target.dataset.dropFolder!)
+  }
+
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', end)
+  window.addEventListener('pointercancel', end)
+  window.addEventListener('keydown', onKey)
+  window.addEventListener('dragstart', noNativeDrag, true)
+}

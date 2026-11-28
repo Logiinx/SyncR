@@ -5,6 +5,7 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 ## [Unreleased]
 
 **Vidéo** (PC uniquement)
+- **Nouveau :** glissez les sections, dossiers et playlists d’À regarder dans l’ordre voulu
 - **Nouveau :** section « Ajoutées par vous » dans À regarder, pour les vidéos ajoutées par leur lien
 - **Changé :** vos dossiers et playlists ne sont plus sous « De vos chaînes suivies »
 - **Changé :** les sections vides restent visibles, repliées et estompées

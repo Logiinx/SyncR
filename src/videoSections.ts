@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { liveQuery } from 'dexie'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { COLORS } from './cardColors'
@@ -63,4 +64,42 @@ export async function saveSectionColors(change: Partial<SectionColors>) {
 // Once the database is open: follows the saved colors, also when sync brings them from another device
 export function followSectionColors() {
   liveQuery(() => db.settings.get(SETTING)).subscribe((row) => apply(valid(row?.value)))
+}
+
+// To watch's order (user, 2026-11-28): its sections, your folders and playlists at the top, by their
+// ids, as dragged (videoDrag.ts). Synced like the colors. A new folder or playlist (not in it yet)
+// goes just above Rewatch; what's gone is skipped. Kept here too, so a drop shows at once.
+const ORDER = 'videoorder' // lower case, see SETTING
+let order: string[] = []
+const orderListeners = new Set<() => void>()
+function setOrder(next: string[]) {
+  order = next
+  for (const listener of orderListeners) listener()
+}
+const validOrder = (value: unknown) => (Array.isArray(value) ? value.filter((key): key is string => typeof key === 'string') : [])
+
+export const useSectionOrder = () => useSyncExternalStore((listener) => {
+  orderListeners.add(listener)
+  return () => orderListeners.delete(listener)
+}, () => order)
+
+// present: what there is now, in the default order (Queue, From your follows, Added by you, your
+// playlists and folders, Rewatch)
+export function inOrder(saved: string[], present: string[]) {
+  const kept = saved.filter((key) => present.includes(key))
+  const fresh = present.filter((key) => !kept.includes(key))
+  const rewatch = kept.indexOf('rewatch') // i18n-ok
+  return rewatch < 0 ? [...kept, ...fresh] : [...kept.slice(0, rewatch), ...fresh, ...kept.slice(rewatch)]
+}
+
+export async function saveSectionOrder(next: string[]) {
+  setOrder(next) // right away, before the database answers
+  const row = { value: next, updatedAt: Date.now() }
+  if (!(await db.settings.update(ORDER, row))) await db.settings.put({ name: ORDER, ...row })
+  changed()
+}
+
+// Once the database is open, like the colors
+export function followSectionOrder() {
+  liveQuery(() => db.settings.get(ORDER)).subscribe((row) => setOrder(validOrder(row?.value)))
 }
