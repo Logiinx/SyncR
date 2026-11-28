@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Blend, EyeOff, Flame, RotateCcw, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
+import { Blend, EyeOff, Flame, Fullscreen, RotateCcw, LayoutList, ListChecks, Lock, MousePointerClick, Palette, Pin, Scaling, Settings, Square, Thermometer, Timer } from 'lucide-react'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { decimal, percentText, t } from './i18n'
 import { BACKGROUNDS, CLICK_THROUGH, FRAMES, type HardwareSettings, LOOKS, type MenuChoice, SIZES, SPEEDS, THEMES, WIDGET_GROUPS, clickThroughAbout, groupName, peaksAbout, sensorLabel, storedHardware } from './hardware'
@@ -38,6 +38,7 @@ export default function HardwareMenu({ x, y, send, onClose }: MenuProps<MenuChoi
   )
   const items: MenuItem[] = [
     { label: t('Always on top'), icon: Pin, checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
+    { label: t('Hide during full screen'), icon: Fullscreen, disabled: !settings.onTop, hint: settings.onTop ? undefined : t('Only when it’s always on top'), checked: settings.hideFullScreen, onClick: () => change({ hideFullScreen: !settings.hideFullScreen }) },
     { label: t('Lock position and size'), icon: Lock, checked: settings.locked, onClick: () => change({ locked: !settings.locked }) },
     {
       label: t('Click-through'),

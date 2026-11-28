@@ -16,6 +16,7 @@ import {
   SPEEDS,
   THEMES,
   clickThroughAbout,
+  fullScreenAbout,
   groupName,
   heatLevel,
   hasMemTemp,
@@ -128,6 +129,16 @@ export default function HardwareSection() {
         <h4 className="settings-card-sub">{t('Widget')}</h4>
         <SettingRow label={t('Always on top')}>
           <input type="checkbox" checked={settings.onTop} onChange={(e) => saveHardware({ onTop: e.target.checked })} />
+        </SettingRow>
+        <SettingRow
+          label={
+            <>
+              {t('Hide during full screen')}
+              <InfoTip label={t('About hiding during full screen')}>{fullScreenAbout()}</InfoTip>
+            </>
+          }
+        >
+          <input type="checkbox" checked={settings.hideFullScreen} disabled={!settings.onTop} onChange={(e) => saveHardware({ hideFullScreen: e.target.checked })} />
         </SettingRow>
         <SettingRow label={t('Lock position and size')}>
           <input type="checkbox" checked={settings.locked} onChange={(e) => saveHardware({ locked: e.target.checked })} />

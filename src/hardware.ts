@@ -20,6 +20,7 @@ export interface HardwareSettings {
   shown: Sensor[] // what the widget shows
   place: [number, number] | null // the widget's top left on screen (pixels), once it was placed or moved
   onTop: boolean // above other windows (else on the desktop, under them)
+  hideFullScreen: boolean // when on top, steps aside while a full-screen app is in front on its monitor
   locked: boolean // can't be dragged
   fahrenheit: boolean // temperatures in °F (else °C)
   // A: rows like LibreHardwareMonitor · B: one line, values only · C: a tile per hardware · D: rows
@@ -48,6 +49,7 @@ const DEFAULTS: HardwareSettings = {
   shown: ['cpuTemp', 'gpuTemp'],
   place: null,
   onTop: false,
+  hideFullScreen: true,
   locked: false,
   fahrenheit: false,
   look: 'rows',
@@ -85,6 +87,8 @@ export const CLICK_THROUGH: [HardwareSettings['clickThrough'], () => string][] =
 ]
 export const clickThroughAbout = () =>
   t('Clicks go to what’s under the widget. Hold Ctrl over it to click it: move it, open its menu. “Left clicks only”: a right-click still opens its menu.')
+// "Hide during full screen" (this widget's and the Spotify widget's)
+export const fullScreenAbout = () => t('The widget steps aside while a game or a video is full screen on its monitor. Only when it’s always on top.')
 
 let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
@@ -507,7 +511,7 @@ export const WIDGET_GROUPS = [
 // PC gives, under their hardware's name. Nothing to show: no widget.
 function sendWidget(r: HardwareReadings | null) {
   if (!isTauri()) return
-  const { place, onTop, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
+  const { place, onTop, hideFullScreen, locked, look, theme, frame, size, background, clickThrough } = { ...current, ...preview }
   const groups = !r || !current.on
     ? []
     : WIDGET_GROUPS.map(({ icon, sensors }) => ({
@@ -521,6 +525,6 @@ function sendWidget(r: HardwareReadings | null) {
         }),
       })).filter((group) => group.rows.length > 0)
   const animations = animationsOn() // its fade under the mouse while clicks go through
-  const content = groups.length > 0 ? { groups, place, onTop, locked, look, theme, frame, size, background, clickThrough, animations } : null
+  const content = groups.length > 0 ? { groups, place, onTop, hideFullScreen, locked, look, theme, frame, size, background, clickThrough, animations } : null
   invoke('hardware_widget', { content }).catch(console.error)
 }

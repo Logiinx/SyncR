@@ -9,6 +9,8 @@
 // back to the page, which saves it. Right-click: its menu (widget_menu.rs). First time: top left of the 2nd monitor (the
 // main one if there's only one); while the saved place's monitor is gone, that same corner, then
 // back where it was once the monitor returns (widget_place::place_now).
+// "Hide during full screen" (on by default, only when always on top): gone while a full-screen app
+// is in front on its monitor (widget_place::full_screen_near), checked each second.
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
 // desktop and its children along) and moves it when monitors change.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
@@ -16,7 +18,7 @@
 use super::lock;
 use crate::mouse_battery::gdi::Canvas;
 use crate::widget_menu::{self, Owner};
-use crate::widget_place::{desktop, dpi_at, keep_inside, main_monitor, margin, place_now, to_parent, window_place, work_area, Placed};
+use crate::widget_place::{desktop, dpi_at, full_screen_near, keep_inside, main_monitor, margin, place_now, to_parent, window_place, work_area, Placed};
 use std::cell::RefCell;
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicU8, Ordering};
@@ -228,6 +230,8 @@ pub struct Content {
   #[serde(default)]
   click_through: String, // "off" (or anything else) · "all" · "left" (right-clicks still open its menu)
   #[serde(default)]
+  hide_full_screen: bool, // "Always on top" only: gone while a full-screen app is in front on its monitor
+  #[serde(default)]
   animations: bool, // the app's Animations setting: its fade under the mouse
 }
 
@@ -331,6 +335,8 @@ thread_local! {
   static RIGHT_PRESSED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
   // Waiting in the first-time corner while the saved place's monitor is gone (place_now)
   static AWAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+  // A full-screen app in front on its monitor (checked each second): stepped aside
+  static FULL_SCREEN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
   // Where a drag started (a click starts one too)
   static DRAG_FROM: std::cell::Cell<Option<(i32, i32)>> = const { std::cell::Cell::new(None) };
 }
@@ -370,7 +376,7 @@ fn run(start: u64) {
       *registered = controller as isize;
     }
     SetTimer(controller, CHECK_TIMER, 1000, None);
-    show();
+    show(true);
     let mut message: MSG = std::mem::zeroed();
     while GetMessageW(&mut message, null_mut(), 0, 0) > 0 {
       TranslateMessage(&message);
@@ -405,7 +411,7 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
       0
     }
     WM_TIMER | WM_REFRESH => {
-      show();
+      show(message == WM_TIMER);
       follow(window);
       if message == WM_TIMER {
         widget_menu::away(Owner::Hardware, WIDGET.load(Ordering::SeqCst) as HWND);
@@ -414,7 +420,7 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
     }
     // A monitor came or went: away from it, or back to it, at once (place_now; else the next second)
     WM_DISPLAYCHANGE => {
-      show();
+      show(true);
       0
     }
     WM_CLOSE => {
@@ -656,11 +662,18 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
   unsafe { CallNextHookEx(null_mut(), code, wparam, lparam) }
 }
 
-fn show() {
+// `tick`: the second's check (or monitors changed), not new readings or the mouse
+fn show(tick: bool) {
   LOCAL.with(|local| {
     // Busy already (Windows can call in while the widget is being moved): the next second does it
     let Ok(mut local) = local.try_borrow_mut() else { return };
     let content = lock(&CONTENT).clone();
+    let steps_aside = |content: &Content| content.on_top && content.hide_full_screen;
+    if tick {
+      let here = if local.widget.is_null() { None } else { window_place(local.widget) };
+      FULL_SCREEN.set(content.as_ref().is_some_and(|content| steps_aside(content) && full_screen_near(here, content.place, first_place)));
+    }
+    let content = content.filter(|content| !(steps_aside(content) && FULL_SCREEN.get()));
     let shown = content.is_some_and(|content| draw_and_place(&mut local, &content));
     if !shown {
       hide(&mut local);

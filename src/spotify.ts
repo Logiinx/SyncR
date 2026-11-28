@@ -28,6 +28,7 @@ export interface SpotifySettings {
   background: number
   coverColors: boolean // the widget's box takes a dark tint of the cover's main color
   scrollNames: boolean // a name too long for its room scrolls (strip and widget)
+  hideFullScreen: boolean // the widget, when on top, steps aside while a full-screen app is in front on its monitor
 }
 
 // Names of the choices, for Settings → Spotify and the strip's right-click menu (spotifyMenu.tsx)
@@ -52,6 +53,7 @@ const DEFAULTS: SpotifySettings = {
   background: 60,
   coverColors: true,
   scrollNames: true,
+  hideFullScreen: true,
 }
 
 // As saved on this device, also for the right-click menu (its own page, spotifyMenu.tsx)
@@ -81,8 +83,8 @@ export function useSpotify() {
 
 function send() {
   if (!isTauri()) return
-  const { on, showAs, room, place, onTop, locked, size, background, coverColors, scrollNames } = { ...current, ...preview }
-  const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background, coverColors, scrollNames }
+  const { on, showAs, room, place, onTop, locked, size, background, coverColors, scrollNames, hideFullScreen } = { ...current, ...preview }
+  const config = { on, showAs, room, animations: animationsOn(), place, onTop, locked, size, background, coverColors, scrollNames, hideFullScreen }
   invoke('spotify_config', { config }).catch(console.error)
 }
 

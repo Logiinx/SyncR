@@ -70,6 +70,9 @@ pub struct Config {
   // A line too long for its room scrolls, on the strip and the widget (scroll.rs)
   #[serde(default = "yes")]
   scroll_names: bool,
+  // "Always on top" only: the widget steps aside while a full-screen app is in front on its monitor
+  #[serde(default = "yes")]
+  hide_full_screen: bool,
 }
 
 fn yes() -> bool {
@@ -226,6 +229,7 @@ pub struct WidgetShown {
   background: u32,
   tint: Option<u32>, // the cover's tint, when "Colors from the cover" is on
   scroll: bool,      // "Scroll long names"
+  hide_full_screen: bool,
 }
 
 fn widget_shown() -> Option<WidgetShown> {
@@ -234,7 +238,7 @@ fn widget_shown() -> Option<WidgetShown> {
   let (cover, volume) = (lock(&COVER).clone(), *lock(&VOLUME));
   let buttons = config.room != "none";
   let tint = cover.as_ref().and_then(|cover| cover.tint).filter(|_| config.cover_colors);
-  let Config { animations, place, on_top, size, background, scroll_names: scroll, .. } = config;
+  let Config { animations, place, on_top, size, background, scroll_names: scroll, hide_full_screen, .. } = config;
   Some(WidgetShown {
     title: song.title,
     artist: song.artist,
@@ -250,6 +254,7 @@ fn widget_shown() -> Option<WidgetShown> {
     background,
     tint,
     scroll,
+    hide_full_screen,
   })
 }
 

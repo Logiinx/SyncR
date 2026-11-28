@@ -226,6 +226,10 @@ export const settings = {
   'Previous and next. Strip grows: it widens to the left when the mouse comes over it. Room kept: their room is always there, so nothing moves (the widget always does this). None: only play/pause on the cover.':
     'Précédent et suivant. La barre s’élargit : elle s’agrandit vers la gauche quand la souris passe dessus. Place gardée : leur place est toujours là, rien ne bouge (toujours ainsi pour le widget). Aucun : seulement lecture/pause sur la pochette.',
   'Colors from the cover': 'Couleurs de la pochette',
+  'Hide during full screen': 'Masquer en plein écran',
+  'About hiding during full screen': 'À propos du masquage en plein écran',
+  'Only when it’s always on top': 'Seulement s’il est toujours au premier plan',
+  'The widget steps aside while a game or a video is full screen on its monitor. Only when it’s always on top.': 'Le widget s’efface quand un jeu ou une vidéo est en plein écran sur le même écran. Seulement s’il est toujours au premier plan.',
   "The floating widget takes a dark tint of the album cover's main color.": 'Le widget flottant prend une teinte sombre de la couleur principale de la pochette.',
   'Scroll long names': 'Faire défiler les noms longs',
   'A name too long for its room slides to show all of it: once when the song changes, then while the mouse is over it.':

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Blend, EyeOff, Lock, MoveHorizontal, Palette, Pin, Scaling, Settings } from 'lucide-react'
+import { AppWindow, Blend, EyeOff, Fullscreen, Lock, MoveHorizontal, Palette, Pin, Scaling, Settings } from 'lucide-react'
 import ContextMenu, { type MenuItem } from './ContextMenu'
 import { SIZES } from './hardware'
 import { percentText, t } from './i18n'
@@ -40,6 +40,7 @@ export default function SpotifyMenu({ x, y, send, onClose, widget }: MenuProps<S
     : [
         showAs,
         { label: t('Always on top'), icon: Pin, divider: true, checked: settings.onTop, onClick: () => change({ onTop: !settings.onTop }) },
+        { label: t('Hide during full screen'), icon: Fullscreen, disabled: !settings.onTop, hint: settings.onTop ? undefined : t('Only when it’s always on top'), checked: settings.hideFullScreen, onClick: () => change({ hideFullScreen: !settings.hideFullScreen }) },
         { label: t('Lock position and size'), icon: Lock, checked: settings.locked, onClick: () => change({ locked: !settings.locked }) },
         {
           label: t('Background'),

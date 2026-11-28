@@ -1,16 +1,21 @@
 // Where SyncR's desktop widgets (the Hardware widget, the Spotify widget) live: the desktop's icon
-// view they sit in (or the screen when "always on top"), their monitors and those monitors' scale.
+// view they sit in (or the screen when "always on top"), their monitors and those monitors' scale,
+// and whether a full-screen app is in front of them.
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
 use std::ptr::{null, null_mut};
-use windows_sys::Win32::Foundation::{HWND, POINT, RECT};
+use windows_sys::core::BOOL;
+use windows_sys::Win32::Foundation::{HWND, LPARAM, POINT, RECT};
+use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
 use windows_sys::Win32::Graphics::Gdi::{
   GetMonitorInfoW, MonitorFromPoint, ScreenToClient, HMONITOR, MONITORINFO, MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL,
   MONITOR_DEFAULTTOPRIMARY,
 };
 use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  FindWindowExW, FindWindowW, GetParent, GetWindowRect, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+  EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetParent, GetWindowLongW, GetWindowRect, IsIconic, IsWindowVisible, IsZoomed,
+  SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+  WS_EX_TRANSPARENT,
 };
 
 pub const MARGIN: f32 = 16.0; // from the monitor's edges, the first time (DIPs)
@@ -115,10 +120,76 @@ pub fn main_monitor() -> HMONITOR {
 
 // A monitor's room without its taskbars (screen pixels)
 pub fn work_area(monitor: HMONITOR) -> Option<RECT> {
+  monitor_info(monitor).map(|info| info.rcWork)
+}
+
+fn monitor_info(monitor: HMONITOR) -> Option<MONITORINFO> {
   let empty = RECT { left: 0, top: 0, right: 0, bottom: 0 };
   let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, rcMonitor: empty, rcWork: empty, dwFlags: 0 };
   // info has its size set, as Windows asks
-  (unsafe { GetMonitorInfoW(monitor, &mut info) } != 0).then_some(info.rcWork)
+  (unsafe { GetMonitorInfoW(monitor, &mut info) } != 0).then_some(info)
+}
+
+// "Hide during full screen": a full-screen app (a game, a video, a browser in F11) in front on the
+// widget's monitor: where it is, else its saved place, else where it would first go (`first`).
+pub fn full_screen_near(here: Option<(i32, i32)>, saved: Option<(i32, i32)>, first: impl Fn() -> (i32, i32)) -> bool {
+  let (x, y) = here.or(saved.filter(|&(x, y)| on_a_monitor(x, y))).unwrap_or_else(first);
+  let monitor = unsafe { MonitorFromPoint(POINT { x: x + 8, y: y + 8 }, MONITOR_DEFAULTTONEAREST) };
+  let Some(info) = monitor_info(monitor) else { return false };
+  let mut look = FullScreen { area: info.rcMonitor, found: false };
+  // look outlives the call, which calls each_window once per window, front to back
+  unsafe { EnumWindows(Some(each_window), &mut look as *mut FullScreen as LPARAM) };
+  look.found
+}
+
+struct FullScreen {
+  area: RECT, // the monitor
+  found: bool,
+}
+
+// Front to back: the first window on the monitor that covers all of it, before any ordinary one.
+// So a game stays "in front" on its monitor while the mouse works on another one. Looked past:
+// hidden windows (minimized, on another virtual desktop), tool windows (SyncR's widgets, menus,
+// tooltips), click-through ones (game overlays, often as big as the screen) and small ones kept on
+// top (another widget). A maximized window with a title bar covers it all when the taskbar hides
+// itself: ordinary, not full screen. The desktop is the end.
+unsafe extern "system" fn each_window(window: HWND, lparam: LPARAM) -> BOOL {
+  // lparam is the FullScreen above, alive for the whole EnumWindows call
+  let look = unsafe { &mut *(lparam as *mut FullScreen) };
+  let mut cloaked: u32 = 0;
+  unsafe {
+    let hidden = IsWindowVisible(window) == 0
+      || IsIconic(window) != 0
+      || (DwmGetWindowAttribute(window, DWMWA_CLOAKED as u32, &mut cloaked as *mut u32 as *mut _, size_of::<u32>() as u32) == 0 && cloaked != 0);
+    let extended = GetWindowLongW(window, GWL_EXSTYLE) as u32;
+    if hidden || extended & (WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT) != 0 {
+      return 1;
+    }
+    let mut rect = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+    if GetWindowRect(window, &mut rect) == 0 {
+      return 1;
+    }
+    let area = look.area;
+    if rect.right <= area.left || rect.left >= area.right || rect.bottom <= area.top || rect.top >= area.bottom {
+      return 1;
+    }
+    let mut class = [0u16; 16];
+    let length = GetClassNameW(window, class.as_mut_ptr(), class.len() as i32).max(0) as usize;
+    let class = String::from_utf16_lossy(&class[..length]);
+    if class == "Progman" || class == "WorkerW" {
+      return 0;
+    }
+    let covers = rect.left <= area.left && rect.top <= area.top && rect.right >= area.right && rect.bottom >= area.bottom;
+    let titled = GetWindowLongW(window, GWL_STYLE) as u32 & WS_CAPTION == WS_CAPTION;
+    if covers && !(IsZoomed(window) != 0 && titled) {
+      look.found = true;
+      return 0;
+    }
+    if !covers && extended & WS_EX_TOPMOST != 0 {
+      return 1;
+    }
+    0
+  }
 }
 
 // MARGIN on this monitor, in its pixels

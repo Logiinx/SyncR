@@ -19,6 +19,8 @@
 // "Colors from the cover" (on by default): the box takes a dark tint of the cover's main color
 // behind the cover, fading into the plain dark box under the text (look C,
 // .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
+// "Hide during full screen" (on by default, only when always on top): gone while a full-screen app
+// is in front on its monitor (widget_place::full_screen_near), checked each second.
 // Right-click: its menu (widget_menu.rs).
 // A line too long for its room scrolls (scroll.rs): drawn whole, slid left, cut to the text's room
 // with soft ends.
@@ -35,7 +37,7 @@ use crate::hardware::widget::{color, text_baseline};
 use crate::mouse_battery::gdi::Canvas;
 use crate::taskbar::Tooltip;
 use crate::widget_menu::{self, Owner};
-use crate::widget_place::{desktop, dpi_at, keep_inside, main_monitor, margin, monitor_dpi, place_now, to_parent, window_place, work_area};
+use crate::widget_place::{desktop, dpi_at, full_screen_near, keep_inside, main_monitor, margin, monitor_dpi, place_now, to_parent, window_place, work_area};
 use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -275,6 +277,8 @@ thread_local! {
   static HOVER: Cell<bool> = const { Cell::new(false) };
   // Waiting in the main monitor's corner while the saved place's monitor is gone (place_now)
   static AWAY: Cell<bool> = const { Cell::new(false) };
+  // A full-screen app in front on its monitor (checked each second): stepped aside
+  static FULL_SCREEN: Cell<bool> = const { Cell::new(false) };
   static SHAPE: Cell<(f32, f32)> = const { Cell::new((1.0, 0.0)) }; // the drawn scale and side, for the clicks
   // The volume shows in the artist's place; the part of a notch turned so far (fine-turning mice)
   static VOLUME_SHOWN: Cell<bool> = const { Cell::new(false) };
@@ -510,7 +514,14 @@ fn show(tick: bool) {
   LOCAL.with(|local| {
     // Busy already (Windows can call in while the widget is being placed): the next second does it
     let Ok(mut local) = local.try_borrow_mut() else { return };
-    let shown = widget_shown().is_some_and(|now| draw_and_place(&mut local, now, tick));
+    let now = widget_shown();
+    let steps_aside = |now: &WidgetShown| now.on_top && now.hide_full_screen;
+    if tick {
+      let here = if local.widget.is_null() { None } else { window_place(local.widget) };
+      let first = || work_area(main_monitor()).map_or((0, 0), |work| (work.left, work.top));
+      FULL_SCREEN.set(now.as_ref().is_some_and(|now| steps_aside(now) && full_screen_near(here, now.place, first)));
+    }
+    let shown = now.filter(|now| !(steps_aside(now) && FULL_SCREEN.get())).is_some_and(|now| draw_and_place(&mut local, now, tick));
     if !shown {
       hide(&mut local);
     }
