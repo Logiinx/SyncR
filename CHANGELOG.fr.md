@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-28
+
 **Vidéo** (PC uniquement)
 - **Nouveau :** glissez les sections, dossiers et playlists d’À regarder dans l’ordre voulu
 - **Nouveau :** À revoir aussi : file d’attente, dossiers et playlists dans l’ordre voulu

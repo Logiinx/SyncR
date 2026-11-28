@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-28
+
 **Video** (PC only)
 - **New:** drag To watch’s sections, folders and playlists into any order
 - **New:** in Rewatch too: drag the Queue, folders and playlists into any order
