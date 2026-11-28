@@ -2,7 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Window } from '@tauri-apps/api/window'
 import { animationsOn } from './animations'
-import { currentZoom } from './appearance'
+import { currentZoom, grayColors, loadAppearance } from './appearance'
 import { locale, t } from './i18n'
 import { openLink } from './links'
 import { read, write } from './localState'
@@ -87,6 +87,9 @@ export const loadPlayerSettings = (): PlayerSettings => ({
   subtitleLanguage: locale().startsWith('fr') ? 'fr' : 'en',
   ...read<Partial<PlayerSettings>>(KEY, {}),
 })
+// Black with Settings → Video → Black player, or with the app's black background (Settings →
+// Appearance → Background): the same look either way.
+export const playerBlack = () => loadPlayerSettings().black || loadAppearance().background !== 'gray' // i18n-ok
 export function savePlayerSettings(change: Partial<PlayerSettings>) {
   write(KEY, { ...loadPlayerSettings(), ...change })
 }
@@ -201,17 +204,12 @@ function forgetFails(video: PlayableVideo) {
   write(FAILS_KEY, fails)
 }
 
-function pageColors(names: string[]) {
-  const css = getComputedStyle(document.documentElement)
-  return Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
-}
-
-// The bar, its menu and the "can't play" screen: black with the Black player setting. The player
+// The bar, its menu and the "can't play" screen: black with playerBlack. The player
 // controls over the video keep their own colors.
 function windowColors(names: string[]) {
-  const colors = pageColors(names)
-  if (!loadPlayerSettings().black) return colors
-  const black = pageColors(['--oled', '--oled-raised'])
+  const colors = grayColors(names)
+  if (!playerBlack()) return colors
+  const black = grayColors(['--oled', '--oled-raised'])
   if (colors['--bg']) colors['--bg'] = black['--oled']
   if (colors['--bg-raised']) colors['--bg-raised'] = black['--oled-raised']
   return colors
@@ -225,7 +223,7 @@ function controlsData() {
     locale: locale(),
     zoom: currentZoom(),
     animations: animationsOn(),
-    colors: pageColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--text-red', '--text-green', '--text-purple', '--accent']),
+    colors: grayColors(['--bg', '--bg-sunken', '--border', '--hover', '--text', '--text-dim', '--text-blue', '--text-orange', '--text-red', '--text-green', '--text-purple', '--accent']),
     labels: {
       play: t('Play video'),
       pause: t('Pause'),
@@ -508,7 +506,7 @@ function barData(video: PlayableVideo, way: Way) {
     onTop: loadPlayerSettings().alwaysOnTop,
     zoom: currentZoom(),
     colors,
-    black: loadPlayerSettings().black,
+    black: playerBlack(),
     dim: loadPlayerSettings().dimBar,
     animations: animationsOn(),
     labels: {
@@ -884,7 +882,7 @@ export function playVideo(video: PlayableVideo, playlistId?: string, start?: num
         bar: barData(video, currentWay),
         barHeight: BAR_HEIGHT * currentZoom(),
         alwaysOnTop: loadPlayerSettings().alwaysOnTop,
-        black: loadPlayerSettings().black,
+        black: playerBlack(),
       })
       followWatched(video)
     })

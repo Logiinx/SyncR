@@ -92,6 +92,19 @@ export function applyBackground({ background }: Appearance) {
   if (color) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
 }
 
+// The colors as they are with the dark gray background, whatever the setting: for the video
+// player's controls and chat, which keep their own look (they have their own black switches).
+// Taking the classes off and back in the same moment draws nothing in between.
+export function grayColors(names: string[]) {
+  const root = document.documentElement
+  const classes = ['oled-black', 'oled-all-black'].filter((name) => root.classList.contains(name)) // i18n-ok
+  root.classList.remove(...classes)
+  const css = getComputedStyle(root)
+  const colors = Object.fromEntries(names.map((name) => [name, css.getPropertyValue(name).trim()]))
+  root.classList.add(...classes)
+  return colors
+}
+
 export function applyAppearance(appearance: Appearance) {
   const { scale, font, fontSize, showDates, animations } = appearance
   applyBackground(appearance)

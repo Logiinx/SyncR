@@ -5,7 +5,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 
 vi.mock('../src/i18n', () => ({ t: (text: string) => text, locale: () => 'en' }))
 vi.mock('../src/animations', () => ({ animationsOn: () => true }))
-vi.mock('../src/appearance', () => ({ currentZoom: () => 1 }))
+vi.mock('../src/appearance', () => ({ currentZoom: () => 1, grayColors: (names: string[]) => Object.fromEntries(names.map((name) => [name, ''])), loadAppearance: () => ({ background: 'gray' }) }))
 vi.mock('../src/links', () => ({ openLink: () => {} }))
 const store = new Map<string, unknown>()
 vi.mock('../src/localState', () => ({

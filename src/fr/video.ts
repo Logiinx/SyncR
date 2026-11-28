@@ -349,6 +349,7 @@ export const video = {
   'Goes in the queue': 'Va dans la file',
   'Plays at once': 'Se lit tout de suite',
   'Black player': 'Lecteur noir',
+  'On with the black background (Look → Background)': 'Activé avec le fond noir (Apparence → Fond)',
   'The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.': 'La barre, son menu ⋯ et l’écran affiché quand une vidéo ne peut pas être lue, en noir : les pixels d’un écran OLED y sont éteints. À partir de la prochaine vidéo ouverte.',
   'Dim the bar when the mouse is away': 'Assombrir la barre quand la souris est ailleurs',
   '3 seconds after the mouse leaves the window or rests on the video, the bar fades dark: on an OLED screen, what stays lit in one place wears it. From the next video opened.': '3 secondes après que la souris quitte la fenêtre ou reste immobile sur la vidéo, la barre s’assombrit : sur un écran OLED, ce qui reste allumé au même endroit l’use. À partir de la prochaine vidéo ouverte.',

@@ -9,6 +9,7 @@ import { setModuleOn, useModuleOn } from './modules'
 import InfoTip from './InfoTip'
 import { loadPlayerSettings, savePlayerSettings, SUBTITLE_LANGUAGES, YOUTUBE_QUALITIES, type PlayerSettings } from './videoPlayer'
 import { t } from './i18n'
+import { loadAppearance } from './appearance'
 import { setAutoRewatch, setBigPictures, setMusicName, setRewatchSection, useAutoRewatch, useBigPictures, useMusicName, useRewatchSection } from './videoFolders'
 import { setCardPiece, useCardPieces, type CardPiece } from './videoCards'
 import { setDeArrow, useDeArrow } from './videoTitles'
@@ -41,6 +42,8 @@ function problemText(problem: unknown): string {
 // video window's extensions. The extensions' files and everything else: video_extensions.rs
 export default function VideoSection() {
   const [player, setPlayer] = useState(loadPlayerSettings)
+  // The app's black background makes the player black too (playerBlack): the switch shows it, grayed
+  const appBlack = loadAppearance().background !== 'gray' // i18n-ok
   const rewatchSection = useRewatchSection()
   const musicName = useMusicName()
   const bigPictures = useBigPictures()
@@ -187,8 +190,8 @@ export default function VideoSection() {
             <option value="play">{t('Plays at once')}</option>
           </select>
         </SettingRow>
-        <SettingRow label={t('Black player')} title={t('The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.')}>
-          <input type="checkbox" checked={player.black} onChange={(e) => updatePlayer({ black: e.target.checked })} />
+        <SettingRow label={t('Black player')} title={appBlack ? t('On with the black background (Look → Background)') : t('The bar, its ⋯ menu and the screen shown when a video can’t play, in black: an OLED screen’s pixels are off there. From the next video opened.')}>
+          <input type="checkbox" checked={player.black || appBlack} disabled={appBlack} onChange={(e) => updatePlayer({ black: e.target.checked })} />
         </SettingRow>
         <SettingRow label={t('Dim the bar when the mouse is away')} title={t('3 seconds after the mouse leaves the window or rests on the video, the bar fades dark: on an OLED screen, what stays lit in one place wears it. From the next video opened.')}>
           <input type="checkbox" checked={player.dimBar} onChange={(e) => updatePlayer({ dimBar: e.target.checked })} />
