@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-28
+
 **Application**
 - **Changé :** « Masquer en plein écran » désactivé par défaut, les deux widgets (PC uniquement)
 - **Corrigé :** widgets Spotify et Matériel qui disparaissaient pendant leur menu (PC uniquement)

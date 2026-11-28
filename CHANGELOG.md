@@ -4,6 +4,8 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-28
+
 **App**
 - **Changed:** “Hide during full screen” now off by default, both widgets (PC only)
 - **Fixed:** Spotify and Hardware widgets vanishing while their menu was open (PC only)
