@@ -150,6 +150,7 @@ export const games = {
   'On the tiles, list rows and Playing cards. A game’s window always shows all of them.': 'Sur les vignettes, les lignes de la liste et les cartes En cours. La fenêtre d’un jeu les montre toujours toutes.',
   'Add its link': 'Ajouter son lien',
   'Not found on HowLongToBeat': 'Introuvable sur HowLongToBeat',
+  'No HowLongToBeat page yet': 'Pas encore de page HowLongToBeat',
   'No times yet on HowLongToBeat': 'Pas encore de durées sur HowLongToBeat',
   'HowLongToBeat page…': 'Page HowLongToBeat…',
   'Open on HowLongToBeat': 'Ouvrir sur HowLongToBeat',

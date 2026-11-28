@@ -63,7 +63,7 @@ export function gameMenuItems(
           },
         },
     // Grayed while its page isn't known (not found, or not asked yet)
-    { label: t('Open on HowLongToBeat'), icon: ExternalLink, disabled: !view.hltbId, onClick: () => openLink(playtimeLink(view.hltbId!)) },
+    { label: t('Open on HowLongToBeat'), icon: ExternalLink, disabled: !view.hltbId, hint: view.hltbId ? undefined : t('No HowLongToBeat page yet'), onClick: () => openLink(playtimeLink(view.hltbId!)) },
     { label: t('HowLongToBeat page…'), icon: Hourglass, onClick: () => view.onAsk(playtimePageQuestion(game, view.onAsk)) },
     { label: t('Remove from list'), icon: Trash2, danger: true, onClick: view.onRemove },
   ]
