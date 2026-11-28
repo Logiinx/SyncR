@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Better:** ⏯ shows on the Spotify cover when hovering the song name too (PC only)
+
 ## [1.5.1] - 2026-11-28
 
 **Notes**

@@ -4,6 +4,9 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+**Application**
+- **Amélioré :** ⏯ s’affiche sur la pochette Spotify aussi en survolant le titre (PC uniquement)
+
 ## [1.5.1] - 2026-11-28
 
 **Notes**

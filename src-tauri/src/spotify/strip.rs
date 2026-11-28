@@ -3,7 +3,7 @@
 // then the title (semibold) over the artist (a little dimmer), cut with "…" past 150 px. Paused:
 // cover and text at half strength. Spotify closed, or shown as the widget: no strip.
 // Hover: a soft highlight like the taskbar's own icons, a tooltip with the full title and artist
-// only when one of them is cut, ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil. Their room: made on hover (the strip grows
+// only when one of them is cut, ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil (the cover or the text hovered). Their room: made on hover (the strip grows
 // to the left, as its right edge is held by the battery) or always kept, or no ⏮ ⏭ at all
 // (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
@@ -135,6 +135,11 @@ impl Layout {
       Some(Part::Text)
     }
   }
+}
+
+// The cover and the text both play/pause: either one under the mouse shows ⏯ on the cover
+fn toggles(part: Option<Part>) -> bool {
+  matches!(part, Some(Part::Cover | Part::Text))
 }
 
 // What's drawn: redrawn only when one of these changes
@@ -377,7 +382,7 @@ fn place() {
     if !shown {
       hide(&mut local);
     }
-    let fading = local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| drawn.look.part == Some(Part::Cover)));
+    let fading = local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.look.part)));
     let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
@@ -456,7 +461,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
   let x = spot.left_of_battery() - width;
   // The part under the mouse, where the strip is now (it may have just grown under it)
   let part = if hover { mouse_in_taskbar(spot.taskbar).and_then(|(mouse_x, mouse_y)| if (0..spot.height).contains(&mouse_y) { layout.part(mouse_x - x) } else { None }) } else { None };
-  local.veil = fade(local.veil, target(part == Some(Part::Cover)), seconds, now.animations);
+  local.veil = fade(local.veil, target(toggles(part)), seconds, now.animations);
   let look = Look {
     dpi: spot.dpi,
     height: spot.height,

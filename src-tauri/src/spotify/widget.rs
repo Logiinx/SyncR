@@ -3,7 +3,7 @@
 // (dimmer), each cut with "…" past 170 px. Paused: cover and text at half strength. Spotify
 // closed, or shown as the strip: no widget. Drawn with Direct2D + DirectWrite like the Hardware
 // widget (the same text engine as the page), into a see-through picture.
-// Hover: ⏯ on the cover under a dark veil, ⏮ and ⏭ fade in at the ends, in room always kept (so
+// Hover: ⏯ on the cover under a dark veil (the cover or the text hovered), ⏮ and ⏭ fade in at the ends, in room always kept (so
 // nothing moves under the mouse; "Buttons on hover: None": no ⏮ ⏭ and no room), and a tooltip
 // with the full title, artist and album only when one of them is cut.
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause (the reading thread asks Spotify); a click
@@ -168,6 +168,11 @@ fn part_at(x: i32, scale: f32, side: f32) -> Option<Part> {
   } else {
     Some(Part::Text)
   }
+}
+
+// The cover and the text both play/pause: either one under the mouse shows ⏯ on the cover
+fn toggles(part: Option<Part>) -> bool {
+  matches!(part, Some(Part::Cover | Part::Text))
 }
 
 // What's drawn: drawn again only when one of these changes
@@ -510,9 +515,9 @@ fn show(tick: bool) {
       hide(&mut local);
     }
     // The fades go on while something isn't where it's going
-    let cover_hovered = local.drawn.as_ref().is_some_and(|drawn| drawn.part == Some(Part::Cover));
+    let veiled = local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.part));
     let buttons = local.drawn.as_ref().is_some_and(|drawn| drawn.side > 0.0);
-    let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(cover_hovered) || local.tint_done < 1.0;
+    let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(veiled) || local.tint_done < 1.0;
     let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
@@ -619,7 +624,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   } else {
     None
   };
-  local.veil = fade(local.veil, target(part == Some(Part::Cover)), seconds, now.animations);
+  local.veil = fade(local.veil, target(toggles(part)), seconds, now.animations);
   // A new tint fades in from the one shown now; none shown yet (just appeared): at once
   let tint = now.tint.unwrap_or(BG);
   if tint != local.tint_to {
