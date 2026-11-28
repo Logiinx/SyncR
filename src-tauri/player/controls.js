@@ -78,7 +78,7 @@ function playerControls(env, media) {
         <svg id="heat" viewBox="0 0 1000 100" preserveAspectRatio="none" hidden><path></path><path vector-effect="non-scaling-stroke"></path></svg>
         <div id="track"><div id="buffer"></div><div id="played"></div><div id="marked"></div><div id="marked-played"></div></div>
         <div id="knob"></div>
-        <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div></div>
+        <div id="tip" hidden><div id="tip-picture" hidden></div><div id="tip-time"></div><div id="tip-game" hidden></div><div id="tip-part" hidden><i></i><span></span></div><div id="tip-loaded" hidden></div></div>
       </div>
       <div id="upnext" hidden><div id="upnext-picture"></div><div id="upnext-label"></div><div id="upnext-title"></div></div>
       <div id="goto" hidden><div class="menu-title" id="goto-title"></div><input id="goto-text" type="text" spellcheck="false" autocomplete="off"><div id="goto-note"></div></div>
@@ -150,6 +150,7 @@ function playerControls(env, media) {
     const beside = hooks.besideTime?.(shown)
     $('time-beside').textContent = beside ? `· ${beside}` : ''
     $('buffer').style.width = `${length ? (media.bufferedEnd() / length) * 100 : 0}%`
+    if (!$('tip').hidden && dragging === null) tipLoaded()
   }
 
   // gathered: one of the quick jumps above; otherwise at once (the bar, a chapter)
@@ -332,6 +333,17 @@ function playerControls(env, media) {
     if (hooks.fillTip) return hooks.fillTip(seconds)
     $('tip-time').textContent = clock(seconds)
   }
+  // Over the loaded part ahead: how much is there, so it's clear how far it plays without internet
+  let hovered = 0
+  function tipLoaded() {
+    const now = media.time()
+    const ahead = media.bufferedEnd() - now
+    // At least 12 px wide from the knob: on a long video a few minutes are only a sliver
+    const least = (12 / ($('progress').clientWidth || 1)) * media.duration()
+    const over = dragging === null && ahead >= 1 && hovered >= now - least / 4 && hovered <= now + Math.max(ahead, least)
+    $('tip-loaded').hidden = !over
+    if (over) $('tip-loaded').textContent = (labels.loadedAhead || '{time}').replace('{time}', clock(ahead))
+  }
   const partAt = (event) => {
     const area = $('progress').getBoundingClientRect()
     return Math.min(Math.max((event.clientX - area.left) / area.width, 0), 1)
@@ -341,6 +353,8 @@ function playerControls(env, media) {
     const length = media.duration()
     $('tip').hidden = !length
     if (length) fillTip(part * length)
+    hovered = part * length
+    tipLoaded()
     // Stays inside the window near both ends
     const width = $('progress').clientWidth
     const half = $('tip').offsetWidth / 2
@@ -1726,7 +1740,7 @@ const CONTROLS_CSS = `
   #heat path:first-child { fill: rgba(255, 255, 255, 0.28); }
   #heat path:last-child { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-width: 1.5px; stroke-linejoin: round; }
   #buffer, #played { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
-  #buffer { background: rgba(255, 255, 255, 0.35); }
+  #buffer { background: rgba(255, 255, 255, 0.55); }
   #played { background: var(--text-blue, #6ea8fe); }
   /* Marked parts: dimmer ahead, full color once played, so the position still shows inside one */
   #marked, #marked-played {
@@ -1749,6 +1763,7 @@ const CONTROLS_CSS = `
   #tip-picture { margin: 2px -5px 4px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.08); background-repeat: no-repeat; }
   #tip-game { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #9a9a9a); }
   #tip-part { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-dim, #9a9a9a); }
+  #tip-loaded { color: var(--text-dim, #9a9a9a); }
   #tip-part i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
   /* The next video's card over ⏭ (playNext): like the tip, its picture 16:9 */
   #upnext {

@@ -292,6 +292,7 @@ function controlsData() {
       chapters: t('Chapters'),
       copyLink: t('Copy link'),
       copyLinkAt: t('Copy link at {time}'),
+      loadedAhead: t('{time} loaded ahead'),
       linkCopied: t('Link copied'),
       linkNotCopied: t("Couldn't copy the link"),
       dragSubtitles: t('Drag the subtitles to move them'),

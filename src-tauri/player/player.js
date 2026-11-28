@@ -1332,8 +1332,11 @@ async function load() {
   }
   hls?.destroy()
   hls = new Hls({
+    // Loads ahead up to about 150 MB, under the browser's own limit for a video with the part behind
+    // (refused past ~230 MB, checked 2026-11-28): 1.5 min at 1440p, 2.5 at 1080p60, never past 10 min
     maxBufferLength: 30,
-    maxMaxBufferLength: 60,
+    maxBufferSize: 150 * 1000 * 1000,
+    maxMaxBufferLength: 600,
     backBufferLength: 30,
     startPosition: position,
     fragLoadPolicy: loadPolicy(4, 6),

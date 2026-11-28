@@ -8,6 +8,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 - **Nouveau :** fond noir pour les écrans OLED : Paramètres → Apparence → Fond
 
 **Vidéo** (PC uniquement)
+- **Amélioré :** la partie chargée de la barre de temps se voit mieux ; survolez-la pour la durée
+- **Amélioré :** les vidéos Twitch chargent plus loin d’avance : 1 à 2 min en meilleure qualité, jusqu’à 10 en dessous
 - **Amélioré :** le lecteur vidéo devient noir lui aussi avec le fond noir
 
 ## [1.4.1] - 2026-11-27

@@ -8,6 +8,8 @@ All notable changes to SyncR. Newest version first.
 - **New:** black background for OLED screens: Settings → Look → Background
 
 **Video** (PC only)
+- **Better:** the loaded part of the time bar is easier to see; hover it for how much
+- **Better:** Twitch videos load further ahead: 1–2 min at best quality, up to 10 below
 - **Better:** the video player turns black too with the black background
 
 ## [1.4.1] - 2026-11-27

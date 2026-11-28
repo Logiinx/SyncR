@@ -267,6 +267,7 @@ export const video = {
   'Reset position': 'Remettre à leur place',
   'Chapters': 'Chapitres',
   'Copy link at {time}': 'Copier le lien à {time}',
+  '{time} loaded ahead': 'Chargé : {time} d’avance',
   'Link copied': 'Lien copié',
   "Couldn't copy the link": 'Impossible de copier le lien',
   'Drag the subtitles to move them': 'Faites glisser les sous-titres pour les déplacer',
