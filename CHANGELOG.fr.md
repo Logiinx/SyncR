@@ -4,6 +4,8 @@ Tous les changements notables de SyncR. La version la plus récente d’abord.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-28
+
 **Application**
 - **Nouveau :** fond noir pour les écrans OLED : Paramètres → Apparence → Fond
 
