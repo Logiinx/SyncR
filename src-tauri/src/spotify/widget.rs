@@ -21,6 +21,9 @@
 // .claude/mockups/spotify-cover-colors.html); a new song's color fades in over half a second.
 // "Hide during full screen" (on by default, only when always on top): gone while a full-screen app
 // is in front on its monitor (widget_place::full_screen_near), checked each second.
+// Spotify opening or closing: it fades in or out over a quarter second (.claude/mockups/
+// spotify-fade.html, B). After a full-screen app: gone at once, fades back in. Show as switched or
+// the module turned off: at once.
 // "Fade when paused" (on by default): paused for 2 min, it fades down to faint over a second; the
 // mouse over it, its menu open or the song playing: back to full at once (a quick fade). The wait
 // starts again each time it plays or comes back (Spotify reopened, after a full-screen app).
@@ -38,13 +41,14 @@
 
 use super::scroll::{Scroll, Slid};
 use super::{
-  ask, clock, ease, fade, lock, seek, shrink, target, timeline, to_byte, volume_line, wheel_notches, widget_locked, widget_moved, widget_shown, Ask,
+  appear, ask, clock, ease, fade, frame_seconds, lock, seek, shrink, song_gone, target, timeline, to_byte, volume_line, wheel_notches, widget_locked,
+  widget_moved, widget_shown, Ask,
   Bar, Cover, WidgetShown, GHOST, PLAYED, PLAYED_PAUSED, TRACK,
   FRAME_MS, ICON_FONTS, NEXT, PAUSE, PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
 };
 use crate::hardware::widget::{color, text_baseline};
 use crate::mouse_battery::gdi::Canvas;
-use crate::taskbar::Tooltip;
+use crate::taskbar::{self, Tooltip};
 use crate::widget_menu::{self, Owner};
 use crate::widget_place::{desktop, dpi_at, full_screen_near, keep_inside, main_monitor, margin, monitor_dpi, place_now, to_parent, window_place, work_area};
 use std::cell::{Cell, RefCell};
@@ -74,7 +78,7 @@ use windows_sys::Win32::Graphics::Gdi::{AC_SRC_ALPHA, AC_SRC_OVER, BLENDFUNCTION
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::SystemServices::MK_CONTROL;
 use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, WM_MOUSELEAVE};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetCapture, ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, GetParent, GetSystemMetrics, IsWindow,
   KillTimer, LoadCursorW, PostMessageW, PostQuitMessage, RegisterClassExW, SetTimer, SetWindowPos, TranslateMessage, UpdateLayeredWindow,
@@ -289,6 +293,10 @@ struct Local {
   paused_since: Option<Instant>,
   faint: f32,
   faint_wanted: bool,
+  // How far it's there, 0 to 1: fading in as Spotify opens (or after a full-screen app), out as it
+  // closes (`leaving`: the widget is still there, fading out)
+  appear: f32,
+  leaving: bool,
 }
 
 // A press on the widget: where the mouse and the widget were (screen pixels), and on which part
@@ -320,6 +328,8 @@ thread_local! {
       paused_since: None,
       faint: 0.0,
       faint_wanted: false,
+      appear: 0.0,
+      leaving: false,
     })
   };
   // Apart from LOCAL: the widget's own messages change or read them, also while LOCAL is busy
@@ -600,15 +610,35 @@ fn show(tick: bool) {
       let first = || work_area(main_monitor()).map_or((0, 0), |work| (work.left, work.top));
       FULL_SCREEN.set(now.as_ref().is_some_and(|now| steps_aside(now) && full_screen_near(here, now.place, first)));
     }
-    let shown = now.filter(|now| !(steps_aside(now) && FULL_SCREEN.get())).is_some_and(|now| draw_and_place(&mut local, now, tick));
+    let stepped_aside = now.as_ref().is_some_and(|now| steps_aside(now) && FULL_SCREEN.get());
+    let other_look = now.is_none(); // (or turned off, or Spotify closed)
+    let shown = now.filter(|_| !stepped_aside).is_some_and(|now| draw_and_place(&mut local, now, tick));
     if !shown {
-      hide(&mut local);
+      // Spotify closed: fades out, and back in when it opens again. A full-screen app: gone at
+      // once, fades back in after. Shown as the strip or turned off: gone and back at once.
+      match song_gone("widget") {
+        Some(true) if local.drawn.is_some() => leave(&mut local),
+        Some(_) => {
+          hide(&mut local);
+          local.appear = 0.0;
+        }
+        None => {
+          hide(&mut local);
+          if stepped_aside {
+            local.appear = 0.0;
+          } else if other_look {
+            local.appear = 1.0;
+          }
+        }
+      }
     }
     // The fades go on while something isn't where it's going
     let veiled = local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.part));
     let buttons = local.drawn.as_ref().is_some_and(|drawn| drawn.side > 0.0);
     let fading = local.open != target(HOVER.get() && buttons) || local.veil != target(veiled) || local.tint_done < 1.0
-      || local.faint != target(local.faint_wanted);
+      || local.faint != target(local.faint_wanted)
+      || local.appear < 1.0
+      || local.leaving;
     let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
@@ -646,11 +676,44 @@ fn hide(local: &mut Local) {
   HOVER.set(false);
   VOLUME_SHOWN.set(false);
   WHEEL_REST.set(0);
+  local.leaving = false;
   unsafe {
     if !widget.is_null() && IsWindow(widget) != 0 {
       DestroyWindow(widget);
     }
   }
+}
+
+// Spotify closed: one frame of the widget fading out (its last picture kept), gone at the end. From
+// the first frame it no longer takes the mouse, and its menu and tooltip go.
+fn leave(local: &mut Local) {
+  if !local.leaving {
+    local.leaving = true;
+    local.tooltip = None;
+    widget_menu::away(Owner::SpotifyWidget, null_mut());
+    PRESS.set(None);
+    SEEKING.set(None);
+    DRAGGING.set(false);
+    HOVER.set(false);
+    unsafe {
+      if GetCapture() == local.widget {
+        ReleaseCapture();
+      }
+    }
+    taskbar::click_through(local.widget);
+  }
+  let seconds = frame_seconds(&mut local.last_frame);
+  local.appear = appear(local.appear, false, seconds, true);
+  if local.appear <= 0.0 || !taskbar::strength(local.widget, strength(local.faint, local.appear)) {
+    hide(local);
+    local.appear = 0.0;
+  }
+}
+
+// The whole widget's strength: faint after a while paused (`faint`, 0 to 1), fading in or out as
+// Spotify opens or closes (`appear`, 0 to 1)
+fn strength(faint: f32, appear: f32) -> u8 {
+  to_byte((1.0 - (1.0 - FAINT) * ease(faint)) * ease(appear))
 }
 
 // The picture's size in pixels at this scale (Windows' scaling × the widget's size)
@@ -683,8 +746,9 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     return false;
   }
   unsafe {
-    // Gone with an Explorer restart, inside an old desktop, or "on top" just switched: a new one
-    if !local.widget.is_null() && (IsWindow(local.widget) == 0 || GetParent(local.widget) != parent) {
+    // Gone with an Explorer restart, inside an old desktop, or "on top" just switched: a new one.
+    // Spotify opened again while it was fading out: a new one too, fading in from there.
+    if !local.widget.is_null() && (IsWindow(local.widget) == 0 || GetParent(local.widget) != parent || local.leaving) {
       hide(local);
     }
   }
@@ -704,11 +768,10 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   let Some(painter) = local.painter.as_ref() else { return false };
   let (width, height) = pixels(scale, side);
 
-  // How far the fades are: a frame's time since the last one (at most 2 frames' worth, so a fade
-  // starting after a quiet while doesn't jump)
+  // How far the fades are
+  let seconds = frame_seconds(&mut local.last_frame);
   let frame = Instant::now();
-  let seconds = local.last_frame.map_or(FRAME_MS as f32 / 1000.0, |last| frame.duration_since(last).as_secs_f32()).min(0.033);
-  local.last_frame = Some(frame);
+  local.appear = appear(local.appear, true, seconds, now.animations);
   let hover = HOVER.get() && !local.widget.is_null();
   local.open = fade(local.open, target(hover && side > 0.0), seconds, now.animations);
   // Faint after a while paused: slowly down, quickly back
@@ -796,7 +859,7 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     open: to_byte(ease(local.open)),
     veil: to_byte(ease(local.veil)),
     slid,
-    alpha: to_byte(1.0 - (1.0 - FAINT) * ease(local.faint)),
+    alpha: strength(local.faint, local.appear),
   };
   let picture = if local.drawn.as_ref() == Some(&look) {
     None

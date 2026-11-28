@@ -206,6 +206,7 @@ const VEIL: f32 = 0.55; // the cover's dark veil under ⏯
 const SLIDE: f32 = 6.0; // room kept: ⏮ ⏭ come this far in from the middle as they fade in (at 100%)
 const FRAME_MS: u32 = 15; // the fades: one frame each time
 const FADE_SECONDS: f32 = 0.12;
+const APPEAR_SECONDS: f32 = 0.25; // the strip or the widget fading in or out as Spotify opens or closes
 const VOLUME_MS: u32 = 1500; // the volume goes back to the artist this long after the last notch
 // The progress line's strengths (the text's color): the rest of the song, the part played
 // (playing, paused; the mouse on the line: full), the faint part up to the mouse
@@ -244,6 +245,30 @@ fn ease(progress: f32) -> f32 {
 
 fn to_byte(progress: f32) -> u8 {
   (progress * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+// A frame's time since the last one, in seconds (at most 2 frames' worth, so a fade starting after
+// a quiet while doesn't jump)
+fn frame_seconds(last_frame: &mut Option<Instant>) -> f32 {
+  let frame = Instant::now();
+  let seconds = last_frame.map_or(FRAME_MS as f32 / 1000.0, |last| frame.duration_since(last).as_secs_f32()).min(0.033);
+  *last_frame = Some(frame);
+  seconds
+}
+
+// One step of the strip or the widget fading in (`to` true) or out as Spotify opens or closes:
+// how far it's there, 0 to 1 (all at once: animations off)
+fn appear(now: f32, to: bool, seconds: f32, animations: bool) -> f32 {
+  let step = if animations { seconds / APPEAR_SECONDS } else { 1.0 };
+  if to { (now + step).min(1.0) } else { (now - step).max(0.0) }
+}
+
+// Spotify closed while this look ("strip" or "widget") is the one picked: it fades out, and back
+// in when Spotify opens again. Some(the Animations setting); None: Spotify open, the module off or
+// the other look picked (gone and back at once)
+fn song_gone(show_as: &str) -> Option<bool> {
+  let animations = lock(&CONFIG).as_ref().filter(|config| config.show_as == show_as)?.animations;
+  lock(&SONG).is_none().then_some(animations)
 }
 
 // Whole notches turned, from a wheel message; the rest is kept for the next one (a smooth wheel

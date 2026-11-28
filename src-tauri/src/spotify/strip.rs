@@ -1,7 +1,8 @@
 // What Spotify plays, inside the taskbar (main screen): a see-through child window of the taskbar,
 // left of the mouse battery's strip (or in its place when that one is off), 4 px apart. The cover,
 // then the title (semibold) over the artist (a little dimmer), cut with "…" past 150 px. Paused:
-// cover and text at half strength. Spotify closed, or shown as the widget: no strip.
+// cover and text at half strength. Spotify closed, or shown as the widget: no strip. Spotify
+// opening or closing: it fades in or out over a quarter second, like the widget.
 // Hover: a soft highlight like the taskbar's own icons, a tooltip with the full title and artist
 // only when one of them is cut, ⏮ and ⏭ at the ends, ⏯ on the cover under a dark veil (the cover or the text hovered). Their room: made on hover (the strip grows
 // to the left, as its right edge is held by the battery) or always kept, or no ⏮ ⏭ at all
@@ -23,8 +24,8 @@
 
 use super::scroll::Scroll;
 use super::{
-  ask, clock, ease, fade, seek, shrink, strip_shown, target, timeline, to_byte, volume_line, wheel_notches, Ask, Bar, Cover, Room, FRAME_MS,
-  GHOST, ICON_FONTS, NEXT, PAUSE, PLAY, PLAYED, PLAYED_PAUSED, PREVIOUS, SLIDE, TRACK, VEIL, VOLUME_MS,
+  appear, ask, clock, ease, fade, frame_seconds, seek, shrink, song_gone, strip_shown, target, timeline, to_byte, volume_line, wheel_notches,
+  Ask, Bar, Cover, Room, FRAME_MS, GHOST, ICON_FONTS, NEXT, PAUSE, PLAY, PLAYED, PLAYED_PAUSED, PREVIOUS, SLIDE, TRACK, VEIL, VOLUME_MS,
 };
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
@@ -39,7 +40,7 @@ use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{ScreenToClient, DT_CENTER, DT_END_ELLIPSIS, DT_LEFT, FW_NORMAL, FW_SEMIBOLD};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, WM_MOUSELEAVE};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetCapture, ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, KillTimer, PostMessageW,
   PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CAPTURECHANGED, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
@@ -179,6 +180,7 @@ struct Look {
   // The title and the artist: None = cut with "…", else scrolling (how far it slid, how much is
   // past its room; pixels)
   slid: [Option<(i32, i32)>; 2],
+  alpha: u8, // the whole strip's strength (fading in as Spotify opens), 255: solid
 }
 
 impl PartialEq for Look {
@@ -190,6 +192,7 @@ impl PartialEq for Look {
     };
     same_cover
       && self.bar == other.bar
+      && self.alpha == other.alpha
       && (self.dpi, self.height, self.layout, &self.title, &self.artist, self.playing, self.hover, self.part, self.open, self.veil, self.light, self.slid)
         == (other.dpi, other.height, other.layout, &other.title, &other.artist, other.playing, other.hover, other.part, other.open, other.veil, other.light, other.slid)
   }
@@ -221,6 +224,10 @@ struct Local {
   scroll: Scroll,
   last_frame: Option<Instant>,
   moving: bool, // the frame timer runs
+  // How far it's there, 0 to 1: fading in as Spotify opens, out as it closes (`leaving`: the strip
+  // is still there, fading out)
+  appear: f32,
+  leaving: bool,
 }
 
 thread_local! {
@@ -237,6 +244,8 @@ thread_local! {
       scroll: Scroll::new(),
       last_frame: None,
       moving: false,
+      appear: 0.0,
+      leaving: false,
     })
   };
   // Apart from LOCAL: the strip's own messages change or read them, also while LOCAL is busy
@@ -442,9 +451,24 @@ fn place() {
     let Ok(mut local) = local.try_borrow_mut() else { return };
     let shown = taskbar::spot().is_some_and(|spot| show(&mut local, &spot));
     if !shown {
-      hide(&mut local);
+      // Spotify closed: fades out, and back in when it opens again. Shown as the widget, turned
+      // off, or the taskbar not ready: gone and back at once.
+      match song_gone("strip") {
+        Some(true) if local.drawn.is_some() => leave(&mut local),
+        Some(_) => {
+          hide(&mut local);
+          local.appear = 0.0;
+        }
+        None => {
+          hide(&mut local);
+          local.appear = 1.0;
+        }
+      }
     }
-    let fading = local.open != target(HOVER.get() && local.buttons) || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.look.part)));
+    let fading = local.open != target(HOVER.get() && local.buttons)
+      || local.veil != target(local.drawn.as_ref().is_some_and(|drawn| toggles(drawn.look.part)))
+      || local.appear < 1.0
+      || local.leaving;
     let moving = local.drawn.is_some() && (fading || local.scroll.moving());
     if moving != local.moving {
       unsafe {
@@ -475,16 +499,44 @@ fn hide(local: &mut Local) {
   VOLUME_SHOWN.set(false);
   WHEEL_REST.set(0);
   LAYOUT.set(Layout { line_top: i32::MAX, ..Layout::default() });
+  local.leaving = false;
+}
+
+// Spotify closed: one frame of the strip fading out (its last picture kept), gone at the end. From
+// the first frame it no longer takes the mouse, and its menu and tooltip go.
+fn leave(local: &mut Local) {
+  if !local.leaving {
+    local.leaving = true;
+    local.tooltip = None;
+    widget_menu::away(Owner::SpotifyStrip, null_mut());
+    HOVER.set(false);
+    PRESSED.set(None);
+    SEEKING.set(None);
+    unsafe {
+      if GetCapture() == local.strip {
+        ReleaseCapture();
+      }
+    }
+    taskbar::click_through(local.strip);
+  }
+  let seconds = frame_seconds(&mut local.last_frame);
+  local.appear = appear(local.appear, false, seconds, true);
+  if local.appear <= 0.0 || !taskbar::strength(local.strip, to_byte(ease(local.appear))) {
+    hide(local);
+    local.appear = 0.0;
+  }
 }
 
 // false: nothing to show, or it couldn't be drawn or put in the taskbar
 fn show(local: &mut Local, spot: &Spot) -> bool {
   let Some(now) = strip_shown() else { return false };
-  // How far the fades are: a frame's time since the last one (at most 2 frames' worth, so a fade
-  // starting after a quiet while doesn't jump)
-  let frame = Instant::now();
-  let seconds = local.last_frame.map_or(FRAME_MS as f32 / 1000.0, |last| frame.duration_since(last).as_secs_f32()).min(0.033);
-  local.last_frame = Some(frame);
+  // Spotify opened again while the strip was fading out: a new one, fading in from there
+  if local.leaving {
+    hide(local);
+  }
+  // How far the fades are
+  let seconds = frame_seconds(&mut local.last_frame);
+  local.appear = appear(local.appear, true, seconds, now.animations);
   let hover = HOVER.get();
   local.buttons = now.room != Room::None;
   local.open = fade(local.open, target(hover && local.buttons), seconds, now.animations);
@@ -568,6 +620,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     veil: to_byte(ease(local.veil)),
     light: theme::light_taskbar(),
     slid: [to_pixels(slid[0]), to_pixels(slid[1])],
+    alpha: to_byte(ease(local.appear)),
   };
   if taskbar::stale(local.strip, spot) {
     hide(local);
@@ -588,7 +641,7 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     local.tooltip = Tooltip::new(local.controller, strip);
   }
   if let Some(picture) = &picture {
-    if !taskbar::paint(local.strip, picture) {
+    if !taskbar::paint_faded(local.strip, picture, look.alpha) {
       return false;
     }
   }

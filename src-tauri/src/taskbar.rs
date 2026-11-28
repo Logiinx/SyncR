@@ -16,10 +16,10 @@ use windows_sys::Win32::UI::Controls::{
 };
 use windows_sys::Win32::UI::HiDpi::GetDpiForWindow;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  CreateWindowExW, DestroyWindow, FindWindowExW, FindWindowW, GetParent, GetWindowRect, IsWindow, LoadCursorW, RegisterClassExW,
-  SendMessageW, SetWindowPos, UpdateLayeredWindow, HWND_TOP, IDC_ARROW, SWP_NOACTIVATE, SWP_SHOWWINDOW, ULW_ALPHA, WNDCLASSEXW,
-  WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
-  WS_POPUP,
+  CreateWindowExW, DestroyWindow, FindWindowExW, FindWindowW, GetParent, GetWindowLongPtrW, GetWindowRect, IsWindow, LoadCursorW,
+  RegisterClassExW, SendMessageW, SetWindowLongPtrW, SetWindowPos, UpdateLayeredWindow, GWL_EXSTYLE, HWND_TOP, IDC_ARROW,
+  SWP_NOACTIVATE, SWP_SHOWWINDOW, ULW_ALPHA, WNDCLASSEXW, WNDPROC, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+  WS_EX_NOPARENTNOTIFY, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
 };
 
 pub const GAP: i32 = 4; // between two strips, and between the battery and the notification area (at 100%)
@@ -141,10 +141,29 @@ pub fn stale(strip: HWND, spot: &Spot) -> bool {
 
 // A new picture for the strip (premultiplied colors, as tall as the taskbar). false: refused.
 pub fn paint(strip: HWND, picture: &Canvas) -> bool {
+  paint_faded(strip, picture, 255)
+}
+
+// `alpha`: the whole strip's strength (255: solid)
+pub fn paint_faded(strip: HWND, picture: &Canvas, alpha: u8) -> bool {
   let size = SIZE { cx: picture.width as i32, cy: picture.height as i32 };
   let source = POINT { x: 0, y: 0 };
-  let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: 255, AlphaFormat: AC_SRC_ALPHA as u8 };
+  let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: alpha, AlphaFormat: AC_SRC_ALPHA as u8 };
   unsafe { UpdateLayeredWindow(strip, null_mut(), null(), &size, picture.dc, &source, 0, &blend, ULW_ALPHA) != 0 }
+}
+
+// A see-through window's strength changed, its picture kept (a strip or the Spotify widget fading out)
+pub fn strength(window: HWND, alpha: u8) -> bool {
+  let blend = BLENDFUNCTION { BlendOp: AC_SRC_OVER as u8, BlendFlags: 0, SourceConstantAlpha: alpha, AlphaFormat: AC_SRC_ALPHA as u8 };
+  unsafe { UpdateLayeredWindow(window, null_mut(), null(), null(), null_mut(), null(), 0, &blend, ULW_ALPHA) != 0 }
+}
+
+// Fading out: the mouse goes through it to what's below
+pub fn click_through(window: HWND) {
+  unsafe {
+    let style = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    SetWindowLongPtrW(window, GWL_EXSTYLE, style | WS_EX_TRANSPARENT as isize);
+  }
 }
 
 pub fn move_strip(strip: HWND, spot: &Spot, x: i32, width: i32) {

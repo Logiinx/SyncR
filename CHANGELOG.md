@@ -4,6 +4,9 @@ All notable changes to SyncR. Newest version first.
 
 ## [Unreleased]
 
+**App**
+- **Better:** Spotify fades in and out as it opens or closes, widget and taskbar (PC only)
+
 **Reminders**
 - **Fixed:** calendar error staying after a short connection drop
 
