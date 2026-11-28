@@ -49,7 +49,7 @@ const DEFAULTS: HardwareSettings = {
   shown: ['cpuTemp', 'gpuTemp'],
   place: null,
   onTop: false,
-  hideFullScreen: true,
+  hideFullScreen: false,
   locked: false,
   fahrenheit: false,
   look: 'rows',
@@ -90,6 +90,19 @@ export const clickThroughAbout = () =>
 // "Hide during full screen" (this widget's and the Spotify widget's)
 export const fullScreenAbout = () => t('The widget steps aside while a game or a video is full screen on its monitor. Only when it’s always on top.')
 
+// "Hide during full screen" is off by default since 1.6.2 (user's choice). The whole settings are
+// saved, so an old "on" can't be told from a chosen one: it's turned off once per widget (key), then
+// left as chosen.
+export function fullScreenOffOnce<T extends { hideFullScreen?: boolean }>(key: string, stored: T): T {
+  const done = `${key}.fullScreenOff`
+  if (read(done, false)) return stored
+  write(done, true)
+  if (!stored.hideFullScreen) return stored
+  const changed = { ...stored, hideFullScreen: false }
+  write(key, changed)
+  return changed
+}
+
 let current: HardwareSettings = storedHardware()
 const listeners = new Set<() => void>()
 let windowOpen = false // Settings → Hardware shows every sensor, so all are read while it's shown
@@ -112,7 +125,7 @@ export function saveHardware(change: Partial<HardwareSettings>) {
 
 // The settings as saved on this device, for the widget's menu (its own page, hardwareMenu.tsx)
 export function storedHardware(): HardwareSettings {
-  const stored = read<Partial<HardwareSettings>>(KEY, {})
+  const stored = fullScreenOffOnce(KEY, read<Partial<HardwareSettings>>(KEY, {}))
   return { ...DEFAULTS, ...stored, limits: { ...DEFAULTS.limits, ...stored.limits } }
 }
 

@@ -4,7 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { animationsOn } from './animations'
 import { read, write } from './localState'
 import { subscribe as onLanguageChange, t } from './i18n'
-import { nextSize } from './hardware'
+import { fullScreenOffOnce, nextSize } from './hardware'
 
 // Spotify module (PC, Settings → Spotify): what Spotify plays, as a strip in the taskbar or a
 // floating widget. Its settings are kept on this device, never synced. The reading is in Rust
@@ -54,12 +54,12 @@ const DEFAULTS: SpotifySettings = {
   background: 60,
   coverColors: true,
   scrollNames: true,
-  hideFullScreen: true,
+  hideFullScreen: false,
   fadePaused: true,
 }
 
 // As saved on this device, also for the right-click menu (its own page, spotifyMenu.tsx)
-export const storedSpotify = (): SpotifySettings => ({ ...DEFAULTS, ...read<Partial<SpotifySettings>>(KEY, {}) })
+export const storedSpotify = (): SpotifySettings => ({ ...DEFAULTS, ...fullScreenOffOnce(KEY, read<Partial<SpotifySettings>>(KEY, {})) })
 
 let current: SpotifySettings = storedSpotify()
 let preview: Partial<SpotifySettings> | null = null // a background or size under the mouse in the widget's menu

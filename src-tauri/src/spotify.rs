@@ -73,7 +73,7 @@ pub struct Config {
   #[serde(default = "yes")]
   scroll_names: bool,
   // "Always on top" only: the widget steps aside while a full-screen app is in front on its monitor
-  #[serde(default = "yes")]
+  #[serde(default)]
   hide_full_screen: bool,
   // The widget fades to faint after a while paused, back on hover or when it plays
   #[serde(default = "yes")]
