@@ -8,6 +8,10 @@
 // (Settings → Spotify).
 // Clicks: ⏮ ⏭, and the cover or the text for play/pause; the reading thread asks Spotify.
 // Right-click: the shared menu (widget_menu.rs).
+// Progress line (.claude/mockups/spotify-progress.html, look S2): under the text, 2 px above the
+// hover highlight's bottom, 2 px (3 px on hover). The mouse on it or below it, to the screen's edge
+// (Spotify taking jumps): a knob where the song is, the line bright, a faint part up to the mouse,
+// and "1:24 / 5:13" in the artist's place; press and drag there to jump (the song jumps when let go).
 // Wheel: Spotify's volume (the reading thread changes it), shown in the artist's place until
 // 1.5 s after the last notch; the strip never gets narrower meanwhile.
 // A line too long for its room scrolls (scroll.rs): drawn whole, slid left, cut to the text's room
@@ -19,8 +23,8 @@
 
 use super::scroll::Scroll;
 use super::{
-  ask, ease, fade, shrink, strip_shown, target, to_byte, volume_line, wheel_notches, Ask, Cover, Room, FRAME_MS, ICON_FONTS, NEXT, PAUSE,
-  PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
+  ask, clock, ease, fade, seek, shrink, strip_shown, target, timeline, to_byte, volume_line, wheel_notches, Ask, Bar, Cover, Room, FRAME_MS,
+  GHOST, ICON_FONTS, NEXT, PAUSE, PLAY, PLAYED, PLAYED_PAUSED, PREVIOUS, SLIDE, TRACK, VEIL, VOLUME_MS,
 };
 use crate::mouse_battery::gdi::Canvas;
 use crate::mouse_battery::{theme, wide};
@@ -35,10 +39,10 @@ use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{ScreenToClient, DT_CENTER, DT_END_ELLIPSIS, DT_LEFT, FW_NORMAL, FW_SEMIBOLD};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_WIN95_CLASSES, INITCOMMONCONTROLSEX, WM_MOUSELEAVE};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, KillTimer, PostMessageW,
-  PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
+  PostQuitMessage, SetTimer, TranslateMessage, MA_NOACTIVATE, MSG, WM_APP, WM_CAPTURECHANGED, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDOWN, WM_LBUTTONUP,
   WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
@@ -52,6 +56,15 @@ const TEXT_FONTS: &[&str] = &["Segoe UI Variable Text", "Segoe UI"]; // the cloc
 const ARTIST_STRENGTH: f32 = 0.62; // the artist line, against the title's full white (or black)
 const TEXT_MAX: i32 = 150; // the text's width before it's cut with "…" (at 100%)
 const EDGE: i32 = 10; // a scrolling line's soft ends (at 100%)
+// The progress line (at 100%): its bottom this far above the hover highlight's, thin and thick, the
+// knob, and the part that takes the mouse: from this far above the highlight's bottom to the screen's
+// edge
+const LINE_BOTTOM: i32 = 2;
+const LINE_THIN: i32 = 2;
+const LINE_THICK: i32 = 3;
+const KNOB: i32 = 8;
+const LINE_REACH: i32 = 6;
+const INSET: i32 = 4; // the hover highlight: this far inside the taskbar's height
 
 // The running strip thread's hidden window (0: none) and the number of the latest start or stop
 // (an older thread that comes up late closes itself)
@@ -91,6 +104,7 @@ enum Part {
   Cover,
   Text,
   Next,
+  Line, // the progress line, and below it
 }
 
 // Where each part is (strip pixels, at the strip's scale), from the text's width and how far the
@@ -103,6 +117,7 @@ struct Layout {
   text_left: i32,
   text_right: i32, // ⏭'s room starts here
   width: i32,
+  line_top: i32, // from here down, under the text: the progress line's (i32::MAX: it takes no clicks)
 }
 
 impl Layout {
@@ -118,13 +133,16 @@ impl Layout {
     let cover_side = size(32);
     let text_left = cover_left + cover_side + size(8);
     let text_right = text_left + text_width.min(size(TEXT_MAX));
-    Layout { side, cover_left, cover_side, text_left, text_right, width: text_right + side + size(6) }
+    Layout { side, cover_left, cover_side, text_left, text_right, width: text_right + side + size(6), line_top: i32::MAX }
   }
 
-  // The part under `x`: ⏮ and ⏭ take the strip's ends, the cover reaches halfway to the text
-  fn part(&self, x: i32) -> Option<Part> {
+  // The part under `x`, `y`: ⏮ and ⏭ take the strip's ends, the cover reaches halfway to the text,
+  // the bottom under the text is the progress line's
+  fn part(&self, x: i32, y: i32) -> Option<Part> {
     if x < 0 || x >= self.width {
       None
+    } else if y >= self.line_top && x >= self.text_left && x < self.text_right {
+      Some(Part::Line)
     } else if self.side > 0 && x < self.cover_left {
       Some(Part::Previous)
     } else if x < (self.cover_left + self.cover_side + self.text_left) / 2 {
@@ -149,8 +167,9 @@ struct Look {
   height: i32,
   layout: Layout,
   title: String,
-  artist: String,
+  artist: String, // or the volume, or where the song is (the mouse on the progress line)
   playing: bool,
+  bar: Option<Bar>, // the progress line (None: no length known)
   cover: Option<Arc<Cover>>, // held here, so a new cover can't reuse the old one's place and look the same
   hover: bool,
   part: Option<Part>, // under the mouse (⏮ ⏭ get a box)
@@ -170,6 +189,7 @@ impl PartialEq for Look {
       _ => false,
     };
     same_cover
+      && self.bar == other.bar
       && (self.dpi, self.height, self.layout, &self.title, &self.artist, self.playing, self.hover, self.part, self.open, self.veil, self.light, self.slid)
         == (other.dpi, other.height, other.layout, &other.title, &other.artist, other.playing, other.hover, other.part, other.open, other.veil, other.light, other.slid)
   }
@@ -221,8 +241,11 @@ thread_local! {
   };
   // Apart from LOCAL: the strip's own messages change or read them, also while LOCAL is busy
   static HOVER: Cell<bool> = const { Cell::new(false) };
-  static LAYOUT: Cell<Layout> = const { Cell::new(Layout { side: 0, cover_left: 0, cover_side: 0, text_left: 0, text_right: 0, width: 0 }) };
+  static LAYOUT: Cell<Layout> = const {
+    Cell::new(Layout { side: 0, cover_left: 0, cover_side: 0, text_left: 0, text_right: 0, width: 0, line_top: i32::MAX })
+  };
   static PRESSED: Cell<Option<Part>> = const { Cell::new(None) };
+  static SEEKING: Cell<Option<f64>> = const { Cell::new(None) }; // dragging on the line: where it would land (seconds)
   // The volume shows in the artist's place; the part of a notch turned so far (fine-turning mice)
   static VOLUME_SHOWN: Cell<bool> = const { Cell::new(false) };
   static WHEEL_REST: Cell<i32> = const { Cell::new(0) };
@@ -302,9 +325,21 @@ unsafe extern "system" fn controller_proc(window: HWND, message: u32, wparam: WP
   }
 }
 
-// The mouse's x in the strip, from a mouse message
-fn mouse_x(lparam: LPARAM) -> i32 {
-  (lparam & 0xFFFF) as u16 as i16 as i32
+// The mouse in the strip, from a mouse message
+fn mouse_at(lparam: LPARAM) -> (i32, i32) {
+  ((lparam & 0xFFFF) as u16 as i16 as i32, ((lparam >> 16) & 0xFFFF) as u16 as i16 as i32)
+}
+
+fn part_from(lparam: LPARAM) -> Option<Part> {
+  let (x, y) = mouse_at(lparam);
+  LAYOUT.get().part(x, y)
+}
+
+// The place in the song (seconds) under `x` on the progress line
+fn line_seconds(x: i32, length: f64) -> f64 {
+  let layout = LAYOUT.get();
+  let room = (layout.text_right - layout.text_left).max(1);
+  ((x - layout.text_left) as f64 / room as f64).clamp(0.0, 1.0) * length
 }
 
 unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -324,6 +359,11 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
         unsafe { TrackMouseEvent(&mut track) };
       }
       widget_menu::prepare(Owner::SpotifyStrip, window);
+      if SEEKING.get().is_some() {
+        if let Some(timeline) = timeline() {
+          SEEKING.set(Some(line_seconds(mouse_at(lparam).0, timeline.length())));
+        }
+      }
       refresh();
       0
     }
@@ -333,19 +373,41 @@ unsafe extern "system" fn strip_proc(window: HWND, message: u32, wparam: WPARAM,
       refresh();
       0
     }
-    // A click counts when it's let go over the part it was pressed on
+    // A click counts when it's let go over the part it was pressed on. On the progress line: a jump.
     WM_LBUTTONDOWN => {
-      PRESSED.set(LAYOUT.get().part(mouse_x(lparam)));
+      let part = part_from(lparam);
+      if part == Some(Part::Line) {
+        if let Some(timeline) = timeline() {
+          SEEKING.set(Some(line_seconds(mouse_at(lparam).0, timeline.length())));
+          unsafe { SetCapture(window) };
+          refresh();
+        }
+        return 0;
+      }
+      PRESSED.set(part);
       0
     }
     WM_LBUTTONUP => {
+      if let Some(at) = SEEKING.take() {
+        unsafe { ReleaseCapture() };
+        seek(at);
+        return 0;
+      }
       let pressed = PRESSED.take();
-      if let Some(part) = LAYOUT.get().part(mouse_x(lparam)).filter(|&part| Some(part) == pressed) {
+      if let Some(part) = part_from(lparam).filter(|&part| Some(part) == pressed) {
         ask(match part {
           Part::Previous => Ask::Previous,
           Part::Cover | Part::Text => Ask::Toggle,
           Part::Next => Ask::Next,
+          Part::Line => return 0,
         });
+      }
+      0
+    }
+    // The mouse taken away mid-jump (another window took it): no jump
+    WM_CAPTURECHANGED => {
+      if SEEKING.take().is_some() {
+        refresh();
       }
       0
     }
@@ -409,9 +471,10 @@ fn hide(local: &mut Local) {
   local.scroll.reset();
   HOVER.set(false);
   PRESSED.set(None);
+  SEEKING.set(None);
   VOLUME_SHOWN.set(false);
   WHEEL_REST.set(0);
-  LAYOUT.set(Layout::default());
+  LAYOUT.set(Layout { line_top: i32::MAX, ..Layout::default() });
 }
 
 // false: nothing to show, or it couldn't be drawn or put in the taskbar
@@ -447,28 +510,57 @@ fn show(local: &mut Local, spot: &Spot) -> bool {
     let Some((_, volume_width)) = measure(&now.title, volume, spot.dpi) else { return false };
     text_width = text_width.max(volume_width);
   }
+  // Where the song is, in the artist's place while the mouse is on the progress line (or dragging):
+  // as wide as it needs too. The mouse's part is from the last layout (the strip's width only
+  // changes with what's shown).
+  let timeline = timeline();
+  let seeking = SEEKING.get();
+  let mouse = if hover { mouse_in_taskbar(spot.taskbar).filter(|(_, y)| (0..spot.height).contains(y)) } else { None };
+  let last_x = local.drawn.as_ref().map(|drawn| drawn.x);
+  let on_line = seeking.is_some() || mouse.zip(last_x).is_some_and(|((x, y), left)| LAYOUT.get().part(x - left, y) == Some(Part::Line));
+  let time = timeline.filter(|_| on_line).map(|timeline| clock(seeking.unwrap_or_else(|| timeline.now()), timeline.length()));
+  if let Some(time) = &time {
+    let Some((_, time_width)) = measure(&now.title, time, spot.dpi) else { return false };
+    text_width = text_width.max(time_width);
+  }
   // Long lines scroll (the volume never does): how far each goes past the text's room, in DIPs
   let room = text_width.min(scaled(TEXT_MAX, spot.dpi));
   let dips = spot.dpi as f32 / 96.0;
   let past = |width: i32| (width - room).max(0) as f32 / dips;
-  let artist_past = if volume.is_some() { 0.0 } else { past(artist_width) };
+  let artist_past = if volume.is_some() || time.is_some() { 0.0 } else { past(artist_width) };
   let song = format!("{}\n{}", now.title, now.artist);
   let allowed = now.scroll && now.animations && now.playing;
   let slid = local.scroll.step(&song, [past(title_width), artist_past, 0.0], hover, allowed, seconds);
   let to_pixels = |slid: Option<(f32, f32)>| slid.map(|(offset, past)| ((offset * dips).round() as i32, (past * dips).round() as i32));
-  let layout = Layout::new(spot.dpi, text_width, now.room, ease(local.open));
+  let mut layout = Layout::new(spot.dpi, text_width, now.room, ease(local.open));
+  if timeline.is_some_and(|timeline| timeline.seekable()) {
+    layout.line_top = spot.height - scaled(INSET + LINE_BOTTOM + LINE_REACH, spot.dpi);
+  }
   let width = layout.width;
   let x = spot.left_of_battery() - width;
   // The part under the mouse, where the strip is now (it may have just grown under it)
-  let part = if hover { mouse_in_taskbar(spot.taskbar).and_then(|(mouse_x, mouse_y)| if (0..spot.height).contains(&mouse_y) { layout.part(mouse_x - x) } else { None }) } else { None };
+  let part = mouse.and_then(|(mouse_x, mouse_y)| layout.part(mouse_x - x, mouse_y));
+  // The progress line: where the song is (or would land, dragging), in pixels from its start
+  let room = layout.text_right - layout.text_left;
+  let bar = timeline.map(|timeline| {
+    let at = seeking.unwrap_or_else(|| timeline.now());
+    let ghost = mouse.filter(|_| part == Some(Part::Line) && seeking.is_none());
+    Bar {
+      played: (at / timeline.length() * room as f64).round() as i32,
+      ghost: ghost.map(|(mouse_x, _)| (mouse_x - x - layout.text_left).clamp(0, room)),
+      thick: hover || seeking.is_some(),
+      knob: part == Some(Part::Line) || seeking.is_some(),
+    }
+  });
   local.veil = fade(local.veil, target(toggles(part)), seconds, now.animations);
   let look = Look {
     dpi: spot.dpi,
     height: spot.height,
     layout,
     title: now.title,
-    artist: volume.unwrap_or(now.artist),
+    artist: volume.or(time).unwrap_or(now.artist),
     playing: now.playing,
+    bar,
     cover: now.cover,
     hover,
     part,
@@ -552,7 +644,7 @@ fn over(top: [f32; 4], below: [f32; 4]) -> [f32; 4] {
 // them); the empty parts are nearly invisible but not fully, so the whole strip takes the mouse.
 fn draw(look: &Look) -> Option<Canvas> {
   let size = |px: i32| scaled(px, look.dpi);
-  let Layout { side, cover_left, cover_side, text_left, text_right, width } = look.layout;
+  let Layout { side, cover_left, cover_side, text_left, text_right, width, .. } = look.layout;
   let (text_px, line, icon_px, play_px) = (size(12), size(16), size(13), size(14));
   let height = look.height;
   let cover_top = (height - cover_side) / 2;
@@ -609,6 +701,15 @@ fn draw(look: &Look) -> Option<Canvas> {
     _ => None,
   };
   let (button_top, button_bottom) = ((height - size(28)) as f32 / 2.0, (height + size(28)) as f32 / 2.0);
+  // The progress line under the text: its box, the knob's (a circle) and their strengths
+  let line_bottom = (height - size(INSET + LINE_BOTTOM)) as f32;
+  let line = look.bar.map(|bar| {
+    let thick = size(if bar.thick { LINE_THICK } else { LINE_THIN }) as f32;
+    let top = line_bottom - thick;
+    let knob = (size(KNOB) as f32 / 2.0, (text_left + bar.played) as f32, (top + line_bottom) / 2.0);
+    let played = if bar.knob { 1.0 } else if look.playing { PLAYED } else { PLAYED_PAUSED };
+    (bar, top, thick, knob, played)
+  });
   // Without a cover yet (still being read): a faint square in its place
   let (empty_color, empty_alpha) = if look.light { ([0u8, 0, 0], 0.10) } else { ([255u8, 255, 255], 0.12) };
   let columns = canvas.width;
@@ -645,6 +746,20 @@ fn draw(look: &Look) -> Option<Canvas> {
       let line_strength = if artist_line { ARTIST_STRENGTH } else { 1.0 };
       let soft = edge(look.slid[usize::from(artist_line)], px, text_left, text_right, look.dpi);
       out = over(tint(color, coverage * strength * line_strength * soft), out);
+    }
+    if let Some((bar, top, thick, (radius, knob_x, knob_y), played)) = line {
+      let part = |pixels: i32| {
+        if pixels <= 0 { 0.0 } else { rounded_box(px, py, text_left as f32, top, (text_left + pixels) as f32, line_bottom, thick / 2.0) }
+      };
+      out = over(tint(color, TRACK * part(text_right - text_left)), out);
+      if let Some(ghost) = bar.ghost {
+        out = over(tint(color, GHOST * part(ghost)), out);
+      }
+      out = over(tint(color, played * part(bar.played)), out);
+      if bar.knob {
+        let knob = rounded_box(px, py, knob_x - radius, knob_y - radius, knob_x + radius, knob_y + radius, radius);
+        out = over(tint(color, knob), out);
+      }
     }
     if out[3] < 1.0 / 255.0 {
       pixel.copy_from_slice(&[0, 0, 0, 1]);

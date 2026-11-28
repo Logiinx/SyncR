@@ -22,6 +22,11 @@
 // "Hide during full screen" (on by default, only when always on top): gone while a full-screen app
 // is in front on its monitor (widget_place::full_screen_near), checked each second.
 // Right-click: its menu (widget_menu.rs).
+// Progress line (.claude/mockups/spotify-progress.html, the chosen look): under the text, 3 px above
+// the bottom, 2 px (4 px while the mouse is over the widget). The mouse on the bottom edge under it
+// (Spotify taking jumps): a knob where the song is, the line bright, a faint part up to the mouse,
+// and "1:24 / 5:13" in the album's place; press and drag there to jump (the song jumps when let
+// go, the time shows where it lands). The rest of the widget still moves it.
 // A line too long for its room scrolls (scroll.rs): drawn whole, slid left, cut to the text's room
 // with soft ends.
 // Its own thread, with a hidden window that rebuilds it when Explorer restarts (which takes the
@@ -30,7 +35,8 @@
 
 use super::scroll::{Scroll, Slid};
 use super::{
-  ask, ease, fade, lock, shrink, target, to_byte, volume_line, wheel_notches, widget_locked, widget_moved, widget_shown, Ask, Cover, WidgetShown,
+  ask, clock, ease, fade, lock, seek, shrink, target, timeline, to_byte, volume_line, wheel_notches, widget_locked, widget_moved, widget_shown, Ask,
+  Bar, Cover, WidgetShown, GHOST, PLAYED, PLAYED_PAUSED, TRACK,
   FRAME_MS, ICON_FONTS, NEXT, PAUSE, PLAY, PREVIOUS, SLIDE, VEIL, VOLUME_MS,
 };
 use crate::hardware::widget::{color, text_baseline};
@@ -50,7 +56,7 @@ use windows::Win32::Graphics::Direct2D::{
   D2D1CreateFactory, ID2D1Factory, ID2D1RenderTarget, D2D1_BITMAP_BRUSH_PROPERTIES, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
   D2D1_BITMAP_PROPERTIES, D2D1_BRUSH_PROPERTIES, D2D1_DRAW_TEXT_OPTIONS_NONE, D2D1_EXTEND_MODE_CLAMP, D2D1_FACTORY_TYPE_SINGLE_THREADED,
   D2D1_FEATURE_LEVEL_DEFAULT, D2D1_GAMMA_2_2, D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES, D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1_RENDER_TARGET_USAGE_NONE,
-  D2D1_ANTIALIAS_MODE_ALIASED, D2D1_ROUNDED_RECT, D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+  D2D1_ANTIALIAS_MODE_ALIASED, D2D1_ELLIPSE, D2D1_ROUNDED_RECT, D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE,
 };
 use windows::Win32::Graphics::DirectWrite::{
   DWriteCreateFactory, IDWriteFactory, IDWriteFontCollection, IDWriteTextFormat, IDWriteTextLayout, DWRITE_FACTORY_TYPE_SHARED,
@@ -102,6 +108,11 @@ const BUTTON_HIGH: f32 = 28.0; // the box under the mouse on ⏮ or ⏭
 const BUTTON_RADIUS: f32 = 4.0;
 const BUTTON_BOX: f32 = 0.09; // its strength (white), like the strip's on a dark taskbar
 const RADIUS: f32 = 8.0;
+const LINE_BOTTOM: f32 = 3.0; // the progress line: this far above the bottom
+const LINE_THIN: f32 = 2.0;
+const LINE_THICK: f32 = 4.0; // the mouse over the widget
+const KNOB: f32 = 10.0;
+
 const HEIGHT: f32 = PAD + COVER + PAD;
 const BG: u32 = 0x161616;
 const TEXT: u32 = 0xe4e4e4;
@@ -153,14 +164,19 @@ enum Part {
   Cover,
   Text,
   Next,
+  Line, // the progress line's bottom edge
 }
 
-// What's under `x` (widget pixels) at this scale: ⏮ and ⏭ take the ends (with the padding), the
-// cover reaches halfway to the text
-fn part_at(x: i32, scale: f32, side: f32) -> Option<Part> {
-  let x = x as f32 / scale;
+// What's under `x`, `y` (widget pixels) at this scale: ⏮ and ⏭ take the ends (with the padding),
+// the cover reaches halfway to the text; the bottom padding under the text is the progress line's
+// when `line` (Spotify takes jumps)
+fn part_at(x: i32, y: i32, scale: f32, side: f32, line: bool) -> Option<Part> {
+  let (x, y) = (x as f32 / scale, y as f32 / scale);
+  let text_left = PAD + side + COVER + GAP;
   if x < 0.0 || x >= width(side) {
     None
+  } else if line && y >= HEIGHT - PAD && x >= text_left && x < text_left + TEXT_WIDTH {
+    Some(Part::Line)
   } else if side > 0.0 && x < PAD + side {
     Some(Part::Previous)
   } else if x < PAD + side + COVER + GAP / 2.0 {
@@ -177,6 +193,23 @@ fn toggles(part: Option<Part>) -> bool {
   matches!(part, Some(Part::Cover | Part::Text))
 }
 
+// The text's left edge, in widget pixels (on a whole pixel, as drawn); the progress line starts there
+fn text_left(scale: f32, side: f32) -> f32 {
+  ((PAD + side + COVER + GAP) * scale - 0.5).ceil()
+}
+
+// The progress line's length, in widget pixels
+fn line_room(scale: f32) -> f32 {
+  (TEXT_WIDTH * scale).round().max(1.0)
+}
+
+// The place in the song (seconds) under `x` (widget pixels) on the progress line
+fn line_seconds(x: i32, length: f64) -> f64 {
+  let (scale, side) = SHAPE.get();
+  let done = ((x as f32 - text_left(scale, side)) / line_room(scale)).clamp(0.0, 1.0);
+  done as f64 * length
+}
+
 // What's drawn: drawn again only when one of these changes
 #[derive(Clone)]
 struct Look {
@@ -184,8 +217,9 @@ struct Look {
   side: f32,
   title: String,
   artist: String, // or the volume, while the wheel turns
-  album: String,
+  album: String, // or where the song is, the mouse on the progress line
   playing: bool,
+  bar: Option<Bar>, // None: no length known
   cover: Option<Arc<Cover>>, // held here, so a new cover can't reuse the old one's place and look the same
   background: u32,
   tint: u32, // the cover's tint as drawn now (mid-fade too); BG: none
@@ -204,6 +238,7 @@ impl PartialEq for Look {
     };
     same_cover
       && self.slid == other.slid
+      && self.bar == other.bar
       && (self.scale, self.side, &self.title, &self.artist, &self.album, self.playing, self.background, self.tint, self.part, self.open, self.veil)
         == (
           other.scale,
@@ -280,6 +315,8 @@ thread_local! {
   // A full-screen app in front on its monitor (checked each second): stepped aside
   static FULL_SCREEN: Cell<bool> = const { Cell::new(false) };
   static SHAPE: Cell<(f32, f32)> = const { Cell::new((1.0, 0.0)) }; // the drawn scale and side, for the clicks
+  static LINE_ON: Cell<bool> = const { Cell::new(false) }; // the progress line takes clicks (Spotify takes jumps)
+  static SEEKING: Cell<Option<f64>> = const { Cell::new(None) }; // dragging on the line: where it would land (seconds)
   // The volume shows in the artist's place; the part of a notch turned so far (fine-turning mice)
   static VOLUME_SHOWN: Cell<bool> = const { Cell::new(false) };
   static WHEEL_REST: Cell<i32> = const { Cell::new(0) };
@@ -386,11 +423,16 @@ fn mouse() -> POINT {
   point
 }
 
-// The part under the mouse, from a mouse message (widget pixels)
+// Where the mouse is, from a mouse message (widget pixels)
+fn point_from(lparam: LPARAM) -> (i32, i32) {
+  ((lparam & 0xFFFF) as u16 as i16 as i32, ((lparam >> 16) & 0xFFFF) as u16 as i16 as i32)
+}
+
+// The part under the mouse, from a mouse message
 fn part_from(lparam: LPARAM) -> Option<Part> {
-  let x = (lparam & 0xFFFF) as u16 as i16 as i32;
+  let (x, y) = point_from(lparam);
   let (scale, side) = SHAPE.get();
-  part_at(x, scale, side)
+  part_at(x, y, scale, side, LINE_ON.get())
 }
 
 unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -408,7 +450,11 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
         unsafe { TrackMouseEvent(&mut track) };
       }
       widget_menu::prepare(Owner::SpotifyWidget, window);
-      if let Some(press) = PRESS.get() {
+      if SEEKING.get().is_some() {
+        if let Some(timeline) = timeline() {
+          SEEKING.set(Some(line_seconds(point_from(lparam).0, timeline.length())));
+        }
+      } else if let Some(press) = PRESS.get() {
         let now = mouse();
         let (dx, dy) = (now.x - press.mouse.x, now.y - press.mouse.y);
         let far = dx.abs() >= unsafe { GetSystemMetrics(SM_CXDRAG) } || dy.abs() >= unsafe { GetSystemMetrics(SM_CYDRAG) };
@@ -428,8 +474,15 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
       refresh();
       0
     }
+    // On the progress line: a jump, never a drag
     WM_LBUTTONDOWN => {
-      if let Some(place) = window_place(window) {
+      if part_from(lparam) == Some(Part::Line) {
+        if let Some(timeline) = timeline() {
+          SEEKING.set(Some(line_seconds(point_from(lparam).0, timeline.length())));
+          unsafe { SetCapture(window) };
+          refresh();
+        }
+      } else if let Some(place) = window_place(window) {
         PRESS.set(Some(Press { mouse: mouse(), place, part: part_from(lparam) }));
         unsafe { SetCapture(window) };
       }
@@ -437,6 +490,11 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
     }
     // Let go: after a drag, the new place is kept; without one, a click on the part it was pressed on
     WM_LBUTTONUP => {
+      if let Some(at) = SEEKING.take() {
+        unsafe { ReleaseCapture() };
+        seek(at);
+        return 0;
+      }
       let press = PRESS.take();
       let dragged = DRAGGING.replace(false);
       unsafe { ReleaseCapture() };
@@ -447,12 +505,17 @@ unsafe extern "system" fn widget_proc(window: HWND, message: u32, wparam: WPARAM
           Part::Previous => Ask::Previous,
           Part::Cover | Part::Text => Ask::Toggle,
           Part::Next => Ask::Next,
+          Part::Line => return 0,
         });
       }
       0
     }
-    // The mouse taken away mid-press (another window took it): a drag ends where it is
+    // The mouse taken away mid-press (another window took it): a drag ends where it is, a jump
+    // doesn't happen
     WM_CAPTURECHANGED => {
+      if SEEKING.take().is_some() {
+        refresh();
+      }
       if PRESS.take().is_some() && DRAGGING.replace(false) {
         moved(window);
       }
@@ -558,6 +621,7 @@ fn hide(local: &mut Local) {
   local.veil = 0.0;
   local.scroll.reset();
   PRESS.set(None);
+  SEEKING.set(None);
   DRAGGING.set(false);
   HOVER.set(false);
   VOLUME_SHOWN.set(false);
@@ -628,13 +692,30 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   let hover = HOVER.get() && !local.widget.is_null();
   local.open = fade(local.open, target(hover && side > 0.0), seconds, now.animations);
   // The part under the mouse, where the widget is now
-  let part = if hover {
+  let timeline = timeline();
+  LINE_ON.set(timeline.is_some_and(|timeline| timeline.seekable()));
+  let pointer = if hover {
     let mouse = mouse();
-    let (x, y) = (mouse.x - place.0, mouse.y - place.1);
-    if (0..height).contains(&y) { part_at(x, scale, side) } else { None }
+    Some((mouse.x - place.0, mouse.y - place.1)).filter(|(_, y)| (0..height).contains(y))
   } else {
     None
   };
+  let part = pointer.and_then(|(x, y)| part_at(x, y, scale, side, LINE_ON.get()));
+  // The progress line: where the song is (or would land, dragging), in pixels
+  let seeking = SEEKING.get();
+  let on_line = part == Some(Part::Line) || seeking.is_some();
+  let room = line_room(scale);
+  let bar = timeline.map(|timeline| {
+    let at = seeking.unwrap_or_else(|| timeline.now());
+    let ghost = pointer.filter(|_| part == Some(Part::Line) && seeking.is_none());
+    Bar {
+      played: (at / timeline.length() * room as f64).round() as i32,
+      ghost: ghost.map(|(x, _)| (x as f32 - text_left(scale, side)).clamp(0.0, room) as i32),
+      thick: hover || seeking.is_some(),
+      knob: on_line,
+    }
+  });
+  let time = timeline.filter(|_| on_line).map(|timeline| clock(seeking.unwrap_or_else(|| timeline.now()), timeline.length()));
   local.veil = fade(local.veil, target(toggles(part)), seconds, now.animations);
   // A new tint fades in from the one shown now; none shown yet (just appeared): at once
   let tint = now.tint.unwrap_or(BG);
@@ -665,6 +746,9 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
   if volume.is_some() {
     past[1] = 0.0;
   }
+  if time.is_some() {
+    past[2] = 0.0;
+  }
   let allowed = now.scroll && now.animations && now.playing;
   let snap = |dips: f32| (dips * scale).round() / scale;
   let slid = local.scroll.step(&song, past, hover, allowed, seconds).map(|slid| slid.map(|(offset, past)| (snap(offset), past)));
@@ -673,8 +757,9 @@ fn draw_and_place(local: &mut Local, now: WidgetShown, tick: bool) -> bool {
     side,
     title: now.title,
     artist: volume.unwrap_or(now.artist),
-    album: now.album,
+    album: time.unwrap_or(now.album),
     playing: now.playing,
+    bar,
     cover: now.cover,
     background: now.background,
     tint,
@@ -962,7 +1047,7 @@ impl Painter {
 
       // ⏮ ⏭ in their room, sliding in from the middle as they fade in; the one under the mouse in
       // a box. Never dimmed when paused.
-      let text_left = ((PAD + side + COVER + GAP) * scale - 0.5).ceil() / scale;
+      let text_left = text_left(scale, side) / scale;
       if side > 0.0 && open > 0.0 {
         let slide = (SLIDE * (1.0 - open) * scale).round() / scale;
         let (box_top, box_bottom) = (snap((HEIGHT - BUTTON_HIGH) / 2.0), snap((HEIGHT + BUTTON_HIGH) / 2.0));
@@ -1018,6 +1103,35 @@ impl Painter {
         target.PushAxisAlignedClip(&room, D2D1_ANTIALIAS_MODE_ALIASED);
         target.DrawTextLayout(windows_numerics::Vector2 { X: text_left - offset, Y: y - baseline }, &layout, &brush, D2D1_DRAW_TEXT_OPTIONS_NONE);
         target.PopAxisAlignedClip();
+      }
+
+      // The progress line under the text: the rest of the song, the faint part up to the mouse, the
+      // part played, and the knob where the song is
+      if let Some(bar) = look.bar {
+        let thick = if bar.thick { LINE_THICK } else { LINE_THIN };
+        let bottom = snap(HEIGHT - LINE_BOTTOM);
+        let top = bottom - snap(thick);
+        let part = |pixels: f32, strength: f32| -> Option<()> {
+          if pixels <= 0.0 {
+            return Some(());
+          }
+          let rect = D2D_RECT_F { left: text_left, top, right: text_left + pixels / scale, bottom };
+          let brush = target.CreateSolidColorBrush(&color(0xffffff, strength), None).ok()?;
+          target.FillRoundedRectangle(&rounded(rect, (bottom - top) / 2.0), &brush);
+          Some(())
+        };
+        part(line_room(scale), TRACK)?;
+        if let Some(ghost) = bar.ghost {
+          part(ghost as f32, GHOST)?;
+        }
+        let played = if bar.knob { 1.0 } else if look.playing { PLAYED } else { PLAYED_PAUSED };
+        part(bar.played as f32, played)?;
+        if bar.knob {
+          let center = windows_numerics::Vector2 { X: text_left + bar.played as f32 / scale, Y: (top + bottom) / 2.0 };
+          let knob = D2D1_ELLIPSE { point: center, radiusX: KNOB / 2.0, radiusY: KNOB / 2.0 };
+          let brush = target.CreateSolidColorBrush(&color(0xffffff, 1.0), None).ok()?;
+          target.FillEllipse(&knob, &brush);
+        }
       }
       target.EndDraw(None, None).ok()?;
     }

@@ -5,6 +5,7 @@ All notable changes to SyncR. Newest version first.
 ## [Unreleased]
 
 **App**
+- **New:** Spotify progress line, click or drag it to jump in the song (PC only)
 - **New:** floating widgets hide during full-screen games and videos (PC only)
 - **Better:** ⏯ shows on the Spotify cover when hovering the song name too (PC only)
 

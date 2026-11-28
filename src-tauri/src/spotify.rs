@@ -5,14 +5,16 @@
 // apps opening or closing) and every second anyway, then tells the page ("spotify" event) only
 // when something differs. Off: no thread, nothing is read.
 // Its volume in Windows' mixer (volume.rs) is read at each check too, and changed by the wheel.
+// Where Spotify is in the song (TIMELINE) is read at each check too: Windows only gets it from
+// Spotify on changes (play, pause, a jump), so it's counted forward from then while playing.
 // Shown as a strip in the taskbar (strip.rs, its own thread, drawn from CONFIG, SONG, COVER,
-// VOLUME and VOLUME_LINE) or a floating widget (widget.rs, its own thread too).
+// VOLUME, VOLUME_LINE and TIMELINE) or a floating widget (widget.rs, its own thread too).
 // Nothing here may panic: the app is built with panic = "abort", so a panic would close SyncR.
 
 use base64::Engine;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 use windows::core::Interface;
 use windows::Foundation::TypedEventHandler;
@@ -95,6 +97,7 @@ pub enum Ask {
   Previous,
   Next,
   Volume(i32),
+  Seek(i64), // jump to this place (Windows' time units: 100 ns)
 }
 
 // Sent to the page (event "spotify", and by spotify_status): None = Spotify closed or not playing
@@ -126,6 +129,64 @@ static COVER: Mutex<Option<Arc<Cover>>> = Mutex::new(None);
 static VOLUME: Mutex<Option<u8>> = Mutex::new(None);
 static VOLUME_LINE: Mutex<String> = Mutex::new(String::new());
 static WORKER: Mutex<Option<Sender<Ask>>> = Mutex::new(None);
+static TIMELINE: Mutex<Option<Timeline>> = Mutex::new(None);
+// Just after a jump: until then, a place read far from it is Spotify not there yet (ignored)
+static JUMPED: Mutex<Option<Instant>> = Mutex::new(None);
+const JUMP_WAIT: Duration = Duration::from_secs(2);
+
+// Where Spotify is in the song: its place (seconds) when `read`, the song's length and where its
+// time starts (100 ns units, for jumps), playing or not, and whether it takes jumps
+#[derive(Clone, Copy)]
+pub struct Timeline {
+  at: f64,
+  read: Instant,
+  length: f64,
+  start: i64,
+  playing: bool,
+  seekable: bool,
+}
+
+impl Timeline {
+  // The place now (seconds), counted forward while playing
+  pub fn now(&self) -> f64 {
+    let at = if self.playing { self.at + self.read.elapsed().as_secs_f64() } else { self.at };
+    at.clamp(0.0, self.length)
+  }
+
+  pub fn length(&self) -> f64 {
+    self.length
+  }
+
+  pub fn seekable(&self) -> bool {
+    self.seekable
+  }
+}
+
+// The song's place now (None: unknown, or no song)
+pub fn timeline() -> Option<Timeline> {
+  *lock(&TIMELINE)
+}
+
+// The strip or the widget jumps: shown there at once, Spotify is asked
+pub fn seek(seconds: f64) {
+  let Some(mut timeline) = timeline() else { return };
+  timeline.at = seconds.clamp(0.0, timeline.length);
+  timeline.read = Instant::now();
+  *lock(&TIMELINE) = Some(timeline);
+  *lock(&JUMPED) = Some(Instant::now() + JUMP_WAIT);
+  ask(Ask::Seek(timeline.start + (timeline.at * 10_000_000.0) as i64));
+  refresh();
+}
+
+// "1:24 / 5:13" (or "1:02:03" past an hour), shown while the mouse is on the line
+pub fn clock(at: f64, length: f64) -> String {
+  let part = |seconds: f64| {
+    let whole = seconds.max(0.0) as u64;
+    let (hours, minutes, seconds) = (whole / 3600, whole / 60 % 60, whole % 60);
+    if hours > 0 { format!("{hours}:{minutes:02}:{seconds:02}") } else { format!("{minutes}:{seconds:02}") }
+  };
+  format!("{} / {}", part(at), part(length))
+}
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
   mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -143,6 +204,22 @@ const SLIDE: f32 = 6.0; // room kept: ⏮ ⏭ come this far in from the middle a
 const FRAME_MS: u32 = 15; // the fades: one frame each time
 const FADE_SECONDS: f32 = 0.12;
 const VOLUME_MS: u32 = 1500; // the volume goes back to the artist this long after the last notch
+// The progress line's strengths (the text's color): the rest of the song, the part played
+// (playing, paused; the mouse on the line: full), the faint part up to the mouse
+const TRACK: f32 = 0.12;
+const PLAYED: f32 = 0.6;
+const PLAYED_PAUSED: f32 = 0.35;
+const GHOST: f32 = 0.18;
+
+// The progress line as drawn (pixels from its start): the part played, the faint part up to the
+// mouse, thick (the mouse over the strip or widget), and the knob (the mouse on it, or dragging)
+#[derive(Clone, Copy, PartialEq)]
+struct Bar {
+  played: i32,
+  ghost: Option<i32>,
+  thick: bool,
+  knob: bool,
+}
 
 fn target(on: bool) -> f32 {
   if on { 1.0 } else { 0.0 }
@@ -303,6 +380,7 @@ pub fn spotify_config(app: AppHandle, config: Config) {
     *lock(&SONG) = None;
     *lock(&COVER) = None;
     *lock(&VOLUME) = None;
+    *lock(&TIMELINE) = None;
     if worker.take().is_some() {
       strip::stop(); // the reading thread ends at its next wait
       widget::stop();
@@ -414,10 +492,12 @@ fn read_loop(app: AppHandle, receiver: Receiver<Ask>, wake: Sender<Ask>) {
     };
     let volume = if session.is_some() { volume::read() } else { None };
     let volume_changed = set_volume(volume);
+    let timeline = session.as_ref().zip(song.as_ref()).and_then(|(session, song)| read_timeline(session, song.playing));
+    let timeline_changed = set_timeline(timeline);
     if changed {
       let _ = app.emit("spotify", song);
     }
-    if changed || volume_changed {
+    if changed || volume_changed || timeline_changed {
       refresh();
     }
     // A message: something changed (Windows' signals) or a button was clicked; closed: the
@@ -458,6 +538,50 @@ fn set_volume(volume: Option<u8>) -> bool {
   changed
 }
 
+// Kept unless it differs: by more than a second from where it's counted (Windows' own time steps),
+// or just after a jump, by more than JUMP_WAIT's guess (Spotify not there yet). true: it changed.
+fn set_timeline(read: Option<Timeline>) -> bool {
+  let mut known = lock(&TIMELINE);
+  let jumped = lock(&JUMPED).is_some_and(|until| Instant::now() < until);
+  let keep = match (*known, read) {
+    (None, None) => true,
+    (Some(known), Some(read)) => {
+      let same = (known.length, known.playing, known.seekable, known.start) == (read.length, read.playing, read.seekable, read.start);
+      let off = (known.now() - read.now()).abs();
+      (same && off < 1.0) || (jumped && off > 2.0)
+    }
+    _ => false,
+  };
+  if !keep {
+    *known = read;
+  }
+  !keep
+}
+
+// Where Spotify is in the song, from Windows: its place when Windows last heard from it, counted
+// forward to now while playing (None: no length known)
+fn read_timeline(session: &Session, playing: bool) -> Option<Timeline> {
+  let properties = session.GetTimelineProperties().ok()?;
+  let start = properties.StartTime().ok()?.Duration;
+  let length = (properties.EndTime().ok()?.Duration - start) as f64 / 10_000_000.0;
+  if length.is_nan() || length <= 0.0 {
+    return None;
+  }
+  let mut at = (properties.Position().ok()?.Duration - start) as f64 / 10_000_000.0;
+  if playing {
+    // Windows' time: 100 ns units since 1601
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_nanos() as i64 / 100 + 116_444_736_000_000_000;
+    let updated = properties.LastUpdatedTime().ok()?.UniversalTime;
+    at += (now - updated).max(0) as f64 / 10_000_000.0;
+  }
+  let seekable = session
+    .GetPlaybackInfo()
+    .and_then(|info| info.Controls())
+    .and_then(|controls| controls.IsPlaybackPositionEnabled())
+    .unwrap_or(false);
+  Some(Timeline { at: at.clamp(0.0, length), read: Instant::now(), length, start, playing, seekable })
+}
+
 // Spotify's session among the apps Windows knows are playing something (its id is "Spotify.exe",
 // or longer for the Microsoft Store version)
 fn spotify_session(manager: &Manager) -> Option<Session> {
@@ -474,6 +598,7 @@ fn control(session: &Session, what: Ask) {
     Ask::Toggle => session.TryTogglePlayPauseAsync(),
     Ask::Previous => session.TrySkipPreviousAsync(),
     Ask::Next => session.TrySkipNextAsync(),
+    Ask::Seek(place) => session.TryChangePlaybackPositionAsync(place),
   };
   if !done.and_then(|op| op.join()).unwrap_or(false) {
     log::warn!("Spotify: the button wasn't taken");
@@ -677,7 +802,7 @@ fn shrink(cover: &Cover, side: usize) -> Vec<f32> {
 
 #[cfg(test)]
 mod tests {
-  use super::{hue, tint};
+  use super::{clock, hue, tint};
 
   // A 128 px cover: `paint` gives each pixel's red, green, blue from its x and y
   fn cover(paint: impl Fn(usize, usize) -> (u8, u8, u8)) -> Vec<u8> {
@@ -718,5 +843,13 @@ mod tests {
     let (red, green, blue) = ((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
     // lightness 22 %, saturation 55 %: about (87, 25, 25)
     assert!(red.abs_diff(87) <= 2 && green.abs_diff(25) <= 2 && blue.abs_diff(25) <= 2, "{red} {green} {blue}");
+  }
+
+  #[test]
+  fn clock_reads_like_spotify() {
+    assert_eq!(clock(84.7, 313.8), "1:24 / 5:13");
+    assert_eq!(clock(0.0, 59.0), "0:00 / 0:59");
+    assert_eq!(clock(3723.0, 7200.0), "1:02:03 / 2:00:00");
+    assert_eq!(clock(-3.0, 10.0), "0:00 / 0:10");
   }
 }
