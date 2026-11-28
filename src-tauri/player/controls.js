@@ -149,7 +149,12 @@ function playerControls(env, media) {
     $('time-now').textContent = `${clock(shown)} / ${clock(length)}`
     const beside = hooks.besideTime?.(shown)
     $('time-beside').textContent = beside ? `· ${beside}` : ''
-    $('buffer').style.width = `${length ? (media.bufferedEnd() / length) * 100 : 0}%`
+    // The loaded part shows at least as wide as the tip's area over it (loadedLeast): ~30 s ahead
+    // on a long video is only a sliver under the knob
+    const now = media.time()
+    const loaded = media.bufferedEnd()
+    const loadedEnd = loaded - now >= 1 ? Math.min(Math.max(loaded, now + loadedLeast()), length) : loaded
+    $('buffer').style.width = `${length ? (loadedEnd / length) * 100 : 0}%`
     if (!$('tip').hidden && dragging === null) tipLoaded()
   }
 
@@ -335,11 +340,12 @@ function playerControls(env, media) {
   }
   // Over the loaded part ahead: how much is there, so it's clear how far it plays without internet
   let hovered = 0
+  // At least 12 px wide from the knob (in seconds): on a long video a few minutes are only a sliver
+  function loadedLeast() { return (12 / ($('progress').clientWidth || 1)) * media.duration() }
   function tipLoaded() {
     const now = media.time()
     const ahead = media.bufferedEnd() - now
-    // At least 12 px wide from the knob: on a long video a few minutes are only a sliver
-    const least = (12 / ($('progress').clientWidth || 1)) * media.duration()
+    const least = loadedLeast()
     const over = dragging === null && ahead >= 1 && hovered >= now - least / 4 && hovered <= now + Math.max(ahead, least)
     $('tip-loaded').hidden = !over
     if (over) $('tip-loaded').textContent = (labels.loadedAhead || '{time}').replace('{time}', clock(ahead))
